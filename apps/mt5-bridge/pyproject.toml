@@ -1,0 +1,21 @@
+[project]
+name = "mt5-bridge"
+version = "0.0.0"
+description = "Read-only MetaTrader 5 connector exposed over HTTP (FastAPI)"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.34.0",
+    "pydantic>=2.10.0",
+    "pydantic-settings>=2.7.0",
+    "MetaTrader5>=5.0.45",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.0",
+    "httpx>=0.28.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

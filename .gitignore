@@ -1,0 +1,39 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# build output
+dist/
+build/
+*.tsbuildinfo
+
+# turbo
+.turbo/
+
+# env / secrets
+.env
+.env.*
+!.env.example
+
+# logs
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# coverage / test
+coverage/
+.vitest/
+
+# python (mt5-bridge)
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# editor / os
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,28 @@
+# Local infrastructure for development.
+# Postgres image ships with TimescaleDB + pgvector preinstalled.
+services:
+  postgres:
+    image: timescale/timescaledb-ha:pg16
+    container_name: tj-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: tj
+      POSTGRES_PASSWORD: tj_password
+      POSTGRES_DB: tradinjournal
+    ports:
+      - '5432:5432'
+    volumes:
+      - tj_pg_data:/home/postgres/pgdata/data
+
+  redis:
+    image: redis:7-alpine
+    container_name: tj-redis
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+    volumes:
+      - tj_redis_data:/data
+
+volumes:
+  tj_pg_data:
+  tj_redis_data:

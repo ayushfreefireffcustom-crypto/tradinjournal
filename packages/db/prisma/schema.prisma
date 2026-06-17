@@ -1,0 +1,14 @@
+// Prisma schema. Models are added per feature in later phases
+// (User/Session via better-auth, BrokerAccount, Execution, Trade, etc.).
+// TimescaleDB hypertables and pgvector are set up via raw-SQL migrations.
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [timescaledb, vector]
+}
