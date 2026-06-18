@@ -8,7 +8,9 @@ import express, { type Express, type NextFunction, type Request, type Response }
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
+import { toNodeHandler } from 'better-auth/node';
 import { logger } from '@tradinjournal/logger';
+import { auth } from './lib/auth.js';
 
 export function createApp(): Express {
   const app = express();
@@ -24,6 +26,9 @@ export function createApp(): Express {
       stream: { write: (message: string) => logger.info(message.trim()) },
     }),
   );
+
+  // --- auth (better-auth handles all /api/auth/* routes) ---
+  app.all('/api/auth/*', toNodeHandler(auth));
 
   // --- health check ---
   app.get('/health', (_req: Request, res: Response) => {

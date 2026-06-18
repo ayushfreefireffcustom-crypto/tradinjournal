@@ -12,3 +12,193 @@ datasource db {
   url        = env("DATABASE_URL")
   extensions = [timescaledb, vector]
 }
+
+// ─── Auth tables (better-auth managed) ───────────────────────────────────────
+
+model User {
+  id            String   @id @default(cuid())
+  name          String
+  email         String   @unique
+  emailVerified Boolean  @default(false)
+  image         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  sessions       Session[]
+  accounts       Account[]
+  brokerAccounts BrokerAccount[]
+
+  @@map("user")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id @default(cuid())
+  accountId             String
+  providerId            String
+  accessToken           String?   @db.Text
+  refreshToken          String?   @db.Text
+  idToken               String?   @db.Text
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, accountId])
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String    @id @default(cuid())
+  identifier String
+  value      String    @db.Text
+  expiresAt  DateTime
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
+}
+
+// ─── Broker tables (Phase 1) ──────────────────────────────────────────────────
+
+model BrokerAccount {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  broker         String
+  mt5Login       BigInt
+  server         String
+  baseCurrency   String   @default("USD")
+  marginMode     MarginMode
+  status         AccountStatus @default(ACTIVE)
+  lastSyncAt     DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  syncRuns       SyncRun[]
+  executions     Execution[]
+
+  @@unique([mt5Login, server])
+  @@index([userId])
+  @@map("broker_account")
+}
+
+enum MarginMode {
+  NETTING
+  HEDGING
+}
+
+enum AccountStatus {
+  ACTIVE
+  DISCONNECTED
+  ERROR
+}
+
+// ─── Raw MT5 deals (immutable source of truth) ────────────────────────────────
+
+model Execution {
+  id               String      @id @default(cuid())
+  brokerAccountId  String
+  brokerAccount    BrokerAccount @relation(fields: [brokerAccountId], references: [id], onDelete: Cascade)
+
+  dealTicket       BigInt      @unique
+  orderTicket      BigInt
+  positionId       BigInt
+  symbol           String
+  type             DealType
+  entry            DealEntry
+  volume           Decimal     @db.Decimal(18, 8)
+  price            Decimal     @db.Decimal(18, 8)
+  profit           Decimal     @db.Decimal(18, 8)
+  commission       Decimal     @db.Decimal(18, 8)
+  swap             Decimal     @db.Decimal(18, 8)
+  fee              Decimal     @db.Decimal(18, 8) @default(0)
+  dealTime         DateTime
+  magic            Int         @default(0)
+  comment          String?
+  reason           Int         @default(0)
+  externalId       String?
+
+  createdAt        DateTime    @default(now())
+
+  @@index([brokerAccountId])
+  @@index([positionId])
+  @@index([symbol])
+  @@index([dealTime])
+  @@map("execution")
+}
+
+enum DealType {
+  BUY
+  SELL
+  BALANCE
+}
+
+enum DealEntry {
+  IN
+  OUT
+  INOUT
+  OUT_BY
+}
+
+// ─── Balance events (deposits / withdrawals) ──────────────────────────────────
+
+model BalanceEvent {
+  id              String        @id @default(cuid())
+  brokerAccountId String
+  ticket          BigInt        @unique
+  amount          Decimal       @db.Decimal(18, 8)
+  comment         String?
+  eventTime       DateTime
+  createdAt       DateTime      @default(now())
+
+  @@index([brokerAccountId])
+  @@map("balance_event")
+}
+
+// ─── Sync runs ────────────────────────────────────────────────────────────────
+
+model SyncRun {
+  id              String        @id @default(cuid())
+  brokerAccountId String
+  brokerAccount   BrokerAccount @relation(fields: [brokerAccountId], references: [id], onDelete: Cascade)
+
+  status          SyncStatus    @default(RUNNING)
+  dealsPulled     Int           @default(0)
+  tradesBuilt     Int           @default(0)
+  error           String?
+  startedAt       DateTime      @default(now())
+  finishedAt      DateTime?
+
+  @@index([brokerAccountId])
+  @@map("sync_run")
+}
+
+enum SyncStatus {
+  RUNNING
+  DONE
+  FAILED
+}
