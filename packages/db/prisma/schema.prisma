@@ -100,6 +100,7 @@ model BrokerAccount {
 
   syncRuns       SyncRun[]
   executions     Execution[]
+  trades         Trade[]
 
   @@unique([mt5Login, server])
   @@index([userId])
@@ -142,6 +143,9 @@ model Execution {
   reason           Int         @default(0)
   externalId       String?
 
+  tradeId          String?
+  trade            Trade?      @relation(fields: [tradeId], references: [id])
+
   createdAt        DateTime    @default(now())
 
   @@index([brokerAccountId])
@@ -162,6 +166,71 @@ enum DealEntry {
   OUT
   INOUT
   OUT_BY
+}
+
+// ─── Reconstructed trades ────────────────────────────────────────────────────
+
+model Trade {
+  id              String        @id @default(cuid())
+  brokerAccountId String
+  brokerAccount   BrokerAccount @relation(fields: [brokerAccountId], references: [id], onDelete: Cascade)
+
+  symbol          String
+  side            TradeSide
+  status          TradeStatus   @default(OPEN)
+
+  openTime        DateTime
+  closeTime       DateTime?
+
+  volume          Decimal       @db.Decimal(18, 8)
+  avgEntry        Decimal       @db.Decimal(18, 8)
+  avgExit         Decimal?      @db.Decimal(18, 8)
+
+  grossPnl        Decimal       @db.Decimal(18, 8) @default(0)
+  commission      Decimal       @db.Decimal(18, 8) @default(0)
+  swap            Decimal       @db.Decimal(18, 8) @default(0)
+  netPnl          Decimal       @db.Decimal(18, 8) @default(0)
+
+  riskAmount      Decimal?      @db.Decimal(18, 8)
+  rMultiple       Decimal?      @db.Decimal(18, 8)
+
+  executions      Execution[]
+  metric          TradeMetric?
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([brokerAccountId])
+  @@index([symbol])
+  @@index([openTime])
+  @@index([status])
+  @@map("trade")
+}
+
+model TradeMetric {
+  id          String   @id @default(cuid())
+  tradeId     String   @unique
+  trade       Trade    @relation(fields: [tradeId], references: [id], onDelete: Cascade)
+
+  mae         Decimal? @db.Decimal(18, 8)
+  mfe         Decimal? @db.Decimal(18, 8)
+  captureRate Decimal? @db.Decimal(8, 4)
+  durationSec Int?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("trade_metric")
+}
+
+enum TradeSide {
+  BUY
+  SELL
+}
+
+enum TradeStatus {
+  OPEN
+  CLOSED
 }
 
 // ─── Balance events (deposits / withdrawals) ──────────────────────────────────
