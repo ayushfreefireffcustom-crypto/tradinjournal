@@ -1,6 +1,7 @@
-// Prisma schema. Models are added per feature in later phases
-// (User/Session via better-auth, BrokerAccount, Execution, Trade, etc.).
-// TimescaleDB hypertables and pgvector are set up via raw-SQL migrations.
+// Prisma schema — Phase 1 on Neon PostgreSQL.
+// pgvector is enabled (Neon supports it).
+// TimescaleDB removed for Phase 1 — Neon doesn't support it.
+// Revisit at Phase 2 for candle/MAE/MFE storage (see task chip).
 
 generator client {
   provider        = "prisma-client-js"
@@ -10,7 +11,8 @@ generator client {
 datasource db {
   provider   = "postgresql"
   url        = env("DATABASE_URL")
-  extensions = [timescaledb, vector]
+  directUrl  = env("DIRECT_URL")
+  extensions = [vector]
 }
 
 // ─── Auth tables (better-auth managed) ───────────────────────────────────────
