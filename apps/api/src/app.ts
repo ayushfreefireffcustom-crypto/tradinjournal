@@ -1,23 +1,27 @@
-/**
- * Express application factory.
- *
- * Builds the middleware chain and mounts routes. Kept deliberately thin —
- * feature modules (accounts, trades, sync, ...) are mounted here as they are built.
- */
-import express, { type Express, type NextFunction, type Request, type Response } from 'express';
+import express, { type Express, type Request, type Response } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import { toNodeHandler } from 'better-auth/node';
+import { env } from '@tradinjournal/config';
 import { logger } from '@tradinjournal/logger';
 import { auth } from './lib/auth.js';
+import { errorHandler } from './http/middleware/error-handler.js';
 
 export function createApp(): Express {
   const app = express();
 
-  // --- security & parsing ---
+  // --- security ---
   app.use(helmet());
-  app.use(cors());
+
+  // CORS must allow credentials so auth cookies work across origins
+  app.use(
+    cors({
+      origin: env.AUTH_URL,
+      credentials: true,
+    }),
+  );
+
   app.use(express.json());
 
   // --- HTTP request logging (morgan -> winston) ---
@@ -27,10 +31,11 @@ export function createApp(): Express {
     }),
   );
 
-  // --- auth (better-auth handles all /api/auth/* routes) ---
+  // --- auth: better-auth owns every /api/auth/* route ---
+  // Must be registered BEFORE express.json() body parsing on those routes
   app.all('/api/auth/*', toNodeHandler(auth));
 
-  // --- health check ---
+  // --- health ---
   app.get('/health', (_req: Request, res: Response) => {
     res.json({ data: { status: 'ok', service: 'api', time: new Date().toISOString() } });
   });
@@ -42,12 +47,8 @@ export function createApp(): Express {
     res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Route not found' } });
   });
 
-  // --- centralised error handler ---
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
-    logger.error(err.message, { stack: err.stack });
-    res.status(500).json({ error: { code: 'INTERNAL', message: 'Internal server error' } });
-  });
+  // --- centralised error handler (must be last) ---
+  app.use(errorHandler);
 
   return app;
 }
