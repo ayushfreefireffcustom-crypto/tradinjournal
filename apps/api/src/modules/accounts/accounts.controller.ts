@@ -18,7 +18,7 @@ function serializeAccount(account: { id: string; broker: string; mt5Login: bigin
 
 export async function handleConnect(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const userId = (req as any).user?.id as string;
+    const userId = res.locals.user.id as string;
     const account = await connectAccount(userId, req.body as ConnectAccountInput);
     res.status(201).json({ data: serializeAccount(account) });
   } catch (err) {
@@ -28,7 +28,7 @@ export async function handleConnect(req: Request, res: Response, next: NextFunct
 
 export async function handleList(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const userId = (req as any).user?.id as string;
+    const userId = res.locals.user.id as string;
     const accounts = await listAccounts(userId);
     res.json({ data: accounts.map(serializeAccount) });
   } catch (err) {

@@ -7,47 +7,43 @@ import { env } from '@tradinjournal/config';
 import { logger } from '@tradinjournal/logger';
 import { auth } from './lib/auth.js';
 import { errorHandler } from './http/middleware/error-handler.js';
+import { accountsRouter } from './modules/accounts/accounts.routes.js';
+import { tradesRouter } from './modules/trades/trades.routes.js';
 
 export function createApp(): Express {
   const app = express();
 
-  // --- security ---
   app.use(helmet());
 
-  // CORS must allow credentials so auth cookies work across origins
   app.use(
     cors({
-      origin: env.AUTH_URL,
+      origin: env.CORS_ORIGIN,
       credentials: true,
     }),
   );
 
-  app.use(express.json());
-
-  // --- HTTP request logging (morgan -> winston) ---
   app.use(
     morgan('tiny', {
       stream: { write: (message: string) => logger.info(message.trim()) },
     }),
   );
 
-  // --- auth: better-auth owns every /api/auth/* route ---
-  // Must be registered BEFORE express.json() body parsing on those routes
+  // better-auth handles all /api/auth/* — must come before express.json()
   app.all('/api/auth/*', toNodeHandler(auth));
 
-  // --- health ---
+  app.use(express.json());
+
   app.get('/health', (_req: Request, res: Response) => {
     res.json({ data: { status: 'ok', service: 'api', time: new Date().toISOString() } });
   });
 
-  // TODO: mount feature modules here (accounts, sync, trades, ...)
+  app.use('/api/accounts', accountsRouter);
+  app.use('/api/trades', tradesRouter);
 
-  // --- 404 ---
   app.use((_req: Request, res: Response) => {
     res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Route not found' } });
   });
 
-  // --- centralised error handler (must be last) ---
   app.use(errorHandler);
 
   return app;

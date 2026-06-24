@@ -8,8 +8,9 @@ export const auth = betterAuth({
     provider: 'postgresql',
   }),
 
-  secret: env.AUTH_SECRET ?? 'dev-secret-change-in-production',
-  baseURL: env.AUTH_URL ?? 'http://localhost:4000',
+  secret: env.AUTH_SECRET,
+  baseURL: env.AUTH_URL,
+  trustedOrigins: [env.CORS_ORIGIN],
 
   // ── Email + password ───────────────────────────────────────────────────────
   emailAndPassword: {
