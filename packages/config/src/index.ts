@@ -1,5 +1,12 @@
-import 'dotenv/config';
+import { fileURLToPath } from 'url';
+import path from 'path';
+import { config } from 'dotenv';
 import { z } from 'zod';
+
+// Resolve .env from monorepo root regardless of which app's CWD
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+config({ path: path.resolve(__dirname, '../../../.env') });
 
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
