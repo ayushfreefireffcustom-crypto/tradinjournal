@@ -1,5 +1,5 @@
 import { prisma } from '@tradinjournal/db';
-import type { BrokerAccount, MarginMode } from '@prisma/client';
+import type { BrokerAccount, MarginMode } from '@tradinjournal/db';
 
 export async function findAccountsByUser(userId: string): Promise<BrokerAccount[]> {
   return prisma.brokerAccount.findMany({
@@ -17,6 +17,7 @@ export async function upsertAccount(data: {
   broker: string;
   mt5Login: bigint;
   server: string;
+  password: string;
   baseCurrency: string;
   marginMode: MarginMode;
 }): Promise<BrokerAccount> {

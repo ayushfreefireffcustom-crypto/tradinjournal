@@ -1,4 +1,4 @@
-import type { BrokerAccount } from '@prisma/client';
+import type { BrokerAccount } from '@tradinjournal/db';
 import type { ConnectAccountInput } from '@tradinjournal/contracts';
 import { verifyAccount } from '../../lib/broker-connector.js';
 import { upsertAccount, findAccountsByUser } from './accounts.repository.js';
