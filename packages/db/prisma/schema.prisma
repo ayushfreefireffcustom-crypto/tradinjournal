@@ -93,6 +93,7 @@ model BrokerAccount {
   broker         String
   mt5Login       BigInt
   server         String
+  password       String?
   baseCurrency   String   @default("USD")
   marginMode     MarginMode
   status         AccountStatus @default(ACTIVE)
