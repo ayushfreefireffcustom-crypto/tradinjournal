@@ -60,7 +60,7 @@ export default function DealsTable({ deals, loading, error }: Props) {
             <tbody>
               {deals.map((deal, i) => {
                 const profit = parseFloat(deal.profit);
-                const badge = TYPE_BADGE[deal.type] ?? TYPE_BADGE.BUY;
+                const badge = TYPE_BADGE[deal.type] ?? { label: deal.type, color: '#d4d4d8', bg: '#3f3f4633' };
                 const isEven = i % 2 === 0;
                 return (
                   <tr

@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { useSession, signOut } from '@/lib/auth-client';
+import { authClient } from '@/lib/auth-client';
+const { useSession, signOut } = authClient;
 import { api, type BrokerAccount, type Deal } from '@/lib/api';
 import ConnectBrokerModal from '@/components/connect-broker-modal';
 import DealsTable from '@/components/deals-table';
@@ -28,7 +29,7 @@ export default function DashboardPage() {
     try {
       const data = await api.accounts.list();
       setAccounts(data);
-      if (data.length > 0 && !selectedAccount) setSelectedAccount(data[0]);
+      if (data.length > 0 && !selectedAccount) setSelectedAccount(data[0] ?? null);
     } catch {
       // ignore
     } finally {
