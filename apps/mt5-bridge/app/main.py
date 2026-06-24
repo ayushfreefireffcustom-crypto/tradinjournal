@@ -55,7 +55,7 @@ app = FastAPI(title="MT5 Bridge", version="1.0.0", lifespan=lifespan, docs_url=N
 # ─── Auth ─────────────────────────────────────────────────────────────────────
 
 def verify_secret(x_bridge_secret: str = Header(...)):
-    if x_bridge_secret != settings.bridge_shared_secret:
+    if x_bridge_secret != settings.shared_secret:
         log.warning("Rejected — wrong X-Bridge-Secret")
         raise HTTPException(status_code=401, detail="Unauthorized")
 
