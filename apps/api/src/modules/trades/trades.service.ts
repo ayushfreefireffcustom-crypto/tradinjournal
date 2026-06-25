@@ -132,28 +132,28 @@ export function computeStats(trades: Trade[], startingBalance: number): AccountS
   }
 
   // By symbol
-  const symMap = new Map<string, { trades: number; wins: number; losses: number; pnl: number }>();
+  const symMap = new Map<string, { trades: number; wins: number; losses: number; netPnl: number }>();
   for (const t of closed) {
-    const s = symMap.get(t.symbol) ?? { trades: 0, wins: 0, losses: 0, pnl: 0 };
+    const s = symMap.get(t.symbol) ?? { trades: 0, wins: 0, losses: 0, netPnl: 0 };
     s.trades++;
-    s.pnl += t.netPnl;
+    s.netPnl += t.netPnl;
     if (t.netPnl > 0) s.wins++; else s.losses++;
     symMap.set(t.symbol, s);
   }
   const bySymbol: SymbolStat[] = Array.from(symMap.entries()).map(([symbol, s]) => ({
     symbol, ...s,
     winRate: s.trades > 0 ? s.wins / s.trades : 0,
-    avgPnl: s.trades > 0 ? s.pnl / s.trades : 0,
+    avgPnl: s.trades > 0 ? s.netPnl / s.trades : 0,
   })).sort((a, b) => Math.abs(b.netPnl) - Math.abs(a.netPnl));
 
   // By day of week
   const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  const dayMap = new Map<string, { trades: number; pnl: number }>();
+  const dayMap = new Map<string, { trades: number; netPnl: number }>();
   for (const t of closed) {
     const day = DAYS[new Date(t.closeTime!).getDay()]!;
-    const d = dayMap.get(day) ?? { trades: 0, pnl: 0 };
+    const d = dayMap.get(day) ?? { trades: 0, netPnl: 0 };
     d.trades++;
-    d.pnl += t.netPnl;
+    d.netPnl += t.netPnl;
     dayMap.set(day, d);
   }
   const byDay: DayStat[] = DAYS
