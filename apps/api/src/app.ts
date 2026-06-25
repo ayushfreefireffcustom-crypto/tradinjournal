@@ -9,6 +9,7 @@ import { auth } from './lib/auth.js';
 import { errorHandler } from './http/middleware/error-handler.js';
 import { accountsRouter } from './modules/accounts/accounts.routes.js';
 import { tradesRouter } from './modules/trades/trades.routes.js';
+import { journalRouter } from './modules/journal/journal.routes.js';
 
 export function createApp(): Express {
   const app = express();
@@ -39,6 +40,7 @@ export function createApp(): Express {
 
   app.use('/api/accounts', accountsRouter);
   app.use('/api/trades', tradesRouter);
+  app.use('/api/journal', journalRouter);
 
   app.use((_req: Request, res: Response) => {
     res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Route not found' } });

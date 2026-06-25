@@ -251,6 +251,29 @@ model BalanceEvent {
   @@map("balance_event")
 }
 
+// ─── Journal entries ──────────────────────────────────────────────────────────
+
+model JournalEntry {
+  id              String   @id @default(cuid())
+  userId          String
+  brokerAccountId String?
+
+  title           String?
+  body            String   @db.Text
+  emotion         String?
+  tags            String[]
+  tradeId         String?
+
+  entryDate       DateTime @default(now())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+  @@index([brokerAccountId])
+  @@index([entryDate])
+  @@map("journal_entry")
+}
+
 // ─── Sync runs ────────────────────────────────────────────────────────────────
 
 model SyncRun {

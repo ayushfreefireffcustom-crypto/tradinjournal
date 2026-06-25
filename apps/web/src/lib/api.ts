@@ -74,6 +74,20 @@ export interface SymbolStat {
 
 export interface DayStat { day: string; trades: number; netPnl: number; }
 
+export interface JournalEntry {
+  id: string;
+  userId: string;
+  brokerAccountId: string | null;
+  title: string | null;
+  body: string;
+  emotion: string | null;
+  tags: string[];
+  tradeId: string | null;
+  entryDate: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface AccountStats {
   netPnl: number;
   totalTrades: number;
@@ -109,5 +123,13 @@ export const api = {
     list:  (accountId: string) => apiFetch<Trade[]>(`/api/trades?accountId=${encodeURIComponent(accountId)}`),
     deals: (accountId: string) => apiFetch<Deal[]>(`/api/trades/deals?accountId=${encodeURIComponent(accountId)}`),
     stats: (accountId: string) => apiFetch<AccountStats>(`/api/trades/stats?accountId=${encodeURIComponent(accountId)}`),
+  },
+  journal: {
+    list: (accountId?: string) => apiFetch<JournalEntry[]>(`/api/journal${accountId ? `?accountId=${encodeURIComponent(accountId)}` : ''}`),
+    create: (body: { title?: string; body: string; emotion?: string; tags?: string[]; tradeId?: string; brokerAccountId?: string; entryDate?: string }) =>
+      apiFetch<JournalEntry>('/api/journal', { method: 'POST', body: JSON.stringify(body) }),
+    update: (id: string, body: Partial<{ title: string; body: string; emotion: string; tags: string[]; entryDate: string }>) =>
+      apiFetch<JournalEntry>(`/api/journal/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+    delete: (id: string) => apiFetch<{ ok: boolean }>(`/api/journal/${id}`, { method: 'DELETE' }),
   },
 };
