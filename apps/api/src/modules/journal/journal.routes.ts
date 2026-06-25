@@ -1,8 +1,8 @@
-import { Router } from 'express';
+import { Router, type IRouter } from 'express';
 import { requireAuth } from '../../http/middleware/require-auth.js';
 import { handleList, handleCreate, handleUpdate, handleDelete } from './journal.controller.js';
 
-export const journalRouter = Router();
+export const journalRouter: IRouter = Router();
 
 journalRouter.use(requireAuth);
 

@@ -37,7 +37,6 @@ function WinLossDonut({ wins, losses }: { wins: number; losses: number }) {
   const total = wins + losses;
   if (total === 0) return <p style={{ fontSize: 12, color: 'var(--text-subtle)' }}>No closed trades</p>;
   const winPct = (wins / total) * 100;
-  const lossPct = 100 - winPct;
   const R = 40;
   const circ = 2 * Math.PI * R;
   const winDash = (winPct / 100) * circ;
