@@ -9,25 +9,59 @@ import DealsTable from '@/components/deals-table';
 
 const { useSession, signOut } = authClient;
 
-function StatSkeleton() {
+const S: Record<string, React.CSSProperties> = {
+  shell:    { display: 'flex', minHeight: '100vh', background: 'var(--bg)' },
+  sidebar:  { width: 220, flexShrink: 0, borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', padding: '20px 12px', background: 'var(--surface)' },
+  main:     { flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 },
+  topbar:   { height: 56, borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', padding: '0 28px', gap: 12, flexShrink: 0 },
+  content:  { flex: 1, padding: '32px 32px', overflowY: 'auto' },
+};
+
+function NavItem({ icon, label, active }: { icon: React.ReactNode; label: string; active?: boolean }) {
   return (
-    <div className="rounded-xl p-4 border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
-      <div className="skeleton h-3 w-16 mb-3" />
-      <div className="skeleton h-5 w-24" />
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 8,
+      background: active ? 'var(--surface-2)' : 'transparent',
+      color: active ? 'var(--text)' : 'var(--text-muted)',
+      fontSize: 13, fontWeight: active ? 500 : 400, cursor: 'pointer', transition: 'all 0.15s',
+      userSelect: 'none',
+    }}>
+      {icon}
+      {label}
     </div>
   );
 }
 
-function AccountTabSkeleton() {
-  return <div className="skeleton h-9 w-36 rounded-lg" />;
+function StatCard({ label, value, sub, color }: { label: string; value: string; sub?: string; color?: string }) {
+  return (
+    <div style={{
+      background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: '18px 20px',
+      transition: 'border-color 0.15s, transform 0.15s',
+    }}
+    onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--border-strong)'; (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-1px)'; }}
+    onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--border)'; (e.currentTarget as HTMLDivElement).style.transform = 'translateY(0)'; }}
+    >
+      <p style={{ fontSize: 11, color: 'var(--text-subtle)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>{label}</p>
+      <p style={{ fontSize: 22, fontWeight: 700, color: color ?? 'var(--text)', letterSpacing: '-0.5px', lineHeight: 1 }}>{value}</p>
+      {sub && <p style={{ fontSize: 11, color: 'var(--text-subtle)', marginTop: 6 }}>{sub}</p>}
+    </div>
+  );
+}
+
+function StatSkeleton() {
+  return (
+    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: '18px 20px' }}>
+      <div className="skeleton" style={{ height: 10, width: 60, marginBottom: 14 }} />
+      <div className="skeleton" style={{ height: 22, width: 100 }} />
+    </div>
+  );
 }
 
 export default function DashboardPage() {
   const router = useRouter();
   const { data: session, isPending } = useSession();
-
   const [accounts, setAccounts] = useState<BrokerAccount[]>([]);
-  const [selectedAccount, setSelectedAccount] = useState<BrokerAccount | null>(null);
+  const [selected, setSelected] = useState<BrokerAccount | null>(null);
   const [deals, setDeals] = useState<Deal[]>([]);
   const [loadingAccounts, setLoadingAccounts] = useState(true);
   const [loadingDeals, setLoadingDeals] = useState(false);
@@ -43,24 +77,18 @@ export default function DashboardPage() {
     try {
       const data = await api.accounts.list();
       setAccounts(data);
-      if (data.length > 0 && !selectedAccount) setSelectedAccount(data[0] ?? null);
-    } catch {
-      // ignore
-    } finally {
-      setLoadingAccounts(false);
-    }
-  }, [selectedAccount]);
+      if (data.length > 0 && !selected) setSelected(data[0] ?? null);
+    } catch { /* ignore */ }
+    finally { setLoadingAccounts(false); }
+  }, [selected]);
 
-  useEffect(() => {
-    if (session) loadAccounts();
-  }, [session, loadAccounts]);
+  useEffect(() => { if (session) loadAccounts(); }, [session, loadAccounts]);
 
   const loadDeals = useCallback(async (account: BrokerAccount) => {
     setLoadingDeals(true);
     setDealsError('');
     try {
-      const data = await api.trades.deals(account.id);
-      setDeals(data);
+      setDeals(await api.trades.deals(account.id));
     } catch (err: any) {
       setDealsError(err.message ?? 'Failed to load deals');
     } finally {
@@ -68,16 +96,14 @@ export default function DashboardPage() {
     }
   }, []);
 
-  useEffect(() => {
-    if (selectedAccount) loadDeals(selectedAccount);
-  }, [selectedAccount, loadDeals]);
+  useEffect(() => { if (selected) loadDeals(selected); }, [selected, loadDeals]);
 
-  function onAccountConnected(account: BrokerAccount) {
+  function onConnected(account: BrokerAccount) {
     setAccounts(prev => {
       const exists = prev.find(a => a.id === account.id);
       return exists ? prev.map(a => a.id === account.id ? account : a) : [account, ...prev];
     });
-    setSelectedAccount(account);
+    setSelected(account);
     setShowConnect(false);
   }
 
@@ -89,176 +115,184 @@ export default function DashboardPage() {
 
   if (isPending || (!session && !isPending)) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg)' }}>
-        <div className="w-5 h-5 rounded-full border-2 animate-spin" style={{ borderColor: 'var(--border)', borderTopColor: 'var(--accent)' }} />
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)' }}>
+        <span className="spin" style={{ width: 22, height: 22, borderRadius: '50%', border: '2px solid var(--border)', borderTopColor: 'var(--accent)', display: 'inline-block' }} />
       </div>
     );
   }
 
-  const pnl = deals.reduce((sum, d) => sum + parseFloat(d.profit || '0'), 0);
-  const pnlPositive = pnl >= 0;
+  const pnl = deals.reduce((s, d) => s + parseFloat(d.profit || '0'), 0);
+  const pnlStr = `${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)}`;
 
   return (
-    <div className="min-h-screen animate-fade-in" style={{ background: 'var(--bg)' }}>
-
-      {/* Nav */}
-      <nav
-        className="sticky top-0 z-10 border-b px-6 py-3 flex items-center justify-between"
-        style={{ borderColor: 'var(--border)', background: 'rgba(9,9,11,0.8)', backdropFilter: 'blur(12px)' }}
-      >
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-md flex items-center justify-center" style={{ background: 'var(--accent)' }}>
+    <div style={S.shell}>
+      {/* Sidebar */}
+      <aside style={S.sidebar}>
+        {/* Logo */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '4px 8px', marginBottom: 28 }}>
+          <div style={{ width: 28, height: 28, borderRadius: 8, background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
-              <path d="M2 12L6 7L9 10L13 4" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M2 12L6 7L9 10L13 4" stroke="white" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </div>
-          <span className="font-semibold text-sm tracking-tight" style={{ color: 'var(--text)' }}>TradingJournal</span>
+          <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', letterSpacing: '-0.2px' }}>TradingJournal</span>
         </div>
-        <div className="flex items-center gap-3">
-          <span className="text-xs hidden sm:block" style={{ color: 'var(--text-subtle)' }}>{session?.user.email}</span>
+
+        {/* Nav */}
+        <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <NavItem active icon={
+            <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+              <rect x="1" y="9" width="4" height="6" rx="1" fill="currentColor" opacity="0.5"/>
+              <rect x="6" y="5" width="4" height="10" rx="1" fill="currentColor" opacity="0.7"/>
+              <rect x="11" y="2" width="4" height="13" rx="1" fill="currentColor"/>
+            </svg>
+          } label="Dashboard" />
+          <NavItem icon={
+            <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+              <path d="M2 4h12M2 8h8M2 12h5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+            </svg>
+          } label="Trade Log" />
+          <NavItem icon={
+            <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+              <path d="M8 1v14M1 8h14" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+            </svg>
+          } label="Journal" />
+          <NavItem icon={
+            <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+              <path d="M1 13L5 8l3 3 3-4 3-3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          } label="Analytics" />
+        </nav>
+
+        {/* Bottom */}
+        <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <div style={{ height: 1, background: 'var(--border)', margin: '12px 0' }} />
+          <div style={{ padding: '8px 10px' }}>
+            <p style={{ fontSize: 12, fontWeight: 500, color: 'var(--text)', marginBottom: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {session?.user.name || 'User'}
+            </p>
+            <p style={{ fontSize: 11, color: 'var(--text-subtle)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {session?.user.email}
+            </p>
+          </div>
           <button
             onClick={handleSignOut}
             disabled={signingOut}
-            className="text-xs px-3 py-1.5 rounded-lg border transition-all duration-150 disabled:opacity-50"
-            style={{ borderColor: 'var(--border)', color: 'var(--text-muted)', background: 'transparent' }}
-            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--surface-2)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--text)'; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)'; }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 8,
+              background: 'transparent', border: 'none', color: 'var(--text-muted)', fontSize: 13,
+              cursor: 'pointer', transition: 'background 0.15s, color 0.15s', width: '100%',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface-2)'; e.currentTarget.style.color = 'var(--red)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-muted)'; }}
           >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M5 12H3a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1h2M9 10l3-3-3-3M12 7H5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
             {signingOut ? 'Signing out…' : 'Sign out'}
           </button>
         </div>
-      </nav>
+      </aside>
 
-      <div className="max-w-6xl mx-auto px-6 py-8">
-
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6 animate-fade-in">
-          <div>
-            <h1 className="text-xl font-semibold tracking-tight" style={{ color: 'var(--text)' }}>Dashboard</h1>
-            <p className="text-sm mt-0.5" style={{ color: 'var(--text-muted)' }}>Your trading activity</p>
-          </div>
+      {/* Main */}
+      <div style={S.main}>
+        {/* Topbar */}
+        <div style={S.topbar}>
+          {selected && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginRight: 'auto', paddingLeft: 4 }}>
+              {accounts.map(acc => (
+                <button
+                  key={acc.id}
+                  onClick={() => setSelected(acc)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: 8,
+                    border: `1px solid ${selected.id === acc.id ? 'var(--accent)' : 'var(--border)'}`,
+                    background: selected.id === acc.id ? 'var(--accent-glow)' : 'transparent',
+                    color: selected.id === acc.id ? 'var(--accent)' : 'var(--text-muted)',
+                    fontSize: 12, fontWeight: 500, cursor: 'pointer', transition: 'all 0.15s',
+                  }}
+                  onMouseEnter={e => { if (selected.id !== acc.id) { e.currentTarget.style.borderColor = 'var(--border-strong)'; e.currentTarget.style.color = 'var(--text)'; } }}
+                  onMouseLeave={e => { if (selected.id !== acc.id) { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-muted)'; } }}
+                >
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: selected.id === acc.id ? 'var(--accent)' : 'var(--text-subtle)', flexShrink: 0 }} />
+                  {acc.broker} <span style={{ opacity: 0.6 }}>#{acc.mt5Login}</span>
+                </button>
+              ))}
+            </div>
+          )}
           <button
             onClick={() => setShowConnect(true)}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-150"
-            style={{ background: 'var(--accent)', color: '#fff' }}
-            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent-hover)'; (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-1px)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 4px 12px var(--accent-subtle)'; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent)'; (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(0)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = 'none'; }}
-            onMouseDown={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(0) scale(0.97)'; }}
-            onMouseUp={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-1px)'; }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 7, padding: '7px 14px', borderRadius: 9,
+              background: 'var(--accent)', border: 'none', color: '#fff', fontSize: 13, fontWeight: 600,
+              cursor: 'pointer', transition: 'background 0.15s, transform 0.1s, box-shadow 0.15s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'var(--accent-hover)'; e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 14px var(--accent-glow)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'var(--accent)'; e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}
+            onMouseDown={e => e.currentTarget.style.transform = 'scale(0.97)'}
+            onMouseUp={e => e.currentTarget.style.transform = 'translateY(-1px)'}
           >
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-              <path d="M7 2v10M2 7h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
             </svg>
             Connect Broker
           </button>
         </div>
 
-        {/* Account tabs */}
-        {loadingAccounts ? (
-          <div className="flex gap-2 mb-6">
-            <AccountTabSkeleton />
-            <AccountTabSkeleton />
+        {/* Content */}
+        <div style={S.content} className="fade-up">
+          <div style={{ marginBottom: 28 }}>
+            <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.4px' }}>Dashboard</h1>
+            <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 3 }}>Your trading activity</p>
           </div>
-        ) : accounts.length > 0 && (
-          <div className="flex gap-2 mb-6 flex-wrap animate-fade-in delay-75">
-            {accounts.map(acc => {
-              const active = selectedAccount?.id === acc.id;
-              return (
+
+          {/* Stats */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 28 }} className="d1">
+            {loadingAccounts ? (
+              <><StatSkeleton /><StatSkeleton /><StatSkeleton /></>
+            ) : selected ? (
+              <>
+                <StatCard label="Account" value={`#${selected.mt5Login}`} sub={selected.marginMode} />
+                <StatCard label="Server" value={selected.server} sub={selected.baseCurrency} />
+                <StatCard label="Total P&L" value={pnlStr} color={pnl >= 0 ? 'var(--green)' : 'var(--red)'} sub={`${deals.length} deals`} />
+              </>
+            ) : (
+              <>
+                <StatCard label="Account" value="—" />
+                <StatCard label="Server" value="—" />
+                <StatCard label="Total P&L" value="—" />
+              </>
+            )}
+          </div>
+
+          {/* Deals / Empty */}
+          <div className="d2">
+            {!loadingAccounts && accounts.length === 0 ? (
+              <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 60, textAlign: 'center' }}>
+                <div style={{ width: 52, height: 52, borderRadius: 14, background: 'var(--surface-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                  <svg width="22" height="22" viewBox="0 0 16 16" fill="none">
+                    <path d="M2 12L6 7L9 10L13 4" stroke="var(--text-subtle)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </div>
+                <p style={{ fontWeight: 600, color: 'var(--text)', marginBottom: 6, fontSize: 15 }}>No broker connected</p>
+                <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 22 }}>Connect your XM MT5 account to pull your trade history</p>
                 <button
-                  key={acc.id}
-                  onClick={() => setSelectedAccount(acc)}
-                  className="px-4 py-2 rounded-xl text-sm border transition-all duration-150"
-                  style={{
-                    background: active ? 'var(--accent)' : 'var(--surface)',
-                    borderColor: active ? 'var(--accent)' : 'var(--border)',
-                    color: active ? '#fff' : 'var(--text-muted)',
-                    boxShadow: active ? '0 0 12px var(--accent-subtle)' : 'none',
-                  }}
-                  onMouseEnter={e => { if (!active) { (e.currentTarget as HTMLButtonElement).style.background = 'var(--surface-2)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--text)'; } }}
-                  onMouseLeave={e => { if (!active) { (e.currentTarget as HTMLButtonElement).style.background = 'var(--surface)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)'; } }}
+                  onClick={() => setShowConnect(true)}
+                  style={{ padding: '9px 20px', borderRadius: 10, background: 'var(--accent)', border: 'none', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'background 0.15s' }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'var(--accent-hover)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'var(--accent)'}
                 >
-                  <span className="font-medium">{acc.broker}</span>
-                  <span className="ml-2 opacity-60 text-xs">#{acc.mt5Login}</span>
+                  Connect XM Broker
                 </button>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Stats */}
-        {loadingAccounts ? (
-          <div className="grid grid-cols-3 gap-4 mb-6">
-            <StatSkeleton />
-            <StatSkeleton />
-            <StatSkeleton />
-          </div>
-        ) : selectedAccount && (
-          <div className="grid grid-cols-3 gap-4 mb-6 animate-fade-in delay-150">
-            {[
-              { label: 'Account', value: `#${selectedAccount.mt5Login}` },
-              { label: 'Server', value: selectedAccount.server },
-              {
-                label: 'Total P&L',
-                value: `${pnlPositive ? '+' : ''}$${pnl.toFixed(2)}`,
-                color: pnlPositive ? 'var(--green)' : 'var(--red)',
-                bg: pnlPositive ? 'var(--green-subtle)' : 'var(--red-subtle)',
-              },
-            ].map(({ label, value, color, bg }) => (
-              <div
-                key={label}
-                className="rounded-xl p-4 border transition-all duration-200"
-                style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}
-                onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--border-strong)'; (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-1px)'; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--border)'; (e.currentTarget as HTMLDivElement).style.transform = 'translateY(0)'; }}
-              >
-                <p className="text-xs mb-2" style={{ color: 'var(--text-subtle)' }}>{label}</p>
-                <p
-                  className="text-lg font-semibold tracking-tight"
-                  style={{ color: color ?? 'var(--text)', background: bg, borderRadius: bg ? '6px' : undefined, padding: bg ? '2px 6px' : undefined, display: 'inline-block' }}
-                >
-                  {value}
-                </p>
               </div>
-            ))}
+            ) : (
+              <DealsTable deals={deals} loading={loadingDeals} error={dealsError} />
+            )}
           </div>
-        )}
-
-        {/* Table / Empty state */}
-        <div className="animate-fade-in delay-225">
-          {!loadingAccounts && accounts.length === 0 ? (
-            <div
-              className="rounded-2xl border text-center py-24 transition-all duration-200"
-              style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}
-            >
-              <div
-                className="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center"
-                style={{ background: 'var(--surface-2)' }}
-              >
-                <svg width="22" height="22" viewBox="0 0 16 16" fill="none">
-                  <path d="M2 12L6 7L9 10L13 4" stroke="var(--text-subtle)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </div>
-              <p className="font-semibold mb-1 tracking-tight" style={{ color: 'var(--text)' }}>No broker connected</p>
-              <p className="text-sm mb-6" style={{ color: 'var(--text-muted)' }}>Connect your XM MT5 account to see your trades</p>
-              <button
-                onClick={() => setShowConnect(true)}
-                className="px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150"
-                style={{ background: 'var(--accent)', color: '#fff' }}
-                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent-hover)'; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent)'; }}
-              >
-                Connect XM Broker
-              </button>
-            </div>
-          ) : (
-            <DealsTable deals={deals} loading={loadingDeals} error={dealsError} />
-          )}
         </div>
       </div>
 
-      {showConnect && (
-        <ConnectBrokerModal onClose={() => setShowConnect(false)} onConnected={onAccountConnected} />
-      )}
+      {showConnect && <ConnectBrokerModal onClose={() => setShowConnect(false)} onConnected={onConnected} />}
     </div>
   );
 }

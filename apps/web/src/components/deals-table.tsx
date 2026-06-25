@@ -8,18 +8,20 @@ interface Props {
   error: string;
 }
 
-const TYPE_BADGE: Record<string, { label: string; color: string; bg: string }> = {
-  BUY:     { label: 'BUY',     color: '#86efac', bg: '#14532d33' },
-  SELL:    { label: 'SELL',    color: '#fca5a5', bg: '#7f1d1d33' },
-  BALANCE: { label: 'BALANCE', color: '#93c5fd', bg: '#1e3a5f33' },
+const TYPE: Record<string, { color: string; bg: string }> = {
+  BUY:     { color: '#4ade80', bg: 'rgba(74,222,128,0.1)' },
+  SELL:    { color: '#f87171', bg: 'rgba(248,113,113,0.1)' },
+  BALANCE: { color: '#60a5fa', bg: 'rgba(96,165,250,0.1)' },
 };
+
+const COLS = ['Ticket', 'Time', 'Type', 'Symbol', 'Volume', 'Price', 'Profit', 'Commission'];
 
 function SkeletonRow() {
   return (
     <tr>
-      {[80, 100, 60, 70, 50, 80, 60, 50].map((w, i) => (
-        <td key={i} className="px-4 py-3">
-          <div className="skeleton h-3 rounded" style={{ width: w }} />
+      {[70, 90, 55, 65, 45, 80, 55, 50].map((w, i) => (
+        <td key={i} style={{ padding: '12px 16px' }}>
+          <div className="skeleton" style={{ height: 11, width: w }} />
         </td>
       ))}
     </tr>
@@ -29,31 +31,28 @@ function SkeletonRow() {
 export default function DealsTable({ deals, loading, error }: Props) {
   if (error) {
     return (
-      <div className="rounded-2xl border px-6 py-10 text-center" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
-        <p className="text-sm" style={{ color: 'var(--red)' }}>{error}</p>
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: '32px 24px', textAlign: 'center', color: 'var(--red)', fontSize: 13 }}>
+        {error}
       </div>
     );
   }
 
   return (
-    <div className="rounded-2xl border overflow-hidden" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
-      {/* Table header bar */}
-      <div className="px-4 py-3 border-b flex items-center justify-between" style={{ borderColor: 'var(--border)' }}>
-        <h2 className="text-sm font-semibold tracking-tight" style={{ color: 'var(--text)' }}>Deal History</h2>
-        <span
-          className="text-xs px-2 py-0.5 rounded-full"
-          style={{ background: 'var(--surface-2)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}
-        >
+    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}>
+      {/* Header bar */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid var(--border)' }}>
+        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>Deal History</span>
+        <span style={{ fontSize: 11, padding: '3px 9px', borderRadius: 99, background: 'var(--surface-2)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
           {loading ? '…' : `${deals.length} deals`}
         </span>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
           <thead>
-            <tr style={{ borderBottom: `1px solid var(--border)` }}>
-              {['Ticket', 'Time', 'Type', 'Symbol', 'Volume', 'Price', 'Profit', 'Commission'].map(h => (
-                <th key={h} className="text-left px-4 py-2.5 text-xs font-medium whitespace-nowrap" style={{ color: 'var(--text-subtle)' }}>
+            <tr style={{ borderBottom: '1px solid var(--border)' }}>
+              {COLS.map(h => (
+                <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 500, color: 'var(--text-subtle)', whiteSpace: 'nowrap', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                   {h}
                 </th>
               ))}
@@ -61,61 +60,56 @@ export default function DealsTable({ deals, loading, error }: Props) {
           </thead>
           <tbody>
             {loading ? (
-              Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} />)
+              Array.from({ length: 6 }).map((_, i) => <SkeletonRow key={i} />)
             ) : deals.length === 0 ? (
               <tr>
-                <td colSpan={8} className="text-center py-16">
-                  <p className="text-sm" style={{ color: 'var(--text-muted)' }}>No deals found for this account</p>
+                <td colSpan={8} style={{ padding: '52px 16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+                  No deals found for this account
                 </td>
               </tr>
             ) : (
-              deals.map((deal) => {
+              deals.map(deal => {
                 const profit = parseFloat(deal.profit);
-                const profitPositive = profit >= 0;
-                const badge = TYPE_BADGE[deal.type] ?? { label: deal.type, color: '#d4d4d8', bg: '#3f3f4633' };
+                const pos = profit >= 0;
+                const badge = TYPE[deal.type] ?? { color: '#a1a1aa', bg: 'rgba(161,161,170,0.1)' };
                 return (
                   <tr
                     key={deal.dealTicket}
-                    className="transition-colors duration-100"
-                    style={{ borderBottom: '1px solid var(--border)' }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLTableRowElement).style.background = 'var(--surface-2)'; }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLTableRowElement).style.background = 'transparent'; }}
+                    style={{ borderBottom: '1px solid var(--border)', transition: 'background 0.1s', cursor: 'default' }}
+                    onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-2)')}
+                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                   >
-                    <td className="px-4 py-3 font-mono text-xs" style={{ color: 'var(--text-subtle)' }}>
+                    <td style={{ padding: '11px 16px', fontFamily: 'monospace', fontSize: 12, color: 'var(--text-subtle)' }}>
                       #{deal.dealTicket}
                     </td>
-                    <td className="px-4 py-3 text-xs whitespace-nowrap" style={{ color: 'var(--text-muted)' }}>
+                    <td style={{ padding: '11px 16px', fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                       {new Date(deal.dealTime).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' })}
                     </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className="text-xs px-2 py-0.5 rounded-full font-medium"
-                        style={{ color: badge.color, background: badge.bg }}
-                      >
-                        {badge.label}
+                    <td style={{ padding: '11px 16px' }}>
+                      <span style={{ fontSize: 11, padding: '3px 8px', borderRadius: 6, fontWeight: 600, color: badge.color, background: badge.bg, letterSpacing: '0.03em' }}>
+                        {deal.type}
                       </span>
                     </td>
-                    <td className="px-4 py-3 font-medium" style={{ color: 'var(--text)' }}>
+                    <td style={{ padding: '11px 16px', fontWeight: 500, color: 'var(--text)' }}>
                       {deal.symbol || <span style={{ color: 'var(--text-subtle)' }}>—</span>}
                     </td>
-                    <td className="px-4 py-3 tabular-nums" style={{ color: 'var(--text)' }}>
+                    <td style={{ padding: '11px 16px', fontVariantNumeric: 'tabular-nums', color: 'var(--text-muted)' }}>
                       {parseFloat(deal.volume).toFixed(2)}
                     </td>
-                    <td className="px-4 py-3 font-mono text-xs tabular-nums" style={{ color: 'var(--text)' }}>
-                      {deal.price !== '0' && deal.price !== '0.0' ? parseFloat(deal.price).toFixed(5) : <span style={{ color: 'var(--text-subtle)' }}>—</span>}
+                    <td style={{ padding: '11px 16px', fontFamily: 'monospace', fontSize: 12, fontVariantNumeric: 'tabular-nums', color: 'var(--text-muted)' }}>
+                      {parseFloat(deal.price) > 0 ? parseFloat(deal.price).toFixed(5) : <span style={{ color: 'var(--text-subtle)' }}>—</span>}
                     </td>
-                    <td className="px-4 py-3 font-semibold tabular-nums">
-                      <span
-                        className="px-2 py-0.5 rounded-lg text-xs"
-                        style={{
-                          color: profitPositive ? 'var(--green)' : 'var(--red)',
-                          background: profitPositive ? 'var(--green-subtle)' : 'var(--red-subtle)',
-                        }}
-                      >
-                        {profitPositive ? '+' : ''}{profit.toFixed(2)}
+                    <td style={{ padding: '11px 16px' }}>
+                      <span style={{
+                        fontSize: 12, fontWeight: 700, padding: '3px 8px', borderRadius: 6,
+                        fontVariantNumeric: 'tabular-nums',
+                        color: pos ? 'var(--green)' : 'var(--red)',
+                        background: pos ? 'var(--green-bg)' : 'var(--red-bg)',
+                      }}>
+                        {pos ? '+' : ''}{profit.toFixed(2)}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-xs tabular-nums" style={{ color: 'var(--text-muted)' }}>
+                    <td style={{ padding: '11px 16px', fontVariantNumeric: 'tabular-nums', color: 'var(--text-subtle)', fontSize: 12 }}>
                       {parseFloat(deal.commission).toFixed(2)}
                     </td>
                   </tr>

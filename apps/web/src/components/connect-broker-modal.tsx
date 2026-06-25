@@ -8,184 +8,146 @@ interface Props {
   onConnected: (account: BrokerAccount) => void;
 }
 
+function Spinner() {
+  return <span className="spin" style={{ display: 'inline-block', width: 15, height: 15, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.25)', borderTopColor: '#fff', flexShrink: 0 }} />;
+}
+
 export default function ConnectBrokerModal({ onClose, onConnected }: Props) {
   const [mt5Login, setMt5Login] = useState('');
   const [password, setPassword] = useState('');
   const [server, setServer] = useState('XMGlobal-MT5 10');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [shake, setShake] = useState(false);
+  const [shaking, setShaking] = useState(false);
 
-  function triggerShake() {
-    setShake(true);
-    setTimeout(() => setShake(false), 400);
-  }
+  function shake() { setShaking(true); setTimeout(() => setShaking(false), 400); }
 
   async function handleConnect(e: React.FormEvent) {
     e.preventDefault();
     setError('');
     setLoading(true);
     try {
-      const account = await api.accounts.connect({
-        mt5Login: parseInt(mt5Login, 10),
-        password,
-        server,
-      });
+      const account = await api.accounts.connect({ mt5Login: parseInt(mt5Login, 10), password, server });
       onConnected(account);
     } catch (err: any) {
       setError(err.message ?? 'Connection failed');
-      triggerShake();
+      shake();
     } finally {
       setLoading(false);
     }
   }
 
-  const inputBase = "w-full px-3 py-2.5 rounded-xl border text-sm outline-none transition-all duration-150";
-  const inputStyle = { background: 'var(--surface-2)', borderColor: 'var(--border-strong)', color: 'var(--text)' };
+  const inp: React.CSSProperties = {
+    width: '100%', padding: '10px 12px', borderRadius: 10,
+    border: '1px solid var(--border-strong)', background: 'var(--surface-2)',
+    color: 'var(--text)', fontSize: 14, outline: 'none',
+    transition: 'border-color 0.15s, box-shadow 0.15s',
+  };
+
+  function focus(e: React.FocusEvent<HTMLInputElement>) {
+    e.target.style.borderColor = 'var(--accent)';
+    e.target.style.boxShadow = '0 0 0 3px var(--accent-glow)';
+  }
+  function blur(e: React.FocusEvent<HTMLInputElement>) {
+    e.target.style.borderColor = 'var(--border-strong)';
+    e.target.style.boxShadow = 'none';
+  }
 
   return (
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-40"
-        style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}
         onClick={onClose}
+        style={{ position: 'fixed', inset: 0, zIndex: 40, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(6px)' }}
       />
 
       {/* Modal */}
-      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
+      <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
         <div
-          className="w-full max-w-md rounded-2xl border p-6 animate-slide-up"
-          style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}
+          className="slide-up"
+          style={{ width: '100%', maxWidth: 420, background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 18, padding: 24, boxShadow: '0 24px 60px rgba(0,0,0,0.5)' }}
         >
           {/* Header */}
-          <div className="flex items-center justify-between mb-6">
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 22 }}>
             <div>
-              <h2 className="font-semibold tracking-tight" style={{ color: 'var(--text)' }}>Connect Broker</h2>
-              <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Enter your MT5 investor (read-only) credentials</p>
+              <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.3px' }}>Connect Broker</h2>
+              <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3 }}>Enter your MT5 investor (read-only) credentials</p>
             </div>
             <button
               onClick={onClose}
-              className="w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-150"
-              style={{ color: 'var(--text-muted)', background: 'transparent' }}
-              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--surface-2)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--text)'; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)'; }}
+              style={{ width: 30, height: 30, borderRadius: 8, border: 'none', background: 'var(--surface-2)', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'background 0.15s, color 0.15s', flexShrink: 0 }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface-3)'; e.currentTarget.style.color = 'var(--text)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'var(--surface-2)'; e.currentTarget.style.color = 'var(--text-muted)'; }}
             >
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <path d="M2 2l10 10M12 2L2 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <path d="M1 1l10 10M11 1L1 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
               </svg>
             </button>
           </div>
 
-          <form onSubmit={handleConnect} className={`space-y-4 ${shake ? 'animate-shake' : ''}`}>
+          {/* Broker pill */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 12, marginBottom: 20 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(99,102,241,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800, color: 'var(--accent)', flexShrink: 0 }}>
+              XM
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>XM Global MT5</p>
+              <p style={{ fontSize: 11, color: 'var(--text-subtle)' }}>MetaTrader 5</p>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
+              <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--green)', boxShadow: '0 0 6px var(--green)' }} />
+              <span style={{ fontSize: 11, color: 'var(--green)', fontWeight: 500 }}>Bridge online</span>
+            </div>
+          </div>
 
-            {/* Broker badge */}
-            <div
-              className="flex items-center gap-3 px-3 py-2.5 rounded-xl border"
-              style={{ background: 'var(--surface-2)', borderColor: 'var(--border)' }}
-            >
-              <div
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold shrink-0"
-                style={{ background: 'var(--accent-subtle)', color: 'var(--accent)' }}
-              >
-                XM
+          <form onSubmit={handleConnect} className={shaking ? 'shake' : ''} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {[
+              { label: 'MT5 Login', type: 'number', val: mt5Login, set: setMt5Login, placeholder: 'e.g. 345636702' },
+              { label: 'Investor Password', type: 'password', val: password, set: setPassword, placeholder: '••••••••', note: 'read-only' },
+              { label: 'Server', type: 'text', val: server, set: setServer, placeholder: 'XMGlobal-MT5 10' },
+            ].map(({ label, type, val, set, placeholder, note }) => (
+              <div key={label} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-muted)' }}>{label}</label>
+                  {note && <span style={{ fontSize: 11, color: 'var(--text-subtle)' }}>({note})</span>}
+                </div>
+                <input
+                  type={type} value={val} onChange={e => set(e.target.value)}
+                  placeholder={placeholder} required style={inp}
+                  onFocus={focus} onBlur={blur}
+                />
               </div>
-              <div>
-                <p className="text-sm font-medium" style={{ color: 'var(--text)' }}>XM Global MT5</p>
-                <p className="text-xs" style={{ color: 'var(--text-subtle)' }}>MetaTrader 5</p>
-              </div>
-              <div className="ml-auto flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--green)' }} />
-                <span className="text-xs" style={{ color: 'var(--green)' }}>Bridge online</span>
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="block text-xs font-medium" style={{ color: 'var(--text-muted)' }}>MT5 Login</label>
-              <input
-                type="number"
-                value={mt5Login}
-                onChange={e => setMt5Login(e.target.value)}
-                placeholder="e.g. 345636702"
-                required
-                className={inputBase}
-                style={inputStyle}
-                onFocus={e => { e.target.style.borderColor = 'var(--accent)'; e.target.style.boxShadow = '0 0 0 3px var(--accent-subtle)'; }}
-                onBlur={e => { e.target.style.borderColor = 'var(--border-strong)'; e.target.style.boxShadow = 'none'; }}
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="block text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
-                Investor Password
-                <span className="ml-1.5 text-xs font-normal" style={{ color: 'var(--text-subtle)' }}>(read-only)</span>
-              </label>
-              <input
-                type="password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                placeholder="••••••••"
-                required
-                className={inputBase}
-                style={inputStyle}
-                onFocus={e => { e.target.style.borderColor = 'var(--accent)'; e.target.style.boxShadow = '0 0 0 3px var(--accent-subtle)'; }}
-                onBlur={e => { e.target.style.borderColor = 'var(--border-strong)'; e.target.style.boxShadow = 'none'; }}
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="block text-xs font-medium" style={{ color: 'var(--text-muted)' }}>Server</label>
-              <input
-                type="text"
-                value={server}
-                onChange={e => setServer(e.target.value)}
-                placeholder="XMGlobal-MT5 10"
-                required
-                className={inputBase}
-                style={inputStyle}
-                onFocus={e => { e.target.style.borderColor = 'var(--accent)'; e.target.style.boxShadow = '0 0 0 3px var(--accent-subtle)'; }}
-                onBlur={e => { e.target.style.borderColor = 'var(--border-strong)'; e.target.style.boxShadow = 'none'; }}
-              />
-            </div>
+            ))}
 
             {error && (
-              <div className="animate-slide-up flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm" style={{ background: 'var(--red-subtle)', color: 'var(--red)', border: '1px solid #ef444430' }}>
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                  <circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.2"/>
-                  <path d="M7 4v3M7 9.5v.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+              <div className="fade-in" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', borderRadius: 10, background: 'var(--red-bg)', border: '1px solid rgba(240,82,82,0.25)', color: 'var(--red)', fontSize: 13 }}>
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ flexShrink: 0 }}>
+                  <circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.3"/>
+                  <path d="M7 4.5v2.5M7 9h.01" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
                 </svg>
                 {error}
               </div>
             )}
 
-            <div className="flex gap-3 pt-1">
+            <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
               <button
-                type="button"
-                onClick={onClose}
-                className="flex-1 py-2.5 rounded-xl text-sm font-medium border transition-all duration-150"
-                style={{ borderColor: 'var(--border-strong)', color: 'var(--text-muted)', background: 'transparent' }}
-                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--surface-2)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--text)'; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)'; }}
+                type="button" onClick={onClose}
+                style={{ flex: 1, padding: '10px 16px', borderRadius: 10, border: '1px solid var(--border-strong)', background: 'transparent', color: 'var(--text-muted)', fontSize: 14, fontWeight: 500, cursor: 'pointer', transition: 'background 0.15s, color 0.15s' }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface-2)'; e.currentTarget.style.color = 'var(--text)'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-muted)'; }}
               >
                 Cancel
               </button>
               <button
-                type="submit"
-                disabled={loading}
-                className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150 disabled:opacity-60"
-                style={{ background: 'var(--accent)', color: '#fff' }}
-                onMouseEnter={e => { if (!loading) (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent-hover)'; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent)'; }}
-                onMouseDown={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(0.98)'; }}
-                onMouseUp={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1)'; }}
+                type="submit" disabled={loading}
+                style={{ flex: 1, padding: '10px 16px', borderRadius: 10, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 14, fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, transition: 'background 0.15s, transform 0.1s' }}
+                onMouseEnter={e => { if (!loading) e.currentTarget.style.background = 'var(--accent-hover)'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'var(--accent)'; }}
+                onMouseDown={e => { if (!loading) e.currentTarget.style.transform = 'scale(0.98)'; }}
+                onMouseUp={e => { e.currentTarget.style.transform = 'scale(1)'; }}
               >
-                {loading
-                  ? <span className="flex items-center justify-center gap-2">
-                      <span className="w-4 h-4 rounded-full border-2 animate-spin" style={{ borderColor: 'rgba(255,255,255,0.3)', borderTopColor: '#fff' }} />
-                      Connecting…
-                    </span>
-                  : 'Connect'
-                }
+                {loading && <Spinner />}
+                {loading ? 'Connecting…' : 'Connect'}
               </button>
             </div>
           </form>

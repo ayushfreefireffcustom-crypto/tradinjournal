@@ -7,9 +7,18 @@ import { authClient } from '@/lib/auth-client';
 
 const { signIn } = authClient;
 
+function Spinner({ size = 16, color = '#fff' }: { size?: number; color?: string }) {
+  return (
+    <span className="spin" style={{
+      display: 'inline-block', width: size, height: size, borderRadius: '50%',
+      border: `2px solid ${color}30`, borderTopColor: color, flexShrink: 0,
+    }} />
+  );
+}
+
 function GoogleIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" style={{ flexShrink: 0 }}>
       <path d="M17.64 9.205c0-.639-.057-1.252-.164-1.841H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615Z" fill="#4285F4"/>
       <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18Z" fill="#34A853"/>
       <path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332Z" fill="#FBBC05"/>
@@ -25,12 +34,9 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [shake, setShake] = useState(false);
+  const [shaking, setShaking] = useState(false);
 
-  function triggerShake() {
-    setShake(true);
-    setTimeout(() => setShake(false), 400);
-  }
+  function shake() { setShaking(true); setTimeout(() => setShaking(false), 400); }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -42,7 +48,7 @@ export default function LoginPage() {
       router.push('/dashboard');
     } catch (err: any) {
       setError(err.message ?? 'Something went wrong');
-      triggerShake();
+      shake();
     } finally {
       setLoading(false);
     }
@@ -58,125 +64,117 @@ export default function LoginPage() {
     }
   }
 
+  const inputStyle: React.CSSProperties = {
+    width: '100%', padding: '10px 12px', borderRadius: 10,
+    border: '1px solid var(--border-strong)',
+    background: 'var(--surface-2)', color: 'var(--text)',
+    fontSize: 14, outline: 'none', transition: 'border-color 0.15s, box-shadow 0.15s',
+  };
+
   return (
-    <div className="min-h-screen flex items-center justify-center px-4" style={{ background: 'var(--bg)' }}>
-      <div className="w-full max-w-sm animate-fade-in-scale">
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, background: 'var(--bg)' }}>
+      <div className="fade-up" style={{ width: '100%', maxWidth: 380 }}>
 
         {/* Brand */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 mb-3">
-            <div
-              className="w-8 h-8 rounded-lg flex items-center justify-center"
-              style={{ background: 'var(--accent)', boxShadow: '0 0 20px var(--accent-subtle)' }}
-            >
+        <div style={{ textAlign: 'center', marginBottom: 32 }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+            <div style={{ width: 34, height: 34, borderRadius: 10, background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 24px var(--accent-glow)' }}>
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <path d="M2 12L6 7L9 10L13 4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M2 12L6 7L9 10L13 4" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </div>
-            <span className="text-lg font-semibold tracking-tight" style={{ color: 'var(--text)' }}>TradingJournal</span>
+            <span style={{ fontSize: 17, fontWeight: 600, color: 'var(--text)', letterSpacing: '-0.3px' }}>TradingJournal</span>
           </div>
-          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Sign in to your account</p>
+          <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>Sign in to your account</p>
         </div>
 
         {/* Card */}
-        <div
-          className="rounded-2xl p-6 border"
-          style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}
-        >
-          {/* Google OAuth */}
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 24 }}>
+
+          {/* Google */}
           <button
-            type="button"
             onClick={handleGoogle}
             disabled={googleLoading || loading}
-            className="w-full flex items-center justify-center gap-2.5 py-2.5 rounded-xl border text-sm font-medium transition-all duration-150 disabled:opacity-50 focus-ring"
             style={{
-              background: 'var(--surface-2)',
-              borderColor: 'var(--border-strong)',
-              color: 'var(--text)',
+              width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+              padding: '10px 16px', borderRadius: 10, border: '1px solid var(--border-strong)',
+              background: 'var(--surface-2)', color: 'var(--text)', fontSize: 14, fontWeight: 500,
+              cursor: 'pointer', transition: 'background 0.15s, transform 0.1s',
+              opacity: (googleLoading || loading) ? 0.6 : 1,
             }}
-            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--surface-3)'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border-strong)'; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--surface-2)'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border-strong)'; }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-3)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'var(--surface-2)')}
+            onMouseDown={e => (e.currentTarget.style.transform = 'scale(0.985)')}
+            onMouseUp={e => (e.currentTarget.style.transform = 'scale(1)')}
           >
-            {googleLoading
-              ? <span className="w-4 h-4 rounded-full border-2 animate-spin" style={{ borderColor: 'var(--border-strong)', borderTopColor: 'var(--text-muted)' }} />
-              : <GoogleIcon />
-            }
+            {googleLoading ? <Spinner size={16} color="var(--text-muted)" /> : <GoogleIcon />}
             Continue with Google
           </button>
 
           {/* Divider */}
-          <div className="flex items-center gap-3 my-5">
-            <div className="flex-1 h-px" style={{ background: 'var(--border)' }} />
-            <span className="text-xs" style={{ color: 'var(--text-subtle)' }}>or</span>
-            <div className="flex-1 h-px" style={{ background: 'var(--border)' }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '20px 0' }}>
+            <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+            <span style={{ fontSize: 12, color: 'var(--text-subtle)' }}>or</span>
+            <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
           </div>
 
-          {/* Email form */}
-          <form onSubmit={handleSubmit} className={`space-y-4 ${shake ? 'animate-shake' : ''}`}>
-            <div className="space-y-1.5">
-              <label className="block text-xs font-medium" style={{ color: 'var(--text-muted)' }}>Email</label>
+          {/* Form */}
+          <form onSubmit={handleSubmit} className={shaking ? 'shake' : ''} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-muted)' }}>Email</label>
               <input
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                required
-                className="w-full px-3 py-2.5 rounded-xl border text-sm outline-none transition-all duration-150 focus-ring"
-                style={{ background: 'var(--surface-2)', borderColor: 'var(--border-strong)', color: 'var(--text)' }}
-                onFocus={e => { e.target.style.borderColor = 'var(--accent)'; e.target.style.boxShadow = '0 0 0 3px var(--accent-subtle)'; }}
+                type="email" value={email} onChange={e => setEmail(e.target.value)}
+                placeholder="you@example.com" required style={inputStyle}
+                onFocus={e => { e.target.style.borderColor = 'var(--accent)'; e.target.style.boxShadow = '0 0 0 3px var(--accent-glow)'; }}
                 onBlur={e => { e.target.style.borderColor = 'var(--border-strong)'; e.target.style.boxShadow = 'none'; }}
               />
             </div>
-
-            <div className="space-y-1.5">
-              <label className="block text-xs font-medium" style={{ color: 'var(--text-muted)' }}>Password</label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-muted)' }}>Password</label>
               <input
-                type="password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                placeholder="••••••••"
-                required
-                className="w-full px-3 py-2.5 rounded-xl border text-sm outline-none transition-all duration-150"
-                style={{ background: 'var(--surface-2)', borderColor: 'var(--border-strong)', color: 'var(--text)' }}
-                onFocus={e => { e.target.style.borderColor = 'var(--accent)'; e.target.style.boxShadow = '0 0 0 3px var(--accent-subtle)'; }}
+                type="password" value={password} onChange={e => setPassword(e.target.value)}
+                placeholder="••••••••" required style={inputStyle}
+                onFocus={e => { e.target.style.borderColor = 'var(--accent)'; e.target.style.boxShadow = '0 0 0 3px var(--accent-glow)'; }}
                 onBlur={e => { e.target.style.borderColor = 'var(--border-strong)'; e.target.style.boxShadow = 'none'; }}
               />
             </div>
 
             {error && (
-              <div className="animate-slide-up flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm" style={{ background: 'var(--red-subtle)', color: 'var(--red)', border: '1px solid #ef444430' }}>
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                  <circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.2"/>
-                  <path d="M7 4v3M7 9.5v.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+              <div className="fade-in" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', borderRadius: 10, background: 'var(--red-bg)', border: '1px solid rgba(240,82,82,0.25)', color: 'var(--red)', fontSize: 13 }}>
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ flexShrink: 0 }}>
+                  <circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.3"/>
+                  <path d="M7 4.5v2.5M7 9.5h.01" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
                 </svg>
                 {error}
               </div>
             )}
 
             <button
-              type="submit"
-              disabled={loading || googleLoading}
-              className="w-full py-2.5 rounded-xl text-sm font-semibold transition-all duration-150 disabled:opacity-60 focus-ring"
-              style={{ background: 'var(--accent)', color: '#fff' }}
-              onMouseEnter={e => { if (!loading) (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent-hover)'; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent)'; }}
-              onMouseDown={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(0.985)'; }}
-              onMouseUp={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1)'; }}
+              type="submit" disabled={loading || googleLoading}
+              style={{
+                width: '100%', padding: '11px 16px', borderRadius: 10, border: 'none',
+                background: 'var(--accent)', color: '#fff', fontSize: 14, fontWeight: 600,
+                cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                transition: 'background 0.15s, transform 0.1s',
+              }}
+              onMouseEnter={e => { if (!loading) e.currentTarget.style.background = 'var(--accent-hover)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'var(--accent)'; }}
+              onMouseDown={e => { if (!loading) e.currentTarget.style.transform = 'scale(0.985)'; }}
+              onMouseUp={e => { e.currentTarget.style.transform = 'scale(1)'; }}
             >
-              {loading
-                ? <span className="flex items-center justify-center gap-2">
-                    <span className="w-4 h-4 rounded-full border-2 animate-spin" style={{ borderColor: 'rgba(255,255,255,0.3)', borderTopColor: '#fff' }} />
-                    Signing in…
-                  </span>
-                : 'Sign in'
-              }
+              {loading && <Spinner size={15} />}
+              {loading ? 'Signing in…' : 'Sign in'}
             </button>
           </form>
         </div>
 
-        <p className="text-center text-sm mt-5" style={{ color: 'var(--text-muted)' }}>
+        <p style={{ textAlign: 'center', marginTop: 20, fontSize: 14, color: 'var(--text-muted)' }}>
           No account?{' '}
-          <Link href="/register" className="font-medium hover:underline transition-colors" style={{ color: 'var(--accent)' }}>
+          <Link href="/register" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 500 }}
+            onMouseEnter={e => (e.currentTarget.style.textDecoration = 'underline')}
+            onMouseLeave={e => (e.currentTarget.style.textDecoration = 'none')}
+          >
             Create one
           </Link>
         </p>
