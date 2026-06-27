@@ -1,6 +1,7 @@
-// Prisma schema. Models are added per feature in later phases
-// (User/Session via better-auth, BrokerAccount, Execution, Trade, etc.).
-// TimescaleDB hypertables and pgvector are set up via raw-SQL migrations.
+// Prisma schema — Phase 1 on Neon PostgreSQL.
+// pgvector is enabled (Neon supports it).
+// TimescaleDB removed for Phase 1 — Neon doesn't support it.
+// Revisit at Phase 2 for candle/MAE/MFE storage (see task chip).
 
 generator client {
   provider        = "prisma-client-js"
@@ -10,7 +11,8 @@ generator client {
 datasource db {
   provider   = "postgresql"
   url        = env("DATABASE_URL")
-  extensions = [timescaledb, vector]
+  directUrl  = env("DIRECT_URL")
+  extensions = [vector]
 }
 
 // ─── Auth tables (better-auth managed) ───────────────────────────────────────
@@ -91,6 +93,7 @@ model BrokerAccount {
   broker         String
   mt5Login       BigInt
   server         String
+  password       String?
   baseCurrency   String   @default("USD")
   marginMode     MarginMode
   status         AccountStatus @default(ACTIVE)
@@ -100,6 +103,7 @@ model BrokerAccount {
 
   syncRuns       SyncRun[]
   executions     Execution[]
+  trades         Trade[]
 
   @@unique([mt5Login, server])
   @@index([userId])
@@ -142,6 +146,9 @@ model Execution {
   reason           Int         @default(0)
   externalId       String?
 
+  tradeId          String?
+  trade            Trade?      @relation(fields: [tradeId], references: [id])
+
   createdAt        DateTime    @default(now())
 
   @@index([brokerAccountId])
@@ -164,6 +171,71 @@ enum DealEntry {
   OUT_BY
 }
 
+// ─── Reconstructed trades ────────────────────────────────────────────────────
+
+model Trade {
+  id              String        @id @default(cuid())
+  brokerAccountId String
+  brokerAccount   BrokerAccount @relation(fields: [brokerAccountId], references: [id], onDelete: Cascade)
+
+  symbol          String
+  side            TradeSide
+  status          TradeStatus   @default(OPEN)
+
+  openTime        DateTime
+  closeTime       DateTime?
+
+  volume          Decimal       @db.Decimal(18, 8)
+  avgEntry        Decimal       @db.Decimal(18, 8)
+  avgExit         Decimal?      @db.Decimal(18, 8)
+
+  grossPnl        Decimal       @db.Decimal(18, 8) @default(0)
+  commission      Decimal       @db.Decimal(18, 8) @default(0)
+  swap            Decimal       @db.Decimal(18, 8) @default(0)
+  netPnl          Decimal       @db.Decimal(18, 8) @default(0)
+
+  riskAmount      Decimal?      @db.Decimal(18, 8)
+  rMultiple       Decimal?      @db.Decimal(18, 8)
+
+  executions      Execution[]
+  metric          TradeMetric?
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([brokerAccountId])
+  @@index([symbol])
+  @@index([openTime])
+  @@index([status])
+  @@map("trade")
+}
+
+model TradeMetric {
+  id          String   @id @default(cuid())
+  tradeId     String   @unique
+  trade       Trade    @relation(fields: [tradeId], references: [id], onDelete: Cascade)
+
+  mae         Decimal? @db.Decimal(18, 8)
+  mfe         Decimal? @db.Decimal(18, 8)
+  captureRate Decimal? @db.Decimal(8, 4)
+  durationSec Int?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("trade_metric")
+}
+
+enum TradeSide {
+  BUY
+  SELL
+}
+
+enum TradeStatus {
+  OPEN
+  CLOSED
+}
+
 // ─── Balance events (deposits / withdrawals) ──────────────────────────────────
 
 model BalanceEvent {
@@ -177,6 +249,29 @@ model BalanceEvent {
 
   @@index([brokerAccountId])
   @@map("balance_event")
+}
+
+// ─── Journal entries ──────────────────────────────────────────────────────────
+
+model JournalEntry {
+  id              String   @id @default(cuid())
+  userId          String
+  brokerAccountId String?
+
+  title           String?
+  body            String   @db.Text
+  emotion         String?
+  tags            String[]
+  tradeId         String?
+
+  entryDate       DateTime @default(now())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+  @@index([brokerAccountId])
+  @@index([entryDate])
+  @@map("journal_entry")
 }
 
 // ─── Sync runs ────────────────────────────────────────────────────────────────

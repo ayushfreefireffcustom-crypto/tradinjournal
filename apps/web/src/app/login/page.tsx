@@ -2,25 +2,47 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Mail, Lock, ArrowRight, Loader2, CheckCircle } from 'lucide-react';
+import { authClient } from '@/lib/auth-client';
+
+const { signIn } = authClient;
 
 export default function LoginPage() {
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [remember, setRemember] = useState(false);
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [error, setError] = useState('');
+  const [googleLoading, setGoogleLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setError('');
     
-    // Simulate API call
-    setTimeout(() => {
-      setIsSubmitting(false);
+    try {
+      const res = await signIn.email({ email, password, callbackURL: '/dashboard' });
+      if (res.error) throw new Error(res.error.message ?? 'Login failed');
       setIsSuccess(true);
-    }, 1500);
+      router.push('/dashboard');
+    } catch (err: any) {
+      setError(err.message ?? 'Something went wrong');
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleGoogle = async () => {
+    setGoogleLoading(true);
+    try {
+      await signIn.social({ provider: 'google', callbackURL: '/dashboard' });
+    } catch (err: any) {
+      setError(err.message ?? 'Google sign-in failed');
+      setGoogleLoading(false);
+    }
   };
 
   return (
@@ -55,6 +77,12 @@ export default function LoginPage() {
                 <h1 className="font-headline-md text-on-surface mb-1 text-headline-md">Welcome Back</h1>
                 <p className="font-label-sm text-label-sm text-on-surface-variant">Precision insights for your next trade.</p>
               </div>
+
+              {error && (
+                <div className="mb-4 p-3 bg-red-500/10 border border-red-500/50 rounded-lg text-red-500 text-label-sm text-center">
+                  {error}
+                </div>
+              )}
 
               {/* Sign In Form */}
               <form onSubmit={handleSubmit} className="space-y-4">
@@ -141,14 +169,16 @@ export default function LoginPage() {
 
               {/* Social Logins */}
               <div className="grid gap-4">
-                <button type="button" className="w-full py-3 glass-card rounded-lg flex justify-center items-center gap-3 hover:bg-white/5 duration-300 border border-outline-variant/20">
-                  <svg className="w-5 h-5" viewBox="0 0 24 24">
-                    <path d="M12 5.04c1.64 0 3.12.56 4.28 1.67l3.22-3.22C17.52 1.64 14.95 1 12 1 7.37 1 3.38 3.69 1.48 7.63l3.85 2.99C6.24 7.65 8.89 5.04 12 5.04z" fill="#EA4335"></path>
-                    <path d="M23.49 12.27c0-.8-.07-1.57-.2-2.31H12v4.38h6.45c-.28 1.48-1.12 2.74-2.38 3.58l3.71 2.87c2.17-2 3.71-4.94 3.71-8.52z" fill="#4285F4"></path>
-                    <path d="M5.33 14.62C5.08 13.88 4.95 13.1 4.95 12.3s.13-1.58.38-2.32L1.48 6.99c-.8 1.66-1.25 3.53-1.25 5.51s.45 3.85 1.25 5.51l3.85-3z" fill="#FBBC05"></path>
-                    <path d="M12 23c3.12 0 5.73-1.02 7.65-2.77l-3.71-2.87c-1.08.73-2.47 1.16-3.94 1.16-3.11 0-5.76-2.61-6.67-5.59l-3.85 3C3.38 20.31 7.37 23 12 23z" fill="#34A853"></path>
-                  </svg>
-                  <span className="font-label-md text-label-md text-on-surface">Continue with Google</span>
+                <button type="button" onClick={handleGoogle} disabled={googleLoading} className="w-full py-3 glass-card rounded-lg flex justify-center items-center gap-3 hover:bg-white/5 duration-300 border border-outline-variant/20">
+                  {googleLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
+                    <svg className="w-5 h-5" viewBox="0 0 24 24">
+                      <path d="M12 5.04c1.64 0 3.12.56 4.28 1.67l3.22-3.22C17.52 1.64 14.95 1 12 1 7.37 1 3.38 3.69 1.48 7.63l3.85 2.99C6.24 7.65 8.89 5.04 12 5.04z" fill="#EA4335"></path>
+                      <path d="M23.49 12.27c0-.8-.07-1.57-.2-2.31H12v4.38h6.45c-.28 1.48-1.12 2.74-2.38 3.58l3.71 2.87c2.17-2 3.71-4.94 3.71-8.52z" fill="#4285F4"></path>
+                      <path d="M5.33 14.62C5.08 13.88 4.95 13.1 4.95 12.3s.13-1.58.38-2.32L1.48 6.99c-.8 1.66-1.25 3.53-1.25 5.51s.45 3.85 1.25 5.51l3.85-3z" fill="#FBBC05"></path>
+                      <path d="M12 23c3.12 0 5.73-1.02 7.65-2.77l-3.71-2.87c-1.08.73-2.47 1.16-3.94 1.16-3.11 0-5.76-2.61-6.67-5.59l-3.85 3C3.38 20.31 7.37 23 12 23z" fill="#34A853"></path>
+                    </svg>
+                  )}
+                  <span className="font-label-md text-label-md text-on-surface">{googleLoading ? 'Redirecting...' : 'Continue with Google'}</span>
                 </button>
               </div>
 

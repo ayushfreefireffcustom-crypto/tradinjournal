@@ -1,6 +1,19 @@
-/**
- * Zod request/response schemas shared between the API and workers.
- * Populated per feature (connect-account, list-trades, etc.).
- */
+import { z } from 'zod';
 
-export {};
+// ── Connect broker account ────────────────────────────────────────────────────
+
+export const connectAccountSchema = z.object({
+  mt5Login: z.coerce.number().int().positive(),
+  password: z.string().min(1),
+  server: z.string().min(1),
+});
+
+export type ConnectAccountInput = z.infer<typeof connectAccountSchema>;
+
+// ── Deals query ───────────────────────────────────────────────────────────────
+
+export const dealsQuerySchema = z.object({
+  accountId: z.string().min(1),
+});
+
+export type DealsQuery = z.infer<typeof dealsQuerySchema>;
