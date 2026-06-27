@@ -110,4 +110,27 @@
     pointer-events: none;
     z-index: 0;
   }
+  
+  .neo-input {
+    background: #111827;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .neo-input:focus {
+    border-color: #0033ad;
+    box-shadow: 0 0 0 3px rgba(0, 51, 173, 0.2);
+    outline: none;
+  }
+
+  .primary-btn-glow:hover {
+    box-shadow: 0 0 20px rgba(0, 51, 173, 0.4);
+  }
+
+  .grid-pattern {
+    background-image: 
+      linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
 }

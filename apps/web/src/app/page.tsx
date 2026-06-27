@@ -38,8 +38,8 @@ export default function Home() {
               <Link className="font-body-md text-body-md text-on-surface-variant hover:text-on-surface transition-colors" href="#">Pricing</Link>
             </div>
             <div className="flex items-center justify-end gap-4">
-              <button className="font-label-md text-label-md text-on-surface px-6 py-2 hover:bg-white/5 transition-all duration-300 hidden sm:block">Sign In</button>
-              <button className="bg-primary-container text-white font-label-md text-label-md px-6 py-2 rounded-lg hover:scale-105 active:scale-95 transition-all">Get Started</button>
+              <Link href="/login" className="font-label-md text-label-md text-on-surface px-6 py-2 hover:bg-white/5 transition-all duration-300 hidden sm:block">Sign In</Link>
+              <Link href="/signup" className="bg-primary-container text-white font-label-md text-label-md px-6 py-2 rounded-lg hover:scale-105 active:scale-95 transition-all inline-block">Get Started</Link>
             </div>
           </div>
         </div>
@@ -65,10 +65,10 @@ export default function Home() {
             </p>
             
             <div className="flex flex-col md:flex-row gap-4 justify-center">
-              <button className="bg-primary-container text-white px-10 py-4 rounded-xl font-headline-md text-headline-md flex items-center justify-center gap-2 group transition-all hover:shadow-[0_0_40px_rgba(0,51,173,0.3)]">
+              <Link href="/signup" className="bg-primary-container text-white px-10 py-4 rounded-xl font-headline-md text-headline-md flex items-center justify-center gap-2 group transition-all hover:shadow-[0_0_40px_rgba(0,51,173,0.3)]">
                 Get Started
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-              </button>
+              </Link>
               <button className="border border-outline-variant px-10 py-4 rounded-xl font-headline-md text-headline-md hover:bg-white/5 transition-all">
                 View Demo
               </button>
