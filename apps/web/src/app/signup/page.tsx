@@ -35,7 +35,7 @@ export default function SignUpPage() {
 
       {/* Header Navigation (Simplified for Auth) */}
       <header className="fixed top-0 w-full z-50">
-        <div className="max-w-container-max mx-auto px-margin-desktop h-20 flex items-center">
+        <div className="w-full max-w-[1280px] mx-auto px-6 md:px-16 h-20 flex items-center">
           <Link href="/" className="font-headline-md text-headline-md font-bold tracking-tighter text-white">
             TradinX
           </Link>
@@ -43,7 +43,7 @@ export default function SignUpPage() {
       </header>
 
       {/* Main Content: Split Layout */}
-      <main className="flex-grow flex items-center justify-center pt-24 pb-12 px-margin-mobile md:px-margin-desktop">
+      <main className="flex-grow flex items-center justify-center pt-24 pb-12 px-6 md:px-16">
         <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-24 items-center">
           
           {/* Left Side: Content */}
