@@ -112,16 +112,21 @@ export default function DashboardPage() {
         </div>
 
         {accounts.length === 0 && !loading ? (
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: '52px 24px', textAlign: 'center' }}>
-            <div style={{ width: 48, height: 48, borderRadius: 12, background: 'var(--surface-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
-              <svg width="20" height="20" viewBox="0 0 16 16" fill="none"><path d="M2 12L6 7L9 10L13 4" stroke="var(--text-subtle)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          <div className="bg-surface border border-outline-variant/30 rounded-2xl py-16 px-6 flex flex-col items-center justify-center text-center">
+            <div className="w-12 h-12 rounded-xl bg-surface-container-low flex items-center justify-center mb-4">
+              <svg width="24" height="24" viewBox="0 0 16 16" fill="none"><path d="M2 12L6 7L9 10L13 4" stroke="currentColor" className="text-on-surface-variant" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
             </div>
-            <p style={{ fontWeight: 600, color: 'var(--text)', marginBottom: 6 }}>No broker connected</p>
-            <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 20 }}>Connect your XM MT5 account to see your stats</p>
-            <button onClick={() => setShowConnect(true)} style={{ padding: '8px 18px', borderRadius: 9, background: 'var(--accent)', border: 'none', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
-              onMouseEnter={e => e.currentTarget.style.background = 'var(--accent-hover)'}
-              onMouseLeave={e => e.currentTarget.style.background = 'var(--accent)'}
-            >Connect Broker</button>
+            <p className="font-sora text-lg font-semibold text-on-surface mb-2">No broker connected</p>
+            <p className="text-sm text-on-surface-variant mb-8">Connect your XM MT5 account to see your stats</p>
+            <button
+              onClick={() => setShowConnect(true)}
+              className="flex items-center gap-2 px-6 py-3 rounded-xl bg-primary-container text-white text-sm font-semibold hover:bg-primary-container/90 transition-all cursor-pointer active:scale-95 border-none shadow-lg shadow-primary/20"
+            >
+              <svg width="14" height="14" viewBox="0 0 12 12" fill="none">
+                <path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              </svg>
+              Connect Broker
+            </button>
           </div>
         ) : (
           <>
