@@ -2,6 +2,8 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { authClient } from '@/lib/auth-client';
 import { Mail, Lock, User, ArrowRight, Loader2, CheckCircle, Zap, TrendingUp, Brain } from 'lucide-react';
 
 export default function SignUpPage() {
@@ -11,16 +13,49 @@ export default function SignUpPage() {
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [error, setError] = useState('');
+  const router = useRouter();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setError('');
     
-    // Simulate API call
-    setTimeout(() => {
-      setIsSubmitting(false);
+    try {
+      // 🚨 MOCK DEV ENVIRONMENT: Bypassing real backend due to missing shared DB credentials.
+      // const res = await authClient.signUp.email({ name, email, password });
+      // if (res?.error) {
+      //    throw new Error(res.error.message || res.error.statusText || 'Registration failed');
+      // }
+      
+      // Simulate network request
+      await new Promise((resolve) => setTimeout(resolve, 800));
+
       setIsSuccess(true);
-    }, 1500);
+      setTimeout(() => router.push('/dashboard'), 1000);
+    } catch (err: any) {
+      setError(err.message ?? 'Something went wrong');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleGoogle = async (e?: React.MouseEvent) => {
+    if (e) e.preventDefault();
+    setGoogleLoading(true);
+    setError('');
+    try {
+      // 🚨 MOCK DEV ENVIRONMENT: Bypassing real backend
+      // const res = await authClient.signIn.social({ provider: 'google', callbackURL: '/dashboard' });
+      // if (res?.error) throw new Error(res.error.message || 'Google sign-in failed');
+      
+      await new Promise((resolve) => setTimeout(resolve, 800));
+      router.push('/dashboard');
+    } catch (err: any) {
+      setError(err.message ?? 'Google sign-in failed');
+      setGoogleLoading(false);
+    }
   };
 
   return (
@@ -161,6 +196,7 @@ export default function SignUpPage() {
                     </div>
                   </div>
 
+                  {error && <div className="text-red-500 font-label-sm text-sm">{error}</div>}
                   <button 
                     type="submit"
                     disabled={isSubmitting || isSuccess}
@@ -196,7 +232,7 @@ export default function SignUpPage() {
 
                 {/* Social Logins */}
                 <div className="grid gap-4">
-                  <button type="button" className="w-full py-3 glass-card rounded-lg flex justify-center items-center gap-3 hover:bg-white/5 duration-300 border border-outline-variant/20">
+                  <button type="button" onClick={handleGoogle} disabled={isSubmitting || isSuccess || googleLoading} className="w-full py-3 glass-card rounded-lg flex justify-center items-center gap-3 hover:bg-white/5 duration-300 border border-outline-variant/20">
                     <svg className="w-5 h-5" viewBox="0 0 24 24">
                       <path d="M12 5.04c1.64 0 3.12.56 4.28 1.67l3.22-3.22C17.52 1.64 14.95 1 12 1 7.37 1 3.38 3.69 1.48 7.63l3.85 2.99C6.24 7.65 8.89 5.04 12 5.04z" fill="#EA4335"></path>
                       <path d="M23.49 12.27c0-.8-.07-1.57-.2-2.31H12v4.38h6.45c-.28 1.48-1.12 2.74-2.38 3.58l3.71 2.87c2.17-2 3.71-4.94 3.71-8.52z" fill="#4285F4"></path>

@@ -18,8 +18,8 @@ export default function Page() {
 <a className="font-body-md text-body-md text-on-surface-variant hover:text-on-surface transition-colors" href="#">Pricing</a>
 </div>
 <div className="flex items-center justify-end gap-4">
-<button className="font-label-md text-label-md text-on-surface px-6 py-2 hover:bg-white/5 transition-all duration-300">Sign In</button>
-<button className="bg-primary-container text-white font-label-md text-label-md px-6 py-2 rounded-lg hover:scale-105 active:scale-95 transition-all">Get Started</button>
+<Link href="/login" className="font-label-md text-label-md text-on-surface px-6 py-2 hover:bg-white/5 transition-all duration-300 inline-flex">Sign In</Link>
+<Link href="/signup" className="bg-primary-container text-white font-label-md text-label-md px-6 py-2 rounded-lg hover:scale-105 active:scale-95 transition-all inline-flex items-center">Get Started</Link>
 </div>
 </div></div>
 </nav>
@@ -40,10 +40,10 @@ export default function Page() {
                     Gain deep behavioral insights and eliminate revenge trading with automated MT5 journaling and advanced analytics designed for professional traders.
                 </p>
 <div className="flex flex-col md:flex-row gap-4 justify-center">
-<button className="bg-primary-container text-white px-10 py-4 rounded-xl font-headline-md text-headline-md flex items-center justify-center gap-2 group transition-all hover:shadow-[0_0_40px_rgba(0,51,173,0.3)]">
+<Link href="/signup" className="bg-primary-container text-white px-10 py-4 rounded-xl font-headline-md text-headline-md flex items-center justify-center gap-2 group transition-all hover:shadow-[0_0_40px_rgba(0,51,173,0.3)]">
                         Get Started
                         <span className="material-symbols-outlined group-hover:translate-x-1 transition-transform">arrow_forward</span>
-</button>
+</Link>
 <button className="border border-outline-variant px-10 py-4 rounded-xl font-headline-md text-headline-md hover:bg-white/5 transition-all">
                         View Demo
                     </button>
@@ -495,9 +495,9 @@ export default function Page() {
 <span className="material-symbols-outlined text-xl">block</span> Behavioral Analytics AI
                             </li>
 </ul>
-<button className="w-full py-4 rounded-xl border border-white/10 font-headline-md text-headline-md hover:bg-white/5 transition-all flex justify-between px-6">
+<Link href="/signup" className="w-full py-4 rounded-xl border border-white/10 font-headline-md text-headline-md hover:bg-white/5 transition-all flex justify-between px-6">
                             GET STARTED <span className="material-symbols-outlined">chevron_right</span>
-</button>
+</Link>
 </div>
 {/*  Pro Plan  */}
 <div className="glass-card p-10 rounded-3xl border-primary bg-primary/5 relative hover:shadow-[0_0_80px_rgba(0,51,173,0.2)] transition-all duration-1000 opacity-100 translate-y-0">
@@ -523,9 +523,9 @@ export default function Page() {
 <span className="material-symbols-outlined text-primary text-xl">check</span> Emotional Trigger Tracking
                             </li>
 </ul>
-<button className="w-full py-4 bg-primary-container rounded-xl font-headline-md text-headline-md shadow-xl shadow-primary/20 flex justify-between px-6">
+<Link href="/signup" className="w-full py-4 bg-primary-container rounded-xl font-headline-md text-headline-md shadow-xl shadow-primary/20 flex justify-between px-6">
                             UPGRADE NOW <span className="material-symbols-outlined">chevron_right</span>
-</button>
+</Link>
 </div>
 </div>
 </div>
@@ -577,9 +577,9 @@ export default function Page() {
 <p className="font-body-lg text-body-lg text-on-surface-variant max-w-xl mx-auto mb-10">
                     Join thousands of traders mastering their psychology and building their future with TradinX.
                 </p>
-<button className="bg-primary-container text-white px-12 py-5 rounded-xl font-headline-md text-headline-md shadow-2xl shadow-primary/30 hover:scale-105 active:scale-95 transition-all">
+<Link href="/signup" className="bg-primary-container text-white px-12 py-5 rounded-xl font-headline-md text-headline-md shadow-2xl shadow-primary/30 hover:scale-105 active:scale-95 transition-all inline-flex justify-center">
                     START JOURNALING
-                </button>
+                </Link>
 </div>
 </section>
 </main>
