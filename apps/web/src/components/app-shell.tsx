@@ -51,16 +51,19 @@ export default function AppShell({ children, accounts = [], selectedAccount, onS
 
   return (
     <div className="flex min-h-screen bg-surface-container-lowest font-sora text-on-surface">
+      {/* Sidebar */}
       <aside className="w-64 shrink-0 border-r border-outline-variant/30 flex flex-col p-6 bg-surface">
+        {/* Logo */}
         <div className="flex items-center gap-3 px-2 mb-10">
           <div className="w-8 h-8 rounded-lg bg-primary-container flex items-center justify-center shrink-0">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
               <path d="M2 12L6 7L9 10L13 4" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </div>
-          <span className="font-sora text-sm font-semibold tracking-tight text-on-surface">TradinX</span>
+          <span className="font-headline-md text-body-md tracking-tighter text-on-surface">TradinX</span>
         </div>
 
+        {/* Nav links */}
         <nav className="flex flex-col gap-2">
           {NAV.map(({ href, label, icon }) => {
             const active = pathname === href;
@@ -83,8 +86,11 @@ export default function AppShell({ children, accounts = [], selectedAccount, onS
         </nav>
       </aside>
 
+      {/* Main */}
       <div className="flex-1 flex flex-col min-w-0">
+        {/* Topbar */}
         <div className="h-16 border-b border-outline-variant/30 flex items-center px-8 gap-4 shrink-0 bg-surface-container-lowest/80 backdrop-blur-md sticky top-0 z-10">
+          {/* Account tabs */}
           {accounts.length > 0 && (
             <div className="flex items-center gap-3 flex-1 overflow-hidden">
               {accounts.map(acc => {
@@ -109,34 +115,47 @@ export default function AppShell({ children, accounts = [], selectedAccount, onS
 
           {topbarExtra && <div className="ml-auto">{topbarExtra}</div>}
 
-          <div className={`flex items-center gap-3 ${accounts.length === 0 && !topbarExtra ? 'ml-auto' : ''}`}>
-            <button
-              onClick={onConnectClick}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary-container text-white text-label-sm font-semibold hover:bg-primary-container/90 transition-all cursor-pointer border-none active:scale-95 shrink-0"
-            >
-              <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
-                <path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/>
+          <div className={`flex items-center gap-3 ${accounts.length === 0 && !topbarExtra ? 'ml-auto' : 'ml-auto'}`}>
+            {/* Connect Broker button — visible when no accounts connected */}
+            {accounts.length === 0 && (
+              <button
+                onClick={onConnectClick}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary-container text-white text-label-sm font-semibold hover:bg-primary-container/90 transition-all cursor-pointer border-none active:scale-95 shrink-0"
+              >
+                <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+                  <path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/>
+                </svg>
+                Connect Broker
+              </button>
+            )}
+
+            {/* Notification bell */}
+            <button className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-white/5 transition-colors relative cursor-pointer border-none bg-transparent text-on-surface-variant">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
               </svg>
-              Connect Broker
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-500 border-2 border-[#0e0e0e] absolute top-1.5 right-1.5"></span>
             </button>
 
+            {/* Profile avatar + dropdown */}
             <div className="relative">
               <button
                 onClick={() => setIsProfileOpen(!isProfileOpen)}
-                className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-sm cursor-pointer hover:bg-primary/30 transition-colors border border-primary/30 shrink-0"
+                className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-sm cursor-pointer hover:bg-primary/30 transition-colors border border-primary/30 ml-1 shrink-0"
               >
                 {session?.user?.name ? session.user.name.charAt(0).toUpperCase() : 'U'}
               </button>
 
               {isProfileOpen && (
                 <>
-                  <div className="fixed inset-0 z-40" onClick={() => setIsProfileOpen(false)} />
+                  <div className="fixed inset-0 z-40" onClick={() => setIsProfileOpen(false)}></div>
                   <div className="absolute right-0 mt-2 w-56 bg-surface border border-[#27272a] rounded-xl shadow-xl z-50 py-2">
                     <div className="px-4 py-2">
-                      <p className="font-sora text-sm font-semibold text-on-surface overflow-hidden text-ellipsis whitespace-nowrap">
+                      <p className="font-headline-md text-sm text-on-surface font-semibold overflow-hidden text-ellipsis whitespace-nowrap">
                         {session?.user?.name || 'User'}
                       </p>
-                      <p className="font-sora text-xs text-on-surface-variant overflow-hidden text-ellipsis whitespace-nowrap mt-0.5">
+                      <p className="font-body-md text-xs text-on-surface-variant overflow-hidden text-ellipsis whitespace-nowrap mt-0.5">
                         {session?.user?.email}
                       </p>
                     </div>
@@ -158,6 +177,7 @@ export default function AppShell({ children, accounts = [], selectedAccount, onS
           </div>
         </div>
 
+        {/* Page content */}
         <div className="flex-1 overflow-y-auto">
           {children}
         </div>

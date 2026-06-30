@@ -1,5 +1,10 @@
 import type { Config } from 'tailwindcss';
 
+/**
+ * Tailwind v4 — This config is for VS Code IntelliSense only.
+ * The actual design tokens are in globals.css @theme block.
+ * Do NOT add @config directive in globals.css.
+ */
 const config: Config = {
   darkMode: 'class',
   content: [
@@ -7,70 +12,7 @@ const config: Config = {
     './src/components/**/*.{js,ts,jsx,tsx,mdx}',
   ],
   theme: {
-    extend: {
-      colors: {
-        'tertiary': '#bec6e0',
-        'on-tertiary': '#283044',
-        'on-error': '#690005',
-        'on-secondary-container': '#b4b9bf',
-        'on-error-container': '#ffdad6',
-        'surface-tint': '#b8c4ff',
-        'surface-container-low': '#1c1b1b',
-        'outline': '#8e909f',
-        'surface-container': '#201f1f',
-        'surface-container-highest': '#353534',
-        'surface-container-high': '#2a2a2a',
-        'on-secondary': '#2c3136',
-        'inverse-surface': '#e5e2e1',
-        'surface-dim': '#131313',
-        'inverse-on-surface': '#313030',
-        'on-secondary-fixed-variant': '#43474c',
-        'inverse-primary': '#3254ca',
-        'surface': '#131313',
-        'tertiary-fixed': '#dae2fd',
-        'secondary-container': '#454a4f',
-        'on-primary': '#002584',
-        'primary-fixed-dim': '#b8c4ff',
-        'surface-container-lowest': '#0e0e0e',
-        'surface-bright': '#3a3939',
-        'secondary': '#c3c7cd',
-        'on-secondary-fixed': '#171c20',
-        'on-tertiary-fixed-variant': '#3f465c',
-        'on-primary-fixed': '#001453',
-        'tertiary-fixed-dim': '#bec6e0',
-        'on-tertiary-container': '#a6adc6',
-        'secondary-fixed': '#dfe3e9',
-        'on-surface': '#e5e2e1',
-        'error-container': '#93000a',
-        'on-primary-container': '#96aaff',
-        'tertiary-container': '#394156',
-        'outline-variant': '#444654',
-        'background': '#131313',
-        'on-surface-variant': '#c4c5d6',
-        'surface-variant': '#353534',
-        'on-background': '#e5e2e1',
-        'on-primary-fixed-variant': '#0e39b2',
-        'primary-container': '#0033ad',
-        'primary': '#b8c4ff',
-        'error': '#ffb4ab',
-        'primary-fixed': '#dde1ff',
-        'on-tertiary-fixed': '#131b2e',
-      },
-      fontFamily: {
-        // single entry — all font-sora classes point to the CSS variable
-        'sora': ['var(--font-sora)', 'sans-serif'],
-      },
-      fontSize: {
-        'label-md':           ['14px', { lineHeight: '20px', letterSpacing: '0.02em', fontWeight: '500' }],
-        'headline-md':        ['24px', { lineHeight: '32px', fontWeight: '600' }],
-        'body-md':            ['16px', { lineHeight: '24px', fontWeight: '400' }],
-        'label-sm':           ['12px', { lineHeight: '16px', fontWeight: '600' }],
-        'headline-lg':        ['48px', { lineHeight: '56px', letterSpacing: '-0.01em', fontWeight: '600' }],
-        'display-xl':         ['72px', { lineHeight: '80px', letterSpacing: '-0.02em', fontWeight: '700' }],
-        'headline-lg-mobile': ['32px', { lineHeight: '40px', fontWeight: '600' }],
-        'body-lg':            ['18px', { lineHeight: '28px', fontWeight: '400' }],
-      },
-    },
+    extend: {},
   },
   plugins: [],
 };

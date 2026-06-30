@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -42,29 +42,30 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#0e0e0e] selection:bg-primary/30">
+    <div className="min-h-screen flex flex-col font-sora" style={{ background: "#0a0a0a" }}>
       {/* Decorative Background */}
-      <div className="fixed inset-0 z-[-1]">
-        <div className="absolute inset-0 grid-pattern" />
-        <div className="absolute inset-0 mesh-gradient" />
-        <div className="absolute top-[-10%] right-[-10%] w-[40rem] h-[40rem] bg-primary/10 blur-[120px] rounded-full" />
-        <div className="absolute bottom-[-10%] left-[-10%] w-[40rem] h-[40rem] bg-primary/5 blur-[120px] rounded-full" />
+      <div className="fixed inset-0 z-[-1] pointer-events-none">
+        <div className="absolute inset-0 grid-pattern opacity-50" />
+        <div className="absolute top-0 right-0 w-[500px] h-[500px] rounded-full"
+          style={{ background: "radial-gradient(circle, rgba(0,51,173,0.15) 0%, transparent 70%)", filter: "blur(60px)" }} />
+        <div className="absolute bottom-0 left-0 w-[400px] h-[400px] rounded-full"
+          style={{ background: "radial-gradient(circle, rgba(0,51,173,0.08) 0%, transparent 70%)", filter: "blur(60px)" }} />
       </div>
 
       {/* Header */}
       <header className="fixed top-0 w-full z-50">
-        <div className="w-full max-w-[1280px] mx-auto px-6 md:px-16 h-20 flex items-center">
-          <Link href="/" className="text-xl font-bold tracking-tighter text-white">
-            TradinX
-          </Link>
+        <div className="max-w-[1280px] mx-auto px-6 md:px-16 h-[72px] flex items-center">
+          <Link href="/" className="text-xl font-bold tracking-tighter text-white">TradinX</Link>
         </div>
       </header>
 
       {/* Main */}
-      <main className="flex-grow flex items-center justify-center pt-24 pb-12 px-6 md:px-0">
-        <div className="w-full max-w-md slide-up">
-          <div className="glass-card rounded-xl p-6 md:p-8 shadow-2xl relative overflow-hidden">
-            <div className="absolute -top-24 -right-24 w-48 h-48 bg-primary/20 blur-[60px] rounded-full pointer-events-none" />
+      <main className="flex-grow flex items-center justify-center pt-24 pb-12 px-6">
+        <div className="w-full max-w-md">
+          <div className="rounded-2xl border border-white/10 p-8 shadow-2xl relative overflow-hidden"
+            style={{ background: "rgba(18,18,26,0.85)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)" }}>
+            <div className="absolute -top-20 -right-20 w-40 h-40 rounded-full pointer-events-none"
+              style={{ background: "radial-gradient(circle, rgba(0,51,173,0.25) 0%, transparent 70%)", filter: "blur(30px)" }} />
             <div className="relative z-10">
               <div className="text-center mb-6">
                 <h1 className="text-headline-md font-semibold text-on-surface mb-1">Welcome Back</h1>
@@ -141,7 +142,8 @@ export default function LoginPage() {
                 <button
                   type="button" onClick={handleGoogle}
                   disabled={loading || googleLoading}
-                  className="w-full py-3 glass-card rounded-lg flex justify-center items-center gap-3 hover:bg-white/5 duration-300 border border-outline-variant/20 cursor-pointer disabled:opacity-60"
+                  className="w-full py-3 rounded-xl flex justify-center items-center gap-3 hover:bg-white/5 duration-300 border border-white/10 cursor-pointer disabled:opacity-60 text-sm font-medium text-on-surface"
+                  style={{ background: "rgba(255,255,255,0.03)" }}
                 >
                   <svg className="w-5 h-5" viewBox="0 0 24 24">
                     <path d="M12 5.04c1.64 0 3.12.56 4.28 1.67l3.22-3.22C17.52 1.64 14.95 1 12 1 7.37 1 3.38 3.69 1.48 7.63l3.85 2.99C6.24 7.65 8.89 5.04 12 5.04z" fill="#EA4335" />

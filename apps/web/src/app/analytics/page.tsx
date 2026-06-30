@@ -9,7 +9,7 @@ import ConnectBrokerModal from '@/components/connect-broker-modal';
 
 const { useSession } = authClient;
 
-function BarChart({ data }: { data: { label: string; value: number }[]; color?: string }) {
+function BarChart({ data, color = 'var(--accent)' }: { data: { label: string; value: number }[]; color?: string }) {
   if (data.length === 0) return <p style={{ fontSize: 12, color: 'var(--text-subtle)', padding: '16px 0' }}>No data</p>;
   const max = Math.max(...data.map(d => Math.abs(d.value)), 0.01);
   return (

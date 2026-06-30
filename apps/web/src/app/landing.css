@@ -1,4 +1,4 @@
-/* TradinX landing — layout & design tokens (from feature/ui-restoration-v4 reference) */
+/* TradinX landing — layout & design tokens (from feature/ui-restoration-v4) */
 
 .landing-page {
   background-color: #070707;
@@ -87,7 +87,7 @@
   padding-bottom: 64px;
 }
 
-/* Hero — block layout, NOT flex-center (prevents overlap) */
+/* Hero */
 .landing-hero {
   padding-top: 48px;
   padding-bottom: 64px;
@@ -295,7 +295,7 @@
   color: #b8c4ff;
 }
 
-/* Watermark — always behind content */
+/* Watermark */
 .landing-watermark {
   position: absolute;
   inset: 0;
