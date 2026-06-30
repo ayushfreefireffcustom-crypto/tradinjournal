@@ -1,0 +1,149 @@
+{
+  "theme_name": "Tactical Swiss Terminal",
+  "archetype": "Archetype 2 (Performance Pro) mixed with Archetype 4 (Swiss & High-Contrast)",
+  "core_philosophy": "A high-end, data-dense trading terminal built for professional discretionary forex traders. Eliminates SaaS fluff, centers around raw technical credibility, absolute data clarity, and elite execution. No soft shadows, no generic gradients.",
+  "colors": {
+    "background": {
+      "app": "#0A0A0A",
+      "surface": "#121212",
+      "surface_hover": "#1A1A1A",
+      "surface_active": "#222222"
+    },
+    "border": {
+      "default": "#2A2A2A",
+      "focus": "#4A4A4A",
+      "divider": "#1E1E1E"
+    },
+    "text": {
+      "primary": "#FFFFFF",
+      "secondary": "#A1A1AA",
+      "tertiary": "#71717A",
+      "inverse": "#0A0A0A"
+    },
+    "functional": {
+      "profit": "#00C566",
+      "profit_bg": "rgba(0, 197, 102, 0.1)",
+      "loss": "#FF3B30",
+      "loss_bg": "rgba(255, 59, 48, 0.1)",
+      "warning": "#FF9F0A",
+      "brand": "#FFFFFF"
+    }
+  },
+  "typography": {
+    "headings": {
+      "family": "Cabinet Grotesk",
+      "weights": ["500", "700", "900"],
+      "usage": "Landing page heroes, section titles, major metric numbers. Must use tracking-tight."
+    },
+    "body": {
+      "family": "JetBrains Mono",
+      "weights": ["400", "500"],
+      "usage": "Data tables, axis labels, logs, exact values, UI controls. Never use Inter or generic sans."
+    },
+    "scale": {
+      "h1": "text-5xl sm:text-6xl tracking-tighter font-black",
+      "h2": "text-3xl sm:text-4xl tracking-tight font-bold",
+      "h3": "text-xl sm:text-2xl tracking-tight font-medium",
+      "metric": "text-4xl font-black font-sans tracking-tighter",
+      "body": "text-sm text-secondary font-mono",
+      "data": "text-sm text-primary font-mono",
+      "label": "text-xs tracking-[0.15em] uppercase font-mono text-tertiary"
+    }
+  },
+  "spacing_and_layout": {
+    "philosophy": "Control Room Grid. Dense, correlated, and strictly aligned. No wasted pixels.",
+    "border_radius": "rounded-sm (2px max) or rounded-none to maintain terminal aesthetic.",
+    "dashboard_grid": "grid-cols-12 gap-4. Single metrics span 3 cols, main charts span 8 or 9 cols, sidebars span 3 or 4 cols.",
+    "landing_grid": "Bento Grid (Mode A). Asymmetric, wide gaps (gap-8), high visual tension.",
+    "padding": "Containers use p-4 or p-6. Extreme padding (p-12 to p-24) reserved for marketing landing page sections."
+  },
+  "motion": {
+    "philosophy": "Tactical and instant. Feedback must feel mechanical, not floaty.",
+    "duration": "150ms to 200ms maximum.",
+    "easing": "ease-out",
+    "hover_states": "Hard background color shifts (e.g., bg-[#121212] to bg-[#1A1A1A]) rather than vertical translations. 1px borders light up on hover."
+  },
+  "component_guidelines": {
+    "buttons": {
+      "primary": "bg-white text-black font-mono text-sm font-medium hover:bg-gray-200 transition-colors rounded-sm px-4 py-2",
+      "secondary": "bg-transparent border border-[#2A2A2A] text-white hover:border-[#4A4A4A] hover:bg-[#121212] font-mono text-sm rounded-sm px-4 py-2",
+      "profit": "bg-[rgba(0,197,102,0.1)] text-[#00C566] border border-[#00C566]/30 hover:bg-[#00C566]/20",
+      "loss": "bg-[rgba(255,59,48,0.1)] text-[#FF3B30] border border-[#FF3B30]/30 hover:bg-[#FF3B30]/20"
+    },
+    "cards": {
+      "base": "bg-[#121212] border border-[#2A2A2A] rounded-sm p-4 h-full flex flex-col relative overflow-hidden",
+      "header": "flex justify-between items-center mb-4 pb-4 border-b border-[#1E1E1E]",
+      "shadows": "Absolutely no box-shadows. Depth is created via 1px borders and background contrast."
+    },
+    "inputs_and_forms": {
+      "style": "bg-[#0A0A0A] border border-[#2A2A2A] text-white font-mono rounded-sm px-3 py-2 focus:border-[#4A4A4A] focus:ring-1 focus:ring-[#4A4A4A] outline-none transition-all placeholder:text-[#4A4A4A]"
+    },
+    "tables": {
+      "style": "w-full text-left font-mono text-sm",
+      "header": "text-xs text-tertiary uppercase tracking-wider pb-3 border-b border-[#2A2A2A]",
+      "row": "border-b border-[#1E1E1E] hover:bg-[#1A1A1A] transition-colors",
+      "cell": "py-3 px-2 align-middle"
+    },
+    "charts": {
+      "candlestick": "Up candles: #00C566 (solid or hollow), Down candles: #FF3B30 (solid). Wicks match body color.",
+      "equity_curve": "Line chart using pure white #FFFFFF for the line, with a subtle #FFFFFF/10 gradient fill underneath.",
+      "axes": "Font-mono text-xs text-tertiary. Grid lines should be stroke-[#1E1E1E] stroke-dasharray='3 3'."
+    },
+    "sidebar": {
+      "style": "w-64 border-r border-[#2A2A2A] bg-[#0A0A0A] h-screen fixed flex flex-col",
+      "links": "font-mono text-sm text-secondary hover:text-white hover:bg-[#121212] px-4 py-2 mx-2 rounded-sm transition-colors data-[active=true]:text-white data-[active=true]:bg-[#121212]"
+    }
+  },
+  "page_compositions": {
+    "landing_page": {
+      "structure": [
+        "Hero: Massive Cabinet Grotesk H1. Subtitle in JetBrains Mono. CTA buttons. Background uses pure #0A0A0A with a faint grid overlay (#1E1E1E). No glowing orbs.",
+        "Trade Replay Preview: A high-fidelity mockup of the chart interface overlapping the next section to show technical depth.",
+        "Features Bento Grid: Asymmetric grid showcasing analytical density, behavioral scoring, and MT5 sync.",
+        "Pricing & Social Proof: Monospaced pricing tables, raw data points for social proof (e.g., '14.2M trades logged')."
+      ]
+    },
+    "app_shell": {
+      "structure": "Fixed left sidebar (64px collapsed, 256px expanded) with Phosphor icons. Topbar for global context (Account switcher, connect broker status, balance overview) with glassmorphism (bg-black/60 backdrop-blur-xl border-b border-[#2A2A2A])."
+    },
+    "dashboard": {
+      "structure": [
+        "KPI Row (Top): 4 cards (Balance, Equity, Margin, Behavioral Score). Large Cabinet Grotesk numbers.",
+        "Main Row: Equity Curve Chart (col-span-8) + Behavioral Insights/Drawdown stats (col-span-4).",
+        "Bottom Row: Recent Deals Table (dense, full width) showing Ticket, Symbol, Type, Volume, Open/Close Price, P&L."
+      ]
+    },
+    "analytics": {
+      "structure": [
+        "Win Rate & Profit Factor: Donut charts using Volt Green and Electric Blaze.",
+        "Distributions: Bar charts/Histograms for P&L by Day of Week, Session (Asian/London/NY), and R-Multiple.",
+        "Drawdown Curve: Area chart highlighting underwater periods in red."
+      ]
+    },
+    "chart_replay_page": {
+      "structure": "Split screen. Left 70%: Full interactive candlestick chart (TradingView style) with entry/exit markers. Right 30%: Journal note panel, trade metadata, tagging system, and psychological state selector."
+    }
+  },
+  "media_urls": {
+    "landing_hero_chart": {
+      "url": "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2OTV8MHwxfHNlYXJjaHwxfHxmb3JleCUyMHRyYWRpbmclMjBsaWZlc3R5bGUlMjBwcm9mZXNzaW9uYWx8ZW58MHx8fHwxNzgyMjAzNTk3fDA&ixlib=rb-4.1.0&q=85",
+      "description": "Candlestick chart visual for landing page hero or feature mockups."
+    },
+    "mobile_preview": {
+      "url": "https://images.unsplash.com/photo-1612178991541-b48cc8e92a4d?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2OTV8MHwxfHNlYXJjaHwyfHxmb3JleCUyMHRyYWRpbmclMjBsaWZlc3R5bGUlMjBwcm9mZXNzaW9uYWx8ZW58MHx8fHwxNzgyMjAzNTk3fDA&ixlib=rb-4.1.0&q=85",
+      "description": "Mobile application data preview."
+    },
+    "analytics_hero": {
+      "url": "https://images.pexels.com/photos/7947754/pexels-photo-7947754.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "description": "Abstract analytical bar chart background."
+    }
+  },
+  "instructions_to_main_agent": [
+    "INSTALL FONTS: Ensure you use 'Cabinet Grotesk' from a custom CDN/fontsource or fallback to a highly structured sans if unavailable, and 'JetBrains Mono' for all data, tables, and UI text.",
+    "ICONS: Install and use '@phosphor-icons/react' (duotone or regular) for sharp, technical icons that fit the terminal aesthetic.",
+    "TAILWIND CONFIG: Add the custom colors (background.app -> #0A0A0A, etc.) directly into your theme configuration to ensure exact adherence to the Tactical Swiss Terminal palette.",
+    "SHADCN CUSTOMIZATION: Remove all default rounded corners (change to rounded-sm or rounded-none). Remove all box shadows (shadow-sm, shadow-md). Rely purely on 1px borders (#2A2A2A) for separation.",
+    "DATA ATTRIBUTES: Add data-testid to every button, chart container, table row, and input for testing.",
+    "FILE EXTENSIONS: The project uses Next.js with App Router. When creating components, use .js (or .jsx) files per user instructions."
+  ]
+}
