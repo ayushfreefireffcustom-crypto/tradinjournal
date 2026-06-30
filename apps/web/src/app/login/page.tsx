@@ -1,184 +1,176 @@
-'use client';
-
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { authClient } from '@/lib/auth-client';
+﻿"use client";
+import Link from "next/link";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { authClient } from "@/lib/auth-client";
 
 const { signIn } = authClient;
 
-function Spinner({ size = 16, color = '#fff' }: { size?: number; color?: string }) {
-  return (
-    <span className="spin" style={{
-      display: 'inline-block', width: size, height: size, borderRadius: '50%',
-      border: `2px solid ${color}30`, borderTopColor: color, flexShrink: 0,
-    }} />
-  );
-}
-
-function GoogleIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" style={{ flexShrink: 0 }}>
-      <path d="M17.64 9.205c0-.639-.057-1.252-.164-1.841H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615Z" fill="#4285F4"/>
-      <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18Z" fill="#34A853"/>
-      <path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332Z" fill="#FBBC05"/>
-      <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58Z" fill="#EA4335"/>
-    </svg>
-  );
-}
-
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [shaking, setShaking] = useState(false);
+  const [error, setError] = useState("");
 
-  function shake() { setShaking(true); setTimeout(() => setShaking(false), 400); }
-
-  async function handleSubmit(e: React.FormEvent) {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
     setLoading(true);
+    setError("");
     try {
-      const res = await signIn.email({ email, password, callbackURL: '/dashboard' });
-      if (res.error) throw new Error(res.error.message ?? 'Login failed');
-      router.push('/dashboard');
-    } catch (err: any) {
-      setError(err.message ?? 'Something went wrong');
-      shake();
+      const res = await signIn.email({ email, password, callbackURL: "/dashboard" });
+      if (res.error) throw new Error(res.error.message ?? "Sign in failed");
+      router.push("/dashboard");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setLoading(false);
     }
-  }
+  };
 
-  async function handleGoogle() {
+  const handleGoogle = async (e?: React.MouseEvent) => {
+    if (e) e.preventDefault();
     setGoogleLoading(true);
+    setError("");
     try {
-      await signIn.social({ provider: 'google', callbackURL: '/dashboard' });
-    } catch (err: any) {
-      setError(err.message ?? 'Google sign-in failed');
+      await signIn.social({ provider: "google", callbackURL: "/dashboard" });
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Google sign-in failed");
       setGoogleLoading(false);
     }
-  }
-
-  const inputStyle: React.CSSProperties = {
-    width: '100%', padding: '10px 12px', borderRadius: 10,
-    border: '1px solid var(--border-strong)',
-    background: 'var(--surface-2)', color: 'var(--text)',
-    fontSize: 14, outline: 'none', transition: 'border-color 0.15s, box-shadow 0.15s',
   };
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, background: 'var(--bg)' }}>
-      <div className="fade-up" style={{ width: '100%', maxWidth: 380 }}>
-
-        {/* Brand */}
-        <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-            <div style={{ width: 34, height: 34, borderRadius: 10, background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 24px var(--accent-glow)' }}>
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <path d="M2 12L6 7L9 10L13 4" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </div>
-            <span style={{ fontSize: 17, fontWeight: 600, color: 'var(--text)', letterSpacing: '-0.3px' }}>TradingJournal</span>
-          </div>
-          <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>Sign in to your account</p>
-        </div>
-
-        {/* Card */}
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 24 }}>
-
-          {/* Google */}
-          <button
-            onClick={handleGoogle}
-            disabled={googleLoading || loading}
-            style={{
-              width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-              padding: '10px 16px', borderRadius: 10, border: '1px solid var(--border-strong)',
-              background: 'var(--surface-2)', color: 'var(--text)', fontSize: 14, fontWeight: 500,
-              cursor: 'pointer', transition: 'background 0.15s, transform 0.1s',
-              opacity: (googleLoading || loading) ? 0.6 : 1,
-            }}
-            onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-3)')}
-            onMouseLeave={e => (e.currentTarget.style.background = 'var(--surface-2)')}
-            onMouseDown={e => (e.currentTarget.style.transform = 'scale(0.985)')}
-            onMouseUp={e => (e.currentTarget.style.transform = 'scale(1)')}
-          >
-            {googleLoading ? <Spinner size={16} color="var(--text-muted)" /> : <GoogleIcon />}
-            Continue with Google
-          </button>
-
-          {/* Divider */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '20px 0' }}>
-            <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
-            <span style={{ fontSize: 12, color: 'var(--text-subtle)' }}>or</span>
-            <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
-          </div>
-
-          {/* Form */}
-          <form onSubmit={handleSubmit} className={shaking ? 'shake' : ''} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-muted)' }}>Email</label>
-              <input
-                type="email" value={email} onChange={e => setEmail(e.target.value)}
-                placeholder="you@example.com" required style={inputStyle}
-                onFocus={e => { e.target.style.borderColor = 'var(--accent)'; e.target.style.boxShadow = '0 0 0 3px var(--accent-glow)'; }}
-                onBlur={e => { e.target.style.borderColor = 'var(--border-strong)'; e.target.style.boxShadow = 'none'; }}
-              />
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-muted)' }}>Password</label>
-              <input
-                type="password" value={password} onChange={e => setPassword(e.target.value)}
-                placeholder="••••••••" required style={inputStyle}
-                onFocus={e => { e.target.style.borderColor = 'var(--accent)'; e.target.style.boxShadow = '0 0 0 3px var(--accent-glow)'; }}
-                onBlur={e => { e.target.style.borderColor = 'var(--border-strong)'; e.target.style.boxShadow = 'none'; }}
-              />
-            </div>
-
-            {error && (
-              <div className="fade-in" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', borderRadius: 10, background: 'var(--red-bg)', border: '1px solid rgba(240,82,82,0.25)', color: 'var(--red)', fontSize: 13 }}>
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ flexShrink: 0 }}>
-                  <circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.3"/>
-                  <path d="M7 4.5v2.5M7 9.5h.01" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-                </svg>
-                {error}
-              </div>
-            )}
-
-            <button
-              type="submit" disabled={loading || googleLoading}
-              style={{
-                width: '100%', padding: '11px 16px', borderRadius: 10, border: 'none',
-                background: 'var(--accent)', color: '#fff', fontSize: 14, fontWeight: 600,
-                cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1,
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                transition: 'background 0.15s, transform 0.1s',
-              }}
-              onMouseEnter={e => { if (!loading) e.currentTarget.style.background = 'var(--accent-hover)'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'var(--accent)'; }}
-              onMouseDown={e => { if (!loading) e.currentTarget.style.transform = 'scale(0.985)'; }}
-              onMouseUp={e => { e.currentTarget.style.transform = 'scale(1)'; }}
-            >
-              {loading && <Spinner size={15} />}
-              {loading ? 'Signing in…' : 'Sign in'}
-            </button>
-          </form>
-        </div>
-
-        <p style={{ textAlign: 'center', marginTop: 20, fontSize: 14, color: 'var(--text-muted)' }}>
-          No account?{' '}
-          <Link href="/register" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 500 }}
-            onMouseEnter={e => (e.currentTarget.style.textDecoration = 'underline')}
-            onMouseLeave={e => (e.currentTarget.style.textDecoration = 'none')}
-          >
-            Create one
-          </Link>
-        </p>
+    <div className="min-h-screen flex flex-col bg-[#0e0e0e] selection:bg-primary/30">
+      {/* Decorative Background */}
+      <div className="fixed inset-0 z-[-1]">
+        <div className="absolute inset-0 grid-pattern" />
+        <div className="absolute inset-0 mesh-gradient" />
+        <div className="absolute top-[-10%] right-[-10%] w-[40rem] h-[40rem] bg-primary/10 blur-[120px] rounded-full" />
+        <div className="absolute bottom-[-10%] left-[-10%] w-[40rem] h-[40rem] bg-primary/5 blur-[120px] rounded-full" />
       </div>
+
+      {/* Header */}
+      <header className="fixed top-0 w-full z-50">
+        <div className="w-full max-w-[1280px] mx-auto px-6 md:px-16 h-20 flex items-center">
+          <Link href="/" className="text-xl font-bold tracking-tighter text-white">
+            TradinX
+          </Link>
+        </div>
+      </header>
+
+      {/* Main */}
+      <main className="flex-grow flex items-center justify-center pt-24 pb-12 px-6 md:px-0">
+        <div className="w-full max-w-md slide-up">
+          <div className="glass-card rounded-xl p-6 md:p-8 shadow-2xl relative overflow-hidden">
+            <div className="absolute -top-24 -right-24 w-48 h-48 bg-primary/20 blur-[60px] rounded-full pointer-events-none" />
+            <div className="relative z-10">
+              <div className="text-center mb-6">
+                <h1 className="text-headline-md font-semibold text-on-surface mb-1">Welcome Back</h1>
+                <p className="text-label-sm text-on-surface-variant">Precision insights for your next trade.</p>
+              </div>
+
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-label-sm text-on-surface-variant mb-1 ml-1" htmlFor="email">
+                    Email Address
+                  </label>
+                  <div className="relative">
+                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-lg">mail</span>
+                    <input
+                      className="neo-input w-full pl-10 pr-4 py-2.5 rounded-lg text-sm text-on-surface placeholder:text-outline/50 bg-surface-container-low"
+                      id="email" name="email" placeholder="name@company.com"
+                      required type="email" value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex justify-between items-center mb-1 ml-1">
+                    <label className="text-label-sm text-on-surface-variant" htmlFor="password">Password</label>
+                    <a className="text-label-sm text-primary hover:underline transition-all" href="#">Forgot Password?</a>
+                  </div>
+                  <div className="relative">
+                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-lg">lock</span>
+                    <input
+                      className="neo-input w-full pl-10 pr-4 py-2.5 rounded-lg text-sm text-on-surface placeholder:text-outline/50 bg-surface-container-low"
+                      id="password" name="password" placeholder="••••••••"
+                      required type="password" value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 py-1">
+                  <input className="w-4 h-4 rounded border-outline-variant bg-surface-container" id="remember" type="checkbox" />
+                  <label className="text-label-md text-on-surface-variant cursor-pointer" htmlFor="remember">Stay signed in</label>
+                </div>
+
+                {error && (
+                  <div className="fade-in flex items-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="shrink-0">
+                      <circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.3"/>
+                      <path d="M7 4.5v2.5M7 9h.01" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+                    </svg>
+                    {error}
+                  </div>
+                )}
+
+                <button
+                  disabled={loading || googleLoading}
+                  className="w-full py-3 bg-primary-container text-label-md rounded-lg primary-btn-glow transition-all duration-300 flex justify-center items-center gap-2 text-white disabled:opacity-60 cursor-pointer border-none"
+                  type="submit"
+                >
+                  {loading ? "Signing In\u2026" : "Sign In"}
+                  {!loading && <span className="material-symbols-outlined text-lg">arrow_forward</span>}
+                </button>
+              </form>
+
+              <div className="relative my-6">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-outline-variant/20" />
+                </div>
+                <div className="relative flex justify-center">
+                  <span className="px-4 bg-[#111827] text-xs text-on-surface-variant uppercase tracking-widest">Or continue with</span>
+                </div>
+              </div>
+
+              <div className="grid gap-4">
+                <button
+                  type="button" onClick={handleGoogle}
+                  disabled={loading || googleLoading}
+                  className="w-full py-3 glass-card rounded-lg flex justify-center items-center gap-3 hover:bg-white/5 duration-300 border border-outline-variant/20 cursor-pointer disabled:opacity-60"
+                >
+                  <svg className="w-5 h-5" viewBox="0 0 24 24">
+                    <path d="M12 5.04c1.64 0 3.12.56 4.28 1.67l3.22-3.22C17.52 1.64 14.95 1 12 1 7.37 1 3.38 3.69 1.48 7.63l3.85 2.99C6.24 7.65 8.89 5.04 12 5.04z" fill="#EA4335" />
+                    <path d="M23.49 12.27c0-.8-.07-1.57-.2-2.31H12v4.38h6.45c-.28 1.48-1.12 2.74-2.38 3.58l3.71 2.87c2.17-2 3.71-4.94 3.71-8.52z" fill="#4285F4" />
+                    <path d="M5.33 14.62C5.08 13.88 4.95 13.1 4.95 12.3s.13-1.58.38-2.32L1.48 6.99c-.8 1.66-1.25 3.53-1.25 5.51s.45 3.85 1.25 5.51l3.85-3z" fill="#FBBC05" />
+                    <path d="M12 23c3.12 0 5.73-1.02 7.65-2.77l-3.71-2.87c-1.08.73-2.47 1.16-3.94 1.16-3.11 0-5.76-2.61-6.67-5.59l-3.85 3C3.38 20.31 7.37 23 12 23z" fill="#34A853" />
+                  </svg>
+                  <span className="text-label-md text-on-surface">{googleLoading ? "Redirecting\u2026" : "Continue with Google"}</span>
+                </button>
+              </div>
+
+              <div className="mt-8 text-center">
+                <p className="text-on-surface-variant text-label-sm">
+                  Don&apos;t have an account?{" "}
+                  <Link className="text-primary font-bold hover:text-primary-fixed transition-colors" href="/signup">Sign Up</Link>
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-6 text-center">
+            <p className="text-label-sm text-on-surface-variant">
+              By signing in, you agree to our{" "}
+              <a className="text-primary hover:underline" href="#">Terms</a>{" "}and{" "}
+              <a className="text-primary hover:underline" href="#">Privacy Policy</a>
+            </p>
+          </div>
+        </div>
+      </main>
     </div>
   );
 }

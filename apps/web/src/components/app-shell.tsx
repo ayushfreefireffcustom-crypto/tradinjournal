@@ -41,6 +41,7 @@ export default function AppShell({ children, accounts = [], selectedAccount, onS
   const router = useRouter();
   const { data: session } = useSession();
   const [signingOut, setSigningOut] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   async function handleSignOut() {
     setSigningOut(true);
@@ -49,128 +50,115 @@ export default function AppShell({ children, accounts = [], selectedAccount, onS
   }
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg)' }}>
-      {/* Sidebar */}
-      <aside style={{ width: 216, flexShrink: 0, borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', padding: '18px 10px', background: 'var(--surface)' }}>
-        {/* Logo */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '2px 8px', marginBottom: 24 }}>
-          <div style={{ width: 28, height: 28, borderRadius: 8, background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
-              <path d="M2 12L6 7L9 10L13 4" stroke="white" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/>
+    <div className="flex min-h-screen bg-surface-container-lowest font-sora text-on-surface">
+      <aside className="w-64 shrink-0 border-r border-outline-variant/30 flex flex-col p-6 bg-surface">
+        <div className="flex items-center gap-3 px-2 mb-10">
+          <div className="w-8 h-8 rounded-lg bg-primary-container flex items-center justify-center shrink-0">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+              <path d="M2 12L6 7L9 10L13 4" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </div>
-          <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', letterSpacing: '-0.2px' }}>TradingJournal</span>
+          <span className="font-sora text-sm font-semibold tracking-tight text-on-surface">TradinX</span>
         </div>
 
-        {/* Nav links */}
-        <nav style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+        <nav className="flex flex-col gap-2">
           {NAV.map(({ href, label, icon }) => {
             const active = pathname === href;
             return (
-              <Link key={href} href={href} style={{ textDecoration: 'none' }}>
+              <Link key={href} href={href} className="no-underline">
                 <div
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 9, padding: '7px 10px', borderRadius: 8,
-                    background: active ? 'var(--surface-2)' : 'transparent',
-                    color: active ? 'var(--text)' : 'var(--text-muted)',
-                    fontSize: 13, fontWeight: active ? 500 : 400, transition: 'all 0.12s', cursor: 'pointer',
-                  }}
-                  onMouseEnter={e => { if (!active) { (e.currentTarget as HTMLDivElement).style.background = 'var(--surface-2)'; (e.currentTarget as HTMLDivElement).style.color = 'var(--text)'; } }}
-                  onMouseLeave={e => { if (!active) { (e.currentTarget as HTMLDivElement).style.background = 'transparent'; (e.currentTarget as HTMLDivElement).style.color = 'var(--text-muted)'; } }}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl text-label-md transition-colors cursor-pointer ${
+                    active
+                      ? 'bg-surface-container-low text-on-surface font-semibold'
+                      : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'
+                  }`}
                 >
                   {icon}
                   {label}
-                  {active && <span style={{ marginLeft: 'auto', width: 5, height: 5, borderRadius: '50%', background: 'var(--accent)', flexShrink: 0 }} />}
+                  {active && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-primary shrink-0" />}
                 </div>
               </Link>
             );
           })}
         </nav>
-
-        {/* Bottom */}
-        <div style={{ marginTop: 'auto' }}>
-          <div style={{ height: 1, background: 'var(--border)', margin: '12px 0' }} />
-          <div style={{ padding: '6px 10px', marginBottom: 4 }}>
-            <p style={{ fontSize: 12, fontWeight: 500, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {session?.user.name || 'User'}
-            </p>
-            <p style={{ fontSize: 11, color: 'var(--text-subtle)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 1 }}>
-              {session?.user.email}
-            </p>
-          </div>
-          <button
-            onClick={handleSignOut}
-            disabled={signingOut}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 8,
-              background: 'transparent', border: 'none', color: 'var(--text-muted)', fontSize: 13,
-              cursor: 'pointer', transition: 'all 0.12s', width: '100%',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface-2)'; e.currentTarget.style.color = 'var(--red)'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-muted)'; }}
-          >
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-              <path d="M5 12H3a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1h2M9 10l3-3-3-3M12 7H5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            {signingOut ? 'Signing out…' : 'Sign out'}
-          </button>
-        </div>
       </aside>
 
-      {/* Main */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-        {/* Topbar */}
-        <div style={{ height: 52, borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', padding: '0 24px', gap: 10, flexShrink: 0 }}>
-          {/* Account tabs */}
+      <div className="flex-1 flex flex-col min-w-0">
+        <div className="h-16 border-b border-outline-variant/30 flex items-center px-8 gap-4 shrink-0 bg-surface-container-lowest/80 backdrop-blur-md sticky top-0 z-10">
           {accounts.length > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, overflow: 'hidden' }}>
+            <div className="flex items-center gap-3 flex-1 overflow-hidden">
               {accounts.map(acc => {
                 const active = selectedAccount?.id === acc.id;
                 return (
                   <button
                     key={acc.id}
                     onClick={() => onSelectAccount?.(acc)}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 6, padding: '4px 11px', borderRadius: 7,
-                      border: `1px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
-                      background: active ? 'rgba(99,102,241,0.1)' : 'transparent',
-                      color: active ? 'var(--accent)' : 'var(--text-muted)',
-                      fontSize: 12, fontWeight: 500, cursor: 'pointer', transition: 'all 0.12s', whiteSpace: 'nowrap',
-                    }}
-                    onMouseEnter={e => { if (!active) { e.currentTarget.style.borderColor = 'var(--border-strong)'; e.currentTarget.style.color = 'var(--text)'; } }}
-                    onMouseLeave={e => { if (!active) { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-muted)'; } }}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-label-sm font-semibold transition-colors whitespace-nowrap cursor-pointer ${
+                      active
+                        ? 'border-primary bg-primary/10 text-primary'
+                        : 'border-outline-variant/30 bg-transparent text-on-surface-variant hover:border-outline-variant hover:text-on-surface'
+                    }`}
                   >
-                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: active ? 'var(--accent)' : 'var(--text-subtle)', flexShrink: 0 }} />
-                    {acc.broker} <span style={{ opacity: 0.6 }}>#{acc.mt5Login}</span>
+                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${active ? 'bg-primary' : 'bg-on-surface-variant'}`} />
+                    {acc.broker} <span className="opacity-60">#{acc.mt5Login}</span>
                   </button>
                 );
               })}
             </div>
           )}
 
-          {topbarExtra && <div style={{ marginLeft: 'auto' }}>{topbarExtra}</div>}
+          {topbarExtra && <div className="ml-auto">{topbarExtra}</div>}
 
-          <button
-            onClick={onConnectClick}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 6, padding: '6px 13px', borderRadius: 8,
-              background: 'var(--accent)', border: 'none', color: '#fff', fontSize: 12, fontWeight: 600,
-              cursor: 'pointer', transition: 'background 0.12s, transform 0.1s', marginLeft: accounts.length === 0 ? 'auto' : 0, flexShrink: 0,
-            }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'var(--accent-hover)'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'var(--accent)'; }}
-            onMouseDown={e => { e.currentTarget.style.transform = 'scale(0.97)'; }}
-            onMouseUp={e => { e.currentTarget.style.transform = 'scale(1)'; }}
-          >
-            <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
-              <path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/>
-            </svg>
-            Connect Broker
-          </button>
+          <div className={`flex items-center gap-3 ${accounts.length === 0 && !topbarExtra ? 'ml-auto' : ''}`}>
+            <button
+              onClick={onConnectClick}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary-container text-white text-label-sm font-semibold hover:bg-primary-container/90 transition-all cursor-pointer border-none active:scale-95 shrink-0"
+            >
+              <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+                <path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/>
+              </svg>
+              Connect Broker
+            </button>
+
+            <div className="relative">
+              <button
+                onClick={() => setIsProfileOpen(!isProfileOpen)}
+                className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-sm cursor-pointer hover:bg-primary/30 transition-colors border border-primary/30 shrink-0"
+              >
+                {session?.user?.name ? session.user.name.charAt(0).toUpperCase() : 'U'}
+              </button>
+
+              {isProfileOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setIsProfileOpen(false)} />
+                  <div className="absolute right-0 mt-2 w-56 bg-surface border border-[#27272a] rounded-xl shadow-xl z-50 py-2">
+                    <div className="px-4 py-2">
+                      <p className="font-sora text-sm font-semibold text-on-surface overflow-hidden text-ellipsis whitespace-nowrap">
+                        {session?.user?.name || 'User'}
+                      </p>
+                      <p className="font-sora text-xs text-on-surface-variant overflow-hidden text-ellipsis whitespace-nowrap mt-0.5">
+                        {session?.user?.email}
+                      </p>
+                    </div>
+                    <div className="h-px bg-outline-variant/30 my-1" />
+                    <button
+                      onClick={handleSignOut}
+                      disabled={signingOut}
+                      className="w-full flex items-center gap-3 px-4 py-2 hover:bg-surface-container-low hover:text-red-400 text-sm text-on-surface-variant transition-colors cursor-pointer text-left border-none bg-transparent"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                        <path d="M5 12H3a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1h2M9 10l3-3-3-3M12 7H5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                      {signingOut ? 'Signing out…' : 'Sign out'}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
         </div>
 
-        {/* Page content */}
-        <div style={{ flex: 1, overflowY: 'auto' }}>
+        <div className="flex-1 overflow-y-auto">
           {children}
         </div>
       </div>

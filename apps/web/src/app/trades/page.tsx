@@ -99,12 +99,12 @@ export default function TradesPage() {
           </div>
           {/* Filters */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <select value={filterDir} onChange={e => setFilterDir(e.target.value as any)} style={selStyle}>
+            <select value={filterDir} onChange={e => setFilterDir(e.target.value as 'ALL' | 'LONG' | 'SHORT')} style={selStyle}>
               <option value="ALL">All directions</option>
               <option value="LONG">Long</option>
               <option value="SHORT">Short</option>
             </select>
-            <select value={filterStatus} onChange={e => setFilterStatus(e.target.value as any)} style={selStyle}>
+            <select value={filterStatus} onChange={e => setFilterStatus(e.target.value as 'ALL' | 'OPEN' | 'CLOSED')} style={selStyle}>
               <option value="ALL">All status</option>
               <option value="CLOSED">Closed</option>
               <option value="OPEN">Open</option>
@@ -130,7 +130,7 @@ export default function TradesPage() {
                     return (
                       <th
                         key={h}
-                        onClick={() => sortable && toggleSort(col as any)}
+                        onClick={() => sortable && toggleSort(col as 'openTime' | 'netPnl')}
                         style={{ padding: '10px 14px', textAlign: 'left', fontSize: 10, fontWeight: 500, color: active ? 'var(--accent)' : 'var(--text-subtle)', textTransform: 'uppercase', letterSpacing: '0.07em', cursor: sortable ? 'pointer' : 'default', whiteSpace: 'nowrap', userSelect: 'none' }}
                       >
                         {h} {active ? (sortDir === 'desc' ? '↓' : '↑') : ''}
