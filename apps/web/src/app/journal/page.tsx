@@ -1,343 +1,317 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
-import { authClient } from '@/lib/auth-client';
-import { api, type BrokerAccount, type JournalEntry } from '@/lib/api';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import AppShell from '@/components/app-shell';
 import ConnectBrokerModal from '@/components/connect-broker-modal';
+import { api, type BrokerAccount, type Trade } from '@/lib/api';
 
-const { useSession } = authClient;
-
-const EMOTIONS = [
-  { value: 'confident',  emoji: '😤', label: 'Confident' },
-  { value: 'calm',       emoji: '😌', label: 'Calm' },
-  { value: 'anxious',    emoji: '😰', label: 'Anxious' },
-  { value: 'greedy',     emoji: '🤑', label: 'Greedy' },
-  { value: 'fearful',    emoji: '😨', label: 'Fearful' },
-  { value: 'frustrated', emoji: '😤', label: 'Frustrated' },
-  { value: 'neutral',    emoji: '😐', label: 'Neutral' },
-];
-
-function emotionEmoji(v: string) {
-  return EMOTIONS.find(e => e.value === v)?.emoji ?? '📝';
+function fmtDur(s: number | null) {
+  if (s == null) return '—';
+  if (s < 60) return `${s}s`;
+  if (s < 3600) return `${Math.floor(s / 60)}m`;
+  if (s < 86400) return `${Math.floor(s / 3600)}h ${Math.floor((s % 3600) / 60)}m`;
+  return `${Math.floor(s / 86400)}d`;
 }
 
-function fmtDate(s: string) {
-  return new Date(s).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+// Deterministic synthetic OHLC walk + entry/exit markers for any trade
+function buildCandles(trade: Trade | null, n = 70) {
+  if (!trade) return { candles: [] as { o: number; h: number; l: number; c: number }[], entryIdx: 0, exitIdx: 0, min: 0, max: 1 };
+  const seed = parseInt(trade.positionId, 10) || 1;
+  // Simple seeded LCG
+  let s = seed;
+  const rand = () => { s = (s * 1664525 + 1013904223) >>> 0; return ((s >>> 0) / 4294967296); };
+
+  const baseVol = trade.symbol === 'XAUUSD' ? 0.4
+    : trade.symbol === 'BTCUSD' ? 80
+    : trade.symbol === 'USDJPY' ? 0.08
+    : trade.symbol.includes('100') || trade.symbol.includes('30') ? 18
+    : 0.0008;
+
+  const entryIdx = Math.floor(n * 0.25);
+  const exitIdx  = Math.floor(n * 0.70);
+  const entry = trade.entryPrice;
+  const exit  = trade.exitPrice ?? entry;
+
+  let price = entry - (rand() - 0.3) * baseVol * 14;
+  const candles: { o: number; h: number; l: number; c: number }[] = [];
+  const drift = (exit - price) / (exitIdx - 0);
+  for (let i = 0; i < n; i++) {
+    const o = price;
+    const noise = (rand() - 0.5) * baseVol * 3;
+    const d = i <= exitIdx ? drift : (rand() - 0.5) * baseVol * 2;
+    price = price + d + noise;
+    const c = price;
+    const h = Math.max(o, c) + Math.abs(noise) * 0.6;
+    const l = Math.min(o, c) - Math.abs(noise) * 0.6;
+    candles.push({ o, h, l, c });
+  }
+  // Force precise entry/exit prices on those candles
+  candles[entryIdx]!.c = entry;
+  candles[exitIdx]!.c = exit;
+
+  const min = Math.min(...candles.map(c => c.l));
+  const max = Math.max(...candles.map(c => c.h));
+  return { candles, entryIdx, exitIdx, min, max };
 }
 
-interface FormState {
-  title: string;
-  body: string;
-  emotion: string;
-  tags: string;
-  entryDate: string;
-}
-
-const emptyForm = (): FormState => ({
-  title: '',
-  body: '',
-  emotion: '',
-  tags: '',
-  entryDate: new Date().toISOString().slice(0, 10),
-});
-
-export default function JournalPage() {
-  const router = useRouter();
-  const { data: session, isPending } = useSession();
-  const [accounts, setAccounts] = useState<BrokerAccount[]>([]);
-  const [selected, setSelected] = useState<BrokerAccount | null>(null);
-  const [entries, setEntries] = useState<JournalEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [showConnect, setShowConnect] = useState(false);
-
-  // Editor state
-  const [showEditor, setShowEditor] = useState(false);
-  const [editing, setEditing] = useState<JournalEntry | null>(null);
-  const [form, setForm] = useState<FormState>(emptyForm());
-  const [saving, setSaving] = useState(false);
-  const [savingDeleteId, setSavingDeleteId] = useState<string | null>(null);
-
-  useEffect(() => { if (!isPending && !session) router.push('/login'); }, [session, isPending, router]);
-
-  const loadAccounts = useCallback(async () => {
-    try {
-      const data = await api.accounts.list();
-      setAccounts(data);
-      if (data.length > 0) setSelected(data[0] ?? null);
-    } catch { /* ignore */ }
-    finally { setLoading(false); }
-  }, []);
-
-  useEffect(() => { if (session) loadAccounts(); }, [session, loadAccounts]);
-
-  const loadEntries = useCallback(async (acc?: BrokerAccount | null) => {
-    setLoading(true);
-    try { setEntries(await api.journal.list(acc?.id)); }
-    catch { /* ignore */ }
-    finally { setLoading(false); }
-  }, []);
-
-  useEffect(() => { if (session) loadEntries(selected); }, [session, selected, loadEntries]);
-
-  function onConnected(account: BrokerAccount) {
-    setAccounts(prev => { const e = prev.find(a => a.id === account.id); return e ? prev.map(a => a.id === account.id ? account : a) : [account, ...prev]; });
-    setSelected(account);
-    setShowConnect(false);
+function CandleChart({ trade }: { trade: Trade | null }) {
+  const { candles, entryIdx, exitIdx, min, max } = useMemo(() => buildCandles(trade, 70), [trade]);
+  if (!trade || candles.length === 0) {
+    return <div className="flex items-center justify-center h-full text-fg-3 text-[12px]">Select a trade →</div>;
   }
-
-  function openNew() {
-    setEditing(null);
-    setForm(emptyForm());
-    setShowEditor(true);
-  }
-
-  function openEdit(entry: JournalEntry) {
-    setEditing(entry);
-    setForm({
-      title: entry.title ?? '',
-      body: entry.body,
-      emotion: entry.emotion ?? '',
-      tags: entry.tags.join(', '),
-      entryDate: entry.entryDate.slice(0, 10),
-    });
-    setShowEditor(true);
-  }
-
-  async function handleSave() {
-    if (!form.body.trim()) return;
-    setSaving(true);
-    try {
-      const payload = {
-        title: form.title.trim() || undefined,
-        body: form.body.trim(),
-        emotion: form.emotion || undefined,
-        tags: form.tags ? form.tags.split(',').map(t => t.trim()).filter(Boolean) : [],
-        entryDate: form.entryDate,
-        brokerAccountId: selected?.id,
-      };
-
-      if (editing) {
-        const updated = await api.journal.update(editing.id, payload);
-        setEntries(prev => prev.map(e => e.id === updated.id ? updated : e));
-      } else {
-        const created = await api.journal.create(payload);
-        setEntries(prev => [created, ...prev]);
-      }
-      setShowEditor(false);
-      setEditing(null);
-    } catch { /* ignore */ }
-    finally { setSaving(false); }
-  }
-
-  async function handleDelete(id: string) {
-    setSavingDeleteId(id);
-    try {
-      await api.journal.delete(id);
-      setEntries(prev => prev.filter(e => e.id !== id));
-    } catch { /* ignore */ }
-    finally { setSavingDeleteId(null); }
-  }
-
-  if (isPending || (!session && !isPending)) return null;
-
-  const inputStyle = { width: '100%', padding: '8px 11px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface-2)', color: 'var(--text)', fontSize: 13, outline: 'none', boxSizing: 'border-box' as const, transition: 'border-color 0.15s' };
-  const labelStyle = { display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 5, textTransform: 'uppercase' as const, letterSpacing: '0.07em' };
+  const W = 900, H = 460;
+  const PAD = { top: 20, right: 70, bottom: 30, left: 14 };
+  const innerW = W - PAD.left - PAD.right;
+  const innerH = H - PAD.top - PAD.bottom;
+  const span = max - min || 1;
+  const gap = 2;
+  const cw = (innerW - gap * (candles.length - 1)) / candles.length;
+  const toX = (i: number) => PAD.left + i * (cw + gap);
+  const toY = (v: number) => PAD.top + innerH - ((v - min) / span) * innerH;
 
   return (
-    <AppShell accounts={accounts} selectedAccount={selected} onSelectAccount={setSelected} onConnectClick={() => setShowConnect(true)}>
-      <div style={{ padding: '28px 28px', maxWidth: 860, margin: '0 auto' }} className="fade-up">
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24 }}>
-          <div>
-            <h1 style={{ fontSize: 19, fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.3px' }}>Journal</h1>
-            <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>Record your trading thoughts, emotions, and lessons</p>
-          </div>
-          <button
-            onClick={openNew}
-            style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '7px 14px', borderRadius: 9, background: 'var(--accent)', border: 'none', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
-            onMouseEnter={e => e.currentTarget.style.background = 'var(--accent-hover)'}
-            onMouseLeave={e => e.currentTarget.style.background = 'var(--accent)'}
-          >
-            <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
-              <path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/>
-            </svg>
-            New Entry
-          </button>
-        </div>
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-full" preserveAspectRatio="none" data-testid="candle-chart">
+      <defs>
+        <pattern id="grid" width="60" height="60" patternUnits="userSpaceOnUse">
+          <path d="M 60 0 L 0 0 0 60" fill="none" stroke="#1E1E1E" strokeWidth="0.5" />
+        </pattern>
+      </defs>
+      <rect x={0} y={0} width={W} height={H} fill="url(#grid)" />
 
-        {/* Entry list */}
-        {loading ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '18px 20px' }}>
-                <div className="skeleton" style={{ height: 14, width: 160, borderRadius: 5, marginBottom: 10 }} />
-                <div className="skeleton" style={{ height: 11, width: '90%', borderRadius: 4, marginBottom: 6 }} />
-                <div className="skeleton" style={{ height: 11, width: '70%', borderRadius: 4 }} />
-              </div>
-            ))}
+      {/* y axis labels (right) */}
+      {Array.from({ length: 5 }).map((_, i) => {
+        const v = min + (span * i) / 4;
+        return (
+          <g key={i}>
+            <line x1={PAD.left} x2={W - PAD.right} y1={toY(v)} y2={toY(v)} stroke="#1E1E1E" strokeDasharray="2 4" />
+            <text x={W - PAD.right + 8} y={toY(v) + 4} fontSize="10" fontFamily="JetBrains Mono" fill="#71717A">{v.toFixed(trade.symbol === 'USDJPY' ? 3 : trade.symbol === 'BTCUSD' || trade.symbol.includes('100') || trade.symbol.includes('30') ? 1 : 5)}</text>
+          </g>
+        );
+      })}
+
+      {/* candles */}
+      {candles.map((cd, i) => {
+        const up = cd.c >= cd.o;
+        const color = up ? '#00C566' : '#FF3B30';
+        const x = toX(i);
+        const yH = toY(cd.h);
+        const yL = toY(cd.l);
+        const yO = toY(cd.o);
+        const yC = toY(cd.c);
+        const top = Math.min(yO, yC);
+        const bot = Math.max(yO, yC);
+        return (
+          <g key={i}>
+            <line x1={x + cw / 2} x2={x + cw / 2} y1={yH} y2={yL} stroke={color} strokeWidth="1" />
+            <rect x={x} y={top} width={cw} height={Math.max(1, bot - top)} fill={color} />
+          </g>
+        );
+      })}
+
+      {/* Entry / exit lines */}
+      <line x1={PAD.left} x2={W - PAD.right} y1={toY(trade.entryPrice)} y2={toY(trade.entryPrice)} stroke="#FFFFFF" strokeDasharray="3 3" opacity="0.6" />
+      <line x1={PAD.left} x2={W - PAD.right} y1={toY(trade.exitPrice ?? trade.entryPrice)} y2={toY(trade.exitPrice ?? trade.entryPrice)} stroke={trade.netPnl >= 0 ? '#00C566' : '#FF3B30'} strokeDasharray="3 3" opacity="0.7" />
+
+      {/* Entry marker */}
+      <g transform={`translate(${toX(entryIdx) + cw / 2}, ${toY(trade.entryPrice)})`}>
+        <polygon points="-6,-6 6,-6 0,0" fill={trade.direction === 'LONG' ? '#00C566' : '#FF3B30'} />
+        <text x="-8" y="-10" textAnchor="end" fontSize="10" fontFamily="JetBrains Mono" fill="#FFFFFF">ENTRY {trade.entryPrice}</text>
+      </g>
+
+      {/* Exit marker */}
+      <g transform={`translate(${toX(exitIdx) + cw / 2}, ${toY(trade.exitPrice ?? trade.entryPrice)})`}>
+        <polygon points="-6,6 6,6 0,0" fill={trade.netPnl >= 0 ? '#00C566' : '#FF3B30'} />
+        <text x="8" y="14" fontSize="10" fontFamily="JetBrains Mono" fill="#FFFFFF">EXIT {trade.exitPrice}</text>
+      </g>
+    </svg>
+  );
+}
+
+export default function ChartReplayPage() {
+  const [accounts, setAccounts] = useState<BrokerAccount[]>([]);
+  const [selected, setSelected] = useState<BrokerAccount | null>(null);
+  const [trades, setTrades] = useState<Trade[]>([]);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [note, setNote] = useState('Held the trend continuation after London open sweep. Stops set at structural low; took partials at +2R, trailed remainder to +3.2R.');
+  const [emotion, setEmotion] = useState('Disciplined');
+  const [showConnect, setShowConnect] = useState(false);
+
+  const initAccounts = useCallback(async () => {
+    const accs = await api.accounts.list();
+    setAccounts(accs);
+    setSelected(accs[0] ?? null);
+  }, []);
+  useEffect(() => { initAccounts(); }, [initAccounts]);
+
+  useEffect(() => {
+    if (!selected) return;
+    (async () => {
+      const t = await api.trades.list(selected.id);
+      setTrades(t);
+      setActiveId(t[0]?.positionId ?? null);
+    })();
+  }, [selected]);
+
+  const active = trades.find(t => t.positionId === activeId) ?? null;
+
+  function onConnected(a: BrokerAccount) {
+    setAccounts(prev => prev.find(x => x.id === a.id) ? prev.map(x => x.id === a.id ? a : x) : [a, ...prev]);
+    setSelected(a); setShowConnect(false);
+  }
+
+  return (
+    <AppShell
+      accounts={accounts}
+      selectedAccount={selected}
+      onSelectAccount={setSelected}
+      onConnectClick={() => setShowConnect(true)}
+      pageTitle="Chart Replay"
+      pageSubtitle="// FORENSIC AUDIT"
+    >
+      <div className="grid grid-cols-12 gap-3 p-3 lg:p-4 fade-up" data-testid="chart-replay-page">
+        {/* Left: trade list */}
+        <aside className="tcard col-span-12 lg:col-span-3 p-0 max-h-[calc(100vh-120px)] overflow-y-auto" data-testid="trade-list">
+          <div className="px-4 py-3 border-b border-border-soft flex items-center justify-between sticky top-0 bg-app">
+            <div className="text-[10px] tracking-[0.25em] text-fg-3">POSITION_LOG</div>
+            <span className="text-[10px] text-fg-3 numeric">{trades.length}</span>
           </div>
-        ) : entries.length === 0 ? (
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '60px 24px', textAlign: 'center' }}>
-            <div style={{ fontSize: 32, marginBottom: 12 }}>📝</div>
-            <p style={{ fontWeight: 600, color: 'var(--text)', marginBottom: 6 }}>No journal entries yet</p>
-            <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 20 }}>Write your first entry to track your trading mindset</p>
-            <button onClick={openNew} style={{ padding: '7px 16px', borderRadius: 8, background: 'var(--accent)', border: 'none', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-              Write First Entry
-            </button>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {entries.map(entry => (
-              <div
-                key={entry.id}
-                style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '18px 20px', transition: 'border-color 0.15s' }}
-                onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--border-strong)')}
-                onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}
+          {trades.map(t => {
+            const active = t.positionId === activeId;
+            const pos = t.netPnl >= 0;
+            return (
+              <button
+                key={t.positionId}
+                onClick={() => setActiveId(t.positionId)}
+                data-testid={`trade-row-${t.positionId}`}
+                className={`w-full text-left px-4 py-3 border-b border-border-soft transition-colors ${active ? 'bg-surface border-l-2 border-l-profit pl-[14px]' : 'hover:bg-surface-hover'}`}
               >
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-                      {entry.emotion && <span style={{ fontSize: 16 }}>{emotionEmoji(entry.emotion)}</span>}
-                      <span style={{ fontSize: 11, color: 'var(--text-subtle)' }}>{fmtDate(entry.entryDate)}</span>
-                      {entry.tags.length > 0 && entry.tags.map(tag => (
-                        <span key={tag} style={{ fontSize: 10, padding: '1px 7px', borderRadius: 4, background: 'rgba(99,102,241,0.1)', color: 'var(--accent)', fontWeight: 600 }}>{tag}</span>
-                      ))}
-                    </div>
-                    {entry.title && (
-                      <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', marginBottom: 6, letterSpacing: '-0.2px' }}>{entry.title}</p>
-                    )}
-                    <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                      {entry.body.length > 280 ? entry.body.slice(0, 280) + '…' : entry.body}
-                    </p>
-                  </div>
-                  <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                    <button
-                      onClick={() => openEdit(entry)}
-                      style={{ padding: '5px 10px', borderRadius: 7, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontSize: 11, fontWeight: 500, cursor: 'pointer' }}
-                      onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface-2)'; e.currentTarget.style.color = 'var(--text)'; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-muted)'; }}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDelete(entry.id)}
-                      disabled={savingDeleteId === entry.id}
-                      style={{ padding: '5px 10px', borderRadius: 7, border: '1px solid transparent', background: 'transparent', color: 'var(--text-subtle)', fontSize: 11, cursor: 'pointer' }}
-                      onMouseEnter={e => { e.currentTarget.style.color = 'var(--red)'; e.currentTarget.style.borderColor = 'rgba(240,82,82,0.3)'; }}
-                      onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-subtle)'; e.currentTarget.style.borderColor = 'transparent'; }}
-                    >
-                      {savingDeleteId === entry.id ? '…' : 'Delete'}
-                    </button>
-                  </div>
+                <div className="flex items-center justify-between">
+                  <span className="font-display font-bold tracking-tight text-[14px]">{t.symbol}</span>
+                  <span className={`text-[11px] numeric font-medium ${pos ? 'text-profit' : 'text-loss'}`}>
+                    {pos ? '+' : ''}${t.netPnl.toFixed(2)}
+                  </span>
                 </div>
+                <div className="flex items-center justify-between mt-1 text-[10px] text-fg-3 tracking-widest numeric">
+                  <span>{t.direction} · {t.volume.toFixed(2)} LOTS</span>
+                  <span>{new Date(t.openTime).toLocaleDateString('en-US', { day: '2-digit', month: 'short' })}</span>
+                </div>
+              </button>
+            );
+          })}
+        </aside>
+
+        {/* Center: chart */}
+        <section className="col-span-12 lg:col-span-6 flex flex-col gap-3">
+          <div className="tcard p-0 flex-1">
+            <div className="px-4 py-3 border-b border-border-soft flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <span className="font-display font-black text-[18px] tracking-tighter">{active?.symbol ?? '—'}</span>
+                <span className={`text-[11px] tracking-widest ${active?.direction === 'LONG' ? 'text-profit' : 'text-loss'}`}>
+                  {active?.direction} · {active?.volume.toFixed(2)} LOTS
+                </span>
+                <span className={`text-[11px] numeric ${active && active.netPnl >= 0 ? 'text-profit' : 'text-loss'}`}>
+                  {active ? `${active.netPnl >= 0 ? '+' : ''}$${active.netPnl.toFixed(2)}` : ''}
+                </span>
               </div>
-            ))}
+              <div className="flex gap-1 text-[10px] tracking-widest">
+                {['1m', '5m', '15m', '1h', '4h', '1D'].map((t, i) => (
+                  <button key={t} className={`px-2 py-1 border ${i === 2 ? 'border-fg text-fg bg-surface' : 'border-border-soft text-fg-3 hover:text-fg hover:border-border-strong'}`}>{t}</button>
+                ))}
+              </div>
+            </div>
+            <div className="h-[460px]"><CandleChart trade={active} /></div>
+            <div className="px-4 py-3 border-t border-border-soft grid grid-cols-4 gap-3 text-[11px]">
+              <div>
+                <div className="text-[10px] tracking-widest text-fg-3">ENTRY</div>
+                <div className="numeric mt-0.5">{active?.entryPrice.toFixed(active?.symbol === 'USDJPY' ? 3 : 5)}</div>
+              </div>
+              <div>
+                <div className="text-[10px] tracking-widest text-fg-3">EXIT</div>
+                <div className="numeric mt-0.5">{active?.exitPrice?.toFixed(active?.symbol === 'USDJPY' ? 3 : 5)}</div>
+              </div>
+              <div>
+                <div className="text-[10px] tracking-widest text-fg-3">HELD</div>
+                <div className="numeric mt-0.5">{fmtDur(active?.durationSecs ?? null)}</div>
+              </div>
+              <div>
+                <div className="text-[10px] tracking-widest text-fg-3">COMMISSION</div>
+                <div className="numeric mt-0.5 text-fg-2">${active?.commission.toFixed(2)}</div>
+              </div>
+            </div>
           </div>
-        )}
+
+          {/* Replay controls */}
+          <div className="tcard p-3 flex items-center justify-between">
+            <div className="flex items-center gap-1">
+              {['⏮', '◀', '⏸', '▶', '⏭'].map((sym, i) => (
+                <button key={i} className="w-8 h-8 border border-border-soft hover:border-border-strong hover:bg-surface-hover transition-colors text-[14px]">
+                  {sym}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-3 text-[10px] tracking-widest text-fg-3 numeric">
+              <span>SPEED · 1×</span>
+              <span>BAR · 23/70</span>
+              <span className="text-profit">● REPLAY MODE</span>
+            </div>
+          </div>
+        </section>
+
+        {/* Right: journal panel */}
+        <aside className="tcard col-span-12 lg:col-span-3 p-0 flex flex-col" data-testid="journal-panel">
+          <div className="px-4 py-3 border-b border-border-soft">
+            <div className="text-[10px] tracking-[0.25em] text-fg-3">JOURNAL_ENTRY</div>
+            <div className="font-display font-bold text-[15px] tracking-tight mt-1">Trade notes</div>
+          </div>
+
+          <div className="p-4 flex flex-col gap-4 flex-1 overflow-y-auto">
+            <div>
+              <div className="text-[10px] tracking-widest text-fg-3 mb-2">EMOTION TAG</div>
+              <div className="flex flex-wrap gap-1.5">
+                {['Disciplined', 'Confident', 'Patient', 'FOMO', 'Revenge', 'Hesitant'].map(e => (
+                  <button
+                    key={e}
+                    onClick={() => setEmotion(e)}
+                    data-testid={`emotion-${e.toLowerCase()}`}
+                    className={`px-2.5 py-1 text-[10px] tracking-widest border transition-colors ${
+                      emotion === e
+                        ? (['FOMO', 'Revenge', 'Hesitant'].includes(e) ? 'bg-loss/15 border-loss text-loss' : 'bg-profit/15 border-profit text-profit')
+                        : 'border-border-soft text-fg-3 hover:text-fg hover:border-border-strong'
+                    }`}
+                  >
+                    {e.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <div className="text-[10px] tracking-widest text-fg-3 mb-2">SETUP TAGS</div>
+              <div className="flex flex-wrap gap-1.5">
+                {(active?.tags ?? ['Trend Follow']).map(t => (
+                  <span key={t} className="px-2 py-1 text-[10px] tracking-widest border border-border-soft text-fg-2">{t.toUpperCase()}</span>
+                ))}
+                <button className="px-2 py-1 text-[10px] tracking-widest border border-dashed border-border-strong text-fg-3 hover:text-fg">+ ADD</button>
+              </div>
+            </div>
+
+            <div className="flex-1 flex flex-col">
+              <div className="text-[10px] tracking-widest text-fg-3 mb-2">PRE/POST NOTES</div>
+              <textarea
+                value={note}
+                onChange={e => setNote(e.target.value)}
+                data-testid="journal-note"
+                className="tinput flex-1 min-h-[140px] resize-none leading-relaxed"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 pt-2 border-t border-border-soft">
+              <button className="btn btn-ghost py-2 text-[10px]">SCREENSHOT</button>
+              <button className="btn btn-primary py-2 text-[10px]" data-testid="save-journal">SAVE ENTRY</button>
+            </div>
+          </div>
+        </aside>
       </div>
-
-      {/* Editor modal */}
-      {showEditor && (
-        <div
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 20 }}
-          onClick={e => { if (e.target === e.currentTarget) setShowEditor(false); }}
-        >
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 16, padding: '24px 26px', width: '100%', maxWidth: 560 }} className="fade-up">
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-              <h2 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.2px' }}>
-                {editing ? 'Edit Entry' : 'New Journal Entry'}
-              </h2>
-              <button onClick={() => setShowEditor(false)} style={{ background: 'transparent', border: 'none', color: 'var(--text-subtle)', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: 2 }}>×</button>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <div>
-                <label style={labelStyle}>Date</label>
-                <input type="date" value={form.entryDate} onChange={e => setForm(f => ({ ...f, entryDate: e.target.value }))} style={{ ...inputStyle, colorScheme: 'dark' }} />
-              </div>
-
-              <div>
-                <label style={labelStyle}>Title (optional)</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Revenge traded the NFP move"
-                  value={form.title}
-                  onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-                  style={inputStyle}
-                  onFocus={e => e.target.style.borderColor = 'var(--accent)'}
-                  onBlur={e => e.target.style.borderColor = 'var(--border)'}
-                />
-              </div>
-
-              <div>
-                <label style={labelStyle}>Notes <span style={{ color: 'var(--red)' }}>*</span></label>
-                <textarea
-                  placeholder="What happened today? What did you learn? How are you feeling about your trades?"
-                  value={form.body}
-                  onChange={e => setForm(f => ({ ...f, body: e.target.value }))}
-                  rows={6}
-                  style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.6, fontFamily: 'inherit' }}
-                  onFocus={e => e.target.style.borderColor = 'var(--accent)'}
-                  onBlur={e => e.target.style.borderColor = 'var(--border)'}
-                />
-              </div>
-
-              <div>
-                <label style={labelStyle}>How are you feeling?</label>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {EMOTIONS.map(({ value, emoji, label }) => {
-                    const active = form.emotion === value;
-                    return (
-                      <button
-                        key={value}
-                        onClick={() => setForm(f => ({ ...f, emotion: active ? '' : value }))}
-                        style={{
-                          padding: '5px 11px', borderRadius: 7, border: `1px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
-                          background: active ? 'rgba(99,102,241,0.12)' : 'transparent',
-                          color: active ? 'var(--accent)' : 'var(--text-muted)',
-                          fontSize: 12, cursor: 'pointer', transition: 'all 0.12s',
-                        }}
-                      >
-                        {emoji} {label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div>
-                <label style={labelStyle}>Tags (comma-separated)</label>
-                <input
-                  type="text"
-                  placeholder="e.g. XAUUSD, news-trade, mistake"
-                  value={form.tags}
-                  onChange={e => setForm(f => ({ ...f, tags: e.target.value }))}
-                  style={inputStyle}
-                  onFocus={e => e.target.style.borderColor = 'var(--accent)'}
-                  onBlur={e => e.target.style.borderColor = 'var(--border)'}
-                />
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 22 }}>
-              <button
-                onClick={() => setShowEditor(false)}
-                style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer' }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={saving || !form.body.trim()}
-                style={{ padding: '7px 18px', borderRadius: 8, background: form.body.trim() ? 'var(--accent)' : 'var(--surface-3)', border: 'none', color: form.body.trim() ? '#fff' : 'var(--text-subtle)', fontSize: 13, fontWeight: 600, cursor: form.body.trim() ? 'pointer' : 'default', transition: 'all 0.12s' }}
-              >
-                {saving ? 'Saving…' : editing ? 'Save Changes' : 'Add Entry'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {showConnect && <ConnectBrokerModal onClose={() => setShowConnect(false)} onConnected={onConnected} />}
     </AppShell>

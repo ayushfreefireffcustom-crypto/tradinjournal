@@ -1,200 +1,148 @@
 'use client';
 
-import { useEffect, useState, useCallback, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
-import { authClient } from '@/lib/auth-client';
-import { api, type BrokerAccount, type Trade } from '@/lib/api';
+import { useEffect, useState, useCallback } from 'react';
 import AppShell from '@/components/app-shell';
 import ConnectBrokerModal from '@/components/connect-broker-modal';
-
-const { useSession } = authClient;
-
-function fmtDur(s: number | null) {
-  if (!s) return '—';
-  if (s < 60) return `${Math.round(s)}s`;
-  if (s < 3600) return `${Math.floor(s / 60)}m`;
-  if (s < 86400) return `${Math.floor(s / 3600)}h ${Math.floor((s % 3600) / 60)}m`;
-  return `${Math.floor(s / 86400)}d`;
-}
-
-const COLS = ['Direction', 'Symbol', 'Open', 'Close', 'Volume', 'Entry', 'Exit', 'Gross P&L', 'Commission', 'Net P&L', 'Duration', 'Status'];
+import DealsTable from '@/components/deals-table';
+import { api, type BrokerAccount, type Deal, type Trade } from '@/lib/api';
 
 export default function TradesPage() {
-  const router = useRouter();
-  const { data: session, isPending } = useSession();
   const [accounts, setAccounts] = useState<BrokerAccount[]>([]);
   const [selected, setSelected] = useState<BrokerAccount | null>(null);
   const [trades, setTrades] = useState<Trade[]>([]);
+  const [deals, setDeals] = useState<Deal[]>([]);
   const [loading, setLoading] = useState(true);
   const [showConnect, setShowConnect] = useState(false);
+  const [tab, setTab] = useState<'trades' | 'deals'>('trades');
+  const [filter, setFilter] = useState<'ALL' | 'LONG' | 'SHORT' | 'WIN' | 'LOSS'>('ALL');
 
-  // Filters
-  const [filterDir, setFilterDir] = useState<'ALL' | 'LONG' | 'SHORT'>('ALL');
-  const [filterStatus, setFilterStatus] = useState<'ALL' | 'OPEN' | 'CLOSED'>('ALL');
-  const [filterSymbol, setFilterSymbol] = useState('');
-  const [sortCol, setSortCol] = useState<'openTime' | 'netPnl'>('openTime');
-  const [sortDir, setSortDir] = useState<'desc' | 'asc'>('desc');
-
-  useEffect(() => { if (!isPending && !session) router.push('/login'); }, [session, isPending, router]);
-
-  const loadAccounts = useCallback(async () => {
-    try {
-      const data = await api.accounts.list();
-      setAccounts(data);
-      if (data.length > 0) setSelected(data[0] ?? null);
-    } catch { /* ignore */ }
-    finally { setLoading(false); }
+  const init = useCallback(async () => {
+    const accs = await api.accounts.list();
+    setAccounts(accs);
+    setSelected(accs[0] ?? null);
   }, []);
+  useEffect(() => { init(); }, [init]);
 
-  useEffect(() => { if (session) loadAccounts(); }, [session, loadAccounts]);
+  useEffect(() => {
+    if (!selected) return;
+    (async () => {
+      setLoading(true);
+      const [t, d] = await Promise.all([api.trades.list(selected.id), api.trades.deals(selected.id)]);
+      setTrades(t); setDeals(d);
+      setLoading(false);
+    })();
+  }, [selected]);
 
-  const loadTrades = useCallback(async (acc: BrokerAccount) => {
-    setLoading(true);
-    try {
-      setTrades(await api.trades.list(acc.id));
-    } catch { /* ignore */ }
-    finally { setLoading(false); }
-  }, []);
+  const filtered = trades.filter(t => {
+    if (filter === 'LONG') return t.direction === 'LONG';
+    if (filter === 'SHORT') return t.direction === 'SHORT';
+    if (filter === 'WIN') return t.netPnl > 0;
+    if (filter === 'LOSS') return t.netPnl <= 0;
+    return true;
+  });
 
-  useEffect(() => { if (selected) loadTrades(selected); }, [selected, loadTrades]);
-
-  const symbols = useMemo(() => Array.from(new Set(trades.map(t => t.symbol))).sort(), [trades]);
-
-  const filtered = useMemo(() => {
-    let t = [...trades];
-    if (filterDir !== 'ALL') t = t.filter(x => x.direction === filterDir);
-    if (filterStatus !== 'ALL') t = t.filter(x => x.status === filterStatus);
-    if (filterSymbol) t = t.filter(x => x.symbol === filterSymbol);
-    t.sort((a, b) => {
-      const diff = sortCol === 'openTime'
-        ? new Date(a.openTime).getTime() - new Date(b.openTime).getTime()
-        : a.netPnl - b.netPnl;
-      return sortDir === 'desc' ? -diff : diff;
-    });
-    return t;
-  }, [trades, filterDir, filterStatus, filterSymbol, sortCol, sortDir]);
-
-  function toggleSort(col: typeof sortCol) {
-    if (sortCol === col) setSortDir(d => d === 'desc' ? 'asc' : 'desc');
-    else { setSortCol(col); setSortDir('desc'); }
+  function onConnected(a: BrokerAccount) {
+    setAccounts(prev => prev.find(x => x.id === a.id) ? prev.map(x => x.id === a.id ? a : x) : [a, ...prev]);
+    setSelected(a); setShowConnect(false);
   }
-
-  function onConnected(account: BrokerAccount) {
-    setAccounts(prev => { const e = prev.find(a => a.id === account.id); return e ? prev.map(a => a.id === account.id ? account : a) : [account, ...prev]; });
-    setSelected(account);
-    setShowConnect(false);
-  }
-
-  if (isPending || (!session && !isPending)) return null;
-
-  const selStyle = { padding: '5px 10px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface-2)', color: 'var(--text)', fontSize: 12, outline: 'none', cursor: 'pointer' };
 
   return (
-    <AppShell accounts={accounts} selectedAccount={selected} onSelectAccount={acc => { setSelected(acc); }} onConnectClick={() => setShowConnect(true)}>
-      <div style={{ padding: '28px 28px', maxWidth: 1200, margin: '0 auto' }} className="fade-up">
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20 }}>
+    <AppShell
+      accounts={accounts}
+      selectedAccount={selected}
+      onSelectAccount={setSelected}
+      onConnectClick={() => setShowConnect(true)}
+      pageTitle="Trade Log"
+      pageSubtitle="// AUDIT TRAIL"
+    >
+      <div className="p-6 lg:p-8 max-w-[1400px] mx-auto fade-up" data-testid="trades-page">
+        <div className="flex items-end justify-between gap-4 flex-wrap mb-6">
           <div>
-            <h1 style={{ fontSize: 19, fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.3px' }}>Trade Log</h1>
-            <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>{loading ? '…' : `${filtered.length} of ${trades.length} trades`}</p>
+            <div className="text-[10px] tracking-[0.25em] text-fg-3">[ TRADE LOG // {selected?.broker.toUpperCase()} ]</div>
+            <h1 className="font-display font-black text-4xl tracking-tighter mt-2">{trades.length} POSITIONS</h1>
+            <div className="text-[11px] text-fg-3 tracking-widest mt-1 numeric">RECONSTRUCTED FROM {deals.length} DEALS</div>
           </div>
-          {/* Filters */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <select value={filterDir} onChange={e => setFilterDir(e.target.value as any)} style={selStyle}>
-              <option value="ALL">All directions</option>
-              <option value="LONG">Long</option>
-              <option value="SHORT">Short</option>
-            </select>
-            <select value={filterStatus} onChange={e => setFilterStatus(e.target.value as any)} style={selStyle}>
-              <option value="ALL">All status</option>
-              <option value="CLOSED">Closed</option>
-              <option value="OPEN">Open</option>
-            </select>
-            {symbols.length > 0 && (
-              <select value={filterSymbol} onChange={e => setFilterSymbol(e.target.value)} style={selStyle}>
-                <option value="">All symbols</option>
-                {symbols.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
-            )}
+          <div className="flex gap-1">
+            {(['ALL', 'LONG', 'SHORT', 'WIN', 'LOSS'] as const).map(f => (
+              <button
+                key={f}
+                onClick={() => setFilter(f)}
+                data-testid={`filter-${f.toLowerCase()}`}
+                className={`px-3 py-1.5 text-[10px] tracking-[0.22em] border ${filter === f ? 'border-fg text-fg bg-surface' : 'border-border-soft text-fg-3 hover:text-fg hover:border-border-strong'}`}
+              >
+                {f}
+              </button>
+            ))}
           </div>
         </div>
 
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                  {COLS.map(h => {
-                    const sortable = h === 'Open' || h === 'Net P&L';
-                    const col = h === 'Open' ? 'openTime' : 'netPnl';
-                    const active = (sortable && sortCol === col);
-                    return (
-                      <th
-                        key={h}
-                        onClick={() => sortable && toggleSort(col as any)}
-                        style={{ padding: '10px 14px', textAlign: 'left', fontSize: 10, fontWeight: 500, color: active ? 'var(--accent)' : 'var(--text-subtle)', textTransform: 'uppercase', letterSpacing: '0.07em', cursor: sortable ? 'pointer' : 'default', whiteSpace: 'nowrap', userSelect: 'none' }}
-                      >
-                        {h} {active ? (sortDir === 'desc' ? '↓' : '↑') : ''}
-                      </th>
-                    );
-                  })}
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  Array.from({ length: 8 }).map((_, i) => (
-                    <tr key={i}>
-                      {COLS.map((_, j) => (
-                        <td key={j} style={{ padding: '11px 14px' }}>
-                          <div className="skeleton" style={{ height: 11, width: 60 + (j % 3) * 20, borderRadius: 4 }} />
-                        </td>
-                      ))}
-                    </tr>
-                  ))
-                ) : filtered.length === 0 ? (
-                  <tr>
-                    <td colSpan={COLS.length} style={{ padding: '48px 14px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
-                      {trades.length === 0 ? 'No trades found — place some trades in MT5 first' : 'No trades match the current filters'}
-                    </td>
-                  </tr>
-                ) : filtered.map(t => {
-                  const pos = t.netPnl >= 0;
-                  return (
-                    <tr key={t.positionId} style={{ borderBottom: '1px solid var(--border)', transition: 'background 0.1s', cursor: 'default' }}
-                      onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-2)')}
-                      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                    >
-                      <td style={{ padding: '10px 14px' }}>
-                        <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 5, fontWeight: 700, background: t.direction === 'LONG' ? 'rgba(34,212,114,0.12)' : 'rgba(240,82,82,0.12)', color: t.direction === 'LONG' ? 'var(--green)' : 'var(--red)' }}>
-                          {t.direction}
-                        </span>
-                      </td>
-                      <td style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--text)' }}>{t.symbol}</td>
-                      <td style={{ padding: '10px 14px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{new Date(t.openTime).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' })}</td>
-                      <td style={{ padding: '10px 14px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{t.closeTime ? new Date(t.closeTime).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' }) : <span style={{ color: 'var(--text-subtle)' }}>Open</span>}</td>
-                      <td style={{ padding: '10px 14px', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{t.volume.toFixed(2)}</td>
-                      <td style={{ padding: '10px 14px', fontFamily: 'monospace', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{t.entryPrice.toFixed(5)}</td>
-                      <td style={{ padding: '10px 14px', fontFamily: 'monospace', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{t.exitPrice ? t.exitPrice.toFixed(5) : <span style={{ color: 'var(--text-subtle)' }}>—</span>}</td>
-                      <td style={{ padding: '10px 14px', fontVariantNumeric: 'tabular-nums', color: t.grossPnl >= 0 ? 'var(--green)' : 'var(--red)' }}>{t.grossPnl >= 0 ? '+' : ''}{t.grossPnl.toFixed(2)}</td>
-                      <td style={{ padding: '10px 14px', fontVariantNumeric: 'tabular-nums', color: 'var(--text-subtle)' }}>{t.commission.toFixed(2)}</td>
-                      <td style={{ padding: '10px 14px' }}>
-                        <span style={{ fontSize: 12, fontWeight: 700, padding: '2px 8px', borderRadius: 5, fontVariantNumeric: 'tabular-nums', color: pos ? 'var(--green)' : 'var(--red)', background: pos ? 'rgba(34,212,114,0.1)' : 'rgba(240,82,82,0.1)' }}>
-                          {pos ? '+' : ''}{t.netPnl.toFixed(2)}
-                        </span>
-                      </td>
-                      <td style={{ padding: '10px 14px', color: 'var(--text-muted)' }}>{fmtDur(t.durationSecs)}</td>
-                      <td style={{ padding: '10px 14px' }}>
-                        <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 4, fontWeight: 600, letterSpacing: '0.05em', background: t.status === 'OPEN' ? 'rgba(99,102,241,0.12)' : 'var(--surface-3)', color: t.status === 'OPEN' ? 'var(--accent)' : 'var(--text-muted)' }}>
-                          {t.status}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+        <div className="flex gap-1 mb-3">
+          {(['trades', 'deals'] as const).map(t => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              data-testid={`tab-${t}`}
+              className={`px-4 py-2 text-[10px] tracking-[0.22em] border uppercase ${tab === t ? 'border-fg text-fg bg-surface' : 'border-border-soft text-fg-3 hover:text-fg hover:border-border-strong'}`}
+            >
+              {t === 'trades' ? 'POSITIONS' : 'RAW DEALS'}
+            </button>
+          ))}
         </div>
+
+        {tab === 'trades' ? (
+          <div className="tcard p-0" data-testid="trades-table">
+            <div className="overflow-x-auto">
+              <table className="w-full text-[12px]">
+                <thead>
+                  <tr className="border-b border-border">
+                    {['Symbol', 'Dir', 'Volume', 'Open', 'Close', 'Entry', 'Exit', 'Held', 'Net P&L', 'Tag'].map(h => (
+                      <th key={h} className="px-4 py-3 text-left text-[10px] tracking-[0.22em] text-fg-3 uppercase font-medium">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {loading ? (
+                    Array.from({ length: 8 }).map((_, i) => (
+                      <tr key={i} className="border-b border-border-soft">
+                        {Array.from({ length: 10 }).map((_, j) => (
+                          <td key={j} className="px-4 py-3"><div className="h-2.5 w-12 bg-surface-hover" /></td>
+                        ))}
+                      </tr>
+                    ))
+                  ) : filtered.length === 0 ? (
+                    <tr><td colSpan={10} className="px-4 py-10 text-center text-fg-3 text-[12px]">No trades match the current filter.</td></tr>
+                  ) : (
+                    filtered.map(t => {
+                      const pos = t.netPnl >= 0;
+                      return (
+                        <tr key={t.positionId} className="border-b border-border-soft hover:bg-surface-hover transition-colors">
+                          <td className="px-4 py-3 font-display font-bold tracking-tight">{t.symbol}</td>
+                          <td className={`px-4 py-3 text-[10px] tracking-[0.22em] ${t.direction === 'LONG' ? 'text-profit' : 'text-loss'}`}>{t.direction === 'LONG' ? '↗ LONG' : '↘ SHORT'}</td>
+                          <td className="px-4 py-3 numeric text-fg-2">{t.volume.toFixed(2)}</td>
+                          <td className="px-4 py-3 numeric text-fg-3">{new Date(t.openTime).toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' })}</td>
+                          <td className="px-4 py-3 numeric text-fg-3">{t.closeTime ? new Date(t.closeTime).toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' }) : '—'}</td>
+                          <td className="px-4 py-3 numeric">{t.entryPrice.toFixed(t.symbol === 'USDJPY' ? 3 : 5)}</td>
+                          <td className="px-4 py-3 numeric">{t.exitPrice?.toFixed(t.symbol === 'USDJPY' ? 3 : 5)}</td>
+                          <td className="px-4 py-3 numeric text-fg-2">
+                            {t.durationSecs && t.durationSecs >= 3600 ? `${Math.floor(t.durationSecs / 3600)}h` : `${Math.floor((t.durationSecs ?? 0) / 60)}m`}
+                          </td>
+                          <td className={`px-4 py-3 numeric font-medium ${pos ? 'text-profit' : 'text-loss'}`}>{pos ? '+' : ''}${t.netPnl.toFixed(2)}</td>
+                          <td className="px-4 py-3">
+                            {t.tags?.[0] && <span className="px-2 py-0.5 text-[10px] tracking-widest border border-border-soft text-fg-2">{t.tags[0]}</span>}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ) : (
+          <DealsTable deals={deals} loading={loading} />
+        )}
       </div>
+
       {showConnect && <ConnectBrokerModal onClose={() => setShowConnect(false)} onConnected={onConnected} />}
     </AppShell>
   );

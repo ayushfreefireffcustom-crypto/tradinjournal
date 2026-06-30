@@ -1,8 +1,9 @@
-const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
+// Client-side API helper. In this preview the Next.js app exposes /api/* routes
+// (mock data) so we use relative URLs by default.
+const API = process.env.NEXT_PUBLIC_API_URL ?? '';
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API}${path}`, {
-    credentials: 'include',
     headers: { 'Content-Type': 'application/json', ...init?.headers },
     ...init,
   });
@@ -11,125 +12,19 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   return json.data as T;
 }
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-export interface BrokerAccount {
-  id: string;
-  broker: string;
-  mt5Login: string;
-  server: string;
-  baseCurrency: string;
-  marginMode: string;
-  status: string;
-  lastSyncAt: string | null;
-  createdAt: string;
-}
-
-export interface Deal {
-  dealTicket: string;
-  orderTicket: string;
-  positionId: string;
-  symbol: string;
-  type: 'BUY' | 'SELL' | 'BALANCE';
-  entry: 'IN' | 'OUT' | 'INOUT' | 'OUT_BY';
-  volume: string;
-  price: string;
-  profit: string;
-  commission: string;
-  swap: string;
-  fee: string;
-  dealTime: string;
-  comment: string;
-}
-
-export interface Trade {
-  positionId: string;
-  symbol: string;
-  direction: 'LONG' | 'SHORT';
-  status: 'OPEN' | 'CLOSED';
-  openTime: string;
-  closeTime: string | null;
-  entryPrice: number;
-  exitPrice: number | null;
-  volume: number;
-  grossPnl: number;
-  commission: number;
-  swap: number;
-  netPnl: number;
-  durationSecs: number | null;
-  deals: Deal[];
-}
-
-export interface EquityPoint { time: string; equity: number; }
-
-export interface SymbolStat {
-  symbol: string;
-  trades: number;
-  wins: number;
-  losses: number;
-  winRate: number;
-  netPnl: number;
-  avgPnl: number;
-}
-
-export interface DayStat { day: string; trades: number; netPnl: number; }
-
-export interface JournalEntry {
-  id: string;
-  userId: string;
-  brokerAccountId: string | null;
-  title: string | null;
-  body: string;
-  emotion: string | null;
-  tags: string[];
-  tradeId: string | null;
-  entryDate: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface AccountStats {
-  netPnl: number;
-  totalTrades: number;
-  openTrades: number;
-  totalWins: number;
-  totalLosses: number;
-  winRate: number;
-  profitFactor: number;
-  avgWin: number;
-  avgLoss: number;
-  bestTrade: number;
-  worstTrade: number;
-  maxDrawdownPct: number;
-  grossProfit: number;
-  grossLoss: number;
-  avgDurationSecs: number;
-  startingBalance: number;
-  currentEquity: number;
-  equityCurve: EquityPoint[];
-  bySymbol: SymbolStat[];
-  byDay: DayStat[];
-}
-
-// ─── API calls ────────────────────────────────────────────────────────────────
+export type {
+  BrokerAccount, Deal, Trade, EquityPoint, SymbolStat, DayStat, AccountStats,
+} from './mock-data';
 
 export const api = {
   accounts: {
     connect: (body: { mt5Login: number; password: string; server: string }) =>
-      apiFetch<BrokerAccount>('/api/accounts', { method: 'POST', body: JSON.stringify(body) }),
-    list: () => apiFetch<BrokerAccount[]>('/api/accounts'),
+      apiFetch<import('./mock-data').BrokerAccount>('/data/accounts', { method: 'POST', body: JSON.stringify(body) }),
+    list: () => apiFetch<import('./mock-data').BrokerAccount[]>('/data/accounts'),
   },
   trades: {
-    list:  (accountId: string) => apiFetch<Trade[]>(`/api/trades?accountId=${encodeURIComponent(accountId)}`),
-    deals: (accountId: string) => apiFetch<Deal[]>(`/api/trades/deals?accountId=${encodeURIComponent(accountId)}`),
-    stats: (accountId: string) => apiFetch<AccountStats>(`/api/trades/stats?accountId=${encodeURIComponent(accountId)}`),
-  },
-  journal: {
-    list: (accountId?: string) => apiFetch<JournalEntry[]>(`/api/journal${accountId ? `?accountId=${encodeURIComponent(accountId)}` : ''}`),
-    create: (body: { title?: string; body: string; emotion?: string; tags?: string[]; tradeId?: string; brokerAccountId?: string; entryDate?: string }) =>
-      apiFetch<JournalEntry>('/api/journal', { method: 'POST', body: JSON.stringify(body) }),
-    update: (id: string, body: Partial<{ title: string; body: string; emotion: string; tags: string[]; entryDate: string }>) =>
-      apiFetch<JournalEntry>(`/api/journal/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
-    delete: (id: string) => apiFetch<{ ok: boolean }>(`/api/journal/${id}`, { method: 'DELETE' }),
+    list:  (accountId: string) => apiFetch<import('./mock-data').Trade[]>(`/data/trades?accountId=${encodeURIComponent(accountId)}`),
+    deals: (accountId: string) => apiFetch<import('./mock-data').Deal[]>(`/data/trades/deals?accountId=${encodeURIComponent(accountId)}`),
+    stats: (accountId: string) => apiFetch<import('./mock-data').AccountStats>(`/data/trades/stats?accountId=${encodeURIComponent(accountId)}`),
   },
 };

@@ -5,113 +5,82 @@ import type { Deal } from '@/lib/api';
 interface Props {
   deals: Deal[];
   loading: boolean;
-  error: string;
+  error?: string;
 }
 
-const TYPE: Record<string, { color: string; bg: string }> = {
-  BUY:     { color: '#4ade80', bg: 'rgba(74,222,128,0.1)' },
-  SELL:    { color: '#f87171', bg: 'rgba(248,113,113,0.1)' },
-  BALANCE: { color: '#60a5fa', bg: 'rgba(96,165,250,0.1)' },
+const TYPE_COLORS: Record<string, string> = {
+  BUY: 'text-profit',
+  SELL: 'text-loss',
+  BALANCE: 'text-fg-2',
 };
 
-const COLS = ['Ticket', 'Time', 'Type', 'Symbol', 'Volume', 'Price', 'Profit', 'Commission'];
-
-function SkeletonRow() {
-  return (
-    <tr>
-      {[70, 90, 55, 65, 45, 80, 55, 50].map((w, i) => (
-        <td key={i} style={{ padding: '12px 16px' }}>
-          <div className="skeleton" style={{ height: 11, width: w }} />
-        </td>
-      ))}
-    </tr>
-  );
-}
+const COLS = ['Ticket', 'Time', 'Type', 'Symbol', 'Volume', 'Price', 'P&L', 'Comm'];
 
 export default function DealsTable({ deals, loading, error }: Props) {
   if (error) {
     return (
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: '32px 24px', textAlign: 'center', color: 'var(--red)', fontSize: 13 }}>
-        {error}
-      </div>
+      <div className="tcard p-8 text-center text-loss text-[13px]" data-testid="deals-table-error">{error}</div>
     );
   }
 
   return (
-    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}>
-      {/* Header bar */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid var(--border)' }}>
-        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>Deal History</span>
-        <span style={{ fontSize: 11, padding: '3px 9px', borderRadius: 99, background: 'var(--surface-2)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
-          {loading ? '…' : `${deals.length} deals`}
+    <div className="tcard overflow-hidden" data-testid="deals-table">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border-soft">
+        <div className="flex items-center gap-3">
+          <span className="text-[10px] tracking-[0.25em] text-fg-3">DEAL_LOG</span>
+          <span className="font-display font-bold text-[13px] tracking-tight">Recent fills</span>
+        </div>
+        <span className="text-[10px] tracking-[0.22em] text-fg-3 border border-border-soft px-2 py-1">
+          {loading ? '...' : `${deals.length} DEALS`}
         </span>
       </div>
 
-      <div style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+      <div className="overflow-x-auto">
+        <table className="w-full text-[12px]">
           <thead>
-            <tr style={{ borderBottom: '1px solid var(--border)' }}>
-              {COLS.map(h => (
-                <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 500, color: 'var(--text-subtle)', whiteSpace: 'nowrap', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  {h}
+            <tr className="border-b border-border">
+              {COLS.map(c => (
+                <th key={c} className="px-3 py-2.5 text-left text-[10px] tracking-[0.22em] text-fg-3 uppercase font-medium">
+                  {c}
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              Array.from({ length: 6 }).map((_, i) => <SkeletonRow key={i} />)
+              Array.from({ length: 8 }).map((_, i) => (
+                <tr key={i} className="border-b border-border-soft">
+                  {COLS.map((c, j) => (
+                    <td key={j} className="px-3 py-3">
+                      <div className="h-2.5 bg-surface-hover" style={{ width: 40 + j * 10 }} />
+                    </td>
+                  ))}
+                </tr>
+              ))
             ) : deals.length === 0 ? (
-              <tr>
-                <td colSpan={8} style={{ padding: '52px 16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
-                  No deals found for this account
-                </td>
-              </tr>
+              <tr><td colSpan={COLS.length} className="px-4 py-10 text-center text-fg-3 text-[12px]">No deals on file for this account.</td></tr>
             ) : (
-              deals.map(deal => {
-                const profit = parseFloat(deal.profit);
+              deals.slice(0, 25).map(d => {
+                const profit = parseFloat(d.profit);
                 const pos = profit >= 0;
-                const badge = TYPE[deal.type] ?? { color: '#a1a1aa', bg: 'rgba(161,161,170,0.1)' };
                 return (
-                  <tr
-                    key={deal.dealTicket}
-                    style={{ borderBottom: '1px solid var(--border)', transition: 'background 0.1s', cursor: 'default' }}
-                    onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-2)')}
-                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                  >
-                    <td style={{ padding: '11px 16px', fontFamily: 'monospace', fontSize: 12, color: 'var(--text-subtle)' }}>
-                      #{deal.dealTicket}
+                  <tr key={d.dealTicket} className="border-b border-border-soft hover:bg-surface-hover transition-colors">
+                    <td className="px-3 py-3 text-fg-3 numeric">#{d.dealTicket}</td>
+                    <td className="px-3 py-3 text-fg-2 numeric whitespace-nowrap">
+                      {new Date(d.dealTime).toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' })}
                     </td>
-                    <td style={{ padding: '11px 16px', fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                      {new Date(deal.dealTime).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' })}
+                    <td className="px-3 py-3">
+                      <span className={`text-[10px] tracking-[0.22em] font-medium ${TYPE_COLORS[d.type] ?? ''}`}>{d.type}</span>
                     </td>
-                    <td style={{ padding: '11px 16px' }}>
-                      <span style={{ fontSize: 11, padding: '3px 8px', borderRadius: 6, fontWeight: 600, color: badge.color, background: badge.bg, letterSpacing: '0.03em' }}>
-                        {deal.type}
-                      </span>
-                    </td>
-                    <td style={{ padding: '11px 16px', fontWeight: 500, color: 'var(--text)' }}>
-                      {deal.symbol || <span style={{ color: 'var(--text-subtle)' }}>—</span>}
-                    </td>
-                    <td style={{ padding: '11px 16px', fontVariantNumeric: 'tabular-nums', color: 'var(--text-muted)' }}>
-                      {parseFloat(deal.volume).toFixed(2)}
-                    </td>
-                    <td style={{ padding: '11px 16px', fontFamily: 'monospace', fontSize: 12, fontVariantNumeric: 'tabular-nums', color: 'var(--text-muted)' }}>
-                      {parseFloat(deal.price) > 0 ? parseFloat(deal.price).toFixed(5) : <span style={{ color: 'var(--text-subtle)' }}>—</span>}
-                    </td>
-                    <td style={{ padding: '11px 16px' }}>
-                      <span style={{
-                        fontSize: 12, fontWeight: 700, padding: '3px 8px', borderRadius: 6,
-                        fontVariantNumeric: 'tabular-nums',
-                        color: pos ? 'var(--green)' : 'var(--red)',
-                        background: pos ? 'var(--green-bg)' : 'var(--red-bg)',
-                      }}>
+                    <td className="px-3 py-3 font-display font-bold tracking-tight">{d.symbol}</td>
+                    <td className="px-3 py-3 numeric text-fg-2">{parseFloat(d.volume).toFixed(2)}</td>
+                    <td className="px-3 py-3 numeric text-fg-2">{parseFloat(d.price) > 0 ? parseFloat(d.price).toFixed(5) : '—'}</td>
+                    <td className="px-3 py-3">
+                      <span className={`numeric font-medium ${pos ? 'text-profit' : 'text-loss'}`}>
                         {pos ? '+' : ''}{profit.toFixed(2)}
                       </span>
                     </td>
-                    <td style={{ padding: '11px 16px', fontVariantNumeric: 'tabular-nums', color: 'var(--text-subtle)', fontSize: 12 }}>
-                      {parseFloat(deal.commission).toFixed(2)}
-                    </td>
+                    <td className="px-3 py-3 numeric text-fg-3">{parseFloat(d.commission).toFixed(2)}</td>
                   </tr>
                 );
               })

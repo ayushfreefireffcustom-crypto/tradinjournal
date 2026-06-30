@@ -9,7 +9,9 @@ const config: NextConfig = {
   },
   typescript: {
     ignoreBuildErrors: true,
-  }
+  },
+  // Allow the Emergent preview host to talk to dev server
+  allowedDevOrigins: ['*.preview.emergentagent.com', '*.emergentagent.com', '*.emergentcf.cloud', '*.preview.emergentcf.cloud', '*'],
 };
 
 export default config;

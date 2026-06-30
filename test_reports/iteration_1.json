@@ -1,0 +1,40 @@
+{
+  "summary": "End-to-end frontend testing of TradinX Next.js app (Tactical Swiss Terminal redesign). All critical flows pass: landing page, login, signup, guest login, dashboard (KPIs, equity chart, account switcher, broker modal, recent fills, by-symbol), analytics (donut, R-distribution, session heatmap, dd-card), chart replay (trade list 78 rows, candle chart, journal panel with emotions and editable note), trade log (78 rows, filter-long->34, filter-win->52, deals tab 25 rows), and sidebar navigation. Mock /data/* APIs verified end-to-end (accounts returns 2, stats returns 79 equity points with netPnl 11174.75, winRate 66.7%, PF 3.13). Design verified: body bg #0A0A0A, body font 'JetBrains Mono' (Cabinet Grotesk on headings), profit-green/loss-red usage — no Inter/purple-on-white slop.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "SessionGrid (analytics page)", "issue": "React warning: 'Each child in a list should have a unique key prop' — sessions.map renders <> Fragment without key. Replace fragment with <React.Fragment key={s}> to silence warning.", "selector": "/app/apps/web/src/app/analytics/page.tsx:~102", "priority": "LOW"},
+      {"component": "analytics page", "issue": "One asset returned 403 on /analytics page load (no functional impact observed); likely a static asset or external font. Worth confirming in network panel.", "selector": "/analytics network log", "priority": "LOW"}
+    ],
+    "integration_issues": [
+      {"flow": "Chart Replay — clicking another trade row to update chart title", "issue": "Clicking trade-row[1] did not change the candle-chart inner text length (68 chars before == 68 chars after). The chart container DOM may not re-render visible symbol/title text on row change, or it only changes a nested element. Manual verification recommended; consider exposing the active symbol via a data-testid (e.g., candle-chart-symbol) so the change is testable.", "affected_selectors": ["[data-testid=candle-chart]", "[data-testid=trade-row-<id>]"]}
+    ],
+    "design_issues": [
+      {"screen": "Dashboard (after connecting a new broker)", "issues": ["After Connect Broker submit, the new (3rd) account becomes active and KPI cards/cards fade to a dim/empty state (no trades yet for new account). This is correct data behaviour but the UI gives no explicit 'No data yet — sync MT5 to populate' empty-state message; consider adding one for clarity."]}
+    ]
+  },
+  "test_report_links": ["/app/test_reports/iteration_1.json"],
+  "action_items": [
+    "Add `key` prop to SessionGrid fragment in /app/apps/web/src/app/analytics/page.tsx (~line 102) to clear React warning.",
+    "Investigate the 403 resource on /analytics page (network tab) — likely a static asset reference.",
+    "(Optional) Surface the active chart symbol via a dedicated data-testid (e.g., data-testid=candle-chart-symbol) so trade-row click can be programmatically asserted.",
+    "(Optional) Add an empty-state UI for newly connected MT5 accounts with no trades on the Dashboard."
+  ],
+  "critical_code_review_comments": [
+    "Mock route `/data/trades/stats` returns proper shape with all 21 keys and 79 equity points — good.",
+    "Landing page hero uses Cabinet Grotesk + JetBrains Mono with #0A0A0A background — matches Tactical Swiss Terminal design spec.",
+    "Connect-broker-modal submission optimistically adds account to switcher (2 -> 3 tabs) — verified working with mocked POST /data/accounts.",
+    "Trade filters compose correctly (filter-long isolates 34 long trades; filter-win isolates 52 winning trades out of 78)."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100% (mock /data/* APIs)", "frontend": "~96% (all 10 review items pass; 1 minor React key warning + 1 untestable chart symbol change)"},
+  "test_credentials": "Mocked: any email/password on /login routes to /dashboard. Guest button (data-testid=login-guest) also lands on /dashboard.",
+  "seed_data_creation": "None — used seeded mock data from /app/apps/web/src/lib/mock-data.ts (2 accounts: acc-xm-345636702 with 78 trades, acc-icmarkets-441288 with 42 trades).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Frontend runs under supervisor via /app/frontend/package.json -> cd /app/apps/web && yarn dev. Backend FastAPI is intentionally FATAL/not used — all data is served by Next.js API route handlers under /data/* (NOT /api/*). Use public URL https://1a9076db-e0c1-422d-a6e1-b20fc8ae6752.preview.emergentagent.com . All key elements have data-testid; selectors verified working: landing-page, hero-cta-launch, nav-signin, login-page, login-form, login-guest, signup-page, signup-form, dashboard-page, kpi-{winrate,pf,dd,bscore}, equity-card, equity-chart, account-switcher, account-tab-{345636702,441288}, header-add-broker, connect-broker-modal, broker-{mt5-login,investor-password,server}, bysymbol-card, analytics-page, winloss-donut, r-distribution, session-heatmap, dd-card, chart-replay-page, trade-list, trade-row-<id>, candle-chart, journal-panel, journal-note, emotion-disciplined, emotion-fomo, trades-page, trades-table, filter-{long,short,win,loss}, tab-deals, deals-table, sidebar, nav-{dashboard,analytics,chart-replay,trade-log}.",
+  "rca of the issue": "No critical bugs found. Two minor observations: (1) React unique-key warning in SessionGrid fragment, RCA: <> fragment used inside .map without key — fix by switching to keyed React.Fragment. (2) Chart Replay trade-row click impact not externally observable via candle-chart text length — RCA: chart re-renders but text container length is constant; recommend dedicated data-testid for the active symbol label."
+}

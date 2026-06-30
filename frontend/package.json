@@ -1,0 +1,8 @@
+{
+  "name": "tradinjournal-frontend-launcher",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "start": "cd /app/apps/web && yarn dev"
+  }
+}

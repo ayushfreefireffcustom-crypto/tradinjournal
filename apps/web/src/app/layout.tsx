@@ -1,33 +1,28 @@
-import type { Metadata } from "next";
-import { Sora } from "next/font/google";
-import "./globals.css";
-
-const sora = Sora({
-  variable: "--font-sora",
-  subsets: ["latin"],
-});
+import type { Metadata } from 'next';
+import './globals.css';
 
 export const metadata: Metadata = {
-  title: "TradinX | Master Your Trading Psychology",
-  description: "TradinX is the next-gen analytics layer for modern traders. Identify biases, review replays, and master the market.",
+  title: 'TradinX // Tactical Trade Journal',
+  description: 'Behavioural analytics & trade journaling for MT5 forex traders. Read your edge in raw, technical clarity.',
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html
-      lang="en"
-      className={`${sora.variable} h-full antialiased dark`}
-    >
+    <html lang="en" className="dark">
       <head>
-        <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+        {/* Cabinet Grotesk (Fontshare) + JetBrains Mono (Google) */}
+        <link rel="preconnect" href="https://api.fontshare.com" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link
+          href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@500,700,800,900&display=swap"
+          rel="stylesheet"
+        />
+        <link
+          href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap"
+          rel="stylesheet"
+        />
       </head>
-      <body className="min-h-full flex flex-col font-sora bg-surface-container-lowest text-on-surface overflow-x-hidden" suppressHydrationWarning>
-        {children}
-      </body>
+      <body className="min-h-screen bg-app text-fg font-mono antialiased">{children}</body>
     </html>
   );
 }

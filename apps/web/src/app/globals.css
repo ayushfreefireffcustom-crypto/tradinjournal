@@ -1,75 +1,115 @@
 @import "tailwindcss";
 
 @theme {
-  /* System Colors from DESIGN.md */
-  --color-surface: #131313;
-  --color-surface-container-lowest: #0e0e0e;
-  --color-surface-container-low: #1c1b1b;
-  --color-on-surface: #e5e2e1;
-  --color-on-surface-variant: #c4c5d6;
-  --color-outline-variant: #444654;
-  --color-primary: #b8c4ff;
-  --color-primary-container: #0033ad;
+  /* Tactical Swiss Terminal palette */
+  --color-app: #0A0A0A;
+  --color-surface: #121212;
+  --color-surface-hover: #1A1A1A;
+  --color-surface-active: #222222;
+  --color-border: #2A2A2A;
+  --color-border-soft: #1E1E1E;
+  --color-border-strong: #4A4A4A;
 
-  /* Typography Fonts from DESIGN.md */
-  --font-sora: "Sora", sans-serif;
+  --color-fg: #FFFFFF;
+  --color-fg-2: #A1A1AA;
+  --color-fg-3: #71717A;
 
-  /* Typography Sizes */
-  --text-display-xl: 4.5rem; /* 72px */
-  --text-display-xl--line-height: 5rem; /* 80px */
-  --text-display-xl--letter-spacing: -0.02em;
+  --color-profit: #00C566;
+  --color-loss: #FF3B30;
+  --color-warning: #FF9F0A;
 
-  --text-headline-lg: 3rem; /* 48px */
-  --text-headline-lg--line-height: 3.5rem; /* 56px */
-  --text-headline-lg--letter-spacing: -0.01em;
-
-  --text-headline-lg-mobile: 2rem; /* 32px */
-  --text-headline-lg-mobile--line-height: 2.5rem; /* 40px */
-
-  --text-headline-md: 1.5rem; /* 24px */
-  --text-headline-md--line-height: 2rem; /* 32px */
-
-  --text-body-lg: 1.125rem; /* 18px */
-  --text-body-lg--line-height: 1.75rem; /* 28px */
-
-  --text-body-md: 1rem; /* 16px */
-  --text-body-md--line-height: 1.5rem; /* 24px */
-
-  --text-label-md: 0.875rem; /* 14px */
-  --text-label-md--line-height: 1.25rem; /* 20px */
-  --text-label-md--letter-spacing: 0.02em;
-
-  --text-label-sm: 0.75rem; /* 12px */
-  --text-label-sm--line-height: 1rem; /* 16px */
+  /* Fonts — Cabinet Grotesk (display) loaded from Fontshare, JetBrains Mono from Google */
+  --font-display: "Cabinet Grotesk", "Inter Tight", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
 }
 
-/* Custom Component Utilities */
-@utility glass-card {
-  background: rgba(17, 24, 39, 0.6) !important;
-  backdrop-filter: blur(12px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
-  border-radius: 0.5rem;
+* {
+  border-color: var(--color-border);
 }
 
-@utility neo-input {
-  background-color: #111827 !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
-  color: #ffffff !important;
-  border-radius: 0.5rem;
-  transition: all 0.3s ease;
+html, body {
+  background: var(--color-app);
+  color: var(--color-fg);
+  font-family: var(--font-mono);
+  -webkit-font-smoothing: antialiased;
 }
 
-@utility neo-input-focus {
-  border-color: #0033ad !important;
-  box-shadow: 0 0 0 3px rgba(0, 51, 173, 0.3) !important;
-  outline: none !important;
+/* Atmospheric grid background, used on landing */
+.bg-grid {
+  background-image:
+    linear-gradient(to right, rgba(255,255,255,0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255,255,255,0.04) 1px, transparent 1px);
+  background-size: 56px 56px;
 }
 
-@utility atmospheric-glow {
-  position: absolute;
-  width: 600px;
-  height: 600px;
-  background: radial-gradient(circle, rgba(0, 51, 173, 0.15) 0%, rgba(7, 7, 7, 0) 70%);
-  pointer-events: none;
-  z-index: 0;
+.bg-grid-fade {
+  -webkit-mask-image: radial-gradient(ellipse at center, #000 50%, transparent 85%);
+  mask-image: radial-gradient(ellipse at center, #000 50%, transparent 85%);
 }
+
+.font-display { font-family: var(--font-display); }
+.font-mono { font-family: var(--font-mono); }
+
+/* Card primitive */
+.tcard {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 2px;
+  position: relative;
+}
+
+.tcard-hover { transition: background-color .15s ease-out, border-color .15s ease-out; }
+.tcard-hover:hover {
+  background: var(--color-surface-hover);
+  border-color: var(--color-border-strong);
+}
+
+/* Buttons */
+.btn { display: inline-flex; align-items: center; gap: .5rem; padding: .5rem .9rem; border-radius: 2px; font-family: var(--font-mono); font-size: 12px; font-weight: 500; letter-spacing: .02em; transition: all .15s ease-out; cursor: pointer; border: 1px solid transparent; }
+.btn-primary { background: #FFFFFF; color: #0A0A0A; }
+.btn-primary:hover { background: #E5E5E5; }
+.btn-ghost { background: transparent; border-color: var(--color-border); color: #fff; }
+.btn-ghost:hover { background: var(--color-surface); border-color: var(--color-border-strong); }
+
+/* Input */
+.tinput {
+  background: var(--color-app);
+  border: 1px solid var(--color-border);
+  color: #fff;
+  font-family: var(--font-mono);
+  border-radius: 2px;
+  padding: .65rem .85rem;
+  font-size: 13px;
+  width: 100%;
+  outline: none;
+  transition: border-color .15s ease-out, box-shadow .15s ease-out;
+}
+.tinput::placeholder { color: var(--color-border-strong); }
+.tinput:focus { border-color: var(--color-border-strong); box-shadow: 0 0 0 1px var(--color-border-strong) inset; }
+
+/* Subtle scrollbar */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--color-app); }
+::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 0; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-border-strong); }
+
+/* Animations */
+@keyframes fade-up { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.fade-up { animation: fade-up .35s ease-out both; }
+
+@keyframes pulse-dot { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+.pulse-dot { animation: pulse-dot 1.6s ease-in-out infinite; }
+
+@keyframes shake { 0%,100%{transform:translateX(0);} 25%{transform:translateX(-4px);} 75%{transform:translateX(4px);} }
+.shake { animation: shake .35s ease-in-out; }
+
+/* Marquee for ticker tape */
+@keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.marquee-track { animation: marquee 40s linear infinite; }
+
+/* Selection */
+::selection { background: #FFFFFF; color: #0A0A0A; }
+
+/* Utility helpers */
+.text-mono { font-family: var(--font-mono); }
+.numeric { font-variant-numeric: tabular-nums; }
