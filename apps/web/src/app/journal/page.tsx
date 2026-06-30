@@ -205,7 +205,7 @@ export default function ChartReplayPage() {
           <div className="tcard p-0 flex-1">
             <div className="px-4 py-3 border-b border-border-soft flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <span className="font-display font-black text-[18px] tracking-tighter">{active?.symbol ?? '—'}</span>
+                <span className="font-display font-black text-[18px] tracking-tighter" data-testid="candle-chart-symbol">{active?.symbol ?? '—'}</span>
                 <span className={`text-[11px] tracking-widest ${active?.direction === 'LONG' ? 'text-profit' : 'text-loss'}`}>
                   {active?.direction} · {active?.volume.toFixed(2)} LOTS
                 </span>

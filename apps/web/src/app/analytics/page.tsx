@@ -1,5 +1,6 @@
 'use client';
 
+import { Fragment } from 'react';
 import { useEffect, useState, useCallback } from 'react';
 import { api, type BrokerAccount, type AccountStats } from '@/lib/api';
 import AppShell from '@/components/app-shell';
@@ -99,8 +100,8 @@ function SessionGrid() {
       <div />
       {days.map(d => <div key={d} className="text-center text-[10px] tracking-widest text-fg-3">{d}</div>)}
       {sessions.map((s, i) => (
-        <>
-          <div key={s} className="text-[10px] tracking-widest text-fg-3 self-center">{s}</div>
+        <Fragment key={s}>
+          <div className="text-[10px] tracking-widest text-fg-3 self-center">{s}</div>
           {data[i]!.map((v, j) => {
             const pos = v >= 0;
             const intensity = Math.min(1, Math.abs(v) / max);
@@ -114,7 +115,7 @@ function SessionGrid() {
               </div>
             );
           })}
-        </>
+        </Fragment>
       ))}
     </div>
   );
