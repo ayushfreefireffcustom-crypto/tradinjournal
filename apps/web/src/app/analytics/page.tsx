@@ -15,8 +15,8 @@ function Donut({ wins, losses }: { wins: number; losses: number }) {
   const circ = 2 * Math.PI * R;
   const winDash = (winPct / 100) * circ;
   return (
-    <div className="flex items-center gap-6">
-      <svg width={140} height={140} viewBox="0 0 140 140" data-testid="winloss-donut">
+    <div className="flex flex-col sm:flex-row items-center sm:items-center gap-5 sm:gap-6">
+      <svg width={140} height={140} viewBox="0 0 140 140" className="shrink-0" data-testid="winloss-donut">
         <circle cx={70} cy={70} r={R} fill="none" stroke="#FF3B30" strokeWidth={14} />
         <circle
           cx={70} cy={70} r={R} fill="none" stroke="#00C566" strokeWidth={14}
@@ -26,7 +26,7 @@ function Donut({ wins, losses }: { wins: number; losses: number }) {
         <text x={70} y={68} textAnchor="middle" fontFamily="Cabinet Grotesk" fontWeight={900} fontSize="28" fill="#fff">{winPct.toFixed(0)}%</text>
         <text x={70} y={88} textAnchor="middle" fontFamily="JetBrains Mono" fontSize="9" letterSpacing="2" fill="#71717A">WIN RATE</text>
       </svg>
-      <div className="flex flex-col gap-2 text-[12px]">
+      <div className="flex flex-col gap-2 text-[12px] w-full sm:w-auto sm:min-w-[160px]">
         <div className="flex items-center gap-2"><span className="w-2.5 h-2.5 bg-profit" /><span className="text-fg-2">Wins</span><span className="ml-auto font-mono numeric">{wins}</span></div>
         <div className="flex items-center gap-2"><span className="w-2.5 h-2.5 bg-loss" /><span className="text-fg-2">Losses</span><span className="ml-auto font-mono numeric">{losses}</span></div>
         <div className="flex items-center gap-2"><span className="w-2.5 h-2.5 border border-border-strong" /><span className="text-fg-2">Total</span><span className="ml-auto font-mono numeric">{total}</span></div>
@@ -43,12 +43,12 @@ function HBars({ data, maxLabelWidth = 56 }: { data: { label: string; value: num
         const pos = d.value >= 0;
         const w = (Math.abs(d.value) / max) * 100;
         return (
-          <div key={d.label} className="flex items-center gap-3 text-[12px]">
-            <span className="text-fg-3 text-[10px] tracking-widest uppercase text-right" style={{ width: maxLabelWidth }}>{d.label}</span>
-            <div className="flex-1 h-5 bg-surface-hover relative">
+          <div key={d.label} className="flex items-center gap-2 sm:gap-3 text-[11px] sm:text-[12px]">
+            <span className="text-fg-3 text-[10px] tracking-widest uppercase text-right shrink-0" style={{ width: maxLabelWidth }}>{d.label}</span>
+            <div className="flex-1 h-5 bg-surface-hover relative min-w-0">
               <div className="h-full transition-all" style={{ width: `${w}%`, background: pos ? '#00C566' : '#FF3B30', opacity: 0.85 }} />
             </div>
-            <span className={`numeric font-medium ${pos ? 'text-profit' : 'text-loss'}`} style={{ width: 80, textAlign: 'right' }}>
+            <span className={`numeric font-medium shrink-0 ${pos ? 'text-profit' : 'text-loss'}`} style={{ width: 72, textAlign: 'right' }}>
               {pos ? '+' : ''}${d.value.toFixed(2)}
             </span>
           </div>
@@ -96,12 +96,12 @@ function SessionGrid() {
   ];
   const max = 410;
   return (
-    <div className="grid gap-1" style={{ gridTemplateColumns: `40px repeat(${days.length}, 1fr)` }} data-testid="session-heatmap">
+    <div className="grid gap-1" style={{ gridTemplateColumns: `32px repeat(${days.length}, minmax(0, 1fr))` }} data-testid="session-heatmap">
       <div />
-      {days.map(d => <div key={d} className="text-center text-[10px] tracking-widest text-fg-3">{d}</div>)}
+      {days.map(d => <div key={d} className="text-center text-[9px] sm:text-[10px] tracking-widest text-fg-3">{d}</div>)}
       {sessions.map((s, i) => (
         <Fragment key={s}>
-          <div className="text-[10px] tracking-widest text-fg-3 self-center">{s}</div>
+          <div className="text-[9px] sm:text-[10px] tracking-widest text-fg-3 self-center">{s}</div>
           {data[i]!.map((v, j) => {
             const pos = v >= 0;
             const intensity = Math.min(1, Math.abs(v) / max);
@@ -111,7 +111,7 @@ function SessionGrid() {
                   ? `rgba(0, 197, 102, ${0.12 + intensity * 0.6})`
                   : `rgba(255, 59, 48, ${0.12 + intensity * 0.6})`,
               }}>
-                <span className={`text-[11px] numeric font-medium ${pos ? 'text-profit' : 'text-loss'}`}>{pos ? '+' : ''}{v}</span>
+                <span className={`text-[9px] sm:text-[11px] numeric font-medium ${pos ? 'text-profit' : 'text-loss'}`}>{pos ? '+' : ''}{v}</span>
               </div>
             );
           })}
@@ -161,15 +161,15 @@ export default function AnalyticsPage() {
       pageTitle="Analytics"
       pageSubtitle="// EDGE DISCOVERY"
     >
-      <div className="p-6 lg:p-8 max-w-[1400px] mx-auto fade-up" data-testid="analytics-page">
+      <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto fade-up" data-testid="analytics-page">
         <div className="mb-6 flex items-end justify-between flex-wrap gap-4">
           <div>
             <div className="text-[10px] tracking-[0.25em] text-fg-3">[ ANALYTICS // ALL TIME ]</div>
-            <h1 className="font-display font-black text-4xl tracking-tighter mt-2">DISSECT YOUR EDGE.</h1>
+            <h1 className="font-display font-black text-3xl sm:text-4xl tracking-tighter mt-2">DISSECT YOUR EDGE.</h1>
           </div>
-          <div className="flex gap-1">
+          <div className="flex gap-1 overflow-x-auto no-scrollbar -mx-1 px-1 w-full sm:w-auto">
             {['1W', '1M', '3M', '1Y', 'ALL'].map((t, i) => (
-              <button key={t} className={`px-3 py-1.5 text-[10px] tracking-[0.22em] border ${i === 4 ? 'border-fg text-fg bg-surface' : 'border-border-soft text-fg-3 hover:text-fg hover:border-border-strong'}`}>{t}</button>
+              <button key={t} className={`shrink-0 px-3 py-1.5 text-[10px] tracking-[0.22em] border ${i === 4 ? 'border-fg text-fg bg-surface' : 'border-border-soft text-fg-3 hover:text-fg hover:border-border-strong'}`}>{t}</button>
             ))}
           </div>
         </div>
@@ -191,7 +191,7 @@ export default function AnalyticsPage() {
               ].map(k => (
                 <div key={k.l} className="tcard p-4" data-testid={`kpi-${k.l.toLowerCase().replace(/[^a-z]/g, '')}`}>
                   <div className="text-[10px] tracking-[0.22em] text-fg-3 uppercase">{k.l}</div>
-                  <div className={`font-display font-black text-3xl tracking-tighter mt-3 numeric ${k.c ?? ''}`}>{k.v}</div>
+                  <div className={`font-display font-black text-2xl sm:text-3xl tracking-tighter mt-3 numeric ${k.c ?? ''}`}>{k.v}</div>
                 </div>
               ))}
             </div>
@@ -268,7 +268,7 @@ export default function AnalyticsPage() {
                 </div>
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full text-[12px]">
+                <table className="w-full min-w-[760px] text-[12px]">
                   <thead>
                     <tr className="border-b border-border">
                       {['Symbol', 'Trades', 'Wins', 'Losses', 'Win Rate', 'Net P&L', 'Avg P&L'].map(h => (

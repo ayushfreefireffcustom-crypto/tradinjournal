@@ -23,7 +23,7 @@ function KpiTile({
         <span className="text-[10px] tracking-[0.22em] text-fg-3 uppercase">{label}</span>
         <span className="text-fg-3 text-[10px]">●</span>
       </div>
-      <div className={`font-display font-black text-3xl tracking-tighter mt-3 numeric ${color}`}>{value}</div>
+      <div className={`font-display font-black text-2xl sm:text-3xl tracking-tighter mt-3 numeric ${color}`}>{value}</div>
       {sub && <div className="text-[10px] text-fg-3 tracking-widest mt-1 numeric">{sub}</div>}
     </div>
   );
@@ -100,24 +100,24 @@ export default function DashboardPage() {
       pageTitle="Dashboard"
       pageSubtitle="// SESSION OVERVIEW"
     >
-      <div className="p-6 lg:p-8 max-w-[1400px] mx-auto fade-up" data-testid="dashboard-page">
+      <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto fade-up" data-testid="dashboard-page">
         {/* Header strip */}
         <div className="flex flex-wrap items-end justify-between gap-4 mb-6">
-          <div>
-            <div className="text-[10px] tracking-[0.25em] text-fg-3">[ ACCOUNT // {selected?.broker.toUpperCase()} · #{selected?.mt5Login} ]</div>
-            <h1 className="font-display font-black text-5xl tracking-tighter mt-2">
+          <div className="min-w-0">
+            <div className="text-[10px] tracking-[0.25em] text-fg-3 truncate">[ ACCOUNT // {selected?.broker.toUpperCase()} · #{selected?.mt5Login} ]</div>
+            <h1 className="font-display font-black text-3xl sm:text-4xl lg:text-5xl tracking-tighter mt-2 break-words">
               {stats ? (stats.netPnl >= 0 ? '+' : '') + `$${Math.abs(stats.netPnl).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
-              <span className={`ml-3 text-base align-middle ${stats && stats.netPnl >= 0 ? 'text-profit' : 'text-loss'}`}>
+              <span className={`ml-3 text-sm sm:text-base align-middle ${stats && stats.netPnl >= 0 ? 'text-profit' : 'text-loss'}`}>
                 {stats ? `${stats.netPnl >= 0 ? '▲' : '▼'} NET P&L` : ''}
               </span>
             </h1>
-            <div className="text-[11px] text-fg-3 tracking-widest mt-1 numeric">
+            <div className="text-[10px] sm:text-[11px] text-fg-3 tracking-widest mt-1 numeric break-words">
               {stats ? `STARTING $${stats.startingBalance.toLocaleString()} → CURRENT $${stats.currentEquity.toLocaleString()}` : 'Loading...'}
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <button onClick={() => setShowConnect(true)} className="btn btn-ghost" data-testid="header-add-broker">+ ADD BROKER</button>
-            <button className="btn btn-primary" data-testid="header-sync-now">SYNC NOW</button>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <button onClick={() => setShowConnect(true)} className="btn btn-ghost flex-1 sm:flex-none justify-center" data-testid="header-add-broker">+ ADD BROKER</button>
+            <button className="btn btn-primary flex-1 sm:flex-none justify-center" data-testid="header-sync-now">SYNC NOW</button>
           </div>
         </div>
 
@@ -201,20 +201,22 @@ export default function DashboardPage() {
                 recent.map(t => {
                   const pos = t.netPnl >= 0;
                   return (
-                    <div key={t.positionId} className="grid grid-cols-12 items-center px-5 py-3 border-b border-border-soft last:border-0 hover:bg-surface-hover transition-colors">
-                      <div className="col-span-1">
-                        <span className={`text-[10px] tracking-[0.22em] ${t.direction === 'LONG' ? 'text-profit' : 'text-loss'}`}>{t.direction === 'LONG' ? '↗ L' : '↘ S'}</span>
-                      </div>
-                      <div className="col-span-3 font-display font-bold tracking-tight">{t.symbol}</div>
-                      <div className="col-span-2 text-[11px] text-fg-2 numeric">{t.volume.toFixed(2)} lots</div>
-                      <div className="col-span-3 text-[11px] text-fg-3 numeric">
+                    <div key={t.positionId} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 sm:px-5 py-3 border-b border-border-soft last:border-0 hover:bg-surface-hover transition-colors">
+                      <span className={`text-[10px] tracking-[0.22em] shrink-0 ${t.direction === 'LONG' ? 'text-profit' : 'text-loss'}`}>
+                        {t.direction === 'LONG' ? '↗ L' : '↘ S'}
+                      </span>
+                      <span className="font-display font-bold tracking-tight">{t.symbol}</span>
+                      <span className="text-[11px] text-fg-2 numeric">{t.volume.toFixed(2)} lots</span>
+                      <span className="text-[10px] sm:text-[11px] text-fg-3 numeric">
                         {new Date(t.openTime).toLocaleDateString('en-US', { day: '2-digit', month: 'short' })} · {fmtDur(t.durationSecs ?? 0)}
-                      </div>
-                      <div className="col-span-3 text-right">
-                        <div className={`font-display font-bold text-[15px] tracking-tight numeric ${pos ? 'text-profit' : 'text-loss'}`}>
+                      </span>
+                      <div className="ml-auto text-right">
+                        <div className={`font-display font-bold text-[14px] sm:text-[15px] tracking-tight numeric ${pos ? 'text-profit' : 'text-loss'}`}>
                           {pos ? '+' : ''}${t.netPnl.toFixed(2)}
                         </div>
-                        <div className="text-[10px] text-fg-3 tracking-widest numeric">{t.entryPrice.toFixed(4)} → {t.exitPrice?.toFixed(4)}</div>
+                        <div className="text-[9px] sm:text-[10px] text-fg-3 tracking-widest numeric">
+                          {t.entryPrice.toFixed(4)} → {t.exitPrice?.toFixed(4)}
+                        </div>
                       </div>
                     </div>
                   );
@@ -234,7 +236,7 @@ export default function DashboardPage() {
                 <span className="text-[10px] tracking-widest text-fg-3">{stats.bySymbol.length} INSTRUMENTS</span>
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full text-[12px]">
+                <table className="w-full min-w-[640px] text-[12px]">
                   <thead>
                     <tr className="border-b border-border">
                       {['Symbol', 'Trades', 'Win Rate', 'Net P&L', 'Avg P&L'].map(h => (

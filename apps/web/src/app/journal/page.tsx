@@ -168,59 +168,28 @@ export default function ChartReplayPage() {
       pageTitle="Chart Replay"
       pageSubtitle="// FORENSIC AUDIT"
     >
-      <div className="grid grid-cols-12 gap-3 p-3 lg:p-4 fade-up" data-testid="chart-replay-page">
-        {/* Left: trade list */}
-        <aside className="tcard col-span-12 lg:col-span-3 p-0 max-h-[calc(100vh-120px)] overflow-y-auto" data-testid="trade-list">
-          <div className="px-4 py-3 border-b border-border-soft flex items-center justify-between sticky top-0 bg-app">
-            <div className="text-[10px] tracking-[0.25em] text-fg-3">POSITION_LOG</div>
-            <span className="text-[10px] text-fg-3 numeric">{trades.length}</span>
-          </div>
-          {trades.map(t => {
-            const active = t.positionId === activeId;
-            const pos = t.netPnl >= 0;
-            return (
-              <button
-                key={t.positionId}
-                onClick={() => setActiveId(t.positionId)}
-                data-testid={`trade-row-${t.positionId}`}
-                className={`w-full text-left px-4 py-3 border-b border-border-soft transition-colors ${active ? 'bg-surface border-l-2 border-l-profit pl-[14px]' : 'hover:bg-surface-hover'}`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-display font-bold tracking-tight text-[14px]">{t.symbol}</span>
-                  <span className={`text-[11px] numeric font-medium ${pos ? 'text-profit' : 'text-loss'}`}>
-                    {pos ? '+' : ''}${t.netPnl.toFixed(2)}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between mt-1 text-[10px] text-fg-3 tracking-widest numeric">
-                  <span>{t.direction} · {t.volume.toFixed(2)} LOTS</span>
-                  <span>{new Date(t.openTime).toLocaleDateString('en-US', { day: '2-digit', month: 'short' })}</span>
-                </div>
-              </button>
-            );
-          })}
-        </aside>
-
-        {/* Center: chart */}
-        <section className="col-span-12 lg:col-span-6 flex flex-col gap-3">
+      <div className="grid grid-cols-12 gap-2 sm:gap-3 p-2 sm:p-3 lg:p-4 fade-up" data-testid="chart-replay-page">
+        {/* Center: chart — first on mobile, middle on desktop */}
+        <section className="order-1 lg:order-2 col-span-12 lg:col-span-6 flex flex-col gap-2 sm:gap-3">
           <div className="tcard p-0 flex-1">
-            <div className="px-4 py-3 border-b border-border-soft flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <span className="font-display font-black text-[18px] tracking-tighter" data-testid="candle-chart-symbol">{active?.symbol ?? '—'}</span>
-                <span className={`text-[11px] tracking-widest ${active?.direction === 'LONG' ? 'text-profit' : 'text-loss'}`}>
+            <div className="px-3 sm:px-4 py-3 border-b border-border-soft flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
+                <span className="font-display font-black text-[16px] sm:text-[18px] tracking-tighter" data-testid="candle-chart-symbol">{active?.symbol ?? '—'}</span>
+                <span className={`text-[10px] sm:text-[11px] tracking-widest ${active?.direction === 'LONG' ? 'text-profit' : 'text-loss'}`}>
                   {active?.direction} · {active?.volume.toFixed(2)} LOTS
                 </span>
-                <span className={`text-[11px] numeric ${active && active.netPnl >= 0 ? 'text-profit' : 'text-loss'}`}>
+                <span className={`text-[10px] sm:text-[11px] numeric ${active && active.netPnl >= 0 ? 'text-profit' : 'text-loss'}`}>
                   {active ? `${active.netPnl >= 0 ? '+' : ''}$${active.netPnl.toFixed(2)}` : ''}
                 </span>
               </div>
-              <div className="flex gap-1 text-[10px] tracking-widest">
+              <div className="flex gap-1 text-[10px] tracking-widest overflow-x-auto no-scrollbar -mx-1 px-1 max-w-full">
                 {['1m', '5m', '15m', '1h', '4h', '1D'].map((t, i) => (
-                  <button key={t} className={`px-2 py-1 border ${i === 2 ? 'border-fg text-fg bg-surface' : 'border-border-soft text-fg-3 hover:text-fg hover:border-border-strong'}`}>{t}</button>
+                  <button key={t} className={`shrink-0 px-2 py-1 border ${i === 2 ? 'border-fg text-fg bg-surface' : 'border-border-soft text-fg-3 hover:text-fg hover:border-border-strong'}`}>{t}</button>
                 ))}
               </div>
             </div>
-            <div className="h-[460px]"><CandleChart trade={active} /></div>
-            <div className="px-4 py-3 border-t border-border-soft grid grid-cols-4 gap-3 text-[11px]">
+            <div className="h-[280px] sm:h-[360px] lg:h-[460px]"><CandleChart trade={active} /></div>
+            <div className="px-3 sm:px-4 py-3 border-t border-border-soft grid grid-cols-2 sm:grid-cols-4 gap-3 text-[11px]">
               <div>
                 <div className="text-[10px] tracking-widest text-fg-3">ENTRY</div>
                 <div className="numeric mt-0.5">{active?.entryPrice.toFixed(active?.symbol === 'USDJPY' ? 3 : 5)}</div>
@@ -241,7 +210,7 @@ export default function ChartReplayPage() {
           </div>
 
           {/* Replay controls */}
-          <div className="tcard p-3 flex items-center justify-between">
+          <div className="tcard p-3 flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-1">
               {['⏮', '◀', '⏸', '▶', '⏭'].map((sym, i) => (
                 <button key={i} className="w-8 h-8 border border-border-soft hover:border-border-strong hover:bg-surface-hover transition-colors text-[14px]">
@@ -251,14 +220,45 @@ export default function ChartReplayPage() {
             </div>
             <div className="flex items-center gap-3 text-[10px] tracking-widest text-fg-3 numeric">
               <span>SPEED · 1×</span>
-              <span>BAR · 23/70</span>
-              <span className="text-profit">● REPLAY MODE</span>
+              <span className="hidden sm:inline">BAR · 23/70</span>
+              <span className="text-profit">● REPLAY</span>
             </div>
           </div>
         </section>
 
-        {/* Right: journal panel */}
-        <aside className="tcard col-span-12 lg:col-span-3 p-0 flex flex-col" data-testid="journal-panel">
+        {/* Left: trade list — second on mobile */}
+        <aside className="order-2 lg:order-1 tcard col-span-12 lg:col-span-3 p-0 max-h-[420px] lg:max-h-[calc(100vh-120px)] overflow-y-auto" data-testid="trade-list">
+          <div className="px-4 py-3 border-b border-border-soft flex items-center justify-between sticky top-0 bg-app z-10">
+            <div className="text-[10px] tracking-[0.25em] text-fg-3">POSITION_LOG</div>
+            <span className="text-[10px] text-fg-3 numeric">{trades.length}</span>
+          </div>
+          {trades.map(t => {
+            const rowActive = t.positionId === activeId;
+            const pos = t.netPnl >= 0;
+            return (
+              <button
+                key={t.positionId}
+                onClick={() => setActiveId(t.positionId)}
+                data-testid={`trade-row-${t.positionId}`}
+                className={`w-full text-left px-4 py-3 border-b border-border-soft transition-colors ${rowActive ? 'bg-surface border-l-2 border-l-profit pl-[14px]' : 'hover:bg-surface-hover'}`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-display font-bold tracking-tight text-[14px]">{t.symbol}</span>
+                  <span className={`text-[11px] numeric font-medium ${pos ? 'text-profit' : 'text-loss'}`}>
+                    {pos ? '+' : ''}${t.netPnl.toFixed(2)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between mt-1 text-[10px] text-fg-3 tracking-widest numeric">
+                  <span>{t.direction} · {t.volume.toFixed(2)} LOTS</span>
+                  <span>{new Date(t.openTime).toLocaleDateString('en-US', { day: '2-digit', month: 'short' })}</span>
+                </div>
+              </button>
+            );
+          })}
+        </aside>
+
+        {/* Right: journal panel — third on mobile */}
+        <aside className="order-3 tcard col-span-12 lg:col-span-3 p-0 flex flex-col" data-testid="journal-panel">
           <div className="px-4 py-3 border-b border-border-soft">
             <div className="text-[10px] tracking-[0.25em] text-fg-3">JOURNAL_ENTRY</div>
             <div className="font-display font-bold text-[15px] tracking-tight mt-1">Trade notes</div>

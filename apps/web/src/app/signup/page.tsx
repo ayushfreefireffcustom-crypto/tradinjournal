@@ -36,10 +36,10 @@ export default function SignupPage() {
         <div className="relative text-[10px] tracking-[0.22em] text-fg-3">// READ-ONLY · ENCRYPTED AT REST</div>
       </aside>
 
-      <main className="flex items-center justify-center p-6 lg:p-10">
+      <main className="flex items-center justify-center p-5 sm:p-8 lg:p-10">
         <form onSubmit={submit} className="w-full max-w-sm" data-testid="signup-form">
           <div className="text-[10px] tracking-[0.25em] text-fg-3">[ AUTH // REGISTER ]</div>
-          <h1 className="font-display font-black text-4xl tracking-tighter mt-2">CREATE ACCOUNT</h1>
+          <h1 className="font-display font-black text-3xl sm:text-4xl tracking-tighter mt-2">CREATE ACCOUNT</h1>
           <p className="text-fg-2 text-[12px] mt-2">Free tier · 1 MT5 slot · no credit card.</p>
 
           <div className="mt-8 flex flex-col gap-4">

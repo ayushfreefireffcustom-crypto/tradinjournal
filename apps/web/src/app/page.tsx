@@ -105,21 +105,23 @@ export default function LandingPage() {
     <div className="min-h-screen bg-app text-fg" data-testid="landing-page">
       {/* Nav */}
       <header className="sticky top-0 z-40 border-b border-border bg-app/80 backdrop-blur-xl" data-testid="landing-nav">
-        <div className="max-w-7xl mx-auto px-6 lg:px-10 h-14 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2.5" data-testid="logo-link">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 h-14 flex items-center justify-between gap-3">
+          <Link href="/" className="flex items-center gap-2.5 shrink-0" data-testid="logo-link">
             <span className="w-2.5 h-2.5 bg-profit pulse-dot" />
-            <span className="font-display font-black text-[15px] tracking-tighter">TRADIN<span className="text-fg-2">X</span></span>
+            <span className="font-display font-black text-[14px] sm:text-[15px] tracking-tighter">TRADIN<span className="text-fg-2">X</span></span>
           </Link>
-          <nav className="hidden md:flex items-center gap-7 text-[12px] text-fg-2">
+          <nav className="hidden md:flex items-center gap-5 lg:gap-7 text-[12px] text-fg-2">
             <a href="#features" className="hover:text-fg transition-colors">FEATURES</a>
             <a href="#analytics" className="hover:text-fg transition-colors">ANALYTICS</a>
             <a href="#pricing" className="hover:text-fg transition-colors">PRICING</a>
             <a href="#faq" className="hover:text-fg transition-colors">FAQ</a>
           </nav>
-          <div className="flex items-center gap-2">
-            <Link href="/login" className="btn btn-ghost" data-testid="nav-signin">SIGN IN</Link>
+          <div className="flex items-center gap-2 shrink-0">
+            <Link href="/login" className="btn btn-ghost hidden xs:inline-flex" data-testid="nav-signin">SIGN IN</Link>
             <Link href="/dashboard" className="btn btn-primary" data-testid="nav-open-terminal">
-              OPEN TERMINAL <span aria-hidden>→</span>
+              <span className="hidden sm:inline">OPEN TERMINAL</span>
+              <span className="sm:hidden">LAUNCH</span>
+              <span aria-hidden>→</span>
             </Link>
           </div>
         </div>
@@ -130,39 +132,39 @@ export default function LandingPage() {
       {/* HERO */}
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 bg-grid bg-grid-fade opacity-60" />
-        <div className="relative max-w-7xl mx-auto px-6 lg:px-10 pt-20 pb-24 grid lg:grid-cols-12 gap-10 items-end">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 pt-14 sm:pt-20 pb-16 sm:pb-24 grid lg:grid-cols-12 gap-10 items-end">
           <div className="lg:col-span-7 fade-up">
-            <p className="text-[11px] tracking-[0.3em] text-fg-3 mb-6">[ TJX // BEHAVIORAL ANALYTICS LAYER ]</p>
-            <h1 className="font-display font-black tracking-tighter text-[56px] sm:text-[78px] leading-[0.95]">
+            <p className="text-[10px] sm:text-[11px] tracking-[0.3em] text-fg-3 mb-5 sm:mb-6">[ TJX // BEHAVIORAL ANALYTICS LAYER ]</p>
+            <h1 className="font-display font-black tracking-tighter text-[40px] sm:text-[56px] md:text-[68px] lg:text-[78px] leading-[0.95]">
               QUANTIFY <br />
               YOUR <span className="text-fg-2">EDGE.</span> <br />
               <span className="text-profit">EXECUTE</span> <br />
               YOUR PLAN.
             </h1>
-            <p className="text-fg-2 mt-8 max-w-xl text-[13px] leading-relaxed">
+            <p className="text-fg-2 mt-6 sm:mt-8 max-w-xl text-[12px] sm:text-[13px] leading-relaxed">
               TradinX hooks directly into MetaTrader 5, reconstructs every position, and tells you
               the brutal truth about your trading psychology — revenge entries, FOMO chases, and
               the exact session where you bleed pips.
             </p>
-            <div className="mt-8 flex gap-3">
-              <Link href="/dashboard" className="btn btn-primary px-6 py-3 text-[13px]" data-testid="hero-cta-launch">
+            <div className="mt-7 sm:mt-8 flex flex-col sm:flex-row gap-3">
+              <Link href="/dashboard" className="btn btn-primary px-6 py-3 text-[13px] justify-center" data-testid="hero-cta-launch">
                 LAUNCH TERMINAL
               </Link>
-              <a href="#features" className="btn btn-ghost px-6 py-3 text-[13px]" data-testid="hero-cta-features">
+              <a href="#features" className="btn btn-ghost px-6 py-3 text-[13px] justify-center" data-testid="hero-cta-features">
                 VIEW SPEC SHEET
               </a>
             </div>
 
             {/* Mini stats strip */}
-            <div className="mt-12 grid grid-cols-3 max-w-md border border-border">
+            <div className="mt-10 sm:mt-12 grid grid-cols-3 max-w-md border border-border">
               {[
                 { l: 'Trades synced', v: '14.2M' },
                 { l: 'Median R:R', v: '1:2.4' },
                 { l: 'Edge uplift', v: '+25%' },
               ].map(s => (
-                <div key={s.l} className="border-r border-border last:border-r-0 px-4 py-3">
-                  <div className="text-[10px] tracking-[0.18em] text-fg-3 uppercase">{s.l}</div>
-                  <div className="font-display font-black text-2xl mt-1 tracking-tight">{s.v}</div>
+                <div key={s.l} className="border-r border-border last:border-r-0 px-3 sm:px-4 py-3">
+                  <div className="text-[9px] sm:text-[10px] tracking-[0.18em] text-fg-3 uppercase">{s.l}</div>
+                  <div className="font-display font-black text-xl sm:text-2xl mt-1 tracking-tight">{s.v}</div>
                 </div>
               ))}
             </div>
@@ -181,14 +183,14 @@ export default function LandingPage() {
                 <span className="text-[10px] text-profit">● LIVE</span>
               </div>
 
-              <div className="px-4 py-3 border-b border-border-soft flex items-center justify-between">
-                <div>
-                  <div className="text-[11px] text-fg-3 tracking-widest">XAUUSD · LONG · 0.45 lots</div>
-                  <div className="font-display font-black text-3xl tracking-tighter mt-1">+$1,240<span className="text-profit text-base font-mono ml-2">+3.2R</span></div>
+              <div className="px-4 py-3 border-b border-border-soft flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="text-[10px] sm:text-[11px] text-fg-3 tracking-widest truncate">XAUUSD · LONG · 0.45 lots</div>
+                  <div className="font-display font-black text-2xl sm:text-3xl tracking-tighter mt-1">+$1,240<span className="text-profit text-sm sm:text-base font-mono ml-2">+3.2R</span></div>
                 </div>
-                <div className="text-right">
+                <div className="text-right shrink-0">
                   <div className="text-[10px] text-fg-3 tracking-widest">CONF · {70 + (tick % 4)}%</div>
-                  <div className="text-profit text-[11px] mt-1">DISCIPLINED</div>
+                  <div className="text-profit text-[10px] sm:text-[11px] mt-1">DISCIPLINED</div>
                 </div>
               </div>
 
@@ -217,9 +219,9 @@ export default function LandingPage() {
 
       {/* MISSION strip */}
       <section className="border-y border-border bg-surface/40">
-        <div className="max-w-7xl mx-auto px-6 lg:px-10 py-16">
-          <p className="text-[11px] tracking-[0.3em] text-fg-3 mb-4">[ THE MISSION ]</p>
-          <h2 className="font-display font-black tracking-tighter text-3xl sm:text-5xl max-w-4xl leading-[1.05]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-12 sm:py-16">
+          <p className="text-[10px] sm:text-[11px] tracking-[0.3em] text-fg-3 mb-4">[ THE MISSION ]</p>
+          <h2 className="font-display font-black tracking-tighter text-2xl sm:text-3xl md:text-4xl lg:text-5xl max-w-4xl leading-[1.05]">
             <span className="text-fg-2">A TRADING JOURNAL THAT BEHAVES </span>
             <span className="text-fg">LIKE A BLOOMBERG TERMINAL </span>
             <span className="text-fg-2">— NOT A NOTES APP.</span>
@@ -228,32 +230,32 @@ export default function LandingPage() {
       </section>
 
       {/* FEATURES BENTO */}
-      <section id="features" className="max-w-7xl mx-auto px-6 lg:px-10 py-24">
-        <div className="flex items-end justify-between mb-10">
+      <section id="features" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-16 sm:py-24">
+        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8 sm:mb-10">
           <div>
-            <p className="text-[11px] tracking-[0.3em] text-fg-3">[ 02 // CAPABILITY MATRIX ]</p>
-            <h2 className="font-display font-black tracking-tighter text-4xl sm:text-5xl mt-3">EVERY TRADE, DISSECTED.</h2>
+            <p className="text-[10px] sm:text-[11px] tracking-[0.3em] text-fg-3">[ 02 // CAPABILITY MATRIX ]</p>
+            <h2 className="font-display font-black tracking-tighter text-3xl sm:text-4xl lg:text-5xl mt-3">EVERY TRADE, DISSECTED.</h2>
           </div>
-          <p className="hidden md:block text-fg-2 text-[12px] max-w-sm">Six instruments. Built for execution discipline, not vanity dashboards.</p>
+          <p className="text-fg-2 text-[12px] max-w-sm">Six instruments. Built for execution discipline, not vanity dashboards.</p>
         </div>
 
-        <div className="grid grid-cols-12 gap-3">
+        <div className="grid grid-cols-12 gap-2 sm:gap-3">
           {/* Big card */}
-          <div className="tcard col-span-12 lg:col-span-7 p-6 min-h-[320px] flex flex-col" data-testid="feature-mt5">
+          <div className="tcard col-span-12 lg:col-span-7 p-5 sm:p-6 min-h-[280px] sm:min-h-[320px] flex flex-col" data-testid="feature-mt5">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] tracking-[0.25em] text-fg-3">01 // MT5 BRIDGE</span>
+              <span className="text-[10px] sm:text-[11px] tracking-[0.25em] text-fg-3">01 // MT5 BRIDGE</span>
               <span className="text-[10px] text-profit">● ONLINE</span>
             </div>
-            <h3 className="font-display font-black text-3xl tracking-tighter mt-4">DIRECT MT5 SYNC. ZERO EXPORT.</h3>
-            <p className="text-fg-2 text-[13px] mt-3 max-w-md">Read-only investor credentials. Every ticket, fill, swap and commission is reconstructed into structured positions — automatically.</p>
+            <h3 className="font-display font-black text-2xl sm:text-3xl tracking-tighter mt-4">DIRECT MT5 SYNC. ZERO EXPORT.</h3>
+            <p className="text-fg-2 text-[12px] sm:text-[13px] mt-3 max-w-md">Read-only investor credentials. Every ticket, fill, swap and commission is reconstructed into structured positions — automatically.</p>
             <div className="mt-auto pt-6"><SyntheticChart height={140} /></div>
           </div>
 
-          <div className="tcard col-span-12 lg:col-span-5 p-6 flex flex-col" data-testid="feature-behavior">
-            <span className="text-[11px] tracking-[0.25em] text-fg-3">02 // PSYCH ENGINE</span>
+          <div className="tcard col-span-12 lg:col-span-5 p-5 sm:p-6 flex flex-col" data-testid="feature-behavior">
+            <span className="text-[10px] sm:text-[11px] tracking-[0.25em] text-fg-3">02 // PSYCH ENGINE</span>
             <h3 className="font-display font-black text-2xl tracking-tighter mt-4">BEHAVIORAL SCORE</h3>
-            <p className="text-fg-2 text-[13px] mt-3">Flags revenge clusters, FOMO entries, and premature exits against your stated plan.</p>
-            <div className="mt-6 grid grid-cols-2 gap-3">
+            <p className="text-fg-2 text-[12px] sm:text-[13px] mt-3">Flags revenge clusters, FOMO entries, and premature exits against your stated plan.</p>
+            <div className="mt-6 grid grid-cols-2 gap-2 sm:gap-3">
               {[
                 { l: 'Discipline', v: '88', t: 'profit' },
                 { l: 'Revenge events', v: '2', t: 'warning' },
@@ -262,7 +264,7 @@ export default function LandingPage() {
               ].map(m => (
                 <div key={m.l} className="border border-border-soft px-3 py-3">
                   <div className="text-[10px] tracking-[0.18em] text-fg-3 uppercase">{m.l}</div>
-                  <div className={`font-display font-black text-2xl mt-1 ${m.t === 'profit' ? 'text-profit' : m.t === 'loss' ? 'text-loss' : 'text-warning'}`}>{m.v}</div>
+                  <div className={`font-display font-black text-xl sm:text-2xl mt-1 ${m.t === 'profit' ? 'text-profit' : m.t === 'loss' ? 'text-loss' : 'text-warning'}`}>{m.v}</div>
                 </div>
               ))}
             </div>
@@ -274,9 +276,9 @@ export default function LandingPage() {
             { n: '05', title: 'SESSION HEATMAP', body: 'Asian, London, NY — pinpoint when your psychology cracks.' },
             { n: '06', title: 'TRADE TAGGING', body: 'Tag setups, emotions & playbooks. Find your statistical edge in seconds.' },
           ].map(c => (
-            <div key={c.n} className="tcard tcard-hover col-span-12 sm:col-span-6 lg:col-span-3 p-5 min-h-[180px] flex flex-col" data-testid={`feature-${c.n}`}>
+            <div key={c.n} className="tcard tcard-hover col-span-12 sm:col-span-6 lg:col-span-3 p-4 sm:p-5 min-h-[160px] sm:min-h-[180px] flex flex-col" data-testid={`feature-${c.n}`}>
               <span className="text-[10px] tracking-[0.25em] text-fg-3">{c.n}</span>
-              <h4 className="font-display font-bold text-xl tracking-tight mt-3">{c.title}</h4>
+              <h4 className="font-display font-bold text-lg sm:text-xl tracking-tight mt-3">{c.title}</h4>
               <p className="text-fg-2 text-[12px] mt-2">{c.body}</p>
             </div>
           ))}
@@ -285,29 +287,29 @@ export default function LandingPage() {
 
       {/* ANALYTICS PREVIEW */}
       <section id="analytics" className="border-t border-border bg-surface/40">
-        <div className="max-w-7xl mx-auto px-6 lg:px-10 py-24 grid lg:grid-cols-12 gap-10 items-center">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-16 sm:py-24 grid lg:grid-cols-12 gap-8 lg:gap-10 items-center">
           <div className="lg:col-span-5">
-            <p className="text-[11px] tracking-[0.3em] text-fg-3">[ 03 // EDGE DISCOVERY ]</p>
-            <h2 className="font-display font-black tracking-tighter text-4xl sm:text-5xl mt-3">PERFORMANCE, IN RAW NUMBERS.</h2>
-            <p className="text-fg-2 text-[13px] mt-5 max-w-md">
+            <p className="text-[10px] sm:text-[11px] tracking-[0.3em] text-fg-3">[ 03 // EDGE DISCOVERY ]</p>
+            <h2 className="font-display font-black tracking-tighter text-3xl sm:text-4xl lg:text-5xl mt-3">PERFORMANCE, IN RAW NUMBERS.</h2>
+            <p className="text-fg-2 text-[12px] sm:text-[13px] mt-5 max-w-md">
               No vanity dashboards. Profit factor, expectancy, drawdown, R-multiples, and session breakdowns — exactly what a prop firm risk desk would demand.
             </p>
-            <div className="mt-8 flex flex-wrap gap-2 max-w-md">
+            <div className="mt-7 sm:mt-8 flex flex-wrap gap-2 max-w-md">
               {['Profit factor', 'Sharpe', 'Sortino', 'Expectancy', 'Max DD', 'Avg R:R', 'Hold time'].map(t => (
                 <span key={t} className="border border-border-soft px-2.5 py-1 text-[11px] text-fg-2 tracking-wider uppercase">{t}</span>
               ))}
             </div>
           </div>
 
-          <div className="lg:col-span-7 tcard p-5" data-testid="analytics-preview">
-            <div className="flex items-center justify-between border-b border-border-soft pb-3 mb-4">
-              <div className="flex gap-1">
+          <div className="lg:col-span-7 tcard p-4 sm:p-5" data-testid="analytics-preview">
+            <div className="flex items-center justify-between border-b border-border-soft pb-3 mb-4 gap-2">
+              <div className="flex gap-1 overflow-x-auto no-scrollbar -mx-1 px-1">
                 {(['replay', 'analytics', 'journal'] as const).map(t => (
                   <button
                     key={t}
                     onClick={() => setTab(t)}
                     data-testid={`preview-tab-${t}`}
-                    className={`px-3 py-1.5 text-[11px] tracking-[0.2em] uppercase border ${
+                    className={`shrink-0 px-3 py-1.5 text-[11px] tracking-[0.2em] uppercase border ${
                       tab === t ? 'border-border-strong text-fg bg-surface-hover' : 'border-transparent text-fg-3 hover:text-fg'
                     }`}
                   >
@@ -315,17 +317,17 @@ export default function LandingPage() {
                   </button>
                 ))}
               </div>
-              <span className="text-[10px] text-fg-3 tracking-widest">ALL TIME · 78 TRADES</span>
+              <span className="text-[9px] sm:text-[10px] text-fg-3 tracking-widest shrink-0">78 TRADES</span>
             </div>
-            <div className="grid grid-cols-3 gap-3 mb-4">
+            <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-4">
               {[
                 { l: 'NET P&L',        v: '+$12,418', c: 'text-profit' },
                 { l: 'WIN RATE',       v: '64.1%',     c: '' },
                 { l: 'PROFIT FACTOR',  v: '2.82',      c: '' },
               ].map(m => (
                 <div key={m.l} className="border border-border-soft px-3 py-3">
-                  <div className="text-[10px] tracking-[0.18em] text-fg-3 uppercase">{m.l}</div>
-                  <div className={`font-display font-black text-2xl mt-1 tracking-tight ${m.c}`}>{m.v}</div>
+                  <div className="text-[9px] sm:text-[10px] tracking-[0.18em] text-fg-3 uppercase">{m.l}</div>
+                  <div className={`font-display font-black text-xl sm:text-2xl mt-1 tracking-tight ${m.c}`}>{m.v}</div>
                 </div>
               ))}
             </div>
@@ -335,25 +337,25 @@ export default function LandingPage() {
       </section>
 
       {/* PRICING */}
-      <section id="pricing" className="max-w-7xl mx-auto px-6 lg:px-10 py-24">
-        <div className="flex items-end justify-between mb-10">
+      <section id="pricing" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-16 sm:py-24">
+        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8 sm:mb-10">
           <div>
-            <p className="text-[11px] tracking-[0.3em] text-fg-3">[ 04 // PROTOCOL TIERS ]</p>
-            <h2 className="font-display font-black tracking-tighter text-4xl sm:text-5xl mt-3">PRICING.</h2>
+            <p className="text-[10px] sm:text-[11px] tracking-[0.3em] text-fg-3">[ 04 // PROTOCOL TIERS ]</p>
+            <h2 className="font-display font-black tracking-tighter text-3xl sm:text-4xl lg:text-5xl mt-3">PRICING.</h2>
           </div>
-          <p className="hidden md:block text-fg-2 text-[12px] max-w-sm">No seats. No upsells. Just journaling that pays for itself in one disciplined month.</p>
+          <p className="text-fg-2 text-[12px] max-w-sm">No seats. No upsells. Just journaling that pays for itself in one disciplined month.</p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-3">
+        <div className="grid md:grid-cols-3 gap-2 sm:gap-3">
           {[
             { name: 'CADET',  price: '$0',  per: 'forever',     desc: 'Manual journal & basic stats.',     features: ['1 MT5 account', 'Basic P&L stats', 'Manual tagging', 'Equity curve'], cta: 'START FREE', highlight: false },
             { name: 'TRADER', price: '$19', per: 'per month',   desc: 'The professional standard.',         features: ['Unlimited MT5 accounts', 'Behavioural AI', 'Candle replay', 'R-multiple analytics', 'CSV / API export'], cta: 'UPGRADE',     highlight: true },
             { name: 'DESK',   price: '$49', per: 'per month',   desc: 'For prop firms & teams.',            features: ['Everything in Trader', 'Team workspaces', 'Risk-desk reports', 'Priority MT5 bridge', 'Dedicated support'], cta: 'CONTACT SALES', highlight: false },
           ].map(p => (
-            <div key={p.name} className={`tcard p-6 flex flex-col ${p.highlight ? 'border-fg' : ''}`} data-testid={`pricing-${p.name.toLowerCase()}`}>
+            <div key={p.name} className={`tcard p-5 sm:p-6 flex flex-col ${p.highlight ? 'border-fg' : ''}`} data-testid={`pricing-${p.name.toLowerCase()}`}>
               {p.highlight && <span className="absolute -top-px right-3 bg-fg text-app text-[10px] tracking-widest px-2 py-1">MOST USED</span>}
-              <div className="text-[11px] tracking-[0.25em] text-fg-3">{p.name}</div>
-              <div className="font-display font-black text-5xl tracking-tighter mt-4">{p.price}<span className="text-fg-3 text-[12px] font-mono ml-2">/ {p.per}</span></div>
+              <div className="text-[10px] sm:text-[11px] tracking-[0.25em] text-fg-3">{p.name}</div>
+              <div className="font-display font-black text-4xl sm:text-5xl tracking-tighter mt-4">{p.price}<span className="text-fg-3 text-[12px] font-mono ml-2">/ {p.per}</span></div>
               <p className="text-fg-2 text-[12px] mt-3">{p.desc}</p>
               <ul className="mt-6 space-y-2 text-[12px] text-fg-2">
                 {p.features.map(f => (
@@ -368,24 +370,24 @@ export default function LandingPage() {
 
       {/* TESTIMONIAL / PROOF */}
       <section className="border-y border-border bg-surface/40">
-        <div className="max-w-7xl mx-auto px-6 lg:px-10 py-20 grid lg:grid-cols-12 gap-10 items-center">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-16 sm:py-20 grid lg:grid-cols-12 gap-8 lg:gap-10 items-center">
           <div className="lg:col-span-7">
-            <p className="text-[11px] tracking-[0.3em] text-fg-3 mb-4">[ FIELD REPORT // 2026.01 ]</p>
-            <p className="font-display font-bold text-2xl sm:text-3xl tracking-tight leading-snug">
+            <p className="text-[10px] sm:text-[11px] tracking-[0.3em] text-fg-3 mb-4">[ FIELD REPORT // 2026.01 ]</p>
+            <p className="font-display font-bold text-xl sm:text-2xl md:text-3xl tracking-tight leading-snug">
               &ldquo;The behavioural score caught what I couldn&apos;t see — I was revenge trading every Tuesday after London. Cleaning that one habit moved my profit factor from 1.4 to 2.6.&rdquo;
             </p>
-            <div className="mt-6 text-[11px] text-fg-3 tracking-widest">— C. HENRY · PRO FX TRADER · FTMO 200K</div>
+            <div className="mt-5 sm:mt-6 text-[10px] sm:text-[11px] text-fg-3 tracking-widest">— C. HENRY · PRO FX TRADER · FTMO 200K</div>
           </div>
-          <div className="lg:col-span-5 grid grid-cols-2 gap-3">
+          <div className="lg:col-span-5 grid grid-cols-2 gap-2 sm:gap-3">
             {[
               { l: 'Avg PF uplift',   v: '+0.62' },
               { l: 'Daily syncs',     v: '500K+' },
-              { l: 'Brokers',         v: 'XM · IC · Pepperstone' },
+              { l: 'Brokers',         v: 'XM · IC · PEP' },
               { l: 'Latency',         v: '< 50ms' },
             ].map(s => (
               <div key={s.l} className="tcard p-4">
                 <div className="text-[10px] tracking-[0.18em] text-fg-3 uppercase">{s.l}</div>
-                <div className="font-display font-black text-2xl mt-1 tracking-tight">{s.v}</div>
+                <div className="font-display font-black text-xl sm:text-2xl mt-1 tracking-tight break-words">{s.v}</div>
               </div>
             ))}
           </div>
@@ -393,9 +395,9 @@ export default function LandingPage() {
       </section>
 
       {/* FAQ */}
-      <section id="faq" className="max-w-5xl mx-auto px-6 lg:px-10 py-24">
-        <p className="text-[11px] tracking-[0.3em] text-fg-3 mb-3">[ 05 // OPS LOG ]</p>
-        <h2 className="font-display font-black tracking-tighter text-4xl sm:text-5xl mb-10">FREQUENT QUESTIONS.</h2>
+      <section id="faq" className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-10 py-16 sm:py-24">
+        <p className="text-[10px] sm:text-[11px] tracking-[0.3em] text-fg-3 mb-3">[ 05 // OPS LOG ]</p>
+        <h2 className="font-display font-black tracking-tighter text-3xl sm:text-4xl lg:text-5xl mb-8 sm:mb-10">FREQUENT QUESTIONS.</h2>
         <div className="border-t border-border">
           {[
             { q: 'How secure is the MT5 connection?', a: 'We only ever ask for the investor (read-only) password. We can place no trades, withdraw nothing, and credentials are encrypted at rest with per-user keys.' },
@@ -404,11 +406,11 @@ export default function LandingPage() {
             { q: 'Does TradinX support MT4?',          a: 'MT5 is supported today. MT4 is on the roadmap (Q2 2026) once MT5 coverage reaches parity with desk-grade audit tooling.' },
           ].map(item => (
             <details key={item.q} className="group border-b border-border" data-testid="faq-item">
-              <summary className="cursor-pointer list-none flex items-center justify-between py-5 hover:text-fg text-fg-2">
-                <span className="text-[14px] tracking-tight">{item.q}</span>
-                <span className="text-fg-3 text-xl group-open:rotate-45 transition-transform">+</span>
+              <summary className="cursor-pointer list-none flex items-center justify-between py-4 sm:py-5 hover:text-fg text-fg-2 gap-3">
+                <span className="text-[13px] sm:text-[14px] tracking-tight">{item.q}</span>
+                <span className="text-fg-3 text-xl group-open:rotate-45 transition-transform shrink-0">+</span>
               </summary>
-              <p className="pb-5 text-fg-2 text-[13px] leading-relaxed max-w-3xl">{item.a}</p>
+              <p className="pb-5 text-fg-2 text-[12px] sm:text-[13px] leading-relaxed max-w-3xl">{item.a}</p>
             </details>
           ))}
         </div>
@@ -416,12 +418,12 @@ export default function LandingPage() {
 
       {/* CTA */}
       <section className="border-t border-border bg-surface/40">
-        <div className="max-w-7xl mx-auto px-6 lg:px-10 py-24 text-center">
-          <h2 className="font-display font-black tracking-tighter text-5xl sm:text-7xl leading-[0.95]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-16 sm:py-24 text-center">
+          <h2 className="font-display font-black tracking-tighter text-4xl sm:text-5xl md:text-6xl lg:text-7xl leading-[0.95]">
             STOP <span className="text-fg-2">GUESSING.</span> <br /> START <span className="text-profit">JOURNALLING.</span>
           </h2>
-          <p className="text-fg-2 text-[13px] max-w-md mx-auto mt-6">Hook your MT5 in 90 seconds. See your real edge by tomorrow morning.</p>
-          <Link href="/dashboard" className="btn btn-primary px-8 py-3.5 mt-8 inline-flex" data-testid="footer-cta-launch">
+          <p className="text-fg-2 text-[12px] sm:text-[13px] max-w-md mx-auto mt-5 sm:mt-6">Hook your MT5 in 90 seconds. See your real edge by tomorrow morning.</p>
+          <Link href="/dashboard" className="btn btn-primary px-7 py-3 sm:px-8 sm:py-3.5 mt-7 sm:mt-8 inline-flex" data-testid="footer-cta-launch">
             LAUNCH TERMINAL →
           </Link>
         </div>
@@ -429,12 +431,12 @@ export default function LandingPage() {
 
       {/* Footer */}
       <footer className="border-t border-border bg-app">
-        <div className="max-w-7xl mx-auto px-6 lg:px-10 py-10 flex flex-wrap items-center justify-between gap-6">
-          <div className="flex items-center gap-3 text-[11px] text-fg-3 tracking-widest">
-            <span className="w-2 h-2 bg-profit pulse-dot" />
-            TRADINX // PRECISION JOURNAL // EST 2026
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-8 sm:py-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-6">
+          <div className="flex items-center gap-3 text-[10px] sm:text-[11px] text-fg-3 tracking-widest">
+            <span className="w-2 h-2 bg-profit pulse-dot shrink-0" />
+            <span>TRADINX // PRECISION JOURNAL // EST 2026</span>
           </div>
-          <div className="flex gap-6 text-[11px] text-fg-3 tracking-widest">
+          <div className="flex flex-wrap gap-4 sm:gap-6 text-[10px] sm:text-[11px] text-fg-3 tracking-widest">
             <a href="#" className="hover:text-fg">PRIVACY</a>
             <a href="#" className="hover:text-fg">TERMS</a>
             <a href="#" className="hover:text-fg">STATUS</a>

@@ -49,10 +49,10 @@ export default function LoginPage() {
       </aside>
 
       {/* Right: form */}
-      <main className="flex items-center justify-center p-6 lg:p-10">
+      <main className="flex items-center justify-center p-5 sm:p-8 lg:p-10">
         <form onSubmit={submit} className="w-full max-w-sm" data-testid="login-form">
           <div className="text-[10px] tracking-[0.25em] text-fg-3">[ AUTH // SIGN IN ]</div>
-          <h1 className="font-display font-black text-4xl tracking-tighter mt-2">ACCESS TERMINAL</h1>
+          <h1 className="font-display font-black text-3xl sm:text-4xl tracking-tighter mt-2">ACCESS TERMINAL</h1>
           <p className="text-fg-2 text-[12px] mt-2">Demo mode — any credentials route you straight into the dashboard.</p>
 
           <div className="mt-8 flex flex-col gap-4">

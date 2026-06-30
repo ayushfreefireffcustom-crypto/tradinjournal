@@ -55,20 +55,20 @@ export default function TradesPage() {
       pageTitle="Trade Log"
       pageSubtitle="// AUDIT TRAIL"
     >
-      <div className="p-6 lg:p-8 max-w-[1400px] mx-auto fade-up" data-testid="trades-page">
+      <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto fade-up" data-testid="trades-page">
         <div className="flex items-end justify-between gap-4 flex-wrap mb-6">
-          <div>
-            <div className="text-[10px] tracking-[0.25em] text-fg-3">[ TRADE LOG // {selected?.broker.toUpperCase()} ]</div>
-            <h1 className="font-display font-black text-4xl tracking-tighter mt-2">{trades.length} POSITIONS</h1>
-            <div className="text-[11px] text-fg-3 tracking-widest mt-1 numeric">RECONSTRUCTED FROM {deals.length} DEALS</div>
+          <div className="min-w-0">
+            <div className="text-[10px] tracking-[0.25em] text-fg-3 truncate">[ TRADE LOG // {selected?.broker.toUpperCase()} ]</div>
+            <h1 className="font-display font-black text-3xl sm:text-4xl tracking-tighter mt-2">{trades.length} POSITIONS</h1>
+            <div className="text-[10px] sm:text-[11px] text-fg-3 tracking-widest mt-1 numeric">RECONSTRUCTED FROM {deals.length} DEALS</div>
           </div>
-          <div className="flex gap-1">
+          <div className="flex gap-1 overflow-x-auto no-scrollbar w-full sm:w-auto -mx-1 px-1">
             {(['ALL', 'LONG', 'SHORT', 'WIN', 'LOSS'] as const).map(f => (
               <button
                 key={f}
                 onClick={() => setFilter(f)}
                 data-testid={`filter-${f.toLowerCase()}`}
-                className={`px-3 py-1.5 text-[10px] tracking-[0.22em] border ${filter === f ? 'border-fg text-fg bg-surface' : 'border-border-soft text-fg-3 hover:text-fg hover:border-border-strong'}`}
+                className={`shrink-0 px-3 py-1.5 text-[10px] tracking-[0.22em] border ${filter === f ? 'border-fg text-fg bg-surface' : 'border-border-soft text-fg-3 hover:text-fg hover:border-border-strong'}`}
               >
                 {f}
               </button>
@@ -82,7 +82,7 @@ export default function TradesPage() {
               key={t}
               onClick={() => setTab(t)}
               data-testid={`tab-${t}`}
-              className={`px-4 py-2 text-[10px] tracking-[0.22em] border uppercase ${tab === t ? 'border-fg text-fg bg-surface' : 'border-border-soft text-fg-3 hover:text-fg hover:border-border-strong'}`}
+              className={`px-3 sm:px-4 py-2 text-[10px] tracking-[0.22em] border uppercase ${tab === t ? 'border-fg text-fg bg-surface' : 'border-border-soft text-fg-3 hover:text-fg hover:border-border-strong'}`}
             >
               {t === 'trades' ? 'POSITIONS' : 'RAW DEALS'}
             </button>
@@ -92,7 +92,7 @@ export default function TradesPage() {
         {tab === 'trades' ? (
           <div className="tcard p-0" data-testid="trades-table">
             <div className="overflow-x-auto">
-              <table className="w-full text-[12px]">
+              <table className="w-full min-w-[920px] text-[12px]">
                 <thead>
                   <tr className="border-b border-border">
                     {['Symbol', 'Dir', 'Volume', 'Open', 'Close', 'Entry', 'Exit', 'Held', 'Net P&L', 'Tag'].map(h => (

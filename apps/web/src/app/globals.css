@@ -113,3 +113,15 @@ html, body {
 /* Utility helpers */
 .text-mono { font-family: var(--font-mono); }
 .numeric { font-variant-numeric: tabular-nums; }
+
+/* Hide scrollbar but keep scrollability — used on mobile horizontal scrollers */
+.no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* Prevent iOS Safari font-size auto-zoom on input focus */
+@media (max-width: 640px) {
+  .tinput { font-size: 16px; }
+}
+
+/* Tighter root padding on small screens */
+html, body { overscroll-behavior-y: none; }

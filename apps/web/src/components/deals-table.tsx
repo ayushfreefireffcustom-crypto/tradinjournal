@@ -36,7 +36,7 @@ export default function DealsTable({ deals, loading, error }: Props) {
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full text-[12px]">
+        <table className="w-full min-w-[760px] text-[12px]">
           <thead>
             <tr className="border-b border-border">
               {COLS.map(c => (
