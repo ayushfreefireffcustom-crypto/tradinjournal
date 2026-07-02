@@ -283,3 +283,63 @@ export function statsFor(accountId: string): { account: BrokerAccount; trades: T
 export function ok<T>(data: T) {
   return Response.json({ data });
 }
+
+// ─── Mock journal store (in-memory, dev-only, resets on server restart) ──────
+
+export interface JournalEntry {
+  id: string;
+  userId: string;
+  brokerAccountId: string | null;
+  title: string | null;
+  body: string;
+  emotion: string | null;
+  tags: string[];
+  tradeId: string | null;
+  entryDate: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Next's dev server can give each route file its own module instance, so a
+// plain module-level array wouldn't be shared between route.ts and
+// [id]/route.ts. Anchor the store on globalThis (same trick used for the
+// Prisma client singleton) so every route handler sees the same data.
+const globalStore = globalThis as unknown as { __mockJournal?: { entries: JournalEntry[]; seq: number } };
+const journalStore = globalStore.__mockJournal ?? (globalStore.__mockJournal = { entries: [], seq: 1 });
+
+export function listJournal(accountId?: string): JournalEntry[] {
+  return journalStore.entries.filter(e => !accountId || e.brokerAccountId === accountId);
+}
+
+export function createJournal(input: { title?: string; body: string; emotion?: string; tags?: string[]; tradeId?: string; brokerAccountId?: string; entryDate?: string }): JournalEntry {
+  const now = new Date().toISOString();
+  const entry: JournalEntry = {
+    id: `journal-${journalStore.seq++}`,
+    userId: 'mock-user',
+    brokerAccountId: input.brokerAccountId ?? null,
+    title: input.title ?? null,
+    body: input.body,
+    emotion: input.emotion ?? null,
+    tags: input.tags ?? [],
+    tradeId: input.tradeId ?? null,
+    entryDate: input.entryDate ?? now,
+    createdAt: now,
+    updatedAt: now,
+  };
+  journalStore.entries.push(entry);
+  return entry;
+}
+
+export function updateJournal(id: string, patch: Partial<{ title: string; body: string; emotion: string; tags: string[]; entryDate: string }>): JournalEntry | null {
+  const entry = journalStore.entries.find(e => e.id === id);
+  if (!entry) return null;
+  Object.assign(entry, patch, { updatedAt: new Date().toISOString() });
+  return entry;
+}
+
+export function deleteJournal(id: string): boolean {
+  const idx = journalStore.entries.findIndex(e => e.id === id);
+  if (idx === -1) return false;
+  journalStore.entries.splice(idx, 1);
+  return true;
+}
