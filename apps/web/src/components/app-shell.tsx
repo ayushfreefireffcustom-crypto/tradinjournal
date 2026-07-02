@@ -43,8 +43,6 @@ export default function AppShell({
     return () => clearInterval(t);
   }, []);
 
-  if (isPending || !session?.session) return null;
-
   // Close drawer on route change
   useEffect(() => { setDrawerOpen(false); }, [pathname]);
 
@@ -54,6 +52,8 @@ export default function AppShell({
     else document.body.style.overflow = '';
     return () => { document.body.style.overflow = ''; };
   }, [drawerOpen]);
+
+  if (isPending || !session?.session) return null;
 
   const SidebarBody = (
     <>

@@ -17,9 +17,11 @@ export default function TradesPage() {
   const [filter, setFilter] = useState<'ALL' | 'LONG' | 'SHORT' | 'WIN' | 'LOSS'>('ALL');
 
   const init = useCallback(async () => {
-    const accs = await api.accounts.list();
-    setAccounts(accs);
-    setSelected(accs[0] ?? null);
+    try {
+      const accs = await api.accounts.list();
+      setAccounts(accs);
+      setSelected(accs[0] ?? null);
+    } catch {}
   }, []);
   useEffect(() => { init(); }, [init]);
 

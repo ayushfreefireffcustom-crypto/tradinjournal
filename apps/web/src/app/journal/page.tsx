@@ -136,13 +136,16 @@ export default function ChartReplayPage() {
   const [note, setNote] = useState('');
   const [emotion, setEmotion] = useState('');
   const [tags, setTags] = useState<string[]>([]);
+  const [tagDraft, setTagDraft] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [showConnect, setShowConnect] = useState(false);
 
   const initAccounts = useCallback(async () => {
-    const accs = await api.accounts.list();
-    setAccounts(accs);
-    setSelected(accs[0] ?? null);
+    try {
+      const accs = await api.accounts.list();
+      setAccounts(accs);
+      setSelected(accs[0] ?? null);
+    } catch {}
   }, []);
   useEffect(() => { initAccounts(); }, [initAccounts]);
 
@@ -187,9 +190,10 @@ export default function ChartReplayPage() {
     }
   }
 
-  function addTag() {
-    const t = window.prompt('Add tag')?.trim();
+  function commitTagDraft() {
+    const t = tagDraft?.trim();
     if (t && !tags.includes(t)) setTags(prev => [...prev, t]);
+    setTagDraft(null);
   }
 
   function onConnected(a: BrokerAccount) {
@@ -337,7 +341,23 @@ export default function ChartReplayPage() {
                     {t.toUpperCase()}
                   </button>
                 ))}
-                <button onClick={addTag} data-testid="add-tag" className="px-2 py-1 text-[10px] tracking-widest border border-dashed border-border-strong text-fg-3 hover:text-fg">+ ADD</button>
+                {tagDraft !== null ? (
+                  <input
+                    autoFocus
+                    value={tagDraft}
+                    onChange={e => setTagDraft(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') commitTagDraft();
+                      if (e.key === 'Escape') setTagDraft(null);
+                    }}
+                    onBlur={commitTagDraft}
+                    data-testid="tag-draft-input"
+                    placeholder="Tag name…"
+                    className="px-2 py-1 text-[10px] tracking-widest border border-border-strong bg-transparent text-fg w-24 focus:outline-none"
+                  />
+                ) : (
+                  <button onClick={() => setTagDraft('')} data-testid="add-tag" className="px-2 py-1 text-[10px] tracking-widest border border-dashed border-border-strong text-fg-3 hover:text-fg">+ ADD</button>
+                )}
               </div>
             </div>
 
