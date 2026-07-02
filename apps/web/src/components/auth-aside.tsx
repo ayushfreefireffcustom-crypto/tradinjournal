@@ -82,7 +82,7 @@ export default function AuthAside({ variant }: { variant: 'signin' | 'signup' })
       ];
 
   return (
-    <aside className="hidden lg:flex flex-col border-r border-border relative overflow-hidden" data-testid={`auth-aside-${variant}`}>
+    <aside className="hidden lg:flex flex-col border-r border-border relative overflow-hidden min-h-screen" data-testid={`auth-aside-${variant}`}>
       {/* Grid + gradient wash */}
       <div className="absolute inset-0 bg-grid bg-grid-fade opacity-30" />
       <div className="absolute -top-40 -left-40 w-[520px] h-[520px] rounded-full opacity-30 blur-3xl" style={{ background: 'radial-gradient(circle, rgba(0,197,102,0.35) 0%, transparent 70%)' }} />
@@ -101,8 +101,8 @@ export default function AuthAside({ variant }: { variant: 'signin' | 'signup' })
       <AuthTicker />
 
       {/* Hero body */}
-      <div className="relative z-10 flex-1 flex flex-col justify-center px-8 xl:px-12 py-10">
-        <div className="w-full max-w-xl">
+      <div className="relative z-10 flex-1 flex flex-col justify-center px-8 xl:px-12 py-12">
+        <div className="w-full max-w-xl mx-auto">
           <div className="flex items-center gap-2.5 mb-8">
             <span className="w-2.5 h-2.5 bg-profit pulse-dot" />
             <span className="font-display font-black text-[16px] tracking-tighter">TRADIN<span className="text-fg-2">X</span></span>

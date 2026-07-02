@@ -38,10 +38,16 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen bg-app grid lg:grid-cols-[minmax(0,1fr)_minmax(0,540px)]" data-testid="signup-page">
+    <div className="min-h-screen bg-app grid lg:grid-cols-2" data-testid="signup-page">
       <AuthAside variant="signup" />
 
       <main className="relative flex flex-col min-h-screen">
+        {/* Symmetric top status bar */}
+        <div className="hidden lg:flex border-b border-border h-12 items-center justify-between px-8 xl:px-12 text-[10px] tracking-[0.22em] text-fg-3">
+          <span>SECURE SESSION · TLS 1.3</span>
+          <span className="flex items-center gap-2"><span className="w-2 h-2 bg-profit pulse-dot" /> READY</span>
+        </div>
+
         {/* Mobile top status */}
         <div className="lg:hidden border-b border-border h-11 flex items-center justify-between px-4 text-[10px] tracking-[0.22em] text-fg-3">
           <div className="flex items-center gap-2">
@@ -51,8 +57,8 @@ export default function SignupPage() {
           <span>ONLINE</span>
         </div>
 
-        <div className="flex-1 flex items-center justify-center p-5 sm:p-8 lg:p-12">
-          <form onSubmit={submit} className="w-full max-w-md" data-testid="signup-form">
+        <div className="flex-1 flex items-center justify-center px-5 py-8 sm:px-8 sm:py-12 lg:px-12">
+          <form onSubmit={submit} className="w-full max-w-[420px]" data-testid="signup-form">
             <div className="text-[10px] tracking-[0.3em] text-fg-3">[ AUTH // REGISTER · 02 ]</div>
             <h1 className="font-display font-black text-3xl sm:text-4xl xl:text-5xl tracking-tighter mt-3">
               PROVISION <span className="text-profit">ACCOUNT.</span>
@@ -171,6 +177,15 @@ export default function SignupPage() {
         <div className="lg:hidden border-t border-border px-4 py-3 flex items-center justify-between text-[10px] tracking-[0.22em] text-fg-3">
           <span>READ-ONLY MT5</span>
           <span>AES-256 · SOC2</span>
+        </div>
+
+        {/* Desktop bottom bar */}
+        <div className="hidden lg:flex border-t border-border h-11 items-center justify-between px-8 xl:px-12 text-[10px] tracking-[0.22em] text-fg-3">
+          <span className="flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-profit pulse-dot" />
+            FREE FOREVER · 1 MT5 SLOT
+          </span>
+          <span>ALREADY IN? <Link href="/login" className="text-fg hover:text-profit ml-2">SIGN IN →</Link></span>
         </div>
       </main>
     </div>
