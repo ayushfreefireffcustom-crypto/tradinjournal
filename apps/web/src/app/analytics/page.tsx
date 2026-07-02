@@ -71,52 +71,226 @@ function RDist() {
     { l: '+4R', v: 6,  loss: false },
     { l: '+5R', v: 2,  loss: false },
   ];
-  const max = Math.max(...buckets.map(b => b.v));
+  const total = buckets.reduce((s, b) => s + b.v, 0);
+  const mode = buckets.reduce((m, b) => b.v > m.v ? b : m, buckets[0]!);
+  const maxV = Math.max(...buckets.map(b => b.v));
+  const zeroIdx = buckets.findIndex(b => b.l === '0R');
+
+  const W = 700, H = 240;
+  const PAD = { top: 26, right: 14, bottom: 38, left: 14 };
+  const innerW = W - PAD.left - PAD.right;
+  const innerH = H - PAD.top - PAD.bottom;
+  const gap = 8;
+  const bw = (innerW - gap * (buckets.length - 1)) / buckets.length;
+  const scaleY = (v: number) => (v / maxV) * innerH;
+
+  // Gradient definitions for bars
   return (
-    <div className="flex items-end gap-2 h-44" data-testid="r-distribution">
-      {buckets.map(b => (
-        <div key={b.l} className="flex-1 flex flex-col items-center justify-end gap-2">
-          <span className="text-[10px] text-fg-2 numeric">{b.v}</span>
-          <div className="w-full" style={{ height: `${(b.v / max) * 100}%`, background: b.loss ? '#FF3B30' : '#00C566', opacity: 0.85 }} />
-          <span className="text-[9px] tracking-widest text-fg-3 numeric">{b.l}</span>
-        </div>
-      ))}
+    <div data-testid="r-distribution">
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="barLoss" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stopColor="#FF3B30" stopOpacity="1" />
+            <stop offset="100%" stopColor="#FF3B30" stopOpacity="0.25" />
+          </linearGradient>
+          <linearGradient id="barProfit" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stopColor="#00C566" stopOpacity="1" />
+            <stop offset="100%" stopColor="#00C566" stopOpacity="0.25" />
+          </linearGradient>
+        </defs>
+
+        {/* horizontal grid lines */}
+        {[0.25, 0.5, 0.75, 1].map(p => (
+          <line key={p} x1={PAD.left} x2={W - PAD.right} y1={PAD.top + innerH - innerH * p} y2={PAD.top + innerH - innerH * p} stroke="#1E1E1E" strokeDasharray="2 5" />
+        ))}
+
+        {/* Bars */}
+        {buckets.map((b, i) => {
+          const x = PAD.left + i * (bw + gap);
+          const h = scaleY(b.v);
+          const y = PAD.top + innerH - h;
+          const fill = b.loss ? 'url(#barLoss)' : 'url(#barProfit)';
+          const stroke = b.loss ? '#FF3B30' : '#00C566';
+          return (
+            <g key={b.l}>
+              {/* Bar */}
+              <rect x={x} y={y} width={bw} height={h} fill={fill} />
+              {/* Top edge accent */}
+              <line x1={x} x2={x + bw} y1={y} y2={y} stroke={stroke} strokeWidth="1.5" />
+              {/* Value label above bar */}
+              <text x={x + bw / 2} y={y - 8} textAnchor="middle" fontSize="11" fontFamily="JetBrains Mono" fill="#A1A1AA">
+                {b.v}
+              </text>
+              {/* X-axis label */}
+              <text x={x + bw / 2} y={H - 18} textAnchor="middle" fontSize="10" fontFamily="JetBrains Mono" letterSpacing="1" fill={b.loss ? '#71717A' : '#A1A1AA'}>
+                {b.l}
+              </text>
+              {/* Percentage of sample under label */}
+              <text x={x + bw / 2} y={H - 5} textAnchor="middle" fontSize="9" fontFamily="JetBrains Mono" fill="#4A4A4A">
+                {Math.round((b.v / total) * 100)}%
+              </text>
+            </g>
+          );
+        })}
+
+        {/* Zero (break-even) line between losing and winning R buckets */}
+        <line
+          x1={PAD.left + (zeroIdx + 1) * bw + zeroIdx * gap + gap / 2}
+          x2={PAD.left + (zeroIdx + 1) * bw + zeroIdx * gap + gap / 2}
+          y1={PAD.top - 12}
+          y2={PAD.top + innerH + 4}
+          stroke="#FFFFFF" strokeDasharray="3 3" opacity="0.35"
+        />
+        <text
+          x={PAD.left + (zeroIdx + 1) * bw + zeroIdx * gap + gap / 2}
+          y={PAD.top - 16}
+          textAnchor="middle" fontSize="9" letterSpacing="2" fontFamily="JetBrains Mono" fill="#71717A"
+        >
+          BREAK-EVEN
+        </text>
+
+        {/* Expectancy marker at +0.78R (between +0R and +1R buckets, ~78% of the way) */}
+        {(() => {
+          const expIdx = zeroIdx + 0.78;
+          const expX = PAD.left + expIdx * (bw + gap) + bw / 2;
+          return (
+            <g>
+              <line x1={expX} x2={expX} y1={PAD.top} y2={PAD.top + innerH} stroke="#00C566" strokeWidth="1.5" />
+              <polygon points={`${expX - 5},${PAD.top - 2} ${expX + 5},${PAD.top - 2} ${expX},${PAD.top + 6}`} fill="#00C566" />
+            </g>
+          );
+        })()}
+      </svg>
+
+      {/* Stats footer */}
+      <div className="mt-4 pt-4 border-t border-border-soft grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+        {[
+          { l: 'Expectancy', v: '+0.78R', c: 'text-profit' },
+          { l: 'Std Dev',    v: '1.62R',  c: '' },
+          { l: 'Best R',     v: '+5.10R', c: 'text-profit' },
+          { l: 'Worst R',    v: '-3.20R', c: 'text-loss' },
+        ].map(s => (
+          <div key={s.l}>
+            <div className="text-[10px] tracking-[0.22em] text-fg-3 uppercase">{s.l}</div>
+            <div className={`font-display font-black text-[18px] sm:text-xl tracking-tight mt-1 numeric ${s.c}`}>{s.v}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[10px] tracking-widest text-fg-3 numeric">
+        <span className="flex items-center gap-2">
+          <span className="w-2 h-2 bg-profit" /> WINNERS · {buckets.filter(b => !b.loss).reduce((s, b) => s + b.v, 0)}
+        </span>
+        <span className="flex items-center gap-2">
+          <span className="w-2 h-2 bg-loss" /> LOSERS · {buckets.filter(b => b.loss).reduce((s, b) => s + b.v, 0)}
+        </span>
+        <span>MODE · {mode.l}</span>
+        <span>SAMPLE · {total} TRADES</span>
+      </div>
     </div>
   );
 }
 
 function SessionGrid() {
-  const sessions = ['ASIA', 'LON', 'NY'];
-  const days = ['MON', 'TUE', 'WED', 'THU', 'FRI'];
+  const sessions = ['ASIA', 'LON', 'NY'] as const;
+  const days = ['MON', 'TUE', 'WED', 'THU', 'FRI'] as const;
   // Deterministic synthetic grid
-  const data = [
+  const data: number[][] = [
     [120, 240, -80, 180, 60],
     [-40, 320, 410, 220, 90],
     [180, -120, 280, 150, 340],
   ];
-  const max = 410;
+  const flat = data.flat();
+  const max = Math.max(...flat.map(v => Math.abs(v)));
+  const rowTotals = data.map(r => r.reduce((s, v) => s + v, 0));
+  const colTotals = days.map((_, j) => data.reduce((s, r) => s + r[j]!, 0));
+  const total = rowTotals.reduce((s, v) => s + v, 0);
+
+  // Find best cell for callout
+  let best = { s: 0, d: 0, v: -Infinity };
+  data.forEach((row, i) => row.forEach((v, j) => { if (v > best.v) best = { s: i, d: j, v }; }));
+
   return (
-    <div className="grid gap-1" style={{ gridTemplateColumns: `32px repeat(${days.length}, minmax(0, 1fr))` }} data-testid="session-heatmap">
-      <div />
-      {days.map(d => <div key={d} className="text-center text-[9px] sm:text-[10px] tracking-widest text-fg-3">{d}</div>)}
-      {sessions.map((s, i) => (
-        <Fragment key={s}>
-          <div className="text-[9px] sm:text-[10px] tracking-widest text-fg-3 self-center">{s}</div>
-          {data[i]!.map((v, j) => {
-            const pos = v >= 0;
-            const intensity = Math.min(1, Math.abs(v) / max);
+    <div className="w-full max-w-[520px] mx-auto" data-testid="session-heatmap">
+      <div
+        className="grid gap-1"
+        style={{ gridTemplateColumns: `44px repeat(${days.length}, minmax(0, 1fr)) 60px` }}
+      >
+        {/* Header row */}
+        <div />
+        {days.map(d => (
+          <div key={d} className="text-center text-[9px] sm:text-[10px] tracking-widest text-fg-3 pb-1">{d}</div>
+        ))}
+        <div className="text-center text-[9px] sm:text-[10px] tracking-widest text-fg-3 pb-1">TOTAL</div>
+
+        {/* Session rows */}
+        {sessions.map((s, i) => (
+          <Fragment key={s}>
+            <div className="text-[10px] tracking-widest text-fg-3 self-center border-r border-border-soft pr-2">{s}</div>
+            {data[i]!.map((v, j) => {
+              const pos = v >= 0;
+              const intensity = Math.min(1, Math.abs(v) / max);
+              const bestCell = best.s === i && best.d === j;
+              return (
+                <div
+                  key={j}
+                  className={`h-11 sm:h-12 flex items-center justify-center border transition-colors ${bestCell ? 'border-profit' : 'border-border-soft'}`}
+                  style={{
+                    background: pos
+                      ? `rgba(0, 197, 102, ${0.10 + intensity * 0.55})`
+                      : `rgba(255, 59, 48, ${0.10 + intensity * 0.55})`,
+                  }}
+                >
+                  <span className={`text-[10px] sm:text-[11px] numeric font-medium ${pos ? 'text-profit' : 'text-loss'}`}>
+                    {pos ? '+' : ''}{v}
+                  </span>
+                </div>
+              );
+            })}
+            {/* Row total */}
+            <div className="h-11 sm:h-12 flex items-center justify-center border border-border-soft bg-surface-hover">
+              <span className={`text-[11px] numeric font-semibold ${rowTotals[i]! >= 0 ? 'text-profit' : 'text-loss'}`}>
+                {rowTotals[i]! >= 0 ? '+' : ''}{rowTotals[i]}
+              </span>
+            </div>
+          </Fragment>
+        ))}
+
+        {/* Column totals row */}
+        <div className="text-[10px] tracking-widest text-fg-3 self-center border-r border-border-soft pr-2 pt-1">TOT</div>
+        {colTotals.map((v, j) => (
+          <div key={j} className="h-9 flex items-center justify-center border border-border-soft bg-surface-hover">
+            <span className={`text-[10px] sm:text-[11px] numeric font-semibold ${v >= 0 ? 'text-profit' : 'text-loss'}`}>
+              {v >= 0 ? '+' : ''}{v}
+            </span>
+          </div>
+        ))}
+        <div className="h-9 flex items-center justify-center border border-fg bg-fg text-app">
+          <span className="text-[11px] numeric font-bold">{total >= 0 ? '+' : ''}{total}</span>
+        </div>
+      </div>
+
+      {/* Callouts */}
+      <div className="mt-5 pt-4 border-t border-border-soft grid grid-cols-2 gap-3">
+        <div className="border-l-2 border-profit pl-3">
+          <div className="text-[9px] tracking-[0.22em] text-fg-3 uppercase">BEST SESSION</div>
+          <div className="mt-1 font-display font-bold text-[13px] tracking-tight">{sessions[best.s]} · {days[best.d]}</div>
+          <div className="text-[11px] text-profit numeric">+${best.v}</div>
+        </div>
+        <div className="border-l-2 border-loss pl-3">
+          <div className="text-[9px] tracking-[0.22em] text-fg-3 uppercase">WORST SESSION</div>
+          {(() => {
+            let worst = { s: 0, d: 0, v: Infinity };
+            data.forEach((row, i) => row.forEach((v, j) => { if (v < worst.v) worst = { s: i, d: j, v }; }));
             return (
-              <div key={j} className="aspect-square flex items-center justify-center border border-border-soft" style={{
-                background: pos
-                  ? `rgba(0, 197, 102, ${0.12 + intensity * 0.6})`
-                  : `rgba(255, 59, 48, ${0.12 + intensity * 0.6})`,
-              }}>
-                <span className={`text-[9px] sm:text-[11px] numeric font-medium ${pos ? 'text-profit' : 'text-loss'}`}>{pos ? '+' : ''}{v}</span>
-              </div>
+              <>
+                <div className="mt-1 font-display font-bold text-[13px] tracking-tight">{sessions[worst.s]} · {days[worst.d]}</div>
+                <div className="text-[11px] text-loss numeric">${worst.v}</div>
+              </>
             );
-          })}
-        </Fragment>
-      ))}
+          })()}
+        </div>
+      </div>
     </div>
   );
 }
@@ -230,10 +404,6 @@ export default function AnalyticsPage() {
                 <div className="text-[10px] tracking-[0.25em] text-fg-3">R_MULTIPLE_DISTRIBUTION</div>
                 <div className="font-display font-bold text-[16px] tracking-tight mt-1 mb-5">Edge in R-multiples</div>
                 <RDist />
-                <div className="mt-3 flex items-center justify-between text-[10px] tracking-widest text-fg-3 numeric">
-                  <span>EXPECTANCY · +0.78R</span>
-                  <span>SAMPLE · {stats.totalTrades} TRADES</span>
-                </div>
               </div>
 
               <div className="tcard col-span-12 lg:col-span-5 p-5">

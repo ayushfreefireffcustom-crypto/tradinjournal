@@ -3,90 +3,145 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import AuthAside from '@/components/auth-aside';
 
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState('trader@tradinx.io');
   const [password, setPassword] = useState('demo-mode');
+  const [showPassword, setShowPassword] = useState(false);
+  const [remember, setRemember] = useState(true);
   const [loading, setLoading] = useState(false);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    setTimeout(() => router.push('/dashboard'), 400);
+    setTimeout(() => router.push('/dashboard'), 450);
   }
 
   return (
-    <div className="min-h-screen bg-app grid lg:grid-cols-2" data-testid="login-page">
-      {/* Left: visual */}
-      <aside className="hidden lg:flex flex-col justify-between border-r border-border p-10 relative overflow-hidden">
-        <div className="absolute inset-0 bg-grid bg-grid-fade opacity-40" />
-        <Link href="/" className="relative flex items-center gap-2.5">
-          <span className="w-2.5 h-2.5 bg-profit pulse-dot" />
-          <span className="font-display font-black text-[15px] tracking-tighter">TRADIN<span className="text-fg-2">X</span></span>
-        </Link>
-        <div className="relative">
-          <h2 className="font-display font-black text-5xl tracking-tighter leading-[1.05]">
-            EXECUTE <br /> WITH <span className="text-profit">CLARITY.</span>
-          </h2>
-          <p className="text-fg-2 text-[13px] mt-5 max-w-md">
-            Your behavioural edge, reconstructed from every MT5 fill. Connect once, journal forever.
-          </p>
-          <div className="mt-10 grid grid-cols-3 max-w-md border border-border">
-            {[
-              { l: 'Trades synced', v: '14.2M' },
-              { l: 'Median R:R',    v: '1:2.4' },
-              { l: 'Edge uplift',   v: '+25%' },
-            ].map(s => (
-              <div key={s.l} className="border-r border-border last:border-r-0 px-4 py-3">
-                <div className="text-[10px] tracking-[0.18em] text-fg-3 uppercase">{s.l}</div>
-                <div className="font-display font-black text-2xl mt-1 tracking-tight">{s.v}</div>
-              </div>
-            ))}
+    <div className="min-h-screen bg-app grid lg:grid-cols-[minmax(0,1fr)_minmax(0,540px)]" data-testid="login-page">
+      <AuthAside variant="signin" />
+
+      {/* Right: form column */}
+      <main className="relative flex flex-col min-h-screen">
+        {/* Mobile top status */}
+        <div className="lg:hidden border-b border-border h-11 flex items-center justify-between px-4 text-[10px] tracking-[0.22em] text-fg-3">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 bg-profit pulse-dot" />
+            <span className="font-display font-black text-[13px] tracking-tighter text-fg">TRADIN<span className="text-fg-2">X</span></span>
           </div>
+          <span>ONLINE</span>
         </div>
-        <div className="relative text-[10px] tracking-[0.22em] text-fg-3">// PRECISION JOURNAL · EST 2026</div>
-      </aside>
 
-      {/* Right: form */}
-      <main className="flex items-center justify-center p-5 sm:p-8 lg:p-10">
-        <form onSubmit={submit} className="w-full max-w-sm" data-testid="login-form">
-          <div className="text-[10px] tracking-[0.25em] text-fg-3">[ AUTH // SIGN IN ]</div>
-          <h1 className="font-display font-black text-3xl sm:text-4xl tracking-tighter mt-2">ACCESS TERMINAL</h1>
-          <p className="text-fg-2 text-[12px] mt-2">Demo mode — any credentials route you straight into the dashboard.</p>
+        <div className="flex-1 flex items-center justify-center p-5 sm:p-8 lg:p-12">
+          <form onSubmit={submit} className="w-full max-w-md" data-testid="login-form">
+            <div className="text-[10px] tracking-[0.3em] text-fg-3">[ AUTH // SIGN IN · 01 ]</div>
+            <h1 className="font-display font-black text-3xl sm:text-4xl xl:text-5xl tracking-tighter mt-3">
+              ACCESS <span className="text-profit">TERMINAL.</span>
+            </h1>
+            <p className="text-fg-2 text-[12px] sm:text-[13px] mt-3 max-w-sm">
+              Demo mode — any credentials advance you into the live dashboard.
+              Real auth returns when the API bridge is online.
+            </p>
 
-          <div className="mt-8 flex flex-col gap-4">
-            <label className="flex flex-col gap-1.5">
-              <span className="text-[10px] tracking-[0.22em] text-fg-3">EMAIL</span>
-              <input type="email" required value={email} onChange={e => setEmail(e.target.value)} className="tinput" data-testid="login-email" />
-            </label>
-            <label className="flex flex-col gap-1.5">
-              <span className="text-[10px] tracking-[0.22em] text-fg-3">PASSWORD</span>
-              <input type="password" required value={password} onChange={e => setPassword(e.target.value)} className="tinput" data-testid="login-password" />
-            </label>
-            <div className="flex items-center justify-between text-[11px] text-fg-3">
-              <label className="flex items-center gap-2"><input type="checkbox" className="accent-white" /> KEEP SIGNED IN</label>
-              <a href="#" className="hover:text-fg">FORGOT?</a>
+            {/* Auth method tabs (visual only, demo is the active one) */}
+            <div className="mt-8 flex gap-1 border-b border-border-soft">
+              <button type="button" className="px-3 py-2 text-[11px] tracking-[0.22em] border-b-2 border-fg text-fg -mb-px">DEMO</button>
+              <button type="button" className="px-3 py-2 text-[11px] tracking-[0.22em] border-b-2 border-transparent text-fg-3 hover:text-fg-2 cursor-not-allowed" title="Available when API bridge is online">EMAIL · SOON</button>
+              <button type="button" className="px-3 py-2 text-[11px] tracking-[0.22em] border-b-2 border-transparent text-fg-3 hover:text-fg-2 cursor-not-allowed" title="Available when API bridge is online">SSO · SOON</button>
             </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              data-testid="login-submit"
-              className={`btn btn-primary justify-center py-3 ${loading ? 'opacity-70' : ''}`}
-            >
-              {loading ? 'ACCESSING...' : 'ENTER TERMINAL →'}
-            </button>
+            <div className="mt-6 flex flex-col gap-4">
+              <label className="flex flex-col gap-1.5">
+                <span className="text-[10px] tracking-[0.22em] text-fg-3 flex items-center justify-between">
+                  <span>EMAIL</span>
+                  <span className="text-profit">◉ VALID</span>
+                </span>
+                <input
+                  type="email" required value={email} onChange={e => setEmail(e.target.value)}
+                  className="tinput" data-testid="login-email" autoComplete="email"
+                />
+              </label>
 
-            <Link href="/dashboard" className="btn btn-ghost justify-center py-3" data-testid="login-guest">
-              CONTINUE AS GUEST
-            </Link>
+              <label className="flex flex-col gap-1.5">
+                <span className="text-[10px] tracking-[0.22em] text-fg-3 flex items-center justify-between">
+                  <span>PASSWORD</span>
+                  <a href="#" className="text-fg-3 hover:text-fg tracking-widest">FORGOT?</a>
+                </span>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required value={password} onChange={e => setPassword(e.target.value)}
+                    className="tinput pr-16" data-testid="login-password" autoComplete="current-password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(s => !s)}
+                    data-testid="toggle-password"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-[9px] tracking-[0.22em] text-fg-3 hover:text-fg border border-border-soft hover:border-border-strong"
+                  >
+                    {showPassword ? 'HIDE' : 'SHOW'}
+                  </button>
+                </div>
+              </label>
 
-            <p className="text-center text-[12px] text-fg-3 mt-4">
-              No account? <Link href="/signup" className="text-fg hover:text-profit">REGISTER →</Link>
-            </p>
-          </div>
-        </form>
+              <label className="flex items-center gap-3 text-[11px] text-fg-2 cursor-pointer select-none">
+                <span
+                  onClick={() => setRemember(r => !r)}
+                  className={`w-4 h-4 border flex items-center justify-center ${remember ? 'bg-profit border-profit text-app' : 'border-border-strong'}`}
+                  data-testid="remember-toggle"
+                >
+                  {remember && <span className="text-[10px] font-bold">✓</span>}
+                </span>
+                <span className="tracking-widest text-[10px]">KEEP ME SIGNED IN FOR 30 DAYS</span>
+              </label>
+
+              <button
+                type="submit"
+                disabled={loading}
+                data-testid="login-submit"
+                className={`btn btn-primary justify-center py-3 text-[12px] tracking-[0.22em] mt-1 ${loading ? 'opacity-70 cursor-wait' : ''}`}
+              >
+                {loading ? (
+                  <>
+                    <span className="w-2 h-2 bg-app rounded-full pulse-dot" />
+                    ESTABLISHING SESSION…
+                  </>
+                ) : (
+                  <>ENTER TERMINAL <span>→</span></>
+                )}
+              </button>
+
+              <div className="flex items-center gap-3 my-2">
+                <span className="flex-1 h-px bg-border" />
+                <span className="text-[10px] tracking-[0.22em] text-fg-3">OR</span>
+                <span className="flex-1 h-px bg-border" />
+              </div>
+
+              <Link href="/dashboard" className="btn btn-ghost justify-center py-3 text-[12px] tracking-[0.22em]" data-testid="login-guest">
+                CONTINUE AS GUEST
+              </Link>
+
+              {/* Fine print + register */}
+              <div className="mt-4 pt-4 border-t border-border-soft flex flex-wrap items-center justify-between gap-3 text-[11px]">
+                <span className="text-fg-3">No account yet?</span>
+                <Link href="/signup" className="text-fg hover:text-profit tracking-widest text-[11px]" data-testid="login-to-signup">
+                  ENLIST NOW →
+                </Link>
+              </div>
+            </div>
+          </form>
+        </div>
+
+        {/* Mobile footer */}
+        <div className="lg:hidden border-t border-border px-4 py-3 flex items-center justify-between text-[10px] tracking-[0.22em] text-fg-3">
+          <span>EST · 2026</span>
+          <span className="flex gap-3">
+            <a href="#" className="hover:text-fg">PRIVACY</a>
+            <a href="#" className="hover:text-fg">TERMS</a>
+          </span>
+        </div>
       </main>
     </div>
   );

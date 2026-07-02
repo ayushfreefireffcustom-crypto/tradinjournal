@@ -2,74 +2,176 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import AuthAside from '@/components/auth-aside';
+
+function passwordStrength(pw: string): { score: number; label: string; color: string } {
+  let score = 0;
+  if (pw.length >= 8) score++;
+  if (pw.length >= 12) score++;
+  if (/[A-Z]/.test(pw) && /[a-z]/.test(pw)) score++;
+  if (/[0-9]/.test(pw)) score++;
+  if (/[^A-Za-z0-9]/.test(pw)) score++;
+  const bucket = Math.min(4, score);
+  const labels = ['WEAK', 'WEAK', 'FAIR', 'STRONG', 'FORTIFIED'];
+  const colors = ['#FF3B30', '#FF3B30', '#FF9F0A', '#00C566', '#00C566'];
+  return { score: bucket, label: labels[bucket]!, color: colors[bucket]! };
+}
 
 export default function SignupPage() {
   const router = useRouter();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [agree, setAgree] = useState(true);
   const [loading, setLoading] = useState(false);
+
+  const strength = useMemo(() => passwordStrength(password), [password]);
+  const canSubmit = name.trim().length > 1 && email.includes('@') && strength.score >= 2 && agree;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (!canSubmit) return;
     setLoading(true);
-    setTimeout(() => router.push('/dashboard'), 400);
+    setTimeout(() => router.push('/dashboard'), 500);
   }
 
   return (
-    <div className="min-h-screen bg-app grid lg:grid-cols-2" data-testid="signup-page">
-      <aside className="hidden lg:flex flex-col justify-between border-r border-border p-10 relative overflow-hidden">
-        <div className="absolute inset-0 bg-grid bg-grid-fade opacity-40" />
-        <Link href="/" className="relative flex items-center gap-2.5">
-          <span className="w-2.5 h-2.5 bg-profit pulse-dot" />
-          <span className="font-display font-black text-[15px] tracking-tighter">TRADIN<span className="text-fg-2">X</span></span>
-        </Link>
-        <div className="relative">
-          <h2 className="font-display font-black text-5xl tracking-tighter leading-[1.05]">
-            ENLIST <br /> THE <span className="text-profit">PROTOCOL.</span>
-          </h2>
-          <p className="text-fg-2 text-[13px] mt-5 max-w-md">
-            90-second MT5 link. Behavioural diagnostics by tomorrow morning. No credit card.
-          </p>
-        </div>
-        <div className="relative text-[10px] tracking-[0.22em] text-fg-3">// READ-ONLY · ENCRYPTED AT REST</div>
-      </aside>
+    <div className="min-h-screen bg-app grid lg:grid-cols-[minmax(0,1fr)_minmax(0,540px)]" data-testid="signup-page">
+      <AuthAside variant="signup" />
 
-      <main className="flex items-center justify-center p-5 sm:p-8 lg:p-10">
-        <form onSubmit={submit} className="w-full max-w-sm" data-testid="signup-form">
-          <div className="text-[10px] tracking-[0.25em] text-fg-3">[ AUTH // REGISTER ]</div>
-          <h1 className="font-display font-black text-3xl sm:text-4xl tracking-tighter mt-2">CREATE ACCOUNT</h1>
-          <p className="text-fg-2 text-[12px] mt-2">Free tier · 1 MT5 slot · no credit card.</p>
-
-          <div className="mt-8 flex flex-col gap-4">
-            <label className="flex flex-col gap-1.5">
-              <span className="text-[10px] tracking-[0.22em] text-fg-3">FULL NAME</span>
-              <input type="text" required value={name} onChange={e => setName(e.target.value)} className="tinput" data-testid="signup-name" />
-            </label>
-            <label className="flex flex-col gap-1.5">
-              <span className="text-[10px] tracking-[0.22em] text-fg-3">EMAIL</span>
-              <input type="email" required value={email} onChange={e => setEmail(e.target.value)} className="tinput" data-testid="signup-email" />
-            </label>
-            <label className="flex flex-col gap-1.5">
-              <span className="text-[10px] tracking-[0.22em] text-fg-3">PASSWORD</span>
-              <input type="password" required value={password} onChange={e => setPassword(e.target.value)} className="tinput" data-testid="signup-password" />
-            </label>
-
-            <button
-              type="submit"
-              disabled={loading}
-              data-testid="signup-submit"
-              className={`btn btn-primary justify-center py-3 ${loading ? 'opacity-70' : ''}`}
-            >
-              {loading ? 'PROVISIONING...' : 'PROVISION TERMINAL →'}
-            </button>
-
-            <p className="text-center text-[12px] text-fg-3 mt-4">
-              Already enlisted? <Link href="/login" className="text-fg hover:text-profit">SIGN IN →</Link>
-            </p>
+      <main className="relative flex flex-col min-h-screen">
+        {/* Mobile top status */}
+        <div className="lg:hidden border-b border-border h-11 flex items-center justify-between px-4 text-[10px] tracking-[0.22em] text-fg-3">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 bg-profit pulse-dot" />
+            <span className="font-display font-black text-[13px] tracking-tighter text-fg">TRADIN<span className="text-fg-2">X</span></span>
           </div>
-        </form>
+          <span>ONLINE</span>
+        </div>
+
+        <div className="flex-1 flex items-center justify-center p-5 sm:p-8 lg:p-12">
+          <form onSubmit={submit} className="w-full max-w-md" data-testid="signup-form">
+            <div className="text-[10px] tracking-[0.3em] text-fg-3">[ AUTH // REGISTER · 02 ]</div>
+            <h1 className="font-display font-black text-3xl sm:text-4xl xl:text-5xl tracking-tighter mt-3">
+              PROVISION <span className="text-profit">ACCOUNT.</span>
+            </h1>
+            <p className="text-fg-2 text-[12px] sm:text-[13px] mt-3 max-w-sm">
+              Free tier · 1 MT5 slot · no card. Cancel with a single API call.
+            </p>
+
+            {/* Progress dots */}
+            <div className="mt-7 flex items-center gap-2">
+              {['CREDENTIALS', 'BROKER', 'PLAN'].map((s, i) => (
+                <div key={s} className="flex items-center gap-2">
+                  <div className={`w-6 h-6 border flex items-center justify-center text-[10px] font-bold ${i === 0 ? 'border-fg bg-fg text-app' : 'border-border-soft text-fg-3'}`}>
+                    {i + 1}
+                  </div>
+                  <span className={`text-[10px] tracking-[0.22em] ${i === 0 ? 'text-fg' : 'text-fg-3'}`}>{s}</span>
+                  {i < 2 && <span className="w-6 h-px bg-border-soft" />}
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-7 flex flex-col gap-4">
+              <label className="flex flex-col gap-1.5">
+                <span className="text-[10px] tracking-[0.22em] text-fg-3">CALLSIGN / FULL NAME</span>
+                <input
+                  type="text" required value={name} onChange={e => setName(e.target.value)}
+                  className="tinput" data-testid="signup-name" placeholder="e.g. Alex Morgan" autoComplete="name"
+                />
+              </label>
+
+              <label className="flex flex-col gap-1.5">
+                <span className="text-[10px] tracking-[0.22em] text-fg-3 flex items-center justify-between">
+                  <span>EMAIL</span>
+                  {email.includes('@') && <span className="text-profit">◉ VALID</span>}
+                </span>
+                <input
+                  type="email" required value={email} onChange={e => setEmail(e.target.value)}
+                  className="tinput" data-testid="signup-email" placeholder="ops@yourdesk.io" autoComplete="email"
+                />
+              </label>
+
+              <label className="flex flex-col gap-1.5">
+                <span className="text-[10px] tracking-[0.22em] text-fg-3 flex items-center justify-between">
+                  <span>PASSWORD</span>
+                  {password && <span style={{ color: strength.color }}>{strength.label}</span>}
+                </span>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required value={password} onChange={e => setPassword(e.target.value)}
+                    className="tinput pr-16" data-testid="signup-password" placeholder="min. 8 chars" autoComplete="new-password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(s => !s)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-[9px] tracking-[0.22em] text-fg-3 hover:text-fg border border-border-soft hover:border-border-strong"
+                  >
+                    {showPassword ? 'HIDE' : 'SHOW'}
+                  </button>
+                </div>
+                {/* Strength bar */}
+                <div className="mt-1 flex gap-1">
+                  {[0, 1, 2, 3].map(i => (
+                    <div
+                      key={i}
+                      className="flex-1 h-1 transition-colors"
+                      style={{ background: strength.score > i ? strength.color : '#1E1E1E' }}
+                    />
+                  ))}
+                </div>
+                <div className="text-[9px] tracking-widest text-fg-3 mt-1">
+                  8+ CHARS · UPPER/LOWER · NUMBER · SYMBOL FOR MAX GRADE
+                </div>
+              </label>
+
+              <label className="flex items-start gap-3 text-[11px] text-fg-2 cursor-pointer select-none">
+                <span
+                  onClick={() => setAgree(a => !a)}
+                  className={`mt-0.5 w-4 h-4 border flex items-center justify-center shrink-0 ${agree ? 'bg-profit border-profit text-app' : 'border-border-strong'}`}
+                  data-testid="agree-toggle"
+                >
+                  {agree && <span className="text-[10px] font-bold">✓</span>}
+                </span>
+                <span className="text-[10px] tracking-widest leading-relaxed">
+                  I ACCEPT THE <a href="#" className="text-fg hover:text-profit">TERMS</a> &amp; ACKNOWLEDGE THE <a href="#" className="text-fg hover:text-profit">DATA POLICY</a>. INVESTOR-ONLY MT5 CREDENTIALS.
+                </span>
+              </label>
+
+              <button
+                type="submit"
+                disabled={!canSubmit || loading}
+                data-testid="signup-submit"
+                className={`btn btn-primary justify-center py-3 text-[12px] tracking-[0.22em] mt-1 ${!canSubmit || loading ? 'opacity-60 cursor-not-allowed' : ''}`}
+              >
+                {loading ? (
+                  <>
+                    <span className="w-2 h-2 bg-app rounded-full pulse-dot" />
+                    PROVISIONING TERMINAL…
+                  </>
+                ) : (
+                  <>PROVISION TERMINAL <span>→</span></>
+                )}
+              </button>
+
+              <div className="mt-4 pt-4 border-t border-border-soft flex flex-wrap items-center justify-between gap-3 text-[11px]">
+                <span className="text-fg-3">Already enlisted?</span>
+                <Link href="/login" className="text-fg hover:text-profit tracking-widest text-[11px]" data-testid="signup-to-login">
+                  SIGN IN →
+                </Link>
+              </div>
+            </div>
+          </form>
+        </div>
+
+        {/* Mobile footer */}
+        <div className="lg:hidden border-t border-border px-4 py-3 flex items-center justify-between text-[10px] tracking-[0.22em] text-fg-3">
+          <span>READ-ONLY MT5</span>
+          <span>AES-256 · SOC2</span>
+        </div>
       </main>
     </div>
   );
