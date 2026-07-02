@@ -4,19 +4,29 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import AuthAside from '@/components/auth-aside';
+import { authClient } from '@/lib/auth-client';
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState('trader@tradinx.io');
-  const [password, setPassword] = useState('demo-mode');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [remember, setRemember] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    setError('');
     setLoading(true);
-    setTimeout(() => router.push('/dashboard'), 450);
+    try {
+      const res = await authClient.signIn.email({ email, password, callbackURL: '/dashboard' });
+      if (res?.error) throw new Error(res.error.message ?? 'Invalid credentials');
+      router.push('/dashboard');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Sign in failed');
+      setLoading(false);
+    }
   }
 
   return (
@@ -47,22 +57,20 @@ export default function LoginPage() {
               ACCESS <span className="text-profit">TERMINAL.</span>
             </h1>
             <p className="text-fg-2 text-[12px] sm:text-[13px] mt-3 max-w-sm">
-              Demo mode — any credentials advance you into the live dashboard.
-              Real auth returns when the API bridge is online.
+              Sign in with your email and password to access the live dashboard.
             </p>
 
-            {/* Auth method tabs (visual only, demo is the active one) */}
+            {/* Auth method tabs */}
             <div className="mt-8 flex gap-1 border-b border-border-soft">
-              <button type="button" className="px-3 py-2 text-[11px] tracking-[0.22em] border-b-2 border-fg text-fg -mb-px">DEMO</button>
-              <button type="button" className="px-3 py-2 text-[11px] tracking-[0.22em] border-b-2 border-transparent text-fg-3 hover:text-fg-2 cursor-not-allowed" title="Available when API bridge is online">EMAIL · SOON</button>
-              <button type="button" className="px-3 py-2 text-[11px] tracking-[0.22em] border-b-2 border-transparent text-fg-3 hover:text-fg-2 cursor-not-allowed" title="Available when API bridge is online">SSO · SOON</button>
+              <button type="button" className="px-3 py-2 text-[11px] tracking-[0.22em] border-b-2 border-fg text-fg -mb-px">EMAIL</button>
+              <button type="button" className="px-3 py-2 text-[11px] tracking-[0.22em] border-b-2 border-transparent text-fg-3 hover:text-fg-2 cursor-not-allowed" title="Single sign-on coming soon">SSO · SOON</button>
             </div>
 
             <div className="mt-6 flex flex-col gap-4">
               <label className="flex flex-col gap-1.5">
                 <span className="text-[10px] tracking-[0.22em] text-fg-3 flex items-center justify-between">
                   <span>EMAIL</span>
-                  <span className="text-profit">◉ VALID</span>
+                  {email.includes('@') && <span className="text-profit">◉ VALID</span>}
                 </span>
                 <input
                   type="email" required value={email} onChange={e => setEmail(e.target.value)}
@@ -103,6 +111,15 @@ export default function LoginPage() {
                 <span className="tracking-widest text-[10px]">KEEP ME SIGNED IN FOR 30 DAYS</span>
               </label>
 
+              {error && (
+                <div
+                  data-testid="login-error"
+                  className="border border-loss/40 bg-loss/10 text-loss px-3 py-2 text-[11px] tracking-widest"
+                >
+                  {error.toUpperCase()}
+                </div>
+              )}
+
               <button
                 type="submit"
                 disabled={loading}
@@ -118,16 +135,6 @@ export default function LoginPage() {
                   <>ENTER TERMINAL <span>→</span></>
                 )}
               </button>
-
-              <div className="flex items-center gap-3 my-2">
-                <span className="flex-1 h-px bg-border" />
-                <span className="text-[10px] tracking-[0.22em] text-fg-3">OR</span>
-                <span className="flex-1 h-px bg-border" />
-              </div>
-
-              <Link href="/dashboard" className="btn btn-ghost justify-center py-3 text-[12px] tracking-[0.22em]" data-testid="login-guest">
-                CONTINUE AS GUEST
-              </Link>
 
               {/* Fine print + register */}
               <div className="mt-4 pt-4 border-t border-border-soft flex flex-wrap items-center justify-between gap-3 text-[11px]">

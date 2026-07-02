@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import AuthAside from '@/components/auth-aside';
+import { authClient } from '@/lib/auth-client';
 
 function passwordStrength(pw: string): { score: number; label: string; color: string } {
   let score = 0;
@@ -26,6 +27,7 @@ export default function SignupPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [agree, setAgree] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const strength = useMemo(() => passwordStrength(password), [password]);
   const canSubmit = name.trim().length > 1 && email.includes('@') && strength.score >= 2 && agree;
@@ -33,8 +35,16 @@ export default function SignupPage() {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!canSubmit) return;
+    setError('');
     setLoading(true);
-    setTimeout(() => router.push('/dashboard'), 500);
+    try {
+      const res = await authClient.signUp.email({ email, password, name, callbackURL: '/dashboard' });
+      if (res?.error) throw new Error(res.error.message ?? 'Could not create account');
+      router.push('/dashboard');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Sign up failed');
+      setLoading(false);
+    }
   }
 
   return (
@@ -146,6 +156,15 @@ export default function SignupPage() {
                   I ACCEPT THE <a href="#" className="text-fg hover:text-profit">TERMS</a> &amp; ACKNOWLEDGE THE <a href="#" className="text-fg hover:text-profit">DATA POLICY</a>. INVESTOR-ONLY MT5 CREDENTIALS.
                 </span>
               </label>
+
+              {error && (
+                <div
+                  data-testid="signup-error"
+                  className="border border-loss/40 bg-loss/10 text-loss px-3 py-2 text-[11px] tracking-widest"
+                >
+                  {error.toUpperCase()}
+                </div>
+              )}
 
               <button
                 type="submit"

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import type { BrokerAccount } from '@/lib/api';
 import { authClient } from '@/lib/auth-client';
@@ -27,9 +27,14 @@ export default function AppShell({
   children, accounts = [], selectedAccount, onSelectAccount, onConnectClick, pageTitle, pageSubtitle,
 }: Props) {
   const pathname = usePathname();
-  const { data: session } = authClient.useSession();
+  const router = useRouter();
+  const { data: session, isPending } = authClient.useSession();
   const [clock, setClock] = useState('');
   const [drawerOpen, setDrawerOpen] = useState(false);
+
+  useEffect(() => {
+    if (!isPending && !session?.session) router.replace('/login');
+  }, [isPending, session, router]);
 
   useEffect(() => {
     const tick = () => setClock(new Date().toUTCString().split(' ').slice(1, 5).join(' '));
@@ -37,6 +42,8 @@ export default function AppShell({
     const t = setInterval(tick, 1000);
     return () => clearInterval(t);
   }, []);
+
+  if (isPending || !session?.session) return null;
 
   // Close drawer on route change
   useEffect(() => { setDrawerOpen(false); }, [pathname]);
