@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import AppShell from '@/components/app-shell';
 import ConnectBrokerModal from '@/components/connect-broker-modal';
-import { api, type BrokerAccount, type Trade } from '@/lib/api';
+import { api, type BrokerAccount, type Trade, type JournalEntry } from '@/lib/api';
 
 function fmtDur(s: number | null) {
   if (s == null) return '—';
@@ -132,8 +132,11 @@ export default function ChartReplayPage() {
   const [selected, setSelected] = useState<BrokerAccount | null>(null);
   const [trades, setTrades] = useState<Trade[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [note, setNote] = useState('Held the trend continuation after London open sweep. Stops set at structural low; took partials at +2R, trailed remainder to +3.2R.');
-  const [emotion, setEmotion] = useState('Disciplined');
+  const [journalEntries, setJournalEntries] = useState<JournalEntry[]>([]);
+  const [note, setNote] = useState('');
+  const [emotion, setEmotion] = useState('');
+  const [tags, setTags] = useState<string[]>([]);
+  const [saving, setSaving] = useState(false);
   const [showConnect, setShowConnect] = useState(false);
 
   const initAccounts = useCallback(async () => {
@@ -146,13 +149,48 @@ export default function ChartReplayPage() {
   useEffect(() => {
     if (!selected) return;
     (async () => {
-      const t = await api.trades.list(selected.id);
+      const [t, j] = await Promise.all([
+        api.trades.list(selected.id),
+        api.journal.list(selected.id),
+      ]);
       setTrades(t);
+      setJournalEntries(j);
       setActiveId(t[0]?.positionId ?? null);
     })();
   }, [selected]);
 
   const active = trades.find(t => t.positionId === activeId) ?? null;
+
+  const journalByTrade = useMemo(() => {
+    const map = new Map<string, JournalEntry>();
+    for (const e of journalEntries) if (e.tradeId) map.set(e.tradeId, e);
+    return map;
+  }, [journalEntries]);
+  const activeEntry = activeId ? journalByTrade.get(activeId) ?? null : null;
+
+  // Load the active trade's saved journal entry (or clear the form for a fresh one)
+  useEffect(() => {
+    setNote(activeEntry?.body ?? '');
+    setEmotion(activeEntry?.emotion ?? '');
+    setTags(activeEntry?.tags ?? []);
+  }, [activeId, activeEntry]);
+
+  async function handleSave() {
+    if (!active || !selected) return;
+    setSaving(true);
+    try {
+      const body = { body: note, emotion: emotion || undefined, tags, tradeId: active.positionId, brokerAccountId: selected.id };
+      const saved = activeEntry ? await api.journal.update(activeEntry.id, body) : await api.journal.create(body);
+      setJournalEntries(prev => [...prev.filter(e => e.id !== saved.id), saved]);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function addTag() {
+    const t = window.prompt('Add tag')?.trim();
+    if (t && !tags.includes(t)) setTags(prev => [...prev, t]);
+  }
 
   function onConnected(a: BrokerAccount) {
     setAccounts(prev => prev.find(x => x.id === a.id) ? prev.map(x => x.id === a.id ? a : x) : [a, ...prev]);
@@ -288,10 +326,18 @@ export default function ChartReplayPage() {
             <div>
               <div className="text-[10px] tracking-widest text-fg-3 mb-2">SETUP TAGS</div>
               <div className="flex flex-wrap gap-1.5">
-                {(active?.tags ?? ['Trend Follow']).map(t => (
-                  <span key={t} className="px-2 py-1 text-[10px] tracking-widest border border-border-soft text-fg-2">{t.toUpperCase()}</span>
+                {tags.map(t => (
+                  <button
+                    key={t}
+                    onClick={() => setTags(prev => prev.filter(x => x !== t))}
+                    data-testid={`tag-${t.toLowerCase()}`}
+                    title="Remove tag"
+                    className="px-2 py-1 text-[10px] tracking-widest border border-border-soft text-fg-2 hover:border-loss hover:text-loss"
+                  >
+                    {t.toUpperCase()}
+                  </button>
                 ))}
-                <button className="px-2 py-1 text-[10px] tracking-widest border border-dashed border-border-strong text-fg-3 hover:text-fg">+ ADD</button>
+                <button onClick={addTag} data-testid="add-tag" className="px-2 py-1 text-[10px] tracking-widest border border-dashed border-border-strong text-fg-3 hover:text-fg">+ ADD</button>
               </div>
             </div>
 
@@ -307,7 +353,14 @@ export default function ChartReplayPage() {
 
             <div className="grid grid-cols-2 gap-2 pt-2 border-t border-border-soft">
               <button className="btn btn-ghost py-2 text-[10px]">SCREENSHOT</button>
-              <button className="btn btn-primary py-2 text-[10px]" data-testid="save-journal">SAVE ENTRY</button>
+              <button
+                onClick={handleSave}
+                disabled={saving || !active}
+                data-testid="save-journal"
+                className={`btn btn-primary py-2 text-[10px] ${saving || !active ? 'opacity-70 cursor-wait' : ''}`}
+              >
+                {saving ? 'SAVING…' : 'SAVE ENTRY'}
+              </button>
             </div>
           </div>
         </aside>
