@@ -27,8 +27,14 @@ export default function TradesPage() {
     if (!selected) return;
     (async () => {
       setLoading(true);
-      const [t, d] = await Promise.all([api.trades.list(selected.id), api.trades.deals(selected.id)]);
-      setTrades(t); setDeals(d);
+      const [t, d, j] = await Promise.all([
+        api.trades.list(selected.id),
+        api.trades.deals(selected.id),
+        api.journal.list(selected.id),
+      ]);
+      const tagsByTrade = new Map(j.filter(e => e.tradeId).map(e => [e.tradeId as string, e.tags]));
+      setTrades(t.map(trade => ({ ...trade, tags: tagsByTrade.get(trade.positionId) ?? trade.tags })));
+      setDeals(d);
       setLoading(false);
     })();
   }, [selected]);
