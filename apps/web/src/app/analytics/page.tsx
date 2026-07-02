@@ -300,6 +300,7 @@ export default function AnalyticsPage() {
   const [selected, setSelected] = useState<BrokerAccount | null>(null);
   const [stats, setStats] = useState<AccountStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [showConnect, setShowConnect] = useState(false);
 
   const init = useCallback(async () => {
@@ -311,14 +312,16 @@ export default function AnalyticsPage() {
   }, []);
   useEffect(() => { init(); }, [init]);
 
-  useEffect(() => {
-    if (!selected) return;
-    (async () => {
-      setLoading(true);
-      try { setStats(await api.trades.stats(selected.id)); }
-      finally { setLoading(false); }
-    })();
-  }, [selected]);
+  const loadStats = useCallback(async (acc: BrokerAccount) => {
+    setLoading(true);
+    setError('');
+    try {
+      setStats(await api.trades.stats(acc.id));
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to load account data');
+    } finally { setLoading(false); }
+  }, []);
+  useEffect(() => { if (selected) loadStats(selected); }, [selected, loadStats]);
 
   function onConnected(account: BrokerAccount) {
     setAccounts(prev => prev.find(a => a.id === account.id) ? prev.map(a => a.id === account.id ? account : a) : [account, ...prev]);
@@ -348,7 +351,12 @@ export default function AnalyticsPage() {
           </div>
         </div>
 
-        {loading || !stats ? (
+        {error && !loading ? (
+          <div className="border border-loss/30 bg-loss/10 px-4 py-3 flex items-center justify-between gap-3 text-[12px]" data-testid="analytics-error">
+            <span className="text-loss">{error}</span>
+            <button onClick={() => selected && loadStats(selected)} className="btn btn-ghost py-1.5 text-[10px] shrink-0">RETRY</button>
+          </div>
+        ) : loading || !stats ? (
           <div className="grid grid-cols-12 gap-3">
             {Array.from({ length: 6 }).map((_, i) => <div key={i} className="tcard p-6 col-span-6 lg:col-span-4 h-40 animate-pulse bg-surface" />)}
           </div>

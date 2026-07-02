@@ -58,6 +58,7 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<AccountStats | null>(null);
   const [recent, setRecent] = useState<Trade[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [showConnect, setShowConnect] = useState(false);
 
   const load = useCallback(async () => {
@@ -73,10 +74,13 @@ export default function DashboardPage() {
 
   const loadStats = useCallback(async (acc: BrokerAccount) => {
     setLoading(true);
+    setError('');
     try {
       const [s, t] = await Promise.all([api.trades.stats(acc.id), api.trades.list(acc.id)]);
       setStats(s);
       setRecent(t.slice(0, 6));
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to load account data');
     } finally { setLoading(false); }
   }, []);
 
@@ -120,6 +124,13 @@ export default function DashboardPage() {
             <button className="btn btn-primary flex-1 sm:flex-none justify-center" data-testid="header-sync-now">SYNC NOW</button>
           </div>
         </div>
+
+        {error && (
+          <div className="border border-loss/30 bg-loss/10 px-4 py-3 mb-4 flex items-center justify-between gap-3 text-[12px]" data-testid="dashboard-error">
+            <span className="text-loss">{error}</span>
+            <button onClick={() => selected && loadStats(selected)} className="btn btn-ghost py-1.5 text-[10px] shrink-0">RETRY</button>
+          </div>
+        )}
 
         {/* KPI row */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">

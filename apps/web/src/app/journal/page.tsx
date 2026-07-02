@@ -138,6 +138,8 @@ export default function ChartReplayPage() {
   const [tags, setTags] = useState<string[]>([]);
   const [tagDraft, setTagDraft] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [showConnect, setShowConnect] = useState(false);
 
   const initAccounts = useCallback(async () => {
@@ -149,18 +151,24 @@ export default function ChartReplayPage() {
   }, []);
   useEffect(() => { initAccounts(); }, [initAccounts]);
 
-  useEffect(() => {
-    if (!selected) return;
-    (async () => {
+  const loadTrades = useCallback(async (acc: BrokerAccount) => {
+    setLoading(true);
+    setError('');
+    try {
       const [t, j] = await Promise.all([
-        api.trades.list(selected.id),
-        api.journal.list(selected.id),
+        api.trades.list(acc.id),
+        api.journal.list(acc.id),
       ]);
       setTrades(t);
       setJournalEntries(j);
       setActiveId(t[0]?.positionId ?? null);
-    })();
-  }, [selected]);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to load trades');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+  useEffect(() => { if (selected) loadTrades(selected); }, [selected, loadTrades]);
 
   const active = trades.find(t => t.positionId === activeId) ?? null;
 
@@ -210,6 +218,13 @@ export default function ChartReplayPage() {
       pageTitle="Chart Replay"
       pageSubtitle="// FORENSIC AUDIT"
     >
+      {error && (
+        <div className="border border-loss/30 bg-loss/10 mx-2 sm:mx-3 lg:mx-4 mt-2 sm:mt-3 lg:mt-4 px-4 py-3 flex items-center justify-between gap-3 text-[12px]" data-testid="journal-error">
+          <span className="text-loss">{error}</span>
+          <button onClick={() => selected && loadTrades(selected)} className="btn btn-ghost py-1.5 text-[10px] shrink-0">RETRY</button>
+        </div>
+      )}
+
       <div className="grid grid-cols-12 gap-2 sm:gap-3 p-2 sm:p-3 lg:p-4 fade-up" data-testid="chart-replay-page">
         {/* Center: chart — first on mobile, middle on desktop */}
         <section className="order-1 lg:order-2 col-span-12 lg:col-span-6 flex flex-col gap-2 sm:gap-3">

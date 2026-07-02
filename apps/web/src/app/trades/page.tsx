@@ -12,6 +12,7 @@ export default function TradesPage() {
   const [trades, setTrades] = useState<Trade[]>([]);
   const [deals, setDeals] = useState<Deal[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [showConnect, setShowConnect] = useState(false);
   const [tab, setTab] = useState<'trades' | 'deals'>('trades');
   const [filter, setFilter] = useState<'ALL' | 'LONG' | 'SHORT' | 'WIN' | 'LOSS'>('ALL');
@@ -25,21 +26,25 @@ export default function TradesPage() {
   }, []);
   useEffect(() => { init(); }, [init]);
 
-  useEffect(() => {
-    if (!selected) return;
-    (async () => {
-      setLoading(true);
+  const loadTrades = useCallback(async (acc: BrokerAccount) => {
+    setLoading(true);
+    setError('');
+    try {
       const [t, d, j] = await Promise.all([
-        api.trades.list(selected.id),
-        api.trades.deals(selected.id),
-        api.journal.list(selected.id),
+        api.trades.list(acc.id),
+        api.trades.deals(acc.id),
+        api.journal.list(acc.id),
       ]);
       const tagsByTrade = new Map(j.filter(e => e.tradeId).map(e => [e.tradeId as string, e.tags]));
       setTrades(t.map(trade => ({ ...trade, tags: tagsByTrade.get(trade.positionId) ?? trade.tags })));
       setDeals(d);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to load trades');
+    } finally {
       setLoading(false);
-    })();
-  }, [selected]);
+    }
+  }, []);
+  useEffect(() => { if (selected) loadTrades(selected); }, [selected, loadTrades]);
 
   const filtered = trades.filter(t => {
     if (filter === 'LONG') return t.direction === 'LONG';
@@ -96,6 +101,13 @@ export default function TradesPage() {
             </button>
           ))}
         </div>
+
+        {error && (
+          <div className="border border-loss/30 bg-loss/10 px-4 py-3 mb-4 flex items-center justify-between gap-3 text-[12px]" data-testid="trades-error">
+            <span className="text-loss">{error}</span>
+            <button onClick={() => selected && loadTrades(selected)} className="btn btn-ghost py-1.5 text-[10px] shrink-0">RETRY</button>
+          </div>
+        )}
 
         {tab === 'trades' ? (
           <div className="tcard p-0" data-testid="trades-table">
