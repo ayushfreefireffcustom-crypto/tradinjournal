@@ -64,7 +64,9 @@ export function reconstructTrades(deals: Deal[]): Trade[] {
 
     const firstIn = inDeals[0]!;
     const direction: Trade['direction'] = firstIn.type === 'BUY' ? 'LONG' : 'SHORT';
-    const status: Trade['status'] = outDeals.length > 0 ? 'CLOSED' : 'OPEN';
+    // Epsilon guards against float summation drift (e.g. many 0.01-lot fills)
+    // making a fully-closed position compare as fractionally still open.
+    const status: Trade['status'] = totalOutVol >= totalInVol - 1e-8 ? 'CLOSED' : 'OPEN';
 
     trades.push({
       positionId: posId,
