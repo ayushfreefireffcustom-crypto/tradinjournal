@@ -4,7 +4,7 @@ const realAuthClient = createAuthClient({
   baseURL: process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000',
 });
 
-// 🚨 MOCK DEV ENVIRONMENT: Bypassing useSession hook to prevent UI redirects
+// 🚨 MOCK DEV ENVIRONMENT: Bypassing useSession hook to prevent UI redirects due to DB connection failure
 export const authClient = {
   ...realAuthClient,
   useSession: () => ({

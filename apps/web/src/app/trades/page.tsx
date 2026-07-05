@@ -6,6 +6,7 @@ import { authClient } from '@/lib/auth-client';
 import { api, type BrokerAccount, type Trade } from '@/lib/api';
 import AppShell from '@/components/app-shell';
 import ConnectBrokerModal from '@/components/connect-broker-modal';
+import { Search, ChevronDown, Activity } from 'lucide-react';
 
 const { useSession } = authClient;
 
@@ -58,13 +59,11 @@ export default function TradesPage() {
 
   useEffect(() => { if (selected) loadTrades(selected); }, [selected, loadTrades]);
 
-  const symbols = useMemo(() => Array.from(new Set(trades.map(t => t.symbol))).sort(), [trades]);
-
   const filtered = useMemo(() => {
     let t = [...trades];
     if (filterDir !== 'ALL') t = t.filter(x => x.direction === filterDir);
     if (filterStatus !== 'ALL') t = t.filter(x => x.status === filterStatus);
-    if (filterSymbol) t = t.filter(x => x.symbol === filterSymbol);
+    if (filterSymbol) t = t.filter(x => x.symbol.toLowerCase().includes(filterSymbol.toLowerCase()));
     t.sort((a, b) => {
       const diff = sortCol === 'openTime'
         ? new Date(a.openTime).getTime() - new Date(b.openTime).getTime()
@@ -87,42 +86,68 @@ export default function TradesPage() {
 
   if (isPending || (!session && !isPending)) return null;
 
-  const selStyle = { padding: '5px 10px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface-2)', color: 'var(--text)', fontSize: 12, outline: 'none', cursor: 'pointer' };
-
   return (
     <AppShell accounts={accounts} selectedAccount={selected} onSelectAccount={acc => { setSelected(acc); }} onConnectClick={() => setShowConnect(true)}>
-      <div style={{ padding: '28px 28px', maxWidth: 1200, margin: '0 auto' }} className="fade-up">
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20 }}>
+      <div className="w-full max-w-7xl mx-auto px-6 py-8 md:px-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+        
+        {/* Header & Controls */}
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 gap-4">
           <div>
-            <h1 style={{ fontSize: 19, fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.3px' }}>Trade Log</h1>
-            <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>{loading ? '…' : `${filtered.length} of ${trades.length} trades`}</p>
+            <h1 className="text-2xl font-bold text-white tracking-tight">Trade Log</h1>
+            <p className="text-sm text-on-surface-variant mt-1">
+              {loading ? 'Syncing...' : `${filtered.length} of ${trades.length} trades`}
+            </p>
           </div>
-          {/* Filters */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <select value={filterDir} onChange={e => setFilterDir(e.target.value as any)} style={selStyle}>
-              <option value="ALL">All directions</option>
-              <option value="LONG">Long</option>
-              <option value="SHORT">Short</option>
-            </select>
-            <select value={filterStatus} onChange={e => setFilterStatus(e.target.value as any)} style={selStyle}>
-              <option value="ALL">All status</option>
-              <option value="CLOSED">Closed</option>
-              <option value="OPEN">Open</option>
-            </select>
-            {symbols.length > 0 && (
-              <select value={filterSymbol} onChange={e => setFilterSymbol(e.target.value)} style={selStyle}>
-                <option value="">All symbols</option>
-                {symbols.map(s => <option key={s} value={s}>{s}</option>)}
+          
+          <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+            {/* Search Bar */}
+            <div className="relative w-full md:w-48">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
+              <input 
+                type="text" 
+                placeholder="Search symbol..." 
+                value={filterSymbol}
+                onChange={e => setFilterSymbol(e.target.value)}
+                className="w-full bg-surface-container-low border border-outline-variant hover:border-outline/50 transition-colors rounded-lg pl-9 pr-3 py-2 text-sm text-white placeholder:text-on-surface-variant focus:outline-none focus:ring-1 focus:ring-primary/50"
+              />
+            </div>
+
+            {/* Directions Filter */}
+            <div className="relative">
+              <select 
+                value={filterDir} 
+                onChange={e => setFilterDir(e.target.value as any)}
+                className="appearance-none bg-surface-container-low border border-outline-variant hover:border-outline/50 transition-colors rounded-lg pl-4 pr-10 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-primary/50 cursor-pointer"
+              >
+                <option value="ALL">All directions</option>
+                <option value="LONG">Long</option>
+                <option value="SHORT">Short</option>
               </select>
-            )}
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant pointer-events-none" />
+            </div>
+
+            {/* Status Filter */}
+            <div className="relative">
+              <select 
+                value={filterStatus} 
+                onChange={e => setFilterStatus(e.target.value as any)}
+                className="appearance-none bg-surface-container-low border border-outline-variant hover:border-outline/50 transition-colors rounded-lg pl-4 pr-10 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-primary/50 cursor-pointer"
+              >
+                <option value="ALL">All status</option>
+                <option value="CLOSED">Closed</option>
+                <option value="OPEN">Open</option>
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant pointer-events-none" />
+            </div>
           </div>
         </div>
 
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+        {/* Premium Table Container */}
+        <div className="bg-[#09090b]/80 backdrop-blur-md border border-neutral-800/80 rounded-xl shadow-2xl overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
               <thead>
-                <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                <tr className="border-b border-neutral-800">
                   {COLS.map(h => {
                     const sortable = h === 'Open' || h === 'Net P&L';
                     const col = h === 'Open' ? 'openTime' : 'netPnl';
@@ -131,9 +156,18 @@ export default function TradesPage() {
                       <th
                         key={h}
                         onClick={() => sortable && toggleSort(col as any)}
-                        style={{ padding: '10px 14px', textAlign: 'left', fontSize: 10, fontWeight: 500, color: active ? 'var(--accent)' : 'var(--text-subtle)', textTransform: 'uppercase', letterSpacing: '0.07em', cursor: sortable ? 'pointer' : 'default', whiteSpace: 'nowrap', userSelect: 'none' }}
+                        className={`py-4 px-5 text-[11px] uppercase tracking-wider font-semibold whitespace-nowrap select-none ${
+                          sortable ? 'cursor-pointer hover:text-white transition-colors' : ''
+                        } ${active ? 'text-primary-fixed-dim' : 'text-neutral-400'}`}
                       >
-                        {h} {active ? (sortDir === 'desc' ? '↓' : '↑') : ''}
+                        <div className="flex items-center gap-1">
+                          {h}
+                          {active && (
+                            <span className="text-[10px]">
+                              {sortDir === 'desc' ? '↓' : '↑'}
+                            </span>
+                          )}
+                        </div>
                       </th>
                     );
                   })}
@@ -142,48 +176,84 @@ export default function TradesPage() {
               <tbody>
                 {loading ? (
                   Array.from({ length: 8 }).map((_, i) => (
-                    <tr key={i}>
+                    <tr key={i} className="border-b border-neutral-800/50">
                       {COLS.map((_, j) => (
-                        <td key={j} style={{ padding: '11px 14px' }}>
-                          <div className="skeleton" style={{ height: 11, width: 60 + (j % 3) * 20, borderRadius: 4 }} />
+                        <td key={j} className="py-4 px-5">
+                          <div className="h-3 bg-neutral-800/50 rounded animate-pulse" style={{ width: 40 + (j % 3) * 20 }} />
                         </td>
                       ))}
                     </tr>
                   ))
                 ) : filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={COLS.length} style={{ padding: '48px 14px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
-                      {trades.length === 0 ? 'No trades found — place some trades in MT5 first' : 'No trades match the current filters'}
+                    <td colSpan={COLS.length} className="py-24">
+                      {trades.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center text-center">
+                          <div className="w-16 h-16 rounded-2xl bg-surface-container-high border border-white/5 flex items-center justify-center mb-4">
+                            <Activity className="w-8 h-8 text-primary-fixed-dim" />
+                          </div>
+                          <h3 className="font-headline-md text-white font-bold mb-2">No Active Trades Synced</h3>
+                          <p className="text-on-surface-variant max-w-sm text-sm">
+                            Connect your MT5 account or place your initial trades to generate your execution history log.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center text-center">
+                          <Search className="w-8 h-8 text-neutral-600 mb-3" />
+                          <h3 className="font-label-lg text-white font-semibold mb-1">No matches found</h3>
+                          <p className="text-on-surface-variant text-sm">Try adjusting your filters or search term.</p>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ) : filtered.map(t => {
                   const pos = t.netPnl >= 0;
                   return (
-                    <tr key={t.positionId} style={{ borderBottom: '1px solid var(--border)', transition: 'background 0.1s', cursor: 'default' }}
-                      onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-2)')}
-                      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                    <tr 
+                      key={t.positionId} 
+                      className="border-b border-neutral-800/50 hover:bg-white/[0.02] transition-colors"
                     >
-                      <td style={{ padding: '10px 14px' }}>
-                        <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 5, fontWeight: 700, background: t.direction === 'LONG' ? 'rgba(34,212,114,0.12)' : 'rgba(240,82,82,0.12)', color: t.direction === 'LONG' ? 'var(--green)' : 'var(--red)' }}>
+                      <td className="py-3 px-5">
+                        <span className={`inline-flex text-[11px] px-2 py-0.5 rounded font-bold ${
+                          t.direction === 'LONG' 
+                            ? 'bg-green-500/10 text-green-500' 
+                            : 'bg-red-500/10 text-red-500'
+                        }`}>
                           {t.direction}
                         </span>
                       </td>
-                      <td style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--text)' }}>{t.symbol}</td>
-                      <td style={{ padding: '10px 14px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{new Date(t.openTime).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' })}</td>
-                      <td style={{ padding: '10px 14px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{t.closeTime ? new Date(t.closeTime).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' }) : <span style={{ color: 'var(--text-subtle)' }}>Open</span>}</td>
-                      <td style={{ padding: '10px 14px', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{t.volume.toFixed(2)}</td>
-                      <td style={{ padding: '10px 14px', fontFamily: 'monospace', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{t.entryPrice.toFixed(5)}</td>
-                      <td style={{ padding: '10px 14px', fontFamily: 'monospace', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{t.exitPrice ? t.exitPrice.toFixed(5) : <span style={{ color: 'var(--text-subtle)' }}>—</span>}</td>
-                      <td style={{ padding: '10px 14px', fontVariantNumeric: 'tabular-nums', color: t.grossPnl >= 0 ? 'var(--green)' : 'var(--red)' }}>{t.grossPnl >= 0 ? '+' : ''}{t.grossPnl.toFixed(2)}</td>
-                      <td style={{ padding: '10px 14px', fontVariantNumeric: 'tabular-nums', color: 'var(--text-subtle)' }}>{t.commission.toFixed(2)}</td>
-                      <td style={{ padding: '10px 14px' }}>
-                        <span style={{ fontSize: 12, fontWeight: 700, padding: '2px 8px', borderRadius: 5, fontVariantNumeric: 'tabular-nums', color: pos ? 'var(--green)' : 'var(--red)', background: pos ? 'rgba(34,212,114,0.1)' : 'rgba(240,82,82,0.1)' }}>
+                      <td className="py-3 px-5 font-semibold text-white whitespace-nowrap">{t.symbol}</td>
+                      <td className="py-3 px-5 text-sm text-neutral-400 whitespace-nowrap">
+                        {new Date(t.openTime).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' })}
+                      </td>
+                      <td className="py-3 px-5 text-sm text-neutral-400 whitespace-nowrap">
+                        {t.closeTime ? new Date(t.closeTime).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' }) : <span className="text-neutral-600">Open</span>}
+                      </td>
+                      <td className="py-3 px-5 text-sm text-neutral-400 font-mono tabular-nums">{t.volume.toFixed(2)}</td>
+                      <td className="py-3 px-5 text-sm text-neutral-400 font-mono tabular-nums">{t.entryPrice.toFixed(5)}</td>
+                      <td className="py-3 px-5 text-sm text-neutral-400 font-mono tabular-nums">
+                        {t.exitPrice ? t.exitPrice.toFixed(5) : <span className="text-neutral-600">—</span>}
+                      </td>
+                      <td className={`py-3 px-5 text-sm font-mono tabular-nums ${t.grossPnl >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                        {t.grossPnl >= 0 ? '+' : ''}{t.grossPnl.toFixed(2)}
+                      </td>
+                      <td className="py-3 px-5 text-sm text-neutral-500 font-mono tabular-nums">{t.commission.toFixed(2)}</td>
+                      <td className="py-3 px-5">
+                        <span className={`inline-flex text-[12px] font-bold px-2 py-0.5 rounded font-mono tabular-nums ${
+                          pos 
+                            ? 'bg-green-500/10 text-green-500' 
+                            : 'bg-red-500/10 text-red-500'
+                        }`}>
                           {pos ? '+' : ''}{t.netPnl.toFixed(2)}
                         </span>
                       </td>
-                      <td style={{ padding: '10px 14px', color: 'var(--text-muted)' }}>{fmtDur(t.durationSecs)}</td>
-                      <td style={{ padding: '10px 14px' }}>
-                        <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 4, fontWeight: 600, letterSpacing: '0.05em', background: t.status === 'OPEN' ? 'rgba(99,102,241,0.12)' : 'var(--surface-3)', color: t.status === 'OPEN' ? 'var(--accent)' : 'var(--text-muted)' }}>
+                      <td className="py-3 px-5 text-sm text-neutral-400 whitespace-nowrap">{fmtDur(t.durationSecs)}</td>
+                      <td className="py-3 px-5">
+                        <span className={`inline-flex text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider ${
+                          t.status === 'OPEN' 
+                            ? 'bg-indigo-500/10 text-indigo-400' 
+                            : 'bg-neutral-800 text-neutral-400'
+                        }`}>
                           {t.status}
                         </span>
                       </td>

@@ -23,7 +23,7 @@ export default function SignUpPage() {
     setError('');
     
     try {
-      // 🚨 MOCK DEV ENVIRONMENT: Bypassing real backend due to missing shared DB credentials.
+      // 🚨 MOCK DEV ENVIRONMENT: Bypassing real backend due to invalid DB credentials.
       // const res = await authClient.signUp.email({ name, email, password });
       // if (res?.error) {
       //    throw new Error(res.error.message || res.error.statusText || 'Registration failed');

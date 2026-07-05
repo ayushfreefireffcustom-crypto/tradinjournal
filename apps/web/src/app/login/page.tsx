@@ -19,7 +19,7 @@ export default function Page() {
     setError("");
     
     try {
-      // 🚨 MOCK DEV ENVIRONMENT: Bypassing real backend due to missing shared DB credentials.
+      // 🚨 MOCK DEV ENVIRONMENT: Bypassing real backend due to invalid DB credentials.
       // const res = await authClient.signIn.email({ email, password });
       // if (res?.error) {
       //    throw new Error(res.error.message || res.error.statusText || 'Sign in failed');

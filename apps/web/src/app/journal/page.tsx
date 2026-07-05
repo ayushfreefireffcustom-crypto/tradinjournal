@@ -6,6 +6,7 @@ import { authClient } from '@/lib/auth-client';
 import { api, type BrokerAccount, type JournalEntry } from '@/lib/api';
 import AppShell from '@/components/app-shell';
 import ConnectBrokerModal from '@/components/connect-broker-modal';
+import { Plus, BookOpen, X } from 'lucide-react';
 
 const { useSession } = authClient;
 
@@ -142,90 +143,87 @@ export default function JournalPage() {
 
   if (isPending || (!session && !isPending)) return null;
 
-  const inputStyle = { width: '100%', padding: '8px 11px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface-2)', color: 'var(--text)', fontSize: 13, outline: 'none', boxSizing: 'border-box' as const, transition: 'border-color 0.15s' };
-  const labelStyle = { display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 5, textTransform: 'uppercase' as const, letterSpacing: '0.07em' };
-
   return (
     <AppShell accounts={accounts} selectedAccount={selected} onSelectAccount={setSelected} onConnectClick={() => setShowConnect(true)}>
-      <div style={{ padding: '28px 28px', maxWidth: 860, margin: '0 auto' }} className="fade-up">
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24 }}>
+      <div className="w-full max-w-4xl mx-auto px-6 py-8 md:px-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+        
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-8">
           <div>
-            <h1 style={{ fontSize: 19, fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.3px' }}>Journal</h1>
-            <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>Record your trading thoughts, emotions, and lessons</p>
+            <h1 className="text-2xl font-bold text-white tracking-tight">Journal</h1>
+            <p className="text-sm text-on-surface-variant mt-1">Record your trading thoughts, emotions, and lessons</p>
           </div>
           <button
             onClick={openNew}
-            style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '7px 14px', borderRadius: 9, background: 'var(--accent)', border: 'none', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
-            onMouseEnter={e => e.currentTarget.style.background = 'var(--accent-hover)'}
-            onMouseLeave={e => e.currentTarget.style.background = 'var(--accent)'}
+            className="flex items-center gap-2 px-4 py-2 bg-primary-fixed hover:bg-primary-fixed-dim text-on-primary-fixed text-sm font-semibold rounded-lg transition-colors"
           >
-            <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
-              <path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/>
-            </svg>
+            <Plus className="w-4 h-4" strokeWidth={2.5} />
             New Entry
           </button>
         </div>
 
         {/* Entry list */}
         {loading ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div className="flex flex-col gap-4">
             {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '18px 20px' }}>
-                <div className="skeleton" style={{ height: 14, width: 160, borderRadius: 5, marginBottom: 10 }} />
-                <div className="skeleton" style={{ height: 11, width: '90%', borderRadius: 4, marginBottom: 6 }} />
-                <div className="skeleton" style={{ height: 11, width: '70%', borderRadius: 4 }} />
+              <div key={i} className="bg-[#09090b]/80 backdrop-blur-md border border-neutral-800/80 rounded-xl p-5 shadow-2xl">
+                <div className="h-4 bg-neutral-800/50 rounded animate-pulse w-40 mb-3" />
+                <div className="h-3 bg-neutral-800/50 rounded animate-pulse w-11/12 mb-2" />
+                <div className="h-3 bg-neutral-800/50 rounded animate-pulse w-3/4" />
               </div>
             ))}
           </div>
         ) : entries.length === 0 ? (
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '60px 24px', textAlign: 'center' }}>
-            <div style={{ fontSize: 32, marginBottom: 12 }}>📝</div>
-            <p style={{ fontWeight: 600, color: 'var(--text)', marginBottom: 6 }}>No journal entries yet</p>
-            <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 20 }}>Write your first entry to track your trading mindset</p>
-            <button onClick={openNew} style={{ padding: '7px 16px', borderRadius: 8, background: 'var(--accent)', border: 'none', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+          <div className="flex flex-col items-center justify-center text-center py-20 bg-[#09090b]/80 backdrop-blur-md border border-neutral-800/80 rounded-xl shadow-2xl">
+            <div className="w-16 h-16 rounded-2xl bg-surface-container-high border border-white/5 flex items-center justify-center mb-5">
+              <BookOpen className="w-8 h-8 text-primary-fixed-dim" />
+            </div>
+            <h3 className="font-headline-md text-white font-bold mb-2">No journal entries yet</h3>
+            <p className="text-on-surface-variant max-w-sm text-sm mb-6">
+              Write your first entry to track your trading mindset
+            </p>
+            <button 
+              onClick={openNew} 
+              className="px-5 py-2.5 bg-primary-fixed hover:bg-primary-fixed-dim text-on-primary-fixed text-sm font-semibold rounded-lg transition-colors"
+            >
               Write First Entry
             </button>
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div className="flex flex-col gap-4">
             {entries.map(entry => (
               <div
                 key={entry.id}
-                style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '18px 20px', transition: 'border-color 0.15s' }}
-                onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--border-strong)')}
-                onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}
+                className="bg-[#09090b]/80 backdrop-blur-md border border-neutral-800/80 rounded-xl p-5 shadow-xl hover:border-neutral-700 transition-colors"
               >
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-                      {entry.emotion && <span style={{ fontSize: 16 }}>{emotionEmoji(entry.emotion)}</span>}
-                      <span style={{ fontSize: 11, color: 'var(--text-subtle)' }}>{fmtDate(entry.entryDate)}</span>
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center flex-wrap gap-2.5 mb-2.5">
+                      {entry.emotion && <span className="text-lg leading-none">{emotionEmoji(entry.emotion)}</span>}
+                      <span className="text-[11px] font-semibold text-neutral-400 tracking-wide uppercase">{fmtDate(entry.entryDate)}</span>
                       {entry.tags.length > 0 && entry.tags.map(tag => (
-                        <span key={tag} style={{ fontSize: 10, padding: '1px 7px', borderRadius: 4, background: 'rgba(99,102,241,0.1)', color: 'var(--accent)', fontWeight: 600 }}>{tag}</span>
+                        <span key={tag} className="text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider bg-indigo-500/10 text-indigo-400">
+                          {tag}
+                        </span>
                       ))}
                     </div>
                     {entry.title && (
-                      <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', marginBottom: 6, letterSpacing: '-0.2px' }}>{entry.title}</p>
+                      <p className="text-base font-bold text-white mb-2 tracking-tight">{entry.title}</p>
                     )}
-                    <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                    <p className="text-sm text-neutral-400 leading-relaxed whitespace-pre-wrap break-words">
                       {entry.body.length > 280 ? entry.body.slice(0, 280) + '…' : entry.body}
                     </p>
                   </div>
-                  <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                  <div className="flex gap-2 shrink-0">
                     <button
                       onClick={() => openEdit(entry)}
-                      style={{ padding: '5px 10px', borderRadius: 7, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontSize: 11, fontWeight: 500, cursor: 'pointer' }}
-                      onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface-2)'; e.currentTarget.style.color = 'var(--text)'; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-muted)'; }}
+                      className="px-3 py-1.5 rounded-lg border border-neutral-800/50 hover:border-neutral-700 text-xs font-semibold text-neutral-400 hover:text-white hover:bg-white/[0.02] transition-colors"
                     >
                       Edit
                     </button>
                     <button
                       onClick={() => handleDelete(entry.id)}
                       disabled={savingDeleteId === entry.id}
-                      style={{ padding: '5px 10px', borderRadius: 7, border: '1px solid transparent', background: 'transparent', color: 'var(--text-subtle)', fontSize: 11, cursor: 'pointer' }}
-                      onMouseEnter={e => { e.currentTarget.style.color = 'var(--red)'; e.currentTarget.style.borderColor = 'rgba(240,82,82,0.3)'; }}
-                      onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-subtle)'; e.currentTarget.style.borderColor = 'transparent'; }}
+                      className="px-3 py-1.5 rounded-lg border border-transparent text-xs font-semibold text-neutral-500 hover:text-red-500 hover:border-red-500/30 hover:bg-red-500/5 transition-colors disabled:opacity-50"
                     >
                       {savingDeleteId === entry.id ? '…' : 'Delete'}
                     </button>
@@ -240,66 +238,71 @@ export default function JournalPage() {
       {/* Editor modal */}
       {showEditor && (
         <div
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 20 }}
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 md:p-6"
           onClick={e => { if (e.target === e.currentTarget) setShowEditor(false); }}
         >
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 16, padding: '24px 26px', width: '100%', maxWidth: 560 }} className="fade-up">
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-              <h2 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.2px' }}>
+          <div className="bg-[#09090b] border border-neutral-800 rounded-2xl p-6 md:p-8 w-full max-w-xl shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-bold text-white tracking-tight">
                 {editing ? 'Edit Entry' : 'New Journal Entry'}
               </h2>
-              <button onClick={() => setShowEditor(false)} style={{ background: 'transparent', border: 'none', color: 'var(--text-subtle)', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: 2 }}>×</button>
+              <button 
+                onClick={() => setShowEditor(false)} 
+                className="text-neutral-500 hover:text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div className="flex flex-col gap-5">
               <div>
-                <label style={labelStyle}>Date</label>
-                <input type="date" value={form.entryDate} onChange={e => setForm(f => ({ ...f, entryDate: e.target.value }))} style={{ ...inputStyle, colorScheme: 'dark' }} />
+                <label className="block text-[11px] font-semibold text-neutral-400 mb-1.5 uppercase tracking-wider">Date</label>
+                <input 
+                  type="date" 
+                  value={form.entryDate} 
+                  onChange={e => setForm(f => ({ ...f, entryDate: e.target.value }))} 
+                  className="w-full bg-surface-container-low border border-outline-variant hover:border-outline/50 focus:border-primary/50 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-primary/50 transition-colors [color-scheme:dark]"
+                />
               </div>
 
               <div>
-                <label style={labelStyle}>Title (optional)</label>
+                <label className="block text-[11px] font-semibold text-neutral-400 mb-1.5 uppercase tracking-wider">Title (optional)</label>
                 <input
                   type="text"
                   placeholder="e.g. Revenge traded the NFP move"
                   value={form.title}
                   onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-                  style={inputStyle}
-                  onFocus={e => e.target.style.borderColor = 'var(--accent)'}
-                  onBlur={e => e.target.style.borderColor = 'var(--border)'}
+                  className="w-full bg-surface-container-low border border-outline-variant hover:border-outline/50 focus:border-primary/50 rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:ring-1 focus:ring-primary/50 transition-colors"
                 />
               </div>
 
               <div>
-                <label style={labelStyle}>Notes <span style={{ color: 'var(--red)' }}>*</span></label>
+                <label className="block text-[11px] font-semibold text-neutral-400 mb-1.5 uppercase tracking-wider">Notes <span className="text-red-500">*</span></label>
                 <textarea
                   placeholder="What happened today? What did you learn? How are you feeling about your trades?"
                   value={form.body}
                   onChange={e => setForm(f => ({ ...f, body: e.target.value }))}
                   rows={6}
-                  style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.6, fontFamily: 'inherit' }}
-                  onFocus={e => e.target.style.borderColor = 'var(--accent)'}
-                  onBlur={e => e.target.style.borderColor = 'var(--border)'}
+                  className="w-full bg-surface-container-low border border-outline-variant hover:border-outline/50 focus:border-primary/50 rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:ring-1 focus:ring-primary/50 transition-colors resize-y font-sans leading-relaxed"
                 />
               </div>
 
               <div>
-                <label style={labelStyle}>How are you feeling?</label>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                <label className="block text-[11px] font-semibold text-neutral-400 mb-2 uppercase tracking-wider">How are you feeling?</label>
+                <div className="flex flex-wrap gap-2">
                   {EMOTIONS.map(({ value, emoji, label }) => {
                     const active = form.emotion === value;
                     return (
                       <button
                         key={value}
                         onClick={() => setForm(f => ({ ...f, emotion: active ? '' : value }))}
-                        style={{
-                          padding: '5px 11px', borderRadius: 7, border: `1px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
-                          background: active ? 'rgba(99,102,241,0.12)' : 'transparent',
-                          color: active ? 'var(--accent)' : 'var(--text-muted)',
-                          fontSize: 12, cursor: 'pointer', transition: 'all 0.12s',
-                        }}
+                        className={`px-3 py-1.5 rounded-lg border text-[11px] font-semibold transition-colors flex items-center gap-1.5 ${
+                          active 
+                            ? 'border-indigo-500 bg-indigo-500/10 text-indigo-400' 
+                            : 'border-neutral-800 bg-transparent text-neutral-400 hover:bg-white/[0.02] hover:border-neutral-700 hover:text-neutral-300'
+                        }`}
                       >
-                        {emoji} {label}
+                        <span className="text-sm">{emoji}</span> {label}
                       </button>
                     );
                   })}
@@ -307,30 +310,32 @@ export default function JournalPage() {
               </div>
 
               <div>
-                <label style={labelStyle}>Tags (comma-separated)</label>
+                <label className="block text-[11px] font-semibold text-neutral-400 mb-1.5 uppercase tracking-wider">Tags (comma-separated)</label>
                 <input
                   type="text"
                   placeholder="e.g. XAUUSD, news-trade, mistake"
                   value={form.tags}
                   onChange={e => setForm(f => ({ ...f, tags: e.target.value }))}
-                  style={inputStyle}
-                  onFocus={e => e.target.style.borderColor = 'var(--accent)'}
-                  onBlur={e => e.target.style.borderColor = 'var(--border)'}
+                  className="w-full bg-surface-container-low border border-outline-variant hover:border-outline/50 focus:border-primary/50 rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:ring-1 focus:ring-primary/50 transition-colors"
                 />
               </div>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 22 }}>
+            <div className="flex justify-end gap-3 mt-8">
               <button
                 onClick={() => setShowEditor(false)}
-                style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer' }}
+                className="px-4 py-2 rounded-lg border border-neutral-800 hover:border-neutral-700 bg-transparent text-neutral-400 hover:text-white text-sm font-semibold transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSave}
                 disabled={saving || !form.body.trim()}
-                style={{ padding: '7px 18px', borderRadius: 8, background: form.body.trim() ? 'var(--accent)' : 'var(--surface-3)', border: 'none', color: form.body.trim() ? '#fff' : 'var(--text-subtle)', fontSize: 13, fontWeight: 600, cursor: form.body.trim() ? 'pointer' : 'default', transition: 'all 0.12s' }}
+                className={`px-5 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                  form.body.trim() 
+                    ? 'bg-primary-fixed hover:bg-primary-fixed-dim text-on-primary-fixed shadow-[0_0_15px_rgba(34,212,114,0.15)]' 
+                    : 'bg-neutral-800 text-neutral-500 cursor-not-allowed'
+                }`}
               >
                 {saving ? 'Saving…' : editing ? 'Save Changes' : 'Add Entry'}
               </button>
