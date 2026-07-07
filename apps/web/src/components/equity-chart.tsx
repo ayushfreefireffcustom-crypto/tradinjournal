@@ -59,7 +59,7 @@ export default function EquityChart({ data, height = 220, startingBalance }: Pro
       ))}
 
       {yTicks.map((v, i) => (
-        <text key={i} x={PAD.left - 8} y={toY(v) + 4} textAnchor="end" fill="#71717A" fontSize="10" fontFamily="JetBrains Mono">
+        <text key={i} x={PAD.left - 8} y={toY(v) + 4} textAnchor="end" fill="#71717A" fontSize="10" style={{ fontFamily: 'var(--font-mono)' }}>
           {v >= 1000 ? `$${(v / 1000).toFixed(1)}k` : `$${v.toFixed(0)}`}
         </text>
       ))}
@@ -79,7 +79,7 @@ export default function EquityChart({ data, height = 220, startingBalance }: Pro
         const idx = data.indexOf(d);
         const label = d.time ? new Date(d.time).toLocaleDateString('en-US', { day: '2-digit', month: 'short' }) : 'Start';
         return (
-          <text key={i} x={toX(idx)} y={H - 8} textAnchor="middle" fill="#71717A" fontSize="9.5" fontFamily="JetBrains Mono">
+          <text key={i} x={toX(idx)} y={H - 8} textAnchor="middle" fill="#71717A" fontSize="9.5" style={{ fontFamily: 'var(--font-mono)' }}>
             {label.toUpperCase()}
           </text>
         );

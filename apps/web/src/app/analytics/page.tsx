@@ -37,8 +37,8 @@ function Donut({ wins, losses }: { wins: number; losses: number }) {
           strokeDasharray={`${winDash} ${circ}`} strokeDashoffset={circ * 0.25}
           transform="rotate(-90 70 70)"
         />
-        <text x={70} y={68} textAnchor="middle" fontFamily="Cabinet Grotesk" fontWeight={900} fontSize="28" fill="#fff">{winPct.toFixed(0)}%</text>
-        <text x={70} y={88} textAnchor="middle" fontFamily="JetBrains Mono" fontSize="9" letterSpacing="2" fill="#71717A">WIN RATE</text>
+        <text x={70} y={68} textAnchor="middle" style={{ fontFamily: 'var(--font-display)' }} fontWeight={900} fontSize="28" fill="#fff">{winPct.toFixed(0)}%</text>
+        <text x={70} y={88} textAnchor="middle" style={{ fontFamily: 'var(--font-mono)' }} fontSize="9" letterSpacing="2" fill="#71717A">WIN RATE</text>
       </svg>
       <div className="flex flex-col gap-2 text-[12px] w-full sm:w-auto sm:min-w-[160px]">
         <div className="flex items-center gap-2"><span className="w-2.5 h-2.5 bg-profit" /><span className="text-fg-2">Wins</span><span className="ml-auto font-mono numeric">{wins}</span></div>
@@ -141,15 +141,15 @@ function PnlDist({ trades }: { trades: Trade[] }) {
               {/* Top edge accent */}
               <line x1={x} x2={x + bw} y1={y} y2={y} stroke={stroke} strokeWidth="1.5" />
               {/* Value label above bar */}
-              <text x={x + bw / 2} y={y - 8} textAnchor="middle" fontSize="11" fontFamily="JetBrains Mono" fill="#A1A1AA">
+              <text x={x + bw / 2} y={y - 8} textAnchor="middle" fontSize="11" style={{ fontFamily: 'var(--font-mono)' }} fill="#A1A1AA">
                 {b.v}
               </text>
               {/* X-axis label */}
-              <text x={x + bw / 2} y={H - 18} textAnchor="middle" fontSize="10" fontFamily="JetBrains Mono" letterSpacing="1" fill={b.loss ? '#71717A' : '#A1A1AA'}>
+              <text x={x + bw / 2} y={H - 18} textAnchor="middle" fontSize="10" style={{ fontFamily: 'var(--font-mono)' }} letterSpacing="1" fill={b.loss ? '#71717A' : '#A1A1AA'}>
                 {b.l}
               </text>
               {/* Percentage of sample under label */}
-              <text x={x + bw / 2} y={H - 5} textAnchor="middle" fontSize="9" fontFamily="JetBrains Mono" fill="#4A4A4A">
+              <text x={x + bw / 2} y={H - 5} textAnchor="middle" fontSize="9" style={{ fontFamily: 'var(--font-mono)' }} fill="#4A4A4A">
                 {Math.round((b.v / total) * 100)}%
               </text>
             </g>
@@ -167,7 +167,7 @@ function PnlDist({ trades }: { trades: Trade[] }) {
         <text
           x={PAD.left + (zeroIdx + 1) * bw + zeroIdx * gap + gap / 2}
           y={PAD.top - 16}
-          textAnchor="middle" fontSize="9" letterSpacing="2" fontFamily="JetBrains Mono" fill="#71717A"
+          textAnchor="middle" fontSize="9" letterSpacing="2" style={{ fontFamily: 'var(--font-mono)' }} fill="#71717A"
         >
           BREAK-EVEN
         </text>

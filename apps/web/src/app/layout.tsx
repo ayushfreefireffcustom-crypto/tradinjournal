@@ -1,5 +1,16 @@
 import type { Metadata } from 'next';
+import { JetBrains_Mono } from 'next/font/google';
 import './globals.css';
+
+// JetBrains Mono is the body/number font (the bulk of the UI). Self-hosting it
+// via next/font removes the flash-of-unstyled-text and layout shift that the
+// old CDN <link> caused, which was the main source of font inconsistency.
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ['latin'],
+  weight: ['400', '500', '600'],
+  variable: '--font-mono-jb',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: 'TradinX // Tactical Trade Journal',
@@ -8,17 +19,13 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" className={`dark ${jetbrainsMono.variable}`}>
       <head>
-        {/* Cabinet Grotesk (Fontshare) + JetBrains Mono (Google) */}
+        {/* Cabinet Grotesk (display headings) — Fontshare has no npm/Google
+            equivalent at weight 900, so it stays on the CDN. */}
         <link rel="preconnect" href="https://api.fontshare.com" />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link
           href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@500,700,800,900&display=swap"
-          rel="stylesheet"
-        />
-        <link
-          href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap"
           rel="stylesheet"
         />
       </head>

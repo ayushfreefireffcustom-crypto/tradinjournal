@@ -18,9 +18,10 @@
   --color-loss: #FF3B30;
   --color-warning: #FF9F0A;
 
-  /* Fonts — Cabinet Grotesk (display) loaded from Fontshare, JetBrains Mono from Google */
+  /* Fonts — Cabinet Grotesk (display) from Fontshare CDN; JetBrains Mono
+     self-hosted via next/font (exposed as --font-mono-jb). */
   --font-display: "Cabinet Grotesk", "Inter Tight", system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --font-mono: var(--font-mono-jb), ui-monospace, "SFMono-Regular", Menlo, monospace;
 }
 
 * {

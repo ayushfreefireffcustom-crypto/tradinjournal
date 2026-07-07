@@ -84,7 +84,7 @@ function CandleChart({ trade }: { trade: Trade | null }) {
         return (
           <g key={i}>
             <line x1={PAD.left} x2={W - PAD.right} y1={toY(v)} y2={toY(v)} stroke="#1E1E1E" strokeDasharray="2 4" />
-            <text x={W - PAD.right + 8} y={toY(v) + 4} fontSize="10" fontFamily="JetBrains Mono" fill="#71717A">{v.toFixed(trade.symbol === 'USDJPY' ? 3 : trade.symbol === 'BTCUSD' || trade.symbol.includes('100') || trade.symbol.includes('30') ? 1 : 5)}</text>
+            <text x={W - PAD.right + 8} y={toY(v) + 4} fontSize="10" style={{ fontFamily: 'var(--font-mono)' }} fill="#71717A">{v.toFixed(trade.symbol === 'USDJPY' ? 3 : trade.symbol === 'BTCUSD' || trade.symbol.includes('100') || trade.symbol.includes('30') ? 1 : 5)}</text>
           </g>
         );
       })}
@@ -115,13 +115,13 @@ function CandleChart({ trade }: { trade: Trade | null }) {
       {/* Entry marker */}
       <g transform={`translate(${toX(entryIdx) + cw / 2}, ${toY(trade.entryPrice)})`}>
         <polygon points="-6,-6 6,-6 0,0" fill={trade.direction === 'LONG' ? '#00C566' : '#FF3B30'} />
-        <text x="-8" y="-10" textAnchor="end" fontSize="10" fontFamily="JetBrains Mono" fill="#FFFFFF">ENTRY {trade.entryPrice}</text>
+        <text x="-8" y="-10" textAnchor="end" fontSize="10" style={{ fontFamily: 'var(--font-mono)' }} fill="#FFFFFF">ENTRY {trade.entryPrice}</text>
       </g>
 
       {/* Exit marker */}
       <g transform={`translate(${toX(exitIdx) + cw / 2}, ${toY(trade.exitPrice ?? trade.entryPrice)})`}>
         <polygon points="-6,6 6,6 0,0" fill={trade.netPnl >= 0 ? '#00C566' : '#FF3B30'} />
-        <text x="8" y="14" fontSize="10" fontFamily="JetBrains Mono" fill="#FFFFFF">EXIT {trade.exitPrice}</text>
+        <text x="8" y="14" fontSize="10" style={{ fontFamily: 'var(--font-mono)' }} fill="#FFFFFF">EXIT {trade.exitPrice}</text>
       </g>
     </svg>
   );
