@@ -3,6 +3,7 @@
 import { Fragment } from 'react';
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { api, type BrokerAccount, type AccountStats, type Trade, type JournalEntry } from '@/lib/api';
+import { statsForRange, rangeStart, RANGES, type RangeKey } from '@/lib/stats';
 import AppShell from '@/components/app-shell';
 import ConnectBrokerModal from '@/components/connect-broker-modal';
 import EquityChart from '@/components/equity-chart';
@@ -379,6 +380,7 @@ export default function AnalyticsPage() {
   const [stats, setStats] = useState<AccountStats | null>(null);
   const [trades, setTrades] = useState<Trade[]>([]);
   const [journal, setJournal] = useState<JournalEntry[]>([]);
+  const [range, setRange] = useState<RangeKey>('ALL');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showConnect, setShowConnect] = useState(false);
@@ -410,11 +412,23 @@ export default function AnalyticsPage() {
   }, []);
   useEffect(() => { if (selected) loadStats(selected); }, [selected, loadStats]);
 
+  // Range-filtered view: recompute every widget's stats from the selected range.
+  const view = useMemo(
+    () => (stats ? statsForRange(trades, stats.startingBalance, range) : null),
+    [stats, trades, range],
+  );
+
+  // Closed trades within the selected range (for distribution / heatmap / tags).
+  const rangedTrades = useMemo(() => {
+    const start = rangeStart(range);
+    return trades.filter(t => t.status === 'CLOSED' && t.closeTime && (start === null || new Date(t.closeTime).getTime() >= start));
+  }, [trades, range]);
+
   // Group closed-trade P&L by the tags / emotion logged for each trade's
-  // journal entry (joined by tradeId → positionId).
+  // journal entry (joined by tradeId → positionId), within the selected range.
   const { tagStats, emotionStats } = useMemo(() => {
     const closedById = new Map<string, Trade>();
-    for (const t of trades) if (t.status === 'CLOSED') closedById.set(t.positionId, t);
+    for (const t of rangedTrades) closedById.set(t.positionId, t);
 
     const tagMap = new Map<string, GroupAgg>();
     const emoMap = new Map<string, GroupAgg>();
@@ -440,7 +454,7 @@ export default function AnalyticsPage() {
         .sort((a, b) => b.netPnl - a.netPnl);
 
     return { tagStats: finalize(tagMap), emotionStats: finalize(emoMap) };
-  }, [trades, journal]);
+  }, [rangedTrades, journal]);
 
   function onConnected(account: BrokerAccount) {
     setAccounts(prev => prev.find(a => a.id === account.id) ? prev.map(a => a.id === account.id ? account : a) : [account, ...prev]);
@@ -460,8 +474,20 @@ export default function AnalyticsPage() {
       <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto fade-up" data-testid="analytics-page">
         <div className="mb-6 flex items-end justify-between flex-wrap gap-4">
           <div>
-            <div className="text-[10px] tracking-[0.25em] text-fg-3">[ ANALYTICS // ALL TIME ]</div>
+            <div className="text-[10px] tracking-[0.25em] text-fg-3">[ ANALYTICS // {range === 'ALL' ? 'ALL TIME' : `LAST ${range}`} ]</div>
             <h1 className="font-display font-black text-3xl sm:text-4xl tracking-tighter mt-2">DISSECT YOUR EDGE.</h1>
+          </div>
+          <div className="flex gap-1 overflow-x-auto no-scrollbar -mx-1 px-1 w-full sm:w-auto" data-testid="range-selector">
+            {RANGES.map(r => (
+              <button
+                key={r}
+                onClick={() => setRange(r)}
+                data-testid={`range-${r}`}
+                className={`shrink-0 px-3 py-1.5 text-[10px] tracking-[0.22em] border ${range === r ? 'border-fg text-fg bg-surface' : 'border-border-soft text-fg-3 hover:text-fg hover:border-border-strong'}`}
+              >
+                {r}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -470,7 +496,7 @@ export default function AnalyticsPage() {
             <span className="text-loss">{error}</span>
             <button onClick={() => selected && loadStats(selected)} className="btn btn-ghost py-1.5 text-[10px] shrink-0">RETRY</button>
           </div>
-        ) : loading || !stats ? (
+        ) : loading || !view ? (
           <div className="grid grid-cols-12 gap-3">
             {Array.from({ length: 6 }).map((_, i) => <div key={i} className="tcard p-6 col-span-6 lg:col-span-4 h-40 animate-pulse bg-surface" />)}
           </div>
@@ -479,11 +505,11 @@ export default function AnalyticsPage() {
             {/* Top KPI row */}
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-3">
               {[
-                { l: 'NET P&L',        v: `${stats.netPnl >= 0 ? '+' : '-'}$${Math.abs(stats.netPnl).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, c: stats.netPnl >= 0 ? 'text-profit' : 'text-loss' },
-                { l: 'PROFIT FACTOR',  v: stats.profitFactor >= 999 ? '∞' : stats.profitFactor.toFixed(2) },
-                { l: 'GROSS PROFIT',   v: `+$${stats.grossProfit.toLocaleString(undefined, { maximumFractionDigits: 0 })}`, c: 'text-profit' },
-                { l: 'GROSS LOSS',     v: `-$${stats.grossLoss.toLocaleString(undefined, { maximumFractionDigits: 0 })}`, c: 'text-loss' },
-                { l: 'MAX DD',         v: `${(stats.maxDrawdownPct * 100).toFixed(1)}%`, c: stats.maxDrawdownPct > 0.1 ? 'text-loss' : '' },
+                { l: 'NET P&L',        v: `${view.netPnl >= 0 ? '+' : '-'}$${Math.abs(view.netPnl).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, c: view.netPnl >= 0 ? 'text-profit' : 'text-loss' },
+                { l: 'PROFIT FACTOR',  v: view.profitFactor >= 999 ? '∞' : view.profitFactor.toFixed(2) },
+                { l: 'GROSS PROFIT',   v: `+$${view.grossProfit.toLocaleString(undefined, { maximumFractionDigits: 0 })}`, c: 'text-profit' },
+                { l: 'GROSS LOSS',     v: `-$${view.grossLoss.toLocaleString(undefined, { maximumFractionDigits: 0 })}`, c: 'text-loss' },
+                { l: 'MAX DD',         v: `${(view.maxDrawdownPct * 100).toFixed(1)}%`, c: view.maxDrawdownPct > 0.1 ? 'text-loss' : '' },
               ].map(k => (
                 <div key={k.l} className="tcard p-4" data-testid={`kpi-${k.l.toLowerCase().replace(/[^a-z]/g, '')}`}>
                   <div className="text-[10px] tracking-[0.22em] text-fg-3 uppercase">{k.l}</div>
@@ -497,13 +523,13 @@ export default function AnalyticsPage() {
               <div className="tcard col-span-12 lg:col-span-4 p-5">
                 <div className="text-[10px] tracking-[0.25em] text-fg-3">WIN_LOSS_RATIO</div>
                 <div className="font-display font-bold text-[16px] tracking-tight mt-1 mb-5">Strike rate</div>
-                <Donut wins={stats.totalWins} losses={stats.totalLosses} />
+                <Donut wins={view.totalWins} losses={view.totalLosses} />
                 <div className="grid grid-cols-2 gap-3 mt-6 pt-5 border-t border-border-soft">
                   {[
-                    { l: 'Avg Win',  v: `+$${stats.avgWin.toFixed(2)}`, c: 'text-profit' },
-                    { l: 'Avg Loss', v: `$${stats.avgLoss.toFixed(2)}`, c: 'text-loss' },
-                    { l: 'Best Trade',  v: `+$${stats.bestTrade.toFixed(2)}`, c: 'text-profit' },
-                    { l: 'Worst Trade', v: `$${stats.worstTrade.toFixed(2)}`, c: 'text-loss' },
+                    { l: 'Avg Win',  v: `+$${view.avgWin.toFixed(2)}`, c: 'text-profit' },
+                    { l: 'Avg Loss', v: `$${view.avgLoss.toFixed(2)}`, c: 'text-loss' },
+                    { l: 'Best Trade',  v: `+$${view.bestTrade.toFixed(2)}`, c: 'text-profit' },
+                    { l: 'Worst Trade', v: `$${view.worstTrade.toFixed(2)}`, c: 'text-loss' },
                   ].map(m => (
                     <div key={m.l}>
                       <div className="text-[10px] tracking-[0.18em] text-fg-3 uppercase">{m.l}</div>
@@ -516,7 +542,7 @@ export default function AnalyticsPage() {
               <div className="tcard col-span-12 lg:col-span-8 p-5">
                 <div className="text-[10px] tracking-[0.25em] text-fg-3">PNL_BY_DAY</div>
                 <div className="font-display font-bold text-[16px] tracking-tight mt-1 mb-5">Day of week distribution</div>
-                <HBars data={stats.byDay.map(d => ({ label: d.day, value: d.netPnl }))} />
+                <HBars data={view.byDay.map(d => ({ label: d.day, value: d.netPnl }))} />
               </div>
             </div>
 
@@ -525,13 +551,13 @@ export default function AnalyticsPage() {
               <div className="tcard col-span-12 lg:col-span-7 p-5">
                 <div className="text-[10px] tracking-[0.25em] text-fg-3">PNL_DISTRIBUTION</div>
                 <div className="font-display font-bold text-[16px] tracking-tight mt-1 mb-5">Net P&L per trade</div>
-                <PnlDist trades={trades} />
+                <PnlDist trades={rangedTrades} />
               </div>
 
               <div className="tcard col-span-12 lg:col-span-5 p-5">
                 <div className="text-[10px] tracking-[0.25em] text-fg-3">SESSION_HEATMAP</div>
                 <div className="font-display font-bold text-[16px] tracking-tight mt-1 mb-5">P&L by session × weekday · UTC</div>
-                <SessionHeatmap trades={trades} />
+                <SessionHeatmap trades={rangedTrades} />
               </div>
             </div>
 
@@ -543,11 +569,11 @@ export default function AnalyticsPage() {
                   <div className="font-display font-bold text-[16px] tracking-tight mt-1">Realised equity vs starting balance</div>
                 </div>
                 <span className="text-[10px] tracking-widest text-fg-3 border border-border-soft px-2 py-1">
-                  PEAK ${Math.max(...stats.equityCurve.map(e => e.equity)).toLocaleString()}
+                  PEAK ${Math.max(...view.equityCurve.map(e => e.equity)).toLocaleString()}
                 </span>
               </div>
               <div className="mt-4">
-                <EquityChart data={stats.equityCurve} height={260} startingBalance={stats.startingBalance} />
+                <EquityChart data={view.equityCurve} height={260} startingBalance={view.startingBalance} />
               </div>
             </div>
 
@@ -569,7 +595,7 @@ export default function AnalyticsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {stats.bySymbol.map(s => (
+                    {view.bySymbol.map(s => (
                       <tr key={s.symbol} className="border-b border-border-soft hover:bg-surface-hover transition-colors">
                         <td className="px-5 py-3 font-display font-bold tracking-tight">{s.symbol}</td>
                         <td className="px-5 py-3 numeric text-fg-2">{s.trades}</td>
