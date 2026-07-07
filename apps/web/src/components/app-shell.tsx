@@ -21,6 +21,7 @@ const NAV = [
   { href: '/trades',    label: 'TRADE LOG' },
   { href: '/analytics', label: 'ANALYTICS' },
   { href: '/journal',   label: 'CHART REPLAY' },
+  { href: '/notebook',  label: 'JOURNAL' },
 ];
 
 export default function AppShell({
