@@ -2,10 +2,24 @@
 
 import { Fragment } from 'react';
 import { useEffect, useState, useCallback } from 'react';
-import { api, type BrokerAccount, type AccountStats } from '@/lib/api';
+import { api, type BrokerAccount, type AccountStats, type Trade } from '@/lib/api';
 import AppShell from '@/components/app-shell';
 import ConnectBrokerModal from '@/components/connect-broker-modal';
 import EquityChart from '@/components/equity-chart';
+
+function stdev(xs: number[]): number {
+  if (xs.length === 0) return 0;
+  const m = xs.reduce((s, x) => s + x, 0) / xs.length;
+  const v = xs.reduce((s, x) => s + (x - m) * (x - m), 0) / xs.length;
+  return Math.sqrt(v);
+}
+
+function moneyShort(v: number): string {
+  const sign = v < 0 ? '-' : '';
+  const a = Math.abs(v);
+  if (a >= 1000) return `${sign}$${(a / 1000).toFixed(a >= 10000 ? 0 : 1)}k`;
+  return `${sign}$${Math.round(a)}`;
+}
 
 function Donut({ wins, losses }: { wins: number; losses: number }) {
   const total = wins + losses;
@@ -58,23 +72,32 @@ function HBars({ data, maxLabelWidth = 56 }: { data: { label: string; value: num
   );
 }
 
-function RDist() {
-  // Synthetic R-multiple distribution
-  const buckets = [
-    { l: '-3R', v: 2,  loss: true },
-    { l: '-2R', v: 5,  loss: true },
-    { l: '-1R', v: 14, loss: true },
-    { l:  '0R', v: 4,  loss: true },
-    { l: '+1R', v: 18, loss: false },
-    { l: '+2R', v: 16, loss: false },
-    { l: '+3R', v: 11, loss: false },
-    { l: '+4R', v: 6,  loss: false },
-    { l: '+5R', v: 2,  loss: false },
-  ];
-  const total = buckets.reduce((s, b) => s + b.v, 0);
-  const mode = buckets.reduce((m, b) => b.v > m.v ? b : m, buckets[0]!);
-  const maxV = Math.max(...buckets.map(b => b.v));
-  const zeroIdx = buckets.findIndex(b => b.l === '0R');
+function PnlDist({ trades }: { trades: Trade[] }) {
+  // Real per-trade net P&L distribution (symmetric $ buckets around break-even).
+  const pnls = trades.filter(t => t.status === 'CLOSED').map(t => t.netPnl);
+  if (pnls.length === 0) return <div className="text-fg-3 text-[12px]">No closed trades yet.</div>;
+
+  const N = 8;
+  const absMax = Math.max(...pnls.map(v => Math.abs(v)), 1);
+  const lo = -absMax;
+  const width = (2 * absMax) / N;
+  const buckets = Array.from({ length: N }, (_, i) => {
+    const center = lo + (i + 0.5) * width;
+    return { l: moneyShort(center), v: 0, loss: center < 0 };
+  });
+  for (const v of pnls) {
+    let idx = Math.floor((v - lo) / width);
+    if (idx < 0) idx = 0; else if (idx >= N) idx = N - 1;
+    buckets[idx]!.v += 1;
+  }
+  const total = pnls.length;
+  const mode = buckets.reduce((m, b) => (b.v > m.v ? b : m), buckets[0]!);
+  const maxV = Math.max(...buckets.map(b => b.v), 1);
+  const zeroIdx = 3; // break-even sits on the boundary between bucket 3 and 4
+  const expectancy = pnls.reduce((s, v) => s + v, 0) / total;
+  const sd = stdev(pnls);
+  const best = Math.max(...pnls);
+  const worst = Math.min(...pnls);
 
   const W = 700, H = 240;
   const PAD = { top: 26, right: 14, bottom: 38, left: 14 };
@@ -149,26 +172,15 @@ function RDist() {
           BREAK-EVEN
         </text>
 
-        {/* Expectancy marker at +0.78R (between +0R and +1R buckets, ~78% of the way) */}
-        {(() => {
-          const expIdx = zeroIdx + 0.78;
-          const expX = PAD.left + expIdx * (bw + gap) + bw / 2;
-          return (
-            <g>
-              <line x1={expX} x2={expX} y1={PAD.top} y2={PAD.top + innerH} stroke="#00C566" strokeWidth="1.5" />
-              <polygon points={`${expX - 5},${PAD.top - 2} ${expX + 5},${PAD.top - 2} ${expX},${PAD.top + 6}`} fill="#00C566" />
-            </g>
-          );
-        })()}
       </svg>
 
       {/* Stats footer */}
       <div className="mt-4 pt-4 border-t border-border-soft grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
         {[
-          { l: 'Expectancy', v: '+0.78R', c: 'text-profit' },
-          { l: 'Std Dev',    v: '1.62R',  c: '' },
-          { l: 'Best R',     v: '+5.10R', c: 'text-profit' },
-          { l: 'Worst R',    v: '-3.20R', c: 'text-loss' },
+          { l: 'Expectancy', v: `${expectancy >= 0 ? '+' : '-'}$${Math.abs(expectancy).toFixed(2)}`, c: expectancy >= 0 ? 'text-profit' : 'text-loss' },
+          { l: 'Std Dev',    v: `$${sd.toFixed(0)}`, c: '' },
+          { l: 'Best',       v: `+$${best.toFixed(0)}`, c: 'text-profit' },
+          { l: 'Worst',      v: `$${worst.toFixed(0)}`, c: 'text-loss' },
         ].map(s => (
           <div key={s.l}>
             <div className="text-[10px] tracking-[0.22em] text-fg-3 uppercase">{s.l}</div>
@@ -191,17 +203,30 @@ function RDist() {
   );
 }
 
-function SessionGrid() {
+function SessionHeatmap({ trades }: { trades: Trade[] }) {
   const sessions = ['ASIA', 'LON', 'NY'] as const;
   const days = ['MON', 'TUE', 'WED', 'THU', 'FRI'] as const;
-  // Deterministic synthetic grid
-  const data: number[][] = [
-    [120, 240, -80, 180, 60],
-    [-40, 320, 410, 220, 90],
-    [180, -120, 280, 150, 340],
-  ];
+  const closed = trades.filter(t => t.status === 'CLOSED');
+
+  // Net P&L by session (UTC open hour) × weekday.
+  const data: number[][] = [[0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0]];
+  let mapped = 0;
+  for (const t of closed) {
+    const d = new Date(t.openTime);
+    const wd = d.getUTCDay();          // 0 Sun .. 6 Sat
+    if (wd < 1 || wd > 5) continue;    // weekday sessions only
+    const h = d.getUTCHours();
+    const sIdx = (h < 7 || h >= 22) ? 0 : (h < 13 ? 1 : 2);
+    data[sIdx]![wd - 1]! += t.netPnl;
+    mapped++;
+  }
+  if (mapped === 0) return <div className="text-fg-3 text-[12px]">No weekday trades to map.</div>;
+  for (let i = 0; i < data.length; i++) {
+    for (let j = 0; j < data[i]!.length; j++) data[i]![j] = Math.round(data[i]![j]!);
+  }
+
   const flat = data.flat();
-  const max = Math.max(...flat.map(v => Math.abs(v)));
+  const max = Math.max(...flat.map(v => Math.abs(v)), 1);
   const rowTotals = data.map(r => r.reduce((s, v) => s + v, 0));
   const colTotals = days.map((_, j) => data.reduce((s, r) => s + r[j]!, 0));
   const total = rowTotals.reduce((s, v) => s + v, 0);
@@ -299,6 +324,7 @@ export default function AnalyticsPage() {
   const [accounts, setAccounts] = useState<BrokerAccount[]>([]);
   const [selected, setSelected] = useState<BrokerAccount | null>(null);
   const [stats, setStats] = useState<AccountStats | null>(null);
+  const [trades, setTrades] = useState<Trade[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showConnect, setShowConnect] = useState(false);
@@ -316,7 +342,9 @@ export default function AnalyticsPage() {
     setLoading(true);
     setError('');
     try {
-      setStats(await api.trades.stats(acc.id));
+      const [s, t] = await Promise.all([api.trades.stats(acc.id), api.trades.list(acc.id)]);
+      setStats(s);
+      setTrades(t);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to load account data');
     } finally { setLoading(false); }
@@ -343,11 +371,6 @@ export default function AnalyticsPage() {
           <div>
             <div className="text-[10px] tracking-[0.25em] text-fg-3">[ ANALYTICS // ALL TIME ]</div>
             <h1 className="font-display font-black text-3xl sm:text-4xl tracking-tighter mt-2">DISSECT YOUR EDGE.</h1>
-          </div>
-          <div className="flex gap-1 overflow-x-auto no-scrollbar -mx-1 px-1 w-full sm:w-auto">
-            {['1W', '1M', '3M', '1Y', 'ALL'].map((t, i) => (
-              <button key={t} className={`shrink-0 px-3 py-1.5 text-[10px] tracking-[0.22em] border ${i === 4 ? 'border-fg text-fg bg-surface' : 'border-border-soft text-fg-3 hover:text-fg hover:border-border-strong'}`}>{t}</button>
-            ))}
           </div>
         </div>
 
@@ -409,15 +432,15 @@ export default function AnalyticsPage() {
             {/* R-mult + Session heatmap */}
             <div className="grid grid-cols-12 gap-3 mb-3">
               <div className="tcard col-span-12 lg:col-span-7 p-5">
-                <div className="text-[10px] tracking-[0.25em] text-fg-3">R_MULTIPLE_DISTRIBUTION</div>
-                <div className="font-display font-bold text-[16px] tracking-tight mt-1 mb-5">Edge in R-multiples</div>
-                <RDist />
+                <div className="text-[10px] tracking-[0.25em] text-fg-3">PNL_DISTRIBUTION</div>
+                <div className="font-display font-bold text-[16px] tracking-tight mt-1 mb-5">Net P&L per trade</div>
+                <PnlDist trades={trades} />
               </div>
 
               <div className="tcard col-span-12 lg:col-span-5 p-5">
                 <div className="text-[10px] tracking-[0.25em] text-fg-3">SESSION_HEATMAP</div>
-                <div className="font-display font-bold text-[16px] tracking-tight mt-1 mb-5">P&L by session × day</div>
-                <SessionGrid />
+                <div className="font-display font-bold text-[16px] tracking-tight mt-1 mb-5">P&L by session × weekday · UTC</div>
+                <SessionHeatmap trades={trades} />
               </div>
             </div>
 
