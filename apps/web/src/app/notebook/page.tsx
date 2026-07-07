@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, useCallback } from 'react';
 import AppShell from '@/components/app-shell';
 import ConnectBrokerModal from '@/components/connect-broker-modal';
 import { api, type BrokerAccount, type JournalEntry } from '@/lib/api';
+import { toCsv, downloadCsv, dateStamp } from '@/lib/csv';
 
 const EMOTIONS = ['Disciplined', 'Confident', 'Patient', 'FOMO', 'Revenge', 'Hesitant'];
 const NEGATIVE = ['FOMO', 'Revenge', 'Hesitant'];
@@ -158,6 +159,15 @@ export default function NotebookPage() {
     setShowConnect(false);
   }
 
+  function exportCsv() {
+    const headers = ['Date', 'Title', 'Emotion', 'Tags', 'Trade ID', 'Account', 'Body'];
+    const rows = sorted.map(e => [
+      e.entryDate, e.title ?? '', e.emotion ?? '', (e.tags ?? []).join('; '),
+      e.tradeId ?? '', accountName(e.brokerAccountId) ?? '', e.body,
+    ]);
+    downloadCsv(`tradinx-journal-${dateStamp()}.csv`, toCsv(headers, rows));
+  }
+
   return (
     <AppShell
       accounts={accounts}
@@ -174,6 +184,14 @@ export default function NotebookPage() {
             <h1 className="font-display font-black text-3xl sm:text-4xl tracking-tighter mt-2">{entries.length} ENTRIES</h1>
             <div className="text-[10px] sm:text-[11px] text-fg-3 tracking-widest mt-1">FREEFORM NOTES · REVIEWS · TRADE PLANS</div>
           </div>
+          <button
+            onClick={exportCsv}
+            disabled={entries.length === 0}
+            data-testid="export-csv"
+            className="btn btn-ghost py-2 text-[10px] tracking-[0.22em] shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            ↓ EXPORT CSV
+          </button>
         </div>
 
         {error && (
