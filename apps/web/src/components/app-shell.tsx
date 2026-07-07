@@ -20,6 +20,7 @@ const NAV = [
   { href: '/dashboard', label: 'DASHBOARD' },
   { href: '/trades',    label: 'TRADE LOG' },
   { href: '/analytics', label: 'ANALYTICS' },
+  { href: '/calendar',  label: 'CALENDAR' },
   { href: '/journal',   label: 'CHART REPLAY' },
   { href: '/notebook',  label: 'JOURNAL' },
 ];
