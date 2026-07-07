@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import AppShell from '@/components/app-shell';
 import ConnectBrokerModal from '@/components/connect-broker-modal';
 import DealsTable from '@/components/deals-table';
@@ -8,6 +9,7 @@ import { api, type BrokerAccount, type Deal, type Trade } from '@/lib/api';
 import { toCsv, downloadCsv, dateStamp } from '@/lib/csv';
 
 export default function TradesPage() {
+  const router = useRouter();
   const [accounts, setAccounts] = useState<BrokerAccount[]>([]);
   const [selected, setSelected] = useState<BrokerAccount | null>(null);
   const [trades, setTrades] = useState<Trade[]>([]);
@@ -163,7 +165,12 @@ export default function TradesPage() {
                     filtered.map(t => {
                       const pos = t.netPnl >= 0;
                       return (
-                        <tr key={t.positionId} className="border-b border-border-soft hover:bg-surface-hover transition-colors">
+                        <tr
+                          key={t.positionId}
+                          onClick={() => selected && router.push(`/trades/${t.positionId}?account=${encodeURIComponent(selected.id)}`)}
+                          data-testid={`trade-row-${t.positionId}`}
+                          className="border-b border-border-soft hover:bg-surface-hover transition-colors cursor-pointer"
+                        >
                           <td className="px-4 py-3 font-display font-bold tracking-tight">{t.symbol}</td>
                           <td className={`px-4 py-3 text-[10px] tracking-[0.22em] ${t.direction === 'LONG' ? 'text-profit' : 'text-loss'}`}>{t.direction === 'LONG' ? '↗ LONG' : '↘ SHORT'}</td>
                           <td className="px-4 py-3 numeric text-fg-2">{t.volume.toFixed(2)}</td>
