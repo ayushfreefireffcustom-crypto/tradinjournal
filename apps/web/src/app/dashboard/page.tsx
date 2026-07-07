@@ -1,7 +1,9 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
-import { api, type BrokerAccount, type AccountStats, type Trade } from '@/lib/api';
+import { useEffect, useState, useCallback, useMemo } from 'react';
+import { api, type BrokerAccount, type AccountStats, type Trade, type JournalEntry } from '@/lib/api';
+
+const NEGATIVE_EMOTIONS = ['FOMO', 'Revenge', 'Hesitant'];
 import AppShell from '@/components/app-shell';
 import ConnectBrokerModal from '@/components/connect-broker-modal';
 import EquityChart from '@/components/equity-chart';
@@ -56,10 +58,13 @@ export default function DashboardPage() {
   const [accounts, setAccounts] = useState<BrokerAccount[]>([]);
   const [selected, setSelected] = useState<BrokerAccount | null>(null);
   const [stats, setStats] = useState<AccountStats | null>(null);
-  const [recent, setRecent] = useState<Trade[]>([]);
+  const [trades, setTrades] = useState<Trade[]>([]);
+  const [journal, setJournal] = useState<JournalEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showConnect, setShowConnect] = useState(false);
+
+  const recent = useMemo(() => trades.slice(0, 6), [trades]);
 
   const load = useCallback(async () => {
     try {
@@ -76,15 +81,56 @@ export default function DashboardPage() {
     setLoading(true);
     setError('');
     try {
-      const [s, t] = await Promise.all([api.trades.stats(acc.id), api.trades.list(acc.id)]);
+      const [s, t, j] = await Promise.all([
+        api.trades.stats(acc.id),
+        api.trades.list(acc.id),
+        api.journal.list(acc.id),
+      ]);
       setStats(s);
-      setRecent(t.slice(0, 6));
+      setTrades(t);
+      setJournal(j);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to load account data');
     } finally { setLoading(false); }
   }, []);
 
   useEffect(() => { if (selected) loadStats(selected); }, [selected, loadStats]);
+
+  // Real behavioural signals derived from closed trades + logged journal entries.
+  const behaviour = useMemo(() => {
+    const closed = trades.filter(t => t.status === 'CLOSED');
+    const winners = closed.filter(t => t.netPnl > 0);
+    const losers = closed.filter(t => t.netPnl <= 0);
+    const avgHold = (arr: Trade[]) => {
+      const withDur = arr.filter(t => t.durationSecs != null);
+      return withDur.length ? withDur.reduce((s, t) => s + (t.durationSecs ?? 0), 0) / withDur.length : null;
+    };
+
+    // Current win/loss streak, most-recent close first
+    const byClose = [...closed]
+      .filter(t => t.closeTime)
+      .sort((a, b) => +new Date(b.closeTime!) - +new Date(a.closeTime!));
+    let streak = 0;
+    let streakWin: boolean | null = null;
+    for (const t of byClose) {
+      const win = t.netPnl > 0;
+      if (streakWin === null) { streakWin = win; streak = 1; }
+      else if (win === streakWin) { streak++; }
+      else break;
+    }
+
+    const logged = journal.filter(e => e.emotion);
+    const tilt = logged.filter(e => NEGATIVE_EMOTIONS.includes(e.emotion!)).length;
+
+    return {
+      winnersHold: avgHold(winners),
+      losersHold: avgHold(losers),
+      streak,
+      streakWin,
+      tilt,
+      loggedCount: logged.length,
+    };
+  }, [trades, journal]);
 
   function onConnected(account: BrokerAccount) {
     setAccounts(prev => {
@@ -137,7 +183,13 @@ export default function DashboardPage() {
           <KpiTile testId="kpi-winrate" label="Win Rate" value={stats ? `${(stats.winRate * 100).toFixed(1)}%` : '—'} sub={stats ? `${stats.totalWins}W / ${stats.totalLosses}L` : undefined} accent={stats && stats.winRate >= 0.5 ? 'profit' : 'loss'} />
           <KpiTile testId="kpi-pf"      label="Profit Factor" value={stats ? (stats.profitFactor >= 999 ? '∞' : stats.profitFactor.toFixed(2)) : '—'} sub={stats ? `GROSS +$${stats.grossProfit.toLocaleString()}` : undefined} accent={stats && stats.profitFactor >= 1.5 ? 'profit' : stats && stats.profitFactor >= 1 ? undefined : 'loss'} />
           <KpiTile testId="kpi-dd"      label="Max Drawdown" value={stats ? `${(stats.maxDrawdownPct * 100).toFixed(1)}%` : '—'} sub={stats ? `WORST $${stats.worstTrade.toFixed(0)}` : undefined} accent={stats && stats.maxDrawdownPct > 0.1 ? 'loss' : undefined} />
-          <KpiTile testId="kpi-bscore"  label="Behavioural Score" value="88" sub="DISCIPLINED · LOW VARIANCE" accent="profit" />
+          <KpiTile
+            testId="kpi-expectancy"
+            label="Expectancy"
+            value={stats && stats.totalTrades > 0 ? `${stats.netPnl / stats.totalTrades >= 0 ? '+' : '-'}$${Math.abs(stats.netPnl / stats.totalTrades).toFixed(2)}` : '—'}
+            sub="AVG NET / TRADE"
+            accent={stats && stats.netPnl >= 0 ? 'profit' : 'loss'}
+          />
         </div>
 
         {/* Main grid */}
@@ -158,24 +210,44 @@ export default function DashboardPage() {
             {stats && <EquityChart data={stats.equityCurve} height={260} startingBalance={stats.startingBalance} />}
           </div>
 
-          {/* Behavioural panel */}
+          {/* Behavioural panel — derived from real trades + journal entries */}
           <div className="tcard col-span-12 lg:col-span-4 p-5" data-testid="behavior-card">
-            <div className="text-[10px] tracking-[0.25em] text-fg-3">PSYCH_SIGNALS</div>
-            <div className="font-display font-bold text-[16px] tracking-tight mt-1 mb-4">Today&apos;s tape</div>
+            <div className="text-[10px] tracking-[0.25em] text-fg-3">BEHAVIOUR</div>
+            <div className="font-display font-bold text-[16px] tracking-tight mt-1 mb-4">Discipline signals</div>
 
             <div className="space-y-3">
               {[
-                { l: 'Revenge clusters',     v: '0',   t: 'profit', s: 'no flags' },
-                { l: 'FOMO entries',         v: '1',   t: 'warning', s: '< 15s after candle close' },
-                { l: 'Plan adherence',       v: '94%', t: 'profit', s: 'tight stop discipline' },
-                { l: 'Avg hold (winners)',   v: stats ? fmtDur(stats.avgDurationSecs) : '—', t: 'neutral', s: 'within session' },
+                {
+                  l: 'Current streak',
+                  v: behaviour.streakWin === null ? '—' : `${behaviour.streak}${behaviour.streakWin ? 'W' : 'L'}`,
+                  t: behaviour.streakWin === null ? 'neutral' : behaviour.streakWin ? 'profit' : 'loss',
+                  s: 'consecutive outcomes',
+                },
+                {
+                  l: 'Tilt flags',
+                  v: behaviour.loggedCount === 0 ? '—' : String(behaviour.tilt),
+                  t: behaviour.tilt > 0 ? 'warning' : 'profit',
+                  s: behaviour.loggedCount === 0 ? 'no emotions logged' : 'fomo · revenge · hesitant',
+                },
+                {
+                  l: 'Avg hold · winners',
+                  v: behaviour.winnersHold != null ? fmtDur(behaviour.winnersHold) : '—',
+                  t: 'neutral',
+                  s: 'time in winning trades',
+                },
+                {
+                  l: 'Avg hold · losers',
+                  v: behaviour.losersHold != null ? fmtDur(behaviour.losersHold) : '—',
+                  t: behaviour.winnersHold != null && behaviour.losersHold != null && behaviour.losersHold > behaviour.winnersHold ? 'loss' : 'neutral',
+                  s: 'time in losing trades',
+                },
               ].map(row => (
                 <div key={row.l} className="flex items-center justify-between border-b border-border-soft pb-3 last:border-0 last:pb-0">
                   <div>
                     <div className="text-[12px]">{row.l}</div>
                     <div className="text-[10px] text-fg-3 tracking-widest uppercase">{row.s}</div>
                   </div>
-                  <div className={`font-display font-black text-2xl tracking-tight ${row.t === 'profit' ? 'text-profit' : row.t === 'warning' ? 'text-warning' : row.t === 'loss' ? 'text-loss' : 'text-fg'}`}>
+                  <div className={`font-display font-black text-2xl tracking-tight numeric ${row.t === 'profit' ? 'text-profit' : row.t === 'warning' ? 'text-warning' : row.t === 'loss' ? 'text-loss' : 'text-fg'}`}>
                     {row.v}
                   </div>
                 </div>
