@@ -2,11 +2,12 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { api, type BrokerAccount, type AccountStats, type Trade, type JournalEntry } from '@/lib/api';
-
-const NEGATIVE_EMOTIONS = ['FOMO', 'Revenge', 'Hesitant'];
+import { statsForRange, rangeStart, RANGES, type RangeKey } from '@/lib/stats';
 import AppShell from '@/components/app-shell';
 import ConnectBrokerModal from '@/components/connect-broker-modal';
 import EquityChart from '@/components/equity-chart';
+
+const NEGATIVE_EMOTIONS = ['FOMO', 'Revenge', 'Hesitant'];
 
 function fmtDur(s: number) {
   if (s < 60) return `${Math.round(s)}s`;
@@ -60,11 +61,22 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<AccountStats | null>(null);
   const [trades, setTrades] = useState<Trade[]>([]);
   const [journal, setJournal] = useState<JournalEntry[]>([]);
+  const [range, setRange] = useState<RangeKey>('ALL');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showConnect, setShowConnect] = useState(false);
 
-  const recent = useMemo(() => trades.slice(0, 6), [trades]);
+  // Range-filtered view drives the KPIs, equity curve and behaviour signals.
+  const view = useMemo(
+    () => (stats ? statsForRange(trades, stats.startingBalance, range) : null),
+    [stats, trades, range],
+  );
+  const rangedTrades = useMemo(() => {
+    const start = rangeStart(range);
+    return trades.filter(t => t.status === 'CLOSED' && t.closeTime && (start === null || new Date(t.closeTime).getTime() >= start));
+  }, [trades, range]);
+  const rangedTradeIds = useMemo(() => new Set(rangedTrades.map(t => t.positionId)), [rangedTrades]);
+  const recent = useMemo(() => rangedTrades.slice(0, 6), [rangedTrades]);
 
   const load = useCallback(async () => {
     try {
@@ -96,9 +108,10 @@ export default function DashboardPage() {
 
   useEffect(() => { if (selected) loadStats(selected); }, [selected, loadStats]);
 
-  // Real behavioural signals derived from closed trades + logged journal entries.
+  // Real behavioural signals derived from the range's closed trades + logged
+  // journal entries linked to those trades.
   const behaviour = useMemo(() => {
-    const closed = trades.filter(t => t.status === 'CLOSED');
+    const closed = rangedTrades;
     const winners = closed.filter(t => t.netPnl > 0);
     const losers = closed.filter(t => t.netPnl <= 0);
     const avgHold = (arr: Trade[]) => {
@@ -107,9 +120,7 @@ export default function DashboardPage() {
     };
 
     // Current win/loss streak, most-recent close first
-    const byClose = [...closed]
-      .filter(t => t.closeTime)
-      .sort((a, b) => +new Date(b.closeTime!) - +new Date(a.closeTime!));
+    const byClose = [...closed].sort((a, b) => +new Date(b.closeTime!) - +new Date(a.closeTime!));
     let streak = 0;
     let streakWin: boolean | null = null;
     for (const t of byClose) {
@@ -119,7 +130,7 @@ export default function DashboardPage() {
       else break;
     }
 
-    const logged = journal.filter(e => e.emotion);
+    const logged = journal.filter(e => e.emotion && (!e.tradeId || rangedTradeIds.has(e.tradeId)));
     const tilt = logged.filter(e => NEGATIVE_EMOTIONS.includes(e.emotion!)).length;
 
     return {
@@ -130,7 +141,7 @@ export default function DashboardPage() {
       tilt,
       loggedCount: logged.length,
     };
-  }, [trades, journal]);
+  }, [rangedTrades, rangedTradeIds, journal]);
 
   function onConnected(account: BrokerAccount) {
     setAccounts(prev => {
@@ -156,13 +167,13 @@ export default function DashboardPage() {
           <div className="min-w-0">
             <div className="text-[10px] tracking-[0.25em] text-fg-3 truncate">[ ACCOUNT // {selected?.broker.toUpperCase()} · #{selected?.mt5Login} ]</div>
             <h1 className="font-display font-black text-3xl sm:text-4xl lg:text-5xl tracking-tighter mt-2 break-words">
-              {stats ? (stats.netPnl >= 0 ? '+' : '') + `$${Math.abs(stats.netPnl).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
-              <span className={`ml-3 text-sm sm:text-base align-middle ${stats && stats.netPnl >= 0 ? 'text-profit' : 'text-loss'}`}>
-                {stats ? `${stats.netPnl >= 0 ? '▲' : '▼'} NET P&L` : ''}
+              {view ? (view.netPnl >= 0 ? '+' : '') + `$${Math.abs(view.netPnl).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
+              <span className={`ml-3 text-sm sm:text-base align-middle ${view && view.netPnl >= 0 ? 'text-profit' : 'text-loss'}`}>
+                {view ? `${view.netPnl >= 0 ? '▲' : '▼'} NET P&L` : ''}
               </span>
             </h1>
             <div className="text-[10px] sm:text-[11px] text-fg-3 tracking-widest mt-1 numeric break-words">
-              {stats ? `STARTING $${stats.startingBalance.toLocaleString()} → CURRENT $${stats.currentEquity.toLocaleString()}` : 'Loading...'}
+              {view ? `STARTING $${view.startingBalance.toLocaleString()} → CURRENT $${view.currentEquity.toLocaleString()}` : 'Loading...'}
             </div>
           </div>
           <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -178,17 +189,34 @@ export default function DashboardPage() {
           </div>
         )}
 
+        {/* Range selector */}
+        <div className="flex items-center gap-2 mb-3">
+          <span className="text-[10px] tracking-[0.22em] text-fg-3">RANGE</span>
+          <div className="flex gap-1 overflow-x-auto no-scrollbar -mx-1 px-1" data-testid="range-selector">
+            {RANGES.map(r => (
+              <button
+                key={r}
+                onClick={() => setRange(r)}
+                data-testid={`range-${r}`}
+                className={`shrink-0 px-3 py-1 text-[10px] tracking-[0.22em] border ${range === r ? 'border-fg text-fg bg-surface' : 'border-border-soft text-fg-3 hover:text-fg hover:border-border-strong'}`}
+              >
+                {r}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* KPI row */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
-          <KpiTile testId="kpi-winrate" label="Win Rate" value={stats ? `${(stats.winRate * 100).toFixed(1)}%` : '—'} sub={stats ? `${stats.totalWins}W / ${stats.totalLosses}L` : undefined} accent={stats && stats.winRate >= 0.5 ? 'profit' : 'loss'} />
-          <KpiTile testId="kpi-pf"      label="Profit Factor" value={stats ? (stats.profitFactor >= 999 ? '∞' : stats.profitFactor.toFixed(2)) : '—'} sub={stats ? `GROSS +$${stats.grossProfit.toLocaleString()}` : undefined} accent={stats && stats.profitFactor >= 1.5 ? 'profit' : stats && stats.profitFactor >= 1 ? undefined : 'loss'} />
-          <KpiTile testId="kpi-dd"      label="Max Drawdown" value={stats ? `${(stats.maxDrawdownPct * 100).toFixed(1)}%` : '—'} sub={stats ? `WORST $${stats.worstTrade.toFixed(0)}` : undefined} accent={stats && stats.maxDrawdownPct > 0.1 ? 'loss' : undefined} />
+          <KpiTile testId="kpi-winrate" label="Win Rate" value={view ? `${(view.winRate * 100).toFixed(1)}%` : '—'} sub={view ? `${view.totalWins}W / ${view.totalLosses}L` : undefined} accent={view && view.winRate >= 0.5 ? 'profit' : 'loss'} />
+          <KpiTile testId="kpi-pf"      label="Profit Factor" value={view ? (view.profitFactor >= 999 ? '∞' : view.profitFactor.toFixed(2)) : '—'} sub={view ? `GROSS +$${view.grossProfit.toLocaleString()}` : undefined} accent={view && view.profitFactor >= 1.5 ? 'profit' : view && view.profitFactor >= 1 ? undefined : 'loss'} />
+          <KpiTile testId="kpi-dd"      label="Max Drawdown" value={view ? `${(view.maxDrawdownPct * 100).toFixed(1)}%` : '—'} sub={view ? `WORST $${view.worstTrade.toFixed(0)}` : undefined} accent={view && view.maxDrawdownPct > 0.1 ? 'loss' : undefined} />
           <KpiTile
             testId="kpi-expectancy"
             label="Expectancy"
-            value={stats && stats.totalTrades > 0 ? `${stats.netPnl / stats.totalTrades >= 0 ? '+' : '-'}$${Math.abs(stats.netPnl / stats.totalTrades).toFixed(2)}` : '—'}
+            value={view && view.totalTrades > 0 ? `${view.netPnl / view.totalTrades >= 0 ? '+' : '-'}$${Math.abs(view.netPnl / view.totalTrades).toFixed(2)}` : '—'}
             sub="AVG NET / TRADE"
-            accent={stats && stats.netPnl >= 0 ? 'profit' : 'loss'}
+            accent={view && view.netPnl >= 0 ? 'profit' : 'loss'}
           />
         </div>
 
@@ -202,7 +230,7 @@ export default function DashboardPage() {
                 <div className="font-display font-bold text-[16px] tracking-tight mt-1">Account equity</div>
               </div>
             </div>
-            {stats && <EquityChart data={stats.equityCurve} height={260} startingBalance={stats.startingBalance} />}
+            {view && <EquityChart data={view.equityCurve} height={260} startingBalance={view.startingBalance} />}
           </div>
 
           {/* Behavioural panel — derived from real trades + journal entries */}
@@ -254,7 +282,7 @@ export default function DashboardPage() {
           <div className="tcard col-span-12 md:col-span-6 lg:col-span-4 p-5" data-testid="byday-card">
             <div className="text-[10px] tracking-[0.25em] text-fg-3">P&L_BY_DAY</div>
             <div className="font-display font-bold text-[16px] tracking-tight mt-1 mb-4">Day of week</div>
-            {stats && <MiniBars data={stats.byDay} />}
+            {view && <MiniBars data={view.byDay} />}
           </div>
 
           {/* Recent trades */}
@@ -304,14 +332,14 @@ export default function DashboardPage() {
           </div>
 
           {/* By symbol */}
-          {stats && stats.bySymbol.length > 0 && (
+          {view && view.bySymbol.length > 0 && (
             <div className="tcard col-span-12 p-0" data-testid="bysymbol-card">
               <div className="px-5 py-4 border-b border-border-soft flex items-center justify-between">
                 <div>
                   <div className="text-[10px] tracking-[0.25em] text-fg-3">PERFORMANCE_BY_SYMBOL</div>
                   <div className="font-display font-bold text-[16px] tracking-tight mt-1">Instrument breakdown</div>
                 </div>
-                <span className="text-[10px] tracking-widest text-fg-3">{stats.bySymbol.length} INSTRUMENTS</span>
+                <span className="text-[10px] tracking-widest text-fg-3">{view.bySymbol.length} INSTRUMENTS</span>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[640px] text-[12px]">
@@ -323,7 +351,7 @@ export default function DashboardPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {stats.bySymbol.map(s => (
+                    {view.bySymbol.map(s => (
                       <tr key={s.symbol} className="border-b border-border-soft hover:bg-surface-hover transition-colors">
                         <td className="px-5 py-3 font-display font-bold tracking-tight">{s.symbol}</td>
                         <td className="px-5 py-3 numeric text-fg-2">{s.trades}</td>
