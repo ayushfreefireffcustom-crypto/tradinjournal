@@ -201,11 +201,6 @@ export default function DashboardPage() {
                 <div className="text-[10px] tracking-[0.25em] text-fg-3">EQUITY_CURVE</div>
                 <div className="font-display font-bold text-[16px] tracking-tight mt-1">Account equity</div>
               </div>
-              <div className="flex gap-1">
-                {['1D', '1W', '1M', 'ALL'].map((t, i) => (
-                  <button key={t} className={`px-2.5 py-1 text-[10px] tracking-[0.18em] border ${i === 3 ? 'border-fg text-fg bg-surface' : 'border-border-soft text-fg-3 hover:text-fg hover:border-border-strong'}`}>{t}</button>
-                ))}
-              </div>
             </div>
             {stats && <EquityChart data={stats.equityCurve} height={260} startingBalance={stats.startingBalance} />}
           </div>
