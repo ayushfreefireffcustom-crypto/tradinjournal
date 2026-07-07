@@ -374,6 +374,72 @@ function SessionHeatmap({ trades }: { trades: Trade[] }) {
   );
 }
 
+function TimeOfDay({ trades }: { trades: Trade[] }) {
+  const closed = trades.filter(t => t.status === 'CLOSED');
+  if (closed.length === 0) return <div className="text-fg-3 text-[12px]">No closed trades yet.</div>;
+
+  const net = new Array(24).fill(0) as number[];
+  const count = new Array(24).fill(0) as number[];
+  for (const t of closed) {
+    const h = new Date(t.openTime).getUTCHours();
+    net[h]! += t.netPnl;
+    count[h]! += 1;
+  }
+  const maxAbs = Math.max(...net.map(v => Math.abs(v)), 1);
+  let bestH = 0, worstH = 0, busyH = 0;
+  for (let h = 0; h < 24; h++) {
+    if (net[h]! > net[bestH]!) bestH = h;
+    if (net[h]! < net[worstH]!) worstH = h;
+    if (count[h]! > count[busyH]!) busyH = h;
+  }
+  const hh = (h: number) => `${String(h).padStart(2, '0')}:00`;
+
+  const W = 720, H = 220;
+  const PAD = { top: 16, right: 12, bottom: 26, left: 12 };
+  const innerW = W - PAD.left - PAD.right;
+  const innerH = H - PAD.top - PAD.bottom;
+  const mid = PAD.top + innerH / 2;
+  const gap = 4;
+  const bw = (innerW - gap * 23) / 24;
+  const scale = (v: number) => (v / maxAbs) * (innerH / 2);
+
+  return (
+    <div data-testid="time-of-day">
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" preserveAspectRatio="none">
+        <line x1={PAD.left} x2={W - PAD.right} y1={mid} y2={mid} stroke="#4A4A4A" strokeWidth="1" />
+        {net.map((v, h) => {
+          const x = PAD.left + h * (bw + gap);
+          const barH = Math.abs(scale(v));
+          const y = v >= 0 ? mid - barH : mid;
+          const pos = v >= 0;
+          return (
+            <g key={h}>
+              {count[h]! > 0 && <rect x={x} y={y} width={bw} height={Math.max(1, barH)} fill={pos ? '#00C566' : '#FF3B30'} opacity="0.85" />}
+              {h % 3 === 0 && (
+                <text x={x + bw / 2} y={H - 8} textAnchor="middle" fontSize="9" style={{ fontFamily: 'var(--font-mono)' }} fill="#71717A">{String(h).padStart(2, '0')}</text>
+              )}
+            </g>
+          );
+        })}
+      </svg>
+      <div className="mt-3 pt-3 border-t border-border-soft grid grid-cols-3 gap-3 text-[11px]">
+        <div>
+          <div className="text-[9px] tracking-[0.22em] text-fg-3 uppercase">Best hour</div>
+          <div className="font-display font-bold text-[15px] tracking-tight mt-0.5 numeric text-profit">{hh(bestH)}</div>
+        </div>
+        <div>
+          <div className="text-[9px] tracking-[0.22em] text-fg-3 uppercase">Worst hour</div>
+          <div className="font-display font-bold text-[15px] tracking-tight mt-0.5 numeric text-loss">{hh(worstH)}</div>
+        </div>
+        <div>
+          <div className="text-[9px] tracking-[0.22em] text-fg-3 uppercase">Most active</div>
+          <div className="font-display font-bold text-[15px] tracking-tight mt-0.5 numeric text-fg">{hh(busyH)}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AnalyticsPage() {
   const [accounts, setAccounts] = useState<BrokerAccount[]>([]);
   const [selected, setSelected] = useState<BrokerAccount | null>(null);
@@ -559,6 +625,13 @@ export default function AnalyticsPage() {
                 <div className="font-display font-bold text-[16px] tracking-tight mt-1 mb-5">P&L by session × weekday · UTC</div>
                 <SessionHeatmap trades={rangedTrades} />
               </div>
+            </div>
+
+            {/* Time of day */}
+            <div className="tcard p-5 mb-3">
+              <div className="text-[10px] tracking-[0.25em] text-fg-3">TIME_OF_DAY</div>
+              <div className="font-display font-bold text-[16px] tracking-tight mt-1 mb-5">Net P&L by hour · UTC open</div>
+              <TimeOfDay trades={rangedTrades} />
             </div>
 
             {/* Drawdown curve */}
