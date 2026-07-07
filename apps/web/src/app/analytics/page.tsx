@@ -1,11 +1,64 @@
 'use client';
 
 import { Fragment } from 'react';
-import { useEffect, useState, useCallback } from 'react';
-import { api, type BrokerAccount, type AccountStats, type Trade } from '@/lib/api';
+import { useEffect, useState, useCallback, useMemo } from 'react';
+import { api, type BrokerAccount, type AccountStats, type Trade, type JournalEntry } from '@/lib/api';
 import AppShell from '@/components/app-shell';
 import ConnectBrokerModal from '@/components/connect-broker-modal';
 import EquityChart from '@/components/equity-chart';
+
+interface GroupAgg { label: string; trades: number; wins: number; netPnl: number }
+interface GroupStat extends GroupAgg { winRate: number; avgPnl: number }
+
+// A compact table of P&L grouped by some dimension (tag / emotion).
+function GroupStatCard({
+  title, subtitle, rows, colLabel, emptyHint, negativeLabels = [], testId,
+}: {
+  title: string; subtitle: string; rows: GroupStat[]; colLabel: string;
+  emptyHint: string; negativeLabels?: string[]; testId?: string;
+}) {
+  return (
+    <div className="tcard p-5" data-testid={testId}>
+      <div className="text-[10px] tracking-[0.25em] text-fg-3">{title}</div>
+      <div className="font-display font-bold text-[16px] tracking-tight mt-1 mb-4">{subtitle}</div>
+      {rows.length === 0 ? (
+        <div className="text-fg-3 text-[12px] py-6 text-center">{emptyHint}</div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[420px] text-[12px]">
+            <thead>
+              <tr className="border-b border-border">
+                {[colLabel, 'Trades', 'Win Rate', 'Net P&L', 'Avg P&L'].map(h => (
+                  <th key={h} className="px-2 py-2 text-left text-[10px] tracking-[0.2em] text-fg-3 uppercase font-medium">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map(r => {
+                const neg = negativeLabels.includes(r.label);
+                return (
+                  <tr key={r.label} className="border-b border-border-soft hover:bg-surface-hover transition-colors">
+                    <td className="px-2 py-2.5">
+                      <span className={`px-2 py-0.5 text-[10px] tracking-widest border ${neg ? 'text-loss border-loss/30' : 'text-fg-2 border-border-soft'}`}>
+                        {r.label.toUpperCase()}
+                      </span>
+                    </td>
+                    <td className="px-2 py-2.5 numeric text-fg-2">{r.trades}</td>
+                    <td className="px-2 py-2.5">
+                      <span className={`numeric ${r.winRate >= 0.5 ? 'text-profit' : 'text-loss'}`}>{(r.winRate * 100).toFixed(0)}%</span>
+                    </td>
+                    <td className={`px-2 py-2.5 numeric font-medium ${r.netPnl >= 0 ? 'text-profit' : 'text-loss'}`}>{r.netPnl >= 0 ? '+' : ''}${r.netPnl.toFixed(2)}</td>
+                    <td className={`px-2 py-2.5 numeric ${r.avgPnl >= 0 ? 'text-profit' : 'text-loss'}`}>{r.avgPnl >= 0 ? '+' : ''}${r.avgPnl.toFixed(2)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function stdev(xs: number[]): number {
   if (xs.length === 0) return 0;
@@ -325,6 +378,7 @@ export default function AnalyticsPage() {
   const [selected, setSelected] = useState<BrokerAccount | null>(null);
   const [stats, setStats] = useState<AccountStats | null>(null);
   const [trades, setTrades] = useState<Trade[]>([]);
+  const [journal, setJournal] = useState<JournalEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showConnect, setShowConnect] = useState(false);
@@ -342,14 +396,51 @@ export default function AnalyticsPage() {
     setLoading(true);
     setError('');
     try {
-      const [s, t] = await Promise.all([api.trades.stats(acc.id), api.trades.list(acc.id)]);
+      const [s, t, j] = await Promise.all([
+        api.trades.stats(acc.id),
+        api.trades.list(acc.id),
+        api.journal.list(acc.id),
+      ]);
       setStats(s);
       setTrades(t);
+      setJournal(j);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to load account data');
     } finally { setLoading(false); }
   }, []);
   useEffect(() => { if (selected) loadStats(selected); }, [selected, loadStats]);
+
+  // Group closed-trade P&L by the tags / emotion logged for each trade's
+  // journal entry (joined by tradeId → positionId).
+  const { tagStats, emotionStats } = useMemo(() => {
+    const closedById = new Map<string, Trade>();
+    for (const t of trades) if (t.status === 'CLOSED') closedById.set(t.positionId, t);
+
+    const tagMap = new Map<string, GroupAgg>();
+    const emoMap = new Map<string, GroupAgg>();
+    const bump = (map: Map<string, GroupAgg>, key: string, netPnl: number) => {
+      const g = map.get(key) ?? { label: key, trades: 0, wins: 0, netPnl: 0 };
+      g.trades += 1;
+      if (netPnl > 0) g.wins += 1;
+      g.netPnl += netPnl;
+      map.set(key, g);
+    };
+
+    for (const e of journal) {
+      if (!e.tradeId) continue;
+      const t = closedById.get(e.tradeId);
+      if (!t) continue;
+      if (e.emotion) bump(emoMap, e.emotion, t.netPnl);
+      for (const tag of e.tags ?? []) bump(tagMap, tag, t.netPnl);
+    }
+
+    const finalize = (map: Map<string, GroupAgg>): GroupStat[] =>
+      Array.from(map.values())
+        .map(g => ({ ...g, winRate: g.trades ? g.wins / g.trades : 0, avgPnl: g.trades ? g.netPnl / g.trades : 0 }))
+        .sort((a, b) => b.netPnl - a.netPnl);
+
+    return { tagStats: finalize(tagMap), emotionStats: finalize(emoMap) };
+  }, [trades, journal]);
 
   function onConnected(account: BrokerAccount) {
     setAccounts(prev => prev.find(a => a.id === account.id) ? prev.map(a => a.id === account.id ? account : a) : [account, ...prev]);
@@ -495,6 +586,31 @@ export default function AnalyticsPage() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            </div>
+
+            {/* Tag + emotion performance (from journal entries) */}
+            <div className="grid grid-cols-12 gap-3 mt-3">
+              <div className="col-span-12 lg:col-span-6">
+                <GroupStatCard
+                  testId="perf-by-tag"
+                  title="PERFORMANCE_BY_TAG"
+                  subtitle="Setup edge"
+                  colLabel="Tag"
+                  rows={tagStats}
+                  emptyHint="No tagged trades yet — add setup tags in Chart Replay or Journal to unlock this."
+                />
+              </div>
+              <div className="col-span-12 lg:col-span-6">
+                <GroupStatCard
+                  testId="perf-by-emotion"
+                  title="PERFORMANCE_BY_EMOTION"
+                  subtitle="Psychology edge"
+                  colLabel="Emotion"
+                  rows={emotionStats}
+                  negativeLabels={['FOMO', 'Revenge', 'Hesitant']}
+                  emptyHint="No emotions logged yet — tag your trades' emotion to unlock this."
+                />
               </div>
             </div>
           </>
