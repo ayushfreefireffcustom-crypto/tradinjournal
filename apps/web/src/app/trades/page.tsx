@@ -19,6 +19,10 @@ export default function TradesPage() {
   const [showConnect, setShowConnect] = useState(false);
   const [tab, setTab] = useState<'trades' | 'deals'>('trades');
   const [filter, setFilter] = useState<'ALL' | 'LONG' | 'SHORT' | 'WIN' | 'LOSS'>('ALL');
+  const [symbolFilter, setSymbolFilter] = useState('ALL');
+  const [search, setSearch] = useState('');
+  const [sortKey, setSortKey] = useState<'open' | 'net' | 'held' | 'symbol'>('open');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
 
   const init = useCallback(async () => {
     try {
@@ -49,13 +53,37 @@ export default function TradesPage() {
   }, []);
   useEffect(() => { if (selected) loadTrades(selected); }, [selected, loadTrades]);
 
-  const filtered = trades.filter(t => {
-    if (filter === 'LONG') return t.direction === 'LONG';
-    if (filter === 'SHORT') return t.direction === 'SHORT';
-    if (filter === 'WIN') return t.netPnl > 0;
-    if (filter === 'LOSS') return t.netPnl <= 0;
-    return true;
+  const symbols = Array.from(new Set(trades.map(t => t.symbol))).sort();
+
+  const q = search.trim().toLowerCase();
+  const filtered = trades
+    .filter(t => {
+      if (filter === 'LONG' && t.direction !== 'LONG') return false;
+      if (filter === 'SHORT' && t.direction !== 'SHORT') return false;
+      if (filter === 'WIN' && t.netPnl <= 0) return false;
+      if (filter === 'LOSS' && t.netPnl > 0) return false;
+      if (symbolFilter !== 'ALL' && t.symbol !== symbolFilter) return false;
+      if (q && !t.symbol.toLowerCase().includes(q)) return false;
+      return true;
+    });
+
+  function sortVal(t: Trade): number | string {
+    if (sortKey === 'symbol') return t.symbol;
+    if (sortKey === 'net') return t.netPnl;
+    if (sortKey === 'held') return t.durationSecs ?? -1;
+    return new Date(t.openTime).getTime(); // 'open'
+  }
+  const sorted = [...filtered].sort((a, b) => {
+    const va = sortVal(a), vb = sortVal(b);
+    const cmp = typeof va === 'string' ? va.localeCompare(vb as string) : (va as number) - (vb as number);
+    return sortDir === 'asc' ? cmp : -cmp;
   });
+
+  function toggleSort(key: 'open' | 'net' | 'held' | 'symbol') {
+    if (sortKey === key) setSortDir(d => (d === 'asc' ? 'desc' : 'asc'));
+    else { setSortKey(key); setSortDir(key === 'symbol' ? 'asc' : 'desc'); }
+  }
+  const sortArrow = (key: string) => (sortKey === key ? (sortDir === 'asc' ? ' ↑' : ' ↓') : '');
 
   function onConnected(a: BrokerAccount) {
     setAccounts(prev => prev.find(x => x.id === a.id) ? prev.map(x => x.id === a.id ? a : x) : [a, ...prev]);
@@ -71,7 +99,7 @@ export default function TradesPage() {
       return;
     }
     const headers = ['Position ID', 'Symbol', 'Direction', 'Status', 'Open Time', 'Close Time', 'Volume', 'Entry Price', 'Exit Price', 'Gross P&L', 'Commission', 'Swap', 'Net P&L', 'Duration (s)', 'Tags'];
-    const rows = filtered.map(t => [
+    const rows = sorted.map(t => [
       t.positionId, t.symbol, t.direction, t.status, t.openTime, t.closeTime ?? '', t.volume,
       t.entryPrice, t.exitPrice ?? '', t.grossPnl, t.commission, t.swap, t.netPnl, t.durationSecs ?? '',
       (t.tags ?? []).join('; '),
@@ -124,13 +152,38 @@ export default function TradesPage() {
           </div>
           <button
             onClick={exportCsv}
-            disabled={(tab === 'deals' ? deals.length : filtered.length) === 0}
+            disabled={(tab === 'deals' ? deals.length : sorted.length) === 0}
             data-testid="export-csv"
             className="btn btn-ghost py-2 text-[10px] tracking-[0.22em] shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
           >
             ↓ EXPORT CSV
           </button>
         </div>
+
+        {tab === 'trades' && (
+          <div className="flex flex-wrap items-center gap-2 mb-3">
+            <select
+              value={symbolFilter}
+              onChange={e => setSymbolFilter(e.target.value)}
+              data-testid="symbol-filter"
+              className="tinput w-auto py-1.5 text-[11px]"
+            >
+              <option value="ALL">ALL SYMBOLS</option>
+              {symbols.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+            <input
+              type="text"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search symbol…"
+              data-testid="symbol-search"
+              className="tinput w-auto flex-1 min-w-[140px] max-w-[240px] py-1.5 text-[11px]"
+            />
+            <span className="text-[10px] tracking-widest text-fg-3 numeric ml-auto" data-testid="showing-count">
+              SHOWING {sorted.length} OF {trades.length}
+            </span>
+          </div>
+        )}
 
         {error && (
           <div className="border border-loss/30 bg-loss/10 px-4 py-3 mb-4 flex items-center justify-between gap-3 text-[12px]" data-testid="trades-error">
@@ -145,8 +198,26 @@ export default function TradesPage() {
               <table className="w-full min-w-[920px] text-[12px]">
                 <thead>
                   <tr className="border-b border-border">
-                    {['Symbol', 'Dir', 'Volume', 'Open', 'Close', 'Entry', 'Exit', 'Held', 'Net P&L', 'Tag'].map(h => (
-                      <th key={h} className="px-4 py-3 text-left text-[10px] tracking-[0.22em] text-fg-3 uppercase font-medium">{h}</th>
+                    {([
+                      { h: 'Symbol', key: 'symbol' as const },
+                      { h: 'Dir' },
+                      { h: 'Volume' },
+                      { h: 'Open', key: 'open' as const },
+                      { h: 'Close' },
+                      { h: 'Entry' },
+                      { h: 'Exit' },
+                      { h: 'Held', key: 'held' as const },
+                      { h: 'Net P&L', key: 'net' as const },
+                      { h: 'Tag' },
+                    ]).map(({ h, key }) => (
+                      <th
+                        key={h}
+                        onClick={key ? () => toggleSort(key) : undefined}
+                        data-testid={key ? `sort-${key}` : undefined}
+                        className={`px-4 py-3 text-left text-[10px] tracking-[0.22em] uppercase font-medium ${key ? 'text-fg-3 hover:text-fg cursor-pointer select-none' : 'text-fg-3'}`}
+                      >
+                        {h}{key ? sortArrow(key) : ''}
+                      </th>
                     ))}
                   </tr>
                 </thead>
@@ -159,10 +230,10 @@ export default function TradesPage() {
                         ))}
                       </tr>
                     ))
-                  ) : filtered.length === 0 ? (
+                  ) : sorted.length === 0 ? (
                     <tr><td colSpan={10} className="px-4 py-10 text-center text-fg-3 text-[12px]">No trades match the current filter.</td></tr>
                   ) : (
-                    filtered.map(t => {
+                    sorted.map(t => {
                       const pos = t.netPnl >= 0;
                       return (
                         <tr
