@@ -239,11 +239,9 @@ export default function ChartReplayPage() {
                   {active ? `${active.netPnl >= 0 ? '+' : ''}$${active.netPnl.toFixed(2)}` : ''}
                 </span>
               </div>
-              <div className="flex gap-1 text-[10px] tracking-widest overflow-x-auto no-scrollbar -mx-1 px-1 max-w-full">
-                {['1m', '5m', '15m', '1h', '4h', '1D'].map((t, i) => (
-                  <button key={t} className={`shrink-0 px-2 py-1 border ${i === 2 ? 'border-fg text-fg bg-surface' : 'border-border-soft text-fg-3 hover:text-fg hover:border-border-strong'}`}>{t}</button>
-                ))}
-              </div>
+              <span className="text-[9px] tracking-[0.2em] text-fg-3 border border-border-soft px-2 py-1" title="Illustrative price path reconstructed from entry/exit fills — not tick data">
+                SCHEMATIC · NOT TICK DATA
+              </span>
             </div>
             <div className="h-[280px] sm:h-[360px] lg:h-[460px]"><CandleChart trade={active} /></div>
             <div className="px-3 sm:px-4 py-3 border-t border-border-soft grid grid-cols-2 sm:grid-cols-4 gap-3 text-[11px]">
@@ -263,22 +261,6 @@ export default function ChartReplayPage() {
                 <div className="text-[10px] tracking-widest text-fg-3">COMMISSION</div>
                 <div className="numeric mt-0.5 text-fg-2">${active?.commission.toFixed(2)}</div>
               </div>
-            </div>
-          </div>
-
-          {/* Replay controls */}
-          <div className="tcard p-3 flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-1">
-              {['⏮', '◀', '⏸', '▶', '⏭'].map((sym, i) => (
-                <button key={i} className="w-8 h-8 border border-border-soft hover:border-border-strong hover:bg-surface-hover transition-colors text-[14px]">
-                  {sym}
-                </button>
-              ))}
-            </div>
-            <div className="flex items-center gap-3 text-[10px] tracking-widest text-fg-3 numeric">
-              <span>SPEED · 1×</span>
-              <span className="hidden sm:inline">BAR · 23/70</span>
-              <span className="text-profit">● REPLAY</span>
             </div>
           </div>
         </section>
@@ -386,13 +368,12 @@ export default function ChartReplayPage() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-2 pt-2 border-t border-border-soft">
-              <button className="btn btn-ghost py-2 text-[10px]">SCREENSHOT</button>
+            <div className="pt-2 border-t border-border-soft">
               <button
                 onClick={handleSave}
                 disabled={saving || !active}
                 data-testid="save-journal"
-                className={`btn btn-primary py-2 text-[10px] ${saving || !active ? 'opacity-70 cursor-wait' : ''}`}
+                className={`btn btn-primary w-full justify-center py-2.5 text-[10px] tracking-[0.22em] ${saving || !active ? 'opacity-70 cursor-wait' : ''}`}
               >
                 {saving ? 'SAVING…' : 'SAVE ENTRY'}
               </button>
