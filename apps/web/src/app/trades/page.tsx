@@ -5,6 +5,7 @@ import AppShell from '@/components/app-shell';
 import ConnectBrokerModal from '@/components/connect-broker-modal';
 import DealsTable from '@/components/deals-table';
 import { api, type BrokerAccount, type Deal, type Trade } from '@/lib/api';
+import { toCsv, downloadCsv, dateStamp } from '@/lib/csv';
 
 export default function TradesPage() {
   const [accounts, setAccounts] = useState<BrokerAccount[]>([]);
@@ -59,6 +60,23 @@ export default function TradesPage() {
     setSelected(a); setShowConnect(false);
   }
 
+  function exportCsv() {
+    const acc = selected?.broker.replace(/\s+/g, '-').toLowerCase() ?? 'account';
+    if (tab === 'deals') {
+      const headers = ['Deal Ticket', 'Position ID', 'Symbol', 'Type', 'Entry', 'Volume', 'Price', 'Profit', 'Commission', 'Swap', 'Deal Time'];
+      const rows = deals.map(d => [d.dealTicket, d.positionId, d.symbol, d.type, d.entry, d.volume, d.price, d.profit, d.commission, d.swap, d.dealTime]);
+      downloadCsv(`tradinx-deals-${acc}-${dateStamp()}.csv`, toCsv(headers, rows));
+      return;
+    }
+    const headers = ['Position ID', 'Symbol', 'Direction', 'Status', 'Open Time', 'Close Time', 'Volume', 'Entry Price', 'Exit Price', 'Gross P&L', 'Commission', 'Swap', 'Net P&L', 'Duration (s)', 'Tags'];
+    const rows = filtered.map(t => [
+      t.positionId, t.symbol, t.direction, t.status, t.openTime, t.closeTime ?? '', t.volume,
+      t.entryPrice, t.exitPrice ?? '', t.grossPnl, t.commission, t.swap, t.netPnl, t.durationSecs ?? '',
+      (t.tags ?? []).join('; '),
+    ]);
+    downloadCsv(`tradinx-trades-${acc}-${dateStamp()}.csv`, toCsv(headers, rows));
+  }
+
   return (
     <AppShell
       accounts={accounts}
@@ -89,17 +107,27 @@ export default function TradesPage() {
           </div>
         </div>
 
-        <div className="flex gap-1 mb-3">
-          {(['trades', 'deals'] as const).map(t => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              data-testid={`tab-${t}`}
-              className={`px-3 sm:px-4 py-2 text-[10px] tracking-[0.22em] border uppercase ${tab === t ? 'border-fg text-fg bg-surface' : 'border-border-soft text-fg-3 hover:text-fg hover:border-border-strong'}`}
-            >
-              {t === 'trades' ? 'POSITIONS' : 'RAW DEALS'}
-            </button>
-          ))}
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <div className="flex gap-1">
+            {(['trades', 'deals'] as const).map(t => (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                data-testid={`tab-${t}`}
+                className={`px-3 sm:px-4 py-2 text-[10px] tracking-[0.22em] border uppercase ${tab === t ? 'border-fg text-fg bg-surface' : 'border-border-soft text-fg-3 hover:text-fg hover:border-border-strong'}`}
+              >
+                {t === 'trades' ? 'POSITIONS' : 'RAW DEALS'}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={exportCsv}
+            disabled={(tab === 'deals' ? deals.length : filtered.length) === 0}
+            data-testid="export-csv"
+            className="btn btn-ghost py-2 text-[10px] tracking-[0.22em] shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            ↓ EXPORT CSV
+          </button>
         </div>
 
         {error && (
