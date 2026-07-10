@@ -129,7 +129,7 @@ export interface AccountStats {
 
 export const api = {
   accounts: {
-    connect: (body: { mt5Login: number; password: string; server: string }) =>
+    connect: (body: { mt5Login: number; password: string; server: string; broker?: string }) =>
       apiFetch<BrokerAccount>(`${PREFIX}/accounts`, { method: 'POST', body: JSON.stringify(body) }),
     list: () => apiFetch<BrokerAccount[]>(`${PREFIX}/accounts`),
   },
