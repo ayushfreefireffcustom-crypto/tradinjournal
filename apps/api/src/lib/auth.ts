@@ -42,6 +42,16 @@ export const auth = betterAuth({
       maxAge: 60 * 5,               // re-validate session every 5 min
     },
   },
+
+  // Web (tradinjournalweb-*.up.railway.app) and API (tradinjournalapi-*.up.railway.app)
+  // are on different registrable domains — up.railway.app is a public suffix — so the
+  // session cookie must be SameSite=None to survive this cross-site fetch.
+  advanced: {
+    defaultCookieAttributes: {
+      sameSite: 'none',
+      secure: true,
+    },
+  },
 });
 
 export type Auth = typeof auth;
