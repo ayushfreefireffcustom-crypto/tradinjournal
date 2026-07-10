@@ -7,7 +7,7 @@
 //               with better-auth session cookies.
 const USE_MOCKS = process.env.NEXT_PUBLIC_USE_MOCKS === 'true';
 const PREFIX = USE_MOCKS ? '/data' : '/api';
-const API = USE_MOCKS ? '' : (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000');
+const API = USE_MOCKS ? '' : (process.env.NEXT_PUBLIC_API_URL || '');
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API}${path}`, {
