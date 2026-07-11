@@ -90,6 +90,52 @@ export function buildMonthView(year: number, month: number, byDay: Map<string, D
   };
 }
 
+export interface YearCell { date: Date; key: string; agg: DayAgg | null }
+export interface YearView {
+  weeks: (YearCell | null)[][]; // columns of 7 (Sun..Sat); null = padding before start
+  monthLabels: { col: number; label: string }[];
+  maxAbs: number;
+  totalNet: number;
+  tradingDays: number;
+}
+
+// Build a GitHub-style trailing-~53-week grid ending today. Columns are weeks
+// (Sun→Sat top→bottom). Reuses the daily aggregation map from aggregateByCloseDate.
+export function buildYearView(byDay: Map<string, DayAgg>, end = new Date()): YearView {
+  const endDay = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+  // Start 52 weeks back, then rewind to the Sunday of that week.
+  const start = new Date(endDay);
+  start.setDate(start.getDate() - 52 * 7);
+  start.setDate(start.getDate() - start.getDay());
+
+  const weeks: (YearCell | null)[][] = [];
+  const monthLabels: { col: number; label: string }[] = [];
+  let maxAbs = 1, totalNet = 0, tradingDays = 0;
+  let lastMonth = -1;
+
+  const cur = new Date(start);
+  let col = 0;
+  while (cur <= endDay) {
+    const week: (YearCell | null)[] = [];
+    for (let d = 0; d < 7; d++) {
+      if (cur > endDay) { week.push(null); continue; }
+      const key = dayKey(cur.getFullYear(), cur.getMonth(), cur.getDate());
+      const agg = byDay.get(key) ?? null;
+      if (agg) { maxAbs = Math.max(maxAbs, Math.abs(agg.netPnl)); totalNet += agg.netPnl; tradingDays++; }
+      // Month label when a new month first appears in the top row of a column.
+      if (d === 0 && cur.getMonth() !== lastMonth) {
+        lastMonth = cur.getMonth();
+        monthLabels.push({ col, label: MONTHS[cur.getMonth()]!.slice(0, 3) });
+      }
+      week.push({ date: new Date(cur), key, agg });
+      cur.setDate(cur.getDate() + 1);
+    }
+    weeks.push(week);
+    col++;
+  }
+  return { weeks, monthLabels, maxAbs, totalNet, tradingDays };
+}
+
 // Green/red intensity background for a day/week cell.
 export function cellBg(netPnl: number, maxAbs: number): string {
   const intensity = Math.min(1, Math.abs(netPnl) / maxAbs);

@@ -48,6 +48,60 @@ export function statsForRange(trades: Trade[], accountStartingBalance: number, r
   return computeStats(inRange, baseBalance);
 }
 
+export interface RollingPoint {
+  i: number;        // trade index (1-based)
+  time: string;     // close time
+  winRate: number;  // 0..1 over the trailing window
+  expectancy: number; // avg net P&L over the trailing window
+}
+
+// Rolling win-rate and expectancy over a trailing window of closed trades,
+// chronological by close time. Emits a point once `window` trades exist.
+export function rollingSeries(trades: Trade[], window = 20): RollingPoint[] {
+  const closed = trades
+    .filter(t => t.status === 'CLOSED' && t.closeTime)
+    .sort((a, b) => new Date(a.closeTime!).getTime() - new Date(b.closeTime!).getTime());
+  const out: RollingPoint[] = [];
+  for (let i = 0; i < closed.length; i++) {
+    if (i + 1 < window) continue;
+    const slice = closed.slice(i + 1 - window, i + 1);
+    const wins = slice.filter(t => t.netPnl > 0).length;
+    const sum = slice.reduce((s, t) => s + t.netPnl, 0);
+    out.push({
+      i: i + 1,
+      time: closed[i]!.closeTime!,
+      winRate: wins / slice.length,
+      expectancy: sum / slice.length,
+    });
+  }
+  return out;
+}
+
+export interface ScatterPoint {
+  hour: number;       // UTC open hour 0..23
+  durationSecs: number;
+  netPnl: number;
+  volume: number;
+  symbol: string;
+  direction: 'LONG' | 'SHORT';
+  closeTime: string;
+}
+
+// Per-closed-trade points for the scatter plot (P&L vs time-of-day / duration).
+export function scatterPoints(trades: Trade[]): ScatterPoint[] {
+  return trades
+    .filter(t => t.status === 'CLOSED' && t.closeTime)
+    .map(t => ({
+      hour: new Date(t.openTime).getUTCHours(),
+      durationSecs: t.durationSecs ?? 0,
+      netPnl: t.netPnl,
+      volume: t.volume,
+      symbol: t.symbol,
+      direction: t.direction,
+      closeTime: t.closeTime!,
+    }));
+}
+
 export function computeStats(trades: Trade[], startingBalance: number): AccountStats {
   const closed = trades.filter(t => t.status === 'CLOSED');
   const wins = closed.filter(t => t.netPnl > 0);
