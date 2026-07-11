@@ -2,7 +2,7 @@
 // computeStats() in apps/api/src/modules/trades/trades.service.ts, so a date
 // range can drive every widget on the client without a round-trip and stay
 // consistent with the server for the ALL-time range.
-import type { AccountStats, DayStat, EquityPoint, SymbolStat, Trade } from './api';
+import type { AccountStats, DayStat, DirectionStat, EquityPoint, SymbolStat, Trade } from './api';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -111,6 +111,23 @@ export function computeStats(trades: Trade[], startingBalance: number): AccountS
   }
   const byDay: DayStat[] = DAYS.filter(d => dayMap.has(d)).map(day => ({ day, ...dayMap.get(day)! }));
 
+  // Long vs Short split.
+  const long: DirectionStat = { trades: 0, wins: 0, netPnl: 0 };
+  const short: DirectionStat = { trades: 0, wins: 0, netPnl: 0 };
+  for (const t of closed) {
+    const d = t.direction === 'LONG' ? long : short;
+    d.trades++;
+    d.netPnl += t.netPnl;
+    if (t.netPnl > 0) d.wins++;
+  }
+
+  // Longest win / loss streaks (chronological, `sorted` is ascending by close).
+  let maxWinStreak = 0, maxLossStreak = 0, curWin = 0, curLoss = 0;
+  for (const t of sorted) {
+    if (t.netPnl > 0) { curWin++; curLoss = 0; if (curWin > maxWinStreak) maxWinStreak = curWin; }
+    else { curLoss++; curWin = 0; if (curLoss > maxLossStreak) maxLossStreak = curLoss; }
+  }
+
   return {
     netPnl,
     totalTrades: closed.length,
@@ -132,5 +149,8 @@ export function computeStats(trades: Trade[], startingBalance: number): AccountS
     equityCurve,
     bySymbol,
     byDay,
+    byDirection: { long, short },
+    maxWinStreak,
+    maxLossStreak,
   };
 }
