@@ -19,6 +19,7 @@ import RollingChart from '@/components/rolling-chart';
 import ScatterChart from '@/components/scatter-chart';
 import YearHeatmap from '@/components/year-heatmap';
 import { useToast } from '@/components/toast';
+import InsightsStrip from '@/components/insights-strip';
 
 // Rearrangeable analytics blocks. Order is persisted per-account in localStorage.
 // Spans are chosen so the default order tiles the 12-col grid cleanly; when the
@@ -817,6 +818,9 @@ export default function AnalyticsPage() {
                 </div>
               ))}
             </div>
+
+            {/* Auto insights */}
+            <InsightsStrip stats={view} trades={rangedTrades} journal={journal} />
 
             {/* Rearrange toolbar */}
             <div className="flex items-center justify-between gap-3 mb-3" data-testid="analytics-arrange-bar">

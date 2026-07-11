@@ -12,6 +12,7 @@ import YearHeatmap from '@/components/year-heatmap';
 import { StatCard, TwinBars } from '@/components/stat-card';
 import AnimatedNumber from '@/components/animated-number';
 import { useToast } from '@/components/toast';
+import InsightsStrip from '@/components/insights-strip';
 
 const NEGATIVE_EMOTIONS = ['FOMO', 'Revenge', 'Hesitant'];
 
@@ -220,6 +221,9 @@ export default function DashboardPage() {
 
           <StatCard testId="kpi-duration" index={4} label="Avg Duration" value={view ? fmtDur(view.avgDurationSecs) : '—'} sub="Avg per trade" accent="neutral" />
         </div>
+
+        {/* Auto insights */}
+        {view && <InsightsStrip stats={view} trades={rangedTrades} journal={journal} />}
 
         {/* Main grid */}
         <div className="grid grid-cols-12 gap-3">
