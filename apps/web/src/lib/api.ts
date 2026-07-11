@@ -88,6 +88,8 @@ export interface SymbolStat {
 
 export interface DayStat { day: string; trades: number; netPnl: number; }
 
+export interface DirectionStat { trades: number; wins: number; netPnl: number; }
+
 export interface JournalEntry {
   id: string;
   userId: string;
@@ -123,6 +125,10 @@ export interface AccountStats {
   equityCurve: EquityPoint[];
   bySymbol: SymbolStat[];
   byDay: DayStat[];
+  // Extended metrics (populated by the client statsForRange/computeStats).
+  byDirection: { long: DirectionStat; short: DirectionStat };
+  maxWinStreak: number;
+  maxLossStreak: number;
 }
 
 // ─── API calls ────────────────────────────────────────────────────────────────
