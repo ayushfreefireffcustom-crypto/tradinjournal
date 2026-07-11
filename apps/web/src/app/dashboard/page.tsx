@@ -144,7 +144,7 @@ export default function DashboardPage() {
         <div className="flex flex-wrap items-end justify-between gap-4 mb-6">
           <div className="min-w-0">
             <div className="text-[10px] tracking-[0.2em] text-fg-3 truncate uppercase">{selected?.broker} · #{selected?.mt5Login}</div>
-            <h1 className="font-display font-black text-3xl sm:text-4xl lg:text-5xl tracking-tight mt-2 break-words numeric">
+            <h1 className={`font-display font-black text-3xl sm:text-4xl lg:text-5xl tracking-tight mt-2 break-words numeric ${view ? (view.netPnl >= 0 ? 'text-profit' : 'text-loss') : 'text-fg'}`}>
               {view ? (view.netPnl >= 0 ? '+' : '') + `$${Math.abs(view.netPnl).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
               <span className={`ml-3 text-sm sm:text-base align-middle font-sans font-semibold tracking-normal ${view && view.netPnl >= 0 ? 'text-profit' : 'text-loss'}`}>
                 {view ? `${view.netPnl >= 0 ? '▲' : '▼'} NET P&L` : ''}
