@@ -242,6 +242,10 @@ select.tinput::-ms-expand { display: none; }
 @keyframes grow-y { from { transform: scaleY(0); } to { transform: scaleY(1); } }
 .grow-y { transform-origin: bottom; animation: grow-y .5s var(--ease-premium) both; animation-delay: calc(var(--i, 0) * 30ms); }
 
+/* Toast entrance — slide up + fade */
+@keyframes toast-in { from { opacity: 0; transform: translateY(10px) scale(.98); } to { opacity: 1; transform: none; } }
+.toast-in { animation: toast-in .32s var(--ease-premium) both; }
+
 /* Skeleton shimmer sweep */
 @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 .shimmer {
