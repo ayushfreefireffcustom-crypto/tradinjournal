@@ -15,19 +15,25 @@ import AppShell from '@/components/app-shell';
 import ConnectBrokerModal from '@/components/connect-broker-modal';
 import EquityChart from '@/components/equity-chart';
 import SortableCard from '@/components/sortable-card';
+import RollingChart from '@/components/rolling-chart';
+import ScatterChart from '@/components/scatter-chart';
+import YearHeatmap from '@/components/year-heatmap';
 
 // Rearrangeable analytics blocks. Order is persisted per-account in localStorage.
 // Spans are chosen so the default order tiles the 12-col grid cleanly; when the
 // user reorders, CSS grid auto-flow keeps rows filled left-to-right.
-const BLOCK_IDS = ['donut', 'pnldist', 'heatmap', 'timeofday', 'equity', 'bysymbol', 'tag', 'emotion', 'byday'] as const;
+const BLOCK_IDS = ['donut', 'pnldist', 'heatmap', 'timeofday', 'equity', 'rolling', 'scatter', 'yearheat', 'bysymbol', 'tag', 'emotion', 'byday'] as const;
 type BlockId = (typeof BLOCK_IDS)[number];
-const DEFAULT_ORDER: BlockId[] = ['donut', 'pnldist', 'heatmap', 'timeofday', 'equity', 'bysymbol', 'tag', 'emotion', 'byday'];
+const DEFAULT_ORDER: BlockId[] = ['donut', 'pnldist', 'equity', 'rolling', 'scatter', 'heatmap', 'timeofday', 'yearheat', 'bysymbol', 'tag', 'emotion', 'byday'];
 const SPANS: Record<BlockId, string> = {
   donut: 'col-span-12 lg:col-span-5',
   pnldist: 'col-span-12 lg:col-span-7',
   heatmap: 'col-span-12 lg:col-span-5',
   timeofday: 'col-span-12 lg:col-span-7',
   equity: 'col-span-12',
+  rolling: 'col-span-12 lg:col-span-6',
+  scatter: 'col-span-12 lg:col-span-6',
+  yearheat: 'col-span-12',
   bysymbol: 'col-span-12',
   tag: 'col-span-12 lg:col-span-6',
   emotion: 'col-span-12 lg:col-span-6',
@@ -671,6 +677,24 @@ export default function AnalyticsPage() {
             </div>
           </div>
         );
+      case 'rolling':
+        return (
+          <div className="tcard h-full p-5">
+            <div className="text-[10px] tracking-[0.25em] text-fg-3">ROLLING_EDGE</div>
+            <div className="font-display font-bold text-[16px] tracking-tight mt-1 mb-4">Rolling win-rate & expectancy · 20-trade</div>
+            <RollingChart trades={rangedTrades} window={20} height={220} />
+          </div>
+        );
+      case 'scatter':
+        return (
+          <div className="tcard h-full p-5">
+            <div className="text-[10px] tracking-[0.25em] text-fg-3">TRADE_SCATTER</div>
+            <div className="font-display font-bold text-[16px] tracking-tight mt-1 mb-4">P&L per trade</div>
+            <ScatterChart trades={rangedTrades} height={240} />
+          </div>
+        );
+      case 'yearheat':
+        return <YearHeatmap trades={trades} />;
       case 'bysymbol':
         return (
           <div className="tcard h-full p-0">

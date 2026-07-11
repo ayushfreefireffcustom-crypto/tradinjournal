@@ -8,6 +8,7 @@ import ConnectBrokerModal from '@/components/connect-broker-modal';
 import EquityChart from '@/components/equity-chart';
 import DrawdownChart from '@/components/drawdown-chart';
 import DashboardCalendar from '@/components/dashboard-calendar';
+import YearHeatmap from '@/components/year-heatmap';
 import { StatCard, TwinBars } from '@/components/stat-card';
 import AnimatedNumber from '@/components/animated-number';
 
@@ -242,6 +243,11 @@ export default function DashboardPage() {
           {/* Calendar with weekly column */}
           <div className="col-span-12">
             {view && <DashboardCalendar trades={rangedTrades} />}
+          </div>
+
+          {/* Year consistency heatmap */}
+          <div className="col-span-12">
+            {view && <YearHeatmap trades={trades} />}
           </div>
 
           {/* Recent fills */}
