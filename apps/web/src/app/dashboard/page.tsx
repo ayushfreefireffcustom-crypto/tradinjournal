@@ -11,6 +11,7 @@ import DashboardCalendar from '@/components/dashboard-calendar';
 import YearHeatmap from '@/components/year-heatmap';
 import { StatCard, TwinBars } from '@/components/stat-card';
 import AnimatedNumber from '@/components/animated-number';
+import { useToast } from '@/components/toast';
 
 const NEGATIVE_EMOTIONS = ['FOMO', 'Revenge', 'Hesitant'];
 
@@ -52,6 +53,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showConnect, setShowConnect] = useState(false);
+  const toast = useToast();
 
   const view = useMemo(
     () => (stats ? statsForRange(trades, stats.startingBalance, range) : null),
@@ -73,7 +75,7 @@ export default function DashboardPage() {
   }, []);
   useEffect(() => { load(); }, [load]);
 
-  const loadStats = useCallback(async (acc: BrokerAccount) => {
+  const loadStats = useCallback(async (acc: BrokerAccount, notify = false) => {
     setLoading(true);
     setError('');
     try {
@@ -85,10 +87,13 @@ export default function DashboardPage() {
       setStats(s);
       setTrades(t);
       setJournal(j);
+      if (notify) toast.success(`Synced · ${t.filter(x => x.status === 'CLOSED').length} positions loaded`);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to load account data');
+      const msg = err instanceof Error ? err.message : 'Failed to load account data';
+      setError(msg);
+      if (notify) toast.error(`Sync failed · ${msg}`);
     } finally { setLoading(false); }
-  }, []);
+  }, [toast]);
   useEffect(() => { if (selected) loadStats(selected); }, [selected, loadStats]);
 
   const behaviour = useMemo(() => {
@@ -165,7 +170,7 @@ export default function DashboardPage() {
           </div>
           <div className="flex items-center gap-2 w-full sm:w-auto">
             <button onClick={() => setShowConnect(true)} className="btn btn-ghost flex-1 sm:flex-none justify-center" data-testid="header-add-broker">+ ADD BROKER</button>
-            <button onClick={() => selected && loadStats(selected)} disabled={loading || !selected} className={`btn btn-primary flex-1 sm:flex-none justify-center ${loading ? 'opacity-70 cursor-wait' : ''}`} data-testid="header-sync-now">
+            <button onClick={() => selected && loadStats(selected, true)} disabled={loading || !selected} className={`btn btn-primary flex-1 sm:flex-none justify-center ${loading ? 'opacity-70 cursor-wait' : ''}`} data-testid="header-sync-now">
               {loading ? 'SYNCING…' : 'SYNC NOW'}
             </button>
           </div>

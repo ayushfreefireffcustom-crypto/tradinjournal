@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useCallback, useContext, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
 import { CheckCircle, WarningCircle, Info, X } from '@phosphor-icons/react';
 
 type ToastType = 'success' | 'error' | 'info';
@@ -13,11 +13,12 @@ const ToastContext = createContext<Ctx | null>(null);
 // safely if used outside the provider.
 export function useToast() {
   const ctx = useContext(ToastContext);
-  return {
+  // Stable identity so it's safe to use in effect/callback dependency arrays.
+  return useMemo(() => ({
     success: (m: string) => ctx?.push('success', m),
     error: (m: string) => ctx?.push('error', m),
     info: (m: string) => ctx?.push('info', m),
-  };
+  }), [ctx]);
 }
 
 const meta: Record<ToastType, { Icon: typeof CheckCircle; color: string }> = {
@@ -54,9 +55,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const dismiss = (id: number) => setToasts(t => t.filter(x => x.id !== id));
+  const ctx = useMemo(() => ({ push }), [push]);
 
   return (
-    <ToastContext.Provider value={{ push }}>
+    <ToastContext.Provider value={ctx}>
       {children}
       <div
         className="fixed z-[999] bottom-4 right-4 flex flex-col gap-2 w-[calc(100%-2rem)] max-w-[340px] pointer-events-none"
