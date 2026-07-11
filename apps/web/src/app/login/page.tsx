@@ -30,11 +30,11 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-app grid lg:grid-cols-2" data-testid="login-page">
+    <div className="min-h-screen bg-app flex flex-col lg:grid lg:grid-cols-2" data-testid="login-page">
       <AuthAside variant="signin" />
 
       {/* Right: form column */}
-      <main className="relative flex flex-col min-h-screen">
+      <main className="relative flex flex-col min-h-screen min-w-0 overflow-x-hidden">
         {/* Symmetric top status bar (matches aside) */}
         <div className="hidden lg:flex border-b border-border h-12 items-center justify-between px-8 xl:px-12 text-[10px] tracking-[0.22em] text-fg-3">
           <span>SECURE SESSION · TLS 1.3</span>
