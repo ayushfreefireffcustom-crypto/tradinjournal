@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 @theme {
-  /* Tactical Swiss Terminal palette */
+  /* Obsidian palette */
   --color-app: #0A0A0A;
   --color-surface: #121212;
   --color-surface-hover: #1A1A1A;
@@ -18,10 +18,29 @@
   --color-loss: #FF3B30;
   --color-warning: #FF9F0A;
 
-  /* Fonts — Cabinet Grotesk (display) from Fontshare CDN; JetBrains Mono
-     self-hosted via next/font (exposed as --font-mono-jb). */
-  --font-display: "Cabinet Grotesk", "Inter Tight", system-ui, sans-serif;
+  /* Hybrid type system — Geist Sans for UI text + headings (self-hosted via
+     next/font as --font-geist-sans); JetBrains Mono for numeric/tabular data
+     (self-hosted as --font-mono-jb). Both self-hosted, no external requests. */
+  --font-sans: var(--font-geist-sans), "Inter", system-ui, sans-serif;
+  --font-display: var(--font-geist-sans), "Inter", system-ui, sans-serif;
   --font-mono: var(--font-mono-jb), ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+
+/* Design tokens for radius, motion and elevation (direct-use CSS vars). */
+:root {
+  --radius-card: 10px;
+  --radius-btn: 8px;
+  --radius-pill: 999px;
+
+  --ease-premium: cubic-bezier(.22, 1, .36, 1);
+  --ease-out: cubic-bezier(.16, 1, .3, 1);
+  --dur-hover: 220ms;
+  --dur-press: 90ms;
+  --dur-select: 260ms;
+
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, .35);
+  --shadow-hover: 0 8px 24px rgba(0, 0, 0, .5);
+  --shadow-focus: 0 0 0 2px var(--color-app), 0 0 0 3px var(--color-border-strong);
 }
 
 * {
@@ -31,8 +50,9 @@
 html, body {
   background: var(--color-app);
   color: var(--color-fg);
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+  overscroll-behavior-y: none;
 }
 
 /* Atmospheric grid background, used on landing */
@@ -42,7 +62,6 @@ html, body {
     linear-gradient(to bottom, rgba(255,255,255,0.04) 1px, transparent 1px);
   background-size: 56px 56px;
 }
-
 .bg-grid-fade {
   -webkit-mask-image: radial-gradient(ellipse at center, #000 50%, transparent 85%);
   mask-image: radial-gradient(ellipse at center, #000 50%, transparent 85%);
@@ -51,52 +70,137 @@ html, body {
 .font-display { font-family: var(--font-display); }
 .font-mono { font-family: var(--font-mono); }
 
-/* Card primitive */
+/* ─── Card primitive ─────────────────────────────────────────────────────── */
 .tcard {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 2px;
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
   position: relative;
 }
-
-.tcard-hover { transition: background-color .15s ease-out, border-color .15s ease-out; }
+.tcard-hover {
+  transition: background-color var(--dur-hover) var(--ease-out),
+              border-color var(--dur-hover) var(--ease-out),
+              box-shadow var(--dur-hover) var(--ease-premium),
+              transform var(--dur-hover) var(--ease-premium);
+}
 .tcard-hover:hover {
   background: var(--color-surface-hover);
   border-color: var(--color-border-strong);
 }
+@media (hover: hover) and (pointer: fine) {
+  .tcard-hover:hover { transform: translateY(-2px); box-shadow: var(--shadow-hover); }
+}
 
-/* Buttons */
-.btn { display: inline-flex; align-items: center; gap: .5rem; padding: .5rem .9rem; border-radius: 2px; font-family: var(--font-mono); font-size: 12px; font-weight: 500; letter-spacing: .02em; transition: all .15s ease-out; cursor: pointer; border: 1px solid transparent; }
+/* ─── Buttons ────────────────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex; align-items: center; gap: .5rem;
+  padding: .5rem .9rem;
+  border-radius: var(--radius-btn);
+  font-family: var(--font-sans);
+  font-size: 12px; font-weight: 600; letter-spacing: .01em;
+  transition: background-color var(--dur-hover) var(--ease-out),
+              border-color var(--dur-hover) var(--ease-out),
+              box-shadow var(--dur-hover) var(--ease-premium),
+              transform var(--dur-press) var(--ease-out);
+  cursor: pointer; border: 1px solid transparent;
+}
+.btn:active { transform: scale(.97); }
+.btn:focus-visible { outline: none; box-shadow: var(--shadow-focus); }
 .btn-primary { background: #FFFFFF; color: #0A0A0A; }
-.btn-primary:hover { background: #E5E5E5; }
+.btn-primary:hover { background: #E9E9E9; }
 .btn-ghost { background: transparent; border-color: var(--color-border); color: #fff; }
 .btn-ghost:hover { background: var(--color-surface); border-color: var(--color-border-strong); }
+@media (hover: hover) and (pointer: fine) {
+  .btn-primary:hover { box-shadow: var(--shadow-hover); transform: translateY(-1px); }
+  .btn-ghost:hover { transform: translateY(-1px); }
+}
 
-/* Input */
+/* ─── Inputs / selects ───────────────────────────────────────────────────── */
 .tinput {
   background: var(--color-app);
   border: 1px solid var(--color-border);
   color: #fff;
-  font-family: var(--font-mono);
-  border-radius: 2px;
-  padding: .65rem .85rem;
+  font-family: var(--font-sans);
+  border-radius: var(--radius-btn);
+  padding: .6rem .8rem;
   font-size: 13px;
   width: 100%;
   outline: none;
-  transition: border-color .15s ease-out, box-shadow .15s ease-out;
+  transition: border-color var(--dur-hover) var(--ease-out), box-shadow var(--dur-hover) var(--ease-out);
 }
 .tinput::placeholder { color: var(--color-border-strong); }
-.tinput:focus { border-color: var(--color-border-strong); box-shadow: 0 0 0 1px var(--color-border-strong) inset; }
+.tinput:hover { border-color: var(--color-border-strong); }
+.tinput:focus, .tinput:focus-visible { border-color: var(--color-fg-3); box-shadow: 0 0 0 3px rgba(113,113,122,.18); }
 
-/* Subtle scrollbar */
+/* ─── Interaction utilities ──────────────────────────────────────────────── */
+/* Pressable tactile feedback */
+.press { transition: transform var(--dur-press) var(--ease-out); }
+.press:active { transform: scale(.97); }
+
+/* Lift on hover (desktop only) */
+.lift { transition: transform var(--dur-hover) var(--ease-premium), box-shadow var(--dur-hover) var(--ease-premium); }
+@media (hover: hover) and (pointer: fine) {
+  .lift:hover { transform: translateY(-2px); box-shadow: var(--shadow-hover); }
+}
+
+/* Keyboard focus ring */
+.focus-ring:focus-visible { outline: none; box-shadow: var(--shadow-focus); }
+
+/* Interactive list row — bg on hover + a P&L-colored left accent that wipes in.
+   Set --row-accent inline (profit/loss/neutral). Works on flex/block rows. */
+.row-interactive { transition: background-color var(--dur-hover) var(--ease-out); }
+.row-interactive::before {
+  content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 2px;
+  background: var(--row-accent, var(--color-border-strong));
+  transform: scaleY(0); transform-origin: center;
+  transition: transform var(--dur-hover) var(--ease-premium);
+}
+@media (hover: hover) and (pointer: fine) {
+  .row-interactive:hover { background: var(--color-surface-hover); }
+  .row-interactive:hover::before { transform: scaleY(1); }
+}
+
+/* Segmented control (pill toggle group, like the reference) */
+.seg { display: inline-flex; gap: 2px; padding: 3px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-pill); }
+.seg-item {
+  border-radius: var(--radius-pill); padding: .3rem .75rem; font-size: 11px; font-weight: 600;
+  color: var(--color-fg-3); cursor: pointer; border: 0; background: transparent;
+  transition: color var(--dur-select) var(--ease-out), background-color var(--dur-select) var(--ease-premium);
+}
+.seg-item:hover { color: var(--color-fg-2); }
+.seg-item[data-active="true"] { background: var(--color-surface-active); color: var(--color-fg); }
+.seg-item:focus-visible { outline: none; box-shadow: var(--shadow-focus); }
+
+/* Bordered chip (filters, tabs, range) */
+.chip {
+  border-radius: var(--radius-btn); border: 1px solid var(--color-border-soft); background: transparent;
+  color: var(--color-fg-3); cursor: pointer;
+  transition: color var(--dur-select) var(--ease-out), border-color var(--dur-select) var(--ease-out), background-color var(--dur-select) var(--ease-out);
+}
+.chip:hover { color: var(--color-fg); border-color: var(--color-border-strong); }
+.chip[data-active="true"] { color: var(--color-fg); border-color: var(--color-fg); background: var(--color-surface); }
+.chip:focus-visible { outline: none; box-shadow: var(--shadow-focus); }
+
+/* Mini progress bar (KPI cards) */
+.kpi-bar { height: 4px; border-radius: var(--radius-pill); background: var(--color-border-soft); overflow: hidden; }
+.kpi-bar-fill { height: 100%; border-radius: var(--radius-pill); transition: width var(--dur-select) var(--ease-premium); }
+
+/* Value flash-on-change — apply briefly when a number updates */
+@keyframes flash-profit { 0% { color: var(--color-profit); transform: translateY(-1px); } 100% { color: inherit; transform: none; } }
+@keyframes flash-loss { 0% { color: var(--color-loss); transform: translateY(-1px); } 100% { color: inherit; transform: none; } }
+.flash-profit { animation: flash-profit 450ms var(--ease-out); }
+.flash-loss { animation: flash-loss 450ms var(--ease-out); }
+
+/* ─── Scrollbar ──────────────────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: var(--color-app); }
-::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 0; }
+::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: var(--radius-pill); }
 ::-webkit-scrollbar-thumb:hover { background: var(--color-border-strong); }
 
-/* Animations */
+/* ─── Animations ─────────────────────────────────────────────────────────── */
 @keyframes fade-up { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
-.fade-up { animation: fade-up .35s ease-out both; }
+.fade-up { animation: fade-up .35s var(--ease-out) both; }
 
 @keyframes pulse-dot { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
 .pulse-dot { animation: pulse-dot 1.6s ease-in-out infinite; }
@@ -104,18 +208,32 @@ html, body {
 @keyframes shake { 0%,100%{transform:translateX(0);} 25%{transform:translateX(-4px);} 75%{transform:translateX(4px);} }
 .shake { animation: shake .35s ease-in-out; }
 
-/* Marquee for ticker tape */
 @keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 .marquee-track { animation: marquee 40s linear infinite; }
+
+/* ─── Click-burst cursor effect (mounted globally; desktop + reduced-motion guarded in JS) */
+.click-burst-line {
+  position: fixed; z-index: 600;
+  width: 2.2px; height: 0;
+  background: #ffffff; mix-blend-mode: difference;
+  filter: brightness(1.2) contrast(1.6) saturate(1.8);
+  pointer-events: none; transform-origin: center top;
+  will-change: transform, opacity;
+  animation: click-burst-line 800ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes click-burst-line {
+  0%   { opacity: 1; height: 8px; transform: translate(calc(-50% + var(--start-x)), calc(-50% + var(--start-y))) rotate(var(--angle)); }
+  98%  { opacity: 1; height: 0;   transform: translate(calc(-50% + var(--end-x)),   calc(-50% + var(--end-y)))   rotate(var(--angle)); }
+  100% { opacity: 0; height: 0;   transform: translate(calc(-50% + var(--end-x)),   calc(-50% + var(--end-y)))   rotate(var(--angle)); }
+}
 
 /* Selection */
 ::selection { background: #FFFFFF; color: #0A0A0A; }
 
-/* Utility helpers */
+/* Utility helpers — numbers use the mono family (hybrid: sans UI, mono data). */
 .text-mono { font-family: var(--font-mono); }
-.numeric { font-variant-numeric: tabular-nums; }
+.numeric { font-variant-numeric: tabular-nums; font-family: var(--font-mono); }
 
-/* Hide scrollbar but keep scrollability — used on mobile horizontal scrollers */
 .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
 
@@ -124,5 +242,14 @@ html, body {
   .tinput { font-size: 16px; }
 }
 
-/* Tighter root padding on small screens */
-html, body { overscroll-behavior-y: none; }
+/* ─── Reduced motion — strip transforms/animations, keep colour changes ───── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .tcard-hover:hover, .lift:hover, .btn:hover, .btn:active, .press:active { transform: none !important; }
+  .click-burst-line { display: none !important; }
+}
