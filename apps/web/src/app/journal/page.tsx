@@ -312,7 +312,7 @@ export default function ChartReplayPage() {
                     key={e}
                     onClick={() => setEmotion(e)}
                     data-testid={`emotion-${e.toLowerCase()}`}
-                    className={`px-2.5 py-1 text-[10px] tracking-widest border transition-colors ${
+                    className={`px-2.5 py-1 rounded text-[10px] tracking-widest border transition-colors duration-[var(--dur-hover)] press focus-ring ${
                       emotion === e
                         ? (['FOMO', 'Revenge', 'Hesitant'].includes(e) ? 'bg-loss/15 border-loss text-loss' : 'bg-profit/15 border-profit text-profit')
                         : 'border-border-soft text-fg-3 hover:text-fg hover:border-border-strong'
@@ -333,7 +333,7 @@ export default function ChartReplayPage() {
                     onClick={() => setTags(prev => prev.filter(x => x !== t))}
                     data-testid={`tag-${t.toLowerCase()}`}
                     title="Remove tag"
-                    className="px-2 py-1 text-[10px] tracking-widest border border-border-soft text-fg-2 hover:border-loss hover:text-loss"
+                    className="px-2 py-1 rounded text-[10px] tracking-widest border border-border-soft text-fg-2 hover:border-loss hover:text-loss transition-colors duration-[var(--dur-hover)] press focus-ring"
                   >
                     {t.toUpperCase()}
                   </button>

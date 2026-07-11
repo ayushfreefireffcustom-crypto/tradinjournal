@@ -67,7 +67,7 @@ export default function AppShell({
           onClick={() => setDrawerOpen(false)}
           aria-label="Close menu"
           data-testid="drawer-close"
-          className="lg:hidden ml-2 w-7 h-7 border border-border text-fg-3 hover:text-fg hover:border-border-strong flex items-center justify-center"
+          className="lg:hidden ml-2 w-7 h-7 rounded-md border border-border text-fg-3 hover:text-fg hover:border-border-strong flex items-center justify-center press focus-ring"
         >
           ×
         </button>
@@ -81,7 +81,7 @@ export default function AppShell({
               key={href}
               href={href}
               data-testid={`nav-${label.toLowerCase().replace(/\s+/g, '-')}`}
-              className={`group flex items-center justify-between px-3 py-2.5 text-[11px] tracking-[0.22em] transition-colors ${
+              className={`group flex items-center justify-between px-3 py-2.5 rounded-md text-[11px] tracking-[0.22em] transition-colors duration-[var(--dur-hover)] focus-ring ${
                 active ? 'bg-surface text-fg border-l-2 border-profit pl-[10px]' : 'text-fg-3 hover:text-fg hover:bg-surface'
               }`}
             >
@@ -119,7 +119,7 @@ export default function AppShell({
             <button
               onClick={() => authClient.signOut()}
               data-testid="signout-btn"
-              className="text-[10px] text-fg-3 hover:text-loss tracking-widest"
+              className="text-[10px] text-fg-3 hover:text-loss tracking-widest transition-colors duration-[var(--dur-hover)] focus-ring rounded"
             >
               SIGN OUT
             </button>
@@ -162,7 +162,7 @@ export default function AppShell({
             onClick={() => setDrawerOpen(true)}
             aria-label="Open menu"
             data-testid="drawer-open"
-            className="lg:hidden w-9 h-9 border border-border flex flex-col items-center justify-center gap-1 text-fg-3 hover:text-fg hover:border-border-strong shrink-0"
+            className="lg:hidden w-9 h-9 rounded-md border border-border flex flex-col items-center justify-center gap-1 text-fg-3 hover:text-fg hover:border-border-strong shrink-0 press focus-ring"
           >
             <span className="block w-3.5 h-px bg-current" />
             <span className="block w-3.5 h-px bg-current" />
@@ -193,7 +193,7 @@ export default function AppShell({
                     key={acc.id}
                     onClick={() => onSelectAccount?.(acc)}
                     data-testid={`account-tab-${acc.mt5Login}`}
-                    className={`shrink-0 px-3 py-1.5 text-[11px] tracking-[0.15em] border transition-colors ${
+                    className={`shrink-0 px-3 py-1.5 rounded-md text-[11px] tracking-[0.15em] border transition-colors duration-[var(--dur-hover)] press focus-ring ${
                       active ? 'border-fg text-fg bg-surface' : 'border-border-soft text-fg-3 hover:text-fg hover:border-border-strong'
                     }`}
                   >
@@ -226,7 +226,7 @@ export default function AppShell({
                     key={acc.id}
                     onClick={() => onSelectAccount?.(acc)}
                     data-testid={`account-tab-mobile-${acc.mt5Login}`}
-                    className={`shrink-0 px-3 py-1.5 text-[10px] tracking-[0.15em] border transition-colors whitespace-nowrap ${
+                    className={`shrink-0 px-3 py-1.5 rounded-md text-[10px] tracking-[0.15em] border transition-colors duration-[var(--dur-hover)] press focus-ring whitespace-nowrap ${
                       active ? 'border-fg text-fg bg-surface' : 'border-border-soft text-fg-3'
                     }`}
                   >

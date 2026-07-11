@@ -10,8 +10,9 @@ const EMOTIONS = ['Disciplined', 'Confident', 'Patient', 'FOMO', 'Revenge', 'Hes
 const NEGATIVE = ['FOMO', 'Revenge', 'Hesitant'];
 
 function emotionClass(e: string, active: boolean): string {
-  if (!active) return 'border-border-soft text-fg-3 hover:text-fg hover:border-border-strong';
-  return NEGATIVE.includes(e) ? 'bg-loss/15 border-loss text-loss' : 'bg-profit/15 border-profit text-profit';
+  const base = 'transition-colors duration-[var(--dur-hover)] press focus-ring';
+  if (!active) return `${base} border-border-soft text-fg-3 hover:text-fg hover:border-border-strong`;
+  return `${base} ${NEGATIVE.includes(e) ? 'bg-loss/15 border-loss text-loss' : 'bg-profit/15 border-profit text-profit'}`;
 }
 
 function fmtDate(iso: string): string {
@@ -346,7 +347,7 @@ export default function NotebookPage() {
                         <button
                           onClick={() => startEdit(e)}
                           data-testid={`entry-edit-${e.id}`}
-                          className="px-2 py-1 text-[9px] tracking-widest border border-border-soft text-fg-3 hover:text-fg hover:border-border-strong"
+                          className="px-2 py-1 rounded text-[9px] tracking-widest border border-border-soft text-fg-3 hover:text-fg hover:border-border-strong transition-colors duration-[var(--dur-hover)] press focus-ring"
                         >
                           EDIT
                         </button>
@@ -354,7 +355,7 @@ export default function NotebookPage() {
                           onClick={() => handleDelete(e.id)}
                           disabled={deletingId === e.id}
                           data-testid={`entry-delete-${e.id}`}
-                          className="px-2 py-1 text-[9px] tracking-widest border border-border-soft text-fg-3 hover:text-loss hover:border-loss disabled:opacity-50"
+                          className="px-2 py-1 rounded text-[9px] tracking-widest border border-border-soft text-fg-3 hover:text-loss hover:border-loss transition-colors duration-[var(--dur-hover)] press focus-ring disabled:opacity-50"
                         >
                           {deletingId === e.id ? '…' : 'DEL'}
                         </button>

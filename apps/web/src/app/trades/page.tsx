@@ -123,13 +123,14 @@ export default function TradesPage() {
             <h1 className="font-display font-black text-3xl sm:text-4xl tracking-tighter mt-2">{trades.length} POSITIONS</h1>
             <div className="text-[10px] sm:text-[11px] text-fg-3 tracking-widest mt-1 numeric">RECONSTRUCTED FROM {deals.length} DEALS</div>
           </div>
-          <div className="flex gap-1 overflow-x-auto no-scrollbar w-full sm:w-auto -mx-1 px-1">
+          <div className="seg overflow-x-auto no-scrollbar w-full sm:w-auto">
             {(['ALL', 'LONG', 'SHORT', 'WIN', 'LOSS'] as const).map(f => (
               <button
                 key={f}
                 onClick={() => setFilter(f)}
                 data-testid={`filter-${f.toLowerCase()}`}
-                className={`shrink-0 px-3 py-1.5 text-[10px] tracking-[0.22em] border ${filter === f ? 'border-fg text-fg bg-surface' : 'border-border-soft text-fg-3 hover:text-fg hover:border-border-strong'}`}
+                data-active={filter === f}
+                className="seg-item shrink-0 tracking-[0.22em]"
               >
                 {f}
               </button>
@@ -138,13 +139,14 @@ export default function TradesPage() {
         </div>
 
         <div className="flex items-center justify-between gap-2 mb-3">
-          <div className="flex gap-1">
+          <div className="seg">
             {(['trades', 'deals'] as const).map(t => (
               <button
                 key={t}
                 onClick={() => setTab(t)}
                 data-testid={`tab-${t}`}
-                className={`px-3 sm:px-4 py-2 text-[10px] tracking-[0.22em] border uppercase ${tab === t ? 'border-fg text-fg bg-surface' : 'border-border-soft text-fg-3 hover:text-fg hover:border-border-strong'}`}
+                data-active={tab === t}
+                className="seg-item tracking-[0.22em] uppercase"
               >
                 {t === 'trades' ? 'POSITIONS' : 'RAW DEALS'}
               </button>
@@ -214,7 +216,7 @@ export default function TradesPage() {
                         key={h}
                         onClick={key ? () => toggleSort(key) : undefined}
                         data-testid={key ? `sort-${key}` : undefined}
-                        className={`px-4 py-3 text-left text-[10px] tracking-[0.22em] uppercase font-medium ${key ? 'text-fg-3 hover:text-fg cursor-pointer select-none' : 'text-fg-3'}`}
+                        className={`px-4 py-3 text-left text-[10px] tracking-[0.22em] uppercase font-medium transition-colors duration-[var(--dur-hover)] ${key ? 'text-fg-3 hover:text-fg cursor-pointer select-none' : 'text-fg-3'}`}
                       >
                         {h}{key ? sortArrow(key) : ''}
                       </th>
@@ -240,7 +242,7 @@ export default function TradesPage() {
                           key={t.positionId}
                           onClick={() => selected && router.push(`/trades/${t.positionId}?account=${encodeURIComponent(selected.id)}`)}
                           data-testid={`trade-row-${t.positionId}`}
-                          className="border-b border-border-soft hover:bg-surface-hover transition-colors cursor-pointer"
+                          className="border-b border-border-soft hover:bg-surface-hover transition-colors duration-[var(--dur-hover)] cursor-pointer"
                         >
                           <td className="px-4 py-3 font-display font-bold tracking-tight">{t.symbol}</td>
                           <td className={`px-4 py-3 text-[10px] tracking-[0.22em] ${t.direction === 'LONG' ? 'text-profit' : 'text-loss'}`}>{t.direction === 'LONG' ? '↗ LONG' : '↘ SHORT'}</td>
