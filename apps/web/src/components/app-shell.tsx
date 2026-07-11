@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { Gauge, Table, ChartLineUp, CalendarBlank, FilmSlate, NotePencil, type Icon } from '@phosphor-icons/react';
 import type { BrokerAccount } from '@/lib/api';
 import { authClient } from '@/lib/auth-client';
 
@@ -16,13 +17,13 @@ interface Props {
   pageSubtitle?: string;
 }
 
-const NAV = [
-  { href: '/dashboard', label: 'DASHBOARD' },
-  { href: '/trades',    label: 'TRADE LOG' },
-  { href: '/analytics', label: 'ANALYTICS' },
-  { href: '/calendar',  label: 'CALENDAR' },
-  { href: '/journal',   label: 'CHART REPLAY' },
-  { href: '/notebook',  label: 'JOURNAL' },
+const NAV: { href: string; label: string; icon: Icon }[] = [
+  { href: '/dashboard', label: 'DASHBOARD',    icon: Gauge },
+  { href: '/trades',    label: 'TRADE LOG',    icon: Table },
+  { href: '/analytics', label: 'ANALYTICS',    icon: ChartLineUp },
+  { href: '/calendar',  label: 'CALENDAR',     icon: CalendarBlank },
+  { href: '/journal',   label: 'CHART REPLAY', icon: FilmSlate },
+  { href: '/notebook',  label: 'JOURNAL',      icon: NotePencil },
 ];
 
 export default function AppShell({
@@ -74,7 +75,7 @@ export default function AppShell({
       </div>
 
       <nav className="px-2 py-4 flex flex-col gap-0.5">
-        {NAV.map(({ href, label }, i) => {
+        {NAV.map(({ href, label, icon: Icon }) => {
           const active = pathname === href;
           return (
             <Link
@@ -86,7 +87,7 @@ export default function AppShell({
               }`}
             >
               <span className="flex items-center gap-3">
-                <span className="text-fg-3/60">{String(i + 1).padStart(2, '0')}</span>
+                <Icon size={16} weight={active ? 'fill' : 'regular'} className={active ? 'text-profit' : 'text-fg-3 group-hover:text-fg'} />
                 {label}
               </span>
               {active && <span className="w-1 h-1 rounded-full bg-profit" />}
