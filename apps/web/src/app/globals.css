@@ -133,6 +133,22 @@ html, body {
 .tinput:hover { border-color: var(--color-border-strong); }
 .tinput:focus, .tinput:focus-visible { border-color: var(--color-fg-3); box-shadow: 0 0 0 3px rgba(113,113,122,.18); }
 
+/* Native <select> — kill the glossy OS chrome, draw our own chevron. */
+select.tinput, .tselect {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  cursor: pointer;
+  padding-right: 2.1rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none' stroke='%2371717A' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.5 4.5 6 8l3.5-3.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right .8rem center;
+  background-size: 12px;
+}
+select.tinput:hover, .tselect:hover { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none' stroke='%23FFFFFF' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.5 4.5 6 8l3.5-3.5'/%3E%3C/svg%3E"); }
+select.tinput::-ms-expand { display: none; }
+.tinput option { background: var(--color-app); color: #fff; }
+
 /* ─── Interaction utilities ──────────────────────────────────────────────── */
 /* Pressable tactile feedback */
 .press { transition: transform var(--dur-press) var(--ease-out); }
@@ -226,6 +242,19 @@ html, body {
   98%  { opacity: 1; height: 0;   transform: translate(calc(-50% + var(--end-x)),   calc(-50% + var(--end-y)))   rotate(var(--angle)); }
   100% { opacity: 0; height: 0;   transform: translate(calc(-50% + var(--end-x)),   calc(-50% + var(--end-y)))   rotate(var(--angle)); }
 }
+
+/* ─── Cursor glow (soft white follower; desktop + reduced-motion guarded in JS) */
+.cursor-glow {
+  position: fixed; top: 0; left: 0; z-index: 590;
+  width: 26px; height: 26px; border-radius: 999px;
+  pointer-events: none; opacity: 0;
+  background: radial-gradient(circle, rgba(255,255,255,.18) 0%, rgba(255,255,255,.07) 42%, transparent 70%);
+  mix-blend-mode: screen;
+  transition: opacity .3s ease;
+  will-change: transform;
+}
+@media (hover: none), (pointer: coarse) { .cursor-glow { display: none; } }
+@media (prefers-reduced-motion: reduce) { .cursor-glow { display: none; } }
 
 /* Selection */
 ::selection { background: #FFFFFF; color: #0A0A0A; }
