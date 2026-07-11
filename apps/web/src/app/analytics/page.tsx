@@ -772,7 +772,7 @@ export default function AnalyticsPage() {
           </div>
         ) : loading || !view ? (
           <div className="grid grid-cols-12 gap-3">
-            {Array.from({ length: 6 }).map((_, i) => <div key={i} className="tcard p-6 col-span-6 lg:col-span-4 h-40 animate-pulse bg-surface" />)}
+            {Array.from({ length: 6 }).map((_, i) => <div key={i} className="col-span-6 lg:col-span-4 h-40 shimmer" />)}
           </div>
         ) : (
           <>
@@ -784,8 +784,8 @@ export default function AnalyticsPage() {
                 { l: 'GROSS PROFIT',   v: `+$${view.grossProfit.toLocaleString(undefined, { maximumFractionDigits: 0 })}`, c: 'text-profit' },
                 { l: 'GROSS LOSS',     v: `-$${view.grossLoss.toLocaleString(undefined, { maximumFractionDigits: 0 })}`, c: 'text-loss' },
                 { l: 'MAX DD',         v: `${(view.maxDrawdownPct * 100).toFixed(1)}%`, c: view.maxDrawdownPct > 0.1 ? 'text-loss' : '' },
-              ].map(k => (
-                <div key={k.l} className="tcard p-4" data-testid={`kpi-${k.l.toLowerCase().replace(/[^a-z]/g, '')}`}>
+              ].map((k, i) => (
+                <div key={k.l} className="tcard tcard-hover p-4 rise" style={{ ['--i' as string]: i }} data-testid={`kpi-${k.l.toLowerCase().replace(/[^a-z]/g, '')}`}>
                   <div className="text-[10px] tracking-[0.22em] text-fg-3 uppercase">{k.l}</div>
                   <div className={`font-display font-black text-2xl sm:text-3xl tracking-tighter mt-3 numeric ${k.c ?? ''}`}>{k.v}</div>
                 </div>

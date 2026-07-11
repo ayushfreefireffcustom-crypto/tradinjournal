@@ -228,7 +228,7 @@ export default function TradesPage() {
                     Array.from({ length: 8 }).map((_, i) => (
                       <tr key={i} className="border-b border-border-soft">
                         {Array.from({ length: 10 }).map((_, j) => (
-                          <td key={j} className="px-4 py-3"><div className="h-2.5 w-12 bg-surface-hover" /></td>
+                          <td key={j} className="px-4 py-3"><div className="h-2.5 w-12 shimmer" /></td>
                         ))}
                       </tr>
                     ))

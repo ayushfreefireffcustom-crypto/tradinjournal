@@ -120,7 +120,7 @@ export default function CalendarPage() {
 
           {loading ? (
             <div className="grid grid-cols-7 md:grid-cols-8 gap-1 sm:gap-2">
-              {Array.from({ length: 40 }).map((_, i) => <div key={i} className="aspect-square sm:aspect-[4/3] bg-surface animate-pulse" />)}
+              {Array.from({ length: 40 }).map((_, i) => <div key={i} className="aspect-square sm:aspect-[4/3] shimmer" />)}
             </div>
           ) : (
             <div className="flex flex-col gap-1 sm:gap-2">
