@@ -41,8 +41,8 @@ export default function DrawdownChart({ equityCurve, height = 120 }: { equityCur
         </linearGradient>
       </defs>
       <line x1="6" x2="394" y1="6" y2="6" stroke="#2A2A2A" strokeDasharray="2 4" />
-      <path d={area} fill="url(#ddFill)" />
-      <path d={path} fill="none" stroke="#FF3B30" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" opacity="0.9" />
+      <path d={area} fill="url(#ddFill)" className="fade-in" style={{ ['--fade-dur' as string]: '900ms', ['--fade-delay' as string]: '250ms' }} />
+      <path d={path} fill="none" stroke="#FF3B30" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" opacity="0.9" pathLength={1} className="draw-in" />
     </svg>
   );
 }

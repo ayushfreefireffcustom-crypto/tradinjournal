@@ -100,8 +100,8 @@ export default function EquityChart({ data, height = 220, startingBalance }: Pro
           <line x1={PAD.left} y1={toY(startingBalance)} x2={PAD.left + innerW} y2={toY(startingBalance)} stroke="#4A4A4A" strokeDasharray="3 3" />
         )}
 
-        <path d={areaD} fill="url(#equityFill)" />
-        <path d={pathD} fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
+        <path d={areaD} fill="url(#equityFill)" className="fade-in" style={{ ['--fade-dur' as string]: '900ms', ['--fade-delay' as string]: '250ms' }} />
+        <path d={pathD} fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" pathLength={1} className="draw-in" />
 
         {/* Crosshair */}
         {hoverIdx != null && (
