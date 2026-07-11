@@ -6,6 +6,9 @@ import { statsForRange, rangeStart, RANGES, type RangeKey } from '@/lib/stats';
 import AppShell from '@/components/app-shell';
 import ConnectBrokerModal from '@/components/connect-broker-modal';
 import EquityChart from '@/components/equity-chart';
+import DrawdownChart from '@/components/drawdown-chart';
+import DashboardCalendar from '@/components/dashboard-calendar';
+import { StatCard, TwinBars } from '@/components/stat-card';
 
 const NEGATIVE_EMOTIONS = ['FOMO', 'Revenge', 'Hesitant'];
 
@@ -15,22 +18,7 @@ function fmtDur(s: number) {
   if (s < 86400) return `${Math.floor(s / 3600)}h ${Math.floor((s % 3600) / 60)}m`;
   return `${Math.floor(s / 86400)}d`;
 }
-
-function KpiTile({
-  label, value, sub, accent, testId,
-}: { label: string; value: string; sub?: string; accent?: 'profit' | 'loss' | 'warning'; testId?: string }) {
-  const color = accent === 'profit' ? 'text-profit' : accent === 'loss' ? 'text-loss' : accent === 'warning' ? 'text-warning' : 'text-fg';
-  return (
-    <div className="tcard tcard-hover p-4" data-testid={testId}>
-      <div className="flex items-center justify-between">
-        <span className="text-[10px] tracking-[0.22em] text-fg-3 uppercase">{label}</span>
-        <span className="text-fg-3 text-[10px]">●</span>
-      </div>
-      <div className={`font-display font-black text-2xl sm:text-3xl tracking-tighter mt-3 numeric ${color}`}>{value}</div>
-      {sub && <div className="text-[10px] text-fg-3 tracking-widest mt-1 numeric">{sub}</div>}
-    </div>
-  );
-}
+function usd(v: number) { return `${v >= 0 ? '+' : '-'}$${Math.abs(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`; }
 
 function MiniBars({ data }: { data: { day: string; netPnl: number }[] }) {
   const max = Math.max(...data.map(d => Math.abs(d.netPnl)), 1);
@@ -42,10 +30,7 @@ function MiniBars({ data }: { data: { day: string; netPnl: number }[] }) {
         return (
           <div key={d.day} className="flex-1 flex flex-col items-center gap-2">
             <div className="w-full relative flex items-end h-20">
-              <div
-                className="w-full transition-all"
-                style={{ height: `${h}%`, background: pos ? '#00C566' : '#FF3B30' }}
-              />
+              <div className="w-full rounded-sm transition-all" style={{ height: `${h}%`, background: pos ? '#00C566' : '#FF3B30' }} />
             </div>
             <div className="text-[9px] tracking-widest text-fg-3 uppercase">{d.day}</div>
           </div>
@@ -66,7 +51,6 @@ export default function DashboardPage() {
   const [error, setError] = useState('');
   const [showConnect, setShowConnect] = useState(false);
 
-  // Range-filtered view drives the KPIs, equity curve and behaviour signals.
   const view = useMemo(
     () => (stats ? statsForRange(trades, stats.startingBalance, range) : null),
     [stats, trades, range],
@@ -82,11 +66,9 @@ export default function DashboardPage() {
     try {
       const accs = await api.accounts.list();
       setAccounts(accs);
-      const first = accs[0] ?? null;
-      setSelected(first);
+      setSelected(accs[0] ?? null);
     } catch {}
   }, []);
-
   useEffect(() => { load(); }, [load]);
 
   const loadStats = useCallback(async (acc: BrokerAccount) => {
@@ -105,11 +87,8 @@ export default function DashboardPage() {
       setError(err instanceof Error ? err.message : 'Failed to load account data');
     } finally { setLoading(false); }
   }, []);
-
   useEffect(() => { if (selected) loadStats(selected); }, [selected, loadStats]);
 
-  // Real behavioural signals derived from the range's closed trades + logged
-  // journal entries linked to those trades.
   const behaviour = useMemo(() => {
     const closed = rangedTrades;
     const winners = closed.filter(t => t.netPnl > 0);
@@ -118,8 +97,6 @@ export default function DashboardPage() {
       const withDur = arr.filter(t => t.durationSecs != null);
       return withDur.length ? withDur.reduce((s, t) => s + (t.durationSecs ?? 0), 0) / withDur.length : null;
     };
-
-    // Current win/loss streak, most-recent close first
     const byClose = [...closed].sort((a, b) => +new Date(b.closeTime!) - +new Date(a.closeTime!));
     let streak = 0;
     let streakWin: boolean | null = null;
@@ -129,18 +106,9 @@ export default function DashboardPage() {
       else if (win === streakWin) { streak++; }
       else break;
     }
-
     const logged = journal.filter(e => e.emotion && (!e.tradeId || rangedTradeIds.has(e.tradeId)));
     const tilt = logged.filter(e => NEGATIVE_EMOTIONS.includes(e.emotion!)).length;
-
-    return {
-      winnersHold: avgHold(winners),
-      losersHold: avgHold(losers),
-      streak,
-      streakWin,
-      tilt,
-      loggedCount: logged.length,
-    };
+    return { winnersHold: avgHold(winners), losersHold: avgHold(losers), streak, streakWin, tilt, loggedCount: logged.length };
   }, [rangedTrades, rangedTradeIds, journal]);
 
   function onConnected(account: BrokerAccount) {
@@ -151,6 +119,16 @@ export default function DashboardPage() {
     setSelected(account);
     setShowConnect(false);
   }
+
+  // ── derived values for the KPI cards ──
+  const winPct = view ? view.winRate * 100 : 0;
+  const expectancy = view && view.totalTrades > 0 ? view.netPnl / view.totalTrades : 0;
+  const avgWin = view?.avgWin ?? 0;
+  const avgLoss = view?.avgLoss ?? 0; // negative
+  const awlMax = Math.max(avgWin, Math.abs(avgLoss), 1);
+  const longPnl = view?.byDirection.long.netPnl ?? 0;
+  const shortPnl = view?.byDirection.short.netPnl ?? 0;
+  const lsMax = Math.max(Math.abs(longPnl), Math.abs(shortPnl), 1);
 
   return (
     <AppShell
@@ -165,141 +143,112 @@ export default function DashboardPage() {
         {/* Header strip */}
         <div className="flex flex-wrap items-end justify-between gap-4 mb-6">
           <div className="min-w-0">
-            <div className="text-[10px] tracking-[0.25em] text-fg-3 truncate">[ ACCOUNT // {selected?.broker.toUpperCase()} · #{selected?.mt5Login} ]</div>
-            <h1 className="font-display font-black text-3xl sm:text-4xl lg:text-5xl tracking-tighter mt-2 break-words">
+            <div className="text-[10px] tracking-[0.2em] text-fg-3 truncate uppercase">{selected?.broker} · #{selected?.mt5Login}</div>
+            <h1 className="font-display font-black text-3xl sm:text-4xl lg:text-5xl tracking-tight mt-2 break-words numeric">
               {view ? (view.netPnl >= 0 ? '+' : '') + `$${Math.abs(view.netPnl).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
-              <span className={`ml-3 text-sm sm:text-base align-middle ${view && view.netPnl >= 0 ? 'text-profit' : 'text-loss'}`}>
+              <span className={`ml-3 text-sm sm:text-base align-middle font-sans font-semibold tracking-normal ${view && view.netPnl >= 0 ? 'text-profit' : 'text-loss'}`}>
                 {view ? `${view.netPnl >= 0 ? '▲' : '▼'} NET P&L` : ''}
               </span>
             </h1>
-            <div className="text-[10px] sm:text-[11px] text-fg-3 tracking-widest mt-1 numeric break-words">
-              {view ? `STARTING $${view.startingBalance.toLocaleString()} → CURRENT $${view.currentEquity.toLocaleString()}` : 'Loading...'}
+            <div className="text-[10px] sm:text-[11px] text-fg-3 tracking-wide mt-1 numeric break-words uppercase">
+              {view ? `Starting $${view.startingBalance.toLocaleString()} → Current $${view.currentEquity.toLocaleString()}` : 'Loading…'}
             </div>
           </div>
           <div className="flex items-center gap-2 w-full sm:w-auto">
             <button onClick={() => setShowConnect(true)} className="btn btn-ghost flex-1 sm:flex-none justify-center" data-testid="header-add-broker">+ ADD BROKER</button>
-            <button className="btn btn-primary flex-1 sm:flex-none justify-center" data-testid="header-sync-now">SYNC NOW</button>
+            <button onClick={() => selected && loadStats(selected)} disabled={loading || !selected} className={`btn btn-primary flex-1 sm:flex-none justify-center ${loading ? 'opacity-70 cursor-wait' : ''}`} data-testid="header-sync-now">
+              {loading ? 'SYNCING…' : 'SYNC NOW'}
+            </button>
           </div>
         </div>
 
         {error && (
-          <div className="border border-loss/30 bg-loss/10 px-4 py-3 mb-4 flex items-center justify-between gap-3 text-[12px]" data-testid="dashboard-error">
+          <div className="border border-loss/30 bg-loss/10 rounded-lg px-4 py-3 mb-4 flex items-center justify-between gap-3 text-[12px]" data-testid="dashboard-error">
             <span className="text-loss">{error}</span>
             <button onClick={() => selected && loadStats(selected)} className="btn btn-ghost py-1.5 text-[10px] shrink-0">RETRY</button>
           </div>
         )}
 
-        {/* Range selector */}
-        <div className="flex items-center gap-2 mb-3">
-          <span className="text-[10px] tracking-[0.22em] text-fg-3">RANGE</span>
-          <div className="flex gap-1 overflow-x-auto no-scrollbar -mx-1 px-1" data-testid="range-selector">
+        {/* Range selector (segmented) */}
+        <div className="flex items-center gap-3 mb-4">
+          <span className="text-[10px] tracking-[0.2em] text-fg-3 uppercase">Range</span>
+          <div className="seg" data-testid="range-selector">
             {RANGES.map(r => (
-              <button
-                key={r}
-                onClick={() => setRange(r)}
-                data-testid={`range-${r}`}
-                className={`shrink-0 px-3 py-1 text-[10px] tracking-[0.22em] border ${range === r ? 'border-fg text-fg bg-surface' : 'border-border-soft text-fg-3 hover:text-fg hover:border-border-strong'}`}
-              >
-                {r}
-              </button>
+              <button key={r} onClick={() => setRange(r)} data-testid={`range-${r}`} data-active={range === r} className="seg-item">{r}</button>
             ))}
           </div>
         </div>
 
-        {/* KPI row */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
-          <KpiTile testId="kpi-winrate" label="Win Rate" value={view ? `${(view.winRate * 100).toFixed(1)}%` : '—'} sub={view ? `${view.totalWins}W / ${view.totalLosses}L` : undefined} accent={view && view.winRate >= 0.5 ? 'profit' : 'loss'} />
-          <KpiTile testId="kpi-pf"      label="Profit Factor" value={view ? (view.profitFactor >= 999 ? '∞' : view.profitFactor.toFixed(2)) : '—'} sub={view ? `GROSS +$${view.grossProfit.toLocaleString()}` : undefined} accent={view && view.profitFactor >= 1.5 ? 'profit' : view && view.profitFactor >= 1 ? undefined : 'loss'} />
-          <KpiTile testId="kpi-dd"      label="Max Drawdown" value={view ? `${(view.maxDrawdownPct * 100).toFixed(1)}%` : '—'} sub={view ? `WORST $${view.worstTrade.toFixed(0)}` : undefined} accent={view && view.maxDrawdownPct > 0.1 ? 'loss' : undefined} />
-          <KpiTile
-            testId="kpi-expectancy"
-            label="Expectancy"
-            value={view && view.totalTrades > 0 ? `${view.netPnl / view.totalTrades >= 0 ? '+' : '-'}$${Math.abs(view.netPnl / view.totalTrades).toFixed(2)}` : '—'}
-            sub="AVG NET / TRADE"
-            accent={view && view.netPnl >= 0 ? 'profit' : 'loss'}
-          />
+        {/* KPI row — 5 rich cards */}
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 mb-3">
+          <StatCard testId="kpi-winrate" label="Win Rate" value={view ? `${winPct.toFixed(1)}%` : '—'} sub={view ? `${view.totalWins}W / ${view.totalLosses}L` : undefined} accent={view && view.winRate >= 0.5 ? 'profit' : 'loss'}>
+            {view && <TwinBars rows={[
+              { label: 'W', value: String(view.totalWins), pct: winPct, color: 'profit' },
+              { label: 'L', value: String(view.totalLosses), pct: 100 - winPct, color: 'loss' },
+            ]} />}
+          </StatCard>
+
+          <StatCard testId="kpi-avgwl" label="Avg Win / Loss" value={view ? usd(expectancy) : '—'} sub="Per trade" accent={expectancy >= 0 ? 'profit' : 'loss'}>
+            {view && <TwinBars rows={[
+              { label: 'W', value: `$${avgWin.toFixed(0)}`, pct: (avgWin / awlMax) * 100, color: 'profit' },
+              { label: 'L', value: `$${Math.abs(avgLoss).toFixed(0)}`, pct: (Math.abs(avgLoss) / awlMax) * 100, color: 'loss' },
+            ]} />}
+          </StatCard>
+
+          <StatCard testId="kpi-longshort" label="Long vs Short" value={view ? usd(longPnl + shortPnl) : '—'} sub="Total P&L" accent={longPnl + shortPnl >= 0 ? 'profit' : 'loss'}>
+            {view && <TwinBars rows={[
+              { label: 'L', value: usd(longPnl), pct: (Math.abs(longPnl) / lsMax) * 100, color: longPnl >= 0 ? 'profit' : 'loss' },
+              { label: 'S', value: usd(shortPnl), pct: (Math.abs(shortPnl) / lsMax) * 100, color: shortPnl >= 0 ? 'profit' : 'loss' },
+            ]} />}
+          </StatCard>
+
+          <StatCard testId="kpi-streaks" label="Max Streaks" value={view ? `${view.maxWinStreak} / ${view.maxLossStreak}` : '—'} sub="Best win / loss run" accent="neutral" />
+
+          <StatCard testId="kpi-duration" label="Avg Duration" value={view ? fmtDur(view.avgDurationSecs) : '—'} sub="Avg per trade" accent="neutral" />
         </div>
 
         {/* Main grid */}
         <div className="grid grid-cols-12 gap-3">
           {/* Equity */}
           <div className="tcard col-span-12 lg:col-span-8 p-5" data-testid="equity-card">
-            <div className="flex items-center justify-between mb-1">
-              <div>
-                <div className="text-[10px] tracking-[0.25em] text-fg-3">EQUITY_CURVE</div>
-                <div className="font-display font-bold text-[16px] tracking-tight mt-1">Account equity</div>
-              </div>
-            </div>
+            <div className="text-[10px] tracking-[0.2em] text-fg-3 uppercase">Equity curve</div>
+            <div className="font-display font-bold text-[16px] tracking-tight mt-1 mb-2">Account equity</div>
             {view && <EquityChart data={view.equityCurve} height={260} startingBalance={view.startingBalance} />}
           </div>
 
-          {/* Behavioural panel — derived from real trades + journal entries */}
-          <div className="tcard col-span-12 lg:col-span-4 p-5" data-testid="behavior-card">
-            <div className="text-[10px] tracking-[0.25em] text-fg-3">BEHAVIOUR</div>
-            <div className="font-display font-bold text-[16px] tracking-tight mt-1 mb-4">Discipline signals</div>
-
-            <div className="space-y-3">
-              {[
-                {
-                  l: 'Current streak',
-                  v: behaviour.streakWin === null ? '—' : `${behaviour.streak}${behaviour.streakWin ? 'W' : 'L'}`,
-                  t: behaviour.streakWin === null ? 'neutral' : behaviour.streakWin ? 'profit' : 'loss',
-                  s: 'consecutive outcomes',
-                },
-                {
-                  l: 'Tilt flags',
-                  v: behaviour.loggedCount === 0 ? '—' : String(behaviour.tilt),
-                  t: behaviour.tilt > 0 ? 'warning' : 'profit',
-                  s: behaviour.loggedCount === 0 ? 'no emotions logged' : 'fomo · revenge · hesitant',
-                },
-                {
-                  l: 'Avg hold · winners',
-                  v: behaviour.winnersHold != null ? fmtDur(behaviour.winnersHold) : '—',
-                  t: 'neutral',
-                  s: 'time in winning trades',
-                },
-                {
-                  l: 'Avg hold · losers',
-                  v: behaviour.losersHold != null ? fmtDur(behaviour.losersHold) : '—',
-                  t: behaviour.winnersHold != null && behaviour.losersHold != null && behaviour.losersHold > behaviour.winnersHold ? 'loss' : 'neutral',
-                  s: 'time in losing trades',
-                },
-              ].map(row => (
-                <div key={row.l} className="flex items-center justify-between border-b border-border-soft pb-3 last:border-0 last:pb-0">
-                  <div>
-                    <div className="text-[12px]">{row.l}</div>
-                    <div className="text-[10px] text-fg-3 tracking-widest uppercase">{row.s}</div>
-                  </div>
-                  <div className={`font-display font-black text-2xl tracking-tight numeric ${row.t === 'profit' ? 'text-profit' : row.t === 'warning' ? 'text-warning' : row.t === 'loss' ? 'text-loss' : 'text-fg'}`}>
-                    {row.v}
-                  </div>
-                </div>
-              ))}
+          {/* Drawdown (real widget replacing synthetic score) */}
+          <div className="tcard col-span-12 lg:col-span-4 p-5 flex flex-col" data-testid="drawdown-card">
+            <div className="flex items-start justify-between">
+              <div>
+                <div className="text-[10px] tracking-[0.2em] text-fg-3 uppercase">Drawdown</div>
+                <div className="font-display font-bold text-[16px] tracking-tight mt-1">Underwater curve</div>
+              </div>
+              <div className="text-right">
+                <div className="font-display font-black text-2xl tracking-tight numeric text-loss">{view ? `${(view.maxDrawdownPct * 100).toFixed(1)}%` : '—'}</div>
+                <div className="text-[9px] tracking-widest text-fg-3 uppercase">Max</div>
+              </div>
             </div>
+            <div className="mt-auto pt-4">{view && <DrawdownChart equityCurve={view.equityCurve} height={150} />}</div>
           </div>
 
-          {/* By day */}
-          <div className="tcard col-span-12 md:col-span-6 lg:col-span-4 p-5" data-testid="byday-card">
-            <div className="text-[10px] tracking-[0.25em] text-fg-3">P&L_BY_DAY</div>
-            <div className="font-display font-bold text-[16px] tracking-tight mt-1 mb-4">Day of week</div>
-            {view && <MiniBars data={view.byDay} />}
+          {/* Calendar with weekly column */}
+          <div className="col-span-12">
+            {view && <DashboardCalendar trades={rangedTrades} />}
           </div>
 
-          {/* Recent trades */}
+          {/* Recent fills */}
           <div className="tcard col-span-12 lg:col-span-8 p-0" data-testid="recent-trades-card">
             <div className="flex items-center justify-between px-5 py-4 border-b border-border-soft">
               <div>
-                <div className="text-[10px] tracking-[0.25em] text-fg-3">RECENT_FILLS</div>
+                <div className="text-[10px] tracking-[0.2em] text-fg-3 uppercase">Recent fills</div>
                 <div className="font-display font-bold text-[16px] tracking-tight mt-1">Last {recent.length} positions</div>
               </div>
-              <a href="/trades" className="text-[10px] tracking-[0.22em] text-fg-3 hover:text-fg" data-testid="view-all-trades">VIEW ALL →</a>
+              <a href="/trades" className="text-[10px] tracking-[0.2em] text-fg-3 hover:text-fg focus-ring rounded px-1 uppercase" data-testid="view-all-trades">View all →</a>
             </div>
             <div>
               {loading ? (
                 Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i} className="px-5 py-4 border-b border-border-soft last:border-0">
-                    <div className="h-3 w-32 bg-surface-hover" />
-                  </div>
+                  <div key={i} className="px-5 py-4 border-b border-border-soft last:border-0"><div className="h-3 w-32 bg-surface-hover rounded" /></div>
                 ))
               ) : recent.length === 0 ? (
                 <div className="px-5 py-10 text-center text-fg-3 text-[12px]">No closed positions yet.</div>
@@ -307,22 +256,14 @@ export default function DashboardPage() {
                 recent.map(t => {
                   const pos = t.netPnl >= 0;
                   return (
-                    <div key={t.positionId} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 sm:px-5 py-3 border-b border-border-soft last:border-0 hover:bg-surface-hover transition-colors">
-                      <span className={`text-[10px] tracking-[0.22em] shrink-0 ${t.direction === 'LONG' ? 'text-profit' : 'text-loss'}`}>
-                        {t.direction === 'LONG' ? '↗ L' : '↘ S'}
-                      </span>
-                      <span className="font-display font-bold tracking-tight">{t.symbol}</span>
+                    <div key={t.positionId} className="row-interactive flex flex-wrap items-center gap-x-3 gap-y-1 px-4 sm:px-5 py-3 border-b border-border-soft last:border-0" style={{ ['--row-accent' as string]: pos ? 'var(--color-profit)' : 'var(--color-loss)' }}>
+                      <span className={`text-[10px] tracking-[0.2em] shrink-0 ${t.direction === 'LONG' ? 'text-profit' : 'text-loss'}`}>{t.direction === 'LONG' ? '↗ L' : '↘ S'}</span>
+                      <span className="font-semibold tracking-tight">{t.symbol}</span>
                       <span className="text-[11px] text-fg-2 numeric">{t.volume.toFixed(2)} lots</span>
-                      <span className="text-[10px] sm:text-[11px] text-fg-3 numeric">
-                        {new Date(t.openTime).toLocaleDateString('en-US', { day: '2-digit', month: 'short' })} · {fmtDur(t.durationSecs ?? 0)}
-                      </span>
+                      <span className="text-[10px] sm:text-[11px] text-fg-3 numeric">{new Date(t.openTime).toLocaleDateString('en-US', { day: '2-digit', month: 'short' })} · {fmtDur(t.durationSecs ?? 0)}</span>
                       <div className="ml-auto text-right">
-                        <div className={`font-display font-bold text-[14px] sm:text-[15px] tracking-tight numeric ${pos ? 'text-profit' : 'text-loss'}`}>
-                          {pos ? '+' : ''}${t.netPnl.toFixed(2)}
-                        </div>
-                        <div className="text-[9px] sm:text-[10px] text-fg-3 tracking-widest numeric">
-                          {t.entryPrice.toFixed(4)} → {t.exitPrice?.toFixed(4)}
-                        </div>
+                        <div className={`font-display font-bold text-[14px] sm:text-[15px] tracking-tight numeric ${pos ? 'text-profit' : 'text-loss'}`}>{pos ? '+' : ''}${t.netPnl.toFixed(2)}</div>
+                        <div className="text-[9px] sm:text-[10px] text-fg-3 tracking-widest numeric">{t.entryPrice.toFixed(4)} → {t.exitPrice?.toFixed(4)}</div>
                       </div>
                     </div>
                   );
@@ -331,34 +272,61 @@ export default function DashboardPage() {
             </div>
           </div>
 
+          {/* Behaviour */}
+          <div className="tcard col-span-12 lg:col-span-4 p-5" data-testid="behavior-card">
+            <div className="text-[10px] tracking-[0.2em] text-fg-3 uppercase">Behaviour</div>
+            <div className="font-display font-bold text-[16px] tracking-tight mt-1 mb-4">Discipline signals</div>
+            <div className="space-y-3">
+              {[
+                { l: 'Current streak', v: behaviour.streakWin === null ? '—' : `${behaviour.streak}${behaviour.streakWin ? 'W' : 'L'}`, t: behaviour.streakWin === null ? 'neutral' : behaviour.streakWin ? 'profit' : 'loss', s: 'consecutive outcomes' },
+                { l: 'Tilt flags', v: behaviour.loggedCount === 0 ? '—' : String(behaviour.tilt), t: behaviour.tilt > 0 ? 'warning' : 'profit', s: behaviour.loggedCount === 0 ? 'no emotions logged' : 'fomo · revenge · hesitant' },
+                { l: 'Avg hold · winners', v: behaviour.winnersHold != null ? fmtDur(behaviour.winnersHold) : '—', t: 'neutral', s: 'time in winning trades' },
+                { l: 'Avg hold · losers', v: behaviour.losersHold != null ? fmtDur(behaviour.losersHold) : '—', t: behaviour.winnersHold != null && behaviour.losersHold != null && behaviour.losersHold > behaviour.winnersHold ? 'loss' : 'neutral', s: 'time in losing trades' },
+              ].map(row => (
+                <div key={row.l} className="flex items-center justify-between border-b border-border-soft pb-3 last:border-0 last:pb-0">
+                  <div>
+                    <div className="text-[12px]">{row.l}</div>
+                    <div className="text-[10px] text-fg-3 tracking-wide uppercase">{row.s}</div>
+                  </div>
+                  <div className={`font-display font-black text-2xl tracking-tight numeric ${row.t === 'profit' ? 'text-profit' : row.t === 'warning' ? 'text-warning' : row.t === 'loss' ? 'text-loss' : 'text-fg'}`}>{row.v}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Day of week */}
+          <div className="tcard col-span-12 md:col-span-6 lg:col-span-4 p-5" data-testid="byday-card">
+            <div className="text-[10px] tracking-[0.2em] text-fg-3 uppercase">P&L by day</div>
+            <div className="font-display font-bold text-[16px] tracking-tight mt-1 mb-4">Day of week</div>
+            {view && <MiniBars data={view.byDay} />}
+          </div>
+
           {/* By symbol */}
           {view && view.bySymbol.length > 0 && (
-            <div className="tcard col-span-12 p-0" data-testid="bysymbol-card">
+            <div className="tcard col-span-12 md:col-span-6 lg:col-span-8 p-0" data-testid="bysymbol-card">
               <div className="px-5 py-4 border-b border-border-soft flex items-center justify-between">
                 <div>
-                  <div className="text-[10px] tracking-[0.25em] text-fg-3">PERFORMANCE_BY_SYMBOL</div>
+                  <div className="text-[10px] tracking-[0.2em] text-fg-3 uppercase">Performance by symbol</div>
                   <div className="font-display font-bold text-[16px] tracking-tight mt-1">Instrument breakdown</div>
                 </div>
-                <span className="text-[10px] tracking-widest text-fg-3">{view.bySymbol.length} INSTRUMENTS</span>
+                <span className="text-[10px] tracking-widest text-fg-3 numeric">{view.bySymbol.length} INSTRUMENTS</span>
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[640px] text-[12px]">
+                <table className="w-full min-w-[560px] text-[12px]">
                   <thead>
                     <tr className="border-b border-border">
                       {['Symbol', 'Trades', 'Win Rate', 'Net P&L', 'Avg P&L'].map(h => (
-                        <th key={h} className="px-5 py-2.5 text-left text-[10px] tracking-[0.22em] text-fg-3 uppercase font-medium">{h}</th>
+                        <th key={h} className="px-5 py-2.5 text-left text-[10px] tracking-[0.18em] text-fg-3 uppercase font-medium">{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {view.bySymbol.map(s => (
                       <tr key={s.symbol} className="border-b border-border-soft hover:bg-surface-hover transition-colors">
-                        <td className="px-5 py-3 font-display font-bold tracking-tight">{s.symbol}</td>
+                        <td className="px-5 py-3 font-semibold tracking-tight">{s.symbol}</td>
                         <td className="px-5 py-3 numeric text-fg-2">{s.trades}</td>
                         <td className="px-5 py-3">
-                          <span className={`px-2 py-0.5 text-[10px] tracking-widest border ${s.winRate >= 0.5 ? 'text-profit border-profit/30 bg-profit/10' : 'text-loss border-loss/30 bg-loss/10'}`}>
-                            {(s.winRate * 100).toFixed(0)}%
-                          </span>
+                          <span className={`px-2 py-0.5 rounded text-[10px] tracking-widest border numeric ${s.winRate >= 0.5 ? 'text-profit border-profit/30 bg-profit/10' : 'text-loss border-loss/30 bg-loss/10'}`}>{(s.winRate * 100).toFixed(0)}%</span>
                         </td>
                         <td className={`px-5 py-3 numeric font-medium ${s.netPnl >= 0 ? 'text-profit' : 'text-loss'}`}>{s.netPnl >= 0 ? '+' : ''}${s.netPnl.toFixed(2)}</td>
                         <td className={`px-5 py-3 numeric ${s.avgPnl >= 0 ? 'text-profit' : 'text-loss'}`}>{s.avgPnl >= 0 ? '+' : ''}${s.avgPnl.toFixed(2)}</td>
