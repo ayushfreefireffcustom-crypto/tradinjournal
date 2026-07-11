@@ -23,7 +23,7 @@ const barColor: Record<'profit' | 'loss' | 'neutral', string> = {
  * sign colour when it changes, optional sub-label and custom content (bars).
  */
 export function StatCard({
-  label, value, count, format, accent = 'neutral', sub, testId, spark, children,
+  label, value, count, format, accent = 'neutral', sub, testId, spark, index, children,
 }: {
   label: string;
   value: string;
@@ -35,6 +35,8 @@ export function StatCard({
   testId?: string;
   // Optional trend sparkline shown under the value (e.g. cumulative P&L).
   spark?: number[];
+  // Position in a grid — drives the staggered entrance cascade.
+  index?: number;
   children?: ReactNode;
 }) {
   const [flash, setFlash] = useState('');
@@ -51,7 +53,11 @@ export function StatCard({
   const valueCls = `font-display font-black text-2xl sm:text-3xl tracking-tight mt-2 numeric ${accentClass[accent]} ${flash}`;
 
   return (
-    <div className="tcard tcard-hover p-4 sm:p-5 flex flex-col" data-testid={testId}>
+    <div
+      className={`tcard tcard-hover p-4 sm:p-5 flex flex-col ${index != null ? 'rise' : ''}`}
+      style={index != null ? { ['--i' as string]: index } : undefined}
+      data-testid={testId}
+    >
       <div className="text-[10px] tracking-[0.18em] text-fg-3 uppercase">{label}</div>
       {count != null && format ? (
         <AnimatedNumber value={count} format={format} className={valueCls} />

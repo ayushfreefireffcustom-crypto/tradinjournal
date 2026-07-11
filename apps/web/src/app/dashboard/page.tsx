@@ -9,6 +9,7 @@ import EquityChart from '@/components/equity-chart';
 import DrawdownChart from '@/components/drawdown-chart';
 import DashboardCalendar from '@/components/dashboard-calendar';
 import { StatCard, TwinBars } from '@/components/stat-card';
+import AnimatedNumber from '@/components/animated-number';
 
 const NEGATIVE_EMOTIONS = ['FOMO', 'Revenge', 'Hesitant'];
 
@@ -129,6 +130,8 @@ export default function DashboardPage() {
   const longPnl = view?.byDirection.long.netPnl ?? 0;
   const shortPnl = view?.byDirection.short.netPnl ?? 0;
   const lsMax = Math.max(Math.abs(longPnl), Math.abs(shortPnl), 1);
+  // Cumulative net-P&L trend (equity above starting balance) for the KPI sparkline.
+  const cumSpark = view ? view.equityCurve.map(p => p.equity - view.startingBalance) : undefined;
 
   return (
     <AppShell
@@ -145,7 +148,12 @@ export default function DashboardPage() {
           <div className="min-w-0">
             <div className="text-[10px] tracking-[0.2em] text-fg-3 truncate uppercase">{selected?.broker} · #{selected?.mt5Login}</div>
             <h1 className={`font-display font-black text-3xl sm:text-4xl lg:text-5xl tracking-tight mt-2 break-words numeric ${view ? (view.netPnl >= 0 ? 'text-profit' : 'text-loss') : 'text-fg'}`}>
-              {view ? (view.netPnl >= 0 ? '+' : '') + `$${Math.abs(view.netPnl).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
+              {view ? (
+                <AnimatedNumber
+                  value={view.netPnl}
+                  format={n => `${n >= 0 ? '+' : '-'}$${Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                />
+              ) : '—'}
               <span className={`ml-3 text-sm sm:text-base align-middle font-sans font-semibold tracking-normal ${view && view.netPnl >= 0 ? 'text-profit' : 'text-loss'}`}>
                 {view ? `${view.netPnl >= 0 ? '▲' : '▼'} NET P&L` : ''}
               </span>
@@ -181,30 +189,30 @@ export default function DashboardPage() {
 
         {/* KPI row — 5 rich cards */}
         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 mb-3">
-          <StatCard testId="kpi-winrate" label="Win Rate" value={view ? `${winPct.toFixed(1)}%` : '—'} sub={view ? `${view.totalWins}W / ${view.totalLosses}L` : undefined} accent={view && view.winRate >= 0.5 ? 'profit' : 'loss'}>
+          <StatCard testId="kpi-winrate" index={0} label="Win Rate" value={view ? `${winPct.toFixed(1)}%` : '—'} count={view ? winPct : undefined} format={n => `${n.toFixed(1)}%`} sub={view ? `${view.totalWins}W / ${view.totalLosses}L` : undefined} accent={view && view.winRate >= 0.5 ? 'profit' : 'loss'}>
             {view && <TwinBars rows={[
               { label: 'W', value: String(view.totalWins), pct: winPct, color: 'profit' },
               { label: 'L', value: String(view.totalLosses), pct: 100 - winPct, color: 'loss' },
             ]} />}
           </StatCard>
 
-          <StatCard testId="kpi-avgwl" label="Avg Win / Loss" value={view ? usd(expectancy) : '—'} sub="Per trade" accent={expectancy >= 0 ? 'profit' : 'loss'}>
+          <StatCard testId="kpi-avgwl" index={1} label="Avg Win / Loss" value={view ? usd(expectancy) : '—'} count={view ? expectancy : undefined} format={usd} sub="Per trade" accent={expectancy >= 0 ? 'profit' : 'loss'}>
             {view && <TwinBars rows={[
               { label: 'W', value: `$${avgWin.toFixed(0)}`, pct: (avgWin / awlMax) * 100, color: 'profit' },
               { label: 'L', value: `$${Math.abs(avgLoss).toFixed(0)}`, pct: (Math.abs(avgLoss) / awlMax) * 100, color: 'loss' },
             ]} />}
           </StatCard>
 
-          <StatCard testId="kpi-longshort" label="Long vs Short" value={view ? usd(longPnl + shortPnl) : '—'} sub="Total P&L" accent={longPnl + shortPnl >= 0 ? 'profit' : 'loss'}>
+          <StatCard testId="kpi-longshort" index={2} label="Long vs Short" value={view ? usd(longPnl + shortPnl) : '—'} count={view ? longPnl + shortPnl : undefined} format={usd} sub="Total P&L" accent={longPnl + shortPnl >= 0 ? 'profit' : 'loss'} spark={cumSpark}>
             {view && <TwinBars rows={[
               { label: 'L', value: usd(longPnl), pct: (Math.abs(longPnl) / lsMax) * 100, color: longPnl >= 0 ? 'profit' : 'loss' },
               { label: 'S', value: usd(shortPnl), pct: (Math.abs(shortPnl) / lsMax) * 100, color: shortPnl >= 0 ? 'profit' : 'loss' },
             ]} />}
           </StatCard>
 
-          <StatCard testId="kpi-streaks" label="Max Streaks" value={view ? `${view.maxWinStreak} / ${view.maxLossStreak}` : '—'} sub="Best win / loss run" accent="neutral" />
+          <StatCard testId="kpi-streaks" index={3} label="Max Streaks" value={view ? `${view.maxWinStreak} / ${view.maxLossStreak}` : '—'} sub="Best win / loss run" accent="neutral" />
 
-          <StatCard testId="kpi-duration" label="Avg Duration" value={view ? fmtDur(view.avgDurationSecs) : '—'} sub="Avg per trade" accent="neutral" />
+          <StatCard testId="kpi-duration" index={4} label="Avg Duration" value={view ? fmtDur(view.avgDurationSecs) : '—'} sub="Avg per trade" accent="neutral" />
         </div>
 
         {/* Main grid */}
@@ -248,7 +256,7 @@ export default function DashboardPage() {
             <div>
               {loading ? (
                 Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i} className="px-5 py-4 border-b border-border-soft last:border-0"><div className="h-3 w-32 bg-surface-hover rounded" /></div>
+                  <div key={i} className="px-5 py-4 border-b border-border-soft last:border-0"><div className="h-3 w-32 shimmer" /></div>
                 ))
               ) : recent.length === 0 ? (
                 <div className="px-5 py-10 text-center text-fg-3 text-[12px]">No closed positions yet.</div>
