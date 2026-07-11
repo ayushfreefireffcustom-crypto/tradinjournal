@@ -2,11 +2,43 @@
 
 import { Fragment } from 'react';
 import { useEffect, useState, useCallback, useMemo } from 'react';
+import {
+  DndContext, closestCenter, PointerSensor, KeyboardSensor, TouchSensor,
+  useSensor, useSensors, type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext, sortableKeyboardCoordinates, arrayMove, rectSortingStrategy,
+} from '@dnd-kit/sortable';
 import { api, type BrokerAccount, type AccountStats, type Trade, type JournalEntry } from '@/lib/api';
 import { statsForRange, rangeStart, RANGES, type RangeKey } from '@/lib/stats';
 import AppShell from '@/components/app-shell';
 import ConnectBrokerModal from '@/components/connect-broker-modal';
 import EquityChart from '@/components/equity-chart';
+import SortableCard from '@/components/sortable-card';
+
+// Rearrangeable analytics blocks. Order is persisted per-account in localStorage.
+// Spans are chosen so the default order tiles the 12-col grid cleanly; when the
+// user reorders, CSS grid auto-flow keeps rows filled left-to-right.
+const BLOCK_IDS = ['donut', 'pnldist', 'heatmap', 'timeofday', 'equity', 'bysymbol', 'tag', 'emotion', 'byday'] as const;
+type BlockId = (typeof BLOCK_IDS)[number];
+const DEFAULT_ORDER: BlockId[] = ['donut', 'pnldist', 'heatmap', 'timeofday', 'equity', 'bysymbol', 'tag', 'emotion', 'byday'];
+const SPANS: Record<BlockId, string> = {
+  donut: 'col-span-12 lg:col-span-5',
+  pnldist: 'col-span-12 lg:col-span-7',
+  heatmap: 'col-span-12 lg:col-span-5',
+  timeofday: 'col-span-12 lg:col-span-7',
+  equity: 'col-span-12',
+  bysymbol: 'col-span-12',
+  tag: 'col-span-12 lg:col-span-6',
+  emotion: 'col-span-12 lg:col-span-6',
+  byday: 'col-span-12',
+};
+const orderKey = (accountId: string) => `tradinx.analytics.order.${accountId}`;
+function sameOrder(a: BlockId[], b: BlockId[]) { return a.length === b.length && a.every((x, i) => x === b[i]); }
+function normalizeOrder(saved: string[]): BlockId[] {
+  const known = saved.filter((id): id is BlockId => (BLOCK_IDS as readonly string[]).includes(id));
+  return [...known, ...DEFAULT_ORDER.filter(id => !known.includes(id))];
+}
 
 interface GroupAgg { label: string; trades: number; wins: number; netPnl: number }
 interface GroupStat extends GroupAgg { winRate: number; avgPnl: number }
@@ -450,6 +482,42 @@ export default function AnalyticsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showConnect, setShowConnect] = useState(false);
+  const [order, setOrder] = useState<BlockId[]>(DEFAULT_ORDER);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  // Load persisted card order whenever the active account changes.
+  useEffect(() => {
+    if (!selected) return;
+    try {
+      const raw = localStorage.getItem(orderKey(selected.id));
+      setOrder(raw ? normalizeOrder(JSON.parse(raw)) : DEFAULT_ORDER);
+    } catch { setOrder(DEFAULT_ORDER); }
+  }, [selected]);
+
+  const persistOrder = useCallback((next: BlockId[]) => {
+    setOrder(next);
+    if (selected) { try { localStorage.setItem(orderKey(selected.id), JSON.stringify(next)); } catch {} }
+  }, [selected]);
+
+  const onDragEnd = useCallback((e: DragEndEvent) => {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    setOrder(prev => {
+      const oldIndex = prev.indexOf(active.id as BlockId);
+      const newIndex = prev.indexOf(over.id as BlockId);
+      if (oldIndex < 0 || newIndex < 0) return prev;
+      const next = arrayMove(prev, oldIndex, newIndex);
+      if (selected) { try { localStorage.setItem(orderKey(selected.id), JSON.stringify(next)); } catch {} }
+      return next;
+    });
+  }, [selected]);
+
+  const isDefaultOrder = sameOrder(order, DEFAULT_ORDER);
 
   const init = useCallback(async () => {
     try {
@@ -528,6 +596,146 @@ export default function AnalyticsPage() {
     setShowConnect(false);
   }
 
+  // Inner content for each rearrangeable block. The outer col-span + drag handle
+  // are supplied by <SortableCard>; here we render just the card body.
+  function renderBlock(id: BlockId) {
+    if (!view) return null;
+    switch (id) {
+      case 'donut':
+        return (
+          <div className="tcard h-full p-5">
+            <div className="text-[10px] tracking-[0.25em] text-fg-3">WIN_LOSS_RATIO</div>
+            <div className="font-display font-bold text-[16px] tracking-tight mt-1 mb-5">Strike rate</div>
+            <Donut wins={view.totalWins} losses={view.totalLosses} />
+            <div className="grid grid-cols-2 gap-3 mt-6 pt-5 border-t border-border-soft">
+              {[
+                { l: 'Avg Win', v: `+$${view.avgWin.toFixed(2)}`, c: 'text-profit' },
+                { l: 'Avg Loss', v: `$${view.avgLoss.toFixed(2)}`, c: 'text-loss' },
+                { l: 'Best Trade', v: `+$${view.bestTrade.toFixed(2)}`, c: 'text-profit' },
+                { l: 'Worst Trade', v: `$${view.worstTrade.toFixed(2)}`, c: 'text-loss' },
+              ].map(m => (
+                <div key={m.l}>
+                  <div className="text-[10px] tracking-[0.18em] text-fg-3 uppercase">{m.l}</div>
+                  <div className={`font-display font-bold text-[18px] tracking-tight mt-0.5 numeric ${m.c}`}>{m.v}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      case 'byday':
+        return (
+          <div className="tcard h-full p-5">
+            <div className="text-[10px] tracking-[0.25em] text-fg-3">PNL_BY_DAY</div>
+            <div className="font-display font-bold text-[16px] tracking-tight mt-1 mb-5">Day of week distribution</div>
+            <HBars data={view.byDay.map(d => ({ label: d.day, value: d.netPnl }))} />
+          </div>
+        );
+      case 'pnldist':
+        return (
+          <div className="tcard h-full p-5">
+            <div className="text-[10px] tracking-[0.25em] text-fg-3">PNL_DISTRIBUTION</div>
+            <div className="font-display font-bold text-[16px] tracking-tight mt-1 mb-5">Net P&L per trade</div>
+            <PnlDist trades={rangedTrades} />
+          </div>
+        );
+      case 'heatmap':
+        return (
+          <div className="tcard h-full p-5">
+            <div className="text-[10px] tracking-[0.25em] text-fg-3">SESSION_HEATMAP</div>
+            <div className="font-display font-bold text-[16px] tracking-tight mt-1 mb-5">P&L by session × weekday · UTC</div>
+            <SessionHeatmap trades={rangedTrades} />
+          </div>
+        );
+      case 'timeofday':
+        return (
+          <div className="tcard h-full p-5">
+            <div className="text-[10px] tracking-[0.25em] text-fg-3">TIME_OF_DAY</div>
+            <div className="font-display font-bold text-[16px] tracking-tight mt-1 mb-5">Net P&L by hour · UTC open</div>
+            <TimeOfDay trades={rangedTrades} />
+          </div>
+        );
+      case 'equity':
+        return (
+          <div className="tcard h-full p-5" data-testid="dd-card">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-[10px] tracking-[0.25em] text-fg-3">EQUITY_CURVE</div>
+                <div className="font-display font-bold text-[16px] tracking-tight mt-1">Realised equity vs starting balance</div>
+              </div>
+              <span className="text-[10px] tracking-widest text-fg-3 border border-border-soft px-2 py-1">
+                PEAK ${Math.max(...view.equityCurve.map(e => e.equity)).toLocaleString()}
+              </span>
+            </div>
+            <div className="mt-4">
+              <EquityChart data={view.equityCurve} height={260} startingBalance={view.startingBalance} />
+            </div>
+          </div>
+        );
+      case 'bysymbol':
+        return (
+          <div className="tcard h-full p-0">
+            <div className="px-5 py-4 border-b border-border-soft flex items-center justify-between">
+              <div>
+                <div className="text-[10px] tracking-[0.25em] text-fg-3">PERFORMANCE_BY_SYMBOL</div>
+                <div className="font-display font-bold text-[16px] tracking-tight mt-1">Instrument analytics</div>
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[760px] text-[12px]">
+                <thead>
+                  <tr className="border-b border-border">
+                    {['Symbol', 'Trades', 'Wins', 'Losses', 'Win Rate', 'Net P&L', 'Avg P&L'].map(h => (
+                      <th key={h} className="px-5 py-2.5 text-left text-[10px] tracking-[0.22em] text-fg-3 uppercase font-medium">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {view.bySymbol.map(s => (
+                    <tr key={s.symbol} className="border-b border-border-soft hover:bg-surface-hover transition-colors">
+                      <td className="px-5 py-3 font-display font-bold tracking-tight">{s.symbol}</td>
+                      <td className="px-5 py-3 numeric text-fg-2">{s.trades}</td>
+                      <td className="px-5 py-3 numeric text-profit">{s.wins}</td>
+                      <td className="px-5 py-3 numeric text-loss">{s.losses}</td>
+                      <td className="px-5 py-3">
+                        <span className={`px-2 py-0.5 text-[10px] tracking-widest border ${s.winRate >= 0.5 ? 'text-profit border-profit/30 bg-profit/10' : 'text-loss border-loss/30 bg-loss/10'}`}>
+                          {(s.winRate * 100).toFixed(0)}%
+                        </span>
+                      </td>
+                      <td className={`px-5 py-3 numeric font-medium ${s.netPnl >= 0 ? 'text-profit' : 'text-loss'}`}>{s.netPnl >= 0 ? '+' : ''}${s.netPnl.toFixed(2)}</td>
+                      <td className={`px-5 py-3 numeric ${s.avgPnl >= 0 ? 'text-profit' : 'text-loss'}`}>{s.avgPnl >= 0 ? '+' : ''}${s.avgPnl.toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+      case 'tag':
+        return (
+          <GroupStatCard
+            testId="perf-by-tag"
+            title="PERFORMANCE_BY_TAG"
+            subtitle="Setup edge"
+            colLabel="Tag"
+            rows={tagStats}
+            emptyHint="No tagged trades yet — add setup tags in Chart Replay or Journal to unlock this."
+          />
+        );
+      case 'emotion':
+        return (
+          <GroupStatCard
+            testId="perf-by-emotion"
+            title="PERFORMANCE_BY_EMOTION"
+            subtitle="Psychology edge"
+            colLabel="Emotion"
+            rows={emotionStats}
+            negativeLabels={['FOMO', 'Revenge', 'Hesitant']}
+            emptyHint="No emotions logged yet — tag your trades' emotion to unlock this."
+          />
+        );
+    }
+  }
+
   return (
     <AppShell
       accounts={accounts}
@@ -584,134 +792,28 @@ export default function AnalyticsPage() {
               ))}
             </div>
 
-            {/* Donut + Day */}
-            <div className="grid grid-cols-12 gap-3 mb-3">
-              <div className="tcard col-span-12 lg:col-span-4 p-5">
-                <div className="text-[10px] tracking-[0.25em] text-fg-3">WIN_LOSS_RATIO</div>
-                <div className="font-display font-bold text-[16px] tracking-tight mt-1 mb-5">Strike rate</div>
-                <Donut wins={view.totalWins} losses={view.totalLosses} />
-                <div className="grid grid-cols-2 gap-3 mt-6 pt-5 border-t border-border-soft">
-                  {[
-                    { l: 'Avg Win',  v: `+$${view.avgWin.toFixed(2)}`, c: 'text-profit' },
-                    { l: 'Avg Loss', v: `$${view.avgLoss.toFixed(2)}`, c: 'text-loss' },
-                    { l: 'Best Trade',  v: `+$${view.bestTrade.toFixed(2)}`, c: 'text-profit' },
-                    { l: 'Worst Trade', v: `$${view.worstTrade.toFixed(2)}`, c: 'text-loss' },
-                  ].map(m => (
-                    <div key={m.l}>
-                      <div className="text-[10px] tracking-[0.18em] text-fg-3 uppercase">{m.l}</div>
-                      <div className={`font-display font-bold text-[18px] tracking-tight mt-0.5 numeric ${m.c}`}>{m.v}</div>
-                    </div>
+            {/* Rearrange toolbar */}
+            <div className="flex items-center justify-between gap-3 mb-3" data-testid="analytics-arrange-bar">
+              <span className="text-[10px] tracking-[0.2em] text-fg-3 uppercase">Drag the ⠿ handle to rearrange boxes</span>
+              {!isDefaultOrder && (
+                <button onClick={() => persistOrder(DEFAULT_ORDER)} className="btn btn-ghost py-1.5 text-[10px]" data-testid="analytics-reset-layout">
+                  RESET LAYOUT
+                </button>
+              )}
+            </div>
+
+            {/* Rearrangeable analytics grid */}
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+              <SortableContext items={order} strategy={rectSortingStrategy}>
+                <div className="grid grid-cols-12 gap-3" data-testid="analytics-grid">
+                  {order.map(id => (
+                    <SortableCard key={id} id={id} className={SPANS[id]}>
+                      {renderBlock(id)}
+                    </SortableCard>
                   ))}
                 </div>
-              </div>
-
-              <div className="tcard col-span-12 lg:col-span-8 p-5">
-                <div className="text-[10px] tracking-[0.25em] text-fg-3">PNL_BY_DAY</div>
-                <div className="font-display font-bold text-[16px] tracking-tight mt-1 mb-5">Day of week distribution</div>
-                <HBars data={view.byDay.map(d => ({ label: d.day, value: d.netPnl }))} />
-              </div>
-            </div>
-
-            {/* R-mult + Session heatmap */}
-            <div className="grid grid-cols-12 gap-3 mb-3">
-              <div className="tcard col-span-12 lg:col-span-7 p-5">
-                <div className="text-[10px] tracking-[0.25em] text-fg-3">PNL_DISTRIBUTION</div>
-                <div className="font-display font-bold text-[16px] tracking-tight mt-1 mb-5">Net P&L per trade</div>
-                <PnlDist trades={rangedTrades} />
-              </div>
-
-              <div className="tcard col-span-12 lg:col-span-5 p-5">
-                <div className="text-[10px] tracking-[0.25em] text-fg-3">SESSION_HEATMAP</div>
-                <div className="font-display font-bold text-[16px] tracking-tight mt-1 mb-5">P&L by session × weekday · UTC</div>
-                <SessionHeatmap trades={rangedTrades} />
-              </div>
-            </div>
-
-            {/* Time of day */}
-            <div className="tcard p-5 mb-3">
-              <div className="text-[10px] tracking-[0.25em] text-fg-3">TIME_OF_DAY</div>
-              <div className="font-display font-bold text-[16px] tracking-tight mt-1 mb-5">Net P&L by hour · UTC open</div>
-              <TimeOfDay trades={rangedTrades} />
-            </div>
-
-            {/* Drawdown curve */}
-            <div className="tcard p-5 mb-3" data-testid="dd-card">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-[10px] tracking-[0.25em] text-fg-3">EQUITY_CURVE</div>
-                  <div className="font-display font-bold text-[16px] tracking-tight mt-1">Realised equity vs starting balance</div>
-                </div>
-                <span className="text-[10px] tracking-widest text-fg-3 border border-border-soft px-2 py-1">
-                  PEAK ${Math.max(...view.equityCurve.map(e => e.equity)).toLocaleString()}
-                </span>
-              </div>
-              <div className="mt-4">
-                <EquityChart data={view.equityCurve} height={260} startingBalance={view.startingBalance} />
-              </div>
-            </div>
-
-            {/* Symbol breakdown table */}
-            <div className="tcard p-0">
-              <div className="px-5 py-4 border-b border-border-soft flex items-center justify-between">
-                <div>
-                  <div className="text-[10px] tracking-[0.25em] text-fg-3">PERFORMANCE_BY_SYMBOL</div>
-                  <div className="font-display font-bold text-[16px] tracking-tight mt-1">Instrument analytics</div>
-                </div>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[760px] text-[12px]">
-                  <thead>
-                    <tr className="border-b border-border">
-                      {['Symbol', 'Trades', 'Wins', 'Losses', 'Win Rate', 'Net P&L', 'Avg P&L'].map(h => (
-                        <th key={h} className="px-5 py-2.5 text-left text-[10px] tracking-[0.22em] text-fg-3 uppercase font-medium">{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {view.bySymbol.map(s => (
-                      <tr key={s.symbol} className="border-b border-border-soft hover:bg-surface-hover transition-colors">
-                        <td className="px-5 py-3 font-display font-bold tracking-tight">{s.symbol}</td>
-                        <td className="px-5 py-3 numeric text-fg-2">{s.trades}</td>
-                        <td className="px-5 py-3 numeric text-profit">{s.wins}</td>
-                        <td className="px-5 py-3 numeric text-loss">{s.losses}</td>
-                        <td className="px-5 py-3">
-                          <span className={`px-2 py-0.5 text-[10px] tracking-widest border ${s.winRate >= 0.5 ? 'text-profit border-profit/30 bg-profit/10' : 'text-loss border-loss/30 bg-loss/10'}`}>
-                            {(s.winRate * 100).toFixed(0)}%
-                          </span>
-                        </td>
-                        <td className={`px-5 py-3 numeric font-medium ${s.netPnl >= 0 ? 'text-profit' : 'text-loss'}`}>{s.netPnl >= 0 ? '+' : ''}${s.netPnl.toFixed(2)}</td>
-                        <td className={`px-5 py-3 numeric ${s.avgPnl >= 0 ? 'text-profit' : 'text-loss'}`}>{s.avgPnl >= 0 ? '+' : ''}${s.avgPnl.toFixed(2)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Tag + emotion performance (from journal entries) */}
-            <div className="grid grid-cols-12 gap-3 mt-3">
-              <div className="col-span-12 lg:col-span-6">
-                <GroupStatCard
-                  testId="perf-by-tag"
-                  title="PERFORMANCE_BY_TAG"
-                  subtitle="Setup edge"
-                  colLabel="Tag"
-                  rows={tagStats}
-                  emptyHint="No tagged trades yet — add setup tags in Chart Replay or Journal to unlock this."
-                />
-              </div>
-              <div className="col-span-12 lg:col-span-6">
-                <GroupStatCard
-                  testId="perf-by-emotion"
-                  title="PERFORMANCE_BY_EMOTION"
-                  subtitle="Psychology edge"
-                  colLabel="Emotion"
-                  rows={emotionStats}
-                  negativeLabels={['FOMO', 'Revenge', 'Hesitant']}
-                  emptyHint="No emotions logged yet — tag your trades' emotion to unlock this."
-                />
-              </div>
-            </div>
+              </SortableContext>
+            </DndContext>
           </>
         )}
       </div>
