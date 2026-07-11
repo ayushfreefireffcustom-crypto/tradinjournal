@@ -4,21 +4,7 @@ import { useEffect, useMemo, useState, useCallback } from 'react';
 import AppShell from '@/components/app-shell';
 import ConnectBrokerModal from '@/components/connect-broker-modal';
 import { api, type BrokerAccount, type Trade } from '@/lib/api';
-
-const WEEKDAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
-const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-
-interface DayAgg { netPnl: number; trades: number }
-
-// Local-date key so cells match what the trader sees in their own timezone.
-function dayKey(y: number, m: number, d: number): string { return `${y}-${m}-${d}`; }
-
-function money(v: number): string {
-  const sign = v < 0 ? '-' : '+';
-  const a = Math.abs(v);
-  if (a >= 1000) return `${sign}$${(a / 1000).toFixed(1)}k`;
-  return `${sign}$${a.toFixed(a < 100 ? 0 : 0)}`;
-}
+import { aggregateByCloseDate, buildMonthView, calMoney as money, cellBg, WEEKDAYS, MONTHS } from '@/lib/calendar';
 
 export default function CalendarPage() {
   const [accounts, setAccounts] = useState<BrokerAccount[]>([]);
@@ -53,62 +39,13 @@ export default function CalendarPage() {
   }, []);
   useEffect(() => { if (selected) loadTrades(selected); }, [selected, loadTrades]);
 
-  // Aggregate closed trades by local close-date.
-  const byDay = useMemo(() => {
-    const map = new Map<string, DayAgg>();
-    for (const t of trades) {
-      if (t.status !== 'CLOSED' || !t.closeTime) continue;
-      const d = new Date(t.closeTime);
-      const key = dayKey(d.getFullYear(), d.getMonth(), d.getDate());
-      const agg = map.get(key) ?? { netPnl: 0, trades: 0 };
-      agg.netPnl += t.netPnl;
-      agg.trades += 1;
-      map.set(key, agg);
-    }
-    return map;
-  }, [trades]);
-
-  // Build the calendar grid (leading blanks + this month's days, padded to full weeks).
-  const weeks = useMemo(() => {
-    const firstWeekday = new Date(view.year, view.month, 1).getDay();
-    const daysInMonth = new Date(view.year, view.month + 1, 0).getDate();
-    const cells: (number | null)[] = [];
-    for (let i = 0; i < firstWeekday; i++) cells.push(null);
-    for (let d = 1; d <= daysInMonth; d++) cells.push(d);
-    while (cells.length % 7 !== 0) cells.push(null);
-    const rows: (number | null)[][] = [];
-    for (let i = 0; i < cells.length; i += 7) rows.push(cells.slice(i, i + 7));
-    return rows;
-  }, [view]);
-
-  const monthStats = useMemo(() => {
-    let net = 0, tradeCount = 0, tradingDays = 0, best = -Infinity, worst = Infinity;
-    const daysInMonth = new Date(view.year, view.month + 1, 0).getDate();
-    for (let d = 1; d <= daysInMonth; d++) {
-      const agg = byDay.get(dayKey(view.year, view.month, d));
-      if (!agg) continue;
-      net += agg.netPnl;
-      tradeCount += agg.trades;
-      tradingDays += 1;
-      best = Math.max(best, agg.netPnl);
-      worst = Math.min(worst, agg.netPnl);
-    }
-    return {
-      net, tradeCount, tradingDays,
-      best: best === -Infinity ? 0 : best,
-      worst: worst === Infinity ? 0 : worst,
-    };
-  }, [byDay, view]);
-
-  const maxAbs = useMemo(() => {
-    const daysInMonth = new Date(view.year, view.month + 1, 0).getDate();
-    let m = 1;
-    for (let d = 1; d <= daysInMonth; d++) {
-      const agg = byDay.get(dayKey(view.year, view.month, d));
-      if (agg) m = Math.max(m, Math.abs(agg.netPnl));
-    }
-    return m;
-  }, [byDay, view]);
+  // Aggregate closed trades by local close-date, then build the month grid
+  // (with per-week totals) via the shared calendar helpers.
+  const byDay = useMemo(() => aggregateByCloseDate(trades), [trades]);
+  const { weeks, weekTotals, monthStats, maxAbs } = useMemo(
+    () => buildMonthView(view.year, view.month, byDay),
+    [byDay, view],
+  );
 
   function shiftMonth(delta: number) {
     setView(v => {
@@ -144,9 +81,9 @@ export default function CalendarPage() {
             </h1>
           </div>
           <div className="flex items-center gap-1">
-            <button onClick={() => shiftMonth(-1)} data-testid="cal-prev" className="w-9 h-9 border border-border-soft text-fg-3 hover:text-fg hover:border-border-strong flex items-center justify-center">←</button>
-            <button onClick={goToday} data-testid="cal-today" className="px-3 h-9 border border-border-soft text-[10px] tracking-[0.22em] text-fg-2 hover:text-fg hover:border-border-strong">TODAY</button>
-            <button onClick={() => shiftMonth(1)} data-testid="cal-next" className="w-9 h-9 border border-border-soft text-fg-3 hover:text-fg hover:border-border-strong flex items-center justify-center">→</button>
+            <button onClick={() => shiftMonth(-1)} data-testid="cal-prev" className="w-9 h-9 rounded-md border border-border-soft text-fg-3 hover:text-fg hover:border-border-strong flex items-center justify-center press focus-ring">←</button>
+            <button onClick={goToday} data-testid="cal-today" className="px-3 h-9 rounded-md border border-border-soft text-[10px] tracking-[0.22em] text-fg-2 hover:text-fg hover:border-border-strong press focus-ring">TODAY</button>
+            <button onClick={() => shiftMonth(1)} data-testid="cal-next" className="w-9 h-9 rounded-md border border-border-soft text-fg-3 hover:text-fg hover:border-border-strong flex items-center justify-center press focus-ring">→</button>
           </div>
         </div>
 
@@ -174,36 +111,33 @@ export default function CalendarPage() {
 
         {/* Grid */}
         <div className="tcard p-3 sm:p-4">
-          <div className="grid grid-cols-7 gap-1 sm:gap-2 mb-2">
+          <div className="grid grid-cols-7 md:grid-cols-8 gap-1 sm:gap-2 mb-2">
             {WEEKDAYS.map(w => (
               <div key={w} className="text-center text-[9px] sm:text-[10px] tracking-widest text-fg-3 py-1">{w}</div>
             ))}
+            <div className="hidden md:block text-center text-[9px] sm:text-[10px] tracking-widest text-fg-3 py-1">WEEKLY</div>
           </div>
 
           {loading ? (
-            <div className="grid grid-cols-7 gap-1 sm:gap-2">
-              {Array.from({ length: 35 }).map((_, i) => <div key={i} className="aspect-square sm:aspect-[4/3] bg-surface animate-pulse" />)}
+            <div className="grid grid-cols-7 md:grid-cols-8 gap-1 sm:gap-2">
+              {Array.from({ length: 40 }).map((_, i) => <div key={i} className="aspect-square sm:aspect-[4/3] bg-surface animate-pulse" />)}
             </div>
           ) : (
             <div className="flex flex-col gap-1 sm:gap-2">
               {weeks.map((week, wi) => (
-                <div key={wi} className="grid grid-cols-7 gap-1 sm:gap-2">
-                  {week.map((d, di) => {
-                    if (d === null) return <div key={di} className="aspect-square sm:aspect-[4/3]" />;
-                    const agg = byDay.get(dayKey(view.year, view.month, d));
+                <div key={wi} className="grid grid-cols-7 md:grid-cols-8 gap-1 sm:gap-2">
+                  {week.map((cell, di) => {
+                    if (cell.day === null) return <div key={di} className="aspect-square sm:aspect-[4/3]" />;
+                    const agg = cell.agg;
                     const pos = agg ? agg.netPnl >= 0 : false;
-                    const intensity = agg ? Math.min(1, Math.abs(agg.netPnl) / maxAbs) : 0;
-                    const bg = agg
-                      ? (pos ? `rgba(0, 197, 102, ${0.08 + intensity * 0.5})` : `rgba(255, 59, 48, ${0.08 + intensity * 0.5})`)
-                      : undefined;
                     return (
                       <div
                         key={di}
-                        data-testid={`cal-day-${d}`}
-                        className={`aspect-square sm:aspect-[4/3] border p-1.5 sm:p-2 flex flex-col ${agg ? '' : 'bg-surface/40'} ${isToday(d) ? 'border-fg' : 'border-border-soft'}`}
-                        style={bg ? { background: bg } : undefined}
+                        data-testid={`cal-day-${cell.day}`}
+                        className={`aspect-square sm:aspect-[4/3] rounded-md border p-1.5 sm:p-2 flex flex-col overflow-hidden transition-[filter] duration-[var(--dur-hover)] hover:brightness-125 ${agg ? '' : 'bg-surface/40'} ${isToday(cell.day) ? 'border-fg' : 'border-border-soft'}`}
+                        style={agg ? { background: cellBg(agg.netPnl, maxAbs) } : undefined}
                       >
-                        <span className={`text-[10px] sm:text-[11px] numeric ${isToday(d) ? 'text-fg font-bold' : 'text-fg-3'}`}>{d}</span>
+                        <span className={`text-[10px] sm:text-[11px] numeric ${isToday(cell.day) ? 'text-fg font-bold' : 'text-fg-3'}`}>{cell.day}</span>
                         {agg && (
                           <div className="mt-auto text-right">
                             <div className={`text-[10px] sm:text-[13px] font-display font-bold tracking-tight numeric ${pos ? 'text-profit' : 'text-loss'}`}>
@@ -215,6 +149,17 @@ export default function CalendarPage() {
                       </div>
                     );
                   })}
+                  {/* Weekly total */}
+                  <div className="hidden md:flex aspect-[4/3] rounded-md border border-border bg-surface-hover flex-col items-center justify-center">
+                    {weekTotals[wi]!.days > 0 ? (
+                      <>
+                        <span className={`text-[11px] sm:text-[13px] font-semibold numeric ${weekTotals[wi]!.netPnl >= 0 ? 'text-profit' : 'text-loss'}`}>{money(weekTotals[wi]!.netPnl)}</span>
+                        <span className="text-[8px] sm:text-[9px] tracking-widest text-fg-3 numeric">{weekTotals[wi]!.trades}T</span>
+                      </>
+                    ) : (
+                      <span className="text-[10px] text-fg-3">—</span>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
