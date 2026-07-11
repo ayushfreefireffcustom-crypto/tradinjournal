@@ -7,9 +7,11 @@ import ConnectBrokerModal from '@/components/connect-broker-modal';
 import DealsTable from '@/components/deals-table';
 import { api, type BrokerAccount, type Deal, type Trade } from '@/lib/api';
 import { toCsv, downloadCsv, dateStamp } from '@/lib/csv';
+import { useToast } from '@/components/toast';
 
 export default function TradesPage() {
   const router = useRouter();
+  const toast = useToast();
   const [accounts, setAccounts] = useState<BrokerAccount[]>([]);
   const [selected, setSelected] = useState<BrokerAccount | null>(null);
   const [trades, setTrades] = useState<Trade[]>([]);
@@ -96,6 +98,7 @@ export default function TradesPage() {
       const headers = ['Deal Ticket', 'Position ID', 'Symbol', 'Type', 'Entry', 'Volume', 'Price', 'Profit', 'Commission', 'Swap', 'Deal Time'];
       const rows = deals.map(d => [d.dealTicket, d.positionId, d.symbol, d.type, d.entry, d.volume, d.price, d.profit, d.commission, d.swap, d.dealTime]);
       downloadCsv(`tradinx-deals-${acc}-${dateStamp()}.csv`, toCsv(headers, rows));
+      toast.success(`Exported ${deals.length} deals to CSV`);
       return;
     }
     const headers = ['Position ID', 'Symbol', 'Direction', 'Status', 'Open Time', 'Close Time', 'Volume', 'Entry Price', 'Exit Price', 'Gross P&L', 'Commission', 'Swap', 'Net P&L', 'Duration (s)', 'Tags'];
@@ -105,6 +108,7 @@ export default function TradesPage() {
       (t.tags ?? []).join('; '),
     ]);
     downloadCsv(`tradinx-trades-${acc}-${dateStamp()}.csv`, toCsv(headers, rows));
+    toast.success(`Exported ${sorted.length} trades to CSV`);
   }
 
   return (

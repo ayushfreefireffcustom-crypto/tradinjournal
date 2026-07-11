@@ -5,6 +5,7 @@ import AppShell from '@/components/app-shell';
 import ConnectBrokerModal from '@/components/connect-broker-modal';
 import { api, type BrokerAccount, type JournalEntry } from '@/lib/api';
 import { toCsv, downloadCsv, dateStamp } from '@/lib/csv';
+import { useToast } from '@/components/toast';
 
 const EMOTIONS = ['Disciplined', 'Confident', 'Patient', 'FOMO', 'Revenge', 'Hesitant'];
 const NEGATIVE = ['FOMO', 'Revenge', 'Hesitant'];
@@ -40,6 +41,7 @@ function emptyDraft(): Draft {
 }
 
 export default function NotebookPage() {
+  const toast = useToast();
   const [accounts, setAccounts] = useState<BrokerAccount[]>([]);
   const [selected, setSelected] = useState<BrokerAccount | null>(null);
   const [entries, setEntries] = useState<JournalEntry[]>([]);
@@ -131,9 +133,11 @@ export default function NotebookPage() {
         const rest = prev.filter(e => e.id !== saved.id);
         return [saved, ...rest];
       });
+      toast.success(draft.id ? 'Entry updated' : 'Entry saved');
       startNew();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to save entry');
+      toast.error('Failed to save entry');
     } finally {
       setSaving(false);
     }
@@ -147,8 +151,10 @@ export default function NotebookPage() {
       await api.journal.delete(id);
       setEntries(prev => prev.filter(e => e.id !== id));
       if (draft.id === id) startNew();
+      toast.success('Entry deleted');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to delete entry');
+      toast.error('Failed to delete entry');
     } finally {
       setDeletingId(null);
     }
@@ -167,6 +173,7 @@ export default function NotebookPage() {
       e.tradeId ?? '', accountName(e.brokerAccountId) ?? '', e.body,
     ]);
     downloadCsv(`tradinx-journal-${dateStamp()}.csv`, toCsv(headers, rows));
+    toast.success(`Exported ${sorted.length} entries to CSV`);
   }
 
   return (

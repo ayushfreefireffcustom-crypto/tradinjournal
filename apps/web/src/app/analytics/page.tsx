@@ -18,6 +18,7 @@ import SortableCard from '@/components/sortable-card';
 import RollingChart from '@/components/rolling-chart';
 import ScatterChart from '@/components/scatter-chart';
 import YearHeatmap from '@/components/year-heatmap';
+import { useToast } from '@/components/toast';
 
 // Rearrangeable analytics blocks. Order is persisted per-account in localStorage.
 // Spans are chosen so the default order tiles the 12-col grid cleanly; when the
@@ -489,6 +490,7 @@ export default function AnalyticsPage() {
   const [error, setError] = useState('');
   const [showConnect, setShowConnect] = useState(false);
   const [order, setOrder] = useState<BlockId[]>(DEFAULT_ORDER);
+  const toast = useToast();
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -820,7 +822,7 @@ export default function AnalyticsPage() {
             <div className="flex items-center justify-between gap-3 mb-3" data-testid="analytics-arrange-bar">
               <span className="text-[10px] tracking-[0.2em] text-fg-3 uppercase">Drag the ⠿ handle to rearrange boxes</span>
               {!isDefaultOrder && (
-                <button onClick={() => persistOrder(DEFAULT_ORDER)} className="btn btn-ghost py-1.5 text-[10px]" data-testid="analytics-reset-layout">
+                <button onClick={() => { persistOrder(DEFAULT_ORDER); toast.info('Layout reset to default'); }} className="btn btn-ghost py-1.5 text-[10px]" data-testid="analytics-reset-layout">
                   RESET LAYOUT
                 </button>
               )}
