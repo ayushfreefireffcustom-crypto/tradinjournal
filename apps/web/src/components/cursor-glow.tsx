@@ -15,32 +15,34 @@ export default function CursorGlow() {
     const el = ref.current;
     if (!el) return;
 
-    let tx = 0, ty = 0, x = 0, y = 0, raf = 0, seen = false;
+    let x = 0, y = 0, raf = 0, dirty = false, seen = false;
 
+    // Follow the pointer exactly (no easing → no lag). We only defer the DOM
+    // write to the next frame to avoid layout thrash on rapid pointermove.
+    const flush = () => {
+      raf = 0;
+      if (!dirty) return;
+      dirty = false;
+      el.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%)`;
+    };
     const move = (e: PointerEvent) => {
-      tx = e.clientX; ty = e.clientY;
-      if (!seen) { seen = true; x = tx; y = ty; el.style.opacity = '1'; }
+      x = e.clientX; y = e.clientY;
+      dirty = true;
+      if (!seen) { seen = true; el.style.opacity = '1'; }
+      if (!raf) raf = requestAnimationFrame(flush);
     };
     const leave = () => { el.style.opacity = '0'; };
     const enter = () => { if (seen) el.style.opacity = '1'; };
 
-    const loop = () => {
-      x += (tx - x) * 0.18;
-      y += (ty - y) * 0.18;
-      el.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%)`;
-      raf = requestAnimationFrame(loop);
-    };
-
     window.addEventListener('pointermove', move, { passive: true });
     document.addEventListener('pointerleave', leave);
     document.addEventListener('pointerenter', enter);
-    raf = requestAnimationFrame(loop);
 
     return () => {
       window.removeEventListener('pointermove', move);
       document.removeEventListener('pointerleave', leave);
       document.removeEventListener('pointerenter', enter);
-      cancelAnimationFrame(raf);
+      if (raf) cancelAnimationFrame(raf);
     };
   }, []);
 
