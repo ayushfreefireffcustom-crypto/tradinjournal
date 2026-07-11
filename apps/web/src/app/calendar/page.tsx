@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, useCallback } from 'react';
 import AppShell from '@/components/app-shell';
 import ConnectBrokerModal from '@/components/connect-broker-modal';
 import { api, type BrokerAccount, type Trade } from '@/lib/api';
+import { CaretLeft, CaretRight } from '@phosphor-icons/react';
 import { aggregateByCloseDate, buildMonthView, calMoney as money, cellBg, WEEKDAYS, MONTHS } from '@/lib/calendar';
 
 export default function CalendarPage() {
@@ -81,9 +82,9 @@ export default function CalendarPage() {
             </h1>
           </div>
           <div className="flex items-center gap-1">
-            <button onClick={() => shiftMonth(-1)} data-testid="cal-prev" className="w-9 h-9 rounded-md border border-border-soft text-fg-3 hover:text-fg hover:border-border-strong flex items-center justify-center press focus-ring">←</button>
+            <button onClick={() => shiftMonth(-1)} data-testid="cal-prev" className="w-9 h-9 rounded-md border border-border-soft text-fg-3 hover:text-fg hover:border-border-strong flex items-center justify-center press focus-ring"><CaretLeft size={14} weight="bold" /></button>
             <button onClick={goToday} data-testid="cal-today" className="px-3 h-9 rounded-md border border-border-soft text-[10px] tracking-[0.22em] text-fg-2 hover:text-fg hover:border-border-strong press focus-ring">TODAY</button>
-            <button onClick={() => shiftMonth(1)} data-testid="cal-next" className="w-9 h-9 rounded-md border border-border-soft text-fg-3 hover:text-fg hover:border-border-strong flex items-center justify-center press focus-ring">→</button>
+            <button onClick={() => shiftMonth(1)} data-testid="cal-next" className="w-9 h-9 rounded-md border border-border-soft text-fg-3 hover:text-fg hover:border-border-strong flex items-center justify-center press focus-ring"><CaretRight size={14} weight="bold" /></button>
           </div>
         </div>
 

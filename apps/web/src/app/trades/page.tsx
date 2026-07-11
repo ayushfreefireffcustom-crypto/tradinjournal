@@ -8,6 +8,7 @@ import DealsTable from '@/components/deals-table';
 import { api, type BrokerAccount, type Deal, type Trade } from '@/lib/api';
 import { toCsv, downloadCsv, dateStamp } from '@/lib/csv';
 import { useToast } from '@/components/toast';
+import { ArrowUpRight, ArrowDownRight, DownloadSimple } from '@phosphor-icons/react';
 
 export default function TradesPage() {
   const router = useRouter();
@@ -160,9 +161,9 @@ export default function TradesPage() {
             onClick={exportCsv}
             disabled={(tab === 'deals' ? deals.length : sorted.length) === 0}
             data-testid="export-csv"
-            className="btn btn-ghost py-2 text-[10px] tracking-[0.22em] shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+            className="btn btn-ghost py-2 text-[10px] tracking-[0.22em] shrink-0 disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center gap-1.5"
           >
-            ↓ EXPORT CSV
+            <DownloadSimple size={13} weight="bold" /> EXPORT CSV
           </button>
         </div>
 
@@ -249,7 +250,7 @@ export default function TradesPage() {
                           className="border-b border-border-soft hover:bg-surface-hover transition-colors duration-[var(--dur-hover)] cursor-pointer"
                         >
                           <td className="px-4 py-3 font-display font-bold tracking-tight">{t.symbol}</td>
-                          <td className={`px-4 py-3 text-[10px] tracking-[0.22em] ${t.direction === 'LONG' ? 'text-profit' : 'text-loss'}`}>{t.direction === 'LONG' ? '↗ LONG' : '↘ SHORT'}</td>
+                          <td className={`px-4 py-3 text-[10px] tracking-[0.22em] ${t.direction === 'LONG' ? 'text-profit' : 'text-loss'}`}><span className="inline-flex items-center gap-1">{t.direction === 'LONG' ? <ArrowUpRight size={12} weight="bold" /> : <ArrowDownRight size={12} weight="bold" />}{t.direction}</span></td>
                           <td className="px-4 py-3 numeric text-fg-2">{t.volume.toFixed(2)}</td>
                           <td className="px-4 py-3 numeric text-fg-3">{new Date(t.openTime).toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' })}</td>
                           <td className="px-4 py-3 numeric text-fg-3">{t.closeTime ? new Date(t.closeTime).toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' }) : '—'}</td>

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import type { Trade } from '@/lib/api';
+import { CaretLeft, CaretRight } from '@phosphor-icons/react';
 import { aggregateByCloseDate, buildMonthView, calMoney, cellBg, WEEKDAYS, MONTHS } from '@/lib/calendar';
 
 // Compact month calendar with a right-hand Weekly-totals column, for embedding
@@ -36,9 +37,9 @@ export default function DashboardCalendar({ trades }: { trades: Trade[] }) {
           <span className={`text-[12px] numeric mr-1 ${monthStats.net >= 0 ? 'text-profit' : 'text-loss'}`}>
             {monthStats.tradingDays ? calMoney(monthStats.net) : '—'}
           </span>
-          <button onClick={() => shiftMonth(-1)} data-testid="dcal-prev" className="w-8 h-8 border border-border-soft rounded-md text-fg-3 hover:text-fg hover:border-border-strong flex items-center justify-center press focus-ring">←</button>
+          <button onClick={() => shiftMonth(-1)} data-testid="dcal-prev" className="w-8 h-8 border border-border-soft rounded-md text-fg-3 hover:text-fg hover:border-border-strong flex items-center justify-center press focus-ring"><CaretLeft size={13} weight="bold" /></button>
           <button onClick={() => setView({ year: now.getFullYear(), month: now.getMonth() })} data-testid="dcal-today" className="px-2.5 h-8 border border-border-soft rounded-md text-[10px] tracking-widest text-fg-2 hover:text-fg hover:border-border-strong press focus-ring">TODAY</button>
-          <button onClick={() => shiftMonth(1)} data-testid="dcal-next" className="w-8 h-8 border border-border-soft rounded-md text-fg-3 hover:text-fg hover:border-border-strong flex items-center justify-center press focus-ring">→</button>
+          <button onClick={() => shiftMonth(1)} data-testid="dcal-next" className="w-8 h-8 border border-border-soft rounded-md text-fg-3 hover:text-fg hover:border-border-strong flex items-center justify-center press focus-ring"><CaretRight size={13} weight="bold" /></button>
         </div>
       </div>
 
