@@ -7,7 +7,7 @@ import { CSS } from '@dnd-kit/utilities';
 // Wraps an analytics card so it can be dragged to reorder. Drag is initiated
 // only from the handle (top-right, revealed on hover / focus) so page scroll
 // and touch gestures over the card body are never hijacked.
-export default function SortableCard({ id, children }: { id: string; children: ReactNode }) {
+export default function SortableCard({ id, className = '', children }: { id: string; className?: string; children: ReactNode }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
 
   const style: React.CSSProperties = {
@@ -22,7 +22,7 @@ export default function SortableCard({ id, children }: { id: string; children: R
       ref={setNodeRef}
       style={style}
       data-testid={`sortable-${id}`}
-      className={`relative group h-full ${isDragging ? 'ring-1 ring-border-strong rounded-[var(--radius-card)]' : ''}`}
+      className={`relative group h-full ${className} ${isDragging ? 'ring-1 ring-border-strong rounded-[var(--radius-card)]' : ''}`}
     >
       <button
         {...attributes}
