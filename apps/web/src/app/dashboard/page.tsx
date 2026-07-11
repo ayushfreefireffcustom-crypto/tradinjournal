@@ -13,6 +13,8 @@ import { StatCard, TwinBars } from '@/components/stat-card';
 import AnimatedNumber from '@/components/animated-number';
 import { useToast } from '@/components/toast';
 import InsightsStrip from '@/components/insights-strip';
+import EmptyState from '@/components/empty-state';
+import { Receipt } from '@phosphor-icons/react';
 
 const NEGATIVE_EMOTIONS = ['FOMO', 'Revenge', 'Hesitant'];
 
@@ -274,7 +276,7 @@ export default function DashboardPage() {
                   <div key={i} className="px-5 py-4 border-b border-border-soft last:border-0"><div className="h-3 w-32 shimmer" /></div>
                 ))
               ) : recent.length === 0 ? (
-                <div className="px-5 py-10 text-center text-fg-3 text-[12px]">No closed positions yet.</div>
+                <EmptyState icon={Receipt} title="No closed positions yet" hint="Once trades close on this account, your latest fills appear here." testId="recent-empty" />
               ) : (
                 recent.map(t => {
                   const pos = t.netPnl >= 0;

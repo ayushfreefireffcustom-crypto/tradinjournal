@@ -6,6 +6,8 @@ import ConnectBrokerModal from '@/components/connect-broker-modal';
 import { api, type BrokerAccount, type JournalEntry } from '@/lib/api';
 import { toCsv, downloadCsv, dateStamp } from '@/lib/csv';
 import { useToast } from '@/components/toast';
+import EmptyState from '@/components/empty-state';
+import { NotePencil } from '@phosphor-icons/react';
 
 const EMOTIONS = ['Disciplined', 'Confident', 'Patient', 'FOMO', 'Revenge', 'Hesitant'];
 const NEGATIVE = ['FOMO', 'Revenge', 'Hesitant'];
@@ -328,8 +330,8 @@ export default function NotebookPage() {
                 <div key={i} className="tcard p-5 h-28 animate-pulse bg-surface" />
               ))
             ) : sorted.length === 0 ? (
-              <div className="tcard p-10 text-center text-fg-3 text-[12px]" data-testid="notebook-empty">
-                No journal entries yet. Write your first note on the left.
+              <div className="tcard" data-testid="notebook-empty">
+                <EmptyState icon={NotePencil} title="No journal entries yet" hint="Capture your trade rationale, emotions and lessons — write your first note on the left." />
               </div>
             ) : (
               sorted.map(e => {
