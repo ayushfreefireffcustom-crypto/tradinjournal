@@ -227,6 +227,30 @@ select.tinput::-ms-expand { display: none; }
 @keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 .marquee-track { animation: marquee 40s linear infinite; }
 
+/* Staggered rise — set --i on each item (its index) for a cascade entrance */
+.rise { animation: fade-up .5s var(--ease-premium) both; animation-delay: calc(var(--i, 0) * 45ms); }
+
+/* SVG line draw-in — requires pathLength="1" on the animated <path> */
+@keyframes draw-in { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+.draw-in { stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw-in var(--draw-dur, 1050ms) var(--ease-premium) forwards; }
+
+/* Generic fade-in (chart areas, dots) */
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+.fade-in { animation: fade-in var(--fade-dur, .6s) var(--ease-out) both; animation-delay: var(--fade-delay, 0ms); }
+
+/* Bar grow-in (from the baseline) */
+@keyframes grow-y { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+.grow-y { transform-origin: bottom; animation: grow-y .5s var(--ease-premium) both; animation-delay: calc(var(--i, 0) * 30ms); }
+
+/* Skeleton shimmer sweep */
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+.shimmer {
+  background: linear-gradient(90deg, var(--color-surface) 25%, var(--color-surface-hover) 50%, var(--color-surface) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s linear infinite;
+  border-radius: var(--radius-btn);
+}
+
 /* ─── Click-burst cursor effect (mounted globally; desktop + reduced-motion guarded in JS) */
 .click-burst-line {
   position: fixed; z-index: 600;
