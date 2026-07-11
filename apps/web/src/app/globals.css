@@ -246,9 +246,9 @@ select.tinput::-ms-expand { display: none; }
 /* ─── Cursor glow (soft white follower; desktop + reduced-motion guarded in JS) */
 .cursor-glow {
   position: fixed; top: 0; left: 0; z-index: 590;
-  width: 26px; height: 26px; border-radius: 999px;
+  width: 40px; height: 40px; border-radius: 999px;
   pointer-events: none; opacity: 0;
-  background: radial-gradient(circle, rgba(255,255,255,.18) 0%, rgba(255,255,255,.07) 42%, transparent 70%);
+  background: radial-gradient(circle, rgba(255,255,255,.45) 0%, rgba(255,255,255,.20) 38%, rgba(255,255,255,.06) 62%, transparent 75%);
   mix-blend-mode: screen;
   transition: opacity .3s ease;
   will-change: transform;
