@@ -3,6 +3,7 @@ import { JetBrains_Mono } from 'next/font/google';
 import { GeistSans } from 'geist/font/sans';
 import './globals.css';
 import ClickBurstEffect from '@/components/click-burst-effect';
+import CursorGlow from '@/components/cursor-glow';
 
 // Geist Sans is the primary UI font (text + headings) — self-hosted via
 // next/font. JetBrains Mono is kept for numeric / tabular data only. Both
@@ -24,6 +25,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="en" className={`dark ${GeistSans.variable} ${jetbrainsMono.variable}`}>
       <body className="min-h-screen bg-app text-fg antialiased">
         <ClickBurstEffect />
+        <CursorGlow />
         {children}
       </body>
     </html>
