@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { JetBrains_Mono } from 'next/font/google';
 import { GeistSans } from 'geist/font/sans';
 import './globals.css';
+import ClickBurstEffect from '@/components/click-burst-effect';
 
 // Geist Sans is the primary UI font (text + headings) — self-hosted via
 // next/font. JetBrains Mono is kept for numeric / tabular data only. Both
@@ -21,7 +22,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={`dark ${GeistSans.variable} ${jetbrainsMono.variable}`}>
-      <body className="min-h-screen bg-app text-fg antialiased">{children}</body>
+      <body className="min-h-screen bg-app text-fg antialiased">
+        <ClickBurstEffect />
+        {children}
+      </body>
     </html>
   );
 }
