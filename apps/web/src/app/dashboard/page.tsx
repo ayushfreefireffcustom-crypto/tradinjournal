@@ -29,16 +29,16 @@ function usd(v: number) { return `${v >= 0 ? '+' : '-'}$${Math.abs(v).toLocaleSt
 function MiniBars({ data }: { data: { day: string; netPnl: number }[] }) {
   const max = Math.max(...data.map(d => Math.abs(d.netPnl)), 1);
   return (
-    <div className="flex items-end gap-2 h-24">
+    <div className="flex items-end gap-2 h-full min-h-[110px]">
       {data.map(d => {
         const pos = d.netPnl >= 0;
         const h = Math.max(2, (Math.abs(d.netPnl) / max) * 100);
         return (
-          <div key={d.day} className="flex-1 flex flex-col items-center gap-2">
-            <div className="w-full relative flex items-end h-20">
+          <div key={d.day} className="flex-1 flex flex-col items-center gap-2 h-full">
+            <div className="w-full relative flex items-end flex-1 min-h-0">
               <div className="w-full rounded-sm transition-all" style={{ height: `${h}%`, background: pos ? '#08C465' : '#FE3A31' }} />
             </div>
-            <div className="text-[9px] tracking-widest text-fg-3 uppercase">{d.day}</div>
+            <div className="text-[9px] tracking-widest text-fg-3 uppercase shrink-0">{d.day}</div>
           </div>
         );
       })}
@@ -311,38 +311,43 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Behaviour */}
-          <div className="tcard self-start col-span-12 lg:col-span-4 p-5" data-testid="behavior-card">
-            <div className="text-[10px] tracking-[0.2em] text-fg-3 uppercase">Behaviour</div>
-            <div className="font-display font-bold text-[16px] tracking-tight mt-1 mb-4">Discipline signals</div>
-            <div className="space-y-3">
-              {[
-                { l: 'Current streak', v: behaviour.streakWin === null ? '—' : `${behaviour.streak}${behaviour.streakWin ? 'W' : 'L'}`, t: behaviour.streakWin === null ? 'neutral' : behaviour.streakWin ? 'profit' : 'loss', s: 'consecutive outcomes' },
-                { l: 'Tilt flags', v: behaviour.loggedCount === 0 ? '—' : String(behaviour.tilt), t: behaviour.tilt > 0 ? 'warning' : 'profit', s: behaviour.loggedCount === 0 ? 'no emotions logged' : 'fomo · revenge · hesitant' },
-                { l: 'Avg hold · winners', v: behaviour.winnersHold != null ? fmtDur(behaviour.winnersHold) : '—', t: 'neutral', s: 'time in winning trades' },
-                { l: 'Avg hold · losers', v: behaviour.losersHold != null ? fmtDur(behaviour.losersHold) : '—', t: behaviour.winnersHold != null && behaviour.losersHold != null && behaviour.losersHold > behaviour.winnersHold ? 'loss' : 'neutral', s: 'time in losing trades' },
-              ].map(row => (
-                <div key={row.l} className="flex items-center justify-between border-b border-border-soft pb-3 last:border-0 last:pb-0">
-                  <div>
-                    <div className="text-[12px]">{row.l}</div>
-                    <div className="text-[10px] text-fg-3 tracking-wide uppercase">{row.s}</div>
+          {/* Behaviour + Day-of-week — stacked so the column matches Recent fills'
+              height (Day-of-week grows to fill the remainder, no dead space). */}
+          <div className="col-span-12 lg:col-span-4 flex flex-col gap-3">
+            <div className="tcard p-5" data-testid="behavior-card">
+              <div className="text-[10px] tracking-[0.2em] text-fg-3 uppercase">Behaviour</div>
+              <div className="font-display font-bold text-[16px] tracking-tight mt-1 mb-4">Discipline signals</div>
+              <div className="space-y-3">
+                {[
+                  { l: 'Current streak', v: behaviour.streakWin === null ? '—' : `${behaviour.streak}${behaviour.streakWin ? 'W' : 'L'}`, t: behaviour.streakWin === null ? 'neutral' : behaviour.streakWin ? 'profit' : 'loss', s: 'consecutive outcomes' },
+                  { l: 'Tilt flags', v: behaviour.loggedCount === 0 ? '—' : String(behaviour.tilt), t: behaviour.tilt > 0 ? 'warning' : 'profit', s: behaviour.loggedCount === 0 ? 'no emotions logged' : 'fomo · revenge · hesitant' },
+                  { l: 'Avg hold · winners', v: behaviour.winnersHold != null ? fmtDur(behaviour.winnersHold) : '—', t: 'neutral', s: 'time in winning trades' },
+                  { l: 'Avg hold · losers', v: behaviour.losersHold != null ? fmtDur(behaviour.losersHold) : '—', t: behaviour.winnersHold != null && behaviour.losersHold != null && behaviour.losersHold > behaviour.winnersHold ? 'loss' : 'neutral', s: 'time in losing trades' },
+                ].map(row => (
+                  <div key={row.l} className="flex items-center justify-between border-b border-border-soft pb-3 last:border-0 last:pb-0">
+                    <div>
+                      <div className="text-[12px]">{row.l}</div>
+                      <div className="text-[10px] text-fg-3 tracking-wide uppercase">{row.s}</div>
+                    </div>
+                    <div className={`font-display font-black text-2xl tracking-tight numeric ${row.t === 'profit' ? 'text-profit' : row.t === 'warning' ? 'text-warning' : row.t === 'loss' ? 'text-loss' : 'text-fg'}`}>{row.v}</div>
                   </div>
-                  <div className={`font-display font-black text-2xl tracking-tight numeric ${row.t === 'profit' ? 'text-profit' : row.t === 'warning' ? 'text-warning' : row.t === 'loss' ? 'text-loss' : 'text-fg'}`}>{row.v}</div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
 
-          {/* Day of week */}
-          <div className="tcard self-start col-span-12 md:col-span-6 lg:col-span-4 p-5" data-testid="byday-card">
-            <div className="text-[10px] tracking-[0.2em] text-fg-3 uppercase">P&L by day</div>
-            <div className="font-display font-bold text-[16px] tracking-tight mt-1 mb-4">Day of week</div>
-            {view && <MiniBars data={view.byDay} />}
+            {/* Day of week — grows to fill the rest of the column */}
+            <div className="tcard p-5 flex flex-col flex-1" data-testid="byday-card">
+              <div className="text-[10px] tracking-[0.2em] text-fg-3 uppercase">P&L by day</div>
+              <div className="font-display font-bold text-[16px] tracking-tight mt-1 mb-4">Day of week</div>
+              <div className="flex-1 flex items-end min-h-[110px]">
+                {view && <MiniBars data={view.byDay} />}
+              </div>
+            </div>
           </div>
 
           {/* By symbol */}
           {view && view.bySymbol.length > 0 && (
-            <div className="tcard col-span-12 md:col-span-6 lg:col-span-8 p-0" data-testid="bysymbol-card">
+            <div className="tcard col-span-12 p-0" data-testid="bysymbol-card">
               <div className="px-5 py-4 border-b border-border-soft flex items-center justify-between">
                 <div>
                   <div className="text-[10px] tracking-[0.2em] text-fg-3 uppercase">Performance by symbol</div>
