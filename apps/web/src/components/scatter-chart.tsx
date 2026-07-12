@@ -75,9 +75,9 @@ export default function ScatterChart({ trades, height = 240 }: { trades: Trade[]
             <circle
               key={i}
               cx={toX(xVal(p))} cy={toY(p.netPnl)} r={rOf(p.volume)}
-              fill={p.netPnl >= 0 ? '#00C566' : '#FF3B30'}
+              fill={p.netPnl >= 0 ? '#08C465' : '#FE3A31'}
               fillOpacity={hover && hover.p === p ? 0.95 : 0.45}
-              stroke={p.netPnl >= 0 ? '#00C566' : '#FF3B30'} strokeWidth={hover && hover.p === p ? 1.2 : 0}
+              stroke={p.netPnl >= 0 ? '#08C465' : '#FE3A31'} strokeWidth={hover && hover.p === p ? 1.2 : 0}
               className="fade-in cursor-pointer"
               style={{ ['--fade-delay' as string]: `${Math.min(i * 6, 500)}ms` }}
               onPointerEnter={() => setHover({ leftPx: (toX(xVal(p)) / W) * 100, topPx: (toY(p.netPnl) / H) * 100, p })}

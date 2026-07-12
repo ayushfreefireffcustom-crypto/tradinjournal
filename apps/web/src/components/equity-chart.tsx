@@ -41,7 +41,7 @@ export default function EquityChart({ data, height = 220, startingBalance }: Pro
   const lastVal = data[data.length - 1]!.equity;
   const firstVal = data[0]!.equity;
   const positive = lastVal >= firstVal;
-  const color = positive ? '#00C566' : '#FF3B30';
+  const color = positive ? '#08C465' : '#FE3A31';
 
   const yLabels = 4;
   const yTicks = Array.from({ length: yLabels + 1 }, (_, i) => minV + (range * i) / yLabels);
@@ -62,7 +62,7 @@ export default function EquityChart({ data, height = 220, startingBalance }: Pro
 
   const hovered = hoverIdx != null ? data[hoverIdx] : null;
   const hoverColor = hoverIdx == null ? color
-    : data[hoverIdx]!.equity >= firstVal ? '#00C566' : '#FF3B30';
+    : data[hoverIdx]!.equity >= firstVal ? '#08C465' : '#FE3A31';
   // Tooltip horizontal position as a percentage of container width.
   const tipLeftPct = hoverIdx != null ? (toX(hoverIdx) / W) * 100 : 0;
   const nearRight = tipLeftPct > 62;

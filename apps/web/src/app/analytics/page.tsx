@@ -125,9 +125,9 @@ function Donut({ wins, losses }: { wins: number; losses: number }) {
   return (
     <div className="flex flex-col sm:flex-row items-center sm:items-center gap-5 sm:gap-6">
       <svg width={140} height={140} viewBox="0 0 140 140" className="shrink-0" data-testid="winloss-donut">
-        <circle cx={70} cy={70} r={R} fill="none" stroke="#FF3B30" strokeWidth={14} />
+        <circle cx={70} cy={70} r={R} fill="none" stroke="#FE3A31" strokeWidth={14} />
         <circle
-          cx={70} cy={70} r={R} fill="none" stroke="#00C566" strokeWidth={14}
+          cx={70} cy={70} r={R} fill="none" stroke="#08C465" strokeWidth={14}
           strokeDasharray={`${winDash} ${circ}`} strokeDashoffset={circ * 0.25}
           transform="rotate(-90 70 70)"
         />
@@ -154,7 +154,7 @@ function HBars({ data, maxLabelWidth = 56 }: { data: { label: string; value: num
           <div key={d.label} className="flex items-center gap-2 sm:gap-3 text-[11px] sm:text-[12px]">
             <span className="text-fg-3 text-[10px] tracking-widest uppercase text-right shrink-0" style={{ width: maxLabelWidth }}>{d.label}</span>
             <div className="flex-1 h-5 bg-surface-hover relative min-w-0">
-              <div className="h-full transition-all" style={{ width: `${w}%`, background: pos ? '#00C566' : '#FF3B30', opacity: 0.85 }} />
+              <div className="h-full transition-all" style={{ width: `${w}%`, background: pos ? '#08C465' : '#FE3A31', opacity: 0.85 }} />
             </div>
             <span className={`numeric font-medium shrink-0 ${pos ? 'text-profit' : 'text-loss'}`} style={{ width: 72, textAlign: 'right' }}>
               {pos ? '+' : ''}${d.value.toFixed(2)}
@@ -207,12 +207,12 @@ function PnlDist({ trades }: { trades: Trade[] }) {
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full" preserveAspectRatio="none">
         <defs>
           <linearGradient id="barLoss" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor="#FF3B30" stopOpacity="1" />
-            <stop offset="100%" stopColor="#FF3B30" stopOpacity="0.25" />
+            <stop offset="0%" stopColor="#FE3A31" stopOpacity="1" />
+            <stop offset="100%" stopColor="#FE3A31" stopOpacity="0.25" />
           </linearGradient>
           <linearGradient id="barProfit" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor="#00C566" stopOpacity="1" />
-            <stop offset="100%" stopColor="#00C566" stopOpacity="0.25" />
+            <stop offset="0%" stopColor="#08C465" stopOpacity="1" />
+            <stop offset="100%" stopColor="#08C465" stopOpacity="0.25" />
           </linearGradient>
         </defs>
 
@@ -227,7 +227,7 @@ function PnlDist({ trades }: { trades: Trade[] }) {
           const h = scaleY(b.v);
           const y = PAD.top + innerH - h;
           const fill = b.loss ? 'url(#barLoss)' : 'url(#barProfit)';
-          const stroke = b.loss ? '#FF3B30' : '#00C566';
+          const stroke = b.loss ? '#FE3A31' : '#08C465';
           return (
             <g key={b.l}>
               {/* Bar */}
@@ -454,7 +454,7 @@ function TimeOfDay({ trades }: { trades: Trade[] }) {
           const pos = v >= 0;
           return (
             <g key={h}>
-              {count[h]! > 0 && <rect x={x} y={y} width={bw} height={Math.max(1, barH)} fill={pos ? '#00C566' : '#FF3B30'} opacity="0.85" />}
+              {count[h]! > 0 && <rect x={x} y={y} width={bw} height={Math.max(1, barH)} fill={pos ? '#08C465' : '#FE3A31'} opacity="0.85" />}
               {h % 3 === 0 && (
                 <text x={x + bw / 2} y={H - 8} textAnchor="middle" fontSize="9" style={{ fontFamily: 'var(--font-mono)' }} fill="#71717A">{String(h).padStart(2, '0')}</text>
               )}

@@ -53,7 +53,7 @@ function SyntheticChart({ height = 240 }: { height?: number }) {
       ))}
       <path d={area} fill="rgba(255,255,255,0.06)" />
       <path d={path} stroke="#FFFFFF" strokeWidth="1.5" fill="none" />
-      <circle cx={xs(points.length - 1)} cy={ys(points[points.length - 1]!)} r="3" fill="#00C566" />
+      <circle cx={xs(points.length - 1)} cy={ys(points[points.length - 1]!)} r="3" fill="#08C465" />
     </svg>
   );
 }
@@ -77,7 +77,7 @@ function Candlesticks() {
       ))}
       {candles.map(([o, h, l, c, dir], i) => {
         const x = GAP + i * (cw + GAP);
-        const color = dir === 'up' ? '#00C566' : '#FF3B30';
+        const color = dir === 'up' ? '#08C465' : '#FE3A31';
         const top = ys(Math.max(o, c));
         const bot = ys(Math.min(o, c));
         return (

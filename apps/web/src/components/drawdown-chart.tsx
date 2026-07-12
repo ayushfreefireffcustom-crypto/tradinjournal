@@ -36,13 +36,13 @@ export default function DrawdownChart({ equityCurve, height = 120 }: { equityCur
     <svg viewBox={`0 0 400 ${height}`} className="w-full" preserveAspectRatio="none" style={{ height }} data-testid="drawdown-chart">
       <defs>
         <linearGradient id="ddFill" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0%" stopColor="#FF3B30" stopOpacity="0.35" />
-          <stop offset="100%" stopColor="#FF3B30" stopOpacity="0.02" />
+          <stop offset="0%" stopColor="#FE3A31" stopOpacity="0.35" />
+          <stop offset="100%" stopColor="#FE3A31" stopOpacity="0.02" />
         </linearGradient>
       </defs>
       <line x1="6" x2="394" y1="6" y2="6" stroke="#2A2A2A" strokeDasharray="2 4" />
       <path d={area} fill="url(#ddFill)" className="fade-in" style={{ ['--fade-dur' as string]: '900ms', ['--fade-delay' as string]: '250ms' }} />
-      <path d={path} fill="none" stroke="#FF3B30" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" opacity="0.9" pathLength={1} className="draw-in" />
+      <path d={path} fill="none" stroke="#FE3A31" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" opacity="0.9" pathLength={1} className="draw-in" />
     </svg>
   );
 }

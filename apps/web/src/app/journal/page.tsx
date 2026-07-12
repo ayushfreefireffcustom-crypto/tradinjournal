@@ -92,7 +92,7 @@ function CandleChart({ trade }: { trade: Trade | null }) {
       {/* candles */}
       {candles.map((cd, i) => {
         const up = cd.c >= cd.o;
-        const color = up ? '#00C566' : '#FF3B30';
+        const color = up ? '#08C465' : '#FE3A31';
         const x = toX(i);
         const yH = toY(cd.h);
         const yL = toY(cd.l);
@@ -110,17 +110,17 @@ function CandleChart({ trade }: { trade: Trade | null }) {
 
       {/* Entry / exit lines */}
       <line x1={PAD.left} x2={W - PAD.right} y1={toY(trade.entryPrice)} y2={toY(trade.entryPrice)} stroke="#FFFFFF" strokeDasharray="3 3" opacity="0.6" />
-      <line x1={PAD.left} x2={W - PAD.right} y1={toY(trade.exitPrice ?? trade.entryPrice)} y2={toY(trade.exitPrice ?? trade.entryPrice)} stroke={trade.netPnl >= 0 ? '#00C566' : '#FF3B30'} strokeDasharray="3 3" opacity="0.7" />
+      <line x1={PAD.left} x2={W - PAD.right} y1={toY(trade.exitPrice ?? trade.entryPrice)} y2={toY(trade.exitPrice ?? trade.entryPrice)} stroke={trade.netPnl >= 0 ? '#08C465' : '#FE3A31'} strokeDasharray="3 3" opacity="0.7" />
 
       {/* Entry marker */}
       <g transform={`translate(${toX(entryIdx) + cw / 2}, ${toY(trade.entryPrice)})`}>
-        <polygon points="-6,-6 6,-6 0,0" fill={trade.direction === 'LONG' ? '#00C566' : '#FF3B30'} />
+        <polygon points="-6,-6 6,-6 0,0" fill={trade.direction === 'LONG' ? '#08C465' : '#FE3A31'} />
         <text x="-8" y="-10" textAnchor="end" fontSize="10" style={{ fontFamily: 'var(--font-mono)' }} fill="#FFFFFF">ENTRY {trade.entryPrice}</text>
       </g>
 
       {/* Exit marker */}
       <g transform={`translate(${toX(exitIdx) + cw / 2}, ${toY(trade.exitPrice ?? trade.entryPrice)})`}>
-        <polygon points="-6,6 6,6 0,0" fill={trade.netPnl >= 0 ? '#00C566' : '#FF3B30'} />
+        <polygon points="-6,6 6,6 0,0" fill={trade.netPnl >= 0 ? '#08C465' : '#FE3A31'} />
         <text x="8" y="14" fontSize="10" style={{ fontFamily: 'var(--font-mono)' }} fill="#FFFFFF">EXIT {trade.exitPrice}</text>
       </g>
     </svg>

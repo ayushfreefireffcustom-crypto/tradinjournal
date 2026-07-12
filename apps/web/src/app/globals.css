@@ -2,7 +2,7 @@
 
 @theme {
   /* Obsidian palette */
-  --color-app: #0A0A0A;
+  --color-app: #000000;
   --color-surface: #121212;
   --color-surface-hover: #1A1A1A;
   --color-surface-active: #222222;
@@ -14,8 +14,8 @@
   --color-fg-2: #A1A1AA;
   --color-fg-3: #71717A;
 
-  --color-profit: #00C566;
-  --color-loss: #FF3B30;
+  --color-profit: #08C465;
+  --color-loss: #FE3A31;
   --color-warning: #FF9F0A;
 
   /* Hybrid type system — Geist Sans for UI text + headings (self-hosted via
@@ -107,7 +107,7 @@ html, body {
 }
 .btn:active { transform: scale(.97); }
 .btn:focus-visible { outline: none; box-shadow: var(--shadow-focus); }
-.btn-primary { background: #FFFFFF; color: #0A0A0A; }
+.btn-primary { background: #FFFFFF; color: #000000; }
 .btn-primary:hover { background: #E9E9E9; }
 .btn-ghost { background: transparent; border-color: var(--color-border); color: #fff; }
 .btn-ghost:hover { background: var(--color-surface); border-color: var(--color-border-strong); }
@@ -285,7 +285,7 @@ select.tinput::-ms-expand { display: none; }
 @media (prefers-reduced-motion: reduce) { .cursor-glow { display: none; } }
 
 /* Selection */
-::selection { background: #FFFFFF; color: #0A0A0A; }
+::selection { background: #FFFFFF; color: #000000; }
 
 /* Utility helpers — numbers use the mono family (hybrid: sans UI, mono data). */
 .text-mono { font-family: var(--font-mono); }

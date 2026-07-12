@@ -13,8 +13,8 @@ const accentClass: Record<Accent, string> = {
 };
 
 const barColor: Record<'profit' | 'loss' | 'neutral', string> = {
-  profit: '#00C566',
-  loss: '#FF3B30',
+  profit: '#08C465',
+  loss: '#FE3A31',
   neutral: '#4A4A4A',
 };
 
@@ -66,7 +66,7 @@ export function StatCard({
       )}
       {sub && <div className="text-[10px] text-fg-3 tracking-wide mt-1 numeric uppercase">{sub}</div>}
       {spark && spark.length > 1 && (
-        <Sparkline data={spark} color={accent === 'loss' ? '#FF3B30' : accent === 'profit' ? '#00C566' : '#71717A'} />
+        <Sparkline data={spark} color={accent === 'loss' ? '#FE3A31' : accent === 'profit' ? '#08C465' : '#71717A'} />
       )}
       {children && <div className="mt-3">{children}</div>}
     </div>

@@ -51,12 +51,12 @@ export default function RollingChart({ trades, window = 20, height = 220 }: { tr
         <line x1={PAD.left} x2={W - PAD.right} y1={zeroY} y2={zeroY} stroke="#4A4A4A" strokeDasharray="3 3" />
 
         <path d={expPath} fill="none" stroke="#F5A623" strokeWidth="1.5" strokeLinejoin="round" pathLength={1} className="draw-in" />
-        <path d={winPath} fill="none" stroke="#00C566" strokeWidth="1.5" strokeLinejoin="round" pathLength={1} className="draw-in" />
+        <path d={winPath} fill="none" stroke="#08C465" strokeWidth="1.5" strokeLinejoin="round" pathLength={1} className="draw-in" />
 
         {hovered && (
           <>
             <line x1={toX(idx)} x2={toX(idx)} y1={PAD.top} y2={PAD.top + innerH} stroke="#71717A" strokeWidth="1" strokeDasharray="3 3" opacity="0.6" />
-            <circle cx={toX(idx)} cy={yWin(hovered.winRate)} r="3.5" fill="#00C566" />
+            <circle cx={toX(idx)} cy={yWin(hovered.winRate)} r="3.5" fill="#08C465" />
             <circle cx={toX(idx)} cy={yExp(hovered.expectancy)} r="3.5" fill="#F5A623" />
           </>
         )}
@@ -64,7 +64,7 @@ export default function RollingChart({ trades, window = 20, height = 220 }: { tr
 
       {/* Legend */}
       <div className="absolute top-1 left-2 flex items-center gap-3 text-[9px] tracking-widest text-fg-3 uppercase">
-        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ background: '#00C566' }} /> Win %</span>
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ background: '#08C465' }} /> Win %</span>
         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ background: '#F5A623' }} /> Expectancy</span>
       </div>
 

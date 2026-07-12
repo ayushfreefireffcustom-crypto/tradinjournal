@@ -15,7 +15,7 @@ function passwordStrength(pw: string): { score: number; label: string; color: st
   if (/[^A-Za-z0-9]/.test(pw)) score++;
   const bucket = Math.min(4, score);
   const labels = ['WEAK', 'WEAK', 'FAIR', 'STRONG', 'FORTIFIED'];
-  const colors = ['#FF3B30', '#FF3B30', '#FF9F0A', '#00C566', '#00C566'];
+  const colors = ['#FE3A31', '#FE3A31', '#FF9F0A', '#08C465', '#08C465'];
   return { score: bucket, label: labels[bucket]!, color: colors[bucket]! };
 }
 

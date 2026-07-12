@@ -36,7 +36,7 @@ function MiniBars({ data }: { data: { day: string; netPnl: number }[] }) {
         return (
           <div key={d.day} className="flex-1 flex flex-col items-center gap-2">
             <div className="w-full relative flex items-end h-20">
-              <div className="w-full rounded-sm transition-all" style={{ height: `${h}%`, background: pos ? '#00C566' : '#FF3B30' }} />
+              <div className="w-full rounded-sm transition-all" style={{ height: `${h}%`, background: pos ? '#08C465' : '#FE3A31' }} />
             </div>
             <div className="text-[9px] tracking-widest text-fg-3 uppercase">{d.day}</div>
           </div>

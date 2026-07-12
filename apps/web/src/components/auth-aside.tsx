@@ -27,17 +27,17 @@ function MiniEquity() {
     <svg viewBox={`0 0 ${W} ${H}`} className="w-full" preserveAspectRatio="none" style={{ height: 140 }}>
       <defs>
         <linearGradient id="mini-eq" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0%"  stopColor="#00C566" stopOpacity="0.35" />
-          <stop offset="100%" stopColor="#00C566" stopOpacity="0" />
+          <stop offset="0%"  stopColor="#08C465" stopOpacity="0.35" />
+          <stop offset="100%" stopColor="#08C465" stopOpacity="0" />
         </linearGradient>
       </defs>
       {[0.25, 0.5, 0.75].map(p => (
         <line key={p} x1={0} x2={W} y1={H * p} y2={H * p} stroke="#1E1E1E" strokeDasharray="2 4" />
       ))}
       <path d={area} fill="url(#mini-eq)" />
-      <path d={path} stroke="#00C566" strokeWidth="1.5" fill="none" />
-      <circle cx={xs(points.length - 1)} cy={ys(points[points.length - 1]!)} r="3.5" fill="#00C566" />
-      <circle cx={xs(points.length - 1)} cy={ys(points[points.length - 1]!)} r="8" fill="#00C566" opacity="0.2" />
+      <path d={path} stroke="#08C465" strokeWidth="1.5" fill="none" />
+      <circle cx={xs(points.length - 1)} cy={ys(points[points.length - 1]!)} r="3.5" fill="#08C465" />
+      <circle cx={xs(points.length - 1)} cy={ys(points[points.length - 1]!)} r="8" fill="#08C465" opacity="0.2" />
     </svg>
   );
 }
