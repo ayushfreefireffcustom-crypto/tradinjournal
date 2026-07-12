@@ -1,22 +1,47 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { Trade } from '@/lib/api';
 import { aggregateByCloseDate, buildYearView, calMoney, cellBg } from '@/lib/calendar';
 
 const WD = ['', 'Mon', '', 'Wed', '', 'Fri', ''];
+const RAIL = 30;   // weekday label rail width
+const GAP = 3;
+const MIN_CELL = 9;
+const MAX_CELL = 26;
 
 // GitHub-style trailing-year consistency grid: one cell per day, coloured by that
-// day's net P&L. Hover a cell for its date / net / trade count.
+// day's net P&L. Cells scale to fill the card width (clamped), so the grid never
+// leaves a big empty gap on wide screens or overflow on narrow ones.
 export default function YearHeatmap({ trades }: { trades: Trade[] }) {
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [cw, setCw] = useState(0);
   const [hover, setHover] = useState<{ x: number; y: number; text: string } | null>(null);
+
+  useLayoutEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(entries => { for (const e of entries) setCw(e.contentRect.width); });
+    ro.observe(el);
+    setCw(el.clientWidth);
+    return () => ro.disconnect();
+  }, []);
 
   const { weeks, monthLabels, maxAbs, totalNet, tradingDays } = useMemo(() => {
     const byDay = aggregateByCloseDate(trades);
     return buildYearView(byDay);
   }, [trades]);
 
-  const CELL = 13, GAP = 3, STEP = CELL + GAP;
+  const cols = weeks.length;
+  // Cell size that fills the available width, clamped to sane bounds.
+  const avail = Math.max(0, cw - RAIL);
+  const cell = cw === 0
+    ? 13
+    : Math.max(MIN_CELL, Math.min(MAX_CELL, Math.floor((avail - (cols - 1) * GAP) / cols)));
+  const step = cell + GAP;
+  const gridW = cols * step - GAP;
+  const gridH = 7 * step - GAP;
+
   const today = new Date();
   const isToday = (d: Date) =>
     d.getFullYear() === today.getFullYear() && d.getMonth() === today.getMonth() && d.getDate() === today.getDate();
@@ -34,49 +59,44 @@ export default function YearHeatmap({ trades }: { trades: Trade[] }) {
         </div>
       </div>
 
-      <div className="relative overflow-x-auto no-scrollbar">
-        <div className="inline-block min-w-full">
-          {/* Month labels */}
-          <div className="relative ml-8 h-4" style={{ width: weeks.length * STEP }}>
+      <div ref={wrapRef} className="relative overflow-x-auto no-scrollbar">
+        <div className="mx-auto" style={{ width: RAIL + gridW }}>
+          {/* Month labels (aligned to the grid, offset past the rail) */}
+          <div className="relative h-4" style={{ marginLeft: RAIL, width: gridW }}>
             {monthLabels.map(m => (
-              <span key={`${m.col}-${m.label}`} className="absolute text-[9px] tracking-widest text-fg-3 uppercase" style={{ left: m.col * STEP }}>{m.label}</span>
+              <span key={`${m.col}-${m.label}`} className="absolute text-[9px] tracking-widest text-fg-3 uppercase" style={{ left: m.col * step }}>{m.label}</span>
             ))}
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex" style={{ gap: GAP + 3 }}>
             {/* Weekday rail */}
-            <div className="flex flex-col justify-between shrink-0 py-[1px]" style={{ height: 7 * STEP - GAP }}>
+            <div className="flex flex-col justify-between shrink-0" style={{ height: gridH, width: RAIL - GAP - 3 }}>
               {WD.map((d, i) => (
-                <span key={i} className="text-[8px] tracking-widest text-fg-3 uppercase leading-none h-[13px] flex items-center">{d}</span>
+                <span key={i} className="text-[8px] tracking-widest text-fg-3 uppercase leading-none flex items-center" style={{ height: cell }}>{d}</span>
               ))}
             </div>
 
             {/* Week columns */}
-            <svg
-              width={weeks.length * STEP}
-              height={7 * STEP - GAP}
-              className="shrink-0"
-              onPointerLeave={() => setHover(null)}
-            >
+            <svg width={gridW} height={gridH} className="shrink-0" onPointerLeave={() => setHover(null)}>
               {weeks.map((week, wi) =>
-                week.map((cell, di) => {
-                  if (!cell) return null;
-                  const x = wi * STEP, y = di * STEP;
-                  const agg = cell.agg;
+                week.map((c, di) => {
+                  if (!c) return null;
+                  const x = wi * step, y = di * step;
+                  const agg = c.agg;
                   const fill = agg ? cellBg(agg.netPnl, maxAbs) : 'var(--color-surface)';
                   const text = agg
-                    ? `${cell.date.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: '2-digit' })} · ${calMoney(agg.netPnl)} · ${agg.trades}T`
-                    : `${cell.date.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: '2-digit' })} · no trades`;
+                    ? `${c.date.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: '2-digit' })} · ${calMoney(agg.netPnl)} · ${agg.trades}T`
+                    : `${c.date.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: '2-digit' })} · no trades`;
                   return (
                     <rect
                       key={`${wi}-${di}`}
-                      x={x} y={y} width={CELL} height={CELL} rx={2.5}
+                      x={x} y={y} width={cell} height={cell} rx={Math.min(3, cell / 4)}
                       fill={fill}
-                      stroke={isToday(cell.date) ? 'var(--color-fg)' : agg ? 'transparent' : 'var(--color-border-soft)'}
-                      strokeWidth={isToday(cell.date) ? 1.5 : 1}
+                      stroke={isToday(c.date) ? 'var(--color-fg)' : agg ? 'transparent' : 'var(--color-border-soft)'}
+                      strokeWidth={isToday(c.date) ? 1.5 : 1}
                       className="cursor-pointer transition-[filter] duration-150 hover:brightness-150"
-                      onPointerEnter={() => setHover({ x: x + CELL, y, text })}
-                      data-testid={agg ? `heat-${cell.key}` : undefined}
+                      onPointerEnter={() => setHover({ x: RAIL + x + cell, y, text })}
+                      data-testid={agg ? `heat-${c.key}` : undefined}
                     />
                   );
                 }),
@@ -88,7 +108,7 @@ export default function YearHeatmap({ trades }: { trades: Trade[] }) {
         {hover && (
           <div
             className="pointer-events-none absolute z-10 rounded-md border border-border-soft bg-surface/95 backdrop-blur px-2 py-1 text-[10px] numeric tracking-wide shadow-[var(--shadow-card)] whitespace-nowrap"
-            style={{ left: Math.min(hover.x + 44, 640), top: hover.y + 20 }}
+            style={{ left: Math.min(hover.x + 8, Math.max(0, cw - 150)), top: hover.y + 22 }}
             data-testid="heat-tooltip"
           >
             {hover.text}
