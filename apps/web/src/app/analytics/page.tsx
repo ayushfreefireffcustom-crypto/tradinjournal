@@ -59,11 +59,11 @@ function GroupStatCard({
   emptyHint: string; negativeLabels?: string[]; testId?: string;
 }) {
   return (
-    <div className="tcard p-5" data-testid={testId}>
+    <div className="tcard h-full p-5 flex flex-col" data-testid={testId}>
       <div className="text-[10px] tracking-[0.25em] text-fg-3">{title}</div>
       <div className="font-display font-bold text-[16px] tracking-tight mt-1 mb-4">{subtitle}</div>
       {rows.length === 0 ? (
-        <div className="text-fg-3 text-[12px] py-6 text-center">{emptyHint}</div>
+        <div className="flex-1 flex items-center justify-center text-fg-3 text-[12px] py-6 text-center min-h-[120px]">{emptyHint}</div>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full min-w-[420px] text-[12px]">

@@ -141,6 +141,8 @@ export default function DashboardPage() {
   const lsMax = Math.max(Math.abs(longPnl), Math.abs(shortPnl), 1);
   // Cumulative net-P&L trend (equity above starting balance) for the KPI sparkline.
   const cumSpark = view ? view.equityCurve.map(p => p.equity - view.startingBalance) : undefined;
+  const streakMax = Math.max(view?.maxWinStreak ?? 0, view?.maxLossStreak ?? 0, 1);
+  const holdMax = Math.max(behaviour.winnersHold ?? 0, behaviour.losersHold ?? 0, 1);
 
   return (
     <AppShell
@@ -219,9 +221,21 @@ export default function DashboardPage() {
             ]} />}
           </StatCard>
 
-          <StatCard testId="kpi-streaks" index={3} label="Max Streaks" value={view ? `${view.maxWinStreak} / ${view.maxLossStreak}` : '—'} sub="Best win / loss run" accent="neutral" />
+          <StatCard testId="kpi-streaks" index={3} label="Max Streaks" value={view ? `${view.maxWinStreak} / ${view.maxLossStreak}` : '—'} sub="Best win / loss run" accent="neutral">
+            {view && <TwinBars rows={[
+              { label: 'W', value: `${view.maxWinStreak}`, pct: (view.maxWinStreak / streakMax) * 100, color: 'profit' },
+              { label: 'L', value: `${view.maxLossStreak}`, pct: (view.maxLossStreak / streakMax) * 100, color: 'loss' },
+            ]} />}
+          </StatCard>
 
-          <StatCard testId="kpi-duration" index={4} label="Avg Duration" value={view ? fmtDur(view.avgDurationSecs) : '—'} sub="Avg per trade" accent="neutral" />
+          <StatCard testId="kpi-duration" index={4} label="Avg Duration" value={view ? fmtDur(view.avgDurationSecs) : '—'} sub="Avg per trade" accent="neutral">
+            {view && behaviour.winnersHold != null && behaviour.losersHold != null && (
+              <TwinBars rows={[
+                { label: 'W', value: fmtDur(behaviour.winnersHold), pct: (behaviour.winnersHold / holdMax) * 100, color: 'profit' },
+                { label: 'L', value: fmtDur(behaviour.losersHold), pct: (behaviour.losersHold / holdMax) * 100, color: 'loss' },
+              ]} />
+            )}
+          </StatCard>
         </div>
 
         {/* Auto insights */}
