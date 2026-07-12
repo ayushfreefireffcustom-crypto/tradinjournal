@@ -228,7 +228,7 @@ export default function DashboardPage() {
             ]} />}
           </StatCard>
 
-          <StatCard testId="kpi-duration" index={4} label="Avg Duration" value={view ? fmtDur(view.avgDurationSecs) : '—'} sub="Avg per trade" accent="neutral">
+          <StatCard testId="kpi-duration" index={4} className="col-span-2 md:col-span-1" label="Avg Duration" value={view ? fmtDur(view.avgDurationSecs) : '—'} sub="Avg per trade" accent="neutral">
             {view && behaviour.winnersHold != null && behaviour.losersHold != null && (
               <TwinBars rows={[
                 { label: 'W', value: fmtDur(behaviour.winnersHold), pct: (behaviour.winnersHold / holdMax) * 100, color: 'profit' },

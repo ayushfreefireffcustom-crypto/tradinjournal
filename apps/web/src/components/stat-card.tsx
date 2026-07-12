@@ -23,7 +23,7 @@ const barColor: Record<'profit' | 'loss' | 'neutral', string> = {
  * sign colour when it changes, optional sub-label and custom content (bars).
  */
 export function StatCard({
-  label, value, count, format, accent = 'neutral', sub, testId, spark, index, children,
+  label, value, count, format, accent = 'neutral', sub, testId, spark, index, className = '', children,
 }: {
   label: string;
   value: string;
@@ -37,6 +37,8 @@ export function StatCard({
   spark?: number[];
   // Position in a grid — drives the staggered entrance cascade.
   index?: number;
+  // Extra classes on the card root (e.g. grid col-span overrides).
+  className?: string;
   children?: ReactNode;
 }) {
   const [flash, setFlash] = useState('');
@@ -54,7 +56,7 @@ export function StatCard({
 
   return (
     <div
-      className={`tcard tcard-hover p-4 sm:p-5 flex flex-col ${index != null ? 'rise' : ''}`}
+      className={`tcard tcard-hover p-4 sm:p-5 flex flex-col ${index != null ? 'rise' : ''} ${className}`}
       style={index != null ? { ['--i' as string]: index } : undefined}
       data-testid={testId}
     >

@@ -812,7 +812,7 @@ export default function AnalyticsPage() {
                 { l: 'GROSS LOSS',     v: `-$${view.grossLoss.toLocaleString(undefined, { maximumFractionDigits: 0 })}`, c: 'text-loss' },
                 { l: 'MAX DD',         v: `${(view.maxDrawdownPct * 100).toFixed(1)}%`, c: view.maxDrawdownPct > 0.1 ? 'text-loss' : '' },
               ].map((k, i) => (
-                <div key={k.l} className="tcard tcard-hover p-4 rise" style={{ ['--i' as string]: i }} data-testid={`kpi-${k.l.toLowerCase().replace(/[^a-z]/g, '')}`}>
+                <div key={k.l} className={`tcard tcard-hover p-4 rise ${i === 4 ? 'col-span-2 md:col-span-1' : ''}`} style={{ ['--i' as string]: i }} data-testid={`kpi-${k.l.toLowerCase().replace(/[^a-z]/g, '')}`}>
                   <div className="text-[10px] tracking-[0.22em] text-fg-3 uppercase">{k.l}</div>
                   <div className={`font-display font-black text-2xl sm:text-3xl tracking-tighter mt-3 numeric ${k.c ?? ''}`}>{k.v}</div>
                 </div>
