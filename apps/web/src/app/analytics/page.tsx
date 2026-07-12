@@ -41,7 +41,7 @@ const SPANS: Record<BlockId, string> = {
   emotion: 'col-span-12 lg:col-span-6',
   byday: 'col-span-12',
 };
-const orderKey = (accountId: string) => `tradinx.analytics.order.${accountId}`;
+const orderKey = (accountId: string) => `tradelogs.analytics.order.${accountId}`;
 function sameOrder(a: BlockId[], b: BlockId[]) { return a.length === b.length && a.every((x, i) => x === b[i]); }
 function normalizeOrder(saved: string[]): BlockId[] {
   const known = saved.filter((id): id is BlockId => (BLOCK_IDS as readonly string[]).includes(id));

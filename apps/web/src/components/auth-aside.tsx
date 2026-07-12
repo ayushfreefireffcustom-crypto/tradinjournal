@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Logo from '@/components/logo';
 
 // A small "living" left panel used by the auth pages. It shows a stripped-down
 // equity feed, a testimonial slot, and trust badges so the auth screens feel
@@ -104,8 +105,7 @@ export default function AuthAside({ variant }: { variant: 'signin' | 'signup' })
       <div className="relative z-10 flex-1 flex flex-col justify-center px-8 xl:px-12 py-12">
         <div className="w-full max-w-xl mx-auto">
           <div className="flex items-center gap-2.5 mb-8">
-            <span className="w-2.5 h-2.5 bg-profit pulse-dot" />
-            <span className="font-display font-black text-[16px] tracking-tighter">TRADIN<span className="text-fg-2">X</span></span>
+            <Logo height={24} />
             <span className="ml-auto text-[10px] tracking-[0.22em] text-fg-3">// PRECISION JOURNAL</span>
           </div>
 

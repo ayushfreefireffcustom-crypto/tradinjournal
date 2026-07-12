@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { Gauge, Table, ChartLineUp, CalendarBlank, FilmSlate, NotePencil, type Icon } from '@phosphor-icons/react';
 import type { BrokerAccount } from '@/lib/api';
 import { authClient } from '@/lib/auth-client';
+import Logo from '@/components/logo';
 
 interface Props {
   children: React.ReactNode;
@@ -61,8 +62,8 @@ export default function AppShell({
   const SidebarBody = (
     <>
       <div className="px-5 h-14 flex items-center gap-2.5 border-b border-border">
-        <span className="w-2.5 h-2.5 bg-profit pulse-dot" />
-        <span className="font-display font-black text-[14px] tracking-tighter">TRADIN<span className="text-fg-2">X</span></span>
+        <span className="w-2 h-2 bg-profit pulse-dot shrink-0" />
+        <Logo height={20} />
         <span className="ml-auto text-[9px] tracking-[0.22em] text-fg-3">v2.6</span>
         <button
           onClick={() => setDrawerOpen(false)}
@@ -172,8 +173,7 @@ export default function AppShell({
 
           {/* Mobile logo */}
           <Link href="/dashboard" className="lg:hidden flex items-center gap-2 shrink-0">
-            <span className="w-2 h-2 bg-profit pulse-dot" />
-            <span className="font-display font-black text-[13px] tracking-tighter">TRADIN<span className="text-fg-2">X</span></span>
+            <Logo height={18} />
           </Link>
 
           <div className="flex flex-col min-w-0">

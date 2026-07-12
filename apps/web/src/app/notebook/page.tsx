@@ -174,7 +174,7 @@ export default function NotebookPage() {
       e.entryDate, e.title ?? '', e.emotion ?? '', (e.tags ?? []).join('; '),
       e.tradeId ?? '', accountName(e.brokerAccountId) ?? '', e.body,
     ]);
-    downloadCsv(`tradinx-journal-${dateStamp()}.csv`, toCsv(headers, rows));
+    downloadCsv(`tradelogs-journal-${dateStamp()}.csv`, toCsv(headers, rows));
     toast.success(`Exported ${sorted.length} entries to CSV`);
   }
 

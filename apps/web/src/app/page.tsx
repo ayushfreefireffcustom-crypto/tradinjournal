@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import Logo from '@/components/logo';
 
 // ── Tiny presentational primitives ────────────────────────────────────────────
 
@@ -107,8 +108,7 @@ export default function LandingPage() {
       <header className="sticky top-0 z-40 border-b border-border bg-app/80 backdrop-blur-xl" data-testid="landing-nav">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 h-14 flex items-center justify-between gap-3">
           <Link href="/" className="flex items-center gap-2.5 shrink-0" data-testid="logo-link">
-            <span className="w-2.5 h-2.5 bg-profit pulse-dot" />
-            <span className="font-display font-black text-[14px] sm:text-[15px] tracking-tighter">TRADIN<span className="text-fg-2">X</span></span>
+            <Logo height={22} />
           </Link>
           <nav className="hidden md:flex items-center gap-5 lg:gap-7 text-[12px] text-fg-2">
             <a href="#features" className="hover:text-fg transition-colors">FEATURES</a>
@@ -142,7 +142,7 @@ export default function LandingPage() {
               YOUR PLAN.
             </h1>
             <p className="text-fg-2 mt-6 sm:mt-8 max-w-xl text-[12px] sm:text-[13px] leading-relaxed">
-              TradinX hooks directly into MetaTrader 5, reconstructs every position, and tells you
+              TRADElogs hooks directly into MetaTrader 5, reconstructs every position, and tells you
               the brutal truth about your trading psychology — revenge entries, FOMO chases, and
               the exact session where you bleed pips.
             </p>
@@ -403,7 +403,7 @@ export default function LandingPage() {
             { q: 'How secure is the MT5 connection?', a: 'We only ever ask for the investor (read-only) password. We can place no trades, withdraw nothing, and credentials are encrypted at rest with per-user keys.' },
             { q: 'What is the Behavioural Score?',     a: 'A proprietary metric that compares your fills against your stated plan and flags emotional patterns: revenge clusters, FOMO entries, and premature exits.' },
             { q: 'Can I export my journal data?',      a: 'Yes — CSV and JSON exports are available on the Trader tier. Desk customers get a typed API.' },
-            { q: 'Does TradinX support MT4?',          a: 'MT5 is supported today. MT4 is on the roadmap (Q2 2026) once MT5 coverage reaches parity with desk-grade audit tooling.' },
+            { q: 'Does TRADElogs support MT4?',          a: 'MT5 is supported today. MT4 is on the roadmap (Q2 2026) once MT5 coverage reaches parity with desk-grade audit tooling.' },
           ].map(item => (
             <details key={item.q} className="group border-b border-border" data-testid="faq-item">
               <summary className="cursor-pointer list-none flex items-center justify-between py-4 sm:py-5 hover:text-fg text-fg-2 gap-3">
@@ -434,7 +434,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-8 sm:py-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-6">
           <div className="flex items-center gap-3 text-[10px] sm:text-[11px] text-fg-3 tracking-widest">
             <span className="w-2 h-2 bg-profit pulse-dot shrink-0" />
-            <span>TRADINX // PRECISION JOURNAL // EST 2026</span>
+            <span>TRADELOGS // PRECISION JOURNAL // EST 2026</span>
           </div>
           <div className="flex flex-wrap gap-4 sm:gap-6 text-[10px] sm:text-[11px] text-fg-3 tracking-widest">
             <a href="#" className="hover:text-fg">PRIVACY</a>

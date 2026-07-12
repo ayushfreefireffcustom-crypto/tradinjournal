@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import AuthAside from '@/components/auth-aside';
+import Logo from '@/components/logo';
 import { authClient } from '@/lib/auth-client';
 
 function passwordStrength(pw: string): { score: number; label: string; color: string } {
@@ -60,10 +61,7 @@ export default function SignupPage() {
 
         {/* Mobile top status */}
         <div className="lg:hidden border-b border-border h-11 flex items-center justify-between px-4 text-[10px] tracking-[0.22em] text-fg-3">
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 bg-profit pulse-dot" />
-            <span className="font-display font-black text-[13px] tracking-tighter text-fg">TRADIN<span className="text-fg-2">X</span></span>
-          </div>
+          <Logo height={16} />
           <span>ONLINE</span>
         </div>
 

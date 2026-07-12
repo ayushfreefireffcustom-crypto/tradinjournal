@@ -98,7 +98,7 @@ export default function TradesPage() {
     if (tab === 'deals') {
       const headers = ['Deal Ticket', 'Position ID', 'Symbol', 'Type', 'Entry', 'Volume', 'Price', 'Profit', 'Commission', 'Swap', 'Deal Time'];
       const rows = deals.map(d => [d.dealTicket, d.positionId, d.symbol, d.type, d.entry, d.volume, d.price, d.profit, d.commission, d.swap, d.dealTime]);
-      downloadCsv(`tradinx-deals-${acc}-${dateStamp()}.csv`, toCsv(headers, rows));
+      downloadCsv(`tradelogs-deals-${acc}-${dateStamp()}.csv`, toCsv(headers, rows));
       toast.success(`Exported ${deals.length} deals to CSV`);
       return;
     }
@@ -108,7 +108,7 @@ export default function TradesPage() {
       t.entryPrice, t.exitPrice ?? '', t.grossPnl, t.commission, t.swap, t.netPnl, t.durationSecs ?? '',
       (t.tags ?? []).join('; '),
     ]);
-    downloadCsv(`tradinx-trades-${acc}-${dateStamp()}.csv`, toCsv(headers, rows));
+    downloadCsv(`tradelogs-trades-${acc}-${dateStamp()}.csv`, toCsv(headers, rows));
     toast.success(`Exported ${sorted.length} trades to CSV`);
   }
 

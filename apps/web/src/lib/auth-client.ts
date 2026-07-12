@@ -23,7 +23,7 @@ const MOCK_SESSION = {
     },
     user: {
       id: 'mock-user',
-      email: 'trader@tradinx.io',
+      email: 'trader@tradelogs.io',
       emailVerified: true,
       name: 'Alex Morgan',
       createdAt: new Date(),
