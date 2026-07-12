@@ -312,7 +312,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Behaviour */}
-          <div className="tcard col-span-12 lg:col-span-4 p-5" data-testid="behavior-card">
+          <div className="tcard self-start col-span-12 lg:col-span-4 p-5" data-testid="behavior-card">
             <div className="text-[10px] tracking-[0.2em] text-fg-3 uppercase">Behaviour</div>
             <div className="font-display font-bold text-[16px] tracking-tight mt-1 mb-4">Discipline signals</div>
             <div className="space-y-3">
@@ -334,7 +334,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Day of week */}
-          <div className="tcard col-span-12 md:col-span-6 lg:col-span-4 p-5" data-testid="byday-card">
+          <div className="tcard self-start col-span-12 md:col-span-6 lg:col-span-4 p-5" data-testid="byday-card">
             <div className="text-[10px] tracking-[0.2em] text-fg-3 uppercase">P&L by day</div>
             <div className="font-display font-bold text-[16px] tracking-tight mt-1 mb-4">Day of week</div>
             {view && <MiniBars data={view.byDay} />}
