@@ -63,7 +63,7 @@ export default function AppShell({
     <>
       <div className="px-5 h-14 flex items-center gap-2.5 border-b border-border">
         <span className="w-2 h-2 bg-profit pulse-dot shrink-0" />
-        <Logo height={20} />
+        <Logo height={24} />
         <span className="ml-auto text-[9px] tracking-[0.22em] text-fg-3">v2.6</span>
         <button
           onClick={() => setDrawerOpen(false)}
@@ -172,12 +172,14 @@ export default function AppShell({
           </button>
 
           {/* Mobile logo */}
-          <Link href="/dashboard" className="lg:hidden flex items-center gap-2 shrink-0">
-            <Logo height={18} />
+          <Link href="/dashboard" className="lg:hidden flex items-center shrink-0">
+            <Logo height={26} />
           </Link>
 
-          <div className="flex flex-col min-w-0">
-            {pageTitle && <span className="font-display font-bold text-[12px] sm:text-[13px] tracking-tight truncate">{pageTitle}</span>}
+          {/* Page title — desktop only (on mobile the logo stands alone; the
+              drawer already indicates the current page) */}
+          <div className="hidden lg:flex flex-col min-w-0">
+            {pageTitle && <span className="font-display font-bold text-[13px] tracking-tight truncate">{pageTitle}</span>}
             {pageSubtitle && <span className="hidden xl:inline text-[10px] text-fg-3 tracking-[0.22em] uppercase truncate">{pageSubtitle}</span>}
           </div>
 
