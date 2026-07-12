@@ -612,11 +612,13 @@ export default function AnalyticsPage() {
     switch (id) {
       case 'donut':
         return (
-          <div className="tcard h-full p-5">
+          <div className="tcard h-full p-5 flex flex-col">
             <div className="text-[10px] tracking-[0.25em] text-fg-3">WIN_LOSS_RATIO</div>
-            <div className="font-display font-bold text-[16px] tracking-tight mt-1 mb-5">Strike rate</div>
-            <Donut wins={view.totalWins} losses={view.totalLosses} />
-            <div className="grid grid-cols-2 gap-3 mt-6 pt-5 border-t border-border-soft">
+            <div className="font-display font-bold text-[16px] tracking-tight mt-1">Strike rate</div>
+            <div className="flex-1 flex items-center justify-center py-5">
+              <Donut wins={view.totalWins} losses={view.totalLosses} />
+            </div>
+            <div className="grid grid-cols-2 gap-3 pt-5 border-t border-border-soft">
               {[
                 { l: 'Avg Win', v: `+$${view.avgWin.toFixed(2)}`, c: 'text-profit' },
                 { l: 'Avg Loss', v: `$${view.avgLoss.toFixed(2)}`, c: 'text-loss' },
