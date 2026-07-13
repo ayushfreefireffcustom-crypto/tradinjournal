@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, type CSSProperties } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { ArrowUpRight, ArrowDownRight, X } from '@phosphor-icons/react';
 import type { Trade } from '@/lib/api';
@@ -23,6 +24,11 @@ export default function DayTradesModal({
   accountId?: string;
   onClose: () => void;
 }) {
+  // Portal to <body> so `position: fixed` is viewport-relative (unaffected by
+  // ancestor transforms/animations that would otherwise create a containing block).
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   // Esc to close + lock background scroll while open.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -37,7 +43,9 @@ export default function DayTradesModal({
   const wins = sorted.filter(t => t.netPnl > 0).length;
   const dateLabel = date.toLocaleDateString('en-US', { weekday: 'long', day: '2-digit', month: 'short', year: 'numeric' });
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" data-testid="day-trades-modal" role="dialog" aria-modal="true">
       <div className="absolute inset-0 bg-app/80 backdrop-blur-sm" onClick={onClose} />
 
@@ -115,6 +123,7 @@ export default function DayTradesModal({
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
