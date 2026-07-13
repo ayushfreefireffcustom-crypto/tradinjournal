@@ -272,7 +272,7 @@ export default function DashboardPage() {
 
           {/* Year consistency heatmap */}
           <div className="col-span-12">
-            {view && <YearHeatmap trades={trades} />}
+            {view && <YearHeatmap trades={trades} accountId={selected?.id} />}
           </div>
 
           {/* Recent fills */}

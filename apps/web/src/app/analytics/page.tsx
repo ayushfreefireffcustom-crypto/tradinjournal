@@ -699,7 +699,7 @@ export default function AnalyticsPage() {
           </div>
         );
       case 'yearheat':
-        return <YearHeatmap trades={trades} />;
+        return <YearHeatmap trades={trades} accountId={selected?.id} />;
       case 'bysymbol':
         return (
           <div className="tcard h-full p-0">
