@@ -338,8 +338,8 @@ export default function DashboardPage() {
             {/* Day of week — grows to fill the rest of the column */}
             <div className="tcard p-5 flex flex-col flex-1" data-testid="byday-card">
               <div className="text-[10px] tracking-[0.2em] text-fg-3 uppercase">P&L by day</div>
-              <div className="font-display font-bold text-[16px] tracking-tight mt-1 mb-4">Day of week</div>
-              <div className="flex-1 flex items-end min-h-[110px]">
+              <div className="font-display font-bold text-[16px] tracking-tight mt-1 mb-3">Day of week</div>
+              <div className="flex-1 flex flex-col min-h-[120px]">
                 {view && <MiniBars data={view.byDay} />}
               </div>
             </div>
