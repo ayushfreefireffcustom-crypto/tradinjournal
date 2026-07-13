@@ -2,7 +2,8 @@
 
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { Trade } from '@/lib/api';
-import { aggregateByCloseDate, buildYearView, calMoney, cellBg } from '@/lib/calendar';
+import { aggregateByCloseDate, buildYearView, calMoney, cellBg, dayKey } from '@/lib/calendar';
+import DayTradesModal from './day-trades-modal';
 
 const WD = ['', 'Mon', '', 'Wed', '', 'Fri', ''];
 const RAIL = 30;   // weekday label rail width
@@ -13,10 +14,22 @@ const MAX_CELL = 26;
 // GitHub-style trailing-year consistency grid: one cell per day, coloured by that
 // day's net P&L. Cells scale to fill the card width (clamped), so the grid never
 // leaves a big empty gap on wide screens or overflow on narrow ones.
-export default function YearHeatmap({ trades }: { trades: Trade[] }) {
+export default function YearHeatmap({ trades, accountId }: { trades: Trade[]; accountId?: string }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const [cw, setCw] = useState(0);
   const [hover, setHover] = useState<{ x: number; y: number; text: string } | null>(null);
+  const [selectedDay, setSelectedDay] = useState<Date | null>(null);
+
+  // Closed trades on the selected calendar day (local close-date), for the modal.
+  const dayTrades = useMemo(() => {
+    if (!selectedDay) return [];
+    const key = dayKey(selectedDay.getFullYear(), selectedDay.getMonth(), selectedDay.getDate());
+    return trades.filter(t => {
+      if (t.status !== 'CLOSED' || !t.closeTime) return false;
+      const d = new Date(t.closeTime);
+      return dayKey(d.getFullYear(), d.getMonth(), d.getDate()) === key;
+    });
+  }, [selectedDay, trades]);
 
   useLayoutEffect(() => {
     const el = wrapRef.current;
@@ -94,8 +107,9 @@ export default function YearHeatmap({ trades }: { trades: Trade[] }) {
                       fill={fill}
                       stroke={isToday(c.date) ? 'var(--color-fg)' : agg ? 'transparent' : 'var(--color-border-soft)'}
                       strokeWidth={isToday(c.date) ? 1.5 : 1}
-                      className="cursor-pointer transition-[filter] duration-150 hover:brightness-150"
+                      className={`transition-[filter] duration-150 ${agg ? 'cursor-pointer hover:brightness-150' : ''}`}
                       onPointerEnter={() => setHover({ x: RAIL + x + cell, y, text })}
+                      onClick={agg ? () => setSelectedDay(c.date) : undefined}
                       data-testid={agg ? `heat-${c.key}` : undefined}
                     />
                   );
@@ -124,6 +138,10 @@ export default function YearHeatmap({ trades }: { trades: Trade[] }) {
         <span className="w-3 h-3 rounded-[2px]" style={{ background: cellBg(maxAbs, maxAbs) }} />
         <span>Profit</span>
       </div>
+
+      {selectedDay && (
+        <DayTradesModal date={selectedDay} trades={dayTrades} accountId={accountId} onClose={() => setSelectedDay(null)} />
+      )}
     </div>
   );
 }
