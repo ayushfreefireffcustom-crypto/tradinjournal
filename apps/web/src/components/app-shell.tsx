@@ -61,15 +61,13 @@ export default function AppShell({
 
   const SidebarBody = (
     <>
-      <div className="px-5 h-14 flex items-center gap-2.5 border-b border-border">
-        <span className="w-2 h-2 bg-profit pulse-dot shrink-0" />
+      <div className="px-5 h-14 flex items-center border-b border-border">
         <Logo height={24} />
-        <span className="ml-auto text-[9px] tracking-[0.22em] text-fg-3">v2.6</span>
         <button
           onClick={() => setDrawerOpen(false)}
           aria-label="Close menu"
           data-testid="drawer-close"
-          className="lg:hidden ml-2 w-7 h-7 rounded-md border border-border text-fg-3 hover:text-fg hover:border-border-strong flex items-center justify-center press focus-ring"
+          className="lg:hidden ml-auto w-7 h-7 rounded-md border border-border text-fg-3 hover:text-fg hover:border-border-strong flex items-center justify-center press focus-ring"
         >
           ×
         </button>
@@ -132,9 +130,9 @@ export default function AppShell({
   );
 
   return (
-    <div className="flex min-h-screen bg-app text-fg" data-testid="app-shell">
-      {/* Desktop sidebar */}
-      <aside className="hidden lg:flex w-60 shrink-0 border-r border-border bg-app flex-col" data-testid="sidebar">
+    <div className="flex h-screen overflow-hidden bg-app text-fg" data-testid="app-shell">
+      {/* Desktop sidebar — full viewport height, its footer pinned to the bottom */}
+      <aside className="hidden lg:flex w-60 shrink-0 border-r border-border bg-app flex-col overflow-y-auto no-scrollbar" data-testid="sidebar">
         {SidebarBody}
       </aside>
 
