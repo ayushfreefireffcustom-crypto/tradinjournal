@@ -11,6 +11,7 @@ import {
 } from '@dnd-kit/sortable';
 import { api, type BrokerAccount, type AccountStats, type Trade, type JournalEntry } from '@/lib/api';
 import { statsForRange, rangeStart, RANGES, type RangeKey } from '@/lib/stats';
+import { useAccounts } from '@/lib/use-accounts';
 import AppShell from '@/components/app-shell';
 import ConnectBrokerModal from '@/components/connect-broker-modal';
 import EquityChart from '@/components/equity-chart';
@@ -481,8 +482,7 @@ function TimeOfDay({ trades }: { trades: Trade[] }) {
 }
 
 export default function AnalyticsPage() {
-  const [accounts, setAccounts] = useState<BrokerAccount[]>([]);
-  const [selected, setSelected] = useState<BrokerAccount | null>(null);
+  const { accounts, selected, select, setAccounts } = useAccounts();
   const [stats, setStats] = useState<AccountStats | null>(null);
   const [trades, setTrades] = useState<Trade[]>([]);
   const [journal, setJournal] = useState<JournalEntry[]>([]);
@@ -527,15 +527,6 @@ export default function AnalyticsPage() {
   }, [selected]);
 
   const isDefaultOrder = sameOrder(order, DEFAULT_ORDER);
-
-  const init = useCallback(async () => {
-    try {
-      const accs = await api.accounts.list();
-      setAccounts(accs);
-      setSelected(accs[0] ?? null);
-    } catch {}
-  }, []);
-  useEffect(() => { init(); }, [init]);
 
   const loadStats = useCallback(async (acc: BrokerAccount) => {
     setLoading(true);
@@ -601,7 +592,7 @@ export default function AnalyticsPage() {
 
   function onConnected(account: BrokerAccount) {
     setAccounts(prev => prev.find(a => a.id === account.id) ? prev.map(a => a.id === account.id ? account : a) : [account, ...prev]);
-    setSelected(account);
+    select(account);
     setShowConnect(false);
   }
 
@@ -769,7 +760,7 @@ export default function AnalyticsPage() {
     <AppShell
       accounts={accounts}
       selectedAccount={selected}
-      onSelectAccount={setSelected}
+      onSelectAccount={select}
       onConnectClick={() => setShowConnect(true)}
       pageTitle="Analytics"
       pageSubtitle="// EDGE DISCOVERY"
