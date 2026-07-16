@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, useCallback } from 'react';
 import AppShell from '@/components/app-shell';
 import ConnectBrokerModal from '@/components/connect-broker-modal';
 import { api, type BrokerAccount, type Trade, type JournalEntry } from '@/lib/api';
+import { useAccounts } from '@/lib/use-accounts';
 
 function fmtDur(s: number | null) {
   if (s == null) return '—';
@@ -128,8 +129,7 @@ function CandleChart({ trade }: { trade: Trade | null }) {
 }
 
 export default function ChartReplayPage() {
-  const [accounts, setAccounts] = useState<BrokerAccount[]>([]);
-  const [selected, setSelected] = useState<BrokerAccount | null>(null);
+  const { accounts, selected, select, setAccounts } = useAccounts();
   const [trades, setTrades] = useState<Trade[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [journalEntries, setJournalEntries] = useState<JournalEntry[]>([]);
@@ -141,15 +141,6 @@ export default function ChartReplayPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showConnect, setShowConnect] = useState(false);
-
-  const initAccounts = useCallback(async () => {
-    try {
-      const accs = await api.accounts.list();
-      setAccounts(accs);
-      setSelected(accs[0] ?? null);
-    } catch {}
-  }, []);
-  useEffect(() => { initAccounts(); }, [initAccounts]);
 
   const loadTrades = useCallback(async (acc: BrokerAccount) => {
     setLoading(true);
@@ -206,14 +197,14 @@ export default function ChartReplayPage() {
 
   function onConnected(a: BrokerAccount) {
     setAccounts(prev => prev.find(x => x.id === a.id) ? prev.map(x => x.id === a.id ? a : x) : [a, ...prev]);
-    setSelected(a); setShowConnect(false);
+    select(a); setShowConnect(false);
   }
 
   return (
     <AppShell
       accounts={accounts}
       selectedAccount={selected}
-      onSelectAccount={setSelected}
+      onSelectAccount={select}
       onConnectClick={() => setShowConnect(true)}
       pageTitle="Chart Replay"
       pageSubtitle="// FORENSIC AUDIT"
