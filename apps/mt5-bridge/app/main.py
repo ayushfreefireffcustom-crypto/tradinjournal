@@ -62,34 +62,100 @@ def verify_secret(x_bridge_secret: str = Header(...)):
 
 # ─── MT5 helpers ──────────────────────────────────────────────────────────────
 
-def _ensure_initialized() -> None:
-    """Re-attach to the terminal if the IPC pipe dropped."""
-    if not mt5.initialize(path=settings.terminal_path):
-        err = mt5.last_error()
-        log.error(f"mt5.initialize() failed: {err}")
-        raise HTTPException(status_code=503, detail=f"MT5 init failed: {err}")
+# Tunables for the self-healing connect. A dropped MT5 session surfaces as
+# initialize()/login() failing (classically error -6 "Terminal: Authorization
+# failed"); we recover by tearing down the IPC pipe and re-initializing WITH the
+# account credentials, which both attaches to the terminal and authorizes in one
+# step instead of relying on the terminal's ambient (and sometimes dropped)
+# session. Kept small so a genuinely bad login fails fast rather than hanging the
+# API request.
+CONNECT_ATTEMPTS = 3
+CONNECT_RETRY_DELAY_S = 1.0
+CONNECT_TIMEOUT_MS = 15_000
 
 
-def _login(login: int, password: str, server: str) -> None:
-    """Switch to the requested account if not already connected."""
-    _ensure_initialized()
+def _last_error() -> tuple:
+    """mt5.last_error() that never itself raises."""
+    try:
+        return tuple(mt5.last_error())
+    except Exception:
+        return (None, "unknown")
 
-    current = mt5.account_info()
-    if current is not None and current.login == login:
-        log.info(f"Already on account {current.login} ({current.server}) — skipping login")
+
+def _is_connected(login: int) -> bool:
+    """True only if the terminal is attached, online, and authorized on `login`."""
+    try:
+        info = mt5.account_info()
+        term = mt5.terminal_info()
+    except Exception:
+        return False
+    return (
+        info is not None
+        and int(info.login) == int(login)
+        and term is not None
+        and bool(getattr(term, "connected", False))
+    )
+
+
+def _connect(login: int, password: str, server: str) -> None:
+    """
+    Ensure the terminal is initialized AND authorized on `login`, self-healing
+    from dropped/unauthorized sessions (MT5 error -6). Raises HTTPException on a
+    hard failure so the API can surface an honest status.
+
+    Callers already hold the global _lock, so MT5 calls never overlap and the
+    tear-down / re-initialize below is safe.
+    """
+    # Fast path: already attached, online and on the right account — no re-auth.
+    if _is_connected(login):
         return
 
-    log.info(f"mt5.login() login={login} server={server}")
-    ok = mt5.login(login, password=password, server=server, timeout=15_000)
-    if not ok:
-        code, msg = mt5.last_error()
-        if code == 1:
-            log.info("mt5.login() quirk [1/Success] — treating as already connected")
-            return
-        log.error(f"mt5.login() failed [{code}]: {msg}")
-        raise HTTPException(status_code=400, detail=f"MT5 login failed [{code}]: {msg}")
+    last: tuple = (None, "no attempt")
+    for attempt in range(1, CONNECT_ATTEMPTS + 1):
+        # Initialize WITH credentials: attaches to the terminal *and* authorizes
+        # the account in one call. This is the key fix — it does not depend on
+        # the terminal's own session being alive, so a dropped session recovers.
+        ok = mt5.initialize(
+            path=settings.terminal_path,
+            login=int(login),
+            password=password,
+            server=server,
+            timeout=CONNECT_TIMEOUT_MS,
+        )
 
-    log.info(f"mt5.login() OK — {login} on {server}")
+        # If we're attached but on a different account (multi-account switching),
+        # force an explicit login onto the requested one.
+        if ok and not _is_connected(login):
+            mt5.login(int(login), password=password, server=server, timeout=CONNECT_TIMEOUT_MS)
+
+        if _is_connected(login):
+            if attempt > 1:
+                log.info(f"[connect] recovered on attempt {attempt} — {login}@{server}")
+            return
+
+        last = _last_error()
+        log.warning(
+            f"[connect] attempt {attempt}/{CONNECT_ATTEMPTS} failed for {login}@{server}: {last} — resetting IPC"
+        )
+
+        # Drop the poisoned Python<->terminal connection before retrying. This
+        # only closes our IPC pipe; it does NOT close the terminal application.
+        try:
+            mt5.shutdown()
+        except Exception:
+            pass
+        time.sleep(CONNECT_RETRY_DELAY_S)
+
+    code, msg = (last + (None, None))[:2]
+    # -6 (and login-refused) means the credentials/server were rejected by the
+    # trade server -> 401 so the client re-checks password/server. Everything
+    # else is treated as a transient terminal/infra problem -> 503.
+    status = 401 if code == -6 else 503
+    log.error(f"[connect] giving up on {login}@{server} after {CONNECT_ATTEMPTS} tries: ({code}, {msg})")
+    raise HTTPException(
+        status_code=status,
+        detail=f"MT5 connect failed for {login}@{server}: ({code}, {msg})",
+    )
 
 
 def _margin_mode(mode_int: int) -> str:
@@ -116,7 +182,7 @@ def health() -> dict:
 def verify(req: VerifyRequest) -> VerifyResponse:
     log.info(f"[verify] login={req.login} server={req.server}")
     with _lock:
-        _login(req.login, req.password, req.server)
+        _connect(req.login, req.password, req.server)
         info = mt5.account_info()
         if info is None:
             log.error(f"[verify] account_info() returned None: {mt5.last_error()}")
@@ -138,7 +204,7 @@ def verify(req: VerifyRequest) -> VerifyResponse:
 def account(req: AccountRequest) -> AccountResponse:
     log.info(f"[account] login={req.login} server={req.server}")
     with _lock:
-        _login(req.login, req.password, req.server)
+        _connect(req.login, req.password, req.server)
         info = mt5.account_info()
         if info is None:
             log.error(f"[account] account_info() returned None: {mt5.last_error()}")
@@ -164,7 +230,7 @@ def account(req: AccountRequest) -> AccountResponse:
 def deals(req: DealsRequest) -> DealsResponse:
     log.info(f"[deals] login={req.login} server={req.server} from={req.from_time} to={req.to_time}")
     with _lock:
-        _login(req.login, req.password, req.server)
+        _connect(req.login, req.password, req.server)
         mt5.history_orders_get(req.from_time, req.to_time)
         time.sleep(1)
         raw = mt5.history_deals_get(req.from_time, req.to_time)
@@ -201,7 +267,7 @@ def deals(req: DealsRequest) -> DealsResponse:
 def positions(req: PositionsRequest) -> PositionsResponse:
     log.info(f"[positions] login={req.login} server={req.server}")
     with _lock:
-        _login(req.login, req.password, req.server)
+        _connect(req.login, req.password, req.server)
         raw = mt5.positions_get()
         if raw is None:
             log.warning(f"[positions] positions_get returned None: {mt5.last_error()}")
