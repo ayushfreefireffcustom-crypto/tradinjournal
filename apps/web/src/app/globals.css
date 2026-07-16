@@ -284,6 +284,10 @@ select.tinput::-ms-expand { display: none; }
   pointer-events: none;
 }
 
+/* Auto-advance progress bar under the active how-it-works step. */
+@keyframes step-progress { from { width: 0; } to { width: 100%; } }
+.step-progress { width: 0; animation: step-progress 3800ms linear forwards; }
+
 /* ─── Click-burst cursor effect (mounted globally; desktop + reduced-motion guarded in JS) */
 .click-burst-line {
   position: fixed; z-index: 600;
