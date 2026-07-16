@@ -110,19 +110,19 @@ export default function AuthAside({ variant }: { variant: 'signin' | 'signup' })
           </div>
 
           <p className="text-[10px] tracking-[0.3em] text-fg-3 mb-3">
-            [ {variant === 'signin' ? 'RE-ENTRY PROTOCOL' : 'ENLISTMENT PROTOCOL'} ]
+            [ {variant === 'signin' ? 'WELCOME BACK' : 'GET STARTED'} ]
           </p>
           <h2 className="font-display font-black tracking-tighter text-4xl xl:text-5xl leading-[1.02]">
             {variant === 'signin' ? (
-              <>EXECUTE <br /> WITH <span className="text-profit">CLARITY.</span></>
+              <>TRADE <br /> WITH <span className="text-profit">CLARITY.</span></>
             ) : (
-              <>ENLIST <br /> THE <span className="text-profit">PROTOCOL.</span></>
+              <>START <br /> FOR <span className="text-profit">FREE.</span></>
             )}
           </h2>
           <p className="text-fg-2 text-[12px] xl:text-[13px] mt-5 max-w-md leading-relaxed">
             {variant === 'signin'
-              ? 'Every fill reconstructed from your MT5 bridge. Behavioural diagnostics on tap. Sign in to pick up the tape where you left it.'
-              : '90-second MT5 link. Behavioural diagnostics by tomorrow morning. Read-only credentials, encrypted at rest, zero broker exposure.'}
+              ? 'All your trades imported from MT5, with clear insights ready and waiting. Sign in to pick up right where you left off.'
+              : 'Connect your MT5 in 90 seconds and see your insights by tomorrow morning. Read-only login, fully encrypted, and we never touch your trades.'}
           </p>
 
           {/* Mini equity terminal */}
