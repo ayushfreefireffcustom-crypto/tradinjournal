@@ -92,10 +92,78 @@ function Candlesticks() {
   );
 }
 
+// ── Feature-preview bodies (swapped by the tab strip) ─────────────────────────
+
+function AnalyticsPreview() {
+  return (
+    <>
+      <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-4">
+        {[
+          { l: 'TOTAL PROFIT',   v: '+$12,418', c: 'text-profit' },
+          { l: 'WIN RATE',       v: '64.1%',     c: '' },
+          { l: 'PROFIT VS LOSS', v: '2.82',      c: '' },
+        ].map(m => (
+          <div key={m.l} className="border border-border-soft px-3 py-3">
+            <div className="text-[9px] sm:text-[10px] tracking-[0.18em] text-fg-3 uppercase">{m.l}</div>
+            <div className={`font-display font-black text-xl sm:text-2xl mt-1 tracking-tight ${m.c}`}>{m.v}</div>
+          </div>
+        ))}
+      </div>
+      <div className="border border-border-soft p-3"><SyntheticChart height={170} /></div>
+    </>
+  );
+}
+
+function ReplayPreview() {
+  return (
+    <>
+      <div className="border border-border-soft p-3 h-[186px]"><Candlesticks /></div>
+      {/* Faux scrubber */}
+      <div className="mt-3 flex items-center gap-3">
+        <span className="w-6 h-6 rounded-full bg-fg text-app flex items-center justify-center text-[10px] shrink-0">▶</span>
+        <div className="relative flex-1 h-1 bg-border-soft rounded-full">
+          <div className="absolute inset-y-0 left-0 w-2/3 bg-profit rounded-full" />
+          <div className="absolute top-1/2 left-2/3 -translate-x-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-fg border-2 border-app" />
+        </div>
+        <span className="text-[10px] text-fg-3 tracking-widest shrink-0 numeric">1.5×</span>
+      </div>
+      <div className="text-[10px] text-fg-3 tracking-widest mt-2 uppercase">Bar-by-bar playback · synced with your fills</div>
+    </>
+  );
+}
+
+function JournalPreview() {
+  const rows = [
+    { d: '06/19', s: 'XAUUSD', p: '+$607',   up: true,  tag: 'Breakout' },
+    { d: '06/18', s: 'EURUSD', p: '-$225',   up: false, tag: 'FOMO' },
+    { d: '06/17', s: 'NAS100', p: '+$1,193', up: true,  tag: 'Pullback' },
+    { d: '06/17', s: 'GBPUSD', p: '+$151',   up: true,  tag: 'Trend' },
+    { d: '06/16', s: 'US30',   p: '-$300',   up: false, tag: 'Revenge' },
+  ];
+  return (
+    <div className="border border-border-soft divide-y divide-border-soft">
+      {rows.map((r, i) => (
+        <div key={i} className="flex items-center gap-3 px-3 py-2.5 text-[11px] sm:text-[12px]">
+          <span className="text-fg-3 numeric w-10 shrink-0">{r.d}</span>
+          <span className="tracking-wider w-16 shrink-0">{r.s}</span>
+          <span className={`numeric w-16 shrink-0 ${r.up ? 'text-profit' : 'text-loss'}`}>{r.p}</span>
+          <span className="ml-auto border border-border-soft px-2 py-0.5 text-[9px] sm:text-[10px] tracking-widest text-fg-2 uppercase">{r.tag}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+const PREVIEW_META = {
+  replay:    { label: 'EURUSD · M5', body: ReplayPreview },
+  analytics: { label: '78 TRADES',   body: AnalyticsPreview },
+  journal:   { label: 'AUTO-TAGGED', body: JournalPreview },
+} as const;
+
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function LandingPage() {
-  const [tab, setTab] = useState<'replay' | 'analytics' | 'journal'>('replay');
+  const [tab, setTab] = useState<'replay' | 'analytics' | 'journal'>('analytics');
   const [tick, setTick] = useState(0);
   useEffect(() => {
     const t = setInterval(() => setTick(x => x + 1), 2000);
@@ -316,21 +384,11 @@ export default function LandingPage() {
                   </button>
                 ))}
               </div>
-              <span className="text-[9px] sm:text-[10px] text-fg-3 tracking-widest shrink-0">78 TRADES</span>
+              <span className="text-[9px] sm:text-[10px] text-fg-3 tracking-widest shrink-0">{PREVIEW_META[tab].label}</span>
             </div>
-            <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-4">
-              {[
-                { l: 'TOTAL PROFIT',   v: '+$12,418', c: 'text-profit' },
-                { l: 'WIN RATE',       v: '64.1%',     c: '' },
-                { l: 'PROFIT VS LOSS', v: '2.82',      c: '' },
-              ].map(m => (
-                <div key={m.l} className="border border-border-soft px-3 py-3">
-                  <div className="text-[9px] sm:text-[10px] tracking-[0.18em] text-fg-3 uppercase">{m.l}</div>
-                  <div className={`font-display font-black text-xl sm:text-2xl mt-1 tracking-tight ${m.c}`}>{m.v}</div>
-                </div>
-              ))}
+            <div key={tab} className="fade-up" data-testid={`preview-body-${tab}`}>
+              {(() => { const Body = PREVIEW_META[tab].body; return <Body />; })()}
             </div>
-            <div className="border border-border-soft p-3"><SyntheticChart height={170} /></div>
           </div>
         </div>
       </section>
