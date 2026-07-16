@@ -6,6 +6,7 @@ import AppShell from '@/components/app-shell';
 import ConnectBrokerModal from '@/components/connect-broker-modal';
 import DealsTable from '@/components/deals-table';
 import { api, type BrokerAccount, type Deal, type Trade } from '@/lib/api';
+import { useAccounts } from '@/lib/use-accounts';
 import { toCsv, downloadCsv, dateStamp } from '@/lib/csv';
 import { useToast } from '@/components/toast';
 import { ArrowUpRight, ArrowDownRight, DownloadSimple } from '@phosphor-icons/react';
@@ -13,8 +14,7 @@ import { ArrowUpRight, ArrowDownRight, DownloadSimple } from '@phosphor-icons/re
 export default function TradesPage() {
   const router = useRouter();
   const toast = useToast();
-  const [accounts, setAccounts] = useState<BrokerAccount[]>([]);
-  const [selected, setSelected] = useState<BrokerAccount | null>(null);
+  const { accounts, selected, select, setAccounts } = useAccounts();
   const [trades, setTrades] = useState<Trade[]>([]);
   const [deals, setDeals] = useState<Deal[]>([]);
   const [loading, setLoading] = useState(true);
@@ -26,15 +26,6 @@ export default function TradesPage() {
   const [search, setSearch] = useState('');
   const [sortKey, setSortKey] = useState<'open' | 'net' | 'held' | 'symbol'>('open');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
-
-  const init = useCallback(async () => {
-    try {
-      const accs = await api.accounts.list();
-      setAccounts(accs);
-      setSelected(accs[0] ?? null);
-    } catch {}
-  }, []);
-  useEffect(() => { init(); }, [init]);
 
   const loadTrades = useCallback(async (acc: BrokerAccount) => {
     setLoading(true);
@@ -90,7 +81,7 @@ export default function TradesPage() {
 
   function onConnected(a: BrokerAccount) {
     setAccounts(prev => prev.find(x => x.id === a.id) ? prev.map(x => x.id === a.id ? a : x) : [a, ...prev]);
-    setSelected(a); setShowConnect(false);
+    select(a); setShowConnect(false);
   }
 
   function exportCsv() {
@@ -116,7 +107,7 @@ export default function TradesPage() {
     <AppShell
       accounts={accounts}
       selectedAccount={selected}
-      onSelectAccount={setSelected}
+      onSelectAccount={select}
       onConnectClick={() => setShowConnect(true)}
       pageTitle="Trade Log"
       pageSubtitle="// AUDIT TRAIL"
