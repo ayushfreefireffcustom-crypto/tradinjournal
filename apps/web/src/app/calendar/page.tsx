@@ -4,12 +4,12 @@ import { useEffect, useMemo, useState, useCallback } from 'react';
 import AppShell from '@/components/app-shell';
 import ConnectBrokerModal from '@/components/connect-broker-modal';
 import { api, type BrokerAccount, type Trade } from '@/lib/api';
+import { useAccounts } from '@/lib/use-accounts';
 import { CaretLeft, CaretRight } from '@phosphor-icons/react';
 import { aggregateByCloseDate, buildMonthView, calMoney as money, cellBg, WEEKDAYS, MONTHS } from '@/lib/calendar';
 
 export default function CalendarPage() {
-  const [accounts, setAccounts] = useState<BrokerAccount[]>([]);
-  const [selected, setSelected] = useState<BrokerAccount | null>(null);
+  const { accounts, selected, select, setAccounts } = useAccounts();
   const [trades, setTrades] = useState<Trade[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -17,15 +17,6 @@ export default function CalendarPage() {
 
   const now = new Date();
   const [view, setView] = useState({ year: now.getFullYear(), month: now.getMonth() });
-
-  const initAccounts = useCallback(async () => {
-    try {
-      const accs = await api.accounts.list();
-      setAccounts(accs);
-      setSelected(accs[0] ?? null);
-    } catch {}
-  }, []);
-  useEffect(() => { initAccounts(); }, [initAccounts]);
 
   const loadTrades = useCallback(async (acc: BrokerAccount) => {
     setLoading(true);
@@ -58,7 +49,7 @@ export default function CalendarPage() {
 
   function onConnected(a: BrokerAccount) {
     setAccounts(prev => (prev.find(x => x.id === a.id) ? prev.map(x => (x.id === a.id ? a : x)) : [a, ...prev]));
-    setSelected(a);
+    select(a);
     setShowConnect(false);
   }
 
@@ -68,7 +59,7 @@ export default function CalendarPage() {
     <AppShell
       accounts={accounts}
       selectedAccount={selected}
-      onSelectAccount={setSelected}
+      onSelectAccount={select}
       onConnectClick={() => setShowConnect(true)}
       pageTitle="Calendar"
       pageSubtitle="// DAILY P&L"
