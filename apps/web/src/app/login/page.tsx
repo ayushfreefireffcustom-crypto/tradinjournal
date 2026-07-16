@@ -38,7 +38,7 @@ export default function LoginPage() {
       <main className="relative flex flex-col min-h-screen min-w-0 overflow-x-hidden">
         {/* Symmetric top status bar (matches aside) */}
         <div className="hidden lg:flex border-b border-border h-12 items-center justify-between px-8 xl:px-12 text-[10px] tracking-[0.22em] text-fg-3">
-          <span>SECURE SESSION · TLS 1.3</span>
+          <span>SECURE CONNECTION</span>
           <span className="flex items-center gap-2"><span className="w-2 h-2 bg-profit pulse-dot" /> READY</span>
         </div>
 
@@ -50,9 +50,9 @@ export default function LoginPage() {
 
         <div className="flex-1 flex items-center justify-center px-5 py-8 sm:px-8 sm:py-12 lg:px-12">
           <form onSubmit={submit} className="w-full max-w-[420px]" data-testid="login-form">
-            <div className="text-[10px] tracking-[0.3em] text-fg-3">[ AUTH // SIGN IN · 01 ]</div>
+            <div className="text-[10px] tracking-[0.3em] text-fg-3">[ SIGN IN ]</div>
             <h1 className="font-display font-black text-3xl sm:text-4xl xl:text-5xl tracking-tighter mt-3">
-              ACCESS <span className="text-profit">TERMINAL.</span>
+              WELCOME <span className="text-profit">BACK.</span>
             </h1>
             <p className="text-fg-2 text-[12px] sm:text-[13px] mt-3 max-w-sm">
               Sign in with your email and password to access the live dashboard.
@@ -127,10 +127,10 @@ export default function LoginPage() {
                 {loading ? (
                   <>
                     <span className="w-2 h-2 bg-app rounded-full pulse-dot" />
-                    ESTABLISHING SESSION…
+                    SIGNING IN…
                   </>
                 ) : (
-                  <>ENTER TERMINAL <span>→</span></>
+                  <>SIGN IN <span>→</span></>
                 )}
               </button>
 
@@ -138,7 +138,7 @@ export default function LoginPage() {
               <div className="mt-4 pt-4 border-t border-border-soft flex flex-wrap items-center justify-between gap-3 text-[11px]">
                 <span className="text-fg-3">No account yet?</span>
                 <Link href="/signup" className="text-fg hover:text-profit tracking-widest text-[11px]" data-testid="login-to-signup">
-                  ENLIST NOW →
+                  CREATE ACCOUNT →
                 </Link>
               </div>
             </div>
