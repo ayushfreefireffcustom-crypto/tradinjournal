@@ -92,7 +92,7 @@ export default function AuthAside({ variant }: { variant: 'signin' | 'signup' })
       <div className="relative z-10 border-b border-border h-12 flex items-center justify-between px-6 text-[10px] tracking-[0.22em] text-fg-3">
         <div className="flex items-center gap-2">
           <span className="w-2 h-2 bg-profit pulse-dot" />
-          MT5 BRIDGE · ONLINE
+          MT5 · CONNECTED
         </div>
         <span>SESSION · LONDON</span>
         <span className="numeric">v2.6.1</span>
@@ -106,7 +106,7 @@ export default function AuthAside({ variant }: { variant: 'signin' | 'signup' })
         <div className="w-full max-w-xl mx-auto">
           <div className="flex items-center gap-2.5 mb-8">
             <Logo height={30} />
-            <span className="ml-auto text-[10px] tracking-[0.22em] text-fg-3">// PRECISION JOURNAL</span>
+            <span className="ml-auto text-[10px] tracking-[0.22em] text-fg-3">// TRADING JOURNAL</span>
           </div>
 
           <p className="text-[10px] tracking-[0.3em] text-fg-3 mb-3">
@@ -129,7 +129,7 @@ export default function AuthAside({ variant }: { variant: 'signin' | 'signup' })
           <div className="mt-8 tcard p-4 bg-app/70 backdrop-blur-sm max-w-lg">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                <span className="text-[10px] tracking-[0.22em] text-fg-3">EQUITY_FEED</span>
+                <span className="text-[10px] tracking-[0.22em] text-fg-3">EQUITY</span>
                 <span className="text-[10px] text-profit">● LIVE</span>
               </div>
               <div className="text-right">
