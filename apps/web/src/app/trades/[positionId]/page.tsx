@@ -6,6 +6,7 @@ import Link from 'next/link';
 import AppShell from '@/components/app-shell';
 import DealsTable from '@/components/deals-table';
 import { api, type BrokerAccount, type Deal, type Trade, type JournalEntry } from '@/lib/api';
+import { persistSelectedAccountId } from '@/lib/use-accounts';
 
 const NEGATIVE_EMOTIONS = ['FOMO', 'Revenge', 'Hesitant'];
 
@@ -57,6 +58,8 @@ function TradeDetail() {
       setAccounts(accs);
       const acc = accs.find(a => a.id === accountId) ?? accs[0] ?? null;
       setSelected(acc);
+      // Remember this account so navigating back to the main sections keeps it.
+      persistSelectedAccountId(acc?.id ?? null);
       if (!acc) { setLoading(false); return; }
 
       const [trades, allDeals, journal] = await Promise.all([

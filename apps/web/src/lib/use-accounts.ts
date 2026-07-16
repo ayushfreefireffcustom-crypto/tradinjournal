@@ -26,6 +26,12 @@ function writeStored(id: string | null) {
   } catch {}
 }
 
+// Persist a selection made outside the hook (e.g. a `?account=` deep-link on the
+// trade-detail page) so later navigation to the main sections keeps that account.
+export function persistSelectedAccountId(id: string | null) {
+  writeStored(id);
+}
+
 export function useAccounts(initialIdOverride?: string | null) {
   const [accounts, setAccountsState] = useState<BrokerAccount[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
