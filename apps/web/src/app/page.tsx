@@ -71,6 +71,51 @@ function SyntheticChart({ height = 240 }: { height?: number }) {
   );
 }
 
+// Continuously-moving equity line — a slow upward random walk that scrolls left,
+// so the platform section reads as genuinely live. Static under reduced-motion.
+function LiveEquityChart({ height = 190 }: { height?: number }) {
+  const N = 44;
+  const [pts, setPts] = useState<number[]>(() => {
+    const a: number[] = [];
+    let v = 26;
+    for (let i = 0; i < N; i++) { v += (Math.random() - 0.34) * 3.4; a.push(Math.max(8, Math.min(92, v))); }
+    return a;
+  });
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const t = setInterval(() => {
+      setPts(prev => {
+        const last = prev[prev.length - 1] ?? 30;
+        const next = Math.max(8, Math.min(92, last + (Math.random() - 0.34) * 6));
+        return [...prev.slice(1), next];
+      });
+    }, 1300);
+    return () => clearInterval(t);
+  }, []);
+
+  const W = 720, H = height, PAD = 8;
+  const max = Math.max(...pts), min = Math.min(...pts);
+  const span = max - min || 1;
+  const xs = (i: number) => PAD + (i / (pts.length - 1)) * (W - PAD * 2);
+  const ys = (v: number) => H - PAD - ((v - min) / span) * (H - PAD * 2);
+  const path = pts.map((v, i) => `${i === 0 ? 'M' : 'L'} ${xs(i).toFixed(1)} ${ys(v).toFixed(1)}`).join(' ');
+  const area = `${path} L ${xs(pts.length - 1).toFixed(1)} ${H} L ${xs(0)} ${H} Z`;
+  const lastV = pts[pts.length - 1] ?? 0;
+  const prevV = pts[pts.length - 2] ?? 0;
+  const up = lastV >= prevV;
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" preserveAspectRatio="none">
+      {[0.25, 0.5, 0.75].map(p => (
+        <line key={p} x1={0} y1={H * p} x2={W} y2={H * p} stroke="#1E1E1E" strokeDasharray="2 4" />
+      ))}
+      <path d={area} fill="rgba(8,196,101,0.08)" />
+      <path d={path} stroke="#08C465" strokeWidth="1.5" fill="none" />
+      <circle cx={xs(pts.length - 1)} cy={ys(lastV)} r="3.5" fill={up ? '#08C465' : '#FE3A31'} />
+      <circle cx={xs(pts.length - 1)} cy={ys(lastV)} r="7" fill={up ? '#08C465' : '#FE3A31'} opacity="0.18" />
+    </svg>
+  );
+}
+
 function Candlesticks() {
   const candles = [
     [40, 55, 30, 50, 'up'], [50, 60, 45, 48, 'down'], [48, 52, 38, 44, 'down'],
@@ -117,6 +162,12 @@ function RadarScore() {
   const poly = vals.map((v, i) => pt(i, v).join(',')).join(' ');
   return (
     <svg viewBox="0 0 260 236" className="w-full max-w-[280px] mx-auto">
+      <defs>
+        <radialGradient id="radar-sweep" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#08C465" stopOpacity="0.35" />
+          <stop offset="100%" stopColor="#08C465" stopOpacity="0" />
+        </radialGradient>
+      </defs>
       {[0.25, 0.5, 0.75, 1].map(r => (
         <polygon key={r} points={ring(r)} fill="none" stroke="#1E1E1E" strokeWidth="1" />
       ))}
@@ -124,6 +175,12 @@ function RadarScore() {
         const [x, y] = pt(i, 1);
         return <line key={i} x1={cx} y1={cy} x2={x} y2={y} stroke="#1E1E1E" strokeWidth="1" />;
       })}
+      {/* Revolving radar sweep */}
+      <g>
+        <path d={`M ${cx} ${cy} L ${cx} ${cy - R} A ${R} ${R} 0 0 1 ${cx + R * Math.sin(Math.PI / 3)} ${cy - R * Math.cos(Math.PI / 3)} Z`} fill="url(#radar-sweep)">
+          <animateTransform attributeName="transform" type="rotate" from={`0 ${cx} ${cy}`} to={`360 ${cx} ${cy}`} dur="7s" repeatCount="indefinite" />
+        </path>
+      </g>
       <polygon points={poly} fill="rgba(8,196,101,0.16)" stroke="#08C465" strokeWidth="1.5" />
       {vals.map((v, i) => { const [x, y] = pt(i, v); return <circle key={i} cx={x} cy={y} r="2.5" fill="#08C465" />; })}
       {axes.map((a, i) => {
@@ -439,7 +496,7 @@ export default function LandingPage() {
                   <div className="text-[9px] tracking-[0.16em] text-fg-3 uppercase mt-0.5">YTD return</div>
                 </div>
               </div>
-              <div className="mt-5 border border-border-soft p-3"><SyntheticChart height={190} /></div>
+              <div className="mt-5 border border-border-soft p-3"><LiveEquityChart height={190} /></div>
               <div className="grid grid-cols-3 border-t border-border-soft mt-4 pt-4">
                 {[
                   { l: 'Peak equity', v: '+$12,418', c: 'text-profit' },
