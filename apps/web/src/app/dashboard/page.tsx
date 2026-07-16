@@ -165,7 +165,7 @@ export default function DashboardPage() {
             </div>
           </div>
           <div className="flex items-center gap-2 w-full sm:w-auto">
-            <button onClick={() => setShowConnect(true)} className="btn btn-ghost flex-1 sm:flex-none justify-center" data-testid="header-add-broker">+ ADD BROKER</button>
+            <button onClick={() => setShowConnect(true)} disabled={accounts.length >= 2} title={accounts.length >= 2 ? 'Account limit reached — remove one in Settings' : undefined} className={`btn btn-ghost flex-1 sm:flex-none justify-center ${accounts.length >= 2 ? 'opacity-50 cursor-not-allowed' : ''}`} data-testid="header-add-broker">+ ADD BROKER</button>
             <button onClick={() => selected && loadStats(selected, true)} disabled={loading || !selected} className={`btn btn-primary flex-1 sm:flex-none justify-center ${loading ? 'opacity-70 cursor-wait' : ''}`} data-testid="header-sync-now">
               {loading ? 'SYNCING…' : 'SYNC NOW'}
             </button>
