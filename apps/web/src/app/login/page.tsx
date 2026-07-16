@@ -44,7 +44,7 @@ export default function LoginPage() {
 
         {/* Mobile top status */}
         <div className="lg:hidden border-b border-border h-11 flex items-center justify-between px-4 text-[10px] tracking-[0.22em] text-fg-3">
-          <Logo height={16} />
+          <Logo height={20} />
           <span>ONLINE</span>
         </div>
 

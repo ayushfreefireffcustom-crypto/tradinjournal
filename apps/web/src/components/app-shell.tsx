@@ -61,8 +61,8 @@ export default function AppShell({
 
   const SidebarBody = (
     <>
-      <div className="px-5 h-14 flex items-center border-b border-border">
-        <Logo height={24} />
+      <div className="px-5 h-16 flex items-center border-b border-border">
+        <Logo height={32} />
         <button
           onClick={() => setDrawerOpen(false)}
           aria-label="Close menu"
@@ -171,7 +171,7 @@ export default function AppShell({
 
           {/* Mobile logo */}
           <Link href="/dashboard" className="lg:hidden flex items-center shrink-0">
-            <Logo height={26} />
+            <Logo height={30} />
           </Link>
 
           {/* Page title — desktop only (on mobile the logo stands alone; the

@@ -105,7 +105,7 @@ export default function AuthAside({ variant }: { variant: 'signin' | 'signup' })
       <div className="relative z-10 flex-1 flex flex-col justify-center px-8 xl:px-12 py-12">
         <div className="w-full max-w-xl mx-auto">
           <div className="flex items-center gap-2.5 mb-8">
-            <Logo height={24} />
+            <Logo height={30} />
             <span className="ml-auto text-[10px] tracking-[0.22em] text-fg-3">// PRECISION JOURNAL</span>
           </div>
 

@@ -108,7 +108,7 @@ export default function LandingPage() {
       <header className="sticky top-0 z-40 border-b border-border bg-app/80 backdrop-blur-xl" data-testid="landing-nav">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 h-14 flex items-center justify-between gap-3">
           <Link href="/" className="flex items-center gap-2.5 shrink-0" data-testid="logo-link">
-            <Logo height={22} />
+            <Logo height={28} />
           </Link>
           <nav className="hidden md:flex items-center gap-5 lg:gap-7 text-[12px] text-fg-2">
             <a href="#features" className="hover:text-fg transition-colors">FEATURES</a>
