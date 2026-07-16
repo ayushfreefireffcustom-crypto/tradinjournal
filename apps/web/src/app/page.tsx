@@ -134,83 +134,6 @@ function RadarScore() {
   );
 }
 
-// ── Hero dashboard mockup (parallax-scaled) ──────────────────────────────────
-
-function useParallaxScale() {
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    if (typeof window === 'undefined') return;
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    let raf = 0;
-    const update = () => {
-      const rect = el.getBoundingClientRect();
-      const vh = window.innerHeight || 1;
-      // 0 when the top edge sits at the bottom of the viewport, 1 when it reaches the top.
-      const p = Math.min(1, Math.max(0, 1 - rect.top / vh));
-      const scale = (0.94 + p * 0.06).toFixed(4);
-      el.style.transform = `scale(${scale})`;
-    };
-    const onScroll = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(update); };
-    update();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('resize', onScroll, { passive: true });
-    return () => { window.removeEventListener('scroll', onScroll); window.removeEventListener('resize', onScroll); cancelAnimationFrame(raf); };
-  }, []);
-  return ref;
-}
-
-function HeroMockup() {
-  const parallax = useParallaxScale();
-  const kpis = [
-    { l: 'NET P&L',       v: '+$4,142', c: 'text-profit' },
-    { l: 'WIN RATE',      v: '64.1%',   c: 'text-fg' },
-    { l: 'PROFIT FACTOR', v: '1.90',    c: 'text-fg' },
-    { l: 'BEST DAY',      v: '+$1,634', c: 'text-profit' },
-  ];
-  return (
-    <div ref={parallax} className="will-change-transform origin-top" style={{ transform: 'scale(0.94)' }}>
-      <BrowserFrame url="tradelogs.com/dashboard" status={<span className="text-profit">● LIVE</span>} testId="hero-mockup">
-        <div className="p-3 sm:p-5">
-          {/* Header row */}
-          <div className="flex items-center justify-between gap-3 mb-4">
-            <div className="min-w-0">
-              <div className="text-[10px] sm:text-[11px] text-fg-3 tracking-widest truncate">Good morning, trader</div>
-              <div className="font-display font-black text-2xl sm:text-4xl tracking-tighter mt-1 text-profit">+$4,142.00</div>
-            </div>
-            <span className="btn btn-ghost py-1.5 text-[10px] shrink-0 hidden sm:inline-flex">↻ SYNC NOW</span>
-          </div>
-          {/* KPI grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mb-3 sm:mb-4">
-            {kpis.map(k => (
-              <div key={k.l} className="border border-border-soft px-3 py-2.5">
-                <div className="text-[9px] tracking-[0.18em] text-fg-3 uppercase">{k.l}</div>
-                <div className={`font-display font-black text-lg sm:text-xl mt-1 tracking-tight ${k.c}`}>{k.v}</div>
-              </div>
-            ))}
-          </div>
-          {/* Chart + side panel */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-2 sm:gap-3">
-            <div className="lg:col-span-2 border border-border-soft p-3">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-[9px] tracking-[0.18em] text-fg-3 uppercase">Equity curve</span>
-                <span className="text-[9px] text-profit tracking-widest">▲ +49.7% YTD</span>
-              </div>
-              <SyntheticChart height={150} />
-            </div>
-            <div className="border border-border-soft p-3 flex flex-col justify-between">
-              <span className="text-[9px] tracking-[0.18em] text-fg-3 uppercase">Trade score</span>
-              <div className="font-display font-black text-4xl sm:text-5xl tracking-tighter text-profit">66</div>
-              <div className="text-[9px] tracking-widest text-fg-3 uppercase">Improving · top 20%</div>
-            </div>
-          </div>
-        </div>
-      </BrowserFrame>
-    </div>
-  );
-}
-
 // ── How-it-works stepper (accordion synced to a right-side visual) ────────────
 
 function StepBars({ items }: { items: { l: string; v: number; c: string }[] }) {
@@ -333,15 +256,9 @@ const LIVE_ROWS = [
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function LandingPage() {
-  const [tick, setTick] = useState(0);
   const [step, setStep] = useState(0);
   const [stepPaused, setStepPaused] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-
-  useEffect(() => {
-    const t = setInterval(() => setTick(x => x + 1), 2000);
-    return () => clearInterval(t);
-  }, []);
 
   // Auto-advance the how-it-works stepper so the section feels alive; pauses
   // while the user is hovering/interacting with it.
@@ -385,51 +302,62 @@ export default function LandingPage() {
 
       <TickerTape />
 
-      {/* HERO — centered */}
+      {/* HERO — copy left, product screenshot right */}
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 bg-grid bg-grid-fade opacity-60" />
-        <div className="absolute left-1/2 -translate-x-1/2 top-[-120px] w-[900px] h-[900px] max-w-[140vw] glow-radial opacity-70" />
-        <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-10 pt-16 sm:pt-24 pb-10 sm:pb-14 text-center">
-          <Reveal className="inline-flex items-center gap-2 rounded-full border border-border-soft bg-surface/60 px-3 py-1.5 text-[10px] sm:text-[11px] tracking-[0.28em] text-fg-3">
-            <span className="w-1.5 h-1.5 rounded-full bg-profit pulse-dot" /> SIMPLE INSIGHTS FOR EVERY TRADER
-          </Reveal>
-          <Reveal as="h1" delay={80} className="font-display font-black tracking-tighter text-[40px] sm:text-[60px] md:text-[72px] lg:text-[80px] leading-[0.95] mt-6">
-            Understand your trading.<br />
-            <span className="text-gradient-brand">Improve every day.</span>
-          </Reveal>
-          <Reveal as="p" delay={160} className="text-fg-2 mt-6 max-w-2xl mx-auto text-[13px] sm:text-[15px] leading-relaxed">
-            TRADElogs connects to your MetaTrader 5 account and imports every trade for you. It shows you clear, easy-to-read insights about your habits — like impulse trades, chasing the market, and the times of day you tend to lose money.
-          </Reveal>
-          <Reveal delay={240} className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
-            <Link href="/dashboard" className="btn btn-primary px-6 py-3 text-[13px] justify-center" data-testid="hero-cta-launch">
-              GET STARTED FREE
-            </Link>
-            <a href="#how" className="btn btn-ghost px-6 py-3 text-[13px] justify-center" data-testid="hero-cta-features">
-              SEE HOW IT WORKS
-            </a>
-          </Reveal>
-          {/* Trust stats */}
-          <Reveal delay={320} className="mt-10 grid grid-cols-3 max-w-lg mx-auto border border-border">
-            {[
-              { l: 'Trades imported', v: '14.2M' },
-              { l: 'Avg reward:risk', v: '1:2.4' },
-              { l: 'Results improved', v: '+25%' },
-            ].map(s => (
-              <div key={s.l} className="border-r border-border last:border-r-0 px-3 sm:px-4 py-3">
-                <div className="text-[9px] sm:text-[10px] tracking-[0.18em] text-fg-3 uppercase">{s.l}</div>
-                <div className="font-display font-black text-xl sm:text-2xl mt-1 tracking-tight">{s.v}</div>
-              </div>
-            ))}
-          </Reveal>
-        </div>
+        <div className="absolute right-[-10%] top-[-120px] w-[820px] h-[820px] max-w-[130vw] glow-radial opacity-60" />
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 pt-14 sm:pt-20 pb-16 sm:pb-24 grid lg:grid-cols-12 gap-10 lg:gap-8 items-center">
+          {/* Left: copy */}
+          <div className="lg:col-span-6">
+            <Reveal className="inline-flex items-center gap-2 rounded-full border border-border-soft bg-surface/60 px-3 py-1.5 text-[10px] sm:text-[11px] tracking-[0.28em] text-fg-3">
+              <span className="w-1.5 h-1.5 rounded-full bg-profit pulse-dot" /> SIMPLE INSIGHTS FOR EVERY TRADER
+            </Reveal>
+            <Reveal as="h1" delay={80} className="font-display font-black tracking-tighter text-[40px] sm:text-[56px] md:text-[64px] lg:text-[72px] leading-[0.95] mt-6">
+              Understand your trading.<br />
+              <span className="text-gradient-brand">Improve every day.</span>
+            </Reveal>
+            <Reveal as="p" delay={160} className="text-fg-2 mt-6 max-w-xl text-[13px] sm:text-[15px] leading-relaxed">
+              TRADElogs connects to your MetaTrader 5 account and imports every trade for you. It shows you clear, easy-to-read insights about your habits — like impulse trades, chasing the market, and the times of day you tend to lose money.
+            </Reveal>
+            <Reveal delay={240} className="mt-8 flex flex-col sm:flex-row gap-3">
+              <Link href="/dashboard" className="btn btn-primary px-6 py-3 text-[13px] justify-center" data-testid="hero-cta-launch">
+                GET STARTED FREE
+              </Link>
+              <a href="#how" className="btn btn-ghost px-6 py-3 text-[13px] justify-center" data-testid="hero-cta-features">
+                SEE HOW IT WORKS
+              </a>
+            </Reveal>
+            {/* Trust stats */}
+            <Reveal delay={320} className="mt-10 grid grid-cols-3 max-w-lg border border-border">
+              {[
+                { l: 'Trades imported', v: '14.2M' },
+                { l: 'Avg reward:risk', v: '1:2.4' },
+                { l: 'Results improved', v: '+25%' },
+              ].map(s => (
+                <div key={s.l} className="border-r border-border last:border-r-0 px-3 sm:px-4 py-3">
+                  <div className="text-[9px] sm:text-[10px] tracking-[0.18em] text-fg-3 uppercase">{s.l}</div>
+                  <div className="font-display font-black text-xl sm:text-2xl mt-1 tracking-tight">{s.v}</div>
+                </div>
+              ))}
+            </Reveal>
+          </div>
 
-        {/* Big dashboard mockup (parallax) */}
-        <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-10 pb-16 sm:pb-24" data-testid="hero-terminal">
-          <Reveal delay={120}>
-            <HeroMockup />
-            <div className="mt-3 flex items-center justify-between text-[10px] text-fg-3 tracking-[0.2em]">
-              <span>// MT5: CONNECTED</span>
-              <span>UPDATED JUST NOW · CONFIDENCE {70 + (tick % 4)}%</span>
+          {/* Right: dashboard screenshot */}
+          <Reveal delay={160} className="lg:col-span-6 relative" data-testid="hero-terminal">
+            <div className="absolute -inset-6 glow-radial opacity-70" />
+            <div className="relative rounded-xl border border-border overflow-hidden shadow-2xl float-slow">
+              <img
+                src="/Dashboard.png"
+                alt="TRADElogs dashboard — net P&L, win rate and equity curve"
+                className="w-full h-auto block select-none"
+                draggable={false}
+                loading="eager"
+              />
+            </div>
+            {/* Floating live chip */}
+            <div className="absolute -bottom-3 -left-3 hidden sm:flex items-center gap-2 tcard px-3 py-2 float-slow" style={{ animationDelay: '1.5s' }}>
+              <span className="w-1.5 h-1.5 rounded-full bg-profit pulse-dot" />
+              <span className="text-[11px] text-fg-2 tracking-wide">Synced <span className="text-profit numeric">+$4,142</span> today</span>
             </div>
           </Reveal>
         </div>
