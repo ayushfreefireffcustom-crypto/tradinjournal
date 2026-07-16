@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Gauge, Table, ChartLineUp, CalendarBlank, FilmSlate, NotePencil, type Icon } from '@phosphor-icons/react';
+import { Gauge, Table, ChartLineUp, CalendarBlank, FilmSlate, NotePencil, GearSix, type Icon } from '@phosphor-icons/react';
 import type { BrokerAccount } from '@/lib/api';
 import { authClient } from '@/lib/auth-client';
 import Logo from '@/components/logo';
@@ -103,27 +103,37 @@ export default function AppShell({
           </div>
           <div className="text-[11px] text-fg-2">Online · 38ms latency</div>
           <button
-            onClick={() => { onConnectClick?.(); setDrawerOpen(false); }}
+            onClick={() => { if (accounts.length < 2) { onConnectClick?.(); setDrawerOpen(false); } }}
+            disabled={accounts.length >= 2}
+            title={accounts.length >= 2 ? 'Account limit reached — remove one in Settings' : undefined}
             data-testid="sidebar-connect-broker"
-            className="mt-3 btn btn-ghost w-full justify-center py-1.5 text-[10px]"
+            className={`mt-3 btn btn-ghost w-full justify-center py-1.5 text-[10px] ${accounts.length >= 2 ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             + ADD BROKER
           </button>
         </div>
         <div className="flex items-center gap-2 px-1">
-          <div className="w-7 h-7 rounded-sm bg-surface-hover border border-border flex items-center justify-center font-bold text-[11px]">
-            {session?.user?.name?.charAt(0) ?? 'A'}
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="text-[11px] truncate">{session?.user?.name}</div>
-            <button
-              onClick={() => authClient.signOut()}
-              data-testid="signout-btn"
-              className="text-[10px] text-fg-3 hover:text-loss tracking-widest transition-colors duration-[var(--dur-hover)] focus-ring rounded"
-            >
-              SIGN OUT
-            </button>
-          </div>
+          <Link
+            href="/settings"
+            data-testid="user-settings-link"
+            className="flex items-center gap-2 min-w-0 flex-1 group rounded focus-ring"
+          >
+            <div className="w-7 h-7 rounded-sm bg-surface-hover border border-border group-hover:border-border-strong flex items-center justify-center font-bold text-[11px]">
+              {session?.user?.name?.charAt(0) ?? 'A'}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-[11px] truncate group-hover:text-fg">{session?.user?.name}</div>
+              <div className="text-[10px] text-fg-3 tracking-widest flex items-center gap-1"><GearSix size={11} weight="bold" /> SETTINGS</div>
+            </div>
+          </Link>
+          <button
+            onClick={() => authClient.signOut()}
+            data-testid="signout-btn"
+            title="Sign out"
+            className="text-[10px] text-fg-3 hover:text-loss tracking-widest transition-colors duration-[var(--dur-hover)] focus-ring rounded shrink-0"
+          >
+            SIGN OUT
+          </button>
         </div>
       </div>
     </>
