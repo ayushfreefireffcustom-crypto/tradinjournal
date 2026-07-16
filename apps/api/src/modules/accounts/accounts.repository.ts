@@ -12,6 +12,17 @@ export async function findAccountById(id: string, userId: string): Promise<Broke
   return prisma.brokerAccount.findFirst({ where: { id, userId } });
 }
 
+export async function countAccountsByUser(userId: string): Promise<number> {
+  return prisma.brokerAccount.count({ where: { userId } });
+}
+
+// Delete an account the user owns. Returns false if it was not found for this
+// user (so the caller can 404 instead of deleting someone else's row).
+export async function deleteAccountById(id: string, userId: string): Promise<boolean> {
+  const result = await prisma.brokerAccount.deleteMany({ where: { id, userId } });
+  return result.count > 0;
+}
+
 export async function upsertAccount(data: {
   userId: string;
   broker: string;
