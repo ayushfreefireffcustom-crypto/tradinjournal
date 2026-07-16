@@ -310,6 +310,92 @@ const LIVE_ROWS = [
   { pair: 'AUDUSD', side: 'SELL', size: '0.23', dur: '38m 18s', tag: 'Range',    pnl: '+93.91',  up: true,  time: '08:22 UTC' },
 ];
 
+interface TRow { id: number; pair: string; side: 'BUY' | 'SELL'; size: string; dur: string; tag: string; pnl: number; time: string }
+
+const FEED_PAIRS = ['GBPUSD', 'EURUSD', 'NZDUSD', 'AUDUSD', 'USDJPY', 'XAUUSD', 'NAS100', 'US30'];
+const FEED_TAGS = ['Breakout', 'Pullback', 'Trend', 'Range', 'London', 'FOMO', 'Reversal', 'Scalp'];
+let feedSeq = 9000;
+const pick = <T,>(a: T[]): T => a[Math.floor(Math.random() * a.length)]!;
+
+function makeTrade(): TRow {
+  // Bias toward a winning, positive-trending feed (this is a marketing demo):
+  // ~64% winners, and winners run larger than losers so session P&L climbs.
+  const up = Math.random() > 0.36;
+  const now = new Date();
+  const hh = String(now.getUTCHours()).padStart(2, '0');
+  const mm = String(now.getUTCMinutes()).padStart(2, '0');
+  const mins = Math.floor(2 + Math.random() * 90);
+  return {
+    id: feedSeq++,
+    pair: pick(FEED_PAIRS),
+    side: Math.random() > 0.5 ? 'BUY' : 'SELL',
+    size: (0.1 + Math.random() * 0.5).toFixed(2),
+    dur: mins >= 60 ? `${Math.floor(mins / 60)}h ${mins % 60}m` : `${mins}m ${Math.floor(Math.random() * 59)}s`,
+    tag: pick(FEED_TAGS),
+    pnl: up ? (35 + Math.random() * 300) : -(15 + Math.random() * 120),
+    time: `${hh}:${mm} UTC`,
+  };
+}
+
+const fmtPnl = (n: number) => `${n >= 0 ? '+' : '-'}${Math.abs(n).toFixed(2)}`;
+
+// Live trade feed — a new trade slides in at the top every few seconds, the
+// oldest drops off, and the session P&L keeps climbing. Static list under
+// reduced-motion (no new rows injected).
+function LiveTradesFeed() {
+  const seed: TRow[] = LIVE_ROWS.map((r, i) => ({
+    id: i, pair: r.pair, side: r.side as 'BUY' | 'SELL', size: r.size, dur: r.dur, tag: r.tag,
+    pnl: parseFloat(r.pnl.replace(/[+,]/g, '')), time: r.time,
+  }));
+  const [rows, setRows] = useState<TRow[]>(seed);
+  const [session, setSession] = useState(723.12);
+  const [count, setCount] = useState(8);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const t = setInterval(() => {
+      const r = makeTrade();
+      setRows(prev => [r, ...prev].slice(0, 8));
+      setSession(s => s + r.pnl);
+      setCount(c => c + 1);
+    }, 2600);
+    return () => clearInterval(t);
+  }, []);
+
+  const winRate = Math.round((rows.filter(r => r.pnl >= 0).length / rows.length) * 100);
+
+  return (
+    <>
+      <div className="divide-y divide-border-soft">
+        {rows.map((r, i) => {
+          const up = r.pnl >= 0;
+          return (
+            <div key={r.id} className={`flex items-center gap-3 px-4 py-2.5 text-[11px] sm:text-[12px] ${i === 0 ? 'row-in' : ''}`}>
+              <span className="w-16 shrink-0 flex items-center gap-1.5 tracking-wider">
+                <span className={`w-1.5 h-1.5 rounded-full ${up ? 'bg-profit' : 'bg-loss'}`} />{r.pair}
+              </span>
+              <span className={`w-10 shrink-0 text-[9px] tracking-widest ${r.side === 'BUY' ? 'text-profit' : 'text-loss'}`}>{r.side}</span>
+              <span className="w-12 shrink-0 numeric text-fg-3 hidden sm:inline">{r.size}</span>
+              <span className="w-20 shrink-0 numeric text-fg-3 hidden sm:inline">{r.dur}</span>
+              <span className="flex-1 min-w-0 hidden sm:block">
+                <span className="border border-border-soft px-2 py-0.5 text-[9px] tracking-widest text-fg-2 uppercase">{r.tag}</span>
+              </span>
+              <span className={`w-20 shrink-0 text-right numeric ${up ? 'text-profit' : 'text-loss'}`}>{fmtPnl(r.pnl)}</span>
+              <span className="w-20 shrink-0 text-right numeric text-fg-3 hidden sm:inline">{r.time}</span>
+            </div>
+          );
+        })}
+      </div>
+      {/* Footer */}
+      <div className="flex items-center justify-between gap-3 px-4 py-2.5 border-t border-border-soft text-[10px] tracking-[0.18em] text-fg-3 uppercase">
+        <span>Session P&amp;L <span className={session >= 0 ? 'text-profit numeric' : 'text-loss numeric'}>{fmtPnl(session)}</span></span>
+        <span className="hidden sm:inline">Win rate <span className="text-fg-2 numeric">{winRate}%</span> · {count} trades</span>
+        <span className="flex items-center gap-1.5 text-profit"><span className="w-1.5 h-1.5 rounded-full bg-profit pulse-dot" /> LIVE</span>
+      </div>
+    </>
+  );
+}
+
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function LandingPage() {
@@ -642,29 +728,7 @@ export default function LandingPage() {
                 <span className="w-20 text-right">P&amp;L</span>
                 <span className="w-20 text-right">Time</span>
               </div>
-              <div className="divide-y divide-border-soft">
-                {LIVE_ROWS.map((r, i) => (
-                  <Reveal key={i} delay={i * 70} className="flex items-center gap-3 px-4 py-2.5 text-[11px] sm:text-[12px]">
-                    <span className="w-16 shrink-0 flex items-center gap-1.5 tracking-wider">
-                      <span className={`w-1.5 h-1.5 rounded-full ${r.up ? 'bg-profit' : 'bg-loss'}`} />{r.pair}
-                    </span>
-                    <span className={`w-10 shrink-0 text-[9px] tracking-widest ${r.side === 'BUY' ? 'text-profit' : 'text-loss'}`}>{r.side}</span>
-                    <span className="w-12 shrink-0 numeric text-fg-3 hidden sm:inline">{r.size}</span>
-                    <span className="w-20 shrink-0 numeric text-fg-3 hidden sm:inline">{r.dur}</span>
-                    <span className="flex-1 min-w-0 hidden sm:block">
-                      <span className="border border-border-soft px-2 py-0.5 text-[9px] tracking-widest text-fg-2 uppercase">{r.tag}</span>
-                    </span>
-                    <span className={`w-20 shrink-0 text-right numeric ${r.up ? 'text-profit' : 'text-loss'}`}>{r.pnl}</span>
-                    <span className="w-20 shrink-0 text-right numeric text-fg-3 hidden sm:inline">{r.time}</span>
-                  </Reveal>
-                ))}
-              </div>
-              {/* Footer */}
-              <div className="flex items-center justify-between gap-3 px-4 py-2.5 border-t border-border-soft text-[10px] tracking-[0.18em] text-fg-3 uppercase">
-                <span>Session P&amp;L <span className="text-profit numeric">+723.12</span></span>
-                <span>Win rate <span className="text-fg-2 numeric">75%</span> · 8 trades</span>
-                <span className="flex items-center gap-1.5 text-profit"><span className="w-1.5 h-1.5 rounded-full bg-profit pulse-dot" /> LIVE</span>
-              </div>
+              <LiveTradesFeed />
             </BrowserFrame>
           </Reveal>
         </div>
