@@ -113,7 +113,6 @@ export default function LandingPage() {
           <nav className="hidden md:flex items-center gap-5 lg:gap-7 text-[12px] text-fg-2">
             <a href="#features" className="hover:text-fg transition-colors">FEATURES</a>
             <a href="#analytics" className="hover:text-fg transition-colors">ANALYTICS</a>
-            <a href="#pricing" className="hover:text-fg transition-colors">PRICING</a>
             <a href="#faq" className="hover:text-fg transition-colors">FAQ</a>
           </nav>
           <div className="flex items-center gap-2 shrink-0">
@@ -179,7 +178,7 @@ export default function LandingPage() {
                   <span className="w-2 h-2 rounded-full bg-warning/80" />
                   <span className="w-2 h-2 rounded-full bg-profit/80" />
                 </div>
-                <span className="text-[10px] tracking-[0.2em] text-fg-3">TJX // SESSION_01</span>
+                <span className="text-[10px] tracking-[0.2em] text-fg-3">TRADELOGS // LIVE SESSION</span>
                 <span className="text-[10px] text-profit">● LIVE</span>
               </div>
 
@@ -189,7 +188,7 @@ export default function LandingPage() {
                   <div className="font-display font-black text-2xl sm:text-3xl tracking-tighter mt-1">+$1,240<span className="text-profit text-sm sm:text-base font-mono ml-2">+3.2R</span></div>
                 </div>
                 <div className="text-right shrink-0">
-                  <div className="text-[10px] text-fg-3 tracking-widest">CONF · {70 + (tick % 4)}%</div>
+                  <div className="text-[10px] text-fg-3 tracking-widest">CONFIDENCE · {70 + (tick % 4)}%</div>
                   <div className="text-profit text-[10px] sm:text-[11px] mt-1">DISCIPLINED</div>
                 </div>
               </div>
@@ -210,7 +209,7 @@ export default function LandingPage() {
               </div>
             </div>
             <div className="mt-3 flex items-center justify-between text-[10px] text-fg-3 tracking-[0.2em]">
-              <span>// MT5 CONNECTION: ONLINE</span>
+              <span>// MT5: CONNECTED</span>
               <span>UPDATED JUST NOW</span>
             </div>
           </div>
@@ -336,38 +335,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* PRICING */}
-      <section id="pricing" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-16 sm:py-24">
-        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8 sm:mb-10">
-          <div>
-            <p className="text-[10px] sm:text-[11px] tracking-[0.3em] text-fg-3">[ 04 // OUR PLANS ]</p>
-            <h2 className="font-display font-black tracking-tighter text-3xl sm:text-4xl lg:text-5xl mt-3">PRICING.</h2>
-          </div>
-          <p className="text-fg-2 text-[12px] max-w-sm">Simple, honest pricing. No hidden fees — just a journal that pays for itself in one good month.</p>
-        </div>
-
-        <div className="grid md:grid-cols-3 gap-2 sm:gap-3">
-          {[
-            { name: 'STARTER',  price: '$0',  per: 'forever',     desc: 'A simple journal with the basics.',     features: ['1 MT5 account', 'Basic profit stats', 'Manual tagging', 'Balance chart'], cta: 'START FREE', highlight: false },
-            { name: 'TRADER', price: '$19', per: 'per month',   desc: 'Everything you need to improve.',         features: ['Unlimited MT5 accounts', 'Smart trading insights', 'Trade replay', 'Full analytics', 'CSV / API export'], cta: 'UPGRADE',     highlight: true },
-            { name: 'TEAM',   price: '$49', per: 'per month',   desc: 'For prop firms & trading teams.',            features: ['Everything in Trader', 'Team workspaces', 'Team reports', 'Priority MT5 sync', 'Dedicated support'], cta: 'CONTACT SALES', highlight: false },
-          ].map(p => (
-            <div key={p.name} className={`tcard p-5 sm:p-6 flex flex-col ${p.highlight ? 'border-fg' : ''}`} data-testid={`pricing-${p.name.toLowerCase()}`}>
-              {p.highlight && <span className="absolute -top-px right-3 bg-fg text-app text-[10px] tracking-widest px-2 py-1">MOST USED</span>}
-              <div className="text-[10px] sm:text-[11px] tracking-[0.25em] text-fg-3">{p.name}</div>
-              <div className="font-display font-black text-4xl sm:text-5xl tracking-tighter mt-4">{p.price}<span className="text-fg-3 text-[12px] font-mono ml-2">/ {p.per}</span></div>
-              <p className="text-fg-2 text-[12px] mt-3">{p.desc}</p>
-              <ul className="mt-6 space-y-2 text-[12px] text-fg-2">
-                {p.features.map(f => (
-                  <li key={f} className="flex items-start gap-2"><span className="text-profit">→</span> {f}</li>
-                ))}
-              </ul>
-              <Link href="/dashboard" className={`mt-8 btn ${p.highlight ? 'btn-primary' : 'btn-ghost'} justify-center w-full py-2.5`}>{p.cta}</Link>
-            </div>
-          ))}
-        </div>
-      </section>
-
       {/* TESTIMONIAL / PROOF */}
       <section className="border-y border-border bg-surface/40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-16 sm:py-20 grid lg:grid-cols-12 gap-8 lg:gap-10 items-center">
@@ -396,7 +363,7 @@ export default function LandingPage() {
 
       {/* FAQ */}
       <section id="faq" className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-10 py-16 sm:py-24">
-        <p className="text-[10px] sm:text-[11px] tracking-[0.3em] text-fg-3 mb-3">[ 05 // HELP ]</p>
+        <p className="text-[10px] sm:text-[11px] tracking-[0.3em] text-fg-3 mb-3">[ 04 // HELP ]</p>
         <h2 className="font-display font-black tracking-tighter text-3xl sm:text-4xl lg:text-5xl mb-8 sm:mb-10">COMMON QUESTIONS.</h2>
         <div className="border-t border-border">
           {[
@@ -434,7 +401,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-8 sm:py-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-6">
           <div className="flex items-center gap-3 text-[10px] sm:text-[11px] text-fg-3 tracking-widest">
             <span className="w-2 h-2 bg-profit pulse-dot shrink-0" />
-            <span>TRADELOGS // PRECISION JOURNAL // EST 2026</span>
+            <span>TRADELOGS // TRADING JOURNAL // EST 2026</span>
           </div>
           <div className="flex flex-wrap gap-4 sm:gap-6 text-[10px] sm:text-[11px] text-fg-3 tracking-widest">
             <a href="#" className="hover:text-fg">PRIVACY</a>
