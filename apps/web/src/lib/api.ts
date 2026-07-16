@@ -138,6 +138,7 @@ export const api = {
     connect: (body: { mt5Login: number; password: string; server: string; broker?: string }) =>
       apiFetch<BrokerAccount>(`${PREFIX}/accounts`, { method: 'POST', body: JSON.stringify(body) }),
     list: () => apiFetch<BrokerAccount[]>(`${PREFIX}/accounts`),
+    delete: (id: string) => apiFetch<{ ok: boolean }>(`${PREFIX}/accounts/${id}`, { method: 'DELETE' }),
   },
   trades: {
     list:  (accountId: string) => apiFetch<Trade[]>(`${PREFIX}/trades?accountId=${encodeURIComponent(accountId)}`),
