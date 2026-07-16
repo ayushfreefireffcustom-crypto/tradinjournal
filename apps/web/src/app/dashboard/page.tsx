@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { api, type BrokerAccount, type AccountStats, type Trade, type JournalEntry } from '@/lib/api';
 import { statsForRange, rangeStart, RANGES, type RangeKey } from '@/lib/stats';
+import { useAccounts } from '@/lib/use-accounts';
 import AppShell from '@/components/app-shell';
 import ConnectBrokerModal from '@/components/connect-broker-modal';
 import EquityChart from '@/components/equity-chart';
@@ -47,8 +48,7 @@ function MiniBars({ data }: { data: { day: string; netPnl: number }[] }) {
 }
 
 export default function DashboardPage() {
-  const [accounts, setAccounts] = useState<BrokerAccount[]>([]);
-  const [selected, setSelected] = useState<BrokerAccount | null>(null);
+  const { accounts, selected, select, setAccounts } = useAccounts();
   const [stats, setStats] = useState<AccountStats | null>(null);
   const [trades, setTrades] = useState<Trade[]>([]);
   const [journal, setJournal] = useState<JournalEntry[]>([]);
@@ -68,15 +68,6 @@ export default function DashboardPage() {
   }, [trades, range]);
   const rangedTradeIds = useMemo(() => new Set(rangedTrades.map(t => t.positionId)), [rangedTrades]);
   const recent = useMemo(() => rangedTrades.slice(0, 6), [rangedTrades]);
-
-  const load = useCallback(async () => {
-    try {
-      const accs = await api.accounts.list();
-      setAccounts(accs);
-      setSelected(accs[0] ?? null);
-    } catch {}
-  }, []);
-  useEffect(() => { load(); }, [load]);
 
   const loadStats = useCallback(async (acc: BrokerAccount, notify = false) => {
     setLoading(true);
@@ -126,7 +117,7 @@ export default function DashboardPage() {
       const e = prev.find(a => a.id === account.id);
       return e ? prev.map(a => a.id === account.id ? account : a) : [account, ...prev];
     });
-    setSelected(account);
+    select(account);
     setShowConnect(false);
   }
 
@@ -148,7 +139,7 @@ export default function DashboardPage() {
     <AppShell
       accounts={accounts}
       selectedAccount={selected}
-      onSelectAccount={setSelected}
+      onSelectAccount={select}
       onConnectClick={() => setShowConnect(true)}
       pageTitle="Dashboard"
       pageSubtitle="// SESSION OVERVIEW"
