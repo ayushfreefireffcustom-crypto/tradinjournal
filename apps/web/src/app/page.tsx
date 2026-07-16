@@ -2,9 +2,19 @@
 
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
+import { LinkSimple, Brain, ChatCircle, Lightning, Clock, Target } from '@phosphor-icons/react';
 import Logo from '@/components/logo';
 import Reveal from '@/components/reveal';
 import BrowserFrame from '@/components/browser-frame';
+import AnimatedNumber from '@/components/animated-number';
+import { useInView } from '@/hooks/use-in-view';
+
+// Count-up number that starts when it scrolls into view (0 → value). Reuses the
+// AnimatedNumber tween; under reduced-motion it snaps instantly.
+function Metric({ value, format, className }: { value: number; format: (n: number) => string; className?: string }) {
+  const [ref, inView] = useInView<HTMLSpanElement>();
+  return <span ref={ref} className={className}><AnimatedNumber value={inView ? value : 0} format={format} /></span>;
+}
 
 // ── Tiny presentational primitives ────────────────────────────────────────────
 
@@ -226,14 +236,31 @@ const STEPS = [
     title: 'Connect your broker',
     body: 'Link your MT5 account with a read-only login. Trades sync automatically — no manual entry, no CSV uploads.',
     label: 'CONNECTING',
+    meta: '~90 seconds',
+    icon: LinkSimple,
     visual: (
       <div className="w-full">
-        <div className="flex items-center gap-2 text-[10px] tracking-[0.18em] text-fg-3 uppercase mb-3">
-          <span className="w-1.5 h-1.5 rounded-full bg-profit pulse-dot" /> Auto-sync successful
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2 text-[10px] tracking-[0.18em] text-fg-3 uppercase">
+            <span className="w-1.5 h-1.5 rounded-full bg-profit pulse-dot" /> Auto-sync successful
+          </div>
+          <span className="text-[9px] tracking-widest text-fg-3 uppercase">XM Global · #345636702</span>
         </div>
-        <div className="font-display font-black text-2xl tracking-tighter mb-3">32 trades imported</div>
-        <div className="h-1.5 bg-border-soft rounded-full overflow-hidden">
+        <div className="font-display font-black text-2xl tracking-tighter mb-2">
+          <Metric value={32} format={n => `${Math.round(n)}`} /> trades imported
+        </div>
+        <div className="h-1.5 bg-border-soft rounded-full overflow-hidden mb-4">
           <div className="h-full rounded-full bg-profit grow-y" style={{ width: '100%', transformOrigin: 'left' }} />
+        </div>
+        <div className="divide-y divide-border-soft border-t border-border-soft">
+          {[
+            { s: 'XAUUSD', p: '+$607', up: true }, { s: 'EURUSD', p: '-$225', up: false }, { s: 'NAS100', p: '+$1,193', up: true },
+          ].map((r, i) => (
+            <div key={i} className="flex items-center justify-between py-1.5 text-[11px] rise" style={{ ['--i' as string]: i + 1 }}>
+              <span className="tracking-wider text-fg-2">{r.s}</span>
+              <span className={`numeric ${r.up ? 'text-profit' : 'text-loss'}`}>{r.p}</span>
+            </div>
+          ))}
         </div>
         <div className="text-[10px] text-fg-3 tracking-widest mt-3 uppercase">MT5 · read-only · encrypted</div>
       </div>
@@ -244,13 +271,20 @@ const STEPS = [
     title: 'AI analyzes everything',
     body: 'Every trade is scanned for patterns, emotional bias, risk issues and strategy effectiveness — automatically.',
     label: 'ANALYZING',
+    meta: 'real-time',
+    icon: Brain,
     visual: (
-      <StepBars items={[
-        { l: 'Pattern recognition', v: 92, c: '#08C465' },
-        { l: 'Emotional analysis', v: 78, c: '#FE3A31' },
-        { l: 'Risk assessment', v: 85, c: '#08C465' },
-        { l: 'Strategy scoring', v: 71, c: '#FFFFFF' },
-      ]} />
+      <div className="w-full">
+        <div className="flex items-center gap-2 text-[10px] tracking-[0.18em] text-fg-3 uppercase mb-4">
+          <span className="w-1.5 h-1.5 rounded-full bg-profit pulse-dot" /> Scanning 78 trades
+        </div>
+        <StepBars items={[
+          { l: 'Pattern recognition', v: 92, c: '#08C465' },
+          { l: 'Emotional analysis', v: 78, c: '#FE3A31' },
+          { l: 'Risk assessment', v: 85, c: '#08C465' },
+          { l: 'Strategy scoring', v: 71, c: '#FFFFFF' },
+        ]} />
+      </div>
     ),
   },
   {
@@ -258,15 +292,24 @@ const STEPS = [
     title: 'Get your edge',
     body: 'Weekly summaries, behavioural scores and plain-English coaching based on your real trades — not generic advice.',
     label: 'YOUR EDGE',
+    meta: 'every Monday',
+    icon: Target,
     visual: (
       <div className="w-full">
         <div className="text-[10px] tracking-[0.18em] text-fg-3 uppercase mb-2">Weekly summary</div>
         <p className="text-[13px] text-fg-2 leading-relaxed">
           Your <span className="text-profit">London-session longs</span> are your strongest setup this week — <span className="text-profit numeric">+$1,240</span> across 12 trades. Losses cluster <span className="text-loss">after 3 PM UTC</span> — consider stopping earlier.
         </p>
-        <div className="mt-4 flex flex-wrap gap-2">
-          {['Best: London', 'Watch: revenge', 'Plan followed 94%'].map(t => (
-            <span key={t} className="border border-border-soft px-2.5 py-1 text-[10px] tracking-widest text-fg-2 uppercase">{t}</span>
+        <div className="mt-4 grid grid-cols-3 gap-3 border-t border-border-soft pt-4">
+          {[
+            { l: 'Best day', v: '+$1,634', c: 'text-profit' },
+            { l: 'Plan followed', v: '94%', c: 'text-profit' },
+            { l: 'Tilt events', v: '2', c: 'text-loss' },
+          ].map(m => (
+            <div key={m.l}>
+              <div className="text-[9px] tracking-[0.16em] text-fg-3 uppercase">{m.l}</div>
+              <div className={`font-display font-bold text-base mt-0.5 numeric ${m.c}`}>{m.v}</div>
+            </div>
           ))}
         </div>
       </div>
@@ -291,13 +334,22 @@ const LIVE_ROWS = [
 
 export default function LandingPage() {
   const [tick, setTick] = useState(0);
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(0);
+  const [stepPaused, setStepPaused] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
     const t = setInterval(() => setTick(x => x + 1), 2000);
     return () => clearInterval(t);
   }, []);
+
+  // Auto-advance the how-it-works stepper so the section feels alive; pauses
+  // while the user is hovering/interacting with it.
+  useEffect(() => {
+    if (stepPaused) return;
+    const t = setInterval(() => setStep(s => (s + 1) % STEPS.length), 3800);
+    return () => clearInterval(t);
+  }, [stepPaused]);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -385,15 +437,51 @@ export default function LandingPage() {
 
       {/* MISSION strip */}
       <section className="border-y border-border bg-surface/40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-12 sm:py-16">
-          <Reveal>
-            <p className="text-[10px] sm:text-[11px] tracking-[0.3em] text-fg-3 mb-4">[ WHY TRADELOGS ]</p>
-            <h2 className="font-display font-black tracking-tighter text-2xl sm:text-3xl md:text-4xl lg:text-5xl max-w-4xl leading-[1.05]">
-              <span className="text-fg-2">A TRADING JOURNAL THAT ACTUALLY HELPS YOU </span>
-              <span className="text-fg">LEARN AND IMPROVE </span>
-              <span className="text-fg-2">— NOT JUST TAKE NOTES.</span>
-            </h2>
-          </Reveal>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-14 sm:py-20">
+          <div className="grid lg:grid-cols-12 gap-8 lg:gap-10 items-end">
+            <Reveal className="lg:col-span-8">
+              <p className="text-[10px] sm:text-[11px] tracking-[0.3em] text-fg-3 mb-4">[ WHY TRADELOGS ]</p>
+              <h2 className="font-display font-black tracking-tighter text-2xl sm:text-3xl md:text-4xl lg:text-5xl leading-[1.05]">
+                <span className="text-fg-2">A trading journal that actually helps you </span>
+                <span className="text-gradient-brand">learn and improve </span>
+                <span className="text-fg-2">— not just take notes.</span>
+              </h2>
+            </Reveal>
+            <Reveal delay={120} className="lg:col-span-4">
+              <p className="text-fg-2 text-[12px] sm:text-[13px] leading-relaxed">
+                Most journals are just spreadsheets you forget to fill in. TRADElogs reads every fill automatically and turns it into habits you can actually fix.
+              </p>
+              <div className="mt-5 grid grid-cols-3 gap-3">
+                {[
+                  { v: 8500, fmt: (n: number) => `${Math.round(n / 1000)}K+`, l: 'Traders' },
+                  { v: 90,   fmt: (n: number) => `${Math.round(n)}s`,        l: 'To connect' },
+                  { v: 100,  fmt: (n: number) => `${Math.round(n)}%`,        l: 'Auto-logged' },
+                ].map(s => (
+                  <div key={s.l}>
+                    <Metric value={s.v} format={s.fmt} className="font-display font-black text-2xl sm:text-3xl tracking-tight text-fg" />
+                    <div className="text-[9px] tracking-[0.16em] text-fg-3 uppercase mt-1">{s.l}</div>
+                  </div>
+                ))}
+              </div>
+            </Reveal>
+          </div>
+
+          {/* Differentiators */}
+          <div className="grid sm:grid-cols-3 gap-2 sm:gap-3 mt-10 sm:mt-12">
+            {[
+              { icon: LinkSimple, t: 'Auto-imported', b: 'Every trade, fee and commission pulled straight from MT5 — nothing typed by hand.' },
+              { icon: Brain,      t: 'Behavioural insights', b: 'Spot revenge trades, FOMO entries and tilt cycles before they cost you.' },
+              { icon: ChatCircle, t: 'Plain-English coaching', b: 'Weekly reviews written from your real trades — not generic tips.' },
+            ].map((c, i) => (
+              <Reveal key={c.t} delay={i * 90} className="tcard tcard-hover p-5 flex flex-col gap-3">
+                <span className="w-9 h-9 border border-border-soft flex items-center justify-center text-profit">
+                  <c.icon size={18} weight="duotone" />
+                </span>
+                <h3 className="font-display font-bold text-[15px] tracking-tight">{c.t}</h3>
+                <p className="text-fg-2 text-[12px] leading-relaxed">{c.b}</p>
+              </Reveal>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -414,27 +502,58 @@ export default function LandingPage() {
             <Reveal className="tcard col-span-12 lg:col-span-8 p-5 sm:p-6 flex flex-col">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] sm:text-[11px] tracking-[0.25em] text-fg-3">EQUITY CURVE</span>
-                <span className="text-[10px] text-profit">▲ LIVE</span>
+                <span className="text-[10px] text-profit flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-profit pulse-dot" /> LIVE</span>
               </div>
-              <p className="text-fg-2 text-[12px] mt-2 max-w-md">Track your growth with a live-updating equity curve that shows your real edge over time.</p>
-              <div className="mt-5 border border-border-soft p-3"><SyntheticChart height={200} /></div>
+              <div className="flex items-end justify-between gap-3 mt-2">
+                <p className="text-fg-2 text-[12px] max-w-xs">Track your growth with a live-updating equity curve that shows your real edge over time.</p>
+                <div className="text-right shrink-0">
+                  <Metric value={49.7} format={n => `+${n.toFixed(1)}%`} className="font-display font-black text-2xl sm:text-3xl tracking-tighter text-profit" />
+                  <div className="text-[9px] tracking-[0.16em] text-fg-3 uppercase mt-0.5">YTD return</div>
+                </div>
+              </div>
+              <div className="mt-5 border border-border-soft p-3"><SyntheticChart height={190} /></div>
+              <div className="grid grid-cols-3 border-t border-border-soft mt-4 pt-4">
+                {[
+                  { l: 'Peak equity', v: '+$12,418', c: 'text-profit' },
+                  { l: 'Max drawdown', v: '-6.2%', c: 'text-loss' },
+                  { l: 'Trades', v: '78', c: '' },
+                ].map(s => (
+                  <div key={s.l} className="px-1">
+                    <div className="text-[9px] tracking-[0.16em] text-fg-3 uppercase">{s.l}</div>
+                    <div className={`font-display font-bold text-base sm:text-lg mt-0.5 tracking-tight numeric ${s.c}`}>{s.v}</div>
+                  </div>
+                ))}
+              </div>
             </Reveal>
 
-            <Reveal delay={90} className="tcard col-span-12 lg:col-span-4 p-5 sm:p-6 flex flex-col items-center">
-              <span className="self-start text-[10px] sm:text-[11px] tracking-[0.25em] text-profit">BEHAVIORAL SCORE</span>
+            <Reveal delay={90} className="tcard col-span-12 lg:col-span-4 p-5 sm:p-6 flex flex-col">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] sm:text-[11px] tracking-[0.25em] text-profit">BEHAVIORAL SCORE</span>
+                <Metric value={82} format={n => `${Math.round(n)}`} className="font-display font-black text-2xl tracking-tighter text-fg" />
+              </div>
               <div className="flex-1 flex items-center w-full"><RadarScore /></div>
+              <div className="grid grid-cols-2 gap-3 border-t border-border-soft pt-4">
+                <div>
+                  <div className="text-[9px] tracking-[0.16em] text-fg-3 uppercase">Top strength</div>
+                  <div className="text-[13px] text-profit mt-0.5">Discipline · 90</div>
+                </div>
+                <div>
+                  <div className="text-[9px] tracking-[0.16em] text-fg-3 uppercase">Work on</div>
+                  <div className="text-[13px] text-loss mt-0.5">Timing · 60</div>
+                </div>
+              </div>
             </Reveal>
 
-            <Reveal delay={60} className="tcard col-span-12 p-5 sm:p-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+            <Reveal delay={60} className="tcard col-span-12 grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 p-5 sm:p-6">
               {[
-                { l: 'Metrics per trade', v: '21+' },
-                { l: 'Long win rate',     v: '61%',    c: 'text-profit' },
-                { l: 'Best session',      v: 'London', c: 'text-profit' },
-                { l: 'Worst hour',        v: 'after 3PM', c: 'text-loss' },
+                { l: 'Metrics per trade', node: <Metric value={21} format={n => `${Math.round(n)}+`} className="font-display font-black text-2xl sm:text-3xl tracking-tight" /> },
+                { l: 'Long win rate',     node: <Metric value={61} format={n => `${Math.round(n)}%`} className="font-display font-black text-2xl sm:text-3xl tracking-tight text-profit" /> },
+                { l: 'Best session',      node: <span className="font-display font-black text-2xl sm:text-3xl tracking-tight text-profit">London</span> },
+                { l: 'Worst hour',        node: <span className="font-display font-black text-2xl sm:text-3xl tracking-tight text-loss">after 3PM</span> },
               ].map(s => (
                 <div key={s.l}>
                   <div className="text-[10px] tracking-[0.18em] text-fg-3 uppercase">{s.l}</div>
-                  <div className={`font-display font-black text-2xl sm:text-3xl mt-1 tracking-tight ${s.c ?? ''}`}>{s.v}</div>
+                  <div className="mt-1">{s.node}</div>
                 </div>
               ))}
             </Reveal>
@@ -454,9 +573,15 @@ export default function LandingPage() {
 
           <div className="grid lg:grid-cols-2 gap-8 lg:gap-10 items-center mt-10 sm:mt-12">
             {/* Accordion */}
-            <Reveal className="flex flex-col gap-2" data-testid="how-stepper">
+            <Reveal
+              className="flex flex-col gap-2"
+              data-testid="how-stepper"
+              onMouseEnter={() => setStepPaused(true)}
+              onMouseLeave={() => setStepPaused(false)}
+            >
               {STEPS.map((s, i) => {
                 const active = step === i;
+                const Icon = s.icon;
                 return (
                   <button
                     key={s.key}
@@ -465,11 +590,23 @@ export default function LandingPage() {
                     className={`text-left tcard p-4 sm:p-5 transition-colors duration-[var(--dur-select)] ${active ? 'border-l-2 border-l-profit bg-surface-hover' : 'hover:bg-surface'}`}
                   >
                     <div className="flex items-center gap-3">
-                      <span className={`w-7 h-7 shrink-0 flex items-center justify-center text-[11px] font-bold border ${active ? 'border-profit text-profit' : 'border-border-strong text-fg-3'}`}>{i + 1}</span>
-                      <h3 className="font-display font-bold text-[15px] sm:text-lg tracking-tight">{s.title}</h3>
+                      <span className={`w-8 h-8 shrink-0 flex items-center justify-center border ${active ? 'border-profit text-profit' : 'border-border-strong text-fg-3'}`}>
+                        <Icon size={16} weight={active ? 'fill' : 'regular'} />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="font-display font-bold text-[15px] sm:text-lg tracking-tight">{s.title}</h3>
+                      </div>
+                      <span className="text-[9px] tracking-[0.18em] text-fg-3 uppercase shrink-0">{s.meta}</span>
                     </div>
                     <div className={`grid transition-all duration-[var(--dur-select)] ${active ? 'grid-rows-[1fr] opacity-100 mt-3' : 'grid-rows-[0fr] opacity-0'}`}>
-                      <p className="overflow-hidden text-fg-2 text-[12px] sm:text-[13px] leading-relaxed pl-10">{s.body}</p>
+                      <div className="overflow-hidden pl-11">
+                        <p className="text-fg-2 text-[12px] sm:text-[13px] leading-relaxed">{s.body}</p>
+                        {active && !stepPaused && (
+                          <div className="mt-3 h-0.5 bg-border-soft rounded-full overflow-hidden">
+                            <div key={step} className="h-full bg-profit/60 step-progress" />
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </button>
                 );
