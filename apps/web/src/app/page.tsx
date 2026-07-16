@@ -119,8 +119,8 @@ export default function LandingPage() {
           <div className="flex items-center gap-2 shrink-0">
             <Link href="/login" className="btn btn-ghost hidden xs:inline-flex" data-testid="nav-signin">SIGN IN</Link>
             <Link href="/dashboard" className="btn btn-primary" data-testid="nav-open-terminal">
-              <span className="hidden sm:inline">OPEN TERMINAL</span>
-              <span className="sm:hidden">LAUNCH</span>
+              <span className="hidden sm:inline">GET STARTED</span>
+              <span className="sm:hidden">START</span>
               <span aria-hidden>→</span>
             </Link>
           </div>
@@ -134,33 +134,33 @@ export default function LandingPage() {
         <div className="absolute inset-0 bg-grid bg-grid-fade opacity-60" />
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 pt-14 sm:pt-20 pb-16 sm:pb-24 grid lg:grid-cols-12 gap-10 items-end">
           <div className="lg:col-span-7 fade-up">
-            <p className="text-[10px] sm:text-[11px] tracking-[0.3em] text-fg-3 mb-5 sm:mb-6">[ TJX // BEHAVIORAL ANALYTICS LAYER ]</p>
+            <p className="text-[10px] sm:text-[11px] tracking-[0.3em] text-fg-3 mb-5 sm:mb-6">[ SIMPLE INSIGHTS FOR EVERY TRADER ]</p>
             <h1 className="font-display font-black tracking-tighter text-[40px] sm:text-[56px] md:text-[68px] lg:text-[78px] leading-[0.95]">
-              QUANTIFY <br />
-              YOUR <span className="text-fg-2">EDGE.</span> <br />
-              <span className="text-profit">EXECUTE</span> <br />
-              YOUR PLAN.
+              UNDERSTAND <br />
+              YOUR <span className="text-fg-2">TRADING.</span> <br />
+              <span className="text-profit">IMPROVE</span> <br />
+              EVERY DAY.
             </h1>
             <p className="text-fg-2 mt-6 sm:mt-8 max-w-xl text-[12px] sm:text-[13px] leading-relaxed">
-              TRADElogs hooks directly into MetaTrader 5, reconstructs every position, and tells you
-              the brutal truth about your trading psychology — revenge entries, FOMO chases, and
-              the exact session where you bleed pips.
+              TRADElogs connects to your MetaTrader 5 account and imports every trade for you.
+              It shows you clear, easy-to-read insights about your habits — like impulse trades,
+              chasing the market, and the times of day you tend to lose money.
             </p>
             <div className="mt-7 sm:mt-8 flex flex-col sm:flex-row gap-3">
               <Link href="/dashboard" className="btn btn-primary px-6 py-3 text-[13px] justify-center" data-testid="hero-cta-launch">
-                LAUNCH TERMINAL
+                GET STARTED FREE
               </Link>
               <a href="#features" className="btn btn-ghost px-6 py-3 text-[13px] justify-center" data-testid="hero-cta-features">
-                VIEW SPEC SHEET
+                SEE HOW IT WORKS
               </a>
             </div>
 
             {/* Mini stats strip */}
             <div className="mt-10 sm:mt-12 grid grid-cols-3 max-w-md border border-border">
               {[
-                { l: 'Trades synced', v: '14.2M' },
-                { l: 'Median R:R', v: '1:2.4' },
-                { l: 'Edge uplift', v: '+25%' },
+                { l: 'Trades imported', v: '14.2M' },
+                { l: 'Avg reward:risk', v: '1:2.4' },
+                { l: 'Results improved', v: '+25%' },
               ].map(s => (
                 <div key={s.l} className="border-r border-border last:border-r-0 px-3 sm:px-4 py-3">
                   <div className="text-[9px] sm:text-[10px] tracking-[0.18em] text-fg-3 uppercase">{s.l}</div>
@@ -210,8 +210,8 @@ export default function LandingPage() {
               </div>
             </div>
             <div className="mt-3 flex items-center justify-between text-[10px] text-fg-3 tracking-[0.2em]">
-              <span>// MT5 BRIDGE: ONLINE</span>
-              <span>LATENCY 38ms</span>
+              <span>// MT5 CONNECTION: ONLINE</span>
+              <span>UPDATED JUST NOW</span>
             </div>
           </div>
         </div>
@@ -220,11 +220,11 @@ export default function LandingPage() {
       {/* MISSION strip */}
       <section className="border-y border-border bg-surface/40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-12 sm:py-16">
-          <p className="text-[10px] sm:text-[11px] tracking-[0.3em] text-fg-3 mb-4">[ THE MISSION ]</p>
+          <p className="text-[10px] sm:text-[11px] tracking-[0.3em] text-fg-3 mb-4">[ WHY TRADELOGS ]</p>
           <h2 className="font-display font-black tracking-tighter text-2xl sm:text-3xl md:text-4xl lg:text-5xl max-w-4xl leading-[1.05]">
-            <span className="text-fg-2">A TRADING JOURNAL THAT BEHAVES </span>
-            <span className="text-fg">LIKE A BLOOMBERG TERMINAL </span>
-            <span className="text-fg-2">— NOT A NOTES APP.</span>
+            <span className="text-fg-2">A TRADING JOURNAL THAT ACTUALLY HELPS YOU </span>
+            <span className="text-fg">LEARN AND IMPROVE </span>
+            <span className="text-fg-2">— NOT JUST TAKE NOTES.</span>
           </h2>
         </div>
       </section>
@@ -233,34 +233,34 @@ export default function LandingPage() {
       <section id="features" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-16 sm:py-24">
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8 sm:mb-10">
           <div>
-            <p className="text-[10px] sm:text-[11px] tracking-[0.3em] text-fg-3">[ 02 // CAPABILITY MATRIX ]</p>
-            <h2 className="font-display font-black tracking-tighter text-3xl sm:text-4xl lg:text-5xl mt-3">EVERY TRADE, DISSECTED.</h2>
+            <p className="text-[10px] sm:text-[11px] tracking-[0.3em] text-fg-3">[ 02 // WHAT YOU GET ]</p>
+            <h2 className="font-display font-black tracking-tighter text-3xl sm:text-4xl lg:text-5xl mt-3">UNDERSTAND EVERY TRADE.</h2>
           </div>
-          <p className="text-fg-2 text-[12px] max-w-sm">Six instruments. Built for execution discipline, not vanity dashboards.</p>
+          <p className="text-fg-2 text-[12px] max-w-sm">Six simple tools to help you review, learn and improve your trading.</p>
         </div>
 
         <div className="grid grid-cols-12 gap-2 sm:gap-3">
           {/* Big card */}
           <div className="tcard col-span-12 lg:col-span-7 p-5 sm:p-6 min-h-[280px] sm:min-h-[320px] flex flex-col" data-testid="feature-mt5">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] sm:text-[11px] tracking-[0.25em] text-fg-3">01 // MT5 BRIDGE</span>
-              <span className="text-[10px] text-profit">● ONLINE</span>
+              <span className="text-[10px] sm:text-[11px] tracking-[0.25em] text-fg-3">01 // MT5 CONNECTION</span>
+              <span className="text-[10px] text-profit">● CONNECTED</span>
             </div>
-            <h3 className="font-display font-black text-2xl sm:text-3xl tracking-tighter mt-4">DIRECT MT5 SYNC. ZERO EXPORT.</h3>
-            <p className="text-fg-2 text-[12px] sm:text-[13px] mt-3 max-w-md">Read-only investor credentials. Every ticket, fill, swap and commission is reconstructed into structured positions — automatically.</p>
+            <h3 className="font-display font-black text-2xl sm:text-3xl tracking-tighter mt-4">MT5 SYNC MADE SIMPLE.</h3>
+            <p className="text-fg-2 text-[12px] sm:text-[13px] mt-3 max-w-md">Connect securely with a read-only login. We import every trade, fee and commission for you automatically — no manual work.</p>
             <div className="mt-auto pt-6"><SyntheticChart height={140} /></div>
           </div>
 
           <div className="tcard col-span-12 lg:col-span-5 p-5 sm:p-6 flex flex-col" data-testid="feature-behavior">
-            <span className="text-[10px] sm:text-[11px] tracking-[0.25em] text-fg-3">02 // PSYCH ENGINE</span>
-            <h3 className="font-display font-black text-2xl tracking-tighter mt-4">BEHAVIORAL SCORE</h3>
-            <p className="text-fg-2 text-[12px] sm:text-[13px] mt-3">Flags revenge clusters, FOMO entries, and premature exits against your stated plan.</p>
+            <span className="text-[10px] sm:text-[11px] tracking-[0.25em] text-fg-3">02 // YOUR TRADING SCORE</span>
+            <h3 className="font-display font-black text-2xl tracking-tighter mt-4">YOUR TRADING SCORE</h3>
+            <p className="text-fg-2 text-[12px] sm:text-[13px] mt-3">See how disciplined you are and where you can do better — like revenge trades, impulse entries and exiting too early.</p>
             <div className="mt-6 grid grid-cols-2 gap-2 sm:gap-3">
               {[
-                { l: 'Discipline', v: '88', t: 'profit' },
-                { l: 'Revenge events', v: '2', t: 'warning' },
-                { l: 'FOMO entries', v: '11%', t: 'loss' },
-                { l: 'Plan adherence', v: '94%', t: 'profit' },
+                { l: 'Discipline score', v: '88', t: 'profit' },
+                { l: 'Revenge trades', v: '2', t: 'warning' },
+                { l: 'Impulse trades', v: '11%', t: 'loss' },
+                { l: 'Plan followed', v: '94%', t: 'profit' },
               ].map(m => (
                 <div key={m.l} className="border border-border-soft px-3 py-3">
                   <div className="text-[10px] tracking-[0.18em] text-fg-3 uppercase">{m.l}</div>
@@ -271,10 +271,10 @@ export default function LandingPage() {
           </div>
 
           {[
-            { n: '03', title: 'CANDLE REPLAY', body: 'Re-live every fill candle-by-candle to forensically audit decisions.' },
-            { n: '04', title: 'R-MULTIPLE DIST', body: 'See where you really make money — and where your edge actually breaks.' },
-            { n: '05', title: 'SESSION HEATMAP', body: 'Asian, London, NY — pinpoint when your psychology cracks.' },
-            { n: '06', title: 'TRADE TAGGING', body: 'Tag setups, emotions & playbooks. Find your statistical edge in seconds.' },
+            { n: '03', title: 'TRADE REPLAY', body: 'Play back each trade step by step to see exactly what you did.' },
+            { n: '04', title: 'WHERE YOU EARN', body: 'See where you really make money — and where you tend to lose it.' },
+            { n: '05', title: 'BEST TRADING TIMES', body: 'Asian, London, New York — find out when you trade your best.' },
+            { n: '06', title: 'TRADE TAGGING', body: 'Tag your setups, emotions and strategies to spot what works in seconds.' },
           ].map(c => (
             <div key={c.n} className="tcard tcard-hover col-span-12 sm:col-span-6 lg:col-span-3 p-4 sm:p-5 min-h-[160px] sm:min-h-[180px] flex flex-col" data-testid={`feature-${c.n}`}>
               <span className="text-[10px] tracking-[0.25em] text-fg-3">{c.n}</span>
@@ -289,13 +289,13 @@ export default function LandingPage() {
       <section id="analytics" className="border-t border-border bg-surface/40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-16 sm:py-24 grid lg:grid-cols-12 gap-8 lg:gap-10 items-center">
           <div className="lg:col-span-5">
-            <p className="text-[10px] sm:text-[11px] tracking-[0.3em] text-fg-3">[ 03 // EDGE DISCOVERY ]</p>
-            <h2 className="font-display font-black tracking-tighter text-3xl sm:text-4xl lg:text-5xl mt-3">PERFORMANCE, IN RAW NUMBERS.</h2>
+            <p className="text-[10px] sm:text-[11px] tracking-[0.3em] text-fg-3">[ 03 // YOUR NUMBERS ]</p>
+            <h2 className="font-display font-black tracking-tighter text-3xl sm:text-4xl lg:text-5xl mt-3">ALL YOUR STATS IN ONE PLACE.</h2>
             <p className="text-fg-2 text-[12px] sm:text-[13px] mt-5 max-w-md">
-              No vanity dashboards. Profit factor, expectancy, drawdown, R-multiples, and session breakdowns — exactly what a prop firm risk desk would demand.
+              Clear, easy-to-read numbers — your profit, win rate, biggest drawdown, reward vs risk, and how you trade at different times of day.
             </p>
             <div className="mt-7 sm:mt-8 flex flex-wrap gap-2 max-w-md">
-              {['Profit factor', 'Sharpe', 'Sortino', 'Expectancy', 'Max DD', 'Avg R:R', 'Hold time'].map(t => (
+              {['Profit vs loss', 'Win rate', 'Avg win', 'Avg loss', 'Biggest drop', 'Reward:risk', 'Hold time'].map(t => (
                 <span key={t} className="border border-border-soft px-2.5 py-1 text-[11px] text-fg-2 tracking-wider uppercase">{t}</span>
               ))}
             </div>
@@ -321,9 +321,9 @@ export default function LandingPage() {
             </div>
             <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-4">
               {[
-                { l: 'NET P&L',        v: '+$12,418', c: 'text-profit' },
+                { l: 'TOTAL PROFIT',   v: '+$12,418', c: 'text-profit' },
                 { l: 'WIN RATE',       v: '64.1%',     c: '' },
-                { l: 'PROFIT FACTOR',  v: '2.82',      c: '' },
+                { l: 'PROFIT VS LOSS', v: '2.82',      c: '' },
               ].map(m => (
                 <div key={m.l} className="border border-border-soft px-3 py-3">
                   <div className="text-[9px] sm:text-[10px] tracking-[0.18em] text-fg-3 uppercase">{m.l}</div>
@@ -340,17 +340,17 @@ export default function LandingPage() {
       <section id="pricing" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-16 sm:py-24">
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8 sm:mb-10">
           <div>
-            <p className="text-[10px] sm:text-[11px] tracking-[0.3em] text-fg-3">[ 04 // PROTOCOL TIERS ]</p>
+            <p className="text-[10px] sm:text-[11px] tracking-[0.3em] text-fg-3">[ 04 // OUR PLANS ]</p>
             <h2 className="font-display font-black tracking-tighter text-3xl sm:text-4xl lg:text-5xl mt-3">PRICING.</h2>
           </div>
-          <p className="text-fg-2 text-[12px] max-w-sm">No seats. No upsells. Just journaling that pays for itself in one disciplined month.</p>
+          <p className="text-fg-2 text-[12px] max-w-sm">Simple, honest pricing. No hidden fees — just a journal that pays for itself in one good month.</p>
         </div>
 
         <div className="grid md:grid-cols-3 gap-2 sm:gap-3">
           {[
-            { name: 'CADET',  price: '$0',  per: 'forever',     desc: 'Manual journal & basic stats.',     features: ['1 MT5 account', 'Basic P&L stats', 'Manual tagging', 'Equity curve'], cta: 'START FREE', highlight: false },
-            { name: 'TRADER', price: '$19', per: 'per month',   desc: 'The professional standard.',         features: ['Unlimited MT5 accounts', 'Behavioural AI', 'Candle replay', 'R-multiple analytics', 'CSV / API export'], cta: 'UPGRADE',     highlight: true },
-            { name: 'DESK',   price: '$49', per: 'per month',   desc: 'For prop firms & teams.',            features: ['Everything in Trader', 'Team workspaces', 'Risk-desk reports', 'Priority MT5 bridge', 'Dedicated support'], cta: 'CONTACT SALES', highlight: false },
+            { name: 'STARTER',  price: '$0',  per: 'forever',     desc: 'A simple journal with the basics.',     features: ['1 MT5 account', 'Basic profit stats', 'Manual tagging', 'Balance chart'], cta: 'START FREE', highlight: false },
+            { name: 'TRADER', price: '$19', per: 'per month',   desc: 'Everything you need to improve.',         features: ['Unlimited MT5 accounts', 'Smart trading insights', 'Trade replay', 'Full analytics', 'CSV / API export'], cta: 'UPGRADE',     highlight: true },
+            { name: 'TEAM',   price: '$49', per: 'per month',   desc: 'For prop firms & trading teams.',            features: ['Everything in Trader', 'Team workspaces', 'Team reports', 'Priority MT5 sync', 'Dedicated support'], cta: 'CONTACT SALES', highlight: false },
           ].map(p => (
             <div key={p.name} className={`tcard p-5 sm:p-6 flex flex-col ${p.highlight ? 'border-fg' : ''}`} data-testid={`pricing-${p.name.toLowerCase()}`}>
               {p.highlight && <span className="absolute -top-px right-3 bg-fg text-app text-[10px] tracking-widest px-2 py-1">MOST USED</span>}
@@ -372,18 +372,18 @@ export default function LandingPage() {
       <section className="border-y border-border bg-surface/40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-16 sm:py-20 grid lg:grid-cols-12 gap-8 lg:gap-10 items-center">
           <div className="lg:col-span-7">
-            <p className="text-[10px] sm:text-[11px] tracking-[0.3em] text-fg-3 mb-4">[ FIELD REPORT // 2026.01 ]</p>
+            <p className="text-[10px] sm:text-[11px] tracking-[0.3em] text-fg-3 mb-4">[ TRADER STORY // 2026.01 ]</p>
             <p className="font-display font-bold text-xl sm:text-2xl md:text-3xl tracking-tight leading-snug">
-              &ldquo;The behavioural score caught what I couldn&apos;t see — I was revenge trading every Tuesday after London. Cleaning that one habit moved my profit factor from 1.4 to 2.6.&rdquo;
+              &ldquo;The trading score showed me something I couldn&apos;t see — I was revenge trading every Tuesday after the London session. Fixing that one habit really turned my results around.&rdquo;
             </p>
-            <div className="mt-5 sm:mt-6 text-[10px] sm:text-[11px] text-fg-3 tracking-widest">— C. HENRY · PRO FX TRADER · FTMO 200K</div>
+            <div className="mt-5 sm:mt-6 text-[10px] sm:text-[11px] text-fg-3 tracking-widest">— C. HENRY · FOREX TRADER</div>
           </div>
           <div className="lg:col-span-5 grid grid-cols-2 gap-2 sm:gap-3">
             {[
-              { l: 'Avg PF uplift',   v: '+0.62' },
-              { l: 'Daily syncs',     v: '500K+' },
+              { l: 'Avg improvement', v: '+0.62' },
+              { l: 'Trades synced daily', v: '500K+' },
               { l: 'Brokers',         v: 'XM · IC · PEP' },
-              { l: 'Latency',         v: '< 50ms' },
+              { l: 'Sync speed',      v: '< 50ms' },
             ].map(s => (
               <div key={s.l} className="tcard p-4">
                 <div className="text-[10px] tracking-[0.18em] text-fg-3 uppercase">{s.l}</div>
@@ -396,14 +396,14 @@ export default function LandingPage() {
 
       {/* FAQ */}
       <section id="faq" className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-10 py-16 sm:py-24">
-        <p className="text-[10px] sm:text-[11px] tracking-[0.3em] text-fg-3 mb-3">[ 05 // OPS LOG ]</p>
-        <h2 className="font-display font-black tracking-tighter text-3xl sm:text-4xl lg:text-5xl mb-8 sm:mb-10">FREQUENT QUESTIONS.</h2>
+        <p className="text-[10px] sm:text-[11px] tracking-[0.3em] text-fg-3 mb-3">[ 05 // HELP ]</p>
+        <h2 className="font-display font-black tracking-tighter text-3xl sm:text-4xl lg:text-5xl mb-8 sm:mb-10">COMMON QUESTIONS.</h2>
         <div className="border-t border-border">
           {[
-            { q: 'How secure is the MT5 connection?', a: 'We only ever ask for the investor (read-only) password. We can place no trades, withdraw nothing, and credentials are encrypted at rest with per-user keys.' },
-            { q: 'What is the Behavioural Score?',     a: 'A proprietary metric that compares your fills against your stated plan and flags emotional patterns: revenge clusters, FOMO entries, and premature exits.' },
-            { q: 'Can I export my journal data?',      a: 'Yes — CSV and JSON exports are available on the Trader tier. Desk customers get a typed API.' },
-            { q: 'Does TRADElogs support MT4?',          a: 'MT5 is supported today. MT4 is on the roadmap (Q2 2026) once MT5 coverage reaches parity with desk-grade audit tooling.' },
+            { q: 'How safe is the MT5 connection?', a: 'We only ask for your read-only password. We can never place trades or withdraw money, and your details are kept encrypted and private.' },
+            { q: 'What is the Trading Score?',     a: 'A simple score that compares your trades against your plan and points out habits like revenge trading, impulse entries and exiting too early.' },
+            { q: 'Can I export my journal data?',      a: 'Yes — you can export your data as CSV or JSON on the Trader plan. Team customers also get API access.' },
+            { q: 'Does TRADElogs support MT4?',          a: 'MT5 is supported today. MT4 is coming soon (Q2 2026), once we have everything working just as well as it does for MT5.' },
           ].map(item => (
             <details key={item.q} className="group border-b border-border" data-testid="faq-item">
               <summary className="cursor-pointer list-none flex items-center justify-between py-4 sm:py-5 hover:text-fg text-fg-2 gap-3">
@@ -420,11 +420,11 @@ export default function LandingPage() {
       <section className="border-t border-border bg-surface/40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-16 sm:py-24 text-center">
           <h2 className="font-display font-black tracking-tighter text-4xl sm:text-5xl md:text-6xl lg:text-7xl leading-[0.95]">
-            STOP <span className="text-fg-2">GUESSING.</span> <br /> START <span className="text-profit">JOURNALLING.</span>
+            STOP <span className="text-fg-2">GUESSING.</span> <br /> START <span className="text-profit">IMPROVING.</span>
           </h2>
-          <p className="text-fg-2 text-[12px] sm:text-[13px] max-w-md mx-auto mt-5 sm:mt-6">Hook your MT5 in 90 seconds. See your real edge by tomorrow morning.</p>
+          <p className="text-fg-2 text-[12px] sm:text-[13px] max-w-md mx-auto mt-5 sm:mt-6">Connect your MT5 in 90 seconds. See what&apos;s working by tomorrow morning.</p>
           <Link href="/dashboard" className="btn btn-primary px-7 py-3 sm:px-8 sm:py-3.5 mt-7 sm:mt-8 inline-flex" data-testid="footer-cta-launch">
-            LAUNCH TERMINAL →
+            GET STARTED FREE →
           </Link>
         </div>
       </section>
