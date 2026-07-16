@@ -270,14 +270,17 @@ const STEPS = [
   },
   {
     key: 'edge',
-    title: 'Get your edge',
-    body: 'Weekly summaries, behavioural scores and plain-English coaching based on your real trades — not generic advice.',
+    title: 'Act on your edge',
+    body: 'Every Monday you get a plain-English review of your real trades — what’s working, what’s leaking, and the one habit to fix this week.',
     label: 'YOUR EDGE',
     meta: 'every Monday',
     icon: Target,
     visual: (
       <div className="w-full">
-        <div className="text-[10px] tracking-[0.18em] text-fg-3 uppercase mb-2">Weekly summary</div>
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-[10px] tracking-[0.18em] text-fg-3 uppercase">This week&apos;s review</span>
+          <span className="text-[10px] tracking-widest text-profit uppercase">On track</span>
+        </div>
         <p className="text-[13px] text-fg-2 leading-relaxed">
           Your <span className="text-profit">London-session longs</span> are your strongest setup this week — <span className="text-profit numeric">+$1,240</span> across 12 trades. Losses cluster <span className="text-loss">after 3 PM UTC</span> — consider stopping earlier.
         </p>
@@ -538,19 +541,31 @@ export default function LandingPage() {
             </Reveal>
           </div>
 
-          {/* Differentiators */}
+          {/* Differentiators — a 3-step pipeline: import → understand → improve */}
           <div className="grid sm:grid-cols-3 gap-2 sm:gap-3 mt-10 sm:mt-12">
             {[
-              { icon: LinkSimple, t: 'Auto-imported', b: 'Every trade, fee and commission pulled straight from MT5 — nothing typed by hand.' },
-              { icon: Brain,      t: 'Behavioural insights', b: 'Spot revenge trades, FOMO entries and tilt cycles before they cost you.' },
-              { icon: ChatCircle, t: 'Plain-English coaching', b: 'Weekly reviews written from your real trades — not generic tips.' },
+              { icon: LinkSimple, t: 'Auto-imported', b: 'Every trade, fee and commission pulled straight from MT5 — nothing typed by hand.', tag: 'MT5 · read-only' },
+              { icon: Brain,      t: 'Behavioural insights', b: 'Spot revenge trades, FOMO entries and tilt cycles before they cost you.', tag: 'Behaviour engine' },
+              { icon: ChatCircle, t: 'Plain-English coaching', b: 'Weekly reviews written from your real trades — not generic tips.', tag: 'Weekly digest' },
             ].map((c, i) => (
-              <Reveal key={c.t} delay={i * 90} className="tcard tcard-hover p-5 flex flex-col gap-3">
-                <span className="w-9 h-9 border border-border-soft flex items-center justify-center text-profit">
-                  <c.icon size={18} weight="duotone" />
-                </span>
-                <h3 className="font-display font-bold text-[15px] tracking-tight">{c.t}</h3>
-                <p className="text-fg-2 text-[12px] leading-relaxed">{c.b}</p>
+              <Reveal
+                key={c.t}
+                delay={i * 90}
+                className="group relative tcard tcard-hover overflow-hidden p-5 sm:p-6 flex flex-col transition-colors hover:border-profit/40"
+              >
+                {/* top accent that fills on hover */}
+                <span className="absolute top-0 left-0 h-0.5 w-full origin-left scale-x-0 bg-profit/70 transition-transform duration-[var(--dur-select)] group-hover:scale-x-100" />
+                <div className="flex items-center justify-between mb-4">
+                  <span className="w-11 h-11 rounded-md bg-profit/10 border border-profit/25 flex items-center justify-center text-profit transition-transform duration-[var(--dur-hover)] group-hover:scale-110">
+                    <c.icon size={22} weight="duotone" />
+                  </span>
+                  <span className="font-display font-black text-2xl text-border-strong transition-colors group-hover:text-fg-3">0{i + 1}</span>
+                </div>
+                <h3 className="font-display font-bold text-[16px] tracking-tight">{c.t}</h3>
+                <p className="text-fg-2 text-[12px] leading-relaxed mt-2 flex-1">{c.b}</p>
+                <div className="mt-4 pt-4 border-t border-border-soft flex items-center gap-1.5 text-[10px] tracking-[0.18em] text-fg-3 uppercase transition-colors group-hover:text-profit">
+                  {c.tag} <span aria-hidden className="transition-transform group-hover:translate-x-0.5">→</span>
+                </div>
               </Reveal>
             ))}
           </div>
