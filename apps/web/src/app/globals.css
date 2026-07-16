@@ -255,6 +255,35 @@ select.tinput::-ms-expand { display: none; }
   border-radius: var(--radius-btn);
 }
 
+/* ─── Scroll-reveal ─────────────────────────────────────────────────────────
+   Starts hidden; JS (useInView via <Reveal>) adds .reveal-visible when the
+   element scrolls into view. Set --reveal-delay for a per-item stagger.
+   Fully neutralised under reduced-motion (see block below). */
+.reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity .6s var(--ease-premium), transform .6s var(--ease-premium);
+  transition-delay: var(--reveal-delay, 0ms);
+  will-change: opacity, transform;
+}
+.reveal-visible { opacity: 1; transform: none; }
+
+/* Brand gradient text — always our greens fading to white (never purple).
+   Applied to accent words in headlines. */
+.text-gradient-brand {
+  background: linear-gradient(100deg, #08C465 0%, #5BE9A0 52%, #FFFFFF 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+/* Soft green radial glow behind the hero mockup and final CTA. */
+.glow-radial {
+  background: radial-gradient(closest-side, rgba(8,196,101,.20), rgba(8,196,101,.05) 60%, transparent 80%);
+  pointer-events: none;
+}
+
 /* ─── Click-burst cursor effect (mounted globally; desktop + reduced-motion guarded in JS) */
 .click-burst-line {
   position: fixed; z-index: 600;
@@ -309,4 +338,6 @@ select.tinput::-ms-expand { display: none; }
   }
   .tcard-hover:hover, .lift:hover, .btn:hover, .btn:active, .press:active { transform: none !important; }
   .click-burst-line { display: none !important; }
+  /* Show scroll-reveal content immediately — no motion, no hidden content */
+  .reveal { opacity: 1 !important; transform: none !important; }
 }
