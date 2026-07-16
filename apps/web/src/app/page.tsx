@@ -73,14 +73,15 @@ function SyntheticChart({ height = 240 }: { height?: number }) {
 
 // Continuously-moving equity line — a slow upward random walk that scrolls left,
 // so the platform section reads as genuinely live. Static under reduced-motion.
+// Deterministic starting series so server and client first paint match (no
+// hydration mismatch); the random walk only kicks in after mount.
+const EQUITY_SEED = [
+  26, 29, 27, 32, 30, 35, 33, 31, 36, 39, 37, 42, 40, 45, 43, 48, 46, 44, 49, 52, 50, 55,
+  53, 58, 56, 61, 59, 64, 62, 67, 65, 70, 68, 66, 71, 74, 72, 77, 75, 80, 78, 83, 81, 86,
+];
+
 function LiveEquityChart({ height = 190 }: { height?: number }) {
-  const N = 44;
-  const [pts, setPts] = useState<number[]>(() => {
-    const a: number[] = [];
-    let v = 26;
-    for (let i = 0; i < N; i++) { v += (Math.random() - 0.34) * 3.4; a.push(Math.max(8, Math.min(92, v))); }
-    return a;
-  });
+  const [pts, setPts] = useState<number[]>(EQUITY_SEED);
   useEffect(() => {
     if (typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const t = setInterval(() => {
@@ -731,6 +732,66 @@ export default function LandingPage() {
               <LiveTradesFeed />
             </BrowserFrame>
           </Reveal>
+        </div>
+      </section>
+
+      {/* SEE IT IN ACTION — real product screenshots */}
+      <section className="relative overflow-hidden">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-16 sm:py-24">
+          <Reveal className="text-center max-w-2xl mx-auto">
+            <p className="text-[10px] sm:text-[11px] tracking-[0.3em] text-fg-3">[ SEE IT IN ACTION ]</p>
+            <h2 className="font-display font-black tracking-tighter text-3xl sm:text-4xl lg:text-5xl mt-3">
+              The whole picture, <span className="text-gradient-brand">one screen.</span>
+            </h2>
+            <p className="text-fg-2 text-[12px] sm:text-[13px] mt-5">
+              Real screens from the app — your analytics and trade replay, exactly as you&apos;ll see them.
+            </p>
+          </Reveal>
+
+          {/* Analytics — image right, copy left */}
+          <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center mt-12 sm:mt-16">
+            <Reveal>
+              <p className="text-[10px] sm:text-[11px] tracking-[0.28em] text-profit">ANALYTICS</p>
+              <h3 className="font-display font-black text-2xl sm:text-3xl tracking-tighter mt-3">Every angle of your edge.</h3>
+              <p className="text-fg-2 text-[12px] sm:text-[13px] mt-3 max-w-md leading-relaxed">
+                Win rate, profit factor, reward-to-risk, drawdown, best sessions and hold times — all in one clean, sortable view you can actually read.
+              </p>
+              <div className="mt-5 flex flex-wrap gap-2 max-w-md">
+                {['Win rate', 'Profit factor', 'Drawdown', 'By session', 'By symbol'].map(t => (
+                  <span key={t} className="border border-border-soft px-2.5 py-1 text-[11px] text-fg-2 tracking-wider uppercase">{t}</span>
+                ))}
+              </div>
+            </Reveal>
+            <Reveal delay={120} className="relative">
+              <div className="absolute -inset-5 glow-radial opacity-60" />
+              <div className="relative rounded-xl border border-border overflow-hidden shadow-2xl">
+                <img src="/Analytics.png" alt="TRADElogs analytics screen" className="w-full h-auto block select-none" draggable={false} loading="lazy" />
+              </div>
+            </Reveal>
+          </div>
+
+          {/* Chart replay — image left, copy right */}
+          <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center mt-14 sm:mt-20">
+            <Reveal delay={120} className="relative lg:order-2">
+              <p className="text-[10px] sm:text-[11px] tracking-[0.28em] text-profit lg:hidden">CHART REPLAY</p>
+              <div className="absolute -inset-5 glow-radial opacity-60" />
+              <div className="relative rounded-xl border border-border overflow-hidden shadow-2xl mt-3 lg:mt-0">
+                <img src="/ChartReplay.png" alt="TRADElogs chart replay screen" className="w-full h-auto block select-none" draggable={false} loading="lazy" />
+              </div>
+            </Reveal>
+            <Reveal className="lg:order-1">
+              <p className="text-[10px] sm:text-[11px] tracking-[0.28em] text-profit hidden lg:block">CHART REPLAY</p>
+              <h3 className="font-display font-black text-2xl sm:text-3xl tracking-tighter mt-3">Replay the moment it mattered.</h3>
+              <p className="text-fg-2 text-[12px] sm:text-[13px] mt-3 max-w-md leading-relaxed">
+                Step back into any trade bar-by-bar. See the hesitation, the early exit, the level you should have respected — then fix it for next time.
+              </p>
+              <div className="mt-5 flex flex-wrap gap-2 max-w-md">
+                {['Bar-by-bar', 'Entry & exit marks', 'Notes & tags', 'Any timeframe'].map(t => (
+                  <span key={t} className="border border-border-soft px-2.5 py-1 text-[11px] text-fg-2 tracking-wider uppercase">{t}</span>
+                ))}
+              </div>
+            </Reveal>
+          </div>
         </div>
       </section>
 
