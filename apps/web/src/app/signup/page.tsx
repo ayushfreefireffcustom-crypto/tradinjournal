@@ -55,7 +55,7 @@ export default function SignupPage() {
       <main className="relative flex flex-col min-h-screen min-w-0 overflow-x-hidden">
         {/* Symmetric top status bar */}
         <div className="hidden lg:flex border-b border-border h-12 items-center justify-between px-8 xl:px-12 text-[10px] tracking-[0.22em] text-fg-3">
-          <span>SECURE SESSION · TLS 1.3</span>
+          <span>SECURE CONNECTION</span>
           <span className="flex items-center gap-2"><span className="w-2 h-2 bg-profit pulse-dot" /> READY</span>
         </div>
 
