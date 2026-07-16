@@ -1,6 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
 import type { ConnectAccountInput } from '@tradinjournal/contracts';
-import { connectAccount, listAccounts } from './accounts.service.js';
+import { connectAccount, listAccounts, deleteAccount } from './accounts.service.js';
 
 function serializeAccount(account: { id: string; broker: string; mt5Login: bigint; server: string; baseCurrency: string; marginMode: string; status: string; lastSyncAt: Date | null; createdAt: Date }) {
   return {
@@ -31,6 +31,16 @@ export async function handleList(req: Request, res: Response, next: NextFunction
     const userId = res.locals.user.id as string;
     const accounts = await listAccounts(userId);
     res.json({ data: accounts.map(serializeAccount) });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function handleDelete(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const userId = res.locals.user.id as string;
+    await deleteAccount(userId, req.params.id as string);
+    res.json({ data: { ok: true } });
   } catch (err) {
     next(err);
   }
