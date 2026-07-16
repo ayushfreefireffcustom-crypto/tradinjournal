@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, useCallback } from 'react';
 import AppShell from '@/components/app-shell';
 import ConnectBrokerModal from '@/components/connect-broker-modal';
 import { api, type BrokerAccount, type JournalEntry } from '@/lib/api';
+import { useAccounts } from '@/lib/use-accounts';
 import { toCsv, downloadCsv, dateStamp } from '@/lib/csv';
 import { useToast } from '@/components/toast';
 import EmptyState from '@/components/empty-state';
@@ -44,8 +45,7 @@ function emptyDraft(): Draft {
 
 export default function NotebookPage() {
   const toast = useToast();
-  const [accounts, setAccounts] = useState<BrokerAccount[]>([]);
-  const [selected, setSelected] = useState<BrokerAccount | null>(null);
+  const { accounts, selected, select, setAccounts } = useAccounts();
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -55,15 +55,6 @@ export default function NotebookPage() {
   const [tagDraft, setTagDraft] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-
-  const initAccounts = useCallback(async () => {
-    try {
-      const accs = await api.accounts.list();
-      setAccounts(accs);
-      setSelected(accs[0] ?? null);
-    } catch {}
-  }, []);
-  useEffect(() => { initAccounts(); }, [initAccounts]);
 
   // The notebook is a global logbook: load every entry for the user, not just
   // the selected account's, so standalone notes are never hidden.
@@ -164,7 +155,7 @@ export default function NotebookPage() {
 
   function onConnected(a: BrokerAccount) {
     setAccounts(prev => (prev.find(x => x.id === a.id) ? prev.map(x => (x.id === a.id ? a : x)) : [a, ...prev]));
-    setSelected(a);
+    select(a);
     setShowConnect(false);
   }
 
@@ -182,7 +173,7 @@ export default function NotebookPage() {
     <AppShell
       accounts={accounts}
       selectedAccount={selected}
-      onSelectAccount={setSelected}
+      onSelectAccount={select}
       onConnectClick={() => setShowConnect(true)}
       pageTitle="Journal"
       pageSubtitle="// TRADING LOGBOOK"
