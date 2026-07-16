@@ -15,7 +15,7 @@ function passwordStrength(pw: string): { score: number; label: string; color: st
   if (/[0-9]/.test(pw)) score++;
   if (/[^A-Za-z0-9]/.test(pw)) score++;
   const bucket = Math.min(4, score);
-  const labels = ['WEAK', 'WEAK', 'FAIR', 'STRONG', 'FORTIFIED'];
+  const labels = ['WEAK', 'WEAK', 'FAIR', 'STRONG', 'VERY STRONG'];
   const colors = ['#FE3A31', '#FE3A31', '#FF9F0A', '#08C465', '#08C465'];
   return { score: bucket, label: labels[bucket]!, color: colors[bucket]! };
 }
@@ -67,12 +67,12 @@ export default function SignupPage() {
 
         <div className="flex-1 flex items-center justify-center px-5 py-8 sm:px-8 sm:py-12 lg:px-12">
           <form onSubmit={submit} className="w-full max-w-[420px]" data-testid="signup-form">
-            <div className="text-[10px] tracking-[0.3em] text-fg-3">[ AUTH // REGISTER · 02 ]</div>
+            <div className="text-[10px] tracking-[0.3em] text-fg-3">[ SIGN UP ]</div>
             <h1 className="font-display font-black text-3xl sm:text-4xl xl:text-5xl tracking-tighter mt-3">
-              PROVISION <span className="text-profit">ACCOUNT.</span>
+              CREATE YOUR <span className="text-profit">ACCOUNT.</span>
             </h1>
             <p className="text-fg-2 text-[12px] sm:text-[13px] mt-3 max-w-sm">
-              Free tier · 1 MT5 slot · no card. Cancel with a single API call.
+              Free · up to 2 MT5 accounts · no card. Cancel anytime.
             </p>
 
             {/* Progress dots */}
@@ -90,7 +90,7 @@ export default function SignupPage() {
 
             <div className="mt-7 flex flex-col gap-4">
               <label className="flex flex-col gap-1.5">
-                <span className="text-[10px] tracking-[0.22em] text-fg-3">CALLSIGN / FULL NAME</span>
+                <span className="text-[10px] tracking-[0.22em] text-fg-3">FULL NAME</span>
                 <input
                   type="text" required value={name} onChange={e => setName(e.target.value)}
                   className="tinput" data-testid="signup-name" placeholder="e.g. Alex Morgan" autoComplete="name"
@@ -138,7 +138,7 @@ export default function SignupPage() {
                   ))}
                 </div>
                 <div className="text-[9px] tracking-widest text-fg-3 mt-1">
-                  8+ CHARS · UPPER/LOWER · NUMBER · SYMBOL FOR MAX GRADE
+                  USE 8+ CHARACTERS WITH UPPER &amp; LOWER CASE, A NUMBER AND A SYMBOL
                 </div>
               </label>
 
@@ -151,7 +151,7 @@ export default function SignupPage() {
                   {agree && <span className="text-[10px] font-bold">✓</span>}
                 </span>
                 <span className="text-[10px] tracking-widest leading-relaxed">
-                  I ACCEPT THE <a href="#" className="text-fg hover:text-profit">TERMS</a> &amp; ACKNOWLEDGE THE <a href="#" className="text-fg hover:text-profit">DATA POLICY</a>. INVESTOR-ONLY MT5 CREDENTIALS.
+                  I ACCEPT THE <a href="#" className="text-fg hover:text-profit">TERMS</a> &amp; THE <a href="#" className="text-fg hover:text-profit">DATA POLICY</a>. WE ONLY USE YOUR READ-ONLY MT5 LOGIN.
                 </span>
               </label>
 
@@ -173,15 +173,15 @@ export default function SignupPage() {
                 {loading ? (
                   <>
                     <span className="w-2 h-2 bg-app rounded-full pulse-dot" />
-                    PROVISIONING TERMINAL…
+                    CREATING ACCOUNT…
                   </>
                 ) : (
-                  <>PROVISION TERMINAL <span>→</span></>
+                  <>CREATE ACCOUNT <span>→</span></>
                 )}
               </button>
 
               <div className="mt-4 pt-4 border-t border-border-soft flex flex-wrap items-center justify-between gap-3 text-[11px]">
-                <span className="text-fg-3">Already enlisted?</span>
+                <span className="text-fg-3">Already have an account?</span>
                 <Link href="/login" className="text-fg hover:text-profit tracking-widest text-[11px]" data-testid="signup-to-login">
                   SIGN IN →
                 </Link>
@@ -200,7 +200,7 @@ export default function SignupPage() {
         <div className="hidden lg:flex border-t border-border h-11 items-center justify-between px-8 xl:px-12 text-[10px] tracking-[0.22em] text-fg-3">
           <span className="flex items-center gap-2">
             <span className="w-1.5 h-1.5 rounded-full bg-profit pulse-dot" />
-            FREE FOREVER · 1 MT5 SLOT
+            FREE FOREVER · UP TO 2 ACCOUNTS
           </span>
           <span>ALREADY IN? <Link href="/login" className="text-fg hover:text-profit ml-2">SIGN IN →</Link></span>
         </div>
