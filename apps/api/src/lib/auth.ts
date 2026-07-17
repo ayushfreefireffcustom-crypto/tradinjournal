@@ -40,6 +40,18 @@ export const auth = betterAuth({
     },
   },
 
+  // ── Account linking ──────────────────────────────────────────────────────────
+  // If someone signed up with email+password and later signs in with Google
+  // (same address), link the Google identity to the existing account instead of
+  // erroring with `account_not_linked`. Safe because Google is a verified-email
+  // provider, so it proves ownership of the address.
+  account: {
+    accountLinking: {
+      enabled: true,
+      trustedProviders: ['google'],
+    },
+  },
+
   // ── Google OAuth ───────────────────────────────────────────────────────────
   // Activated only when credentials are present in .env.
   // Callback URL (register this in Google Cloud Console):
