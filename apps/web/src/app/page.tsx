@@ -383,8 +383,54 @@ const fmtPnl = (n: number) => `${n >= 0 ? '+' : '-'}${Math.abs(n).toFixed(2)}`;
 // Live trade feed — a new trade slides in at the top every few seconds, the
 // oldest drops off, and the session P&L keeps climbing. Static list under
 // reduced-motion (no new rows injected).
-function LiveTradesFeed() {
-  const seed: TRow[] = LIVE_ROWS.map((r, i) => ({
+// Deterministic starting equity series for the session sparkline (SSR-safe).
+const SESSION_SEED = [40, 44, 42, 48, 52, 50, 57, 61, 59, 66, 70, 68, 74, 79, 83, 88];
+
+// Win-rate donut ring.
+function WinDonut({ pct }: { pct: number }) {
+  const R = 30, C = 2 * Math.PI * R;
+  const off = C * (1 - pct / 100);
+  return (
+    <svg viewBox="0 0 72 72" className="w-[72px] h-[72px] shrink-0 -rotate-90">
+      <circle cx="36" cy="36" r={R} fill="none" stroke="#1E1E1E" strokeWidth="6" />
+      <circle
+        cx="36" cy="36" r={R} fill="none" stroke="#08C465" strokeWidth="6" strokeLinecap="round"
+        strokeDasharray={C} strokeDashoffset={off}
+        style={{ transition: 'stroke-dashoffset .6s var(--ease-premium)' }}
+      />
+    </svg>
+  );
+}
+
+// Small session-equity sparkline (smooth line + soft area).
+function SessionSpark({ data }: { data: number[] }) {
+  const W = 240, H = 46, P = 3;
+  const max = Math.max(...data), min = Math.min(...data), span = max - min || 1;
+  const pts = data.map((v, i) => ({ x: P + (i / (data.length - 1)) * (W - P * 2), y: H - P - ((v - min) / span) * (H - P * 2) }));
+  const path = smoothPath(pts);
+  const area = `${path} L ${pts[pts.length - 1]!.x.toFixed(1)} ${H} L ${pts[0]!.x.toFixed(1)} ${H} Z`;
+  const lastX = pts[pts.length - 1]!.x, lastY = pts[pts.length - 1]!.y;
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-[46px]" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="spark-fill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#08C465" stopOpacity="0.22" />
+          <stop offset="100%" stopColor="#08C465" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path d={area} fill="url(#spark-fill)" />
+      <path d={path} fill="none" stroke="#08C465" strokeWidth="1.5" strokeLinecap="round" />
+      <circle cx={lastX} cy={lastY} r="2.5" fill="#08C465" />
+    </svg>
+  );
+}
+
+// "Live desk" — streaming trade feed on the left, a live session panel on the
+// right. All feed/session state lives here so both halves stay in sync. Static
+// under reduced-motion (no new trades injected). SSR-safe: seeds are constant;
+// randomness only runs inside the effect.
+function LiveDesk() {
+  const seed: TRow[] = LIVE_ROWS.slice(0, 7).map((r, i) => ({
     id: i, pair: r.pair, side: r.side as 'BUY' | 'SELL', size: r.size, dur: r.dur, tag: r.tag,
     pnl: parseFloat(r.pnl.replace(/[+,]/g, '')), time: r.time,
   }));
@@ -392,83 +438,107 @@ function LiveTradesFeed() {
   const [rows, setRows] = useState<TRow[]>(seed);
   const [session, setSession] = useState(723.12);
   const [count, setCount] = useState(8);
+  const [streak, setStreak] = useState(3);
+  const [equity, setEquity] = useState<number[]>(SESSION_SEED);
 
   useEffect(() => {
     if (typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const t = setInterval(() => {
       const r = makeTrade();
-      setRows(prev => [r, ...prev].slice(0, 8));
-      setSession(s => s + r.pnl);
+      setRows(prev => [r, ...prev].slice(0, 7));
+      setSession(s => { const next = s + r.pnl; setEquity(e => [...e.slice(1), Math.max(0, next)]); return next; });
       setCount(c => c + 1);
-    }, 2600);
+      setStreak(k => (r.pnl >= 0 ? k + 1 : 0));
+    }, 2800);
     return () => clearInterval(t);
   }, []);
 
   const winRate = Math.round((rows.filter(r => r.pnl >= 0).length / rows.length) * 100);
 
   return (
-    <>
-      {/* Column header — desktop only */}
-      <div className="hidden sm:flex items-center gap-3 px-4 py-2.5 border-b border-border-soft text-[9px] tracking-[0.18em] text-fg-3 uppercase">
-        <span className="w-16">Pair</span>
-        <span className="w-10">Side</span>
-        <span className="w-12">Size</span>
-        <span className="w-20">Duration</span>
-        <span className="flex-1">Setup</span>
-        <span className="w-20 text-right">P&amp;L</span>
-        <span className="w-20 text-right">Time</span>
+    <div className="grid lg:grid-cols-5 gap-3 sm:gap-4">
+      {/* Session panel — top on mobile, right on desktop */}
+      <div className="lg:col-span-2 lg:order-2 relative tcard overflow-hidden p-5 sm:p-6 flex flex-col gap-5" style={{ boxShadow: 'var(--shadow-md)' }}>
+        <span className="pointer-events-none absolute inset-x-0 top-0 h-px" style={{ background: 'rgba(255,255,255,0.05)' }} aria-hidden />
+        <div className="flex items-center justify-between text-[10px] tracking-[0.2em] text-fg-3 uppercase">
+          <span>Session</span>
+          <span className="flex items-center gap-1.5 text-profit"><span className="w-1.5 h-1.5 rounded-full bg-profit pulse-dot" /> Live</span>
+        </div>
+        <div>
+          <div className="text-[9px] tracking-[0.18em] text-fg-3 uppercase">Net P&amp;L today</div>
+          <div className={`font-display font-black text-4xl sm:text-[42px] tracking-tighter mt-1 numeric ${session >= 0 ? 'text-profit' : 'text-loss'}`}>
+            <AnimatedNumber value={session} format={fmtPnl} />
+          </div>
+        </div>
+        <div className="flex items-center gap-4">
+          <div className="relative">
+            <WinDonut pct={winRate} />
+            <span className="absolute inset-0 flex items-center justify-center font-display font-bold text-[13px] numeric">{winRate}%</span>
+          </div>
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[9px] tracking-[0.16em] text-fg-3 uppercase">Win rate</span>
+            <span className="text-[13px] text-fg-2"><span className="text-profit numeric">{rows.filter(r => r.pnl >= 0).length}</span> of {rows.length} winners</span>
+            <span className="mt-1 inline-flex items-center gap-1.5 self-start rounded-full border border-profit/30 bg-profit/10 px-2 py-0.5 text-[10px] text-profit">
+              <span className="w-1.5 h-1.5 rounded-full bg-profit pulse-dot" /> {streak} win streak
+            </span>
+          </div>
+        </div>
+        <div className="mt-auto">
+          <div className="flex items-center justify-between text-[9px] tracking-[0.16em] text-fg-3 uppercase mb-1.5">
+            <span>Session equity</span>
+            <span className="numeric text-fg-2"><AnimatedNumber value={count} format={n => `${Math.round(n)}`} /> trades</span>
+          </div>
+          <SessionSpark data={equity} />
+        </div>
       </div>
 
-      {/* Rows — fixed-height viewport so the frame never resizes as rows flow in.
-          On mobile each row is a compact two-line card; on desktop a table row. */}
-      <div className="h-[368px] sm:h-[344px] overflow-hidden">
-        <AnimatePresence initial={false}>
-          {rows.map((r, i) => {
-            const up = r.pnl >= 0;
-            return (
-              <motion.div
-                key={r.id}
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: reduce ? 0 : 0.4, ease: [0.22, 1, 0.36, 1] }}
-                className="overflow-hidden"
-              >
-                <div className={`feed-zebra border-b border-border-soft px-3 sm:px-4 py-3 sm:py-2.5 transition-colors hover:bg-surface-hover/60 ${i === 0 && !reduce ? 'row-flash' : ''}`}>
-                  {/* primary line */}
-                  <div className="flex items-center gap-3 text-[12px]">
-                    <span className="w-16 shrink-0 flex items-center gap-1.5 tracking-wider">
-                      <span className={`w-1.5 h-1.5 rounded-full ${up ? 'bg-profit' : 'bg-loss'}`} />{r.pair}
+      {/* Trade feed — clean activity stream */}
+      <div className="lg:col-span-3 lg:order-1 relative tcard overflow-hidden" style={{ boxShadow: 'var(--shadow-md)' }} data-testid="live-feed">
+        <span className="pointer-events-none absolute inset-x-0 top-0 h-px z-10" style={{ background: 'rgba(255,255,255,0.05)' }} aria-hidden />
+        <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border-soft bg-app/70">
+          <span className="w-2.5 h-2.5 rounded-full bg-loss/70" />
+          <span className="w-2.5 h-2.5 rounded-full bg-warning/70" />
+          <span className="w-2.5 h-2.5 rounded-full bg-profit/70" />
+          <span className="ml-auto text-[10px] tracking-[0.2em] text-profit flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-profit pulse-dot" /> LIVE FEED
+          </span>
+        </div>
+        <div className="h-[420px] overflow-hidden">
+          <AnimatePresence initial={false}>
+            {rows.map((r, i) => {
+              const up = r.pnl >= 0;
+              return (
+                <motion.div
+                  key={r.id}
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: reduce ? 0 : 0.4, ease: [0.22, 1, 0.36, 1] }}
+                  className="overflow-hidden"
+                >
+                  <div className={`flex items-center gap-3 px-4 py-3.5 border-b border-border-soft transition-colors hover:bg-surface-hover/50 ${i === 0 && !reduce ? 'row-flash' : ''}`}>
+                    <span className={`w-9 h-9 shrink-0 rounded-lg flex items-center justify-center text-[11px] font-bold ${up ? 'bg-profit/12 text-profit' : 'bg-loss/12 text-loss'}`}>
+                      {r.side === 'BUY' ? '▲' : '▼'}
                     </span>
-                    <span className={`w-10 shrink-0 text-[9px] tracking-widest ${r.side === 'BUY' ? 'text-profit' : 'text-loss'}`}>{r.side}</span>
-                    <span className="w-12 shrink-0 numeric text-fg-3 hidden sm:inline">{r.size}</span>
-                    <span className="w-20 shrink-0 numeric text-fg-3 hidden sm:inline">{r.dur}</span>
-                    <span className="flex-1 min-w-0 hidden sm:block">
-                      <span className="border border-border-soft rounded px-2 py-0.5 text-[9px] tracking-widest text-fg-2 uppercase">{r.tag}</span>
-                    </span>
-                    <span className="flex-1 sm:hidden" aria-hidden />
-                    <span className={`shrink-0 text-right numeric sm:w-20 ${up ? 'text-profit' : 'text-loss'}`}>{fmtPnl(r.pnl)}</span>
-                    <span className="w-20 shrink-0 text-right numeric text-fg-3 hidden sm:inline">{r.time}</span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[13px] font-semibold tracking-wide">{r.pair}</span>
+                        <span className={`text-[9px] tracking-widest ${up ? 'text-profit' : 'text-loss'}`}>{r.side}</span>
+                      </div>
+                      <div className="text-[10px] text-fg-3 mt-0.5 truncate">{r.tag} · {r.size} lots · {r.dur}</div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <div className={`text-[14px] numeric ${up ? 'text-profit' : 'text-loss'}`}>{fmtPnl(r.pnl)}</div>
+                      <div className="text-[9px] text-fg-3 numeric mt-0.5">{r.time}</div>
+                    </div>
                   </div>
-                  {/* secondary line — mobile only */}
-                  <div className="flex sm:hidden items-center justify-between mt-2 text-[10px] text-fg-3">
-                    <span className="border border-border-soft rounded px-1.5 py-0.5 tracking-widest uppercase text-fg-2">{r.tag}</span>
-                    <span className="numeric">{r.dur} · {r.time}</span>
-                  </div>
-                </div>
-              </motion.div>
-            );
-          })}
-        </AnimatePresence>
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
+        </div>
       </div>
-
-      {/* Footer — live stats with count-up */}
-      <div className="flex items-center justify-between gap-3 px-3 sm:px-4 py-3 border-t border-border-soft text-[10px] tracking-[0.16em] text-fg-3 uppercase">
-        <span className="flex items-center gap-1.5">Session <span className={session >= 0 ? 'text-profit numeric' : 'text-loss numeric'}><AnimatedNumber value={session} format={fmtPnl} /></span></span>
-        <span className="hidden xs:inline">Win <span className="text-fg-2 numeric">{winRate}%</span> · <span className="numeric text-fg-2"><AnimatedNumber value={count} format={n => `${Math.round(n)}`} /></span> trades</span>
-        <span className="flex items-center gap-1.5 text-profit"><span className="w-1.5 h-1.5 rounded-full bg-profit pulse-dot" /> LIVE</span>
-      </div>
-    </>
+    </div>
   );
 }
 
@@ -959,25 +1029,9 @@ export default function LandingPage() {
             </p>
           </Reveal>
 
-          <Reveal delay={100} className="relative mt-10 sm:mt-12">
+          <Reveal delay={100} className="relative mt-10 sm:mt-12" data-testid="live-trades">
             <div className="glow-blob left-1/2 -translate-x-1/2 top-4 w-[70%] h-[70%]" aria-hidden />
-            <div
-              className="relative rounded-2xl border border-border overflow-hidden bg-surface"
-              style={{ boxShadow: 'var(--shadow-lg)' }}
-              data-testid="live-trades"
-            >
-              <span className="pointer-events-none absolute inset-x-0 top-0 h-px z-10" style={{ background: 'rgba(255,255,255,0.06)' }} aria-hidden />
-              {/* Minimal chrome */}
-              <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border-soft bg-app/80">
-                <span className="w-2.5 h-2.5 rounded-full bg-loss/70" />
-                <span className="w-2.5 h-2.5 rounded-full bg-warning/70" />
-                <span className="w-2.5 h-2.5 rounded-full bg-profit/70" />
-                <span className="ml-auto text-[10px] tracking-[0.2em] text-profit flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-profit pulse-dot" /> LIVE FEED
-                </span>
-              </div>
-              <LiveTradesFeed />
-            </div>
+            <div className="relative"><LiveDesk /></div>
           </Reveal>
         </div>
       </section>
