@@ -425,6 +425,30 @@ function SessionSpark({ data }: { data: number[] }) {
   );
 }
 
+// Tiny smooth sparkline for the platform metric mini-cards.
+function MiniSpark({ data, color = '#08C465' }: { data: number[]; color?: string }) {
+  const W = 100, H = 28, P = 2;
+  const max = Math.max(...data), min = Math.min(...data), span = max - min || 1;
+  const pts = data.map((v, i) => ({ x: P + (i / (data.length - 1)) * (W - P * 2), y: H - P - ((v - min) / span) * (H - P * 2) }));
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-7" preserveAspectRatio="none">
+      <path d={smoothPath(pts)} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" opacity="0.85" />
+    </svg>
+  );
+}
+
+// Tiny bar chart for the platform metric mini-cards.
+function MiniBars({ data, color = '#08C465' }: { data: number[]; color?: string }) {
+  const max = Math.max(...data) || 1;
+  return (
+    <div className="flex items-end gap-1 h-7">
+      {data.map((v, i) => (
+        <span key={i} className="flex-1 rounded-sm" style={{ height: `${Math.max(12, (v / max) * 100)}%`, background: color, opacity: 0.35 + (v / max) * 0.55 }} />
+      ))}
+    </div>
+  );
+}
+
 // "Live desk" — streaming trade feed on the left, a live session panel on the
 // right. All feed/session state lives here so both halves stay in sync. Static
 // under reduced-motion (no new trades injected). SSR-safe: seeds are constant;
@@ -845,21 +869,26 @@ export default function LandingPage() {
             </p>
           </Reveal>
 
-          <div className="relative grid grid-cols-12 gap-2 sm:gap-3 mt-10 sm:mt-12">
-            <div className="glow-blob left-0 top-10 w-[60%] h-[60%]" aria-hidden />
-            <Reveal className="tcard col-span-12 lg:col-span-8 p-5 sm:p-6 flex flex-col">
+          <div className="relative grid grid-cols-12 gap-3 sm:gap-4 mt-10 sm:mt-12 items-stretch">
+            <div className="glow-blob left-0 top-4 w-[55%] h-[70%]" aria-hidden />
+
+            {/* Dominant equity card */}
+            <Reveal className="tcard col-span-12 lg:col-span-8 lg:row-span-2 p-5 sm:p-6 flex flex-col" style={{ boxShadow: 'var(--shadow-md)' }}>
+              <span className="pointer-events-none absolute inset-x-0 top-0 h-px rounded-t-[var(--radius-card)]" style={{ background: 'rgba(255,255,255,0.05)' }} aria-hidden />
               <div className="flex items-center justify-between">
                 <span className="text-[10px] sm:text-[11px] tracking-[0.25em] text-fg-3">EQUITY CURVE</span>
                 <span className="text-[10px] text-profit flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-profit pulse-dot" /> LIVE</span>
               </div>
-              <div className="flex items-end justify-between gap-3 mt-2">
-                <p className="text-fg-2 text-[12px] max-w-xs">Track your growth with a live-updating equity curve that shows your real edge over time.</p>
+              <div className="flex items-end justify-between gap-3 mt-3">
+                <p className="text-fg-2 text-[12px] max-w-xs leading-relaxed">A live-updating equity curve that shows your real edge compounding over time.</p>
                 <div className="text-right shrink-0">
-                  <Metric value={49.7} format={n => `+${n.toFixed(1)}%`} className="font-display font-black text-2xl sm:text-3xl tracking-tighter text-profit" />
+                  <Metric value={49.7} format={n => `+${n.toFixed(1)}%`} className="font-display font-black text-3xl sm:text-4xl tracking-tighter text-profit" />
                   <div className="text-[9px] tracking-[0.16em] text-fg-3 uppercase mt-0.5">YTD return</div>
                 </div>
               </div>
-              <div className="mt-5 border border-border-soft p-3"><LiveEquityChart height={190} /></div>
+              <div className="mt-5 flex-1 min-h-[200px] rounded-xl border border-border-soft bg-app/40 p-3 flex items-center">
+                <LiveEquityChart height={220} />
+              </div>
               <div className="grid grid-cols-3 border-t border-border-soft mt-4 pt-4">
                 {[
                   { l: 'Peak equity', v: '+$12,418', c: 'text-profit' },
@@ -874,12 +903,26 @@ export default function LandingPage() {
               </div>
             </Reveal>
 
-            <Reveal delay={90} className="tcard col-span-12 lg:col-span-4 p-5 sm:p-6 flex flex-col">
-              <div className="flex items-center justify-between">
+            {/* Hero score tile */}
+            <Reveal delay={90} className="tcard col-span-6 lg:col-span-4 p-5 sm:p-6 flex flex-col justify-between overflow-hidden" style={{ boxShadow: 'var(--shadow-md)' }}>
+              <div className="glow-blob -right-6 -top-6 w-[70%] h-[70%] opacity-70" aria-hidden />
+              <div className="relative flex items-center justify-between">
                 <span className="text-[10px] sm:text-[11px] tracking-[0.25em] text-profit">BEHAVIORAL SCORE</span>
-                <Metric value={82} format={n => `${Math.round(n)}`} className="font-display font-black text-2xl tracking-tighter text-fg" />
               </div>
-              <div className="flex-1 flex items-center w-full"><RadarScore /></div>
+              <div className="relative mt-4">
+                <Metric value={82} format={n => `${Math.round(n)}`} className="font-display font-black text-6xl sm:text-7xl tracking-tighter text-fg leading-none" />
+                <span className="font-display font-bold text-xl text-fg-3">/100</span>
+              </div>
+              <div className="relative mt-4 flex items-center justify-between gap-3">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-profit/30 bg-profit/10 px-2.5 py-1 text-[11px] text-profit">▲ +6 this month</span>
+                <div className="w-24"><MiniBars data={[54, 60, 58, 66, 71, 76, 82]} /></div>
+              </div>
+            </Reveal>
+
+            {/* Radar tile */}
+            <Reveal delay={140} className="tcard col-span-6 lg:col-span-4 p-5 sm:p-6 flex flex-col" style={{ boxShadow: 'var(--shadow-md)' }}>
+              <span className="text-[10px] sm:text-[11px] tracking-[0.25em] text-fg-3">TRADER PROFILE</span>
+              <div className="flex-1 flex items-center w-full min-h-[180px]"><RadarScore /></div>
               <div className="grid grid-cols-2 gap-3 border-t border-border-soft pt-4">
                 <div>
                   <div className="text-[9px] tracking-[0.16em] text-fg-3 uppercase">Top strength</div>
@@ -892,19 +935,21 @@ export default function LandingPage() {
               </div>
             </Reveal>
 
-            <Reveal delay={60} className="tcard col-span-12 grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 p-5 sm:p-6">
-              {[
-                { l: 'Metrics per trade', node: <Metric value={21} format={n => `${Math.round(n)}+`} className="font-display font-black text-2xl sm:text-3xl tracking-tight" /> },
-                { l: 'Long win rate',     node: <Metric value={61} format={n => `${Math.round(n)}%`} className="font-display font-black text-2xl sm:text-3xl tracking-tight text-profit" /> },
-                { l: 'Best session',      node: <span className="font-display font-black text-2xl sm:text-3xl tracking-tight text-profit">London</span> },
-                { l: 'Worst hour',        node: <span className="font-display font-black text-2xl sm:text-3xl tracking-tight text-loss">after 3PM</span> },
-              ].map(s => (
-                <div key={s.l}>
-                  <div className="text-[10px] tracking-[0.18em] text-fg-3 uppercase">{s.l}</div>
-                  <div className="mt-1">{s.node}</div>
+            {/* Four metric mini-cards, each with a micro-visual + count-up */}
+            {[
+              { l: 'Metrics per trade', value: 21, fmt: (n: number) => `${Math.round(n)}+`, c: 'text-fg', vis: <MiniBars data={[8, 12, 10, 15, 13, 18, 21]} color="#08C465" /> },
+              { l: 'Long win rate', value: 61, fmt: (n: number) => `${Math.round(n)}%`, c: 'text-profit', vis: <MiniSpark data={[44, 48, 46, 52, 55, 58, 61]} /> },
+              { l: 'Profit factor', value: 1.53, fmt: (n: number) => n.toFixed(2), c: 'text-profit', vis: <MiniSpark data={[1.1, 1.2, 1.15, 1.3, 1.38, 1.46, 1.53]} /> },
+              { l: 'Avg reward:risk', value: 2.4, fmt: (n: number) => `1:${n.toFixed(1)}`, c: 'text-fg', vis: <MiniBars data={[10, 14, 12, 16, 18, 20, 24]} color="#08C465" /> },
+            ].map((m, i) => (
+              <Reveal key={m.l} delay={60 + i * 50} className="tcard col-span-6 lg:col-span-3 p-4 sm:p-5 flex flex-col justify-between min-h-[140px]" style={{ boxShadow: 'var(--shadow-md)' }}>
+                <div className="text-[10px] tracking-[0.16em] text-fg-3 uppercase">{m.l}</div>
+                <div className={`font-display font-black text-3xl tracking-tight mt-2 ${m.c}`}>
+                  <Metric value={m.value} format={m.fmt} />
                 </div>
-              ))}
-            </Reveal>
+                <div className="mt-3">{m.vis}</div>
+              </Reveal>
+            ))}
           </div>
         </div>
       </section>
