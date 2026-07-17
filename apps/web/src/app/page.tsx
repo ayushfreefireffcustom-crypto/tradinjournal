@@ -983,6 +983,21 @@ export default function LandingPage() {
               <p className="text-fg-2 text-[12px] sm:text-[13px] mt-4 max-w-md leading-relaxed">
                 Win rate, profit factor, reward-to-risk, drawdown, best sessions and hold times — all in one clean, sortable view you can actually read.
               </p>
+              <ul className="mt-6 flex flex-col gap-2.5 max-w-md">
+                {['Break down performance by session, symbol and setup', 'Spot your most and least profitable habits', 'Sort and filter every metric in one click'].map(t => (
+                  <li key={t} className="flex items-start gap-2.5 text-[12px] sm:text-[13px] text-fg-2 leading-snug">
+                    <span className="mt-0.5 w-4 h-4 shrink-0 rounded-full bg-profit/12 border border-profit/30 flex items-center justify-center text-profit text-[9px]">✓</span>
+                    {t}
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-6 flex items-center gap-4 border-t border-border-soft pt-4 text-[11px] tracking-wide text-fg-3">
+                <span>Profit factor <span className="text-profit numeric">1.53</span></span>
+                <span className="w-px h-3 bg-border" />
+                <span>Win rate <span className="text-fg-2 numeric">64%</span></span>
+                <span className="w-px h-3 bg-border" />
+                <span><span className="text-fg-2 numeric">21+</span> metrics</span>
+              </div>
               <a href="#features" className="group inline-flex items-center gap-1.5 mt-6 text-[12px] tracking-wide text-profit">
                 Explore analytics
                 <span aria-hidden className="transition-transform group-hover:translate-x-0.5">→</span>
@@ -1028,6 +1043,21 @@ export default function LandingPage() {
               <p className="text-fg-2 text-[12px] sm:text-[13px] mt-4 max-w-md leading-relaxed">
                 Step back into any trade bar-by-bar. See the hesitation, the early exit, the level you should have respected — then fix it for next time.
               </p>
+              <ul className="mt-6 flex flex-col gap-2.5 max-w-md">
+                {['Scrub any trade bar-by-bar on any timeframe', 'Entry and exit marked exactly where they fired', 'Add notes and tags to lock in the lesson'].map(t => (
+                  <li key={t} className="flex items-start gap-2.5 text-[12px] sm:text-[13px] text-fg-2 leading-snug">
+                    <span className="mt-0.5 w-4 h-4 shrink-0 rounded-full bg-profit/12 border border-profit/30 flex items-center justify-center text-profit text-[9px]">✓</span>
+                    {t}
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-6 flex items-center gap-4 border-t border-border-soft pt-4 text-[11px] tracking-wide text-fg-3">
+                <span>Any timeframe</span>
+                <span className="w-px h-3 bg-border" />
+                <span>Entry / exit marks</span>
+                <span className="w-px h-3 bg-border" />
+                <span>Notes &amp; tags</span>
+              </div>
               <a href="#features" className="group inline-flex items-center gap-1.5 mt-6 text-[12px] tracking-wide text-profit">
                 See the replay
                 <span aria-hidden className="transition-transform group-hover:translate-x-0.5">→</span>
