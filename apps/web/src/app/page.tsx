@@ -273,7 +273,7 @@ const STEPS = [
     meta: '~90 seconds',
     icon: LinkSimple,
     visual: (
-      <div className="w-full">
+      <div className="w-full h-full flex flex-col justify-center">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2 text-[10px] tracking-[0.18em] text-fg-3 uppercase">
             <span className="w-1.5 h-1.5 rounded-full bg-profit pulse-dot" /> Auto-sync successful
@@ -308,7 +308,7 @@ const STEPS = [
     meta: 'real-time',
     icon: Brain,
     visual: (
-      <div className="w-full">
+      <div className="w-full h-full flex flex-col justify-center">
         <div className="flex items-center gap-2 text-[10px] tracking-[0.18em] text-fg-3 uppercase mb-4">
           <span className="w-1.5 h-1.5 rounded-full bg-profit pulse-dot" /> Scanning 78 trades
         </div>
@@ -329,15 +329,17 @@ const STEPS = [
     meta: 'every Monday',
     icon: Target,
     visual: (
-      <div className="w-full">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-[10px] tracking-[0.18em] text-fg-3 uppercase">This week&apos;s review</span>
-          <span className="text-[10px] tracking-widest text-profit uppercase">On track</span>
+      <div className="w-full h-full flex flex-col justify-between">
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-[10px] tracking-[0.18em] text-fg-3 uppercase">This week&apos;s review</span>
+            <span className="text-[10px] tracking-widest text-profit uppercase">On track</span>
+          </div>
+          <p className="text-[15px] sm:text-[16px] text-fg leading-relaxed">
+            Your <span className="text-profit font-semibold">London-session longs</span> are your strongest setup this week — <span className="text-profit font-semibold numeric">+$1,240</span> across 12 trades. Losses cluster <span className="text-loss font-semibold">after 3&nbsp;PM UTC</span> — consider stopping earlier.
+          </p>
         </div>
-        <p className="text-[13px] text-fg-2 leading-relaxed">
-          Your <span className="text-profit">London-session longs</span> are your strongest setup this week — <span className="text-profit numeric">+$1,240</span> across 12 trades. Losses cluster <span className="text-loss">after 3 PM UTC</span> — consider stopping earlier.
-        </p>
-        <div className="mt-4 grid grid-cols-3 gap-3 border-t border-border-soft pt-4">
+        <div className="grid grid-cols-3 gap-3 border-t border-border-soft pt-4">
           {[
             { l: 'Best day', v: '+$1,634', c: 'text-profit' },
             { l: 'Plan followed', v: '94%', c: 'text-profit' },
@@ -345,7 +347,7 @@ const STEPS = [
           ].map(m => (
             <div key={m.l}>
               <div className="text-[9px] tracking-[0.16em] text-fg-3 uppercase">{m.l}</div>
-              <div className={`font-display font-bold text-base mt-0.5 numeric ${m.c}`}>{m.v}</div>
+              <div className={`font-display font-bold text-lg mt-1 numeric ${m.c}`}>{m.v}</div>
             </div>
           ))}
         </div>
@@ -453,11 +455,12 @@ function MiniSpark({ data, color = '#08C465' }: { data: number[]; color?: string
   );
 }
 
-// Tiny bar chart for the platform metric mini-cards.
-function MiniBars({ data, color = '#08C465' }: { data: number[]; color?: string }) {
+// Tiny bar chart for the platform metric mini-cards. `heightClass` lets a caller
+// grow it into a fuller trend block (e.g. the behavioural-score tile).
+function MiniBars({ data, color = '#08C465', heightClass = 'h-7', gapClass = 'gap-1' }: { data: number[]; color?: string; heightClass?: string; gapClass?: string }) {
   const max = Math.max(...data) || 1;
   return (
-    <div className="flex items-end gap-1 h-7">
+    <div className={`flex items-end ${gapClass} ${heightClass}`}>
       {data.map((v, i) => (
         <span key={i} className="flex-1 rounded-sm" style={{ height: `${Math.max(12, (v / max) * 100)}%`, background: color, opacity: 0.35 + (v / max) * 0.55 }} />
       ))}
@@ -921,9 +924,12 @@ export default function LandingPage() {
                 <Metric value={82} format={n => `${Math.round(n)}`} className="font-display font-black text-6xl sm:text-7xl tracking-tighter text-fg leading-none numeric" />
                 <span className="font-display font-bold text-xl text-fg-3">/100</span>
               </div>
-              <div className="relative flex flex-wrap items-center justify-between gap-3">
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-profit/30 bg-profit/10 px-2.5 py-1 text-[11px] text-profit whitespace-nowrap">▲ +6 this month</span>
-                <div className="w-24 shrink-0"><MiniBars data={[54, 60, 58, 66, 71, 76, 82]} /></div>
+              <div className="relative">
+                <div className="flex items-center justify-between gap-3 mb-2.5">
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-profit/30 bg-profit/10 px-2.5 py-1 text-[11px] text-profit whitespace-nowrap">▲ +6 this month</span>
+                  <span className="text-[9px] tracking-[0.16em] text-fg-3 uppercase">7-month trend</span>
+                </div>
+                <MiniBars data={[54, 60, 58, 66, 71, 76, 82]} heightClass="h-14 sm:h-16" gapClass="gap-1.5" />
               </div>
             </Reveal>
 
@@ -1057,7 +1063,7 @@ export default function LandingPage() {
                           <span className="text-[10px] tracking-[0.22em] text-fg-3">// {current.label}</span>
                           <span className="text-[10px] text-profit flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-profit pulse-dot" /> LIVE</span>
                         </div>
-                        <div className="flex-1 flex items-center min-h-0">{current.visual}</div>
+                        <div className="flex-1 flex items-stretch min-h-0">{current.visual}</div>
                       </motion.div>
                     </AnimatePresence>
                   </div>
@@ -1131,7 +1137,7 @@ export default function LandingPage() {
               </a>
             </Reveal>
             <Reveal delay={120} className="lg:col-span-7 relative">
-              <ScreenshotFrame src="/Analytics.png" alt="TRADElogs analytics screen" width={3420} height={2214} sizes="(max-width: 1024px) 96vw, 58vw" className="-mx-2 sm:mx-0" />
+              <ScreenshotFrame src="/Analytics.png" alt="TRADElogs analytics screen" width={3420} height={2214} mobileSrc="/MobileAnalytics.png" mobileWidth={2894} mobileHeight={1864} sizes="(max-width: 1024px) 96vw, 58vw" className="-mx-2 sm:mx-0" />
               <div className="hidden lg:block absolute -top-5 -left-5 z-20">
                 <FloatingCard parallax={[-26, 26]}>
                   <div className="text-[9px] tracking-[0.18em] text-fg-3 uppercase">Profit factor</div>
@@ -1150,7 +1156,7 @@ export default function LandingPage() {
           {/* Chart replay — big screenshot left, copy right */}
           <div className="grid lg:grid-cols-12 gap-10 lg:gap-14 items-center mt-16 sm:mt-24">
             <Reveal delay={120} className="lg:col-span-7 lg:order-2 relative">
-              <ScreenshotFrame src="/ChartReplay.png" alt="TRADElogs chart replay screen" width={3420} height={2214} sizes="(max-width: 1024px) 96vw, 58vw" className="-mx-2 sm:mx-0" />
+              <ScreenshotFrame src="/ChartReplay.png" alt="TRADElogs chart replay screen" width={3420} height={2214} mobileSrc="/MobileCharts.png" mobileWidth={2216} mobileHeight={1464} sizes="(max-width: 1024px) 96vw, 58vw" className="-mx-2 sm:mx-0" />
               <div className="hidden lg:block absolute -top-5 -right-4 z-20">
                 <FloatingCard parallax={[-24, 24]} className="flex items-center gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-profit pulse-dot" />
