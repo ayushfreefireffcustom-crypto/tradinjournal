@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import AuthAside from '@/components/auth-aside';
 import Logo from '@/components/logo';
+import GoogleButton from '@/components/google-button';
 import { authClient } from '@/lib/auth-client';
 
 function passwordStrength(pw: string): { score: number; label: string; color: string } {
@@ -39,9 +40,10 @@ export default function SignupPage() {
     setError('');
     setLoading(true);
     try {
-      const res = await authClient.signUp.email({ email, password, name, callbackURL: '/dashboard' });
+      const res = await authClient.signUp.email({ email, password, name });
       if (res?.error) throw new Error(res.error.message ?? 'Could not create account');
-      router.push('/dashboard');
+      // Email must be verified before sign-in — a 6-digit code was just emailed.
+      router.push(`/verify?email=${encodeURIComponent(email)}`);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Sign up failed');
       setLoading(false);
@@ -74,6 +76,16 @@ export default function SignupPage() {
             <p className="text-fg-2 text-[12px] sm:text-[13px] mt-3 max-w-sm">
               Free · up to 2 MT5 accounts · no card. Cancel anytime.
             </p>
+
+            {/* OAuth */}
+            <div className="mt-7">
+              <GoogleButton label="Sign up with Google" />
+            </div>
+            <div className="mt-5 flex items-center gap-3 text-[10px] tracking-[0.22em] text-fg-3">
+              <span className="h-px flex-1 bg-border-soft" />
+              OR WITH EMAIL
+              <span className="h-px flex-1 bg-border-soft" />
+            </div>
 
             {/* Progress dots */}
             <div className="mt-7 flex items-center gap-2">
