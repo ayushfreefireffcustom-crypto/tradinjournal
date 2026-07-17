@@ -628,6 +628,7 @@ function Eyebrow({ children, className = '' }: { children: React.ReactNode; clas
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function LandingPage() {
+  const reduce = useReducedMotion();
   const [step, setStep] = useState(0);
   const [stepPaused, setStepPaused] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -849,72 +850,91 @@ export default function LandingPage() {
             </h2>
           </Reveal>
 
-          <div className="grid lg:grid-cols-2 gap-6 lg:gap-10 items-start lg:items-center mt-10 sm:mt-12">
-            {/* Accordion */}
+          <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center mt-10 sm:mt-12">
+            {/* Left: a stepped journey on a vertical progress rail */}
             <Reveal
-              className="flex flex-col gap-3"
+              className="relative"
               data-testid="how-stepper"
               onMouseEnter={() => setStepPaused(true)}
               onMouseLeave={() => setStepPaused(false)}
             >
               {STEPS.map((s, i) => {
                 const active = step === i;
-                const Icon = s.icon;
+                const done = step > i;
+                const last = i === STEPS.length - 1;
                 return (
                   <button
                     key={s.key}
                     onClick={() => setStep(i)}
                     data-testid={`step-${s.key}`}
-                    className={`text-left tcard p-4 sm:p-5 transition-colors duration-[var(--dur-select)] ${active ? 'border-l-2 border-l-profit bg-surface-hover' : 'hover:bg-surface'}`}
+                    aria-current={active}
+                    className="group relative flex gap-4 sm:gap-5 text-left w-full pb-7 last:pb-0"
                   >
-                    <div className="flex items-center gap-3">
-                      <span className={`w-8 h-8 shrink-0 flex items-center justify-center border ${active ? 'border-profit text-profit' : 'border-border-strong text-fg-3'}`}>
-                        <Icon size={16} weight={active ? 'fill' : 'regular'} />
+                    {/* Rail node + connector */}
+                    <div className="relative flex flex-col items-center shrink-0">
+                      <span
+                        className={`relative z-10 w-9 h-9 rounded-full flex items-center justify-center font-display font-bold text-[13px] border transition-all duration-[var(--dur-select)]
+                          ${active ? 'bg-profit text-black border-profit shadow-[0_0_0_5px_rgba(8,196,101,0.14)]'
+                            : done ? 'bg-profit/15 text-profit border-profit/50'
+                            : 'bg-surface text-fg-3 border-border-strong'}`}
+                      >
+                        {active && <span className="absolute inset-0 rounded-full bg-profit/40 animate-ping" aria-hidden />}
+                        <span className="relative">{done ? '✓' : i + 1}</span>
                       </span>
-                      <div className="min-w-0 flex-1">
-                        <h3 className="font-display font-bold text-[15px] sm:text-lg tracking-tight">{s.title}</h3>
-                      </div>
-                      <span className="text-[9px] tracking-[0.18em] text-fg-3 uppercase shrink-0">{s.meta}</span>
-                    </div>
-                    {/* Fixed reserved height for the expanded body so the column
-                        total never changes between steps (no vertical jump). */}
-                    <div
-                      className={`overflow-hidden pl-11 transition-[height,opacity] duration-[var(--dur-select)] ease-[var(--ease-premium)] ${active ? 'h-[92px] sm:h-[76px] lg:h-[64px] opacity-100 mt-3' : 'h-0 opacity-0'}`}
-                    >
-                      <p className="text-fg-2 text-[12px] sm:text-[13px] leading-relaxed">{s.body}</p>
-                      {active && !stepPaused && (
-                        <div className="mt-3 h-0.5 bg-border-soft rounded-full overflow-hidden">
-                          <div key={step} className="h-full bg-profit/60 step-progress" />
-                        </div>
+                      {!last && (
+                        <span className="relative mt-1.5 w-px flex-1 bg-border-soft overflow-hidden rounded-full">
+                          <span
+                            className="absolute inset-x-0 top-0 bg-profit rounded-full transition-[height] duration-700 ease-[var(--ease-premium)]"
+                            style={{ height: done ? '100%' : '0%' }}
+                          />
+                        </span>
                       )}
+                    </div>
+
+                    {/* Content — always rendered (no expand/collapse → no shift) */}
+                    <div className={`flex-1 pb-1 transition-opacity duration-[var(--dur-select)] ${active ? 'opacity-100' : 'opacity-55 group-hover:opacity-80'}`}>
+                      <div className="flex items-center justify-between gap-3">
+                        <h3 className={`font-display font-bold text-[15px] sm:text-lg tracking-tight ${active ? 'text-fg' : 'text-fg-2'}`}>{s.title}</h3>
+                        <span className="text-[9px] tracking-[0.18em] text-fg-3 uppercase shrink-0">{s.meta}</span>
+                      </div>
+                      <p className="text-fg-2 text-[12px] sm:text-[13px] leading-relaxed mt-2 max-w-md">{s.body}</p>
+                      {/* Auto-advance track — always present so height never changes */}
+                      <div className="mt-3 h-0.5 bg-border-soft/70 rounded-full overflow-hidden">
+                        <div
+                          key={active && !stepPaused ? `run-${step}` : `static-${i}`}
+                          className={`h-full bg-profit/70 rounded-full ${active && !stepPaused && !reduce ? 'step-progress' : ''}`}
+                          style={{ width: done ? '100%' : active && (stepPaused || reduce) ? '100%' : '0%' }}
+                        />
+                      </div>
                     </div>
                   </button>
                 );
               })}
             </Reveal>
 
-            {/* Synced visual — fixed height + cross-fade so nothing below moves */}
+            {/* Right: one fixed-height stage; exactly one visual mounted at a time */}
             {(() => {
               const current = STEPS[step] ?? STEPS[0];
               return (
-                <Reveal delay={80} className="relative w-full tcard p-5 sm:p-7 flex flex-col">
+                <Reveal delay={80} className="relative w-full">
                   <div className="glow-blob -inset-6 opacity-70" aria-hidden />
-                  <div className="relative flex items-center justify-between mb-4">
-                    <span className="text-[10px] tracking-[0.22em] text-fg-3">// {current.label}</span>
-                    <span className="text-[10px] text-profit flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-profit pulse-dot" /> LIVE</span>
-                  </div>
-                  <div className="relative flex-1 h-[300px] sm:h-[280px]">
-                    <AnimatePresence mode="popLayout" initial={false}>
+                  <div className="relative tcard overflow-hidden h-[360px] sm:h-[380px] p-5 sm:p-7" style={{ boxShadow: 'var(--shadow-md)' }}>
+                    <span className="pointer-events-none absolute inset-x-0 top-0 h-px" style={{ background: 'rgba(255,255,255,0.05)' }} aria-hidden />
+                    <AnimatePresence mode="wait" initial={false}>
                       <motion.div
                         key={step}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-                        className="absolute inset-0 flex items-center"
+                        initial={{ opacity: 0, y: reduce ? 0 : 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: reduce ? 0 : -10 }}
+                        transition={{ duration: reduce ? 0 : 0.32, ease: [0.22, 1, 0.36, 1] }}
+                        className="h-full flex flex-col"
                         data-testid={`how-visual-${current.key}`}
                       >
-                        {current.visual}
+                        <div className="flex items-center justify-between mb-5 shrink-0">
+                          <span className="text-[10px] tracking-[0.22em] text-fg-3">// {current.label}</span>
+                          <span className="text-[10px] text-profit flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-profit pulse-dot" /> LIVE</span>
+                        </div>
+                        <div className="flex-1 flex items-center min-h-0">{current.visual}</div>
                       </motion.div>
                     </AnimatePresence>
                   </div>
