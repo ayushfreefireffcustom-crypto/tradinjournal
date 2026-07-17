@@ -482,7 +482,7 @@ function TimeOfDay({ trades }: { trades: Trade[] }) {
 }
 
 export default function AnalyticsPage() {
-  const { accounts, selected, select, setAccounts } = useAccounts();
+  const { accounts, selected, select, setAccounts, loading: accountsLoading } = useAccounts();
   const [stats, setStats] = useState<AccountStats | null>(null);
   const [trades, setTrades] = useState<Trade[]>([]);
   const [journal, setJournal] = useState<JournalEntry[]>([]);
@@ -544,7 +544,10 @@ export default function AnalyticsPage() {
       setError(err instanceof Error ? err.message : 'Failed to load account data');
     } finally { setLoading(false); }
   }, []);
-  useEffect(() => { if (selected) loadStats(selected); }, [selected, loadStats]);
+  useEffect(() => {
+    if (selected) loadStats(selected);
+    else if (!accountsLoading) setLoading(false); // zero brokers: don’t load forever
+  }, [selected, accountsLoading, loadStats]);
 
   // Range-filtered view: recompute every widget's stats from the selected range.
   const view = useMemo(

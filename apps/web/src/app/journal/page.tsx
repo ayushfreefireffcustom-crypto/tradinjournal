@@ -129,7 +129,7 @@ function CandleChart({ trade }: { trade: Trade | null }) {
 }
 
 export default function ChartReplayPage() {
-  const { accounts, selected, select, setAccounts } = useAccounts();
+  const { accounts, selected, select, setAccounts, loading: accountsLoading } = useAccounts();
   const [trades, setTrades] = useState<Trade[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [journalEntries, setJournalEntries] = useState<JournalEntry[]>([]);
@@ -159,7 +159,10 @@ export default function ChartReplayPage() {
       setLoading(false);
     }
   }, []);
-  useEffect(() => { if (selected) loadTrades(selected); }, [selected, loadTrades]);
+  useEffect(() => {
+    if (selected) loadTrades(selected);
+    else if (!accountsLoading) setLoading(false); // zero brokers: don’t load forever
+  }, [selected, accountsLoading, loadTrades]);
 
   const active = trades.find(t => t.positionId === activeId) ?? null;
 

@@ -14,7 +14,7 @@ import { ArrowUpRight, ArrowDownRight, DownloadSimple } from '@phosphor-icons/re
 export default function TradesPage() {
   const router = useRouter();
   const toast = useToast();
-  const { accounts, selected, select, setAccounts } = useAccounts();
+  const { accounts, selected, select, setAccounts, loading: accountsLoading } = useAccounts();
   const [trades, setTrades] = useState<Trade[]>([]);
   const [deals, setDeals] = useState<Deal[]>([]);
   const [loading, setLoading] = useState(true);
@@ -45,7 +45,10 @@ export default function TradesPage() {
       setLoading(false);
     }
   }, []);
-  useEffect(() => { if (selected) loadTrades(selected); }, [selected, loadTrades]);
+  useEffect(() => {
+    if (selected) loadTrades(selected);
+    else if (!accountsLoading) setLoading(false); // zero brokers: don’t load forever
+  }, [selected, accountsLoading, loadTrades]);
 
   const symbols = Array.from(new Set(trades.map(t => t.symbol))).sort();
 

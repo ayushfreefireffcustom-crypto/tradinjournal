@@ -9,7 +9,7 @@ import { CaretLeft, CaretRight } from '@phosphor-icons/react';
 import { aggregateByCloseDate, buildMonthView, calMoney as money, cellBg, WEEKDAYS, MONTHS } from '@/lib/calendar';
 
 export default function CalendarPage() {
-  const { accounts, selected, select, setAccounts } = useAccounts();
+  const { accounts, selected, select, setAccounts, loading: accountsLoading } = useAccounts();
   const [trades, setTrades] = useState<Trade[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -29,7 +29,10 @@ export default function CalendarPage() {
       setLoading(false);
     }
   }, []);
-  useEffect(() => { if (selected) loadTrades(selected); }, [selected, loadTrades]);
+  useEffect(() => {
+    if (selected) loadTrades(selected);
+    else if (!accountsLoading) setLoading(false); // zero brokers: don’t load forever
+  }, [selected, accountsLoading, loadTrades]);
 
   // Aggregate closed trades by local close-date, then build the month grid
   // (with per-week totals) via the shared calendar helpers.
