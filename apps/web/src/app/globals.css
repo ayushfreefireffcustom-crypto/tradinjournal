@@ -364,6 +364,16 @@ select.tinput::-ms-expand { display: none; }
 @keyframes row-in { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
 .row-in { animation: row-in .45s var(--ease-premium) both; }
 
+/* Newest live-feed row briefly flashes green, then settles. */
+@keyframes row-flash {
+  0% { background-color: rgba(8, 196, 101, .18); }
+  100% { background-color: transparent; }
+}
+.row-flash { animation: row-flash 1.6s var(--ease-out) forwards; }
+
+/* Subtle zebra striping for the live-feed rows (desktop). */
+.feed-zebra:nth-child(even) { background-color: rgba(255, 255, 255, .012); }
+
 /* ─── Click-burst cursor effect (mounted globally; desktop + reduced-motion guarded in JS) */
 .click-burst-line {
   position: fixed; z-index: 600;
