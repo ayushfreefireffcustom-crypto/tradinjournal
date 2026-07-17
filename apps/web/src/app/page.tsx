@@ -597,8 +597,9 @@ function HeroImage() {
   const y = useTransform(scrollYProgress, [0, 1], [40, -40]);
   return (
     <Reveal delay={160} className="lg:col-span-7 relative" data-testid="hero-terminal">
-      {/* On lg+ the shot is larger and bleeds a little past the right edge. */}
-      <div ref={ref} className="relative lg:w-[112%] lg:max-w-none">
+      {/* On lg+ the shot is larger, sits a touch higher, and is nudged right so
+          there's more breathing room between it and the copy. */}
+      <div ref={ref} className="relative lg:w-[112%] lg:max-w-none lg:ml-8 xl:ml-12 lg:-mt-10">
         <motion.div style={reduce ? undefined : { y }}>
           <ScreenshotFrame
             src="/Dashboard.png"
