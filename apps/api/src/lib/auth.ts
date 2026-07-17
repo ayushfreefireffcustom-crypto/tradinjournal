@@ -27,8 +27,11 @@ export const auth = betterAuth({
 
   // ── Email verification lifecycle ─────────────────────────────────────────────
   // Fired by the emailOTP verify-email route once the code checks out. We use it
-  // to send a one-time welcome email.
+  // to send a one-time welcome email. autoSignInAfterVerification creates a
+  // session on successful OTP verify so the user lands straight on /dashboard
+  // instead of bouncing to /login to enter their password again.
   emailVerification: {
+    autoSignInAfterVerification: true,
     afterEmailVerification: async (user) => {
       try {
         const { subject, html } = welcomeEmail(user.name ?? '');
