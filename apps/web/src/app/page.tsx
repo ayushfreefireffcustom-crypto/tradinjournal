@@ -435,6 +435,16 @@ function HeroImage() {
   );
 }
 
+// Consistent, stylish section label: a short green accent rule + tracked text.
+function Eyebrow({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+  return (
+    <span className={`inline-flex items-center gap-2.5 text-[10px] sm:text-[11px] tracking-[0.3em] text-fg-3 uppercase ${className}`}>
+      <span className="w-7 h-px bg-profit/70" />
+      {children}
+    </span>
+  );
+}
+
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function LandingPage() {
@@ -534,7 +544,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-14 sm:py-20">
           <div className="grid lg:grid-cols-12 gap-8 lg:gap-10 items-end">
             <Reveal className="lg:col-span-8">
-              <p className="text-[10px] sm:text-[11px] tracking-[0.3em] text-fg-3 mb-4">[ WHY TRADELOGS ]</p>
+              <Eyebrow className="mb-4">WHY TRADELOGS</Eyebrow>
               <h2 className="font-display font-black tracking-tighter text-2xl sm:text-3xl md:text-4xl lg:text-5xl leading-[1.05]">
                 <span className="text-fg-2">A trading journal that actually helps you </span>
                 <span className="text-gradient-brand">learn and improve </span>
@@ -595,7 +605,7 @@ export default function LandingPage() {
       <section className="relative overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-16 sm:py-24">
           <Reveal className="text-center max-w-2xl mx-auto">
-            <p className="text-[10px] sm:text-[11px] tracking-[0.3em] text-fg-3">[ PLATFORM ]</p>
+            <Eyebrow>PLATFORM</Eyebrow>
             <h2 className="font-display font-black tracking-tighter text-3xl sm:text-4xl lg:text-5xl mt-3">
               Built for <span className="text-gradient-brand">serious traders.</span>
             </h2>
@@ -671,7 +681,7 @@ export default function LandingPage() {
       <section id="how" className="border-y border-border bg-surface/40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-16 sm:py-24">
           <Reveal className="max-w-2xl">
-            <p className="text-[10px] sm:text-[11px] tracking-[0.3em] text-fg-3">[ HOW IT WORKS ]</p>
+            <Eyebrow>HOW IT WORKS</Eyebrow>
             <h2 className="font-display font-black tracking-tighter text-3xl sm:text-4xl lg:text-5xl mt-3">
               From broker to <span className="text-gradient-brand">edge.</span>
             </h2>
@@ -742,7 +752,7 @@ export default function LandingPage() {
       <section id="analytics" className="relative overflow-hidden">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-10 py-16 sm:py-24">
           <Reveal className="text-center max-w-2xl mx-auto">
-            <p className="text-[10px] sm:text-[11px] tracking-[0.3em] text-fg-3">[ LIVE EXPERIENCE ]</p>
+            <Eyebrow>LIVE EXPERIENCE</Eyebrow>
             <h2 className="font-display font-black tracking-tighter text-3xl sm:text-4xl lg:text-5xl mt-3">
               Watch trades <span className="text-gradient-brand">flow in.</span>
             </h2>
@@ -773,7 +783,7 @@ export default function LandingPage() {
       <section className="relative overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-16 sm:py-24">
           <Reveal className="text-center max-w-2xl mx-auto">
-            <p className="text-[10px] sm:text-[11px] tracking-[0.3em] text-fg-3">[ SEE IT IN ACTION ]</p>
+            <Eyebrow>SEE IT IN ACTION</Eyebrow>
             <h2 className="font-display font-black tracking-tighter text-3xl sm:text-4xl lg:text-5xl mt-3">
               The whole picture, <span className="text-gradient-brand">one screen.</span>
             </h2>
@@ -833,7 +843,7 @@ export default function LandingPage() {
       <section className="border-y border-border bg-surface/40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-16 sm:py-24 grid lg:grid-cols-12 gap-8 lg:gap-10 items-center">
           <Reveal className="lg:col-span-6">
-            <p className="text-[10px] sm:text-[11px] tracking-[0.3em] text-fg-3">[ INSIGHTS ]</p>
+            <Eyebrow>INSIGHTS</Eyebrow>
             <h2 className="font-display font-black tracking-tighter text-3xl sm:text-4xl lg:text-5xl mt-3">
               Insights that actually <span className="text-gradient-brand">know your trading.</span>
             </h2>
@@ -873,7 +883,7 @@ export default function LandingPage() {
       <section id="features" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-16 sm:py-24">
         <Reveal className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8 sm:mb-10">
           <div>
-            <p className="text-[10px] sm:text-[11px] tracking-[0.3em] text-fg-3">[ WHAT YOU GET ]</p>
+            <Eyebrow>WHAT YOU GET</Eyebrow>
             <h2 className="font-display font-black tracking-tighter text-3xl sm:text-4xl lg:text-5xl mt-3">Understand every trade.</h2>
           </div>
           <p className="text-fg-2 text-[12px] max-w-sm">Six simple tools to help you review, learn and improve your trading.</p>
@@ -928,7 +938,7 @@ export default function LandingPage() {
       <section className="border-y border-border bg-surface/40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-16 sm:py-20 grid lg:grid-cols-12 gap-8 lg:gap-10 items-center">
           <Reveal className="lg:col-span-7">
-            <p className="text-[10px] sm:text-[11px] tracking-[0.3em] text-fg-3 mb-4">[ TRADER STORY // 2026.01 ]</p>
+            <Eyebrow className="mb-4">TRADER STORY // 2026.01</Eyebrow>
             <p className="font-display font-bold text-xl sm:text-2xl md:text-3xl tracking-tight leading-snug">
               &ldquo;The trading score showed me something I couldn&apos;t see — I was revenge trading every Tuesday after the London session. Fixing that one habit really turned my results around.&rdquo;
             </p>
@@ -953,7 +963,7 @@ export default function LandingPage() {
       {/* FAQ */}
       <section id="faq" className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-10 py-16 sm:py-24">
         <Reveal>
-          <p className="text-[10px] sm:text-[11px] tracking-[0.3em] text-fg-3 mb-3">[ HELP ]</p>
+          <Eyebrow className="mb-3">HELP</Eyebrow>
           <h2 className="font-display font-black tracking-tighter text-3xl sm:text-4xl lg:text-5xl mb-8 sm:mb-10">Common questions.</h2>
         </Reveal>
         <div className="border-t border-border">
