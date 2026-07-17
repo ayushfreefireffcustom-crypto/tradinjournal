@@ -13,7 +13,15 @@ export default function GoogleButton({ label = 'Continue with Google' }: { label
   async function go() {
     setLoading(true);
     try {
-      await authClient.signIn.social({ provider: 'google', callbackURL: '/dashboard' });
+      // Absolute URLs to the web app: better-auth resolves a relative callbackURL
+      // against the API origin (localhost:4000 / api.tradelogs.com), which has no
+      // page routes. Pointing at window.location.origin sends the user back here.
+      const origin = window.location.origin;
+      await authClient.signIn.social({
+        provider: 'google',
+        callbackURL: `${origin}/dashboard`,
+        errorCallbackURL: `${origin}/login`,
+      });
     } catch {
       setLoading(false);
     }
