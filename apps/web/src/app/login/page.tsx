@@ -7,9 +7,11 @@ import AuthAside from '@/components/auth-aside';
 import Logo from '@/components/logo';
 import GoogleButton from '@/components/google-button';
 import { authClient } from '@/lib/auth-client';
+import { useRedirectIfAuthed } from '@/lib/use-redirect-if-authed';
 
 export default function LoginPage() {
   const router = useRouter();
+  useRedirectIfAuthed();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);

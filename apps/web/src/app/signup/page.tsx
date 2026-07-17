@@ -7,6 +7,7 @@ import AuthAside from '@/components/auth-aside';
 import Logo from '@/components/logo';
 import GoogleButton from '@/components/google-button';
 import { authClient } from '@/lib/auth-client';
+import { useRedirectIfAuthed } from '@/lib/use-redirect-if-authed';
 
 function passwordStrength(pw: string): { score: number; label: string; color: string } {
   let score = 0;
@@ -23,6 +24,7 @@ function passwordStrength(pw: string): { score: number; label: string; color: st
 
 export default function SignupPage() {
   const router = useRouter();
+  useRedirectIfAuthed();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
