@@ -13,6 +13,10 @@ interface Props {
   /** intrinsic pixel size of the source (for next/image ratio) */
   width: number;
   height: number;
+  /** optional art-directed mobile source (tighter/zoomed crop) shown below sm */
+  mobileSrc?: string;
+  mobileWidth?: number;
+  mobileHeight?: number;
   chrome?: boolean;
   glow?: boolean;
   priority?: boolean;
@@ -25,6 +29,9 @@ export default function ScreenshotFrame({
   alt,
   width,
   height,
+  mobileSrc,
+  mobileWidth,
+  mobileHeight,
   chrome = true,
   glow = true,
   priority = false,
@@ -53,16 +60,42 @@ export default function ScreenshotFrame({
             <span className="w-2.5 h-2.5 rounded-full bg-profit/70" />
           </div>
         )}
-        <Image
-          src={src}
-          alt={alt}
-          width={width}
-          height={height}
-          priority={priority}
-          sizes={sizes}
-          className="w-full h-auto block select-none"
-          draggable={false}
-        />
+        {mobileSrc ? (
+          <>
+            {/* Zoomed mobile crop — reads clearly on small screens */}
+            <Image
+              src={mobileSrc}
+              alt={alt}
+              width={mobileWidth ?? width}
+              height={mobileHeight ?? height}
+              priority={priority}
+              sizes="100vw"
+              className="w-full h-auto block select-none sm:hidden"
+              draggable={false}
+            />
+            <Image
+              src={src}
+              alt={alt}
+              width={width}
+              height={height}
+              priority={priority}
+              sizes={sizes}
+              className="w-full h-auto hidden select-none sm:block"
+              draggable={false}
+            />
+          </>
+        ) : (
+          <Image
+            src={src}
+            alt={alt}
+            width={width}
+            height={height}
+            priority={priority}
+            sizes={sizes}
+            className="w-full h-auto block select-none"
+            draggable={false}
+          />
+        )}
       </div>
     </div>
   );
