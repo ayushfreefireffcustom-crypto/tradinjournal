@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Gauge, Table, ChartLineUp, CalendarBlank, FilmSlate, NotePencil, GearSix, Bank, type Icon } from '@phosphor-icons/react';
+import { Gauge, Table, ChartLineUp, CalendarBlank, FilmSlate, NotePencil, Bank, type Icon } from '@phosphor-icons/react';
 import type { BrokerAccount } from '@/lib/api';
 import { authClient } from '@/lib/auth-client';
 import Logo from '@/components/logo';
@@ -98,19 +98,15 @@ export default function AppShell({
 
       <div className="mt-auto p-4 border-t border-border space-y-3">
         <div className="flex items-center gap-2 px-1">
-          <Link
-            href="/settings"
-            data-testid="user-settings-link"
-            className="flex items-center gap-2 min-w-0 flex-1 group rounded focus-ring"
-          >
-            <div className="w-7 h-7 rounded-sm bg-surface-hover border border-border group-hover:border-border-strong flex items-center justify-center font-bold text-[11px]">
+          <div className="flex items-center gap-2 min-w-0 flex-1" data-testid="user-profile">
+            <div className="w-7 h-7 rounded-sm bg-surface-hover border border-border flex items-center justify-center font-bold text-[11px]">
               {session?.user?.name?.charAt(0) ?? 'A'}
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-[11px] truncate group-hover:text-fg">{session?.user?.name}</div>
-              <div className="text-[10px] text-fg-3 tracking-widest flex items-center gap-1"><GearSix size={11} weight="bold" /> SETTINGS</div>
+              <div className="text-[11px] truncate">{session?.user?.name}</div>
+              <div className="text-[10px] text-fg-3 truncate">{session?.user?.email}</div>
             </div>
-          </Link>
+          </div>
           <button
             onClick={() => authClient.signOut()}
             data-testid="signout-btn"
