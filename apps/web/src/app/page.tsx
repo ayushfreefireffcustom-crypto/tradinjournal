@@ -6,9 +6,9 @@ import { motion, AnimatePresence, useScroll, useTransform, useReducedMotion } fr
 import { LinkSimple, Brain, ChatCircle, Target } from '@phosphor-icons/react';
 import Logo from '@/components/logo';
 import Reveal from '@/components/reveal';
-import BrowserFrame from '@/components/browser-frame';
 import ScreenshotFrame from '@/components/screenshot-frame';
 import FloatingCard from '@/components/floating-card';
+// (BrowserFrame retired from the landing — live-feed now uses a bespoke frame)
 import WatermarkNumber from '@/components/watermark-number';
 import { RevealGroup, RevealItem } from '@/components/reveal-group';
 import AnimatedNumber from '@/components/animated-number';
@@ -388,6 +388,7 @@ function LiveTradesFeed() {
     id: i, pair: r.pair, side: r.side as 'BUY' | 'SELL', size: r.size, dur: r.dur, tag: r.tag,
     pnl: parseFloat(r.pnl.replace(/[+,]/g, '')), time: r.time,
   }));
+  const reduce = useReducedMotion();
   const [rows, setRows] = useState<TRow[]>(seed);
   const [session, setSession] = useState(723.12);
   const [count, setCount] = useState(8);
@@ -407,30 +408,64 @@ function LiveTradesFeed() {
 
   return (
     <>
-      <div className="divide-y divide-border-soft">
-        {rows.map((r, i) => {
-          const up = r.pnl >= 0;
-          return (
-            <div key={r.id} className={`flex items-center gap-3 px-4 py-2.5 text-[11px] sm:text-[12px] ${i === 0 ? 'row-in' : ''}`}>
-              <span className="w-16 shrink-0 flex items-center gap-1.5 tracking-wider">
-                <span className={`w-1.5 h-1.5 rounded-full ${up ? 'bg-profit' : 'bg-loss'}`} />{r.pair}
-              </span>
-              <span className={`w-10 shrink-0 text-[9px] tracking-widest ${r.side === 'BUY' ? 'text-profit' : 'text-loss'}`}>{r.side}</span>
-              <span className="w-12 shrink-0 numeric text-fg-3 hidden sm:inline">{r.size}</span>
-              <span className="w-20 shrink-0 numeric text-fg-3 hidden sm:inline">{r.dur}</span>
-              <span className="flex-1 min-w-0 hidden sm:block">
-                <span className="border border-border-soft px-2 py-0.5 text-[9px] tracking-widest text-fg-2 uppercase">{r.tag}</span>
-              </span>
-              <span className={`w-20 shrink-0 text-right numeric ${up ? 'text-profit' : 'text-loss'}`}>{fmtPnl(r.pnl)}</span>
-              <span className="w-20 shrink-0 text-right numeric text-fg-3 hidden sm:inline">{r.time}</span>
-            </div>
-          );
-        })}
+      {/* Column header — desktop only */}
+      <div className="hidden sm:flex items-center gap-3 px-4 py-2.5 border-b border-border-soft text-[9px] tracking-[0.18em] text-fg-3 uppercase">
+        <span className="w-16">Pair</span>
+        <span className="w-10">Side</span>
+        <span className="w-12">Size</span>
+        <span className="w-20">Duration</span>
+        <span className="flex-1">Setup</span>
+        <span className="w-20 text-right">P&amp;L</span>
+        <span className="w-20 text-right">Time</span>
       </div>
-      {/* Footer */}
-      <div className="flex items-center justify-between gap-3 px-4 py-2.5 border-t border-border-soft text-[10px] tracking-[0.18em] text-fg-3 uppercase">
-        <span>Session P&amp;L <span className={session >= 0 ? 'text-profit numeric' : 'text-loss numeric'}>{fmtPnl(session)}</span></span>
-        <span className="hidden sm:inline">Win rate <span className="text-fg-2 numeric">{winRate}%</span> · {count} trades</span>
+
+      {/* Rows — fixed-height viewport so the frame never resizes as rows flow in.
+          On mobile each row is a compact two-line card; on desktop a table row. */}
+      <div className="h-[368px] sm:h-[344px] overflow-hidden">
+        <AnimatePresence initial={false}>
+          {rows.map((r, i) => {
+            const up = r.pnl >= 0;
+            return (
+              <motion.div
+                key={r.id}
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: reduce ? 0 : 0.4, ease: [0.22, 1, 0.36, 1] }}
+                className="overflow-hidden"
+              >
+                <div className={`feed-zebra border-b border-border-soft px-3 sm:px-4 py-3 sm:py-2.5 transition-colors hover:bg-surface-hover/60 ${i === 0 && !reduce ? 'row-flash' : ''}`}>
+                  {/* primary line */}
+                  <div className="flex items-center gap-3 text-[12px]">
+                    <span className="w-16 shrink-0 flex items-center gap-1.5 tracking-wider">
+                      <span className={`w-1.5 h-1.5 rounded-full ${up ? 'bg-profit' : 'bg-loss'}`} />{r.pair}
+                    </span>
+                    <span className={`w-10 shrink-0 text-[9px] tracking-widest ${r.side === 'BUY' ? 'text-profit' : 'text-loss'}`}>{r.side}</span>
+                    <span className="w-12 shrink-0 numeric text-fg-3 hidden sm:inline">{r.size}</span>
+                    <span className="w-20 shrink-0 numeric text-fg-3 hidden sm:inline">{r.dur}</span>
+                    <span className="flex-1 min-w-0 hidden sm:block">
+                      <span className="border border-border-soft rounded px-2 py-0.5 text-[9px] tracking-widest text-fg-2 uppercase">{r.tag}</span>
+                    </span>
+                    <span className="flex-1 sm:hidden" aria-hidden />
+                    <span className={`shrink-0 text-right numeric sm:w-20 ${up ? 'text-profit' : 'text-loss'}`}>{fmtPnl(r.pnl)}</span>
+                    <span className="w-20 shrink-0 text-right numeric text-fg-3 hidden sm:inline">{r.time}</span>
+                  </div>
+                  {/* secondary line — mobile only */}
+                  <div className="flex sm:hidden items-center justify-between mt-2 text-[10px] text-fg-3">
+                    <span className="border border-border-soft rounded px-1.5 py-0.5 tracking-widest uppercase text-fg-2">{r.tag}</span>
+                    <span className="numeric">{r.dur} · {r.time}</span>
+                  </div>
+                </div>
+              </motion.div>
+            );
+          })}
+        </AnimatePresence>
+      </div>
+
+      {/* Footer — live stats with count-up */}
+      <div className="flex items-center justify-between gap-3 px-3 sm:px-4 py-3 border-t border-border-soft text-[10px] tracking-[0.16em] text-fg-3 uppercase">
+        <span className="flex items-center gap-1.5">Session <span className={session >= 0 ? 'text-profit numeric' : 'text-loss numeric'}><AnimatedNumber value={session} format={fmtPnl} /></span></span>
+        <span className="hidden xs:inline">Win <span className="text-fg-2 numeric">{winRate}%</span> · <span className="numeric text-fg-2"><AnimatedNumber value={count} format={n => `${Math.round(n)}`} /></span> trades</span>
         <span className="flex items-center gap-1.5 text-profit"><span className="w-1.5 h-1.5 rounded-full bg-profit pulse-dot" /> LIVE</span>
       </div>
     </>
@@ -904,20 +939,25 @@ export default function LandingPage() {
             </p>
           </Reveal>
 
-          <Reveal delay={100} className="mt-10 sm:mt-12">
-            <BrowserFrame url="tradelogs.com/trades" status={<span className="text-profit">● LIVE FEED</span>} testId="live-trades">
-              {/* Header row */}
-              <div className="hidden sm:flex items-center gap-3 px-4 py-2.5 border-b border-border-soft text-[9px] tracking-[0.18em] text-fg-3 uppercase">
-                <span className="w-16">Pair</span>
-                <span className="w-10">Side</span>
-                <span className="w-12">Size</span>
-                <span className="w-20">Duration</span>
-                <span className="flex-1">Setup</span>
-                <span className="w-20 text-right">P&amp;L</span>
-                <span className="w-20 text-right">Time</span>
+          <Reveal delay={100} className="relative mt-10 sm:mt-12">
+            <div className="glow-blob left-1/2 -translate-x-1/2 top-4 w-[70%] h-[70%]" aria-hidden />
+            <div
+              className="relative rounded-2xl border border-border overflow-hidden bg-surface"
+              style={{ boxShadow: 'var(--shadow-lg)' }}
+              data-testid="live-trades"
+            >
+              <span className="pointer-events-none absolute inset-x-0 top-0 h-px z-10" style={{ background: 'rgba(255,255,255,0.06)' }} aria-hidden />
+              {/* Minimal chrome */}
+              <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border-soft bg-app/80">
+                <span className="w-2.5 h-2.5 rounded-full bg-loss/70" />
+                <span className="w-2.5 h-2.5 rounded-full bg-warning/70" />
+                <span className="w-2.5 h-2.5 rounded-full bg-profit/70" />
+                <span className="ml-auto text-[10px] tracking-[0.2em] text-profit flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-profit pulse-dot" /> LIVE FEED
+                </span>
               </div>
               <LiveTradesFeed />
-            </BrowserFrame>
+            </div>
           </Reveal>
         </div>
       </section>
