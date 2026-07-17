@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import AuthAside from '@/components/auth-aside';
 import Logo from '@/components/logo';
+import GoogleButton from '@/components/google-button';
 import { authClient } from '@/lib/auth-client';
 
 export default function LoginPage() {
@@ -22,7 +23,17 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const res = await authClient.signIn.email({ email, password, callbackURL: '/dashboard' });
-      if (res?.error) throw new Error(res.error.message ?? 'Invalid credentials');
+      if (res?.error) {
+        // Unverified accounts can't sign in — send them to finish verification.
+        const status = res.error.status;
+        const msg = res.error.message ?? '';
+        if (status === 403 || /verif/i.test(msg)) {
+          await authClient.emailOtp.sendVerificationOtp({ email, type: 'email-verification' }).catch(() => {});
+          router.push(`/verify?email=${encodeURIComponent(email)}`);
+          return;
+        }
+        throw new Error(msg || 'Invalid credentials');
+      }
       router.push('/dashboard');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Sign in failed');
@@ -58,10 +69,14 @@ export default function LoginPage() {
               Sign in with your email and password to access the live dashboard.
             </p>
 
-            {/* Auth method tabs */}
-            <div className="mt-8 flex gap-1 border-b border-border-soft">
-              <button type="button" className="px-3 py-2 text-[11px] tracking-[0.22em] border-b-2 border-fg text-fg -mb-px">EMAIL</button>
-              <button type="button" className="px-3 py-2 text-[11px] tracking-[0.22em] border-b-2 border-transparent text-fg-3 hover:text-fg-2 cursor-not-allowed" title="Single sign-on coming soon">SSO · SOON</button>
+            {/* OAuth */}
+            <div className="mt-8">
+              <GoogleButton label="Continue with Google" />
+            </div>
+            <div className="mt-5 flex items-center gap-3 text-[10px] tracking-[0.22em] text-fg-3">
+              <span className="h-px flex-1 bg-border-soft" />
+              OR WITH EMAIL
+              <span className="h-px flex-1 bg-border-soft" />
             </div>
 
             <div className="mt-6 flex flex-col gap-4">
