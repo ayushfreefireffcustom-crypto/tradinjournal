@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
+import { motion, useScroll, useTransform, useReducedMotion } from 'framer-motion';
 import { LinkSimple, Brain, ChatCircle, Lightning, Clock, Target } from '@phosphor-icons/react';
 import Logo from '@/components/logo';
 import Reveal from '@/components/reveal';
@@ -400,6 +401,40 @@ function LiveTradesFeed() {
   );
 }
 
+// Hero product shot with a subtle scroll-linked parallax (drifts ~30px as the
+// section moves through the viewport). Replaces the old CSS float. The entrance
+// fade/rise is handled by <Reveal>; the parallax is a separate inner layer so
+// the two transforms never fight. Static under reduced-motion.
+function HeroImage() {
+  const reduce = useReducedMotion();
+  const ref = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({ target: ref, offset: ['start end', 'end start'] });
+  const y = useTransform(scrollYProgress, [0, 1], [34, -34]);
+  return (
+    <Reveal delay={160} className="lg:col-span-6 relative" data-testid="hero-terminal">
+      <div ref={ref} className="relative">
+        <div className="absolute -inset-6 glow-radial opacity-70" />
+        <motion.div
+          style={reduce ? undefined : { y }}
+          className="relative rounded-xl border border-border overflow-hidden shadow-2xl"
+        >
+          <img
+            src="/Dashboard.png"
+            alt="TRADElogs dashboard — net P&L, win rate and equity curve"
+            className="w-full h-auto block select-none"
+            draggable={false}
+            loading="eager"
+          />
+        </motion.div>
+        <div className="absolute -bottom-3 -left-3 hidden sm:flex items-center gap-2 tcard px-3 py-2">
+          <span className="w-1.5 h-1.5 rounded-full bg-profit pulse-dot" />
+          <span className="text-[11px] text-fg-2 tracking-wide">Synced <span className="text-profit numeric">+$4,142</span> today</span>
+        </div>
+      </div>
+    </Reveal>
+  );
+}
+
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function LandingPage() {
@@ -489,24 +524,8 @@ export default function LandingPage() {
             </Reveal>
           </div>
 
-          {/* Right: dashboard screenshot */}
-          <Reveal delay={160} className="lg:col-span-6 relative" data-testid="hero-terminal">
-            <div className="absolute -inset-6 glow-radial opacity-70" />
-            <div className="relative rounded-xl border border-border overflow-hidden shadow-2xl float-slow">
-              <img
-                src="/Dashboard.png"
-                alt="TRADElogs dashboard — net P&L, win rate and equity curve"
-                className="w-full h-auto block select-none"
-                draggable={false}
-                loading="eager"
-              />
-            </div>
-            {/* Floating live chip */}
-            <div className="absolute -bottom-3 -left-3 hidden sm:flex items-center gap-2 tcard px-3 py-2 float-slow" style={{ animationDelay: '1.5s' }}>
-              <span className="w-1.5 h-1.5 rounded-full bg-profit pulse-dot" />
-              <span className="text-[11px] text-fg-2 tracking-wide">Synced <span className="text-profit numeric">+$4,142</span> today</span>
-            </div>
-          </Reveal>
+          {/* Right: dashboard screenshot with a subtle scroll parallax */}
+          <HeroImage />
         </div>
       </section>
 
