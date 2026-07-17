@@ -3,10 +3,14 @@
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { motion, useScroll, useTransform, useReducedMotion } from 'framer-motion';
-import { LinkSimple, Brain, ChatCircle, Lightning, Clock, Target } from '@phosphor-icons/react';
+import { LinkSimple, Brain, ChatCircle, Target } from '@phosphor-icons/react';
 import Logo from '@/components/logo';
 import Reveal from '@/components/reveal';
 import BrowserFrame from '@/components/browser-frame';
+import ScreenshotFrame from '@/components/screenshot-frame';
+import FloatingCard from '@/components/floating-card';
+import WatermarkNumber from '@/components/watermark-number';
+import { RevealGroup, RevealItem } from '@/components/reveal-group';
 import AnimatedNumber from '@/components/animated-number';
 import { useInView } from '@/hooks/use-in-view';
 
@@ -81,17 +85,44 @@ const EQUITY_SEED = [
   53, 58, 56, 61, 59, 64, 62, 67, 65, 70, 68, 66, 71, 74, 72, 77, 75, 80, 78, 83, 81, 86,
 ];
 
+// Smooth Catmull-Rom → cubic-bezier path so the equity line reads as a polished
+// curve rather than a jagged polyline.
+function smoothPath(pts: { x: number; y: number }[]): string {
+  if (pts.length < 2) return '';
+  let d = `M ${pts[0]!.x.toFixed(1)} ${pts[0]!.y.toFixed(1)}`;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[i - 1] ?? pts[i]!;
+    const p1 = pts[i]!;
+    const p2 = pts[i + 1]!;
+    const p3 = pts[i + 2] ?? p2;
+    const c1x = p1.x + (p2.x - p0.x) / 6;
+    const c1y = p1.y + (p2.y - p0.y) / 6;
+    const c2x = p2.x - (p3.x - p1.x) / 6;
+    const c2y = p2.y - (p3.y - p1.y) / 6;
+    d += ` C ${c1x.toFixed(1)} ${c1y.toFixed(1)}, ${c2x.toFixed(1)} ${c2y.toFixed(1)}, ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`;
+  }
+  return d;
+}
+
 function LiveEquityChart({ height = 190 }: { height?: number }) {
   const [pts, setPts] = useState<number[]>(EQUITY_SEED);
+  const phase = useRef(0);
   useEffect(() => {
     if (typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const t = setInterval(() => {
       setPts(prev => {
         const last = prev[prev.length - 1] ?? 30;
-        const next = Math.max(8, Math.min(92, last + (Math.random() - 0.34) * 6));
-        return [...prev.slice(1), next];
+        phase.current += 0.5;
+        // Gentle, low-variance up-trend: a small positive drift plus a slow sine
+        // wobble — always climbing, never jagged.
+        const drift = 0.9;
+        const wobble = Math.sin(phase.current) * 1.1;
+        const next = Math.max(10, Math.min(92, last + drift + wobble));
+        // When we run out of headroom, ease back down so it can climb again.
+        const adjusted = next >= 90 ? last - 8 : next;
+        return [...prev.slice(1), adjusted];
       });
-    }, 1300);
+    }, 1600);
     return () => clearInterval(t);
   }, []);
 
@@ -100,20 +131,25 @@ function LiveEquityChart({ height = 190 }: { height?: number }) {
   const span = max - min || 1;
   const xs = (i: number) => PAD + (i / (pts.length - 1)) * (W - PAD * 2);
   const ys = (v: number) => H - PAD - ((v - min) / span) * (H - PAD * 2);
-  const path = pts.map((v, i) => `${i === 0 ? 'M' : 'L'} ${xs(i).toFixed(1)} ${ys(v).toFixed(1)}`).join(' ');
+  const coords = pts.map((v, i) => ({ x: xs(i), y: ys(v) }));
+  const path = smoothPath(coords);
   const area = `${path} L ${xs(pts.length - 1).toFixed(1)} ${H} L ${xs(0)} ${H} Z`;
   const lastV = pts[pts.length - 1] ?? 0;
-  const prevV = pts[pts.length - 2] ?? 0;
-  const up = lastV >= prevV;
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="w-full" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="eq-fill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#08C465" stopOpacity="0.20" />
+          <stop offset="100%" stopColor="#08C465" stopOpacity="0" />
+        </linearGradient>
+      </defs>
       {[0.25, 0.5, 0.75].map(p => (
         <line key={p} x1={0} y1={H * p} x2={W} y2={H * p} stroke="#1E1E1E" strokeDasharray="2 4" />
       ))}
-      <path d={area} fill="rgba(8,196,101,0.08)" />
-      <path d={path} stroke="#08C465" strokeWidth="1.5" fill="none" />
-      <circle cx={xs(pts.length - 1)} cy={ys(lastV)} r="3.5" fill={up ? '#08C465' : '#FE3A31'} />
-      <circle cx={xs(pts.length - 1)} cy={ys(lastV)} r="7" fill={up ? '#08C465' : '#FE3A31'} opacity="0.18" />
+      <path d={area} fill="url(#eq-fill)" />
+      <path d={path} stroke="#08C465" strokeWidth="1.75" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx={xs(pts.length - 1)} cy={ys(lastV)} r="3.5" fill="#08C465" />
+      <circle cx={xs(pts.length - 1)} cy={ys(lastV)} r="7" fill="#08C465" opacity="0.18" />
     </svg>
   );
 }
@@ -409,29 +445,137 @@ function HeroImage() {
   const reduce = useReducedMotion();
   const ref = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({ target: ref, offset: ['start end', 'end start'] });
-  const y = useTransform(scrollYProgress, [0, 1], [34, -34]);
+  const y = useTransform(scrollYProgress, [0, 1], [40, -40]);
   return (
-    <Reveal delay={160} className="lg:col-span-6 relative" data-testid="hero-terminal">
-      <div ref={ref} className="relative">
-        <div className="absolute -inset-6 glow-radial opacity-70" />
-        <motion.div
-          style={reduce ? undefined : { y }}
-          className="relative rounded-xl border border-border overflow-hidden shadow-2xl"
-        >
-          <img
+    <Reveal delay={160} className="lg:col-span-7 relative" data-testid="hero-terminal">
+      {/* On lg+ the shot is larger and bleeds a little past the right edge. */}
+      <div ref={ref} className="relative lg:w-[112%] lg:max-w-none">
+        <motion.div style={reduce ? undefined : { y }}>
+          <ScreenshotFrame
             src="/Dashboard.png"
             alt="TRADElogs dashboard — net P&L, win rate and equity curve"
-            className="w-full h-auto block select-none"
-            draggable={false}
-            loading="eager"
+            width={3420}
+            height={2214}
+            priority
+            sizes="(max-width: 1024px) 100vw, 60vw"
           />
         </motion.div>
-        <div className="absolute -bottom-3 -left-3 hidden sm:flex items-center gap-2 tcard px-3 py-2">
-          <span className="w-1.5 h-1.5 rounded-full bg-profit pulse-dot" />
-          <span className="text-[11px] text-fg-2 tracking-wide">Synced <span className="text-profit numeric">+$4,142</span> today</span>
+
+        {/* Floating stat cards — hidden on mobile so they never overflow. */}
+        <div className="hidden lg:block absolute -top-5 -left-5 z-20">
+          <FloatingCard parallax={[-28, 28]}>
+            <div className="text-[9px] tracking-[0.18em] text-fg-3 uppercase">Win rate</div>
+            <div className="font-display font-black text-2xl tracking-tight text-profit leading-tight numeric">64%</div>
+          </FloatingCard>
+        </div>
+        <div className="hidden lg:block absolute -bottom-5 right-2 z-20">
+          <FloatingCard parallax={[22, -22]} className="flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-profit pulse-dot" />
+            <span className="text-[11px] text-fg-2 tracking-wide">MT5 · <span className="text-profit">connected</span></span>
+          </FloatingCard>
         </div>
       </div>
     </Reveal>
+  );
+}
+
+// Mini-visuals for the differentiator pipeline — small, on-brand product hints.
+const PIPELINE = [
+  {
+    icon: LinkSimple,
+    t: 'Auto-imported',
+    b: 'Every trade, fee and commission pulled straight from MT5 — nothing typed by hand.',
+    tag: 'MT5 · read-only',
+    visual: (
+      <div className="flex flex-col gap-1.5">
+        {([['XAUUSD', '+$607'], ['EURUSD', '-$225'], ['NAS100', '+$1,193']] as const).map(([s, p]) => {
+          const up = p.startsWith('+');
+          return (
+            <div key={s} className="flex items-center justify-between rounded-md border border-border-soft bg-app/50 px-2.5 py-1.5 text-[10px]">
+              <span className="tracking-wider text-fg-2 flex items-center gap-1.5">
+                <span className={`w-1 h-1 rounded-full ${up ? 'bg-profit' : 'bg-loss'}`} />{s}
+              </span>
+              <span className={`numeric ${up ? 'text-profit' : 'text-loss'}`}>{p}</span>
+            </div>
+          );
+        })}
+      </div>
+    ),
+  },
+  {
+    icon: Brain,
+    t: 'Behavioural insights',
+    b: 'Spot revenge trades, FOMO entries and tilt cycles before they cost you.',
+    tag: 'Behaviour engine',
+    visual: (
+      <div className="flex flex-col gap-2.5 pt-1">
+        {[['Discipline', 88, '#08C465'], ['Tilt risk', 34, '#FE3A31'], ['Consistency', 72, '#FFFFFF']].map(([l, v, c]) => (
+          <div key={l as string}>
+            <div className="flex justify-between text-[9px] tracking-[0.14em] uppercase text-fg-3 mb-1">
+              <span>{l}</span><span className="numeric text-fg-2">{v}</span>
+            </div>
+            <div className="h-1 rounded-full bg-border-soft overflow-hidden">
+              <div className="h-full rounded-full" style={{ width: `${v}%`, background: c as string }} />
+            </div>
+          </div>
+        ))}
+      </div>
+    ),
+  },
+  {
+    icon: ChatCircle,
+    t: 'Plain-English coaching',
+    b: 'Weekly reviews written from your real trades — not generic tips.',
+    tag: 'Weekly digest',
+    visual: (
+      <div className="rounded-lg border border-border-soft bg-app/50 p-3">
+        <div className="text-[9px] tracking-[0.16em] uppercase text-fg-3 mb-1.5">Monday review</div>
+        <p className="text-[11px] text-fg-2 leading-relaxed">
+          Your <span className="text-profit">London longs</span> are printing. Losses cluster <span className="text-loss">after 3PM</span> — stop earlier.
+        </p>
+      </div>
+    ),
+  },
+] as const;
+
+// Connected 3-step pipeline with a green line that draws in on scroll behind the
+// cards (desktop), and per-card mini-visuals. Staggered reveal, hover-lift.
+function Pipeline() {
+  const reduce = useReducedMotion();
+  const ref = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({ target: ref, offset: ['start 85%', 'start 40%'] });
+  const dash = useTransform(scrollYProgress, [0, 1], [1, 0]);
+  return (
+    <div ref={ref} className="relative mt-10 sm:mt-12">
+      {/* Connecting line (desktop only) */}
+      <svg className="hidden sm:block absolute left-0 right-0 top-[42px] w-full h-px z-0" preserveAspectRatio="none" viewBox="0 0 100 1">
+        <line x1="8" y1="0.5" x2="92" y2="0.5" stroke="#1E1E1E" strokeWidth="1" />
+        <motion.line
+          x1="8" y1="0.5" x2="92" y2="0.5" stroke="#08C465" strokeWidth="1"
+          pathLength={1} strokeDasharray="1"
+          style={reduce ? { strokeDashoffset: 0 } : { strokeDashoffset: dash }}
+        />
+      </svg>
+      <RevealGroup className="grid sm:grid-cols-3 gap-3 sm:gap-4 relative z-10">
+        {PIPELINE.map((c, i) => (
+          <RevealItem key={c.t} className="group relative tcard tcard-hover overflow-hidden p-5 sm:p-6 flex flex-col hover:border-profit/40">
+            <span className="absolute top-0 left-0 h-0.5 w-full origin-left scale-x-0 bg-profit/70 transition-transform duration-[var(--dur-select)] group-hover:scale-x-100" />
+            <div className="flex items-center justify-between mb-4">
+              <span className="w-11 h-11 rounded-lg bg-profit/10 border border-profit/25 flex items-center justify-center text-profit transition-transform duration-[var(--dur-hover)] group-hover:scale-110">
+                <c.icon size={22} weight="duotone" />
+              </span>
+              <span className="font-display font-black text-2xl text-border-strong transition-colors group-hover:text-fg-3">0{i + 1}</span>
+            </div>
+            <h3 className="font-display font-bold text-[16px] tracking-tight">{c.t}</h3>
+            <p className="text-fg-2 text-[12px] leading-relaxed mt-2">{c.b}</p>
+            <div className="mt-4 pt-4 border-t border-border-soft flex-1">{c.visual}</div>
+            <div className="mt-4 flex items-center gap-1.5 text-[10px] tracking-[0.18em] text-fg-3 uppercase transition-colors group-hover:text-profit">
+              {c.tag} <span aria-hidden className="transition-transform group-hover:translate-x-0.5">→</span>
+            </div>
+          </RevealItem>
+        ))}
+      </RevealGroup>
+    </div>
   );
 }
 
@@ -468,7 +612,9 @@ export default function LandingPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-app text-fg overflow-x-hidden" data-testid="landing-page">
+    <div className="min-h-screen text-fg overflow-x-hidden" data-testid="landing-page">
+      {/* Fixed layered page backdrop (black + soft green top glow + faded grid) */}
+      <div className="page-backdrop" aria-hidden />
       {/* Nav */}
       <header className={`sticky top-0 z-40 backdrop-blur-xl transition-colors duration-[var(--dur-hover)] ${scrolled ? 'border-b border-border bg-app/90' : 'border-b border-transparent bg-app/60'}`} data-testid="landing-nav">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 h-14 flex items-center justify-between gap-3">
@@ -500,7 +646,7 @@ export default function LandingPage() {
         <div className="absolute right-[-10%] top-[-120px] w-[820px] h-[820px] max-w-[130vw] glow-radial opacity-60" />
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 pt-14 sm:pt-20 pb-16 sm:pb-24 grid lg:grid-cols-12 gap-10 lg:gap-8 items-center">
           {/* Left: copy */}
-          <div className="lg:col-span-6">
+          <div className="lg:col-span-5">
             <Reveal className="inline-flex items-center gap-2 rounded-full border border-border-soft bg-surface/60 px-3 py-1.5 text-[10px] sm:text-[11px] tracking-[0.28em] text-fg-3">
               <span className="w-1.5 h-1.5 rounded-full bg-profit pulse-dot" /> SIMPLE INSIGHTS FOR EVERY TRADER
             </Reveal>
@@ -518,6 +664,11 @@ export default function LandingPage() {
               <a href="#how" className="btn btn-ghost px-6 py-3 text-[13px] justify-center" data-testid="hero-cta-features">
                 SEE HOW IT WORKS
               </a>
+            </Reveal>
+            {/* Social proof */}
+            <Reveal delay={280} className="mt-6 flex items-center gap-2.5 text-[11px] text-fg-3">
+              <span className="text-profit tracking-[0.15em]">★★★★★</span>
+              <span className="tracking-wide">Trusted by <span className="text-fg-2">8,000+</span> traders</span>
             </Reveal>
             {/* Trust stats */}
             <Reveal delay={320} className="mt-10 grid grid-cols-3 max-w-lg border border-border">
@@ -540,7 +691,7 @@ export default function LandingPage() {
       </section>
 
       {/* MISSION strip */}
-      <section className="border-y border-border bg-surface/40">
+      <section className="section-raised section-grain relative overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-14 sm:py-20">
           <div className="grid lg:grid-cols-12 gap-8 lg:gap-10 items-end">
             <Reveal className="lg:col-span-8">
@@ -570,34 +721,8 @@ export default function LandingPage() {
             </Reveal>
           </div>
 
-          {/* Differentiators — a 3-step pipeline: import → understand → improve */}
-          <div className="grid sm:grid-cols-3 gap-2 sm:gap-3 mt-10 sm:mt-12">
-            {[
-              { icon: LinkSimple, t: 'Auto-imported', b: 'Every trade, fee and commission pulled straight from MT5 — nothing typed by hand.', tag: 'MT5 · read-only' },
-              { icon: Brain,      t: 'Behavioural insights', b: 'Spot revenge trades, FOMO entries and tilt cycles before they cost you.', tag: 'Behaviour engine' },
-              { icon: ChatCircle, t: 'Plain-English coaching', b: 'Weekly reviews written from your real trades — not generic tips.', tag: 'Weekly digest' },
-            ].map((c, i) => (
-              <Reveal
-                key={c.t}
-                delay={i * 90}
-                className="group relative tcard tcard-hover overflow-hidden p-5 sm:p-6 flex flex-col transition-colors hover:border-profit/40"
-              >
-                {/* top accent that fills on hover */}
-                <span className="absolute top-0 left-0 h-0.5 w-full origin-left scale-x-0 bg-profit/70 transition-transform duration-[var(--dur-select)] group-hover:scale-x-100" />
-                <div className="flex items-center justify-between mb-4">
-                  <span className="w-11 h-11 rounded-md bg-profit/10 border border-profit/25 flex items-center justify-center text-profit transition-transform duration-[var(--dur-hover)] group-hover:scale-110">
-                    <c.icon size={22} weight="duotone" />
-                  </span>
-                  <span className="font-display font-black text-2xl text-border-strong transition-colors group-hover:text-fg-3">0{i + 1}</span>
-                </div>
-                <h3 className="font-display font-bold text-[16px] tracking-tight">{c.t}</h3>
-                <p className="text-fg-2 text-[12px] leading-relaxed mt-2 flex-1">{c.b}</p>
-                <div className="mt-4 pt-4 border-t border-border-soft flex items-center gap-1.5 text-[10px] tracking-[0.18em] text-fg-3 uppercase transition-colors group-hover:text-profit">
-                  {c.tag} <span aria-hidden className="transition-transform group-hover:translate-x-0.5">→</span>
-                </div>
-              </Reveal>
-            ))}
-          </div>
+          {/* Differentiators — a connected 3-step pipeline: import → understand → improve */}
+          <Pipeline />
         </div>
       </section>
 
@@ -678,9 +803,10 @@ export default function LandingPage() {
       </section>
 
       {/* HOW IT WORKS — vertical stepper synced to a visual */}
-      <section id="how" className="border-y border-border bg-surface/40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-16 sm:py-24">
-          <Reveal className="max-w-2xl">
+      <section id="how" className="section-raised section-grain relative overflow-hidden">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-16 sm:py-24 relative">
+          <WatermarkNumber className="hidden sm:block right-0 -top-4 lg:-top-10">HOW</WatermarkNumber>
+          <Reveal className="max-w-2xl relative">
             <Eyebrow>HOW IT WORKS</Eyebrow>
             <h2 className="font-display font-black tracking-tighter text-3xl sm:text-4xl lg:text-5xl mt-3">
               From broker to <span className="text-gradient-brand">edge.</span>
@@ -780,7 +906,7 @@ export default function LandingPage() {
       </section>
 
       {/* SEE IT IN ACTION — real product screenshots */}
-      <section className="relative overflow-hidden">
+      <section className="section-raised section-grain relative overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-16 sm:py-24">
           <Reveal className="text-center max-w-2xl mx-auto">
             <Eyebrow>SEE IT IN ACTION</Eyebrow>
@@ -792,55 +918,70 @@ export default function LandingPage() {
             </p>
           </Reveal>
 
-          {/* Analytics — image right, copy left */}
-          <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center mt-12 sm:mt-16">
-            <Reveal>
-              <p className="text-[10px] sm:text-[11px] tracking-[0.28em] text-profit">ANALYTICS</p>
-              <h3 className="font-display font-black text-2xl sm:text-3xl tracking-tighter mt-3">Every angle of your edge.</h3>
-              <p className="text-fg-2 text-[12px] sm:text-[13px] mt-3 max-w-md leading-relaxed">
+          {/* Analytics — copy left, big screenshot right with floating cards */}
+          <div className="grid lg:grid-cols-12 gap-10 lg:gap-14 items-center mt-12 sm:mt-16">
+            <Reveal className="lg:col-span-5">
+              <Eyebrow>ANALYTICS</Eyebrow>
+              <h3 className="font-display font-black text-2xl sm:text-3xl lg:text-4xl tracking-tighter mt-4">Every angle of your edge.</h3>
+              <p className="text-fg-2 text-[12px] sm:text-[13px] mt-4 max-w-md leading-relaxed">
                 Win rate, profit factor, reward-to-risk, drawdown, best sessions and hold times — all in one clean, sortable view you can actually read.
               </p>
-              <div className="mt-5 flex flex-wrap gap-2 max-w-md">
-                {['Win rate', 'Profit factor', 'Drawdown', 'By session', 'By symbol'].map(t => (
-                  <span key={t} className="border border-border-soft px-2.5 py-1 text-[11px] text-fg-2 tracking-wider uppercase">{t}</span>
-                ))}
-              </div>
+              <a href="#features" className="group inline-flex items-center gap-1.5 mt-6 text-[12px] tracking-wide text-profit">
+                Explore analytics
+                <span aria-hidden className="transition-transform group-hover:translate-x-0.5">→</span>
+              </a>
             </Reveal>
-            <Reveal delay={120} className="relative">
-              <div className="absolute -inset-5 glow-radial opacity-60" />
-              <div className="relative rounded-xl border border-border overflow-hidden shadow-2xl">
-                <img src="/Analytics.png" alt="TRADElogs analytics screen" className="w-full h-auto block select-none" draggable={false} loading="lazy" />
+            <Reveal delay={120} className="lg:col-span-7 relative">
+              <ScreenshotFrame src="/Analytics.png" alt="TRADElogs analytics screen" width={3420} height={2214} sizes="(max-width: 1024px) 100vw, 58vw" />
+              <div className="hidden lg:block absolute -top-5 -left-5 z-20">
+                <FloatingCard parallax={[-26, 26]}>
+                  <div className="text-[9px] tracking-[0.18em] text-fg-3 uppercase">Profit factor</div>
+                  <div className="font-display font-black text-2xl tracking-tight text-profit leading-tight numeric">1.53</div>
+                </FloatingCard>
+              </div>
+              <div className="hidden lg:block absolute -bottom-5 -right-4 z-20">
+                <FloatingCard parallax={[24, -24]}>
+                  <div className="text-[9px] tracking-[0.18em] text-fg-3 uppercase">Win rate</div>
+                  <div className="font-display font-black text-2xl tracking-tight text-fg leading-tight numeric">29%</div>
+                </FloatingCard>
               </div>
             </Reveal>
           </div>
 
-          {/* Chart replay — image left, copy right */}
-          <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center mt-14 sm:mt-20">
-            <Reveal delay={120} className="relative lg:order-2">
-              <p className="text-[10px] sm:text-[11px] tracking-[0.28em] text-profit lg:hidden">CHART REPLAY</p>
-              <div className="absolute -inset-5 glow-radial opacity-60" />
-              <div className="relative rounded-xl border border-border overflow-hidden shadow-2xl mt-3 lg:mt-0">
-                <img src="/ChartReplay.png" alt="TRADElogs chart replay screen" className="w-full h-auto block select-none" draggable={false} loading="lazy" />
+          {/* Chart replay — big screenshot left, copy right */}
+          <div className="grid lg:grid-cols-12 gap-10 lg:gap-14 items-center mt-16 sm:mt-24">
+            <Reveal delay={120} className="lg:col-span-7 lg:order-2 relative">
+              <ScreenshotFrame src="/ChartReplay.png" alt="TRADElogs chart replay screen" width={3420} height={2214} sizes="(max-width: 1024px) 100vw, 58vw" />
+              <div className="hidden lg:block absolute -top-5 -right-4 z-20">
+                <FloatingCard parallax={[-24, 24]} className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-profit pulse-dot" />
+                  <span className="text-[11px] text-fg-2 tracking-wide">Bar-by-bar playback</span>
+                </FloatingCard>
+              </div>
+              <div className="hidden lg:block absolute -bottom-5 left-2 z-20">
+                <FloatingCard parallax={[22, -22]}>
+                  <div className="text-[9px] tracking-[0.18em] text-fg-3 uppercase">Entry → Exit</div>
+                  <div className="font-display font-black text-xl tracking-tight text-profit leading-tight numeric">+$1,193</div>
+                </FloatingCard>
               </div>
             </Reveal>
-            <Reveal className="lg:order-1">
-              <p className="text-[10px] sm:text-[11px] tracking-[0.28em] text-profit hidden lg:block">CHART REPLAY</p>
-              <h3 className="font-display font-black text-2xl sm:text-3xl tracking-tighter mt-3">Replay the moment it mattered.</h3>
-              <p className="text-fg-2 text-[12px] sm:text-[13px] mt-3 max-w-md leading-relaxed">
+            <Reveal className="lg:col-span-5 lg:order-1">
+              <Eyebrow>CHART REPLAY</Eyebrow>
+              <h3 className="font-display font-black text-2xl sm:text-3xl lg:text-4xl tracking-tighter mt-4">Replay the moment it mattered.</h3>
+              <p className="text-fg-2 text-[12px] sm:text-[13px] mt-4 max-w-md leading-relaxed">
                 Step back into any trade bar-by-bar. See the hesitation, the early exit, the level you should have respected — then fix it for next time.
               </p>
-              <div className="mt-5 flex flex-wrap gap-2 max-w-md">
-                {['Bar-by-bar', 'Entry & exit marks', 'Notes & tags', 'Any timeframe'].map(t => (
-                  <span key={t} className="border border-border-soft px-2.5 py-1 text-[11px] text-fg-2 tracking-wider uppercase">{t}</span>
-                ))}
-              </div>
+              <a href="#features" className="group inline-flex items-center gap-1.5 mt-6 text-[12px] tracking-wide text-profit">
+                See the replay
+                <span aria-hidden className="transition-transform group-hover:translate-x-0.5">→</span>
+              </a>
             </Reveal>
           </div>
         </div>
       </section>
 
       {/* AI — that actually knows your trading */}
-      <section className="border-y border-border bg-surface/40">
+      <section className="relative overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-16 sm:py-24 grid lg:grid-cols-12 gap-8 lg:gap-10 items-center">
           <Reveal className="lg:col-span-6">
             <Eyebrow>INSIGHTS</Eyebrow>
@@ -880,7 +1021,8 @@ export default function LandingPage() {
       </section>
 
       {/* FEATURES grid */}
-      <section id="features" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-16 sm:py-24">
+      <section id="features" className="section-raised section-grain relative overflow-hidden">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-16 sm:py-24">
         <Reveal className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8 sm:mb-10">
           <div>
             <Eyebrow>WHAT YOU GET</Eyebrow>
@@ -932,10 +1074,11 @@ export default function LandingPage() {
             </Reveal>
           ))}
         </div>
+        </div>
       </section>
 
       {/* TESTIMONIAL / PROOF */}
-      <section className="border-y border-border bg-surface/40">
+      <section className="relative overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-16 sm:py-20 grid lg:grid-cols-12 gap-8 lg:gap-10 items-center">
           <Reveal className="lg:col-span-7">
             <Eyebrow className="mb-4">TRADER STORY // 2026.01</Eyebrow>
@@ -961,7 +1104,8 @@ export default function LandingPage() {
       </section>
 
       {/* FAQ */}
-      <section id="faq" className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-10 py-16 sm:py-24">
+      <section id="faq" className="section-raised section-grain relative overflow-hidden">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-10 py-16 sm:py-24">
         <Reveal>
           <Eyebrow className="mb-3">HELP</Eyebrow>
           <h2 className="font-display font-black tracking-tighter text-3xl sm:text-4xl lg:text-5xl mb-8 sm:mb-10">Common questions.</h2>
@@ -982,6 +1126,7 @@ export default function LandingPage() {
             </details>
           ))}
         </div>
+        </div>
       </section>
 
       {/* CTA — glow card */}
@@ -1001,7 +1146,7 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-border bg-app">
+      <footer className="section-raised relative overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-12 sm:py-16 grid grid-cols-2 md:grid-cols-4 gap-8">
           <div className="col-span-2 md:col-span-1">
             <Logo height={26} />
