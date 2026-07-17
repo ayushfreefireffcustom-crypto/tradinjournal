@@ -1,13 +1,17 @@
 'use client';
 
-// Scroll-reveal wrapper. Renders hidden (via the `.reveal` class) and adds
-// `.reveal-visible` the first time it scrolls into view, so sections animate in
-// as the user reaches them rather than all at once on load. Reuses the existing
-// `useInView` IntersectionObserver hook; under prefers-reduced-motion the CSS
-// forces the final state instantly. Pass `delay` (ms) for a staggered cascade.
+// Scroll-reveal wrapper, powered by framer-motion. Elements start slightly
+// lower + transparent and ease into place the first time they enter the
+// viewport, with a premium cubic easing and optional per-item delay for
+// staggered cascades. Honors prefers-reduced-motion (fades only, no movement).
+//
+// Keeping the same `<Reveal as delay className>` API means every section on the
+// landing page gets the upgraded motion without touching call sites.
 
-import type { CSSProperties, ElementType, ReactNode } from 'react';
-import { useInView } from '@/hooks/use-in-view';
+import { motion, useReducedMotion } from 'framer-motion';
+import type { ElementType, ReactNode } from 'react';
+
+const EASE = [0.22, 1, 0.36, 1] as const; // matches --ease-premium
 
 interface RevealProps {
   as?: ElementType;
@@ -18,18 +22,21 @@ interface RevealProps {
 }
 
 export default function Reveal({ as, delay = 0, className = '', children, ...rest }: RevealProps) {
-  const Tag = (as ?? 'div') as ElementType;
-  const [ref, inView] = useInView<HTMLElement>();
-  const style = delay ? ({ '--reveal-delay': `${delay}ms` } as CSSProperties) : undefined;
+  const reduce = useReducedMotion();
+  const tag = (as ?? 'div') as keyof typeof motion;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const MotionTag = ((motion as any)[tag] ?? motion.div) as any;
 
   return (
-    <Tag
-      ref={ref}
-      className={`reveal ${inView ? 'reveal-visible' : ''} ${className}`.trim()}
-      style={style}
+    <MotionTag
+      className={className}
+      initial={reduce ? { opacity: 0 } : { opacity: 0, y: 26 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, amount: 0.18, margin: '0px 0px -8% 0px' }}
+      transition={{ duration: reduce ? 0.001 : 0.7, ease: EASE, delay: delay / 1000 }}
       {...rest}
     >
       {children}
-    </Tag>
+    </MotionTag>
   );
 }
