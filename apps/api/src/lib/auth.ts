@@ -77,9 +77,11 @@ export const auth = betterAuth({
     },
   },
 
-  // Web (tradinjournalweb-*.up.railway.app) and API (tradinjournalapi-*.up.railway.app)
-  // are on different registrable domains — up.railway.app is a public suffix — so the
-  // session cookie must be SameSite=None to survive this cross-site fetch.
+  // The web app (www.tradelogs.com) fetches the API (api.tradelogs.com) with
+  // credentials. Even though they share the tradelogs.com registrable domain,
+  // browsers treat different subdomains as cross-site for cookies, so the session
+  // cookie must be SameSite=None; Secure to be sent on that cross-subdomain fetch.
+  // (Secure cookies are also allowed on http://localhost, so local dev works too.)
   advanced: {
     defaultCookieAttributes: {
       sameSite: 'none',
