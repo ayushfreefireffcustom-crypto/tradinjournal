@@ -24,7 +24,7 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
     try {
-      const res = await authClient.signIn.email({ email, password, callbackURL: '/brokers' });
+      const res = await authClient.signIn.email({ email, password, callbackURL: '/dashboard' });
       if (res?.error) {
         // Unverified accounts can't sign in — send them to finish verification.
         const status = res.error.status;
@@ -36,7 +36,7 @@ export default function LoginPage() {
         }
         throw new Error(msg || 'Invalid credentials');
       }
-      router.push('/brokers');
+      router.push('/dashboard');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Sign in failed');
       setLoading(false);

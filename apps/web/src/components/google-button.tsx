@@ -2,7 +2,7 @@
 
 // "Continue with Google" button used on both the login and signup screens.
 // Kicks off the better-auth social flow; on success Google redirects back to
-// {API}/api/auth/callback/google which lands the user on /brokers.
+// {API}/api/auth/callback/google which lands the user on /dashboard (zero-broker users are bounced to /brokers by the app gate).
 
 import { useState } from 'react';
 import { authClient } from '@/lib/auth-client';
@@ -19,7 +19,7 @@ export default function GoogleButton({ label = 'Continue with Google' }: { label
       const origin = window.location.origin;
       await authClient.signIn.social({
         provider: 'google',
-        callbackURL: `${origin}/brokers`,
+        callbackURL: `${origin}/dashboard`,
         errorCallbackURL: `${origin}/login`,
       });
     } catch {
