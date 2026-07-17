@@ -1,15 +1,15 @@
 'use client';
 
-// Guard for the public auth pages (login / signup / verify): if a valid session
-// already exists, bounce the user straight to the dashboard instead of showing
-// them a sign-in form. Mirrors the inverse guard in app-shell.tsx (which sends
-// unauthenticated users to /login).
+// Guard for the public auth pages (login / signup): if a valid session already
+// exists, bounce the user to /brokers (the post-auth landing page — from there
+// the broker-gate lets them through to the rest of the app). Mirrors the
+// inverse guard in app-shell.tsx (which sends unauthenticated users to /login).
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { authClient } from '@/lib/auth-client';
 
-export function useRedirectIfAuthed(to = '/dashboard') {
+export function useRedirectIfAuthed(to = '/brokers') {
   const router = useRouter();
   const { data: session, isPending } = authClient.useSession();
 
