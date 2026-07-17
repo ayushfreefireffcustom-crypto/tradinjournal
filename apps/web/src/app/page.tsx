@@ -798,9 +798,9 @@ export default function LandingPage() {
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 pt-14 sm:pt-20 pb-16 sm:pb-24 grid lg:grid-cols-12 gap-10 lg:gap-8 items-center">
           {/* Left: copy */}
           <div className="lg:col-span-5">
-            <Reveal as="h1" className="font-display font-black tracking-tighter text-[40px] sm:text-[56px] md:text-[64px] lg:text-[72px] leading-[1.02] sm:leading-[0.95]">
-              Understand your trading.<br />
-              <span className="text-gradient-brand">Improve every day.</span>
+            <Reveal as="h1" className="font-display font-black uppercase tracking-tight text-[40px] sm:text-[56px] md:text-[64px] lg:text-[72px] leading-[1.02] sm:leading-[0.98]">
+              Understand your <span className="text-fg-2">trading.</span><br />
+              <span className="text-profit">Improve</span> every day.
             </Reveal>
             <Reveal as="p" delay={160} className="text-fg-2 mt-6 max-w-xl text-[13px] sm:text-[15px] leading-relaxed">
               TRADElogs connects to your MetaTrader 5 account and imports every trade for you. It shows you clear, easy-to-read insights about your habits — like impulse trades, chasing the market, and the times of day you tend to lose money.
@@ -812,11 +812,6 @@ export default function LandingPage() {
               <a href="#how" className="btn btn-ghost px-6 py-3 text-[13px] justify-center" data-testid="hero-cta-features">
                 SEE HOW IT WORKS
               </a>
-            </Reveal>
-            {/* Social proof */}
-            <Reveal delay={280} className="mt-6 flex items-center gap-2.5 text-[11px] text-fg-3">
-              <span className="text-profit tracking-[0.15em]">★★★★★</span>
-              <span className="tracking-wide">Trusted by <span className="text-fg-2">8,000+</span> traders</span>
             </Reveal>
             {/* Trust stats */}
             <Reveal delay={320} className="mt-10 grid grid-cols-3 max-w-lg border border-border">
