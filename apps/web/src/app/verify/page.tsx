@@ -21,6 +21,10 @@ function VerifyInner() {
   const [cooldown, setCooldown] = useState(RESEND_COOLDOWN);
   const [resent, setResent] = useState(false);
   const inputs = useRef<Array<HTMLInputElement | null>>([]);
+  // Guards against duplicate submits (auto-submit + double-invoked updaters):
+  // a second verify with the same already-consumed code would return
+  // "invalid OTP" even though verification succeeded.
+  const verifying = useRef(false);
 
   // Resend cooldown ticker.
   useEffect(() => {
@@ -36,6 +40,8 @@ function VerifyInner() {
   const code = digits.join('');
 
   async function verify(fullCode: string) {
+    if (verifying.current) return;
+    verifying.current = true;
     setError('');
     setLoading(true);
     try {
@@ -47,6 +53,7 @@ function VerifyInner() {
       setDigits(Array(OTP_LEN).fill(''));
       inputs.current[0]?.focus();
       setLoading(false);
+      verifying.current = false;
     }
   }
 
@@ -66,12 +73,13 @@ function VerifyInner() {
       if (chars.length >= OTP_LEN) verify(next.join(''));
       return;
     }
-    setDigits(d => {
-      const n = [...d];
-      n[i] = clean;
-      if (n.every(x => x) ) verify(n.join(''));
-      return n;
-    });
+    // Compute the next state outside the updater — calling verify() inside
+    // setDigits would run it twice under React StrictMode (updaters must be
+    // pure), double-submitting the code.
+    const next = [...digits];
+    next[i] = clean;
+    setDigits(next);
+    if (next.every(x => x)) verify(next.join(''));
     if (i < OTP_LEN - 1) inputs.current[i + 1]?.focus();
   }
 
