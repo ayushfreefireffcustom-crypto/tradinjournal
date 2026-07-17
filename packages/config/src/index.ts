@@ -26,6 +26,15 @@ const envSchema = z.object({
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),
 
+  // ── Transactional email (Resend) ─────────────────────────────────────────
+  // When RESEND_API_KEY is absent (typical in local dev) the email layer logs
+  // OTP codes to the server console instead of sending, so the full verify
+  // flow is testable without a real Resend account.
+  RESEND_API_KEY: z.string().optional(),
+  EMAIL_FROM: z.string().default('TRADElogs <onboarding@resend.dev>'),
+  // Where "verify your email" links/buttons point the user (the web app).
+  APP_URL: z.string().url().default('http://localhost:3000'),
+
   CREDENTIAL_ENCRYPTION_KEY: z.string().optional(),
 
   MT5_BRIDGE_URL: z.string().url().default('http://localhost:8000'),
