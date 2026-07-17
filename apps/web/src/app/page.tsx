@@ -133,7 +133,9 @@ function LiveEquityChart({ height = 190 }: { height?: number }) {
       setPts(prev => {
         t.current += 1;
         const x = t.current;
-        const next = x * 0.9 + Math.sin(x * 0.45) * 4 + Math.sin(x * 0.17) * 2.5;
+        // Continue smoothly from where EQUITY_SEED ends (~86) so there's no
+        // step-change as the deterministic curve scrolls in.
+        const next = 82 + (x - EQUITY_SEED.length) * 0.9 + Math.sin(x * 0.45) * 4 + Math.sin(x * 0.17) * 2.5;
         return [...prev.slice(1), next];
       });
     }, 1600);
