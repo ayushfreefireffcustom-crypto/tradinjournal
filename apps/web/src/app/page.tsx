@@ -1381,23 +1381,21 @@ export default function LandingPage() {
             { h: 'Support', links: ['Contact', 'Status', 'MT5 Setup'] },
           ].map(col => (
             <div key={col.h}>
-              <div className="text-[10px] tracking-[0.22em] text-fg-3 uppercase mb-3">{col.h}</div>
-              <ul className="flex flex-col gap-2">
+              <div className="text-[11px] tracking-[0.22em] text-fg-3 uppercase mb-4">{col.h}</div>
+              <ul className="flex flex-col gap-3">
                 {col.links.map(l => (
-                  <li key={l}><a href="#" className="text-[12px] text-fg-2 hover:text-fg transition-colors">{l}</a></li>
+                  <li key={l}><a href="#" className="text-[14px] sm:text-[15px] text-fg-2 hover:text-fg transition-colors">{l}</a></li>
                 ))}
               </ul>
             </div>
           ))}
         </div>
 
-        {/* Oversized ghosted brand wordmark — bleeds across the footer bottom */}
+        {/* Oversized ghosted brand wordmark — centered, bleeds equally both sides */}
         <div className="relative overflow-hidden select-none pointer-events-none" aria-hidden>
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10">
-            <span className="block font-display font-black tracking-tighter leading-[0.78] text-white/[0.045] text-[clamp(52px,15vw,232px)] -mb-[0.06em]">
-              TRADELOGS
-            </span>
-          </div>
+          <span className="block text-center whitespace-nowrap font-display font-black tracking-tighter leading-[0.78] text-white/[0.045] text-[clamp(52px,15vw,232px)] -mb-[0.06em]">
+            TRADELOGS
+          </span>
         </div>
 
         <div className="border-t border-border">
