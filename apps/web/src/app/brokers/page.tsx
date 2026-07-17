@@ -6,7 +6,7 @@
 // dashed add-new card, and a security reassurance strip. The account cap (2) is
 // enforced by the backend; the UI disables adding once the limit is hit.
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import AppShell from '@/components/app-shell';
 import ConnectBrokerModal from '@/components/connect-broker-modal';
 import ConfirmDialog from '@/components/confirm-dialog';
@@ -14,7 +14,7 @@ import { useToast } from '@/components/toast';
 import { useAccounts } from '@/lib/use-accounts';
 import { api, type BrokerAccount, type AccountStats } from '@/lib/api';
 import {
-  Bank, Wallet, Broadcast, MagnifyingGlass, Plus, ShieldCheck, DotsThree, Trash, ArrowSquareOut,
+  Bank, Wallet, Broadcast, MagnifyingGlass, Plus, Trash,
 } from '@phosphor-icons/react';
 
 const MAX_ACCOUNTS = 2;
@@ -50,8 +50,6 @@ export default function BrokersPage() {
   const [deleting, setDeleting] = useState(false);
   const [query, setQuery] = useState('');
   const [figures, setFigures] = useState<Record<string, AccountFigures | null>>({});
-  const [menuFor, setMenuFor] = useState<string | null>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
 
   const atLimit = accounts.length >= MAX_ACCOUNTS;
 
@@ -74,18 +72,6 @@ export default function BrokersPage() {
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accounts]);
-
-  // Close the row menu on outside click / Escape.
-  useEffect(() => {
-    if (!menuFor) return;
-    const onClick = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuFor(null);
-    };
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setMenuFor(null); };
-    document.addEventListener('mousedown', onClick);
-    document.addEventListener('keydown', onKey);
-    return () => { document.removeEventListener('mousedown', onClick); document.removeEventListener('keydown', onKey); };
-  }, [menuFor]);
 
   function onConnected(account: BrokerAccount) {
     setAccounts(prev => (prev.find(a => a.id === account.id) ? prev.map(a => (a.id === account.id ? account : a)) : [account, ...prev]));
@@ -243,29 +229,38 @@ export default function BrokersPage() {
 
                       <div className="flex flex-col lg:flex-row lg:items-center gap-4 p-4 sm:p-5 pl-5">
                         {/* Identity */}
-                        <div className="flex items-center gap-4 min-w-0 lg:w-[320px] lg:shrink-0">
+                        <div className="flex items-start sm:items-center gap-3 sm:gap-4 min-w-0 lg:w-[320px] lg:shrink-0">
                           <div className="w-12 h-12 shrink-0 rounded-xl bg-surface-hover border border-border flex items-center justify-center font-display font-black text-[15px]">
                             {monogram(acc.broker)}
                           </div>
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <span className="font-display font-bold text-[14px] tracking-tight truncate">{acc.broker}</span>
-                              <span className="text-[12px] text-fg-3 numeric shrink-0">#{acc.mt5Login}</span>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center flex-wrap gap-x-2 gap-y-1 min-w-0">
+                              <span className="font-display font-bold text-[14px] tracking-tight">{acc.broker}</span>
+                              <span className="text-[12px] text-fg-3 numeric">#{acc.mt5Login}</span>
                               {connected && (
-                                <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-profit/10 border border-profit/30 px-1.5 py-0.5 text-[9px] tracking-widest text-profit">
+                                <span className="inline-flex items-center gap-1 rounded-full bg-profit/10 border border-profit/30 px-1.5 py-0.5 text-[9px] tracking-widest text-profit">
                                   <span className="w-1 h-1 rounded-full bg-profit" /> ACTIVE
                                 </span>
                               )}
                             </div>
-                            <div className="text-[11px] text-fg-3 truncate mt-0.5">
+                            <div className="text-[11px] text-fg-3 mt-0.5 break-words">
                               {acc.server} · {acc.baseCurrency} · Real Account
                             </div>
                             <div className="text-[10px] text-fg-3/80 mt-0.5">Connected {timeAgo(acc.createdAt)}</div>
                           </div>
+                          {/* Remove — inline on mobile, moves to row end on lg */}
+                          <button
+                            onClick={() => setPendingDelete(acc)}
+                            aria-label={`Remove ${acc.broker} #${acc.mt5Login}`}
+                            data-testid={`brokers-delete-${acc.mt5Login}`}
+                            className="lg:hidden shrink-0 w-9 h-9 rounded-lg border border-border-soft text-fg-3 hover:text-loss hover:border-loss/50 flex items-center justify-center transition-colors focus-ring"
+                          >
+                            <Trash size={15} weight="bold" />
+                          </button>
                         </div>
 
                         {/* Figures */}
-                        <div className="grid grid-cols-3 gap-3 lg:flex lg:items-center lg:gap-0 lg:flex-1 border-t lg:border-t-0 border-border-soft pt-3 lg:pt-0">
+                        <div className="grid grid-cols-3 gap-2 sm:gap-3 lg:flex lg:items-center lg:gap-0 lg:flex-1 border-t lg:border-t-0 border-border-soft pt-3 lg:pt-0">
                           {[
                             { l: 'BALANCE', v: fig ? fmtMoney(fig.balance) : fig === null ? '—' : '···', c: '' },
                             { l: 'EQUITY',  v: fig ? fmtMoney(fig.equity)  : fig === null ? '—' : '···', c: '' },
@@ -273,7 +268,7 @@ export default function BrokersPage() {
                           ].map((col, i) => (
                             <div key={col.l} className={`min-w-0 lg:flex-1 lg:px-5 ${i > 0 ? 'lg:border-l lg:border-border-soft' : ''}`}>
                               <div className="text-[9px] tracking-[0.18em] text-fg-3">{col.l}</div>
-                              <div className={`font-display font-bold text-[15px] sm:text-base tracking-tight numeric mt-0.5 truncate ${col.c}`}>{col.v}</div>
+                              <div className={`font-display font-bold text-[13px] sm:text-base tracking-tight numeric mt-0.5 ${col.c}`}>{col.v}</div>
                             </div>
                           ))}
                           {/* Status */}
@@ -286,30 +281,16 @@ export default function BrokersPage() {
                           </div>
                         </div>
 
-                        {/* Row menu */}
-                        <div className="absolute top-3 right-3 lg:static lg:shrink-0">
-                          <div className="relative" ref={menuFor === acc.id ? menuRef : undefined}>
-                            <button
-                              onClick={() => setMenuFor(m => (m === acc.id ? null : acc.id))}
-                              aria-label={`Options for ${acc.broker} #${acc.mt5Login}`}
-                              data-testid={`brokers-menu-${acc.mt5Login}`}
-                              className="w-8 h-8 rounded-lg border border-transparent text-fg-3 hover:text-fg hover:border-border flex items-center justify-center transition-colors focus-ring"
-                            >
-                              <DotsThree size={20} weight="bold" />
-                            </button>
-                            {menuFor === acc.id && (
-                              <div className="absolute right-0 top-9 z-20 w-40 tcard p-1 fade-up" style={{ boxShadow: 'var(--shadow-md)' }}>
-                                <button
-                                  onClick={() => { setMenuFor(null); setPendingDelete(acc); }}
-                                  data-testid={`brokers-delete-${acc.mt5Login}`}
-                                  className="w-full flex items-center gap-2 px-3 py-2 rounded-md text-[12px] text-loss hover:bg-loss/10 transition-colors"
-                                >
-                                  <Trash size={14} weight="bold" /> Remove broker
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        </div>
+                        {/* Remove — desktop, at the end of the row */}
+                        <button
+                          onClick={() => setPendingDelete(acc)}
+                          aria-label={`Remove ${acc.broker} #${acc.mt5Login}`}
+                          data-testid={`brokers-delete-lg-${acc.mt5Login}`}
+                          title="Remove broker"
+                          className="hidden lg:flex shrink-0 w-9 h-9 rounded-lg border border-border-soft text-fg-3 hover:text-loss hover:border-loss/50 items-center justify-center transition-colors focus-ring"
+                        >
+                          <Trash size={15} weight="bold" />
+                        </button>
                       </div>
                     </div>
                   );
@@ -340,25 +321,6 @@ export default function BrokersPage() {
             )}
           </div>
 
-          {/* ── Security strip ──────────────────────────────────────────────── */}
-          <div className="tcard p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-4" style={{ boxShadow: 'var(--shadow-sm)' }} data-testid="brokers-security">
-            <span className="w-11 h-11 shrink-0 rounded-full bg-profit/10 border border-profit/25 flex items-center justify-center text-profit">
-              <ShieldCheck size={20} weight="duotone" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <div className="font-display font-bold text-[14px] tracking-tight">Your connections are secure</div>
-              <div className="text-[12px] text-fg-2 mt-0.5">
-                We use bank-level encryption and read-only MT5 logins — we can never place trades or withdraw funds.
-              </div>
-            </div>
-            <a
-              href="#"
-              onClick={e => e.preventDefault()}
-              className="btn btn-ghost gap-2 shrink-0 self-start sm:self-auto text-[11px] tracking-[0.16em]"
-            >
-              LEARN MORE <ArrowSquareOut size={13} weight="bold" />
-            </a>
-          </div>
         </div>
       </div>
 
