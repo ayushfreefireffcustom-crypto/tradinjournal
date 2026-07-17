@@ -45,7 +45,9 @@ export default function ScreenshotFrame({
           aria-hidden
         />
         {chrome && (
-          <div className="flex items-center gap-1.5 px-4 py-2.5 border-b border-border-soft bg-app/80">
+          // Chrome is hidden on mobile so the screenshot itself dominates the
+          // small viewport; it returns at sm+ where there's room for it.
+          <div className="hidden sm:flex items-center gap-1.5 px-4 py-2.5 border-b border-border-soft bg-app/80">
             <span className="w-2.5 h-2.5 rounded-full bg-loss/70" />
             <span className="w-2.5 h-2.5 rounded-full bg-warning/70" />
             <span className="w-2.5 h-2.5 rounded-full bg-profit/70" />
