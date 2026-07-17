@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Gauge, Table, ChartLineUp, CalendarBlank, FilmSlate, NotePencil, GearSix, type Icon } from '@phosphor-icons/react';
+import { Gauge, Table, ChartLineUp, CalendarBlank, FilmSlate, NotePencil, GearSix, Bank, type Icon } from '@phosphor-icons/react';
 import type { BrokerAccount } from '@/lib/api';
 import { authClient } from '@/lib/auth-client';
 import Logo from '@/components/logo';
@@ -25,10 +25,11 @@ const NAV: { href: string; label: string; icon: Icon }[] = [
   { href: '/calendar',  label: 'CALENDAR',     icon: CalendarBlank },
   { href: '/journal',   label: 'CHART REPLAY', icon: FilmSlate },
   { href: '/notebook',  label: 'JOURNAL',      icon: NotePencil },
+  { href: '/brokers',   label: 'BROKERS',      icon: Bank },
 ];
 
 export default function AppShell({
-  children, accounts = [], selectedAccount, onSelectAccount, onConnectClick, pageTitle, pageSubtitle,
+  children, accounts = [], selectedAccount, onSelectAccount, pageTitle, pageSubtitle,
 }: Props) {
   const pathname = usePathname();
   const router = useRouter();
@@ -96,22 +97,6 @@ export default function AppShell({
       </nav>
 
       <div className="mt-auto p-4 border-t border-border space-y-3">
-        <div className="border border-border-soft p-3">
-          <div className="flex items-center gap-2 text-[10px] tracking-[0.22em] text-fg-3 mb-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-profit pulse-dot" />
-            MT5 BRIDGE
-          </div>
-          <div className="text-[11px] text-fg-2">Online · 38ms latency</div>
-          <button
-            onClick={() => { if (accounts.length < 2) { onConnectClick?.(); setDrawerOpen(false); } }}
-            disabled={accounts.length >= 2}
-            title={accounts.length >= 2 ? 'Account limit reached — remove one in Settings' : undefined}
-            data-testid="sidebar-connect-broker"
-            className={`mt-3 btn btn-ghost w-full justify-center py-1.5 text-[10px] ${accounts.length >= 2 ? 'opacity-50 cursor-not-allowed' : ''}`}
-          >
-            + ADD BROKER
-          </button>
-        </div>
         <div className="flex items-center gap-2 px-1">
           <Link
             href="/settings"
