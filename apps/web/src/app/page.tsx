@@ -457,7 +457,8 @@ function HeroImage() {
             width={3420}
             height={2214}
             priority
-            sizes="(max-width: 1024px) 100vw, 60vw"
+            sizes="(max-width: 1024px) 96vw, 60vw"
+            className="-mx-2 sm:mx-0"
           />
         </motion.div>
 
@@ -524,9 +525,9 @@ const PIPELINE = [
   },
   {
     icon: ChatCircle,
-    t: 'Plain-English coaching',
-    b: 'Weekly reviews written from your real trades — not generic tips.',
-    tag: 'Weekly digest',
+    t: 'Actionable reviews',
+    b: 'Every Monday, a plain-language review of your real trades — telling you the one thing to fix this week.',
+    tag: 'Weekly game plan',
     visual: (
       <div className="rounded-lg border border-border-soft bg-app/50 p-3">
         <div className="text-[9px] tracking-[0.16em] uppercase text-fg-3 mb-1.5">Monday review</div>
@@ -692,8 +693,9 @@ export default function LandingPage() {
 
       {/* MISSION strip */}
       <section className="section-raised section-grain relative overflow-hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-14 sm:py-20">
-          <div className="grid lg:grid-cols-12 gap-8 lg:gap-10 items-end">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-14 sm:py-20 relative">
+          <WatermarkNumber className="right-0 -top-8 lg:-top-12">WHY</WatermarkNumber>
+          <div className="relative grid lg:grid-cols-12 gap-8 lg:gap-10 items-end">
             <Reveal className="lg:col-span-8">
               <Eyebrow className="mb-4">WHY TRADELOGS</Eyebrow>
               <h2 className="font-display font-black tracking-tighter text-2xl sm:text-3xl md:text-4xl lg:text-5xl leading-[1.05]">
@@ -728,8 +730,9 @@ export default function LandingPage() {
 
       {/* PLATFORM — built for serious traders */}
       <section className="relative overflow-hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-16 sm:py-24">
-          <Reveal className="text-center max-w-2xl mx-auto">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-16 sm:py-24 relative">
+          <WatermarkNumber className="left-1/2 -translate-x-1/2 -top-2 sm:-top-6 text-[90px] sm:text-[170px]">PLATFORM</WatermarkNumber>
+          <Reveal className="relative text-center max-w-2xl mx-auto">
             <Eyebrow>PLATFORM</Eyebrow>
             <h2 className="font-display font-black tracking-tighter text-3xl sm:text-4xl lg:text-5xl mt-3">
               Built for <span className="text-gradient-brand">serious traders.</span>
@@ -739,7 +742,8 @@ export default function LandingPage() {
             </p>
           </Reveal>
 
-          <div className="grid grid-cols-12 gap-2 sm:gap-3 mt-10 sm:mt-12">
+          <div className="relative grid grid-cols-12 gap-2 sm:gap-3 mt-10 sm:mt-12">
+            <div className="glow-blob left-0 top-10 w-[60%] h-[60%]" aria-hidden />
             <Reveal className="tcard col-span-12 lg:col-span-8 p-5 sm:p-6 flex flex-col">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] sm:text-[11px] tracking-[0.25em] text-fg-3">EQUITY CURVE</span>
@@ -876,8 +880,9 @@ export default function LandingPage() {
 
       {/* WATCH TRADES FLOW IN — live table */}
       <section id="analytics" className="relative overflow-hidden">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-10 py-16 sm:py-24">
-          <Reveal className="text-center max-w-2xl mx-auto">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-10 py-16 sm:py-24 relative">
+          <WatermarkNumber className="left-1/2 -translate-x-1/2 -top-2 sm:-top-6">LIVE</WatermarkNumber>
+          <Reveal className="relative text-center max-w-2xl mx-auto">
             <Eyebrow>LIVE EXPERIENCE</Eyebrow>
             <h2 className="font-display font-black tracking-tighter text-3xl sm:text-4xl lg:text-5xl mt-3">
               Watch trades <span className="text-gradient-brand">flow in.</span>
@@ -932,7 +937,7 @@ export default function LandingPage() {
               </a>
             </Reveal>
             <Reveal delay={120} className="lg:col-span-7 relative">
-              <ScreenshotFrame src="/Analytics.png" alt="TRADElogs analytics screen" width={3420} height={2214} sizes="(max-width: 1024px) 100vw, 58vw" />
+              <ScreenshotFrame src="/Analytics.png" alt="TRADElogs analytics screen" width={3420} height={2214} sizes="(max-width: 1024px) 96vw, 58vw" className="-mx-2 sm:mx-0" />
               <div className="hidden lg:block absolute -top-5 -left-5 z-20">
                 <FloatingCard parallax={[-26, 26]}>
                   <div className="text-[9px] tracking-[0.18em] text-fg-3 uppercase">Profit factor</div>
@@ -951,7 +956,7 @@ export default function LandingPage() {
           {/* Chart replay — big screenshot left, copy right */}
           <div className="grid lg:grid-cols-12 gap-10 lg:gap-14 items-center mt-16 sm:mt-24">
             <Reveal delay={120} className="lg:col-span-7 lg:order-2 relative">
-              <ScreenshotFrame src="/ChartReplay.png" alt="TRADElogs chart replay screen" width={3420} height={2214} sizes="(max-width: 1024px) 100vw, 58vw" />
+              <ScreenshotFrame src="/ChartReplay.png" alt="TRADElogs chart replay screen" width={3420} height={2214} sizes="(max-width: 1024px) 96vw, 58vw" className="-mx-2 sm:mx-0" />
               <div className="hidden lg:block absolute -top-5 -right-4 z-20">
                 <FloatingCard parallax={[-24, 24]} className="flex items-center gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-profit pulse-dot" />
@@ -1022,8 +1027,9 @@ export default function LandingPage() {
 
       {/* FEATURES grid */}
       <section id="features" className="section-raised section-grain relative overflow-hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-16 sm:py-24">
-        <Reveal className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8 sm:mb-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-16 sm:py-24 relative">
+        <WatermarkNumber className="right-0 -top-6 lg:-top-10">TOOLS</WatermarkNumber>
+        <Reveal className="relative flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8 sm:mb-10">
           <div>
             <Eyebrow>WHAT YOU GET</Eyebrow>
             <h2 className="font-display font-black tracking-tighter text-3xl sm:text-4xl lg:text-5xl mt-3">Understand every trade.</h2>
@@ -1079,7 +1085,8 @@ export default function LandingPage() {
 
       {/* TESTIMONIAL / PROOF */}
       <section className="relative overflow-hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-16 sm:py-20 grid lg:grid-cols-12 gap-8 lg:gap-10 items-center">
+        <WatermarkNumber className="right-0 top-2 sm:top-4">PROOF</WatermarkNumber>
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-16 sm:py-20 grid lg:grid-cols-12 gap-8 lg:gap-10 items-center">
           <Reveal className="lg:col-span-7">
             <Eyebrow className="mb-4">TRADER STORY // 2026.01</Eyebrow>
             <p className="font-display font-bold text-xl sm:text-2xl md:text-3xl tracking-tight leading-snug">
