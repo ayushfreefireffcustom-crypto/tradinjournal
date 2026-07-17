@@ -9,6 +9,7 @@
 // Both expose the same surface (useSession / signIn.email / signIn.social /
 // signUp.email / signOut) so pages don't branch on the mode.
 import { createAuthClient } from 'better-auth/react';
+import { emailOTPClient } from 'better-auth/client/plugins';
 
 const USE_MOCKS = process.env.NEXT_PUBLIC_USE_MOCKS === 'true';
 
@@ -49,10 +50,17 @@ const mockAuthClient = {
     email: async (_: { email: string; password: string; name?: string; callbackURL?: string }) =>
       ({ data: MOCK_SESSION.data, error: null }),
   },
+  // Email-OTP verification — mock always "succeeds" so preview mode isn't gated.
+  emailOtp: {
+    sendVerificationOtp: async (_: { email: string; type: string }) => ({ data: {}, error: null }),
+    verifyEmail: async (_: { email: string; otp: string }) =>
+      ({ data: MOCK_SESSION.data, error: null }),
+  },
 };
 
 const realAuthClient = createAuthClient({
   baseURL: process.env.NEXT_PUBLIC_API_URL || '',
+  plugins: [emailOTPClient()],
 });
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
