@@ -1370,8 +1370,8 @@ export default function LandingPage() {
       <footer className="section-raised relative overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-12 sm:py-16 grid grid-cols-2 md:grid-cols-4 gap-8">
           <div className="col-span-2 md:col-span-1">
-            <Logo height={26} />
-            <p className="text-fg-3 text-[11px] leading-relaxed mt-4 max-w-[220px]">
+            <Logo height={40} />
+            <p className="text-fg-3 text-[12px] leading-relaxed mt-5 max-w-[220px]">
               A trading journal for traders who are serious about improving.
             </p>
           </div>
@@ -1390,6 +1390,16 @@ export default function LandingPage() {
             </div>
           ))}
         </div>
+
+        {/* Oversized ghosted brand wordmark — bleeds across the footer bottom */}
+        <div className="relative overflow-hidden select-none pointer-events-none" aria-hidden>
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10">
+            <span className="block font-display font-black tracking-tighter leading-[0.78] text-white/[0.045] text-[clamp(52px,15vw,232px)] -mb-[0.06em]">
+              TRADELOGS
+            </span>
+          </div>
+        </div>
+
         <div className="border-t border-border">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-[10px] text-fg-3 tracking-widest">
             <span className="flex items-center gap-2"><span className="w-2 h-2 bg-profit pulse-dot shrink-0" /> TRADELOGS // TRADING JOURNAL // EST 2026</span>
