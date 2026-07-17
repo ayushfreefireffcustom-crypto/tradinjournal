@@ -1,7 +1,11 @@
 import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
+import { emailOTP } from 'better-auth/plugins';
 import { prisma } from '@tradinjournal/db';
 import { env } from '@tradinjournal/config';
+import { logger } from '@tradinjournal/logger';
+import { sendEmail } from './email/client.js';
+import { verificationOtpEmail, welcomeEmail } from './email/templates.js';
 
 export const auth = betterAuth({
   database: prismaAdapter(prisma, {
@@ -10,12 +14,30 @@ export const auth = betterAuth({
 
   secret: env.AUTH_SECRET,
   baseURL: env.AUTH_URL,
-  trustedOrigins: [env.CORS_ORIGIN],
+  trustedOrigins: [env.CORS_ORIGIN, env.APP_URL],
 
   // ── Email + password ───────────────────────────────────────────────────────
+  // Password sign-ups must verify their email (via the OTP plugin below) before
+  // they can sign in. OAuth users skip this — their provider already verified
+  // the address.
   emailAndPassword: {
     enabled: true,
-    requireEmailVerification: false,
+    requireEmailVerification: true,
+  },
+
+  // ── Email verification lifecycle ─────────────────────────────────────────────
+  // Fired by the emailOTP verify-email route once the code checks out. We use it
+  // to send a one-time welcome email.
+  emailVerification: {
+    afterEmailVerification: async (user) => {
+      try {
+        const { subject, html } = welcomeEmail(user.name ?? '');
+        await sendEmail({ to: user.email, subject, html });
+      } catch (err) {
+        // Never let a welcome-email failure break the verify flow.
+        logger.error('Failed to send welcome email', { userId: user.id, err });
+      }
+    },
   },
 
   // ── Google OAuth ───────────────────────────────────────────────────────────
@@ -52,6 +74,23 @@ export const auth = betterAuth({
       secure: true,
     },
   },
+
+  // ── Plugins ──────────────────────────────────────────────────────────────────
+  // Email OTP: on sign-up we auto-send a 6-digit code; the user confirms it on
+  // the /verify screen. Delivery goes through Resend (or the dev-console
+  // fallback when RESEND_API_KEY is unset).
+  plugins: [
+    emailOTP({
+      otpLength: 6,
+      expiresIn: 60 * 10, // 10 minutes
+      sendVerificationOnSignUp: true,
+      async sendVerificationOTP({ email, otp, type }) {
+        if (type !== 'email-verification') return;
+        const { subject, html } = verificationOtpEmail(otp);
+        await sendEmail({ to: email, subject, html, devNote: `OTP for ${email}: ${otp}` });
+      },
+    }),
+  ],
 });
 
 export type Auth = typeof auth;
