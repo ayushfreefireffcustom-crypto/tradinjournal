@@ -21,6 +21,22 @@ function Metric({ value, format, className }: { value: number; format: (n: numbe
   return <span ref={ref} className={className}><AnimatedNumber value={inView ? value : 0} format={format} /></span>;
 }
 
+// Shared micro-label style for every stat caption (uniform size/tracking/colour).
+// `min-h` reserves two lines so values below always align on a shared baseline
+// even when a label wraps (e.g. "MAX DRAWDOWN" on mobile).
+const STAT_LABEL = 'text-[9px] tracking-[0.16em] text-fg-3 uppercase leading-[1.15]';
+
+// A label + value pair with consistent hierarchy and spacing. `reserve` keeps
+// two-line label height so a row of these stays baseline-aligned.
+function Stat({ label, value, valueClass = '', reserve = false }: { label: string; value: React.ReactNode; valueClass?: string; reserve?: boolean }) {
+  return (
+    <div className="min-w-0">
+      <div className={`${STAT_LABEL} ${reserve ? 'min-h-[2.1em]' : ''}`}>{label}</div>
+      <div className={`font-display font-bold text-base sm:text-lg mt-1 tracking-tight numeric ${valueClass}`}>{value}</div>
+    </div>
+  );
+}
+
 // ── Tiny presentational primitives ────────────────────────────────────────────
 
 function TickerTape() {
@@ -189,7 +205,7 @@ function Candlesticks() {
 function RadarScore() {
   const axes = ['Discipline', 'Patience', 'Risk', 'Timing', 'Consistency', 'Focus'];
   const vals = [0.9, 0.72, 0.86, 0.6, 0.8, 0.68];
-  const cx = 130, cy = 118, R = 84;
+  const cx = 140, cy = 124, R = 82;
   const pt = (i: number, r: number): [number, number] => {
     const ang = -Math.PI / 2 + (i / axes.length) * Math.PI * 2;
     return [cx + Math.cos(ang) * R * r, cy + Math.sin(ang) * R * r];
@@ -197,7 +213,7 @@ function RadarScore() {
   const ring = (r: number) => axes.map((_, i) => pt(i, r).join(',')).join(' ');
   const poly = vals.map((v, i) => pt(i, v).join(',')).join(' ');
   return (
-    <svg viewBox="0 0 260 236" className="w-full max-w-[280px] mx-auto">
+    <svg viewBox="0 0 280 248" className="w-full max-w-[300px] mx-auto">
       <defs>
         <radialGradient id="radar-sweep" cx="50%" cy="50%" r="50%">
           <stop offset="0%" stopColor="#08C465" stopOpacity="0.35" />
@@ -220,8 +236,8 @@ function RadarScore() {
       <polygon points={poly} fill="rgba(8,196,101,0.16)" stroke="#08C465" strokeWidth="1.5" />
       {vals.map((v, i) => { const [x, y] = pt(i, v); return <circle key={i} cx={x} cy={y} r="2.5" fill="#08C465" />; })}
       {axes.map((a, i) => {
-        const [x, y] = pt(i, 1.16);
-        return <text key={a} x={x} y={y} fontSize="8" fill="#8A8A8A" textAnchor="middle" dominantBaseline="middle" style={{ letterSpacing: '0.08em' }}>{a.toUpperCase()}</text>;
+        const [x, y] = pt(i, 1.2);
+        return <text key={a} x={x} y={y} fontSize="9.5" fill="#9A9A9A" textAnchor="middle" dominantBaseline="middle" style={{ letterSpacing: '0.06em' }}>{a.toUpperCase()}</text>;
       })}
     </svg>
   );
@@ -402,14 +418,14 @@ function WinDonut({ pct }: { pct: number }) {
 
 // Small session-equity sparkline (smooth line + soft area).
 function SessionSpark({ data }: { data: number[] }) {
-  const W = 240, H = 46, P = 3;
+  const W = 240, H = 58, P = 3;
   const max = Math.max(...data), min = Math.min(...data), span = max - min || 1;
   const pts = data.map((v, i) => ({ x: P + (i / (data.length - 1)) * (W - P * 2), y: H - P - ((v - min) / span) * (H - P * 2) }));
   const path = smoothPath(pts);
   const area = `${path} L ${pts[pts.length - 1]!.x.toFixed(1)} ${H} L ${pts[0]!.x.toFixed(1)} ${H} Z`;
   const lastX = pts[pts.length - 1]!.x, lastY = pts[pts.length - 1]!.y;
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-[46px]" preserveAspectRatio="none">
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-[56px]" preserveAspectRatio="none">
       <defs>
         <linearGradient id="spark-fill" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#08C465" stopOpacity="0.22" />
@@ -481,33 +497,33 @@ function LiveDesk() {
   return (
     <div className="grid lg:grid-cols-5 gap-3 sm:gap-4">
       {/* Session panel — top on mobile, right on desktop */}
-      <div className="lg:col-span-2 lg:order-2 relative tcard overflow-hidden p-5 sm:p-6 flex flex-col gap-5" style={{ boxShadow: 'var(--shadow-md)' }}>
+      <div className="lg:col-span-2 lg:order-2 relative tcard overflow-hidden p-5 sm:p-6 flex flex-col justify-between gap-6" style={{ boxShadow: 'var(--shadow-md)' }}>
         <span className="pointer-events-none absolute inset-x-0 top-0 h-px" style={{ background: 'rgba(255,255,255,0.05)' }} aria-hidden />
         <div className="flex items-center justify-between text-[10px] tracking-[0.2em] text-fg-3 uppercase">
           <span>Session</span>
           <span className="flex items-center gap-1.5 text-profit"><span className="w-1.5 h-1.5 rounded-full bg-profit pulse-dot" /> Live</span>
         </div>
         <div>
-          <div className="text-[9px] tracking-[0.18em] text-fg-3 uppercase">Net P&amp;L today</div>
-          <div className={`font-display font-black text-4xl sm:text-[42px] tracking-tighter mt-1 numeric ${session >= 0 ? 'text-profit' : 'text-loss'}`}>
+          <div className={STAT_LABEL}>Net P&amp;L today</div>
+          <div className={`font-display font-black text-4xl sm:text-[42px] tracking-tighter mt-1.5 numeric ${session >= 0 ? 'text-profit' : 'text-loss'}`}>
             <AnimatedNumber value={session} format={fmtPnl} />
           </div>
         </div>
         <div className="flex items-center gap-4">
-          <div className="relative">
+          <div className="relative shrink-0">
             <WinDonut pct={winRate} />
             <span className="absolute inset-0 flex items-center justify-center font-display font-bold text-[13px] numeric">{winRate}%</span>
           </div>
-          <div className="flex flex-col gap-0.5">
-            <span className="text-[9px] tracking-[0.16em] text-fg-3 uppercase">Win rate</span>
+          <div className="flex flex-col gap-1 min-w-0">
+            <span className={STAT_LABEL}>Win rate</span>
             <span className="text-[13px] text-fg-2"><span className="text-profit numeric">{rows.filter(r => r.pnl >= 0).length}</span> of {rows.length} winners</span>
-            <span className="mt-1 inline-flex items-center gap-1.5 self-start rounded-full border border-profit/30 bg-profit/10 px-2 py-0.5 text-[10px] text-profit">
+            <span className="mt-1 inline-flex items-center gap-1.5 self-start rounded-full border border-profit/30 bg-profit/10 px-2 py-0.5 text-[10px] text-profit whitespace-nowrap">
               <span className="w-1.5 h-1.5 rounded-full bg-profit pulse-dot" /> {streak} win streak
             </span>
           </div>
         </div>
-        <div className="mt-auto">
-          <div className="flex items-center justify-between text-[9px] tracking-[0.16em] text-fg-3 uppercase mb-1.5">
+        <div>
+          <div className={`flex items-center justify-between ${STAT_LABEL} mb-2`}>
             <span>Session equity</span>
             <span className="numeric text-fg-2"><AnimatedNumber value={count} format={n => `${Math.round(n)}`} /> trades</span>
           </div>
@@ -888,48 +904,39 @@ export default function LandingPage() {
               <div className="mt-5 flex-1 min-h-[200px] rounded-xl border border-border-soft bg-app/40 p-3 flex items-center">
                 <LiveEquityChart height={220} />
               </div>
-              <div className="grid grid-cols-3 border-t border-border-soft mt-4 pt-4">
-                {[
-                  { l: 'Peak equity', v: '+$12,418', c: 'text-profit' },
-                  { l: 'Max drawdown', v: '-6.2%', c: 'text-loss' },
-                  { l: 'Trades', v: '78', c: '' },
-                ].map(s => (
-                  <div key={s.l} className="px-1">
-                    <div className="text-[9px] tracking-[0.16em] text-fg-3 uppercase">{s.l}</div>
-                    <div className={`font-display font-bold text-base sm:text-lg mt-0.5 tracking-tight numeric ${s.c}`}>{s.v}</div>
-                  </div>
-                ))}
+              <div className="grid grid-cols-3 gap-3 border-t border-border-soft mt-4 pt-4">
+                <Stat reserve label="Peak equity" value="+$12,418" valueClass="text-profit" />
+                <Stat reserve label="Max drawdown" value="-6.2%" valueClass="text-loss" />
+                <Stat reserve label="Trades" value="78" />
               </div>
             </Reveal>
 
             {/* Hero score tile */}
-            <Reveal delay={90} className="tcard col-span-6 lg:col-span-4 p-5 sm:p-6 flex flex-col justify-between overflow-hidden" style={{ boxShadow: 'var(--shadow-md)' }}>
+            <Reveal delay={90} className="tcard col-span-12 sm:col-span-6 lg:col-span-4 p-5 sm:p-6 flex flex-col justify-between gap-5 overflow-hidden" style={{ boxShadow: 'var(--shadow-md)' }}>
               <div className="glow-blob -right-6 -top-6 w-[70%] h-[70%] opacity-70" aria-hidden />
-              <div className="relative flex items-center justify-between">
-                <span className="text-[10px] sm:text-[11px] tracking-[0.25em] text-profit">BEHAVIORAL SCORE</span>
-              </div>
-              <div className="relative mt-4">
-                <Metric value={82} format={n => `${Math.round(n)}`} className="font-display font-black text-6xl sm:text-7xl tracking-tighter text-fg leading-none" />
+              <span className="relative text-[10px] sm:text-[11px] tracking-[0.25em] text-profit">BEHAVIORAL SCORE</span>
+              <div className="relative flex items-baseline gap-1.5">
+                <Metric value={82} format={n => `${Math.round(n)}`} className="font-display font-black text-6xl sm:text-7xl tracking-tighter text-fg leading-none numeric" />
                 <span className="font-display font-bold text-xl text-fg-3">/100</span>
               </div>
-              <div className="relative mt-4 flex items-center justify-between gap-3">
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-profit/30 bg-profit/10 px-2.5 py-1 text-[11px] text-profit">▲ +6 this month</span>
-                <div className="w-24"><MiniBars data={[54, 60, 58, 66, 71, 76, 82]} /></div>
+              <div className="relative flex flex-wrap items-center justify-between gap-3">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-profit/30 bg-profit/10 px-2.5 py-1 text-[11px] text-profit whitespace-nowrap">▲ +6 this month</span>
+                <div className="w-24 shrink-0"><MiniBars data={[54, 60, 58, 66, 71, 76, 82]} /></div>
               </div>
             </Reveal>
 
             {/* Radar tile */}
-            <Reveal delay={140} className="tcard col-span-6 lg:col-span-4 p-5 sm:p-6 flex flex-col" style={{ boxShadow: 'var(--shadow-md)' }}>
+            <Reveal delay={140} className="tcard col-span-12 sm:col-span-6 lg:col-span-4 p-5 sm:p-6 flex flex-col" style={{ boxShadow: 'var(--shadow-md)' }}>
               <span className="text-[10px] sm:text-[11px] tracking-[0.25em] text-fg-3">TRADER PROFILE</span>
-              <div className="flex-1 flex items-center w-full min-h-[180px]"><RadarScore /></div>
-              <div className="grid grid-cols-2 gap-3 border-t border-border-soft pt-4">
-                <div>
-                  <div className="text-[9px] tracking-[0.16em] text-fg-3 uppercase">Top strength</div>
-                  <div className="text-[13px] text-profit mt-0.5">Discipline · 90</div>
+              <div className="flex-1 flex items-center justify-center w-full min-h-[200px] py-2"><RadarScore /></div>
+              <div className="grid grid-cols-2 gap-x-4 border-t border-border-soft pt-4">
+                <div className="min-w-0">
+                  <div className={STAT_LABEL}>Top strength</div>
+                  <div className="text-[13px] font-semibold text-profit mt-1 truncate">Discipline · <span className="numeric">90</span></div>
                 </div>
-                <div>
-                  <div className="text-[9px] tracking-[0.16em] text-fg-3 uppercase">Work on</div>
-                  <div className="text-[13px] text-loss mt-0.5">Timing · 60</div>
+                <div className="min-w-0">
+                  <div className={STAT_LABEL}>Work on</div>
+                  <div className="text-[13px] font-semibold text-loss mt-1 truncate">Timing · <span className="numeric">60</span></div>
                 </div>
               </div>
             </Reveal>
@@ -941,12 +948,12 @@ export default function LandingPage() {
               { l: 'Profit factor', value: 1.53, fmt: (n: number) => n.toFixed(2), c: 'text-profit', vis: <MiniSpark data={[1.1, 1.2, 1.15, 1.3, 1.38, 1.46, 1.53]} /> },
               { l: 'Avg reward:risk', value: 2.4, fmt: (n: number) => `1:${n.toFixed(1)}`, c: 'text-fg', vis: <MiniBars data={[10, 14, 12, 16, 18, 20, 24]} color="#08C465" /> },
             ].map((m, i) => (
-              <Reveal key={m.l} delay={60 + i * 50} className="tcard col-span-6 lg:col-span-3 p-4 sm:p-5 flex flex-col justify-between min-h-[140px]" style={{ boxShadow: 'var(--shadow-md)' }}>
-                <div className="text-[10px] tracking-[0.16em] text-fg-3 uppercase">{m.l}</div>
-                <div className={`font-display font-black text-3xl tracking-tight mt-2 ${m.c}`}>
+              <Reveal key={m.l} delay={60 + i * 50} className="tcard col-span-6 lg:col-span-3 p-4 sm:p-5 flex flex-col justify-between gap-3 min-h-[140px]" style={{ boxShadow: 'var(--shadow-md)' }}>
+                <div className={`${STAT_LABEL} min-h-[2.1em]`}>{m.l}</div>
+                <div className={`font-display font-black text-[26px] sm:text-3xl tracking-tight numeric ${m.c}`}>
                   <Metric value={m.value} format={m.fmt} />
                 </div>
-                <div className="mt-3">{m.vis}</div>
+                <div className="h-7">{m.vis}</div>
               </Reveal>
             ))}
           </div>
