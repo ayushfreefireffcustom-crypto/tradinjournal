@@ -1369,11 +1369,8 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="section-raised relative overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-12 sm:py-16 grid grid-cols-2 md:grid-cols-4 gap-8">
-          <div className="col-span-2 md:col-span-1">
-            <Logo height={40} />
-            <p className="text-fg-3 text-[12px] leading-relaxed mt-5 max-w-[220px]">
-              A trading journal for traders who are serious about improving.
-            </p>
+          <div className="col-span-2 md:col-span-1 flex items-start">
+            <Logo height={48} />
           </div>
           {[
             { h: 'Product', links: ['Features', 'How it works', 'Analytics', 'FAQ'] },
