@@ -606,6 +606,9 @@ function HeroImage() {
             alt="TRADElogs dashboard — net P&L, win rate and equity curve"
             width={3420}
             height={2214}
+            mobileSrc="/MobileDashboard.png"
+            mobileWidth={2904}
+            mobileHeight={1858}
             priority
             sizes="(max-width: 1024px) 96vw, 60vw"
             className="-mx-2 sm:mx-0"
