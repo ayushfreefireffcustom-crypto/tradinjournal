@@ -47,7 +47,7 @@ function VerifyInner() {
     try {
       const res = await authClient.emailOtp.verifyEmail({ email, otp: fullCode });
       if (res?.error) throw new Error(res.error.message ?? 'Invalid or expired code');
-      router.push('/dashboard');
+      router.push('/brokers');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Verification failed');
       setDigits(Array(OTP_LEN).fill(''));

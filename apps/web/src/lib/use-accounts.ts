@@ -10,6 +10,7 @@
 // a specific account on first load (it is then persisted like any selection).
 
 import { useCallback, useEffect, useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import { api, type BrokerAccount } from '@/lib/api';
 
 const STORAGE_KEY = 'tradelogs.selectedAccountId';
@@ -36,6 +37,16 @@ export function useAccounts(initialIdOverride?: string | null) {
   const [accounts, setAccountsState] = useState<BrokerAccount[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
+  const pathname = usePathname();
+
+  // The app requires at least one connected broker: zero-broker users are kept
+  // on /brokers (the only place they can fix that) until they connect one.
+  useEffect(() => {
+    if (!loading && accounts.length === 0 && pathname !== '/brokers') {
+      router.replace('/brokers');
+    }
+  }, [loading, accounts.length, pathname, router]);
 
   // Initial load — read the persisted selection inside the effect (never during
   // render) so server and client first paint match.

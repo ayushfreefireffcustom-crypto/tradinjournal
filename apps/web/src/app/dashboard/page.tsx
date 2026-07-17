@@ -15,7 +15,7 @@ import AnimatedNumber from '@/components/animated-number';
 import { useToast } from '@/components/toast';
 import InsightsStrip from '@/components/insights-strip';
 import EmptyState from '@/components/empty-state';
-import { Receipt, Bank } from '@phosphor-icons/react';
+import { Receipt } from '@phosphor-icons/react';
 
 const NEGATIVE_EMOTIONS = ['FOMO', 'Revenge', 'Hesitant'];
 
@@ -140,29 +140,6 @@ export default function DashboardPage() {
   const cumSpark = view ? view.equityCurve.map(p => p.equity - view.startingBalance) : undefined;
   const streakMax = Math.max(view?.maxWinStreak ?? 0, view?.maxLossStreak ?? 0, 1);
   const holdMax = Math.max(behaviour.winnersHold ?? 0, behaviour.losersHold ?? 0, 1);
-
-  // Brand-new user with no brokers: show a clear call-to-action instead of an
-  // eternally-loading dashboard.
-  if (!accountsLoading && accounts.length === 0) {
-    return (
-      <AppShell accounts={accounts} selectedAccount={selected} onSelectAccount={select} onConnectClick={() => setShowConnect(true)} pageTitle="Dashboard" pageSubtitle="// SESSION OVERVIEW">
-        <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto fade-up flex items-center justify-center min-h-[60vh]" data-testid="dashboard-empty">
-          <EmptyState
-            icon={Bank}
-            title="No broker connected"
-            hint="Connect your MT5 account to start importing trades and see your dashboard come alive."
-            testId="dashboard-no-brokers"
-            action={
-              <button onClick={() => setShowConnect(true)} className="btn btn-primary" data-testid="dashboard-empty-add">
-                + ADD BROKER
-              </button>
-            }
-          />
-        </div>
-        {showConnect && <ConnectBrokerModal onClose={() => setShowConnect(false)} onConnected={onConnected} />}
-      </AppShell>
-    );
-  }
 
   return (
     <AppShell
