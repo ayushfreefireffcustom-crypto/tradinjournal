@@ -106,24 +106,22 @@ function smoothPath(pts: { x: number; y: number }[]): string {
 
 function LiveEquityChart({ height = 190 }: { height?: number }) {
   const [pts, setPts] = useState<number[]>(EQUITY_SEED);
-  const phase = useRef(0);
+  // A deterministic, gently-rising function scrolls in from the right. Because
+  // the visible window is re-normalised each frame, the absolute value can climb
+  // forever while the curve always reads as a calm, premium up-trend with soft
+  // waves — never a random-walk rollercoaster.
+  const t = useRef(EQUITY_SEED.length);
   useEffect(() => {
     if (typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    const t = setInterval(() => {
+    const id = setInterval(() => {
       setPts(prev => {
-        const last = prev[prev.length - 1] ?? 30;
-        phase.current += 0.5;
-        // Gentle, low-variance up-trend: a small positive drift plus a slow sine
-        // wobble — always climbing, never jagged.
-        const drift = 0.9;
-        const wobble = Math.sin(phase.current) * 1.1;
-        const next = Math.max(10, Math.min(92, last + drift + wobble));
-        // When we run out of headroom, ease back down so it can climb again.
-        const adjusted = next >= 90 ? last - 8 : next;
-        return [...prev.slice(1), adjusted];
+        t.current += 1;
+        const x = t.current;
+        const next = x * 0.9 + Math.sin(x * 0.45) * 4 + Math.sin(x * 0.17) * 2.5;
+        return [...prev.slice(1), next];
       });
     }, 1600);
-    return () => clearInterval(t);
+    return () => clearInterval(id);
   }, []);
 
   const W = 720, H = height, PAD = 8;
@@ -470,7 +468,8 @@ function LiveDesk() {
     const t = setInterval(() => {
       const r = makeTrade();
       setRows(prev => [r, ...prev].slice(0, 7));
-      setSession(s => { const next = s + r.pnl; setEquity(e => [...e.slice(1), Math.max(0, next)]); return next; });
+      setSession(s => s + r.pnl);
+      setEquity(e => [...e.slice(1), (e[e.length - 1] ?? 40) + r.pnl / 45]);
       setCount(c => c + 1);
       setStreak(k => (r.pnl >= 0 ? k + 1 : 0));
     }, 2800);
