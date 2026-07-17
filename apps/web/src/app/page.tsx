@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
-import { motion, useScroll, useTransform, useReducedMotion } from 'framer-motion';
+import { motion, AnimatePresence, useScroll, useTransform, useReducedMotion } from 'framer-motion';
 import { LinkSimple, Brain, ChatCircle, Target } from '@phosphor-icons/react';
 import Logo from '@/components/logo';
 import Reveal from '@/components/reveal';
@@ -308,7 +308,7 @@ const STEPS = [
   {
     key: 'edge',
     title: 'Act on your edge',
-    body: 'Every Monday you get a plain-English review of your real trades — what’s working, what’s leaking, and the one habit to fix this week.',
+    body: 'Every Monday, a plain-language review of your real trades — what’s working, what’s leaking, and the one habit to fix.',
     label: 'YOUR EDGE',
     meta: 'every Monday',
     icon: Target,
@@ -648,10 +648,7 @@ export default function LandingPage() {
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 pt-14 sm:pt-20 pb-16 sm:pb-24 grid lg:grid-cols-12 gap-10 lg:gap-8 items-center">
           {/* Left: copy */}
           <div className="lg:col-span-5">
-            <Reveal className="inline-flex items-center gap-2 rounded-full border border-border-soft bg-surface/60 px-3 py-1.5 text-[10px] sm:text-[11px] tracking-[0.28em] text-fg-3">
-              <span className="w-1.5 h-1.5 rounded-full bg-profit pulse-dot" /> SIMPLE INSIGHTS FOR EVERY TRADER
-            </Reveal>
-            <Reveal as="h1" delay={80} className="font-display font-black tracking-tighter text-[40px] sm:text-[56px] md:text-[64px] lg:text-[72px] leading-[0.95] mt-6">
+            <Reveal as="h1" className="font-display font-black tracking-tighter text-[40px] sm:text-[56px] md:text-[64px] lg:text-[72px] leading-[1.02] sm:leading-[0.95]">
               Understand your trading.<br />
               <span className="text-gradient-brand">Improve every day.</span>
             </Reveal>
@@ -817,10 +814,10 @@ export default function LandingPage() {
             </h2>
           </Reveal>
 
-          <div className="grid lg:grid-cols-2 gap-8 lg:gap-10 items-center mt-10 sm:mt-12">
+          <div className="grid lg:grid-cols-2 gap-6 lg:gap-10 items-start lg:items-center mt-10 sm:mt-12">
             {/* Accordion */}
             <Reveal
-              className="flex flex-col gap-2"
+              className="flex flex-col gap-3"
               data-testid="how-stepper"
               onMouseEnter={() => setStepPaused(true)}
               onMouseLeave={() => setStepPaused(false)}
@@ -844,32 +841,47 @@ export default function LandingPage() {
                       </div>
                       <span className="text-[9px] tracking-[0.18em] text-fg-3 uppercase shrink-0">{s.meta}</span>
                     </div>
-                    <div className={`grid transition-all duration-[var(--dur-select)] ${active ? 'grid-rows-[1fr] opacity-100 mt-3' : 'grid-rows-[0fr] opacity-0'}`}>
-                      <div className="overflow-hidden pl-11">
-                        <p className="text-fg-2 text-[12px] sm:text-[13px] leading-relaxed">{s.body}</p>
-                        {active && !stepPaused && (
-                          <div className="mt-3 h-0.5 bg-border-soft rounded-full overflow-hidden">
-                            <div key={step} className="h-full bg-profit/60 step-progress" />
-                          </div>
-                        )}
-                      </div>
+                    {/* Fixed reserved height for the expanded body so the column
+                        total never changes between steps (no vertical jump). */}
+                    <div
+                      className={`overflow-hidden pl-11 transition-[height,opacity] duration-[var(--dur-select)] ease-[var(--ease-premium)] ${active ? 'h-[92px] sm:h-[76px] lg:h-[64px] opacity-100 mt-3' : 'h-0 opacity-0'}`}
+                    >
+                      <p className="text-fg-2 text-[12px] sm:text-[13px] leading-relaxed">{s.body}</p>
+                      {active && !stepPaused && (
+                        <div className="mt-3 h-0.5 bg-border-soft rounded-full overflow-hidden">
+                          <div key={step} className="h-full bg-profit/60 step-progress" />
+                        </div>
+                      )}
                     </div>
                   </button>
                 );
               })}
             </Reveal>
 
-            {/* Synced visual */}
+            {/* Synced visual — fixed height + cross-fade so nothing below moves */}
             {(() => {
               const current = STEPS[step] ?? STEPS[0];
               return (
-                <Reveal delay={80} className="tcard p-5 sm:p-7 min-h-[260px] flex flex-col">
-                  <div className="flex items-center justify-between mb-5">
+                <Reveal delay={80} className="relative w-full tcard p-5 sm:p-7 flex flex-col">
+                  <div className="glow-blob -inset-6 opacity-70" aria-hidden />
+                  <div className="relative flex items-center justify-between mb-4">
                     <span className="text-[10px] tracking-[0.22em] text-fg-3">// {current.label}</span>
-                    <span className="text-[10px] text-profit">● LIVE</span>
+                    <span className="text-[10px] text-profit flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-profit pulse-dot" /> LIVE</span>
                   </div>
-                  <div key={step} className="flex-1 flex items-center fade-up" data-testid={`how-visual-${current.key}`}>
-                    {current.visual}
+                  <div className="relative flex-1 h-[300px] sm:h-[280px]">
+                    <AnimatePresence mode="popLayout" initial={false}>
+                      <motion.div
+                        key={step}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+                        className="absolute inset-0 flex items-center"
+                        data-testid={`how-visual-${current.key}`}
+                      >
+                        {current.visual}
+                      </motion.div>
+                    </AnimatePresence>
                   </div>
                 </Reveal>
               );
