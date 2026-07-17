@@ -33,7 +33,9 @@ const envSchema = z.object({
   RESEND_API_KEY: z.string().optional(),
   EMAIL_FROM: z.string().default('TRADElogs <onboarding@resend.dev>'),
   // Where "verify your email" links/buttons point the user (the web app).
-  APP_URL: z.string().url().default('http://localhost:3000'),
+  // Optional here: when unset we fall back to CORS_ORIGIN (the web app's real
+  // origin, always configured in prod) so emails never link to localhost.
+  APP_URL: z.string().url().optional(),
 
   CREDENTIAL_ENCRYPTION_KEY: z.string().optional(),
 
@@ -41,7 +43,7 @@ const envSchema = z.object({
   MT5_BRIDGE_SHARED_SECRET: z.string().default('dev-secret-change-in-production'),
 });
 
-export type Env = z.infer<typeof envSchema>;
+export type Env = z.infer<typeof envSchema> & { APP_URL: string };
 
 function loadEnv(): Env {
   const parsed = envSchema.safeParse(process.env);
@@ -49,7 +51,11 @@ function loadEnv(): Env {
     console.error('Invalid environment configuration:', parsed.error.flatten().fieldErrors);
     throw new Error('Invalid environment configuration');
   }
-  return parsed.data;
+  // Emails and auth redirects must point at the real web app. If APP_URL isn't
+  // set explicitly, reuse CORS_ORIGIN (first origin if comma-separated) — it's
+  // always the deployed web origin in prod, so links never point to localhost.
+  const APP_URL = parsed.data.APP_URL ?? parsed.data.CORS_ORIGIN.split(',')[0]!.trim();
+  return { ...parsed.data, APP_URL };
 }
 
 export const env: Env = loadEnv();
