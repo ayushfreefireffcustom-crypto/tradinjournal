@@ -13,6 +13,16 @@ export const connectAccountSchema = z.object({
 
 export type ConnectAccountInput = z.infer<typeof connectAccountSchema>;
 
+// ── Update stored MT5 password ────────────────────────────────────────────────
+// Used when a trader changes their MT5 password at the broker and needs to
+// update the copy TRADElogs uses to sync.
+
+export const updateCredentialsSchema = z.object({
+  password: z.string().min(1),
+});
+
+export type UpdateCredentialsInput = z.infer<typeof updateCredentialsSchema>;
+
 // ── Deals query ───────────────────────────────────────────────────────────────
 
 export const dealsQuerySchema = z.object({
