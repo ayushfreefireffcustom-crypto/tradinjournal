@@ -1,180 +1,131 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import Logo from '@/components/logo';
+import { ChartLineUp, ChartPieSlice, Target, ShieldCheck, CloudCheck, Lock } from '@phosphor-icons/react';
 
-// A small "living" left panel used by the auth pages. It shows a stripped-down
-// equity feed, a testimonial slot, and trust badges so the auth screens feel
-// like part of a live terminal rather than a landing splash.
+// The marketing left-panel for the auth screens. A calm, premium composition:
+// logo, a big brand headline, a short value line, three feature rows, a
+// testimonial, and a trust-badge footer — over a faded candlestick-chart
+// backdrop with a soft green glow. Purely presentational and static (SSR-safe,
+// reduced-motion-safe: no animation loops).
 
-function MiniEquity() {
-  const [seed, setSeed] = useState(0);
-  useEffect(() => {
-    const t = setInterval(() => setSeed(s => (s + 1) % 32), 2400);
-    return () => clearInterval(t);
-  }, []);
-
-  const base = [22, 25, 24, 30, 28, 34, 32, 39, 37, 44, 42, 49, 47, 55, 60, 57, 66, 63, 71, 79, 76, 84];
-  const points = base.map((v, i) => v + (Math.sin((i + seed) / 3) * 2));
-  const W = 460, H = 130;
-  const min = Math.min(...points), max = Math.max(...points);
-  const span = max - min || 1;
-  const xs = (i: number) => 8 + (i / (points.length - 1)) * (W - 16);
-  const ys = (v: number) => H - 6 - ((v - min) / span) * (H - 26);
-  const path = points.map((v, i) => `${i === 0 ? 'M' : 'L'} ${xs(i)} ${ys(v)}`).join(' ');
-  const area = `${path} L ${xs(points.length - 1)} ${H} L ${xs(0)} ${H} Z`;
-
+// Faint ascending candlestick chart + trend line, used as atmosphere behind the
+// copy. Green, low-opacity, masked so it fades toward the text.
+function BackdropChart() {
+  const candles: [number, number, number, number, 'up' | 'down'][] = [
+    [40, 55, 34, 50, 'up'], [50, 58, 45, 47, 'down'], [47, 54, 40, 52, 'up'],
+    [52, 66, 49, 63, 'up'], [63, 70, 58, 60, 'down'], [60, 76, 57, 73, 'up'],
+    [73, 80, 68, 70, 'down'], [70, 88, 67, 85, 'up'], [85, 94, 80, 82, 'down'],
+    [82, 104, 79, 100, 'up'], [100, 112, 95, 108, 'up'], [108, 116, 92, 96, 'down'],
+    [96, 122, 92, 118, 'up'],
+  ];
+  const W = 520, H = 360, GAP = 10;
+  const cw = (W - GAP * (candles.length + 1)) / candles.length;
+  const lo = 30, hi = 128;
+  const ys = (v: number) => 24 + (1 - (v - lo) / (hi - lo)) * (H - 48);
+  const cx = (i: number) => GAP + i * (cw + GAP) + cw / 2;
+  const line = candles.map((c, i) => `${i === 0 ? 'M' : 'L'} ${cx(i).toFixed(1)} ${ys(c[3]).toFixed(1)}`).join(' ');
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" preserveAspectRatio="none" style={{ height: 140 }}>
-      <defs>
-        <linearGradient id="mini-eq" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0%"  stopColor="#08C465" stopOpacity="0.35" />
-          <stop offset="100%" stopColor="#08C465" stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      {[0.25, 0.5, 0.75].map(p => (
-        <line key={p} x1={0} x2={W} y1={H * p} y2={H * p} stroke="#1E1E1E" strokeDasharray="2 4" />
-      ))}
-      <path d={area} fill="url(#mini-eq)" />
-      <path d={path} stroke="#08C465" strokeWidth="1.5" fill="none" />
-      <circle cx={xs(points.length - 1)} cy={ys(points[points.length - 1]!)} r="3.5" fill="#08C465" />
-      <circle cx={xs(points.length - 1)} cy={ys(points[points.length - 1]!)} r="8" fill="#08C465" opacity="0.2" />
+    <svg
+      viewBox={`0 0 ${W} ${H}`}
+      className="absolute right-0 top-1/2 -translate-y-1/2 w-[560px] max-w-[70%] h-auto pointer-events-none select-none"
+      style={{
+        WebkitMaskImage: 'radial-gradient(120% 100% at 80% 50%, #000 30%, transparent 78%)',
+        maskImage: 'radial-gradient(120% 100% at 80% 50%, #000 30%, transparent 78%)',
+        opacity: 0.5,
+      }}
+      aria-hidden
+    >
+      <path d={line} fill="none" stroke="#08C465" strokeWidth="1.5" opacity="0.55" strokeLinecap="round" strokeLinejoin="round" />
+      {candles.map(([o, h, l, c, dir], i) => {
+        const x = GAP + i * (cw + GAP);
+        const col = dir === 'up' ? '#08C465' : '#FE3A31';
+        const top = ys(Math.max(o, c));
+        const bot = ys(Math.min(o, c));
+        return (
+          <g key={i} opacity="0.5">
+            <line x1={x + cw / 2} y1={ys(h)} x2={x + cw / 2} y2={ys(l)} stroke={col} strokeWidth="1" />
+            <rect x={x} y={top} width={cw} height={Math.max(2, bot - top)} fill={col} />
+          </g>
+        );
+      })}
     </svg>
   );
 }
 
-function AuthTicker() {
-  const rows = [
-    { sym: 'XAUUSD', v: '2,387.42', d: '+0.84%' },
-    { sym: 'NAS100', v: '19,217.5', d: '+1.05%' },
-    { sym: 'EURUSD', v: '1.08914',  d: '-0.12%' },
-    { sym: 'BTCUSD', v: '67,420',   d: '+2.41%' },
-    { sym: 'USDJPY', v: '151.882',  d: '+0.21%' },
-    { sym: 'US30',   v: '38,742',   d: '-0.07%' },
-  ];
-  const doubled = [...rows, ...rows];
-  return (
-    <div className="border-y border-border bg-app overflow-hidden">
-      <div className="marquee-track flex gap-8 py-2 whitespace-nowrap">
-        {doubled.map((r, i) => (
-          <div key={i} className="flex items-center gap-2 text-[10px]">
-            <span className="text-fg-3 tracking-[0.18em]">{r.sym}</span>
-            <span className="text-fg numeric">{r.v}</span>
-            <span className={r.d.startsWith('+') ? 'text-profit numeric' : 'text-loss numeric'}>{r.d}</span>
-            <span className="text-border-strong">/</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
+const FEATURES = [
+  { icon: ChartLineUp,   t: 'Track every trade',   b: 'Auto-imported from MT5 — never miss a fill.' },
+  { icon: ChartPieSlice, t: 'Powerful analytics',  b: 'Understand your edge with deep insights.' },
+  { icon: Target,        t: 'Build better habits', b: 'Spot the patterns and improve consistently.' },
+];
 
 export default function AuthAside({ variant }: { variant: 'signin' | 'signup' }) {
-  const stats = variant === 'signin'
-    ? [
-        { l: 'Traders online', v: '2,148' },
-        { l: 'Median R:R',     v: '1:2.4' },
-        { l: 'Bridge latency', v: '38ms' },
-      ]
-    : [
-        { l: 'Free tier',       v: '$0' },
-        { l: 'Setup time',      v: '90s' },
-        { l: 'MT5 accounts',    v: '1' },
-      ];
+  const quote = variant === 'signin'
+    ? { text: 'TRADElogs changed the way I see my trading. The insights are genuinely game-changing.', who: 'Rishab P., Full-time Trader' }
+    : { text: 'Set up in minutes, and the weekly reviews keep me honest. Wish I had this years ago.', who: 'C. Henry, Forex Trader' };
 
   return (
-    <aside className="hidden lg:flex flex-col border-r border-border relative overflow-hidden min-h-screen" data-testid={`auth-aside-${variant}`}>
-      {/* Grid + gradient wash */}
-      <div className="absolute inset-0 bg-grid bg-grid-fade opacity-30" />
-      <div className="absolute -top-40 -left-40 w-[520px] h-[520px] rounded-full opacity-30 blur-3xl" style={{ background: 'radial-gradient(circle, rgba(0,197,102,0.35) 0%, transparent 70%)' }} />
+    <aside
+      className="hidden lg:flex flex-col relative overflow-hidden min-h-screen border-r border-border px-10 xl:px-14 py-10 xl:py-12"
+      data-testid={`auth-aside-${variant}`}
+    >
+      {/* Atmosphere */}
+      <div className="absolute inset-0 bg-grid bg-grid-fade opacity-25" aria-hidden />
+      <div
+        className="absolute -top-32 -right-24 w-[440px] h-[440px] rounded-full blur-3xl opacity-40"
+        style={{ background: 'radial-gradient(circle, rgba(8,196,101,0.30) 0%, transparent 70%)' }}
+        aria-hidden
+      />
+      <BackdropChart />
 
-      {/* Top status bar */}
-      <div className="relative z-10 border-b border-border h-12 flex items-center justify-between px-6 text-[10px] tracking-[0.22em] text-fg-3">
-        <div className="flex items-center gap-2">
-          <span className="w-2 h-2 bg-profit pulse-dot" />
-          MT5 · CONNECTED
-        </div>
-        <span>SESSION · LONDON</span>
-        <span className="numeric">v2.6.1</span>
+      {/* Logo */}
+      <div className="relative z-10">
+        <Logo height={30} />
       </div>
 
-      {/* Ticker */}
-      <AuthTicker />
+      {/* Center copy */}
+      <div className="relative z-10 flex-1 flex flex-col justify-center max-w-lg">
+        <h2 className="font-display font-black tracking-tighter text-4xl xl:text-[52px] leading-[1.03]">
+          Trade smarter.<br />
+          Improve <span className="text-profit">every day.</span>
+        </h2>
+        <p className="text-fg-2 text-[13px] xl:text-[14px] mt-5 max-w-md leading-relaxed">
+          Your all-in-one trading journal — connect MT5 and analyze, track and elevate your
+          performance with real clarity.
+        </p>
 
-      {/* Hero body */}
-      <div className="relative z-10 flex-1 flex flex-col justify-center px-8 xl:px-12 py-12">
-        <div className="w-full max-w-xl mx-auto">
-          <div className="flex items-center gap-2.5 mb-8">
-            <Logo height={30} />
-            <span className="ml-auto text-[10px] tracking-[0.22em] text-fg-3">// TRADING JOURNAL</span>
-          </div>
-
-          <p className="text-[10px] tracking-[0.3em] text-fg-3 mb-3">
-            [ {variant === 'signin' ? 'WELCOME BACK' : 'GET STARTED'} ]
-          </p>
-          <h2 className="font-display font-black tracking-tighter text-4xl xl:text-5xl leading-[1.02]">
-            {variant === 'signin' ? (
-              <>TRADE <br /> WITH <span className="text-profit">CLARITY.</span></>
-            ) : (
-              <>START <br /> FOR <span className="text-profit">FREE.</span></>
-            )}
-          </h2>
-          <p className="text-fg-2 text-[12px] xl:text-[13px] mt-5 max-w-md leading-relaxed">
-            {variant === 'signin'
-              ? 'All your trades imported from MT5, with clear insights ready and waiting. Sign in to pick up right where you left off.'
-              : 'Connect your MT5 in 90 seconds and see your insights by tomorrow morning. Read-only login, fully encrypted, and we never touch your trades.'}
-          </p>
-
-          {/* Mini equity terminal */}
-          <div className="mt-8 tcard p-4 bg-app/70 backdrop-blur-sm max-w-lg">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] tracking-[0.22em] text-fg-3">EQUITY</span>
-                <span className="text-[10px] text-profit">● LIVE</span>
-              </div>
-              <div className="text-right">
-                <div className="font-display font-black text-lg tracking-tighter">+$12,418</div>
-                <div className="text-[9px] tracking-widest text-profit numeric">▲ +49.7% YTD</div>
-              </div>
-            </div>
-            <MiniEquity />
-          </div>
-
-          {/* Stats strip */}
-          <div className="mt-6 grid grid-cols-3 max-w-md border border-border">
-            {stats.map(s => (
-              <div key={s.l} className="border-r border-border last:border-r-0 px-4 py-3">
-                <div className="text-[10px] tracking-[0.18em] text-fg-3 uppercase">{s.l}</div>
-                <div className="font-display font-black text-2xl mt-1 tracking-tight">{s.v}</div>
-              </div>
-            ))}
-          </div>
-
-          {/* Trust badges */}
-          <div className="mt-8 flex flex-wrap gap-2 max-w-lg">
-            {[
-              { icon: '◈', l: 'READ-ONLY MT5' },
-              { icon: '◇', l: 'AES-256 AT REST' },
-              { icon: '◆', l: 'SOC2 II' },
-              { icon: '◉', l: '99.98% UPTIME' },
-            ].map(b => (
-              <span key={b.l} className="flex items-center gap-2 border border-border-soft px-2.5 py-1.5 text-[10px] tracking-[0.18em] text-fg-2">
-                <span className="text-profit">{b.icon}</span>
-                {b.l}
+        {/* Feature rows */}
+        <ul className="mt-9 flex flex-col gap-6">
+          {FEATURES.map(f => (
+            <li key={f.t} className="flex items-start gap-4">
+              <span className="shrink-0 w-11 h-11 rounded-xl bg-profit/10 border border-profit/25 flex items-center justify-center text-profit">
+                <f.icon size={20} weight="duotone" />
               </span>
-            ))}
+              <div className="min-w-0 pt-0.5">
+                <div className="font-display font-bold text-[15px] tracking-tight">{f.t}</div>
+                <div className="text-fg-3 text-[12.5px] mt-0.5 leading-snug">{f.b}</div>
+              </div>
+            </li>
+          ))}
+        </ul>
+
+        {/* Testimonial */}
+        <figure className="mt-10 max-w-md rounded-2xl border border-border-soft bg-app/50 backdrop-blur-sm p-5">
+          <div className="flex gap-3">
+            <span className="font-display font-black text-2xl text-profit leading-none select-none">&ldquo;</span>
+            <div className="min-w-0">
+              <blockquote className="text-[13.5px] text-fg-2 leading-relaxed">{quote.text}</blockquote>
+              <figcaption className="text-[12px] text-profit mt-2.5">— {quote.who}</figcaption>
+            </div>
           </div>
-        </div>
+        </figure>
       </div>
 
-      {/* Footer strip */}
-      <div className="relative z-10 border-t border-border h-11 flex items-center justify-between px-6 text-[10px] tracking-[0.22em] text-fg-3">
-        <span>EST · 2026</span>
-        <span className="flex items-center gap-4">
-          <a href="#" className="hover:text-fg">PRIVACY</a>
-          <a href="#" className="hover:text-fg">TERMS</a>
-          <a href="#" className="hover:text-fg">STATUS</a>
-        </span>
+      {/* Trust badges */}
+      <div className="relative z-10 flex flex-wrap items-center gap-x-7 gap-y-3 text-[11.5px] text-fg-2 pt-2">
+        <span className="flex items-center gap-2"><ShieldCheck size={16} weight="duotone" className="text-profit" /> Bank-level encryption</span>
+        <span className="flex items-center gap-2"><CloudCheck size={16} weight="duotone" className="text-profit" /> 99.98% uptime</span>
+        <span className="flex items-center gap-2"><Lock size={16} weight="duotone" className="text-profit" /> Your data is private</span>
       </div>
     </aside>
   );
