@@ -1,5 +1,6 @@
 import { env } from '@tradinjournal/config';
 import type { Deal, MarginMode, VerifyResult } from '@tradinjournal/types';
+import { BrokerAuthError, BrokerConnectionError } from '../http/errors.js';
 
 interface BridgeCreds {
   login: number;
@@ -54,7 +55,17 @@ async function bridgePost<T>(path: string, body: object): Promise<T> {
 
   if (!res.ok) {
     const text = await res.text().catch(() => res.statusText);
-    throw new Error(`Bridge ${path} failed (${res.status}): ${text}`);
+
+    // The bridge maps an MT5 authorization failure (terminal error -6) to 401,
+    // and older bridges surface it as a 503 whose body mentions "Authorization
+    // failed". Either way it means the stored password no longer works — turn it
+    // into a clear, user-actionable error instead of a generic 500.
+    if (res.status === 401 || /authoriz|invalid account|invalid password|-6/i.test(text)) {
+      throw new BrokerAuthError();
+    }
+
+    // Any other bridge failure (offline, timeout, 5xx) is an upstream problem.
+    throw new BrokerConnectionError(`Broker bridge is unavailable right now. Please try again in a moment.`);
   }
 
   return res.json() as Promise<T>;

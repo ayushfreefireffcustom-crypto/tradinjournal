@@ -48,3 +48,14 @@ export class BrokerConnectionError extends AppError {
     super(502, 'BROKER_CONNECTION_ERROR', message);
   }
 }
+
+// The MT5 login/password we have on file was rejected by the broker — almost
+// always because the trader changed their MT5 password. 409 (not 5xx) so it
+// isn't logged as a server fault and the readable message reaches the client.
+export class BrokerAuthError extends AppError {
+  constructor(
+    message = "We couldn't sign in to your MT5 account. Your broker password may have changed — update it under Brokers and try again.",
+  ) {
+    super(409, 'BROKER_AUTH_FAILED', message);
+  }
+}
