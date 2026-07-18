@@ -47,6 +47,21 @@ export function verificationOtpEmail(otp: string): { subject: string; html: stri
   return { subject: 'Your TRADElogs verification code', html: shell(inner) };
 }
 
+export function resetPasswordEmail(otp: string): { subject: string; html: string } {
+  const inner = `
+    <h1 style="color:${FG};font-size:20px;font-weight:700;margin:0 0 12px;">Reset your password</h1>
+    <p style="color:${MUTED};font-size:14px;line-height:1.6;margin:0 0 24px;">
+      Enter this code in the app to set a new password. If you didn't request this, you can ignore this email — your password won't change.
+    </p>
+    <div style="background:${BG};border:1px solid ${BORDER};border-radius:12px;padding:20px;text-align:center;margin:0 0 20px;">
+      <span style="color:${BRAND};font-size:34px;font-weight:800;letter-spacing:10px;">${otp}</span>
+    </div>
+    <p style="color:${MUTED};font-size:13px;line-height:1.6;margin:0;">
+      This code expires in 10 minutes. Don't share it with anyone.
+    </p>`;
+  return { subject: 'Reset your TRADElogs password', html: shell(inner) };
+}
+
 export function welcomeEmail(name: string): { subject: string; html: string } {
   const first = name?.trim().split(' ')[0] || 'trader';
   const inner = `

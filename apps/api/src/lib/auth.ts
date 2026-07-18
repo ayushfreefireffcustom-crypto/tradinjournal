@@ -5,7 +5,7 @@ import { prisma } from '@tradinjournal/db';
 import { env } from '@tradinjournal/config';
 import { logger } from '@tradinjournal/logger';
 import { sendEmail } from './email/client.js';
-import { verificationOtpEmail, welcomeEmail } from './email/templates.js';
+import { verificationOtpEmail, welcomeEmail, resetPasswordEmail } from './email/templates.js';
 
 export const auth = betterAuth({
   database: prismaAdapter(prisma, {
@@ -102,9 +102,15 @@ export const auth = betterAuth({
       expiresIn: 60 * 10, // 10 minutes
       sendVerificationOnSignUp: true,
       async sendVerificationOTP({ email, otp, type }) {
-        if (type !== 'email-verification') return;
-        const { subject, html } = verificationOtpEmail(otp);
-        await sendEmail({ to: email, subject, html, devNote: `OTP for ${email}: ${otp}` });
+        // Same OTP plumbing serves signup verification and password reset — pick
+        // the right email for each.
+        if (type === 'email-verification') {
+          const { subject, html } = verificationOtpEmail(otp);
+          await sendEmail({ to: email, subject, html, devNote: `Verify OTP for ${email}: ${otp}` });
+        } else if (type === 'forget-password') {
+          const { subject, html } = resetPasswordEmail(otp);
+          await sendEmail({ to: email, subject, html, devNote: `Reset OTP for ${email}: ${otp}` });
+        }
       },
     }),
   ],
