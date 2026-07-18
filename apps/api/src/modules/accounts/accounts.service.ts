@@ -6,6 +6,7 @@ import {
   findAccountsByUser,
   findAccountById,
   deleteAccountById,
+  updateAccountCredentials as updateCredentialsRepo,
 } from './accounts.repository.js';
 import { ConflictError, NotFoundError } from '../../http/errors.js';
 
@@ -58,6 +59,32 @@ export async function connectAccount(userId: string, input: ConnectAccountInput)
 
 export async function listAccounts(userId: string): Promise<BrokerAccount[]> {
   return findAccountsByUser(userId);
+}
+
+// Update the stored MT5 password after the trader changes it at their broker.
+// We re-verify the new password against the same login+server first — so a wrong
+// password fails fast with a clear BrokerAuthError and nothing is persisted.
+export async function updateAccountCredentials(
+  userId: string,
+  id: string,
+  password: string,
+): Promise<BrokerAccount> {
+  const account = await findAccountById(id, userId);
+  if (!account) throw new NotFoundError('Broker account not found');
+
+  const info = await verifyAccount({
+    login: Number(account.mt5Login),
+    password,
+    server: account.server,
+  });
+
+  const updated = await updateCredentialsRepo(id, userId, {
+    password,
+    baseCurrency: info.currency,
+    marginMode: info.marginMode === 'HEDGING' ? 'HEDGING' : 'NETTING',
+  });
+  if (!updated) throw new NotFoundError('Broker account not found');
+  return updated;
 }
 
 export async function deleteAccount(userId: string, id: string): Promise<void> {
