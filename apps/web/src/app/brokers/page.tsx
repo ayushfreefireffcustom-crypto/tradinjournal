@@ -9,12 +9,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import AppShell from '@/components/app-shell';
 import ConnectBrokerModal from '@/components/connect-broker-modal';
+import UpdateBrokerPasswordModal from '@/components/update-broker-password-modal';
 import ConfirmDialog from '@/components/confirm-dialog';
 import { useToast } from '@/components/toast';
 import { useAccounts } from '@/lib/use-accounts';
 import { api, type BrokerAccount, type AccountStats } from '@/lib/api';
 import {
-  Bank, Wallet, Broadcast, MagnifyingGlass, Plus, Trash,
+  Bank, Wallet, Broadcast, MagnifyingGlass, Plus, Trash, Key,
 } from '@phosphor-icons/react';
 
 const MAX_ACCOUNTS = 2;
@@ -47,6 +48,7 @@ export default function BrokersPage() {
   const toast = useToast();
   const [showConnect, setShowConnect] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<BrokerAccount | null>(null);
+  const [pendingPasswordUpdate, setPendingPasswordUpdate] = useState<BrokerAccount | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [query, setQuery] = useState('');
   const [figures, setFigures] = useState<Record<string, AccountFigures | null>>({});
@@ -78,6 +80,14 @@ export default function BrokersPage() {
     select(account);
     setShowConnect(false);
     toast.success(`Connected · ${account.broker} #${account.mt5Login}`);
+  }
+
+  function onCredentialsUpdated(account: BrokerAccount) {
+    setAccounts(prev => prev.map(a => (a.id === account.id ? account : a)));
+    // Re-fetch this account's figures now that syncing works again.
+    setFigures(prev => { const next = { ...prev }; delete next[account.id]; return next; });
+    setPendingPasswordUpdate(null);
+    toast.success(`Password updated · ${account.broker} #${account.mt5Login}`);
   }
 
   async function confirmDelete() {
@@ -248,15 +258,25 @@ export default function BrokersPage() {
                             </div>
                             <div className="text-[10px] text-fg-3/80 mt-0.5">Connected {timeAgo(acc.createdAt)}</div>
                           </div>
-                          {/* Remove — inline on mobile, moves to row end on lg */}
-                          <button
-                            onClick={() => setPendingDelete(acc)}
-                            aria-label={`Remove ${acc.broker} #${acc.mt5Login}`}
-                            data-testid={`brokers-delete-${acc.mt5Login}`}
-                            className="lg:hidden shrink-0 w-9 h-9 rounded-lg border border-border-soft text-fg-3 hover:text-loss hover:border-loss/50 flex items-center justify-center transition-colors focus-ring"
-                          >
-                            <Trash size={15} weight="bold" />
-                          </button>
+                          {/* Actions — inline on mobile, move to row end on lg */}
+                          <div className="lg:hidden shrink-0 flex items-center gap-2">
+                            <button
+                              onClick={() => setPendingPasswordUpdate(acc)}
+                              aria-label={`Update password for ${acc.broker} #${acc.mt5Login}`}
+                              data-testid={`brokers-update-password-${acc.mt5Login}`}
+                              className="w-9 h-9 rounded-lg border border-border-soft text-fg-3 hover:text-profit hover:border-profit/50 flex items-center justify-center transition-colors focus-ring"
+                            >
+                              <Key size={15} weight="bold" />
+                            </button>
+                            <button
+                              onClick={() => setPendingDelete(acc)}
+                              aria-label={`Remove ${acc.broker} #${acc.mt5Login}`}
+                              data-testid={`brokers-delete-${acc.mt5Login}`}
+                              className="w-9 h-9 rounded-lg border border-border-soft text-fg-3 hover:text-loss hover:border-loss/50 flex items-center justify-center transition-colors focus-ring"
+                            >
+                              <Trash size={15} weight="bold" />
+                            </button>
+                          </div>
                         </div>
 
                         {/* Figures */}
@@ -281,16 +301,27 @@ export default function BrokersPage() {
                           </div>
                         </div>
 
-                        {/* Remove — desktop, at the end of the row */}
-                        <button
-                          onClick={() => setPendingDelete(acc)}
-                          aria-label={`Remove ${acc.broker} #${acc.mt5Login}`}
-                          data-testid={`brokers-delete-lg-${acc.mt5Login}`}
-                          title="Remove broker"
-                          className="hidden lg:flex shrink-0 w-9 h-9 rounded-lg border border-border-soft text-fg-3 hover:text-loss hover:border-loss/50 items-center justify-center transition-colors focus-ring"
-                        >
-                          <Trash size={15} weight="bold" />
-                        </button>
+                        {/* Actions — desktop, at the end of the row */}
+                        <div className="hidden lg:flex shrink-0 items-center gap-2">
+                          <button
+                            onClick={() => setPendingPasswordUpdate(acc)}
+                            aria-label={`Update password for ${acc.broker} #${acc.mt5Login}`}
+                            data-testid={`brokers-update-password-lg-${acc.mt5Login}`}
+                            title="Update MT5 password"
+                            className="w-9 h-9 rounded-lg border border-border-soft text-fg-3 hover:text-profit hover:border-profit/50 flex items-center justify-center transition-colors focus-ring"
+                          >
+                            <Key size={15} weight="bold" />
+                          </button>
+                          <button
+                            onClick={() => setPendingDelete(acc)}
+                            aria-label={`Remove ${acc.broker} #${acc.mt5Login}`}
+                            data-testid={`brokers-delete-lg-${acc.mt5Login}`}
+                            title="Remove broker"
+                            className="w-9 h-9 rounded-lg border border-border-soft text-fg-3 hover:text-loss hover:border-loss/50 flex items-center justify-center transition-colors focus-ring"
+                          >
+                            <Trash size={15} weight="bold" />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   );
@@ -326,6 +357,13 @@ export default function BrokersPage() {
 
       {showConnect && (
         <ConnectBrokerModal onClose={() => setShowConnect(false)} onConnected={onConnected} />
+      )}
+      {pendingPasswordUpdate && (
+        <UpdateBrokerPasswordModal
+          account={pendingPasswordUpdate}
+          onClose={() => setPendingPasswordUpdate(null)}
+          onUpdated={onCredentialsUpdated}
+        />
       )}
       {pendingDelete && (
         <ConfirmDialog
