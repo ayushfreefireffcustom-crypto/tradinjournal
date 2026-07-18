@@ -55,6 +55,9 @@ const mockAuthClient = {
     sendVerificationOtp: async (_: { email: string; type: string }) => ({ data: {}, error: null }),
     verifyEmail: async (_: { email: string; otp: string }) =>
       ({ data: MOCK_SESSION.data, error: null }),
+    requestPasswordReset: async (_: { email: string }) => ({ data: {}, error: null }),
+    resetPassword: async (_: { email: string; otp: string; password: string }) =>
+      ({ data: {}, error: null }),
   },
 };
 
