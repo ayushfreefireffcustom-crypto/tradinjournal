@@ -96,7 +96,7 @@ export default function LoginPage() {
               <label className="flex flex-col gap-1.5">
                 <span className="text-[10px] tracking-[0.22em] text-fg-3 flex items-center justify-between">
                   <span>PASSWORD</span>
-                  <a href="#" className="text-fg-3 hover:text-fg tracking-widest">FORGOT?</a>
+                  <Link href="/forgot" className="text-fg-3 hover:text-fg tracking-widest" data-testid="login-forgot">FORGOT?</Link>
                 </span>
                 <div className="relative">
                   <input
