@@ -17,7 +17,13 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
     ...init,
   });
   const json = await res.json();
-  if (!res.ok) throw new Error(json?.error?.message ?? `Request failed: ${res.status}`);
+  if (!res.ok) {
+    // Preserve the machine-readable code (e.g. BROKER_AUTH_FAILED) alongside the
+    // human message so callers can branch on it (show an "update password" CTA).
+    const err = new Error(json?.error?.message ?? `Request failed: ${res.status}`) as Error & { code?: string };
+    err.code = json?.error?.code;
+    throw err;
+  }
   return json.data as T;
 }
 
@@ -138,6 +144,8 @@ export const api = {
     connect: (body: { mt5Login: number; password: string; server: string; broker?: string }) =>
       apiFetch<BrokerAccount>(`${PREFIX}/accounts`, { method: 'POST', body: JSON.stringify(body) }),
     list: () => apiFetch<BrokerAccount[]>(`${PREFIX}/accounts`),
+    updateCredentials: (id: string, password: string) =>
+      apiFetch<BrokerAccount>(`${PREFIX}/accounts/${id}/credentials`, { method: 'PATCH', body: JSON.stringify({ password }) }),
     delete: (id: string) => apiFetch<{ ok: boolean }>(`${PREFIX}/accounts/${id}`, { method: 'DELETE' }),
   },
   trades: {
