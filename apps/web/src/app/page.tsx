@@ -723,8 +723,9 @@ function Pipeline() {
             <h3 className="font-display font-bold text-[16px] tracking-tight">{c.t}</h3>
             <p className="text-fg-2 text-[12px] leading-relaxed mt-2">{c.b}</p>
             <div className="mt-4 pt-4 border-t border-border-soft flex-1">{c.visual}</div>
-            <div className="mt-4 flex items-center gap-1.5 text-[10px] tracking-[0.18em] text-fg-3 uppercase transition-colors group-hover:text-profit">
-              {c.tag} <span aria-hidden className="transition-transform group-hover:translate-x-0.5">→</span>
+            <div className="mt-4 flex items-center gap-1.5 text-[10px] tracking-[0.18em] text-fg-3 uppercase">
+              <span className="w-1 h-1 rounded-full bg-profit/70" aria-hidden />
+              {c.tag}
             </div>
           </RevealItem>
         ))}
@@ -784,10 +785,10 @@ export default function LandingPage() {
           </nav>
           <div className="flex items-center gap-2 shrink-0">
             <Link href="/login" className="btn btn-ghost hidden xs:inline-flex" data-testid="nav-signin">SIGN IN</Link>
-            <Link href="/dashboard" className="btn btn-primary" data-testid="nav-open-terminal">
+            <Link href="/dashboard" className="btn btn-primary group" data-testid="nav-open-terminal">
               <span className="hidden sm:inline">GET STARTED</span>
               <span className="sm:hidden">START</span>
-              <span aria-hidden>→</span>
+              <span aria-hidden className="transition-transform duration-[var(--dur-hover)] group-hover:translate-x-0.5">→</span>
             </Link>
           </div>
         </div>
@@ -799,26 +800,28 @@ export default function LandingPage() {
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 bg-grid bg-grid-fade opacity-60" />
         <div className="absolute right-[-10%] top-[-120px] w-[820px] h-[820px] max-w-[130vw] glow-radial opacity-60" />
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 pt-14 sm:pt-20 pb-16 sm:pb-24 grid lg:grid-cols-12 gap-10 lg:gap-8 items-center">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 pt-14 sm:pt-20 pb-20 sm:pb-32 grid lg:grid-cols-12 gap-10 lg:gap-8 items-center">
           {/* Left: copy */}
           <div className="lg:col-span-5">
             <Reveal as="h1" className="font-display font-black uppercase tracking-tight text-[40px] sm:text-[56px] md:text-[64px] lg:text-[72px] leading-[1.02] sm:leading-[0.98]">
               Understand your <span className="text-fg-2">trading.</span><br />
               <span className="text-profit">Improve</span> every day.
             </Reveal>
-            <Reveal as="p" delay={160} className="text-fg-2 mt-6 max-w-xl text-[13px] sm:text-[15px] leading-relaxed">
-              TRADElogs connects to your MetaTrader 5 account and imports every trade for you. It shows you clear, easy-to-read insights about your habits — like impulse trades, chasing the market, and the times of day you tend to lose money.
+            <Reveal as="p" delay={160} className="text-fg-2 mt-6 max-w-md text-[15px] sm:text-[17px] leading-relaxed">
+              Connects to MetaTrader 5, imports every trade automatically, and shows you the habits quietly costing you money.
             </Reveal>
-            <Reveal delay={240} className="mt-8 flex flex-col sm:flex-row gap-3">
-              <Link href="/dashboard" className="btn btn-primary px-6 py-3 text-[13px] justify-center" data-testid="hero-cta-launch">
+            <Reveal delay={240} className="mt-8 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-5">
+              <Link href="/dashboard" className="btn btn-primary group px-6 py-3 text-[13px] justify-center" data-testid="hero-cta-launch">
                 GET STARTED FREE
+                <span aria-hidden className="transition-transform duration-[var(--dur-hover)] group-hover:translate-x-0.5">→</span>
               </Link>
-              <a href="#how" className="btn btn-ghost px-6 py-3 text-[13px] justify-center" data-testid="hero-cta-features">
-                SEE HOW IT WORKS
+              <a href="#how" className="group inline-flex items-center justify-center gap-1.5 text-[13px] tracking-wide text-fg-2 hover:text-fg transition-colors" data-testid="hero-cta-features">
+                See how it works
+                <span aria-hidden className="transition-transform duration-[var(--dur-hover)] group-hover:translate-x-0.5">→</span>
               </a>
             </Reveal>
             {/* Trust stats */}
-            <Reveal delay={320} className="mt-10 grid grid-cols-3 max-w-lg border border-border">
+            <Reveal delay={320} className="mt-10 grid grid-cols-3 max-w-lg border border-border rounded-xl overflow-hidden">
               {[
                 { l: 'Trades imported', v: '14.2M' },
                 { l: 'Avg reward:risk', v: '1:2.4' },
@@ -839,19 +842,19 @@ export default function LandingPage() {
 
       {/* MISSION strip */}
       <section className="section-raised section-grain relative overflow-hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-14 sm:py-20 relative">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 pt-20 sm:pt-28 pb-16 sm:pb-24 relative">
           <WatermarkNumber className="right-0 -top-8 lg:-top-12">WHY</WatermarkNumber>
           <div className="relative grid lg:grid-cols-12 gap-8 lg:gap-10 items-end">
             <Reveal className="lg:col-span-8">
               <Eyebrow className="mb-4">WHY TRADELOGS</Eyebrow>
               <h2 className="font-display font-black tracking-tighter text-2xl sm:text-3xl md:text-4xl lg:text-5xl leading-[1.05]">
-                <span className="text-fg-2">A trading journal that actually helps you </span>
-                <span className="text-gradient-brand">learn and improve </span>
-                <span className="text-fg-2">— not just take notes.</span>
+                <span className="text-fg">A trading journal that actually helps you </span>
+                <span className="text-gradient-brand">learn and improve</span>
+                <span className="text-fg"> — not just take notes.</span>
               </h2>
             </Reveal>
             <Reveal delay={120} className="lg:col-span-4">
-              <p className="text-fg-2 text-[12px] sm:text-[13px] leading-relaxed">
+              <p className="text-fg-2 text-[14px] sm:text-[15px] leading-relaxed">
                 Most journals are just spreadsheets you forget to fill in. TRADElogs reads every fill automatically and turns it into habits you can actually fix.
               </p>
               <div className="mt-5 grid grid-cols-3 gap-3">
@@ -880,10 +883,10 @@ export default function LandingPage() {
           <WatermarkNumber className="left-1/2 -translate-x-1/2 -top-2 sm:-top-6 text-[90px] sm:text-[170px]">PLATFORM</WatermarkNumber>
           <Reveal className="relative text-center max-w-2xl mx-auto">
             <Eyebrow>PLATFORM</Eyebrow>
-            <h2 className="font-display font-black tracking-tighter text-3xl sm:text-4xl lg:text-5xl mt-3">
+            <h2 className="font-display font-black tracking-tighter text-3xl sm:text-4xl lg:text-5xl mt-3 uppercase">
               Built for <span className="text-gradient-brand">serious traders.</span>
             </h2>
-            <p className="text-fg-2 text-[12px] sm:text-[13px] mt-5">
+            <p className="text-fg-2 text-[14px] sm:text-[15px] mt-5">
               Everything you need to journal, analyze and improve — powered by insights that actually understand your trading.
             </p>
           </Reveal>
@@ -973,7 +976,7 @@ export default function LandingPage() {
           <WatermarkNumber className="hidden sm:block right-0 -top-4 lg:-top-10">HOW</WatermarkNumber>
           <Reveal className="max-w-2xl relative">
             <Eyebrow>HOW IT WORKS</Eyebrow>
-            <h2 className="font-display font-black tracking-tighter text-3xl sm:text-4xl lg:text-5xl mt-3">
+            <h2 className="font-display font-black tracking-tighter text-3xl sm:text-4xl lg:text-5xl mt-3 uppercase">
               From broker to <span className="text-gradient-brand">edge.</span>
             </h2>
           </Reveal>
@@ -1025,7 +1028,7 @@ export default function LandingPage() {
                         <h3 className={`font-display font-bold text-[15px] sm:text-lg tracking-tight ${active ? 'text-fg' : 'text-fg-2'}`}>{s.title}</h3>
                         <span className="text-[9px] tracking-[0.18em] text-fg-3 uppercase shrink-0">{s.meta}</span>
                       </div>
-                      <p className="text-fg-2 text-[12px] sm:text-[13px] leading-relaxed mt-2 max-w-md">{s.body}</p>
+                      <p className="text-fg-2 text-[14px] sm:text-[15px] leading-relaxed mt-2 max-w-md">{s.body}</p>
                       {/* Auto-advance track — always present so height never changes */}
                       <div className="mt-3 h-0.5 bg-border-soft/70 rounded-full overflow-hidden">
                         <div
@@ -1059,7 +1062,7 @@ export default function LandingPage() {
                         data-testid={`how-visual-${current.key}`}
                       >
                         <div className="flex items-center justify-between mb-5 shrink-0">
-                          <span className="text-[10px] tracking-[0.22em] text-fg-3">// {current.label}</span>
+                          <span className="text-[10px] tracking-[0.22em] text-fg-3">{current.label}</span>
                           <span className="text-[10px] text-profit flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-profit pulse-dot" /> LIVE</span>
                         </div>
                         <div className="flex-1 flex items-stretch min-h-0">{current.visual}</div>
@@ -1079,10 +1082,10 @@ export default function LandingPage() {
           <WatermarkNumber className="left-1/2 -translate-x-1/2 -top-2 sm:-top-6">LIVE</WatermarkNumber>
           <Reveal className="relative text-center max-w-2xl mx-auto">
             <Eyebrow>LIVE EXPERIENCE</Eyebrow>
-            <h2 className="font-display font-black tracking-tighter text-3xl sm:text-4xl lg:text-5xl mt-3">
+            <h2 className="font-display font-black tracking-tighter text-3xl sm:text-4xl lg:text-5xl mt-3 uppercase">
               Watch trades <span className="text-gradient-brand">flow in.</span>
             </h2>
-            <p className="text-fg-2 text-[12px] sm:text-[13px] mt-5">
+            <p className="text-fg-2 text-[14px] sm:text-[15px] mt-5">
               Every trade auto-logged, categorized and scored in real time. No manual entry — just connect and trade.
             </p>
           </Reveal>
@@ -1099,10 +1102,10 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-16 sm:py-24">
           <Reveal className="text-center max-w-2xl mx-auto">
             <Eyebrow>SEE IT IN ACTION</Eyebrow>
-            <h2 className="font-display font-black tracking-tighter text-3xl sm:text-4xl lg:text-5xl mt-3">
+            <h2 className="font-display font-black tracking-tighter text-3xl sm:text-4xl lg:text-5xl mt-3 uppercase">
               The whole picture, <span className="text-gradient-brand">one screen.</span>
             </h2>
-            <p className="text-fg-2 text-[12px] sm:text-[13px] mt-5">
+            <p className="text-fg-2 text-[14px] sm:text-[15px] mt-5">
               Real screens from the app — your analytics and trade replay, exactly as you&apos;ll see them.
             </p>
           </Reveal>
@@ -1112,12 +1115,12 @@ export default function LandingPage() {
             <Reveal className="lg:col-span-5">
               <Eyebrow>ANALYTICS</Eyebrow>
               <h3 className="font-display font-black text-2xl sm:text-3xl lg:text-4xl tracking-tighter mt-4">Every angle of your edge.</h3>
-              <p className="text-fg-2 text-[12px] sm:text-[13px] mt-4 max-w-md leading-relaxed">
+              <p className="text-fg-2 text-[14px] sm:text-[15px] mt-4 max-w-md leading-relaxed">
                 Win rate, profit factor, reward-to-risk, drawdown, best sessions and hold times — all in one clean, sortable view you can actually read.
               </p>
               <ul className="mt-6 flex flex-col gap-2.5 max-w-md">
                 {['Break down performance by session, symbol and setup', 'Spot your most and least profitable habits', 'Sort and filter every metric in one click'].map(t => (
-                  <li key={t} className="flex items-start gap-2.5 text-[12px] sm:text-[13px] text-fg-2 leading-snug">
+                  <li key={t} className="flex items-start gap-2.5 text-[14px] sm:text-[15px] text-fg-2 leading-snug">
                     <span className="mt-0.5 w-4 h-4 shrink-0 rounded-full bg-profit/12 border border-profit/30 flex items-center justify-center text-profit text-[9px]">✓</span>
                     {t}
                   </li>
@@ -1130,10 +1133,10 @@ export default function LandingPage() {
                 <span className="w-px h-3 bg-border" />
                 <span><span className="text-fg-2 numeric">21+</span> metrics</span>
               </div>
-              <a href="#features" className="group inline-flex items-center gap-1.5 mt-6 text-[12px] tracking-wide text-profit">
-                Explore analytics
+              <Link href="/dashboard" className="group inline-flex items-center gap-1.5 mt-6 text-[13px] tracking-wide text-profit">
+                Explore your analytics
                 <span aria-hidden className="transition-transform group-hover:translate-x-0.5">→</span>
-              </a>
+              </Link>
             </Reveal>
             <Reveal delay={120} className="lg:col-span-7 relative">
               <ScreenshotFrame src="/Analytics.png" alt="TRADElogs analytics screen" width={3420} height={2214} mobileSrc="/MobileAnalytics.png" mobileWidth={2894} mobileHeight={1864} sizes="(max-width: 1024px) 96vw, 58vw" className="-mx-2 sm:mx-0" />
@@ -1172,12 +1175,12 @@ export default function LandingPage() {
             <Reveal className="lg:col-span-5 lg:order-1">
               <Eyebrow>CHART REPLAY</Eyebrow>
               <h3 className="font-display font-black text-2xl sm:text-3xl lg:text-4xl tracking-tighter mt-4">Replay the moment it mattered.</h3>
-              <p className="text-fg-2 text-[12px] sm:text-[13px] mt-4 max-w-md leading-relaxed">
+              <p className="text-fg-2 text-[14px] sm:text-[15px] mt-4 max-w-md leading-relaxed">
                 Step back into any trade bar-by-bar. See the hesitation, the early exit, the level you should have respected — then fix it for next time.
               </p>
               <ul className="mt-6 flex flex-col gap-2.5 max-w-md">
                 {['Scrub any trade bar-by-bar on any timeframe', 'Entry and exit marked exactly where they fired', 'Add notes and tags to lock in the lesson'].map(t => (
-                  <li key={t} className="flex items-start gap-2.5 text-[12px] sm:text-[13px] text-fg-2 leading-snug">
+                  <li key={t} className="flex items-start gap-2.5 text-[14px] sm:text-[15px] text-fg-2 leading-snug">
                     <span className="mt-0.5 w-4 h-4 shrink-0 rounded-full bg-profit/12 border border-profit/30 flex items-center justify-center text-profit text-[9px]">✓</span>
                     {t}
                   </li>
@@ -1190,10 +1193,10 @@ export default function LandingPage() {
                 <span className="w-px h-3 bg-border" />
                 <span>Notes &amp; tags</span>
               </div>
-              <a href="#features" className="group inline-flex items-center gap-1.5 mt-6 text-[12px] tracking-wide text-profit">
-                See the replay
+              <Link href="/dashboard" className="group inline-flex items-center gap-1.5 mt-6 text-[13px] tracking-wide text-profit">
+                See it in the app
                 <span aria-hidden className="transition-transform group-hover:translate-x-0.5">→</span>
-              </a>
+              </Link>
             </Reveal>
           </div>
         </div>
@@ -1204,10 +1207,10 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-16 sm:py-24 grid lg:grid-cols-12 gap-8 lg:gap-10 items-center">
           <Reveal className="lg:col-span-6">
             <Eyebrow>INSIGHTS</Eyebrow>
-            <h2 className="font-display font-black tracking-tighter text-3xl sm:text-4xl lg:text-5xl mt-3">
+            <h2 className="font-display font-black tracking-tighter text-3xl sm:text-4xl lg:text-5xl mt-3 uppercase">
               Insights that actually <span className="text-gradient-brand">know your trading.</span>
             </h2>
-            <p className="text-fg-2 text-[12px] sm:text-[13px] mt-5 max-w-md leading-relaxed">
+            <p className="text-fg-2 text-[14px] sm:text-[15px] mt-5 max-w-md leading-relaxed">
               Not generic advice. TRADElogs reads every trade you&apos;ve taken and surfaces the leaks — time-of-day patterns, tilt cycles, and the setups that quietly print.
             </p>
             <div className="mt-6 flex flex-wrap gap-2 max-w-md">
@@ -1225,7 +1228,7 @@ export default function LandingPage() {
             <p className="font-display font-bold text-lg sm:text-xl tracking-tight leading-snug">
               You&apos;re on tilt. Losses are up <span className="text-loss">2.37×</span>.
             </p>
-            <p className="text-fg-2 text-[12px] sm:text-[13px] mt-2 leading-relaxed">
+            <p className="text-fg-2 text-[14px] sm:text-[15px] mt-2 leading-relaxed">
               What I noticed: you size up right after a winner. Set a daily loss limit of $200, and cap size to 1 lot after two losses.
             </p>
             <div className="mt-4 flex flex-col gap-2">
@@ -1246,26 +1249,26 @@ export default function LandingPage() {
         <Reveal className="relative flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8 sm:mb-10">
           <div>
             <Eyebrow>WHAT YOU GET</Eyebrow>
-            <h2 className="font-display font-black tracking-tighter text-3xl sm:text-4xl lg:text-5xl mt-3">Understand every trade.</h2>
+            <h2 className="font-display font-black tracking-tighter text-3xl sm:text-4xl lg:text-5xl mt-3 uppercase">Understand every trade.</h2>
           </div>
-          <p className="text-fg-2 text-[12px] max-w-sm">Six simple tools to help you review, learn and improve your trading.</p>
+          <p className="text-fg-2 text-[14px] sm:text-[15px] max-w-sm leading-relaxed">Six simple tools to review, learn and improve.</p>
         </Reveal>
 
         <div className="grid grid-cols-12 gap-2 sm:gap-3">
           <Reveal className="tcard col-span-12 lg:col-span-7 p-5 sm:p-6 min-h-[280px] sm:min-h-[320px] flex flex-col" data-testid="feature-mt5">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] sm:text-[11px] tracking-[0.25em] text-fg-3">01 // MT5 CONNECTION</span>
+              <span className="text-[10px] sm:text-[11px] tracking-[0.25em] text-fg-3">01 · MT5 CONNECTION</span>
               <span className="text-[10px] text-profit">● CONNECTED</span>
             </div>
             <h3 className="font-display font-black text-2xl sm:text-3xl tracking-tighter mt-4">MT5 sync made simple.</h3>
-            <p className="text-fg-2 text-[12px] sm:text-[13px] mt-3 max-w-md">Connect securely with a read-only login. We import every trade, fee and commission for you automatically — no manual work.</p>
+            <p className="text-fg-2 text-[14px] sm:text-[15px] mt-3 max-w-md">Connect securely with a read-only login. We import every trade, fee and commission for you automatically — no manual work.</p>
             <div className="mt-auto pt-6"><SyntheticChart height={140} /></div>
           </Reveal>
 
           <Reveal delay={80} className="tcard col-span-12 lg:col-span-5 p-5 sm:p-6 flex flex-col" data-testid="feature-behavior">
-            <span className="text-[10px] sm:text-[11px] tracking-[0.25em] text-fg-3">02 // YOUR TRADING SCORE</span>
+            <span className="text-[10px] sm:text-[11px] tracking-[0.25em] text-fg-3">02 · YOUR TRADING SCORE</span>
             <h3 className="font-display font-black text-2xl tracking-tighter mt-4">Your trading score</h3>
-            <p className="text-fg-2 text-[12px] sm:text-[13px] mt-3">See how disciplined you are and where you can do better — like revenge trades, impulse entries and exiting too early.</p>
+            <p className="text-fg-2 text-[14px] sm:text-[15px] mt-3">See how disciplined you are and where you can do better — like revenge trades, impulse entries and exiting too early.</p>
             <div className="mt-6 grid grid-cols-2 gap-2 sm:gap-3">
               {[
                 { l: 'Discipline score', v: '88', t: 'profit' },
@@ -1290,7 +1293,7 @@ export default function LandingPage() {
             <Reveal key={c.n} delay={i * 60} className="tcard tcard-hover col-span-12 sm:col-span-6 lg:col-span-3 p-4 sm:p-5 min-h-[160px] sm:min-h-[180px] flex flex-col" data-testid={`feature-${c.n}`}>
               <span className="text-[10px] tracking-[0.25em] text-fg-3">{c.n}</span>
               <h4 className="font-display font-bold text-lg sm:text-xl tracking-tight mt-3">{c.title}</h4>
-              <p className="text-fg-2 text-[12px] mt-2">{c.body}</p>
+              <p className="text-fg-2 text-[13px] mt-2 leading-relaxed">{c.body}</p>
             </Reveal>
           ))}
         </div>
@@ -1302,7 +1305,7 @@ export default function LandingPage() {
         <WatermarkNumber className="right-0 top-2 sm:top-4">PROOF</WatermarkNumber>
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-16 sm:py-20 grid lg:grid-cols-12 gap-8 lg:gap-10 items-center">
           <Reveal className="lg:col-span-7">
-            <Eyebrow className="mb-4">TRADER STORY // 2026.01</Eyebrow>
+            <Eyebrow className="mb-4">TRADER STORY · 2026.01</Eyebrow>
             <p className="font-display font-bold text-xl sm:text-2xl md:text-3xl tracking-tight leading-snug">
               &ldquo;The trading score showed me something I couldn&apos;t see — I was revenge trading every Tuesday after the London session. Fixing that one habit really turned my results around.&rdquo;
             </p>
@@ -1329,7 +1332,7 @@ export default function LandingPage() {
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-10 py-16 sm:py-24">
         <Reveal>
           <Eyebrow className="mb-3">HELP</Eyebrow>
-          <h2 className="font-display font-black tracking-tighter text-3xl sm:text-4xl lg:text-5xl mb-8 sm:mb-10">Common questions.</h2>
+          <h2 className="font-display font-black tracking-tighter text-3xl sm:text-4xl lg:text-5xl mb-8 sm:mb-10 uppercase">Common questions.</h2>
         </Reveal>
         <div className="border-t border-border">
           {[
@@ -1343,7 +1346,7 @@ export default function LandingPage() {
                 <span className="text-[13px] sm:text-[14px] tracking-tight">{item.q}</span>
                 <span className="text-fg-3 text-xl group-open:rotate-45 transition-transform shrink-0">+</span>
               </summary>
-              <p className="pb-5 text-fg-2 text-[12px] sm:text-[13px] leading-relaxed max-w-3xl">{item.a}</p>
+              <p className="pb-5 text-fg-2 text-[14px] sm:text-[15px] leading-relaxed max-w-3xl">{item.a}</p>
             </details>
           ))}
         </div>
@@ -1351,14 +1354,14 @@ export default function LandingPage() {
       </section>
 
       {/* CTA — glow card */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-16 sm:py-24">
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-24 sm:py-36">
         <Reveal className="relative tcard overflow-hidden px-6 py-14 sm:px-10 sm:py-20 text-center">
           <div className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 w-[700px] h-[700px] max-w-[160%] glow-radial" />
           <div className="relative">
-            <h2 className="font-display font-black tracking-tighter text-4xl sm:text-5xl md:text-6xl leading-[0.95]">
+            <h2 className="font-display font-black tracking-tighter text-4xl sm:text-5xl md:text-6xl leading-[0.95] uppercase">
               Ready to find your <span className="text-gradient-brand">edge?</span>
             </h2>
-            <p className="text-fg-2 text-[12px] sm:text-[13px] max-w-md mx-auto mt-5 sm:mt-6">Connect your MT5 in 90 seconds. See what&apos;s working by tomorrow morning.</p>
+            <p className="text-fg-2 text-[14px] sm:text-[15px] max-w-md mx-auto mt-5 sm:mt-6">Connect your MT5 in 90 seconds. See what&apos;s working by tomorrow morning.</p>
             <Link href="/dashboard" className="btn btn-primary px-7 py-3 sm:px-8 sm:py-3.5 mt-7 sm:mt-8 inline-flex" data-testid="footer-cta-launch">
               GET STARTED FREE →
             </Link>
@@ -1397,7 +1400,7 @@ export default function LandingPage() {
 
         <div className="border-t border-border">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-[10px] text-fg-3 tracking-widest">
-            <span className="flex items-center gap-2"><span className="w-2 h-2 bg-profit pulse-dot shrink-0" /> TRADELOGS // TRADING JOURNAL // EST 2026</span>
+            <span className="flex items-center gap-2"><span className="w-2 h-2 bg-profit pulse-dot shrink-0" /> TRADELOGS · TRADING JOURNAL</span>
             <span>© 2026 TRADElogs. All rights reserved.</span>
           </div>
         </div>
