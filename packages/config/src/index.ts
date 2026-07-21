@@ -67,7 +67,7 @@ export type Env = z.infer<typeof envSchema> & {
 };
 
 const AI_DEFAULTS = {
-  groq: { model: 'moonshotai/kimi-k2-instruct', baseUrl: 'https://api.groq.com/openai/v1' },
+  groq: { model: 'llama-3.3-70b-versatile', baseUrl: 'https://api.groq.com/openai/v1' },
   openai: { model: 'gpt-4o-mini', baseUrl: 'https://api.openai.com/v1' },
 } as const;
 
