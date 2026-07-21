@@ -139,6 +139,92 @@ export interface AccountStats {
 
 // ─── API calls ────────────────────────────────────────────────────────────────
 
+// ─── AI coach types ─────────────────────────────────────────────────────────
+
+export interface AiChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export interface AiMessage extends AiChatMessage {
+  id: string;
+  createdAt: string;
+}
+
+export interface AiConversationSummary {
+  id: string;
+  title: string | null;
+  brokerAccountId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AiConversationDetail extends AiConversationSummary {
+  messages: AiMessage[];
+}
+
+export interface AiChatResult {
+  conversationId?: string;
+}
+
+// Streams the coach reply over SSE, invoking `onToken` per chunk. Resolves with
+// the (possibly newly-created) conversationId once the stream completes. In mock
+// mode there is no backend, so a canned reply is emitted instead.
+async function aiChat(
+  body: { accountId: string; conversationId?: string; messages: AiChatMessage[] },
+  onToken: (t: string) => void,
+  onError?: (msg: string) => void,
+): Promise<AiChatResult> {
+  if (USE_MOCKS) {
+    const text = 'Preview mode: connect the real backend to chat with your AI coach about your trading data.';
+    for (const word of text.split(' ')) onToken(word + ' ');
+    return {};
+  }
+
+  const res = await fetch(`${API}/api/ai/chat`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok || !res.body) {
+    const json = await res.json().catch(() => null);
+    const err = new Error(json?.error?.message ?? `Request failed: ${res.status}`) as Error & { code?: string };
+    err.code = json?.error?.code;
+    throw err;
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let conversationId: string | undefined;
+
+  // Parse the SSE stream: events are separated by a blank line, payload on `data:`.
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const events = buffer.split('\n\n');
+    buffer = events.pop() ?? '';
+    for (const evt of events) {
+      const line = evt.trim();
+      if (!line.startsWith('data:')) continue;
+      let payload: { token?: string; error?: string; done?: boolean; conversationId?: string };
+      try {
+        payload = JSON.parse(line.slice(5).trim());
+      } catch {
+        continue;
+      }
+      if (payload.token) onToken(payload.token);
+      if (payload.error && onError) onError(payload.error);
+      if (payload.done) conversationId = payload.conversationId;
+    }
+  }
+
+  return { conversationId };
+}
+
 export const api = {
   accounts: {
     connect: (body: { mt5Login: number; password: string; server: string; broker?: string }) =>
@@ -160,5 +246,10 @@ export const api = {
     update: (id: string, body: Partial<{ title: string; body: string; emotion: string; tags: string[]; entryDate: string }>) =>
       apiFetch<JournalEntry>(`${PREFIX}/journal/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
     delete: (id: string) => apiFetch<{ ok: boolean }>(`${PREFIX}/journal/${id}`, { method: 'DELETE' }),
+  },
+  ai: {
+    chat: aiChat,
+    conversations: () => apiFetch<AiConversationSummary[]>(`${PREFIX}/ai/conversations`),
+    conversation: (id: string) => apiFetch<AiConversationDetail>(`${PREFIX}/ai/conversations/${id}`),
   },
 };
