@@ -30,3 +30,24 @@ export const dealsQuerySchema = z.object({
 });
 
 export type DealsQuery = z.infer<typeof dealsQuerySchema>;
+
+// ── AI coach chat ─────────────────────────────────────────────────────────────
+// A chat turn: the account to ground on, an optional existing conversation to
+// append to, and the message history. Content/length caps keep prompt size (and
+// cost) bounded and blunt abuse.
+
+export const aiChatSchema = z.object({
+  accountId: z.string().min(1),
+  conversationId: z.string().min(1).optional(),
+  messages: z
+    .array(
+      z.object({
+        role: z.enum(['user', 'assistant']),
+        content: z.string().min(1).max(4000),
+      }),
+    )
+    .min(1)
+    .max(20),
+});
+
+export type AiChatInput = z.infer<typeof aiChatSchema>;
