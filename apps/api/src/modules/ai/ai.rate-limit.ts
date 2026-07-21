@@ -12,11 +12,25 @@ const WINDOW_SECONDS = 60;
 const MAX_REQUESTS = 20; // per user, per window
 
 // ── Redis backend (shared across instances) ──────────────────────────────────
+// When Redis is unreachable we transparently fall back to the in-memory backend
+// rather than losing rate-limiting. `redisHealthy` flips off on connection error
+// (logged once) so we stop hammering a dead endpoint and don't spam logs.
 let redis: Redis | null = null;
+let redisHealthy = false;
 if (env.REDIS_URL) {
   try {
-    redis = new Redis(env.REDIS_URL, { maxRetriesPerRequest: 2, lazyConnect: false });
-    redis.on('error', err => logger.warn(`AI rate-limit Redis error: ${err.message}`));
+    redis = new Redis(env.REDIS_URL, {
+      maxRetriesPerRequest: 1,
+      enableOfflineQueue: false,
+      // Give up reconnecting after a few attempts; we degrade to in-memory.
+      retryStrategy: times => (times > 3 ? null : Math.min(times * 200, 1000)),
+    });
+    redis.on('ready', () => { redisHealthy = true; });
+    redis.on('error', () => {
+      if (redisHealthy) logger.warn('AI rate-limit Redis unavailable — falling back to in-memory');
+      redisHealthy = false;
+    });
+    redis.on('end', () => { redisHealthy = false; });
   } catch (err) {
     logger.warn(`AI rate-limit Redis init failed, using in-memory: ${(err as Error).message}`);
     redis = null;
@@ -27,11 +41,15 @@ if (env.REDIS_URL) {
 const memory = new Map<string, { count: number; resetAt: number }>();
 
 async function hit(userId: string): Promise<boolean> {
-  if (redis) {
-    const key = `airl:${userId}`;
-    const count = await redis.incr(key);
-    if (count === 1) await redis.expire(key, WINDOW_SECONDS);
-    return count <= MAX_REQUESTS;
+  if (redis && redisHealthy) {
+    try {
+      const key = `airl:${userId}`;
+      const count = await redis.incr(key);
+      if (count === 1) await redis.expire(key, WINDOW_SECONDS);
+      return count <= MAX_REQUESTS;
+    } catch {
+      // Redis hiccup — fall through to the in-memory backend below.
+    }
   }
   const now = Date.now();
   const entry = memory.get(userId);
