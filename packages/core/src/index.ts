@@ -11,3 +11,9 @@ export type {
 
 export { reconstructTrades } from './reconstruction/reconstruct.js';
 export type { ReconstructionResult } from './reconstruction/reconstruct.js';
+
+export { buildInsights, NEGATIVE_EMOTIONS } from './analysis/insights.js';
+export type { Insight, Tone, InsightIcon, JournalLike } from './analysis/insights.js';
+
+export { buildTraderContext, RECENT_TRADES_CAP } from './analysis/context.js';
+export type { TraderContext, RecentTradeDigest } from './analysis/context.js';
