@@ -43,7 +43,7 @@ export function buildInsights(stats: AccountStats, trades: Trade[], journal: Jou
   }
 
   // Long vs short edge
-  const { long, short } = stats.byDirection;
+  const { long, short } = stats.byDirection ?? { long: { trades: 0, wins: 0, netPnl: 0 }, short: { trades: 0, wins: 0, netPnl: 0 } };
   if (long.trades > 0 && short.trades > 0) {
     const diff = long.netPnl - short.netPnl;
     if (Math.abs(diff) > 1) {

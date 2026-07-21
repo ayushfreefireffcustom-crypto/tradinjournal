@@ -208,3 +208,16 @@ export async function fetchStats(userId: string, accountId: string): Promise<Acc
   const trades = reconstructTrades(deals);
   return computeStats(trades, balance);
 }
+
+// Trades + stats from a SINGLE bridge fetch. The MT5 bridge serialises on one
+// terminal, so callers that need both (e.g. the AI coach grounding) must not run
+// fetchTrades + fetchStats concurrently — that double-hits the terminal and can
+// fail. This does one login and derives both.
+export async function fetchStatsAndTrades(
+  userId: string,
+  accountId: string,
+): Promise<{ stats: AccountStats; trades: Trade[] }> {
+  const { deals, balance } = await getCredsAndDeals(userId, accountId);
+  const trades = reconstructTrades(deals);
+  return { trades, stats: computeStats(trades, balance) };
+}
