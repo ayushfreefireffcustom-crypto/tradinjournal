@@ -39,11 +39,37 @@ const envSchema = z.object({
 
   CREDENTIAL_ENCRYPTION_KEY: z.string().optional(),
 
+  // ── AI trading coach (LLM) ───────────────────────────────────────────────
+  // Provider is OpenAI-wire-compatible so one adapter serves Groq (default),
+  // OpenAI, or any compatible host via AI_BASE_URL. When no key is set (typical
+  // in local dev) the AI layer degrades gracefully to the rule-based insight
+  // engine — same optional-with-fallback approach as RESEND_API_KEY above.
+  AI_PROVIDER: z.enum(['groq', 'openai', 'none']).default('none'),
+  AI_MODEL: z.string().optional(),
+  AI_BASE_URL: z.string().url().optional(),
+  GROQ_API_KEY: z.string().optional(),
+  OPENAI_API_KEY: z.string().optional(),
+
   MT5_BRIDGE_URL: z.string().url().default('http://localhost:8000'),
   MT5_BRIDGE_SHARED_SECRET: z.string().default('dev-secret-change-in-production'),
 });
 
-export type Env = z.infer<typeof envSchema> & { APP_URL: string };
+export type Env = z.infer<typeof envSchema> & {
+  APP_URL: string;
+  /** True when a usable AI provider + key are configured. */
+  AI_ENABLED: boolean;
+  /** Resolved model id (provider default applied when AI_MODEL is unset). */
+  AI_MODEL_RESOLVED: string;
+  /** Resolved OpenAI-compatible base URL (provider default applied when unset). */
+  AI_BASE_URL_RESOLVED: string;
+  /** The API key for the selected provider (Groq or OpenAI), if present. */
+  AI_API_KEY?: string;
+};
+
+const AI_DEFAULTS = {
+  groq: { model: 'moonshotai/kimi-k2-instruct', baseUrl: 'https://api.groq.com/openai/v1' },
+  openai: { model: 'gpt-4o-mini', baseUrl: 'https://api.openai.com/v1' },
+} as const;
 
 function loadEnv(): Env {
   const parsed = envSchema.safeParse(process.env);
@@ -55,7 +81,18 @@ function loadEnv(): Env {
   // set explicitly, reuse CORS_ORIGIN (first origin if comma-separated) — it's
   // always the deployed web origin in prod, so links never point to localhost.
   const APP_URL = parsed.data.APP_URL ?? parsed.data.CORS_ORIGIN.split(',')[0]!.trim();
-  return { ...parsed.data, APP_URL };
+
+  // Resolve AI provider settings. Key comes from the provider-specific env var;
+  // model / base URL fall back to the provider's default when unset.
+  const provider = parsed.data.AI_PROVIDER;
+  const AI_API_KEY =
+    provider === 'groq' ? parsed.data.GROQ_API_KEY : provider === 'openai' ? parsed.data.OPENAI_API_KEY : undefined;
+  const defaults = provider === 'none' ? AI_DEFAULTS.groq : AI_DEFAULTS[provider];
+  const AI_MODEL_RESOLVED = parsed.data.AI_MODEL ?? defaults.model;
+  const AI_BASE_URL_RESOLVED = parsed.data.AI_BASE_URL ?? defaults.baseUrl;
+  const AI_ENABLED = provider !== 'none' && !!AI_API_KEY;
+
+  return { ...parsed.data, APP_URL, AI_ENABLED, AI_MODEL_RESOLVED, AI_BASE_URL_RESOLVED, AI_API_KEY };
 }
 
 export const env: Env = loadEnv();
