@@ -70,6 +70,12 @@ export interface DayStat {
   netPnl: number;
 }
 
+export interface DirectionStat {
+  trades: number;
+  wins: number;
+  netPnl: number;
+}
+
 export interface AccountStats {
   netPnl: number;
   totalTrades: number;
@@ -91,4 +97,7 @@ export interface AccountStats {
   equityCurve: EquityPoint[];
   bySymbol: SymbolStat[];
   byDay: DayStat[];
+  byDirection: { long: DirectionStat; short: DirectionStat };
+  maxWinStreak: number;
+  maxLossStreak: number;
 }
