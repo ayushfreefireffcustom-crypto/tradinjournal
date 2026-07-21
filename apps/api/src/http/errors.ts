@@ -49,6 +49,21 @@ export class BrokerConnectionError extends AppError {
   }
 }
 
+// No AI provider is configured (no API key / AI_PROVIDER=none) or the provider
+// call failed. 503 so callers can fall back to rule-based insights gracefully.
+export class AiUnavailableError extends AppError {
+  constructor(message = 'AI coach is unavailable right now.') {
+    super(503, 'AI_UNAVAILABLE', message);
+  }
+}
+
+// The user exceeded their per-user AI request budget for the current window.
+export class AiRateLimitError extends AppError {
+  constructor(message = "You're sending messages too fast — give the coach a moment and try again.") {
+    super(429, 'AI_RATE_LIMIT', message);
+  }
+}
+
 // The MT5 login/password we have on file was rejected by the broker — almost
 // always because the trader changed their MT5 password. 409 (not 5xx) so it
 // isn't logged as a server fault and the readable message reaches the client.
