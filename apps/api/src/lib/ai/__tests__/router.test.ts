@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { classifyLane } from '../router.js';
+import { routeQuery } from '../router.js';
 import type { AiProvider, ChatMessage } from '../provider.js';
 
 // A stub provider whose complete() returns a scripted string (or throws), so we
-// exercise classifyLane's parsing + fail-safe behaviour without hitting a model.
+// exercise routeQuery's parsing + fail-safe behaviour without hitting a model.
 function stubProvider(reply: string | Error): AiProvider {
   return {
     model: 'stub',
@@ -18,39 +18,55 @@ function stubProvider(reply: string | Error): AiProvider {
   };
 }
 
-describe('classifyLane', () => {
-  it('returns personal for own-history questions', async () => {
-    const lane = await classifyLane('why do I lose on Fridays?', stubProvider('{"lane":"personal"}'));
-    expect(lane).toBe('personal');
+describe('routeQuery', () => {
+  it('returns personal (no search query) for own-history questions', async () => {
+    const r = await routeQuery('why do I lose on Fridays?', stubProvider('{"lane":"personal","searchQuery":""}'));
+    expect(r.lane).toBe('personal');
+    expect(r.searchQuery).toBe('');
   });
 
-  it('returns web for external/current-fact questions', async () => {
-    const lane = await classifyLane("what's on the economic calendar this week?", stubProvider('{"lane":"web"}'));
-    expect(lane).toBe('web');
+  it('returns web with a focused search query for external questions', async () => {
+    const r = await routeQuery(
+      "what's on the economic calendar this week?",
+      stubProvider('{"lane":"web","searchQuery":"economic calendar this week high impact events"}'),
+    );
+    expect(r.lane).toBe('web');
+    expect(r.searchQuery).toContain('economic calendar');
   });
 
   it('returns hybrid when both are needed', async () => {
-    const lane = await classifyLane('given my NFP losses, what is coming up this week?', stubProvider('{"lane":"hybrid"}'));
-    expect(lane).toBe('hybrid');
+    const r = await routeQuery(
+      'given my NFP losses, what is coming up this week?',
+      stubProvider('{"lane":"hybrid","searchQuery":"NFP economic calendar this week"}'),
+    );
+    expect(r.lane).toBe('hybrid');
+    expect(r.searchQuery).toContain('calendar');
   });
 
   it('tolerates code fences / surrounding prose', async () => {
-    const lane = await classifyLane('q', stubProvider('Sure!\n```json\n{"lane":"web"}\n```'));
-    expect(lane).toBe('web');
+    const r = await routeQuery('q', stubProvider('Sure!\n```json\n{"lane":"web","searchQuery":"gold price today"}\n```'));
+    expect(r.lane).toBe('web');
+    expect(r.searchQuery).toBe('gold price today');
+  });
+
+  it('falls back to the raw question when a web lane has no query', async () => {
+    const r = await routeQuery('what happened to gold?', stubProvider('{"lane":"web","searchQuery":""}'));
+    expect(r.lane).toBe('web');
+    expect(r.searchQuery).toBe('what happened to gold?');
   });
 
   it('defaults to personal on malformed output', async () => {
-    expect(await classifyLane('q', stubProvider('not json at all'))).toBe('personal');
-    expect(await classifyLane('q', stubProvider('{"lane":"nonsense"}'))).toBe('personal');
+    expect((await routeQuery('q', stubProvider('not json at all'))).lane).toBe('personal');
+    expect((await routeQuery('q', stubProvider('{"lane":"nonsense"}'))).lane).toBe('personal');
   });
 
-  it('defaults to personal when the classifier throws (timeout/abort)', async () => {
-    const lane = await classifyLane('q', stubProvider(new Error('aborted')));
-    expect(lane).toBe('personal');
+  it('defaults to personal when the router throws (timeout/abort)', async () => {
+    const r = await routeQuery('q', stubProvider(new Error('aborted')));
+    expect(r).toEqual({ lane: 'personal', searchQuery: '' });
   });
 
   it('returns personal for empty input without calling the model', async () => {
-    const lane = await classifyLane('   ', stubProvider(new Error('should not be called')));
-    expect(lane).toBe('personal');
+    const r = await routeQuery('   ', stubProvider(new Error('should not be called')));
+    expect(r.lane).toBe('personal');
   });
 });
