@@ -193,7 +193,7 @@ export interface AiChatOptions {
 // newly-created) conversationId and any web sources once the stream completes. In
 // mock mode there is no backend, so a canned reply is emitted instead.
 async function aiChat(
-  body: { accountId: string; conversationId?: string; messages: AiChatMessage[] },
+  body: { accountId: string; conversationId?: string; messages: AiChatMessage[]; regenerate?: boolean },
   onToken: (t: string) => void,
   opts: AiChatOptions = {},
 ): Promise<AiChatResult> {
