@@ -4,7 +4,7 @@
 // Ask about your behaviour ("why do I lose on Fridays?") and get suggestions.
 // Streams the reply token-by-token over SSE and persists the conversation.
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Robot, PaperPlaneRight, Sparkle } from '@phosphor-icons/react';
+import { Robot, PaperPlaneRight, Sparkle, MagnifyingGlass, LinkSimple } from '@phosphor-icons/react';
 import AppShell from '@/components/app-shell';
 import { useAccounts } from '@/lib/use-accounts';
 import { api, type AiChatMessage, type BrokerAccount } from '@/lib/api';
@@ -22,6 +22,7 @@ export default function CoachPage() {
   const [conversationId, setConversationId] = useState<string | undefined>();
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
+  const [searching, setSearching] = useState(false);
   const [error, setError] = useState('');
   const [historyLoading, setHistoryLoading] = useState(false);
 
@@ -50,7 +51,7 @@ export default function CoachPage() {
           const detail = await api.ai.conversation(latest.id);
           if (!alive) return;
           setConversationId(detail.id);
-          setMessages(detail.messages.map(m => ({ role: m.role, content: m.content })));
+          setMessages(detail.messages.map(m => ({ role: m.role, content: m.content, sources: m.sources })));
         }
       } catch {
         // No history is fine — start fresh.
@@ -72,22 +73,36 @@ export default function CoachPage() {
       // Optimistically render the user message + an empty assistant bubble to fill.
       setMessages([...history, { role: 'assistant', content: '' }]);
       setSending(true);
+      setSearching(false);
 
-      const appendToAssistant = (chunk: string) =>
+      const appendToAssistant = (chunk: string) => {
+        // First token means the answer is streaming — clear the "searching" state.
+        setSearching(false);
         setMessages(prev => {
           const next = [...prev];
           const last = next[next.length - 1];
           if (last && last.role === 'assistant') next[next.length - 1] = { ...last, content: last.content + chunk };
           return next;
         });
+      };
 
       try {
         const result = await api.ai.chat(
           { accountId, conversationId, messages: history },
           appendToAssistant,
           msg => setError(msg),
+          () => setSearching(true),
         );
         if (result.conversationId) setConversationId(result.conversationId);
+        // Attach any web citations to the assistant message we just streamed.
+        if (result.sources && result.sources.length > 0) {
+          setMessages(prev => {
+            const next = [...prev];
+            const last = next[next.length - 1];
+            if (last && last.role === 'assistant') next[next.length - 1] = { ...last, sources: result.sources };
+            return next;
+          });
+        }
       } catch (err) {
         const e = err as Error & { code?: string };
         setError(e.message || 'The coach could not respond. Please try again.');
@@ -100,6 +115,7 @@ export default function CoachPage() {
         });
       } finally {
         setSending(false);
+        setSearching(false);
       }
     },
     [messages, sending, accountId, conversationId],
@@ -161,7 +177,43 @@ export default function CoachPage() {
                         : 'max-w-[90%] rounded-[var(--radius-btn)] border border-border-soft bg-app/40 px-3.5 py-2.5 text-[13px] text-fg-2 whitespace-pre-wrap leading-relaxed'
                     }
                   >
-                    {m.content || (sending && i === messages.length - 1 ? <span className="pulse-dot inline-block w-2 h-2 rounded-full bg-profit" /> : '')}
+                    {m.content ? (
+                      m.content
+                    ) : sending && i === messages.length - 1 && searching ? (
+                      <span className="inline-flex items-center gap-1.5 text-fg-3 text-[12px]" data-testid="coach-searching">
+                        <MagnifyingGlass size={13} className="animate-pulse" />
+                        Searching the web…
+                      </span>
+                    ) : sending && i === messages.length - 1 ? (
+                      <span className="pulse-dot inline-block w-2 h-2 rounded-full bg-profit" />
+                    ) : (
+                      ''
+                    )}
+                    {/* Sources footer — web citations the coach used for this answer. */}
+                    {m.role === 'assistant' && m.sources && m.sources.length > 0 && (
+                      <div className="mt-2.5 pt-2 border-t border-border-soft" data-testid="coach-sources">
+                        <p className="text-[9px] tracking-[0.2em] text-fg-3 mb-1.5">SOURCES</p>
+                        <div className="flex flex-col gap-1">
+                          {m.sources.map((s, si) => {
+                            let domain = s.url;
+                            try { domain = new URL(s.url).hostname.replace(/^www\./, ''); } catch { /* keep raw */ }
+                            return (
+                              <a
+                                key={si}
+                                href={s.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1.5 text-[11px] text-fg-3 hover:text-profit transition-colors truncate"
+                              >
+                                <LinkSimple size={11} className="shrink-0" />
+                                <span className="truncate">{s.title}</span>
+                                <span className="text-fg-3/60 shrink-0">· {domain}</span>
+                              </a>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
