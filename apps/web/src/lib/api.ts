@@ -293,6 +293,49 @@ async function aiChat(
   return { conversationId, sources };
 }
 
+// ── Phase 2: Economic calendar ────────────────────────────────────────────────
+
+export type EventImpact = 'LOW' | 'MEDIUM' | 'HIGH';
+
+export interface CalendarEvent {
+  id: string;
+  title: string;
+  country: string; // ISO-3166 alpha-2 (for the flag)
+  currency: string;
+  category: string | null;
+  impact: EventImpact;
+  eventTime: string; // ISO UTC
+  actual: string | null;
+  forecast: string | null;
+  previous: string | null;
+  unit: string | null;
+  actualAt: string | null;
+  watched: boolean;
+}
+
+export interface CalendarEventDetail extends Omit<CalendarEvent, 'watched'> {
+  sources: unknown;
+}
+
+export interface CalendarFilters {
+  from?: string;
+  to?: string;
+  impact?: EventImpact;
+  currency?: string;
+  category?: string;
+}
+
+function calendarQuery(f: CalendarFilters): string {
+  const q = new URLSearchParams();
+  if (f.from) q.set('from', f.from);
+  if (f.to) q.set('to', f.to);
+  if (f.impact) q.set('impact', f.impact);
+  if (f.currency) q.set('currency', f.currency);
+  if (f.category) q.set('category', f.category);
+  const s = q.toString();
+  return s ? `?${s}` : '';
+}
+
 export const api = {
   accounts: {
     connect: (body: { mt5Login: number; password: string; server: string; broker?: string }) =>
@@ -339,5 +382,12 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ token }),
       }),
+  },
+  calendar: {
+    list: (filters: CalendarFilters = {}) =>
+      apiFetch<CalendarEvent[]>(`${PREFIX}/calendar${calendarQuery(filters)}`),
+    get: (id: string) => apiFetch<CalendarEventDetail>(`${PREFIX}/calendar/${id}`),
+    watch: (id: string) => apiFetch<{ watched: boolean }>(`${PREFIX}/calendar/${id}/watch`, { method: 'POST' }),
+    unwatch: (id: string) => apiFetch<{ watched: boolean }>(`${PREFIX}/calendar/${id}/watch`, { method: 'DELETE' }),
   },
 };
