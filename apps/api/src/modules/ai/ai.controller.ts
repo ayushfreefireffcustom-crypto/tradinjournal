@@ -14,6 +14,7 @@ import {
   persistTurn,
   listConversations,
   getConversation,
+  deleteConversation,
 } from './ai.service.js';
 
 function sseWrite(res: Response, obj: unknown): void {
@@ -164,6 +165,18 @@ export async function handleGetConversation(req: Request, res: Response, next: N
     const convo = await getConversation(userId, req.params.id!);
     if (!convo) throw new NotFoundError('Conversation not found');
     ok(res, convo);
+  } catch (err) {
+    next(err);
+  }
+}
+
+// DELETE /api/ai/conversations/:id
+export async function handleDeleteConversation(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const userId = res.locals.user.id as string;
+    const deleted = await deleteConversation(userId, req.params.id!);
+    if (!deleted) throw new NotFoundError('Conversation not found');
+    ok(res, { ok: true });
   } catch (err) {
     next(err);
   }
