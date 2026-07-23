@@ -48,6 +48,9 @@ export const aiChatSchema = z.object({
     )
     .min(1)
     .max(20),
+  // Retry of the last turn: the superseded user→assistant pair is replaced rather
+  // than appended, so a retried thread doesn't accumulate duplicate questions.
+  regenerate: z.boolean().optional(),
 });
 
 export type AiChatInput = z.infer<typeof aiChatSchema>;
