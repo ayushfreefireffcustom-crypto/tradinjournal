@@ -57,6 +57,28 @@ export async function handleChat(req: Request, res: Response, next: NextFunction
   // Carried out of the try block so the turn is persisted with its citations/lane.
   let sources: SearchResult[] = [];
   let lane: Lane = 'personal';
+
+  // Best-effort persistence — never fail the response on a write error. Returns
+  // the (possibly newly-created) conversation id. Skipped when nothing was
+  // generated, so a stop-before-first-token leaves no empty turn behind.
+  const persist = async (): Promise<string | undefined> => {
+    if (full.trim() === '') return input.conversationId;
+    try {
+      return await persistTurn({
+        userId,
+        brokerAccountId: input.accountId,
+        conversationId: input.conversationId,
+        userContent: lastUser,
+        assistantContent: full,
+        sources,
+        lane,
+      });
+    } catch (err) {
+      logger.error(`Failed to persist AI turn: ${(err as Error).message}`);
+      return input.conversationId;
+    }
+  };
+
   try {
     if (isAiEnabled()) {
       const provider = getProvider();
@@ -109,6 +131,8 @@ export async function handleChat(req: Request, res: Response, next: NextFunction
     }
   } catch (err) {
     if (aborted) {
+      // Stopped by the user — keep the partial answer so it survives a reload.
+      await persist();
       res.end();
       return;
     }
@@ -123,25 +147,12 @@ export async function handleChat(req: Request, res: Response, next: NextFunction
   }
 
   if (aborted) {
+    await persist();
     res.end();
     return;
   }
 
-  // Persist the completed turn (best-effort — never fail the response on this).
-  let conversationId = input.conversationId;
-  try {
-    conversationId = await persistTurn({
-      userId,
-      brokerAccountId: input.accountId,
-      conversationId: input.conversationId,
-      userContent: lastUser,
-      assistantContent: full,
-      sources,
-      lane,
-    });
-  } catch (err) {
-    logger.error(`Failed to persist AI turn: ${(err as Error).message}`);
-  }
+  const conversationId = await persist();
 
   if (sources.length > 0) sseWrite(res, { sources });
   sseWrite(res, { done: true, conversationId });
