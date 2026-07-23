@@ -3,7 +3,8 @@
 // Thread list for the AI Coach: switch between past conversations, start a new
 // one, or delete a thread. Rendered as a fixed column on desktop and as a slide-in
 // drawer on small screens (the parent owns the open/close state).
-import { Plus, Trash, ChatCircle, X } from '@phosphor-icons/react';
+import { useEffect, useState } from 'react';
+import { Plus, Trash, Check, ChatCircle, X } from '@phosphor-icons/react';
 import type { AiConversationSummary } from '@/lib/api';
 
 interface Props {
@@ -33,6 +34,16 @@ function whenLabel(iso: string): string {
 export default function ConversationSidebar({
   conversations, activeId, loading, busy, onSelect, onNew, onDelete, onClose,
 }: Props) {
+  // Deleting a thread is irreversible, so the trash icon arms first and only
+  // deletes on a second click — a confirmation without a blocking dialog.
+  const [armedId, setArmedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!armedId) return;
+    const t = setTimeout(() => setArmedId(null), 3500);
+    return () => clearTimeout(t);
+  }, [armedId]);
+
   return (
     <aside className="flex flex-col h-full w-full bg-surface/30" data-testid="coach-sidebar">
       <div className="flex items-center gap-2 px-3 py-3 border-b border-border-soft">
@@ -67,6 +78,7 @@ export default function ConversationSidebar({
           <ul className="flex flex-col gap-0.5">
             {conversations.map(c => {
               const active = c.id === activeId;
+              const armed = armedId === c.id;
               return (
                 <li key={c.id} className="group relative">
                   <button
@@ -87,13 +99,21 @@ export default function ConversationSidebar({
                     </span>
                   </button>
                   <button
-                    onClick={() => onDelete(c.id)}
+                    onClick={() => {
+                      if (armed) { setArmedId(null); onDelete(c.id); }
+                      else setArmedId(c.id);
+                    }}
                     disabled={busy}
-                    aria-label={`Delete ${c.title?.trim() || 'conversation'}`}
+                    title={armed ? 'Click again to delete' : 'Delete conversation'}
+                    aria-label={armed ? 'Confirm delete' : `Delete ${c.title?.trim() || 'conversation'}`}
                     data-testid="coach-thread-delete"
-                    className="absolute right-1.5 top-1.5 rounded-[var(--radius-btn)] p-1.5 text-fg-3 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:text-loss hover:bg-loss/10 transition-all disabled:opacity-0"
+                    className={`absolute right-1.5 top-1.5 rounded-[var(--radius-btn)] p-1.5 transition-all disabled:opacity-0 ${
+                      armed
+                        ? 'opacity-100 text-loss bg-loss/15'
+                        : 'text-fg-3 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:text-loss hover:bg-loss/10'
+                    }`}
                   >
-                    <Trash size={12} weight="bold" />
+                    {armed ? <Check size={12} weight="bold" /> : <Trash size={12} weight="bold" />}
                   </button>
                 </li>
               );
