@@ -141,9 +141,18 @@ export interface AccountStats {
 
 // ─── AI coach types ─────────────────────────────────────────────────────────
 
+// A web-search citation the coach used to ground an external/current-facts answer.
+export interface AiSource {
+  title: string;
+  url: string;
+  snippet: string;
+}
+
 export interface AiChatMessage {
   role: 'user' | 'assistant';
   content: string;
+  // Web citations for an assistant message (present only for web/hybrid answers).
+  sources?: AiSource[];
 }
 
 export interface AiMessage extends AiChatMessage {
@@ -165,15 +174,19 @@ export interface AiConversationDetail extends AiConversationSummary {
 
 export interface AiChatResult {
   conversationId?: string;
+  // Web citations the coach used for this reply, if any.
+  sources?: AiSource[];
 }
 
-// Streams the coach reply over SSE, invoking `onToken` per chunk. Resolves with
-// the (possibly newly-created) conversationId once the stream completes. In mock
-// mode there is no backend, so a canned reply is emitted instead.
+// Streams the coach reply over SSE, invoking `onToken` per chunk. `onStatus` fires
+// when the coach starts a web search ('searching'). Resolves with the (possibly
+// newly-created) conversationId and any web sources once the stream completes. In
+// mock mode there is no backend, so a canned reply is emitted instead.
 async function aiChat(
   body: { accountId: string; conversationId?: string; messages: AiChatMessage[] },
   onToken: (t: string) => void,
   onError?: (msg: string) => void,
+  onStatus?: (status: 'searching') => void,
 ): Promise<AiChatResult> {
   if (USE_MOCKS) {
     const text = 'Preview mode: connect the real backend to chat with your AI coach about your trading data.';
@@ -199,6 +212,7 @@ async function aiChat(
   const decoder = new TextDecoder();
   let buffer = '';
   let conversationId: string | undefined;
+  let sources: AiSource[] | undefined;
 
   // Parse the SSE stream: events are separated by a blank line, payload on `data:`.
   for (;;) {
@@ -210,19 +224,28 @@ async function aiChat(
     for (const evt of events) {
       const line = evt.trim();
       if (!line.startsWith('data:')) continue;
-      let payload: { token?: string; error?: string; done?: boolean; conversationId?: string };
+      let payload: {
+        token?: string;
+        error?: string;
+        done?: boolean;
+        conversationId?: string;
+        status?: 'searching';
+        sources?: AiSource[];
+      };
       try {
         payload = JSON.parse(line.slice(5).trim());
       } catch {
         continue;
       }
+      if (payload.status && onStatus) onStatus(payload.status);
       if (payload.token) onToken(payload.token);
+      if (payload.sources) sources = payload.sources;
       if (payload.error && onError) onError(payload.error);
       if (payload.done) conversationId = payload.conversationId;
     }
   }
 
-  return { conversationId };
+  return { conversationId, sources };
 }
 
 export const api = {
