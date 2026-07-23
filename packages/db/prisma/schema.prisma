@@ -340,3 +340,25 @@ enum AiRole {
   user
   assistant
 }
+
+/// Cached AI narrative for one account. Keyed on a hash of the trader-context it
+/// was written from: while the hash matches, the stored narrative is reused and no
+/// tokens are spent. One row per account (upserted), so the table stays bounded.
+model AiReport {
+  id              String   @id @default(cuid())
+  userId          String
+  brokerAccountId String
+
+  /// SHA-256 of the TraderContext used to generate `content`.
+  dataHash        String
+  content         String   @db.Text
+  /// Model that produced the narrative — for debugging drift after a model swap.
+  model           String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([userId, brokerAccountId])
+  @@index([userId])
+  @@map("ai_report")
+}
