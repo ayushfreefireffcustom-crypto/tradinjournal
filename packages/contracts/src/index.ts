@@ -110,3 +110,68 @@ export const aiSourceSchema = z.object({
 });
 
 export type AiSource = z.infer<typeof aiSourceSchema>;
+
+// ── Phase 2: Economic calendar + News ─────────────────────────────────────────
+// Internal (worker → API) ingest triggers and the public query params. Web keeps
+// its own client types in apps/web/src/lib/api.ts; contracts is shared API↔worker.
+
+export const calendarIngestSchema = z.object({
+  /** UTC window to (re)fetch. Both ISO datetimes. */
+  from: z.string().datetime(),
+  to: z.string().datetime(),
+});
+export type CalendarIngestInput = z.infer<typeof calendarIngestSchema>;
+
+export const newsIngestSchema = z.object({
+  /** Minute bucket the tick belongs to — carried through for logging/idempotency. */
+  bucket: z.string().min(1),
+});
+export type NewsIngestInput = z.infer<typeof newsIngestSchema>;
+
+export const notificationsDispatchSchema = z.object({
+  bucket: z.string().min(1),
+});
+export type NotificationsDispatchInput = z.infer<typeof notificationsDispatchSchema>;
+
+const eventImpact = z.enum(['LOW', 'MEDIUM', 'HIGH']);
+
+export const calendarQuerySchema = z.object({
+  from: z.string().datetime().optional(),
+  to: z.string().datetime().optional(),
+  impact: eventImpact.optional(),
+  currency: z.string().min(1).max(8).optional(),
+  category: z.string().min(1).max(40).optional(),
+});
+export type CalendarQuery = z.infer<typeof calendarQuerySchema>;
+
+export const newsQuerySchema = z.object({
+  category: z.enum(['CRYPTO', 'MACRO', 'GEOPOLITICAL', 'REGULATORY', 'MARKETS']).optional(),
+  country: z.string().min(2).max(2).optional(),
+  impact: eventImpact.optional(),
+  sentiment: z.enum(['BULLISH', 'BEARISH', 'NEUTRAL']).optional(),
+  cursor: z.string().min(1).optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+});
+export type NewsQuery = z.infer<typeof newsQuerySchema>;
+
+// Per-user notification preferences (PATCH body — all fields optional).
+export const notificationPrefsSchema = z.object({
+  timezone: z.string().min(1).max(64).optional(),
+  inApp: z.boolean().optional(),
+  email: z.boolean().optional(),
+  push: z.boolean().optional(),
+  minImpact: eventImpact.optional(),
+  currencies: z.array(z.string().min(1).max(8)).max(30).optional(),
+  categories: z.array(z.string().min(1).max(40)).max(30).optional(),
+  leadMinutes: z.coerce.number().int().min(0).max(1440).optional(),
+  newsAlerts: z.boolean().optional(),
+});
+export type NotificationPrefsInput = z.infer<typeof notificationPrefsSchema>;
+
+// Web Push subscription registration (the browser's PushSubscription shape).
+export const pushSubscribeSchema = z.object({
+  endpoint: z.string().url(),
+  keys: z.object({ p256dh: z.string().min(1), auth: z.string().min(1) }),
+  userAgent: z.string().max(400).optional(),
+});
+export type PushSubscribeInput = z.infer<typeof pushSubscribeSchema>;
