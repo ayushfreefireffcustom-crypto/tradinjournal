@@ -5,18 +5,31 @@ import { prisma } from '@tradinjournal/db';
 import type { TraderContext } from '@tradinjournal/core';
 import type { AiChatInput } from '@tradinjournal/contracts';
 import { loadTraderContext } from '../../lib/ai/context.js';
-import { SYSTEM_PROMPT, contextMessageContent } from '../../lib/ai/prompts.js';
+import { SYSTEM_PROMPT, contextMessageContent, webResultsMessageContent } from '../../lib/ai/prompts.js';
 import type { ChatMessage } from '../../lib/ai/provider.js';
+import type { SearchResult } from '../../lib/ai/search.js';
+import type { Lane } from '../../lib/ai/router.js';
 
 export { loadTraderContext };
 
-/** Assemble the full message list sent to the provider: system + grounding + history. */
-export function buildMessages(context: TraderContext, history: AiChatInput['messages']): ChatMessage[] {
-  return [
+/**
+ * Assemble the full message list sent to the provider: system + grounding +
+ * (optional) web results + history. The <WEB_RESULTS> block is only inserted when
+ * a search actually returned something; personal lanes omit it entirely.
+ */
+export function buildMessages(
+  context: TraderContext,
+  history: AiChatInput['messages'],
+  webResults?: SearchResult[],
+): ChatMessage[] {
+  const messages: ChatMessage[] = [
     { role: 'system', content: SYSTEM_PROMPT },
     { role: 'system', content: contextMessageContent(context) },
-    ...history.map(m => ({ role: m.role, content: m.content })),
   ];
+  if (webResults && webResults.length > 0) {
+    messages.push({ role: 'system', content: webResultsMessageContent(webResults) });
+  }
+  return [...messages, ...history.map(m => ({ role: m.role, content: m.content }))];
 }
 
 /** Deterministic reply when the LLM is off — surfaces the rule-based insights. */
@@ -37,8 +50,12 @@ export async function persistTurn(params: {
   conversationId?: string;
   userContent: string;
   assistantContent: string;
+  /** Web citations the assistant used, if any — stored on the assistant row. */
+  sources?: SearchResult[];
+  /** Router lane that produced the reply — stored on the assistant row. */
+  lane?: Lane;
 }): Promise<string> {
-  const { userId, brokerAccountId, conversationId, userContent, assistantContent } = params;
+  const { userId, brokerAccountId, conversationId, userContent, assistantContent, sources, lane } = params;
 
   let convId = conversationId;
   if (convId) {
@@ -64,7 +81,14 @@ export async function persistTurn(params: {
   await prisma.aiMessage.createMany({
     data: [
       { conversationId: convId, role: 'user', content: userContent },
-      { conversationId: convId, role: 'assistant', content: assistantContent },
+      {
+        conversationId: convId,
+        role: 'assistant',
+        content: assistantContent,
+        // Only the assistant row carries citations + the lane it was answered in.
+        sources: sources && sources.length > 0 ? sources : undefined,
+        lane: lane ?? undefined,
+      },
     ],
   });
 
