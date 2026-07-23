@@ -11,6 +11,7 @@ import { accountsRouter } from './modules/accounts/accounts.routes.js';
 import { tradesRouter } from './modules/trades/trades.routes.js';
 import { journalRouter } from './modules/journal/journal.routes.js';
 import { aiRouter, aiInternalRouter } from './modules/ai/ai.routes.js';
+import { calendarRouter, calendarInternalRouter } from './modules/calendar/calendar.routes.js';
 
 export function createApp(): Express {
   const app = express();
@@ -43,9 +44,11 @@ export function createApp(): Express {
   app.use('/api/trades', tradesRouter);
   app.use('/api/journal', journalRouter);
   app.use('/api/ai', aiRouter);
+  app.use('/api/calendar', calendarRouter);
   // Worker-to-API routes. Not under /api: no session, no CORS use case — the
   // shared-token guard on the router is the only way in.
   app.use('/internal/ai', aiInternalRouter);
+  app.use('/internal/calendar', calendarInternalRouter);
 
   app.use((_req: Request, res: Response) => {
     res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Route not found' } });
