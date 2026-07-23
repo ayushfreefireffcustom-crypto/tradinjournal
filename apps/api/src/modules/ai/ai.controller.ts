@@ -4,7 +4,7 @@ import type { AiChatInput } from '@tradinjournal/contracts';
 import { ok } from '../../http/response.js';
 import { NotFoundError } from '../../http/errors.js';
 import { isAiEnabled, getProvider } from '../../lib/ai/provider.js';
-import { classifyLane, type Lane } from '../../lib/ai/router.js';
+import { routeQuery, type Lane } from '../../lib/ai/router.js';
 import { getSearchProvider, type SearchResult } from '../../lib/ai/search.js';
 import { checkSearchBudget } from './ai.search-rate-limit.js';
 import {
@@ -60,8 +60,11 @@ export async function handleChat(req: Request, res: Response, next: NextFunction
     if (isAiEnabled()) {
       const provider = getProvider();
 
-      // 1) Classify the question. Fails safe to `personal` — never search on doubt.
-      lane = await classifyLane(lastUser, provider, controller.signal);
+      // 1) Route the question: pick the lane AND (for web/hybrid) a focused,
+      //    finance-scoped search query. Fails safe to `personal` — never search
+      //    on doubt.
+      const route = await routeQuery(lastUser, provider, controller.signal);
+      lane = route.lane;
 
       // 2) For web/hybrid lanes, search the internet under a budget + hard timeout.
       //    Any failure/empty/over-budget degrades to a no-search answer; the model
@@ -72,7 +75,7 @@ export async function handleChat(req: Request, res: Response, next: NextFunction
         if (await checkSearchBudget(userId)) {
           sseWrite(res, { status: 'searching' });
           try {
-            sources = await searchProvider.search(lastUser, controller.signal);
+            sources = await searchProvider.search(route.searchQuery || lastUser, controller.signal);
           } catch (err) {
             logger.warn(`Web search failed, answering without it: ${(err as Error).message}`);
             sources = [];
