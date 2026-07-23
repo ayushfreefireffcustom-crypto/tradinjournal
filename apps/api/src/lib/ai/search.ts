@@ -125,7 +125,7 @@ class CompoundMiniSearchProvider implements SearchProvider {
   }
 }
 
-interface CompoundResponse {
+export interface CompoundResponse {
   choices?: Array<{
     message?: {
       content?: string;
@@ -139,8 +139,10 @@ interface CompoundResponse {
   }>;
 }
 
-/** Best-effort extraction of {title,url,snippet} from compound's executed_tools. */
-function extractCompoundSources(json: CompoundResponse): SearchResult[] {
+/** Best-effort extraction of {title,url,snippet} from compound's executed_tools.
+ *  Exported for unit testing — the shape is provider-specific, so we parse it
+ *  defensively (nested objects, arrays, and JSON-string outputs). */
+export function extractCompoundSources(json: CompoundResponse): SearchResult[] {
   const tools = json.choices?.[0]?.message?.executed_tools ?? [];
   const out: SearchResult[] = [];
   const seen = new Set<string>();
