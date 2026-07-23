@@ -1,6 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
 import { logger } from '@tradinjournal/logger';
-import type { AiChatInput } from '@tradinjournal/contracts';
+import type { AiChatInput, AiReportQuery } from '@tradinjournal/contracts';
 import { ok } from '../../http/response.js';
 import { NotFoundError } from '../../http/errors.js';
 import { isAiEnabled, getProvider } from '../../lib/ai/provider.js';
@@ -16,6 +16,7 @@ import {
   getConversation,
   deleteConversation,
 } from './ai.service.js';
+import { getReport } from './ai.report.service.js';
 
 function sseWrite(res: Response, obj: unknown): void {
   res.write(`data: ${JSON.stringify(obj)}\n\n`);
@@ -177,6 +178,17 @@ export async function handleGetConversation(req: Request, res: Response, next: N
     const convo = await getConversation(userId, req.params.id!);
     if (!convo) throw new NotFoundError('Conversation not found');
     ok(res, convo);
+  } catch (err) {
+    next(err);
+  }
+}
+
+// GET /api/ai/report?accountId=…&force=1
+export async function handleGetReport(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const userId = res.locals.user.id as string;
+    const { accountId, force } = req.query as unknown as AiReportQuery;
+    ok(res, await getReport(userId, accountId, { force: Boolean(force) }));
   } catch (err) {
     next(err);
   }
