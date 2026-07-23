@@ -51,3 +51,16 @@ export const aiChatSchema = z.object({
 });
 
 export type AiChatInput = z.infer<typeof aiChatSchema>;
+
+// ── AI coach web-search source ────────────────────────────────────────────────
+// A single web result the coach used to ground an external/current-facts answer.
+// Response-only (never part of the chat request); shared so the API and web agree
+// on one shape when persisting/rendering citations.
+
+export const aiSourceSchema = z.object({
+  title: z.string(),
+  url: z.string().url(),
+  snippet: z.string(),
+});
+
+export type AiSource = z.infer<typeof aiSourceSchema>;
