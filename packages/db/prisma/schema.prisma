@@ -323,6 +323,13 @@ model AiMessage {
   role           AiRole
   content        String         @db.Text
 
+  // Web-search citations the assistant used for this message (array of
+  // {title,url,snippet}); null for personal answers and all pre-search messages.
+  sources        Json?
+  // Router lane that produced this message ('personal' | 'web' | 'hybrid').
+  // Nullable for observability only; null on legacy rows.
+  lane           String?
+
   createdAt      DateTime       @default(now())
 
   @@index([conversationId])
