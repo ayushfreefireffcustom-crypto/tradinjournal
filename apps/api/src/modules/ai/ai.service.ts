@@ -109,3 +109,13 @@ export async function getConversation(userId: string, id: string) {
     include: { messages: { orderBy: { createdAt: 'asc' } } },
   });
 }
+
+/**
+ * Delete one conversation. Ownership is enforced in the WHERE clause, so another
+ * user's id simply deletes nothing (reported as not-found by the caller).
+ * Messages go with it via the schema's `onDelete: Cascade`.
+ */
+export async function deleteConversation(userId: string, id: string): Promise<boolean> {
+  const { count } = await prisma.aiConversation.deleteMany({ where: { id, userId } });
+  return count > 0;
+}
