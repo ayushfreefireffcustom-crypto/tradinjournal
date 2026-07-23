@@ -4,6 +4,9 @@ import type { AiChatInput } from '@tradinjournal/contracts';
 import { ok } from '../../http/response.js';
 import { NotFoundError } from '../../http/errors.js';
 import { isAiEnabled, getProvider } from '../../lib/ai/provider.js';
+import { classifyLane, type Lane } from '../../lib/ai/router.js';
+import { getSearchProvider, type SearchResult } from '../../lib/ai/search.js';
+import { checkSearchBudget } from './ai.search-rate-limit.js';
 import {
   loadTraderContext,
   buildMessages,
@@ -50,10 +53,47 @@ export async function handleChat(req: Request, res: Response, next: NextFunction
   });
 
   let full = '';
+  // Carried out of the try block so the turn is persisted with its citations/lane.
+  let sources: SearchResult[] = [];
+  let lane: Lane = 'personal';
   try {
     if (isAiEnabled()) {
       const provider = getProvider();
-      const messages = buildMessages(context, input.messages);
+
+      // 1) Classify the question. Fails safe to `personal` — never search on doubt.
+      lane = await classifyLane(lastUser, provider, controller.signal);
+
+      // 2) For web/hybrid lanes, search the internet under a budget + hard timeout.
+      //    Any failure/empty/over-budget degrades to a no-search answer; the model
+      //    is told (below) it couldn't fetch live data rather than inventing facts.
+      const wantsWeb = lane === 'web' || lane === 'hybrid';
+      const searchProvider = wantsWeb ? getSearchProvider() : null;
+      if (searchProvider && !aborted) {
+        if (await checkSearchBudget(userId)) {
+          sseWrite(res, { status: 'searching' });
+          try {
+            sources = await searchProvider.search(lastUser, controller.signal);
+          } catch (err) {
+            logger.warn(`Web search failed, answering without it: ${(err as Error).message}`);
+            sources = [];
+          }
+        } else {
+          logger.info(`Search budget exhausted for user ${userId} — answering without web`);
+        }
+      }
+
+      // 3) Build the grounded prompt (+ web results when present). When web was
+      //    wanted but produced nothing, add a soft note so the model says so.
+      const messages = buildMessages(context, input.messages, sources);
+      if (wantsWeb && sources.length === 0) {
+        messages.splice(2, 0, {
+          role: 'system',
+          content:
+            'Note: a live web search was attempted but returned no usable results (or was unavailable). Do not invent external facts, prices, or news — tell the user you could not fetch live information.',
+        });
+      }
+
+      // 4) Stream the reply token-by-token.
       for await (const token of provider.stream(messages, controller.signal)) {
         if (aborted) break;
         full += token;
@@ -92,11 +132,14 @@ export async function handleChat(req: Request, res: Response, next: NextFunction
       conversationId: input.conversationId,
       userContent: lastUser,
       assistantContent: full,
+      sources,
+      lane,
     });
   } catch (err) {
     logger.error(`Failed to persist AI turn: ${(err as Error).message}`);
   }
 
+  if (sources.length > 0) sseWrite(res, { sources });
   sseWrite(res, { done: true, conversationId });
   res.end();
 }
