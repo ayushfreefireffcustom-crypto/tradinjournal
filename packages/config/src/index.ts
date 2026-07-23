@@ -50,6 +50,15 @@ const envSchema = z.object({
   GROQ_API_KEY: z.string().optional(),
   OPENAI_API_KEY: z.string().optional(),
 
+  // ── Web search for the AI coach ──────────────────────────────────────────
+  // Same optional-with-fallback approach as the AI block above. When TAVILY_API_KEY
+  // is set we use Tavily (purpose-built LLM search); otherwise, when AI is enabled,
+  // we fall back to Groq's agentic model (SEARCH_FALLBACK_MODEL). When neither is
+  // available the coach simply stays grounded on the trader's own data (no search).
+  SEARCH_PROVIDER: z.enum(['tavily', 'compound', 'none']).optional(),
+  TAVILY_API_KEY: z.string().optional(),
+  SEARCH_FALLBACK_MODEL: z.string().default('groq/compound-mini'),
+
   MT5_BRIDGE_URL: z.string().url().default('http://localhost:8000'),
   MT5_BRIDGE_SHARED_SECRET: z.string().default('dev-secret-change-in-production'),
 });
@@ -64,6 +73,10 @@ export type Env = z.infer<typeof envSchema> & {
   AI_BASE_URL_RESOLVED: string;
   /** The API key for the selected provider (Groq or OpenAI), if present. */
   AI_API_KEY?: string;
+  /** Resolved search backend: Tavily when keyed, else compound fallback when AI is on, else none. */
+  SEARCH_PROVIDER_RESOLVED: 'tavily' | 'compound' | 'none';
+  /** True when the coach can perform a web search (Tavily key set OR AI enabled for the fallback). */
+  SEARCH_ENABLED: boolean;
 };
 
 const AI_DEFAULTS = {
@@ -92,7 +105,31 @@ function loadEnv(): Env {
   const AI_BASE_URL_RESOLVED = parsed.data.AI_BASE_URL ?? defaults.baseUrl;
   const AI_ENABLED = provider !== 'none' && !!AI_API_KEY;
 
-  return { ...parsed.data, APP_URL, AI_ENABLED, AI_MODEL_RESOLVED, AI_BASE_URL_RESOLVED, AI_API_KEY };
+  // Resolve the search backend. An explicit SEARCH_PROVIDER wins (as long as its
+  // prerequisites are met); otherwise Tavily when its key is present, else the
+  // compound fallback when AI is enabled, else none. Compound reuses the AI client
+  // so it needs AI_ENABLED; Tavily only needs its own key.
+  const hasTavily = !!parsed.data.TAVILY_API_KEY;
+  let SEARCH_PROVIDER_RESOLVED: 'tavily' | 'compound' | 'none';
+  const explicit = parsed.data.SEARCH_PROVIDER;
+  if (explicit === 'tavily' && hasTavily) SEARCH_PROVIDER_RESOLVED = 'tavily';
+  else if (explicit === 'compound' && AI_ENABLED) SEARCH_PROVIDER_RESOLVED = 'compound';
+  else if (explicit === 'none') SEARCH_PROVIDER_RESOLVED = 'none';
+  else if (hasTavily) SEARCH_PROVIDER_RESOLVED = 'tavily';
+  else if (AI_ENABLED) SEARCH_PROVIDER_RESOLVED = 'compound';
+  else SEARCH_PROVIDER_RESOLVED = 'none';
+  const SEARCH_ENABLED = SEARCH_PROVIDER_RESOLVED !== 'none';
+
+  return {
+    ...parsed.data,
+    APP_URL,
+    AI_ENABLED,
+    AI_MODEL_RESOLVED,
+    AI_BASE_URL_RESOLVED,
+    AI_API_KEY,
+    SEARCH_PROVIDER_RESOLVED,
+    SEARCH_ENABLED,
+  };
 }
 
 export const env: Env = loadEnv();
