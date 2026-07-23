@@ -176,6 +176,16 @@ export interface AiChatResult {
   conversationId?: string;
   // Web citations the coach used for this reply, if any.
   sources?: AiSource[];
+  // True when the caller aborted mid-stream (Stop). The tokens received so far
+  // are still valid — the server persists the partial turn.
+  stopped?: boolean;
+}
+
+export interface AiChatOptions {
+  onError?: (msg: string) => void;
+  onStatus?: (status: 'searching') => void;
+  /** Abort the stream early (Stop button). Resolves with `stopped: true`. */
+  signal?: AbortSignal;
 }
 
 // Streams the coach reply over SSE, invoking `onToken` per chunk. `onStatus` fires
@@ -185,21 +195,30 @@ export interface AiChatResult {
 async function aiChat(
   body: { accountId: string; conversationId?: string; messages: AiChatMessage[] },
   onToken: (t: string) => void,
-  onError?: (msg: string) => void,
-  onStatus?: (status: 'searching') => void,
+  opts: AiChatOptions = {},
 ): Promise<AiChatResult> {
+  const { onError, onStatus, signal } = opts;
+
   if (USE_MOCKS) {
     const text = 'Preview mode: connect the real backend to chat with your AI coach about your trading data.';
     for (const word of text.split(' ')) onToken(word + ' ');
     return {};
   }
 
-  const res = await fetch(`${API}/api/ai/chat`, {
-    method: 'POST',
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${API}/api/ai/chat`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal,
+    });
+  } catch (err) {
+    // Stopped before the first byte arrived — nothing was generated.
+    if (signal?.aborted) return { stopped: true };
+    throw err;
+  }
 
   if (!res.ok || !res.body) {
     const json = await res.json().catch(() => null);
@@ -215,34 +234,41 @@ async function aiChat(
   let sources: AiSource[] | undefined;
 
   // Parse the SSE stream: events are separated by a blank line, payload on `data:`.
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const events = buffer.split('\n\n');
-    buffer = events.pop() ?? '';
-    for (const evt of events) {
-      const line = evt.trim();
-      if (!line.startsWith('data:')) continue;
-      let payload: {
-        token?: string;
-        error?: string;
-        done?: boolean;
-        conversationId?: string;
-        status?: 'searching';
-        sources?: AiSource[];
-      };
-      try {
-        payload = JSON.parse(line.slice(5).trim());
-      } catch {
-        continue;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const events = buffer.split('\n\n');
+      buffer = events.pop() ?? '';
+      for (const evt of events) {
+        const line = evt.trim();
+        if (!line.startsWith('data:')) continue;
+        let payload: {
+          token?: string;
+          error?: string;
+          done?: boolean;
+          conversationId?: string;
+          status?: 'searching';
+          sources?: AiSource[];
+        };
+        try {
+          payload = JSON.parse(line.slice(5).trim());
+        } catch {
+          continue;
+        }
+        if (payload.status && onStatus) onStatus(payload.status);
+        if (payload.token) onToken(payload.token);
+        if (payload.sources) sources = payload.sources;
+        if (payload.error && onError) onError(payload.error);
+        if (payload.done) conversationId = payload.conversationId;
       }
-      if (payload.status && onStatus) onStatus(payload.status);
-      if (payload.token) onToken(payload.token);
-      if (payload.sources) sources = payload.sources;
-      if (payload.error && onError) onError(payload.error);
-      if (payload.done) conversationId = payload.conversationId;
     }
+  } catch (err) {
+    // A Stop press aborts the reader — that's a normal outcome, not a failure.
+    // Anything else is a real transport error and propagates to the caller.
+    if (!signal?.aborted) throw err;
+    return { conversationId, sources, stopped: true };
   }
 
   return { conversationId, sources };
@@ -274,5 +300,7 @@ export const api = {
     chat: aiChat,
     conversations: () => apiFetch<AiConversationSummary[]>(`${PREFIX}/ai/conversations`),
     conversation: (id: string) => apiFetch<AiConversationDetail>(`${PREFIX}/ai/conversations/${id}`),
+    deleteConversation: (id: string) =>
+      apiFetch<{ ok: boolean }>(`${PREFIX}/ai/conversations/${id}`, { method: 'DELETE' }),
   },
 };
