@@ -1,20 +1,26 @@
 'use client';
 
-// AI Coach — a live chatbot grounded on the user's own trading-journal data.
-// Ask about your behaviour ("why do I lose on Fridays?") and get suggestions.
-// Streams the reply token-by-token over SSE and persists the conversation.
+// AI Coach — a live chatbot grounded on the user's own trading-journal data, with
+// real-time web search for external/current questions. Streams the reply
+// token-by-token over SSE, shows a "searching/thinking" state, renders markdown,
+// cites web sources, and persists the conversation.
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Robot, PaperPlaneRight, Sparkle, MagnifyingGlass, LinkSimple } from '@phosphor-icons/react';
+import { Robot, PaperPlaneRight, Sparkle, Globe } from '@phosphor-icons/react';
 import AppShell from '@/components/app-shell';
+import MarkdownMessage from '@/components/coach/markdown-message';
+import ThinkingIndicator from '@/components/coach/thinking-indicator';
+import SourcesFooter from '@/components/coach/sources-footer';
 import { useAccounts } from '@/lib/use-accounts';
 import { api, type AiChatMessage, type BrokerAccount } from '@/lib/api';
 
 const STARTERS = [
-  "What's my biggest leak right now?",
-  'Why do I lose on certain days?',
-  'Am I cutting winners too early?',
-  'How disciplined is my risk?',
+  { icon: Sparkle, text: "What's my biggest leak right now?" },
+  { icon: Sparkle, text: 'Why do I lose on certain days?' },
+  { icon: Sparkle, text: 'Am I cutting winners too early?' },
+  { icon: Globe, text: "What's on the economic calendar this week?" },
 ];
+
+type Phase = null | 'thinking' | 'searching';
 
 export default function CoachPage() {
   const { accounts, selected, select } = useAccounts();
@@ -22,7 +28,7 @@ export default function CoachPage() {
   const [conversationId, setConversationId] = useState<string | undefined>();
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
-  const [searching, setSearching] = useState(false);
+  const [phase, setPhase] = useState<Phase>(null);
   const [error, setError] = useState('');
   const [historyLoading, setHistoryLoading] = useState(false);
 
@@ -32,7 +38,7 @@ export default function CoachPage() {
   // Auto-scroll to the newest message / token.
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
-  }, [messages]);
+  }, [messages, phase]);
 
   // Load the most recent conversation for the selected account.
   useEffect(() => {
@@ -73,11 +79,11 @@ export default function CoachPage() {
       // Optimistically render the user message + an empty assistant bubble to fill.
       setMessages([...history, { role: 'assistant', content: '' }]);
       setSending(true);
-      setSearching(false);
+      setPhase('thinking');
 
       const appendToAssistant = (chunk: string) => {
-        // First token means the answer is streaming — clear the "searching" state.
-        setSearching(false);
+        // First token means the answer is streaming — clear the working state.
+        setPhase(null);
         setMessages(prev => {
           const next = [...prev];
           const last = next[next.length - 1];
@@ -91,7 +97,7 @@ export default function CoachPage() {
           { accountId, conversationId, messages: history },
           appendToAssistant,
           msg => setError(msg),
-          () => setSearching(true),
+          () => setPhase('searching'),
         );
         if (result.conversationId) setConversationId(result.conversationId);
         // Attach any web citations to the assistant message we just streamed.
@@ -115,7 +121,7 @@ export default function CoachPage() {
         });
       } finally {
         setSending(false);
-        setSearching(false);
+        setPhase(null);
       }
     },
     [messages, sending, accountId, conversationId],
@@ -133,11 +139,13 @@ export default function CoachPage() {
     >
       <div className="flex flex-col h-[calc(100vh-var(--topbar-h,7rem))] min-h-0" data-testid="coach-page">
         {/* Message stream */}
-        <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 sm:px-4 lg:px-6 py-4" data-testid="coach-messages">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 sm:px-4 lg:px-6 py-5" data-testid="coach-messages">
           {isEmpty ? (
-            <div className="max-w-2xl mx-auto mt-6 sm:mt-10" data-testid="coach-empty">
-              <div className="flex items-center gap-2 mb-3">
-                <Robot size={22} weight="fill" className="text-profit" />
+            <div className="max-w-2xl mx-auto mt-8 sm:mt-14" data-testid="coach-empty">
+              <div className="flex items-center gap-2.5 mb-3.5">
+                <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-profit/15 ring-1 ring-profit/25">
+                  <Robot size={20} weight="fill" className="text-profit" />
+                </span>
                 <h2 className="font-display font-black text-2xl sm:text-3xl tracking-tighter">
                   ASK YOUR <span className="text-profit">COACH.</span>
                 </h2>
@@ -145,78 +153,59 @@ export default function CoachPage() {
               <p className="text-fg-2 text-[13px] sm:text-[14px] leading-relaxed max-w-lg">
                 {historyLoading
                   ? 'Loading your history…'
-                  : 'I read your closed trades, stats and journal. Ask about your behaviour and I’ll tell you what the data actually shows — no market predictions, just your own edge and leaks.'}
+                  : 'I read your closed trades, stats and journal — and I can search the web for market context. Ask about your behaviour or what’s happening out there. No trade signals, just clarity.'}
               </p>
               <div className="grid sm:grid-cols-2 gap-2.5 mt-6">
-                {STARTERS.map(s => (
+                {STARTERS.map(({ icon: Icon, text }) => (
                   <button
-                    key={s}
-                    onClick={() => send(s)}
+                    key={text}
+                    onClick={() => send(text)}
                     disabled={sending || !accountId}
                     data-testid="coach-starter"
-                    className="text-left rounded-[var(--radius-btn)] border border-border-soft bg-app/40 px-3.5 py-3 text-[12.5px] text-fg-2 hover:border-border-strong hover:text-fg transition-colors flex items-center gap-2 disabled:opacity-50"
+                    className="group text-left rounded-[var(--radius-card)] border border-border-soft bg-surface/50 px-4 py-3.5 text-[12.5px] text-fg-2 hover:border-profit/40 hover:bg-surface hover:text-fg transition-all flex items-center gap-2.5 disabled:opacity-50"
                   >
-                    <Sparkle size={14} weight="fill" className="text-profit shrink-0" />
-                    {s}
+                    <Icon size={15} weight="fill" className="text-profit shrink-0 group-hover:scale-110 transition-transform" />
+                    {text}
                   </button>
                 ))}
               </div>
             </div>
           ) : (
-            <div className="max-w-2xl mx-auto flex flex-col gap-4">
-              {messages.map((m, i) => (
-                <div
-                  key={i}
-                  className={m.role === 'user' ? 'flex justify-end' : 'flex justify-start'}
-                  data-testid={`coach-msg-${m.role}`}
-                >
-                  <div
-                    className={
-                      m.role === 'user'
-                        ? 'max-w-[85%] rounded-[var(--radius-btn)] bg-profit/15 border border-profit/30 px-3.5 py-2.5 text-[13px] text-fg whitespace-pre-wrap'
-                        : 'max-w-[90%] rounded-[var(--radius-btn)] border border-border-soft bg-app/40 px-3.5 py-2.5 text-[13px] text-fg-2 whitespace-pre-wrap leading-relaxed'
-                    }
-                  >
-                    {m.content ? (
-                      m.content
-                    ) : sending && i === messages.length - 1 && searching ? (
-                      <span className="inline-flex items-center gap-1.5 text-fg-3 text-[12px]" data-testid="coach-searching">
-                        <MagnifyingGlass size={13} className="animate-pulse" />
-                        Searching the web…
+            <div className="max-w-2xl mx-auto flex flex-col gap-5">
+              {messages.map((m, i) => {
+                const isLast = i === messages.length - 1;
+                const isUser = m.role === 'user';
+                return (
+                  <div key={i} className={isUser ? 'flex justify-end' : 'flex gap-2.5 justify-start'} data-testid={`coach-msg-${m.role}`}>
+                    {/* Assistant avatar */}
+                    {!isUser && (
+                      <span className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-profit/12 ring-1 ring-profit/20">
+                        <Robot size={15} weight="fill" className="text-profit" />
                       </span>
-                    ) : sending && i === messages.length - 1 ? (
-                      <span className="pulse-dot inline-block w-2 h-2 rounded-full bg-profit" />
-                    ) : (
-                      ''
                     )}
-                    {/* Sources footer — web citations the coach used for this answer. */}
-                    {m.role === 'assistant' && m.sources && m.sources.length > 0 && (
-                      <div className="mt-2.5 pt-2 border-t border-border-soft" data-testid="coach-sources">
-                        <p className="text-[9px] tracking-[0.2em] text-fg-3 mb-1.5">SOURCES</p>
-                        <div className="flex flex-col gap-1">
-                          {m.sources.map((s, si) => {
-                            let domain = s.url;
-                            try { domain = new URL(s.url).hostname.replace(/^www\./, ''); } catch { /* keep raw */ }
-                            return (
-                              <a
-                                key={si}
-                                href={s.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1.5 text-[11px] text-fg-3 hover:text-profit transition-colors truncate"
-                              >
-                                <LinkSimple size={11} className="shrink-0" />
-                                <span className="truncate">{s.title}</span>
-                                <span className="text-fg-3/60 shrink-0">· {domain}</span>
-                              </a>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
+                    <div
+                      className={
+                        isUser
+                          ? 'max-w-[82%] rounded-[18px] rounded-br-md bg-profit/15 border border-profit/25 px-3.5 py-2.5 text-[13px] text-fg whitespace-pre-wrap'
+                          : 'max-w-[calc(100%-2.5rem)] rounded-[18px] rounded-tl-md border border-border-soft bg-surface/40 px-4 py-3'
+                      }
+                    >
+                      {isUser ? (
+                        m.content
+                      ) : m.content ? (
+                        <>
+                          <MarkdownMessage content={m.content} />
+                          {m.sources && m.sources.length > 0 && <SourcesFooter sources={m.sources} />}
+                        </>
+                      ) : isLast && phase ? (
+                        <ThinkingIndicator phase={phase} />
+                      ) : (
+                        <span className="pulse-dot inline-block w-2 h-2 rounded-full bg-profit" />
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -231,35 +220,37 @@ export default function CoachPage() {
         {/* Composer */}
         <form
           onSubmit={e => { e.preventDefault(); send(input); }}
-          className="border-t border-border px-3 sm:px-4 lg:px-6 py-3"
+          className="px-3 sm:px-4 lg:px-6 pb-3 pt-1"
           data-testid="coach-form"
         >
-          <div className="max-w-2xl mx-auto flex items-end gap-2">
-            <textarea
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={e => {
-                if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(input); }
-              }}
-              rows={1}
-              placeholder={accountId ? 'Ask about your trading…' : 'Connect a broker to start'}
-              disabled={sending || !accountId}
-              data-testid="coach-input"
-              className="tinput flex-1 resize-none max-h-32 py-2.5"
-            />
-            <button
-              type="submit"
-              disabled={sending || !accountId || !input.trim()}
-              data-testid="coach-send"
-              className="btn btn-primary py-2.5 px-3.5 shrink-0 disabled:opacity-50"
-              aria-label="Send"
-            >
-              <PaperPlaneRight size={16} weight="fill" />
-            </button>
+          <div className="max-w-2xl mx-auto">
+            <div className="flex items-end gap-2 rounded-[var(--radius-card)] border border-border-soft bg-surface/60 px-2 py-1.5 focus-within:border-profit/45 focus-within:bg-surface transition-colors">
+              <textarea
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(input); }
+                }}
+                rows={1}
+                placeholder={accountId ? 'Ask about your trading, or anything market-related…' : 'Connect a broker to start'}
+                disabled={sending || !accountId}
+                data-testid="coach-input"
+                className="flex-1 resize-none max-h-32 bg-transparent border-0 outline-none px-2 py-2 text-[13px] text-fg placeholder:text-fg-3 disabled:opacity-50"
+              />
+              <button
+                type="submit"
+                disabled={sending || !accountId || !input.trim()}
+                data-testid="coach-send"
+                className="btn btn-primary py-2 px-3 shrink-0 rounded-[var(--radius-btn)] disabled:opacity-40"
+                aria-label="Send"
+              >
+                <PaperPlaneRight size={15} weight="fill" />
+              </button>
+            </div>
+            <p className="text-center text-[9px] tracking-[0.2em] text-fg-3 mt-2">
+              NOT FINANCIAL ADVICE · REVIEWS YOUR BEHAVIOUR · WEB ANSWERS ARE GENERAL INFO — VERIFY BEFORE ACTING
+            </p>
           </div>
-          <p className="max-w-2xl mx-auto text-[9px] tracking-[0.2em] text-fg-3 mt-2">
-            NOT FINANCIAL ADVICE · REVIEWS YOUR PAST BEHAVIOUR ONLY
-          </p>
         </form>
       </div>
     </AppShell>
