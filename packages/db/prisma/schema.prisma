@@ -387,3 +387,178 @@ model AiReport {
   @@index([userId])
   @@map("ai_report")
 }
+
+// ─── Phase 2: Economic Calendar + News (shared across all users) ──────────────
+// These tables hold data fetched once by the ingestion pipeline and served to
+// every user — never fetched per user request. Additive only; nothing here
+// touches the better-auth `user` table.
+
+enum EventImpact {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+/// One economic-calendar event, reconciled from one or more providers. The
+/// `dedupKey` (currency|hour-bucket|normalized-title) makes ingestion idempotent
+/// and lets several providers merge into a single row with per-field provenance.
+model EconomicEvent {
+  id        String      @id @default(cuid())
+  dedupKey  String      @unique
+  title     String
+  country   String // ISO-3166 alpha-2, for the flag
+  currency  String // e.g. USD, EUR
+  category  String?
+  impact    EventImpact @default(LOW)
+  eventTime DateTime // always stored UTC
+
+  // Result numbers are strings so units/signs ("%", "K", "-0.2") survive intact.
+  actual   String?
+  forecast String?
+  previous String?
+  unit     String?
+  actualAt DateTime? // when `actual` was first observed — drives the live flash
+
+  // Per-field provenance + each provider's raw values (same idea as AiMessage.sources).
+  sources Json
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  watches EventWatch[]
+
+  @@index([eventTime])
+  @@index([currency, eventTime])
+  @@index([impact, eventTime])
+  @@map("economic_event")
+}
+
+enum NewsCategory {
+  CRYPTO
+  MACRO
+  GEOPOLITICAL
+  REGULATORY
+  MARKETS
+}
+
+enum Sentiment {
+  BULLISH
+  BEARISH
+  NEUTRAL
+}
+
+/// One news item, deduped across outlets. LLM-enrichment fields are nullable so
+/// the feed serves fully even when AI is off (chips just hide).
+model NewsItem {
+  id          String        @id @default(cuid())
+  dedupKey    String        @unique
+  url         String
+  title       String
+  summary     String?       @db.Text
+  source      String
+  sources     Json? // "also reported by" cluster
+  imageUrl    String?
+  publishedAt DateTime
+  country     String?
+  category    NewsCategory?
+
+  // LLM enrichment (null → un-enriched, still served).
+  sentiment    Sentiment?
+  relevance    Int? // 0..100
+  impact       EventImpact? // HIGH == the red highlight
+  marketMoving Boolean      @default(false)
+  enrichedAt   DateTime?
+  enrichHash   String? // content hash → skip re-enriching unchanged items
+
+  createdAt DateTime @default(now())
+
+  @@index([publishedAt])
+  @@index([category, publishedAt])
+  @@index([impact, publishedAt])
+  @@map("news_item")
+}
+
+// ─── Phase 2: per-user preferences, watchlist, delivery ───────────────────────
+// Per-user rows keyed by `userId` (no relation edit on the better-auth `user`
+// table — same approach as JournalEntry / WeeklyReviewSubscription).
+
+model NotificationPreference {
+  id       String @id @default(cuid())
+  userId   String @unique
+  timezone String @default("UTC") // IANA tz for rendering + reminder math
+
+  inApp Boolean @default(true)
+  email Boolean @default(false)
+  push  Boolean @default(false)
+
+  minImpact   EventImpact @default(HIGH)
+  currencies  String[] // empty = all
+  categories  String[] // empty = all
+  leadMinutes Int         @default(15)
+  newsAlerts  Boolean     @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("notification_preference")
+}
+
+/// A user pinning a specific event for a reminder.
+model EventWatch {
+  id      String        @id @default(cuid())
+  userId  String
+  eventId String
+  event   EconomicEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, eventId])
+  @@index([userId])
+  @@map("event_watch")
+}
+
+/// A Web Push endpoint (VAPID). Pruned when the browser reports it gone (404/410).
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("push_subscription")
+}
+
+/// The in-app notification-center inbox.
+model Notification {
+  id      String    @id @default(cuid())
+  userId  String
+  kind    String // "event_reminder" | "news_alert" | "actual_released"
+  title   String
+  body    String?   @db.Text
+  href    String? // deep link
+  eventId String?
+  newsId  String?
+  readAt  DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([userId, readAt])
+  @@map("notification")
+}
+
+/// Idempotency ledger — one row per (dedupKey, channel) guarantees no double-send.
+model NotificationDelivery {
+  id       String @id @default(cuid())
+  userId   String
+  dedupKey String // e.g. "reminder:<eventId>:<leadBucket>"
+  channel  String // in_app | email | push
+
+  createdAt DateTime @default(now())
+
+  @@unique([dedupKey, channel])
+  @@map("notification_delivery")
+}
