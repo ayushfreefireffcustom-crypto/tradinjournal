@@ -55,6 +55,15 @@ export const aiChatSchema = z.object({
 
 export type AiChatInput = z.infer<typeof aiChatSchema>;
 
+// Query for the cached AI performance narrative. `force` bypasses the data-hash
+// cache and rewrites the review; it arrives as a query string, hence the literals.
+export const aiReportQuerySchema = z.object({
+  accountId: z.string().min(1),
+  force: z.enum(['1', 'true']).optional(),
+});
+
+export type AiReportQuery = z.infer<typeof aiReportQuerySchema>;
+
 // ── AI coach web-search source ────────────────────────────────────────────────
 // A single web result the coach used to ground an external/current-facts answer.
 // Response-only (never part of the chat request); shared so the API and web agree
