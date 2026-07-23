@@ -54,8 +54,10 @@ export async function persistTurn(params: {
   sources?: SearchResult[];
   /** Router lane that produced the reply — stored on the assistant row. */
   lane?: Lane;
+  /** Retry of the previous turn — drops the superseded pair before writing. */
+  regenerate?: boolean;
 }): Promise<string> {
-  const { userId, brokerAccountId, conversationId, userContent, assistantContent, sources, lane } = params;
+  const { userId, brokerAccountId, conversationId, userContent, assistantContent, sources, lane, regenerate } = params;
 
   let convId = conversationId;
   if (convId) {
@@ -78,9 +80,28 @@ export async function persistTurn(params: {
     await prisma.aiConversation.update({ where: { id: convId }, data: { updatedAt: new Date() } });
   }
 
+  // A retry supersedes the previous turn — remove it so the thread doesn't grow a
+  // duplicate question. Only a complete user→assistant pair is dropped.
+  if (regenerate) {
+    const tail = await prisma.aiMessage.findMany({
+      where: { conversationId: convId },
+      orderBy: { createdAt: 'desc' },
+      take: 2,
+      select: { id: true, role: true },
+    });
+    const [newest, previous] = tail;
+    if (newest?.role === 'assistant' && previous?.role === 'user') {
+      await prisma.aiMessage.deleteMany({ where: { id: { in: [newest.id, previous.id] } } });
+    }
+  }
+
+  // Timestamps are set explicitly: `createMany` is a single INSERT, so the
+  // CURRENT_TIMESTAMP default would give both rows the same value and leave the
+  // question/answer order ambiguous when the thread is read back.
+  const now = Date.now();
   await prisma.aiMessage.createMany({
     data: [
-      { conversationId: convId, role: 'user', content: userContent },
+      { conversationId: convId, role: 'user', content: userContent, createdAt: new Date(now) },
       {
         conversationId: convId,
         role: 'assistant',
@@ -88,6 +109,7 @@ export async function persistTurn(params: {
         // Only the assistant row carries citations + the lane it was answered in.
         sources: sources && sources.length > 0 ? sources : undefined,
         lane: lane ?? undefined,
+        createdAt: new Date(now + 1),
       },
     ],
   });
