@@ -323,6 +323,20 @@ select.tinput::-ms-expand { display: none; }
   border-radius: var(--radius-btn);
 }
 
+/* Text shimmer for the coach's "Searching / Thinking…" state — a moving
+   highlight sweeps across the label so the wait reads as intentional. */
+.coach-shimmer {
+  background: linear-gradient(90deg, var(--color-fg-3) 30%, var(--color-fg) 50%, var(--color-fg-3) 70%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shimmer 2s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .coach-shimmer { animation: none; color: var(--color-fg-3); }
+}
+
 /* ─── Scroll-reveal ─────────────────────────────────────────────────────────
    Starts hidden; JS (useInView via <Reveal>) adds .reveal-visible when the
    element scrolls into view. Set --reveal-delay for a per-item stagger.
