@@ -55,6 +55,53 @@ export function weeklyReviewSendJobId(userId: string, weekKey: string): string {
   return `wr-send:${weekKey}:${userId}`;
 }
 
+// ─── Phase 2: calendar / news / notification ingestion ───────────────────────
+// The worker only schedules these and calls the API's /internal routes; it never
+// touches the DB or providers. Payloads are tiny (the API does the real work).
+
+export const QUEUE_CALENDAR_INGEST = 'calendar-ingest' as const;
+export const QUEUE_NEWS_INGEST = 'news-ingest' as const;
+export const QUEUE_NOTIFICATIONS = 'notifications' as const;
+
+export const CALENDAR_INGEST_SCHEDULER_ID = 'calendar-ingest-cron';
+export const NEWS_INGEST_SCHEDULER_ID = 'news-ingest-cron';
+export const NOTIFICATIONS_SCHEDULER_ID = 'notifications-cron';
+
+/** Trigger a calendar ingest for a UTC window (bucketed for idempotency). */
+export interface CalendarIngestJob {
+  kind: 'calendar-ingest';
+  /** Bucket key (e.g. "2026-07-25T12" — hour) so a duplicate fire is a no-op. */
+  bucket: string;
+}
+
+/** Trigger a news ingest tick (bucketed to the minute). */
+export interface NewsIngestJob {
+  kind: 'news-ingest';
+  bucket: string;
+}
+
+/** Trigger a notification dispatch sweep (bucketed to the minute). */
+export interface NotificationsJob {
+  kind: 'notifications-dispatch';
+  bucket: string;
+}
+
+/** Truncate a Date to an idempotency bucket at hour or minute granularity. */
+export function timeBucket(date: Date, granularity: 'hour' | 'minute'): string {
+  const iso = date.toISOString(); // YYYY-MM-DDTHH:MM:SS.sssZ
+  return granularity === 'hour' ? iso.slice(0, 13) : iso.slice(0, 16);
+}
+
+export function calendarIngestJobId(bucket: string): string {
+  return `cal-ingest:${bucket}`;
+}
+export function newsIngestJobId(bucket: string): string {
+  return `news-ingest:${bucket}`;
+}
+export function notificationsJobId(bucket: string): string {
+  return `notif:${bucket}`;
+}
+
 // ─── Connection ──────────────────────────────────────────────────────────────
 
 /**
