@@ -81,6 +81,34 @@ const envSchema = z.object({
   WEEKLY_REVIEW_CONCURRENCY: z.coerce.number().int().positive().default(1),
   // Sends per minute, so a Saturday batch trickles instead of stampeding.
   WEEKLY_REVIEW_PER_MINUTE: z.coerce.number().int().positive().default(6),
+
+  // ── Phase 2: Economic calendar ────────────────────────────────────────────
+  // Free-first with a swappable provider layer. Any subset of keys may be set;
+  // more providers = a richer merge. With none of these AND no feed URL the
+  // calendar stays empty (CALENDAR_ENABLED=false) — nothing crashes.
+  FMP_API_KEY: z.string().optional(),
+  FINNHUB_API_KEY: z.string().optional(), // shared with news
+  // Public weekly JSON feed; isolated behind its own opt-in for ToS clarity.
+  FOREXFACTORY_FEED_URL: z.string().url().optional(),
+  // Field-merge precedence when several providers describe the same event.
+  CALENDAR_PROVIDER_PRIORITY: z.string().default('forexfactory,fmp,finnhub'),
+  CALENDAR_INGEST_CRON: z.string().default('*/15 * * * *'),
+
+  // ── Phase 2: News feed ────────────────────────────────────────────────────
+  // RSS baseline is always available (no key); keyed aggregators enrich coverage.
+  MARKETAUX_API_KEY: z.string().optional(),
+  CRYPTOPANIC_API_KEY: z.string().optional(),
+  // Optional CSV override of the built-in licensed RSS defaults.
+  NEWS_RSS_FEEDS: z.string().optional(),
+  NEWS_INGEST_CRON: z.string().default('*/1 * * * *'),
+  // Hard cap on LLM enrichment per ingest tick — bounds spend.
+  NEWS_ENRICH_MAX_PER_TICK: z.coerce.number().int().positive().default(40),
+
+  // ── Phase 2: Web Push (VAPID) ─────────────────────────────────────────────
+  // Absent keys → push simply isn't offered (PUSH_ENABLED=false).
+  VAPID_PUBLIC_KEY: z.string().optional(),
+  VAPID_PRIVATE_KEY: z.string().optional(),
+  VAPID_SUBJECT: z.string().default('mailto:hello@tradelogs.com'),
 });
 
 export type Env = z.infer<typeof envSchema> & {
@@ -101,6 +129,16 @@ export type Env = z.infer<typeof envSchema> & {
   API_INTERNAL_URL_RESOLVED: string;
   /** True when the weekly-review worker can run: Redis to queue on, token to authenticate with. */
   WEEKLY_REVIEW_ENABLED: boolean;
+  /** True when at least one economic-calendar provider is configured. */
+  CALENDAR_ENABLED: boolean;
+  /** Ordered list of calendar providers for field-merge precedence. */
+  CALENDAR_PROVIDER_PRIORITY_LIST: string[];
+  /** True when the news feed can run — RSS is always available, so this is effectively always on. */
+  NEWS_ENABLED: boolean;
+  /** True when news items can be LLM-enriched (news on AND an AI provider configured). */
+  NEWS_ENRICH_ENABLED: boolean;
+  /** True when Web Push is fully configured (both VAPID keys present). */
+  PUSH_ENABLED: boolean;
 };
 
 const AI_DEFAULTS = {
@@ -156,6 +194,19 @@ function loadEnv(): Env {
   // rather than half-working.
   const WEEKLY_REVIEW_ENABLED = !!parsed.data.REDIS_URL && !!parsed.data.INTERNAL_API_TOKEN;
 
+  // Phase 2 feature gates — same optional-with-fallback pattern as AI_ENABLED.
+  // Calendar needs at least one source; news has an always-on RSS baseline;
+  // enrichment additionally needs the LLM; push needs both VAPID keys.
+  const CALENDAR_ENABLED =
+    !!parsed.data.FMP_API_KEY || !!parsed.data.FINNHUB_API_KEY || !!parsed.data.FOREXFACTORY_FEED_URL;
+  const CALENDAR_PROVIDER_PRIORITY_LIST = parsed.data.CALENDAR_PROVIDER_PRIORITY
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean);
+  const NEWS_ENABLED = true; // RSS baseline requires no key
+  const NEWS_ENRICH_ENABLED = NEWS_ENABLED && AI_ENABLED;
+  const PUSH_ENABLED = !!parsed.data.VAPID_PUBLIC_KEY && !!parsed.data.VAPID_PRIVATE_KEY;
+
   return {
     ...parsed.data,
     APP_URL,
@@ -167,6 +218,11 @@ function loadEnv(): Env {
     SEARCH_ENABLED,
     API_INTERNAL_URL_RESOLVED,
     WEEKLY_REVIEW_ENABLED,
+    CALENDAR_ENABLED,
+    CALENDAR_PROVIDER_PRIORITY_LIST,
+    NEWS_ENABLED,
+    NEWS_ENRICH_ENABLED,
+    PUSH_ENABLED,
   };
 }
 
