@@ -65,3 +65,9 @@ export function runWeeklyReview(params: { userId: string; sentAfter: string }): 
     body: JSON.stringify(params),
   });
 }
+
+// ── Phase 2: calendar / news / notifications ingest triggers ──────────────────
+
+export function ingestCalendar(params: { from: string; to: string }): Promise<{ upserted: number; providers: number }> {
+  return request('/internal/calendar/ingest', { method: 'POST', body: JSON.stringify(params) });
+}
