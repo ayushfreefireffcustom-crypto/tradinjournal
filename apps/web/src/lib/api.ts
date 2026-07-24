@@ -172,6 +172,19 @@ export interface AiConversationDetail extends AiConversationSummary {
   messages: AiMessage[];
 }
 
+// Cached AI performance narrative for the dashboard.
+export interface AiReport {
+  content: string;
+  /** Served from cache — the underlying data hasn't changed. */
+  cached: boolean;
+  /** False when this is the deterministic fallback rather than a written review. */
+  generated: boolean;
+  /** Cached text served after a failed regeneration. */
+  stale: boolean;
+  updatedAt: string;
+  model?: string;
+}
+
 export interface AiChatResult {
   conversationId?: string;
   // Web citations the coach used for this reply, if any.
@@ -302,5 +315,10 @@ export const api = {
     conversation: (id: string) => apiFetch<AiConversationDetail>(`${PREFIX}/ai/conversations/${id}`),
     deleteConversation: (id: string) =>
       apiFetch<{ ok: boolean }>(`${PREFIX}/ai/conversations/${id}`, { method: 'DELETE' }),
+    // `force` rewrites the review even when the cached one is still current.
+    report: (accountId: string, force = false) =>
+      apiFetch<AiReport>(
+        `${PREFIX}/ai/report?accountId=${encodeURIComponent(accountId)}${force ? '&force=1' : ''}`,
+      ),
   },
 };
