@@ -13,6 +13,7 @@ import { journalRouter } from './modules/journal/journal.routes.js';
 import { aiRouter, aiInternalRouter } from './modules/ai/ai.routes.js';
 import { calendarRouter, calendarInternalRouter } from './modules/calendar/calendar.routes.js';
 import { newsRouter, newsInternalRouter } from './modules/news/news.routes.js';
+import { notificationsRouter, pushRouter } from './modules/notifications/notifications.routes.js';
 
 export function createApp(): Express {
   const app = express();
@@ -47,6 +48,8 @@ export function createApp(): Express {
   app.use('/api/ai', aiRouter);
   app.use('/api/calendar', calendarRouter);
   app.use('/api/news', newsRouter);
+  app.use('/api/notifications', notificationsRouter);
+  app.use('/api/push', pushRouter);
   // Worker-to-API routes. Not under /api: no session, no CORS use case — the
   // shared-token guard on the router is the only way in.
   app.use('/internal/ai', aiInternalRouter);
