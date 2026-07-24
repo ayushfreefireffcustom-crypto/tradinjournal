@@ -14,6 +14,7 @@ import { StatCard, TwinBars } from '@/components/stat-card';
 import AnimatedNumber from '@/components/animated-number';
 import { useToast } from '@/components/toast';
 import InsightsStrip from '@/components/insights-strip';
+import AiReportCard from '@/components/ai-report-card';
 import EmptyState from '@/components/empty-state';
 import { Receipt } from '@phosphor-icons/react';
 
@@ -237,6 +238,9 @@ export default function DashboardPage() {
 
         {/* Auto insights */}
         {view && <InsightsStrip stats={view} trades={rangedTrades} journal={journal} />}
+
+        {/* Written review from the coach — hides itself when AI is unavailable */}
+        <AiReportCard accountId={selected?.id ?? null} />
 
         {/* Main grid */}
         <div className="grid grid-cols-12 gap-3">
