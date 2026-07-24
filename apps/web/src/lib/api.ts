@@ -336,6 +336,79 @@ function calendarQuery(f: CalendarFilters): string {
   return s ? `?${s}` : '';
 }
 
+// ── Phase 2: News feed ─────────────────────────────────────────────────────────
+
+export type Sentiment = 'BULLISH' | 'BEARISH' | 'NEUTRAL';
+export type NewsCategory = 'CRYPTO' | 'MACRO' | 'GEOPOLITICAL' | 'REGULATORY' | 'MARKETS';
+
+export interface NewsItem {
+  id: string;
+  url: string;
+  title: string;
+  summary: string | null;
+  source: string;
+  outlets: string[];
+  imageUrl: string | null;
+  publishedAt: string;
+  country: string | null;
+  category: NewsCategory | null;
+  sentiment: Sentiment | null;
+  relevance: number | null;
+  impact: EventImpact | null;
+  marketMoving: boolean;
+}
+
+export interface NewsPage {
+  items: NewsItem[];
+  nextCursor: string | null;
+}
+
+export interface NewsFilters {
+  category?: NewsCategory;
+  country?: string;
+  impact?: EventImpact;
+  sentiment?: Sentiment;
+  cursor?: string;
+  limit?: number;
+}
+
+function newsQuery(f: NewsFilters): string {
+  const q = new URLSearchParams();
+  if (f.category) q.set('category', f.category);
+  if (f.country) q.set('country', f.country);
+  if (f.impact) q.set('impact', f.impact);
+  if (f.sentiment) q.set('sentiment', f.sentiment);
+  if (f.cursor) q.set('cursor', f.cursor);
+  if (f.limit) q.set('limit', String(f.limit));
+  const s = q.toString();
+  return s ? `?${s}` : '';
+}
+
+/** Read an SSE GET stream, invoking `onEvent` per `data:` payload until closed/aborted. */
+async function sseGet(path: string, onEvent: (payload: Record<string, unknown>) => void, signal?: AbortSignal): Promise<void> {
+  const res = await fetch(`${API}${path}`, { credentials: 'include', signal });
+  if (!res.ok || !res.body) throw new Error(`Stream failed: ${res.status}`);
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const events = buffer.split('\n\n');
+    buffer = events.pop() ?? '';
+    for (const evt of events) {
+      const line = evt.split('\n').find(l => l.startsWith('data:'));
+      if (!line) continue;
+      try {
+        onEvent(JSON.parse(line.slice(5).trim()));
+      } catch {
+        /* ignore non-JSON (comments/heartbeats) */
+      }
+    }
+  }
+}
+
 export const api = {
   accounts: {
     connect: (body: { mt5Login: number; password: string; server: string; broker?: string }) =>
@@ -389,5 +462,25 @@ export const api = {
     get: (id: string) => apiFetch<CalendarEventDetail>(`${PREFIX}/calendar/${id}`),
     watch: (id: string) => apiFetch<{ watched: boolean }>(`${PREFIX}/calendar/${id}/watch`, { method: 'POST' }),
     unwatch: (id: string) => apiFetch<{ watched: boolean }>(`${PREFIX}/calendar/${id}/watch`, { method: 'DELETE' }),
+  },
+  news: {
+    list: (filters: NewsFilters = {}) => apiFetch<NewsPage>(`${PREFIX}/news${newsQuery(filters)}`),
+    // Live feed. Calls onItems with each pushed batch until the signal aborts.
+    stream: (onItems: (items: NewsItem[]) => void, signal?: AbortSignal) =>
+      sseGet(
+        `${PREFIX}/news/stream`,
+        p => { if (Array.isArray(p.items)) onItems(p.items as NewsItem[]); },
+        signal,
+      ),
+    // Streamed AI morning brief.
+    brief: (onToken: (t: string) => void, onDone: () => void, signal?: AbortSignal) =>
+      sseGet(
+        `${PREFIX}/news/brief/stream`,
+        p => {
+          if (typeof p.token === 'string') onToken(p.token);
+          if (p.done) onDone();
+        },
+        signal,
+      ),
   },
 };
