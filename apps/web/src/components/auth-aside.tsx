@@ -9,46 +9,101 @@ import { ChartLineUp, ChartPieSlice, Target, ShieldCheck, CloudCheck, Lock } fro
 // backdrop with a soft green glow. Purely presentational and static (SSR-safe,
 // reduced-motion-safe: no animation loops).
 
-// Faint ascending candlestick chart + trend line, used as atmosphere behind the
-// copy. Green, low-opacity, masked so it fades toward the text.
+const PROFIT = '#08C465';
+const LOSS = '#FE3A31';
+
+// Ascending candlestick chart used as atmosphere behind the copy. A deliberately
+// bullish "up and to the right" series (mostly green, a couple of natural
+// pullbacks) with a glowing area fill under the trend line, refined rounded
+// candles, and a soft price marker at the leading edge. Masked so it dissolves
+// toward the text. Pure SVG — SSR-safe; the one-shot line draw-in is gated behind
+// prefers-reduced-motion.
 function BackdropChart() {
-  const candles: [number, number, number, number, 'up' | 'down'][] = [
-    [40, 55, 34, 50, 'up'], [50, 58, 45, 47, 'down'], [47, 54, 40, 52, 'up'],
-    [52, 66, 49, 63, 'up'], [63, 70, 58, 60, 'down'], [60, 76, 57, 73, 'up'],
-    [73, 80, 68, 70, 'down'], [70, 88, 67, 85, 'up'], [85, 94, 80, 82, 'down'],
-    [82, 104, 79, 100, 'up'], [100, 112, 95, 108, 'up'], [108, 116, 92, 96, 'down'],
-    [96, 122, 92, 118, 'up'],
-  ];
-  const W = 520, H = 360, GAP = 10;
-  const cw = (W - GAP * (candles.length + 1)) / candles.length;
-  const lo = 30, hi = 128;
-  const ys = (v: number) => 24 + (1 - (v - lo) / (hi - lo)) * (H - 48);
-  const cx = (i: number) => GAP + i * (cw + GAP) + cw / 2;
-  const line = candles.map((c, i) => `${i === 0 ? 'M' : 'L'} ${cx(i).toFixed(1)} ${ys(c[3]).toFixed(1)}`).join(' ');
+  // Close prices tell the story; opens chain to the previous close so the candles
+  // read as one continuous chart rather than disconnected bars.
+  const closes = [38, 44, 42, 50, 57, 54, 62, 70, 66, 74, 82, 88, 84, 93, 102, 110];
+  const opens = [34, ...closes.slice(0, -1)];
+  const wick = 5;
+  const n = closes.length;
+
+  const W = 560, H = 380, PAD = 28, GAP = 9;
+  const cw = (W - PAD * 2 - GAP * (n - 1)) / n;
+  const lo = 24, hi = 118;
+  const ys = (v: number) => PAD + (1 - (v - lo) / (hi - lo)) * (H - PAD * 2);
+  const cx = (i: number) => PAD + i * (cw + GAP) + cw / 2;
+
+  const pts = closes.map((c, i) => [cx(i), ys(c)] as const);
+  const first = pts[0]!;
+  const last = pts[n - 1]!;
+  const line = pts.map(([x, y], i) => `${i === 0 ? 'M' : 'L'} ${x.toFixed(1)} ${y.toFixed(1)}`).join(' ');
+  const baseY = H - PAD + 10;
+  const area = `${line} L ${last[0].toFixed(1)} ${baseY} L ${first[0].toFixed(1)} ${baseY} Z`;
+  const gridVals = [92, 66, 40];
+
   return (
     <svg
       viewBox={`0 0 ${W} ${H}`}
-      className="absolute right-0 top-1/2 -translate-y-1/2 w-[560px] max-w-[70%] h-auto pointer-events-none select-none"
+      className="auth-chart absolute right-0 top-1/2 -translate-y-1/2 w-[600px] max-w-[74%] h-auto pointer-events-none select-none"
       style={{
-        WebkitMaskImage: 'radial-gradient(120% 100% at 80% 50%, #000 30%, transparent 78%)',
-        maskImage: 'radial-gradient(120% 100% at 80% 50%, #000 30%, transparent 78%)',
-        opacity: 0.5,
+        WebkitMaskImage: 'radial-gradient(130% 105% at 82% 50%, #000 26%, transparent 80%)',
+        maskImage: 'radial-gradient(130% 105% at 82% 50%, #000 26%, transparent 80%)',
       }}
       aria-hidden
     >
-      <path d={line} fill="none" stroke="#08C465" strokeWidth="1.5" opacity="0.55" strokeLinecap="round" strokeLinejoin="round" />
-      {candles.map(([o, h, l, c, dir], i) => {
-        const x = GAP + i * (cw + GAP);
-        const col = dir === 'up' ? '#08C465' : '#FE3A31';
+      <defs>
+        <linearGradient id="auth-area" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={PROFIT} stopOpacity="0.26" />
+          <stop offset="55%" stopColor={PROFIT} stopOpacity="0.07" />
+          <stop offset="100%" stopColor={PROFIT} stopOpacity="0" />
+        </linearGradient>
+        <linearGradient id="auth-line" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stopColor={PROFIT} stopOpacity="0.35" />
+          <stop offset="100%" stopColor={PROFIT} stopOpacity="0.95" />
+        </linearGradient>
+        <filter id="auth-glow" x="-60%" y="-60%" width="220%" height="220%">
+          <feGaussianBlur stdDeviation="4" />
+        </filter>
+      </defs>
+
+      {/* Baseline gridlines — barely-there structure */}
+      {gridVals.map(v => (
+        <line key={v} x1={PAD} y1={ys(v)} x2={W - PAD} y2={ys(v)} stroke="var(--color-border)" strokeWidth="1" opacity="0.4" />
+      ))}
+
+      {/* Glow fill under the trend */}
+      <path d={area} fill="url(#auth-area)" opacity="0.9" />
+
+      {/* Candles */}
+      {closes.map((c, i) => {
+        const o = opens[i]!;
+        const up = c >= o;
+        const col = up ? PROFIT : LOSS;
+        const x = PAD + i * (cw + GAP);
         const top = ys(Math.max(o, c));
         const bot = ys(Math.min(o, c));
         return (
-          <g key={i} opacity="0.5">
-            <line x1={x + cw / 2} y1={ys(h)} x2={x + cw / 2} y2={ys(l)} stroke={col} strokeWidth="1" />
-            <rect x={x} y={top} width={cw} height={Math.max(2, bot - top)} fill={col} />
+          <g key={i} opacity={up ? 0.62 : 0.52}>
+            <line x1={x + cw / 2} y1={ys(Math.max(o, c) + wick)} x2={x + cw / 2} y2={ys(Math.min(o, c) - wick)} stroke={col} strokeWidth="1.1" strokeLinecap="round" />
+            <rect x={x} y={top} width={cw} height={Math.max(2.5, bot - top)} rx="1.5" fill={col} />
           </g>
         );
       })}
+
+      {/* Trend line, gradient stroke, one-shot draw-in */}
+      <path
+        className="auth-chart-line"
+        d={line}
+        fill="none"
+        stroke="url(#auth-line)"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+
+      {/* Leading-edge price marker with a soft halo */}
+      <circle cx={last[0]} cy={last[1]} r="9" fill={PROFIT} opacity="0.25" filter="url(#auth-glow)" />
+      <circle cx={last[0]} cy={last[1]} r="3.4" fill={PROFIT} />
+      <circle cx={last[0]} cy={last[1]} r="3.4" fill="none" stroke={PROFIT} strokeOpacity="0.5" strokeWidth="4" opacity="0.35" />
     </svg>
   );
 }
