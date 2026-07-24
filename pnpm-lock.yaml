@@ -169,6 +169,9 @@ importers:
       '@tradinjournal/queue':
         specifier: workspace:*
         version: link:../../packages/queue
+      bullmq:
+        specifier: ^5.34.0
+        version: 5.78.1
     devDependencies:
       '@types/node':
         specifier: ^22.10.2
@@ -249,6 +252,10 @@ importers:
       ioredis:
         specifier: ^5.4.2
         version: 5.11.1
+    devDependencies:
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@22.19.21)(lightningcss@1.32.0)
 
   packages/types: {}
 
