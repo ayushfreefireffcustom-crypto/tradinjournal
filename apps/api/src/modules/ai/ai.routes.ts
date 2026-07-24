@@ -6,6 +6,7 @@ import {
   aiChatSchema,
   aiReportQuerySchema,
   weeklyReviewPrefSchema,
+  weeklyReviewRecipientsQuerySchema,
   weeklyReviewRunSchema,
   weeklyReviewUnsubscribeSchema,
 } from '@tradinjournal/contracts';
@@ -20,6 +21,7 @@ import {
   handleSetWeeklyReviewPref,
   handleUnsubscribeWeeklyReview,
   handleRunWeeklyReview,
+  handleListWeeklyReviewRecipients,
 } from './ai.controller.js';
 
 export const aiRouter: IRouter = Router();
@@ -53,4 +55,9 @@ aiRouter.patch('/weekly-review', validateBody(weeklyReviewPrefSchema), handleSet
 export const aiInternalRouter: IRouter = Router();
 
 aiInternalRouter.use(requireInternalToken);
+aiInternalRouter.get(
+  '/weekly-review/recipients',
+  validateQuery(weeklyReviewRecipientsQuerySchema),
+  handleListWeeklyReviewRecipients,
+);
 aiInternalRouter.post('/weekly-review', validateBody(weeklyReviewRunSchema), handleRunWeeklyReview);
