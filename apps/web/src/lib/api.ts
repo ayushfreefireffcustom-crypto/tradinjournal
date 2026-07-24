@@ -409,6 +409,32 @@ async function sseGet(path: string, onEvent: (payload: Record<string, unknown>) 
   }
 }
 
+// ── Phase 2: Notifications ─────────────────────────────────────────────────────
+
+export interface NotificationPrefs {
+  timezone: string;
+  inApp: boolean;
+  email: boolean;
+  push: boolean;
+  minImpact: EventImpact;
+  currencies: string[];
+  categories: string[];
+  leadMinutes: number;
+  newsAlerts: boolean;
+  pushAvailable: boolean;
+  vapidPublicKey: string | null;
+}
+
+export interface AppNotification {
+  id: string;
+  kind: string;
+  title: string;
+  body: string | null;
+  href: string | null;
+  read: boolean;
+  createdAt: string;
+}
+
 export const api = {
   accounts: {
     connect: (body: { mt5Login: number; password: string; server: string; broker?: string }) =>
@@ -482,5 +508,18 @@ export const api = {
         },
         signal,
       ),
+  },
+  notifications: {
+    preferences: () => apiFetch<NotificationPrefs>(`${PREFIX}/notifications/preferences`),
+    setPreferences: (body: Partial<Omit<NotificationPrefs, 'pushAvailable' | 'vapidPublicKey'>>) =>
+      apiFetch<NotificationPrefs>(`${PREFIX}/notifications/preferences`, { method: 'PATCH', body: JSON.stringify(body) }),
+    list: () => apiFetch<{ items: AppNotification[]; unread: number }>(`${PREFIX}/notifications`),
+    markRead: () => apiFetch<{ ok: boolean }>(`${PREFIX}/notifications/read`, { method: 'POST' }),
+  },
+  push: {
+    subscribe: (sub: { endpoint: string; keys: { p256dh: string; auth: string }; userAgent?: string }) =>
+      apiFetch<{ ok: boolean }>(`${PREFIX}/push/subscribe`, { method: 'POST', body: JSON.stringify(sub) }),
+    unsubscribe: (endpoint: string) =>
+      apiFetch<{ ok: boolean }>(`${PREFIX}/push/unsubscribe`, { method: 'POST', body: JSON.stringify({ endpoint }) }),
   },
 };
