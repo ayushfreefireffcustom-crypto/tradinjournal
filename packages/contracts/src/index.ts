@@ -89,6 +89,15 @@ export const weeklyReviewRunSchema = z.object({
 
 export type WeeklyReviewRunInput = z.infer<typeof weeklyReviewRunSchema>;
 
+/** Worker → API: one page of users due a digest. Internal, token-authenticated. */
+export const weeklyReviewRecipientsQuerySchema = z.object({
+  sentAfter: z.string().datetime(),
+  cursor: z.string().min(1).optional(),
+  limit: z.coerce.number().int().min(1).max(500).optional(),
+});
+
+export type WeeklyReviewRecipientsQuery = z.infer<typeof weeklyReviewRecipientsQuerySchema>;
+
 // ── AI coach web-search source ────────────────────────────────────────────────
 // A single web result the coach used to ground an external/current-facts answer.
 // Response-only (never part of the chat request); shared so the API and web agree
