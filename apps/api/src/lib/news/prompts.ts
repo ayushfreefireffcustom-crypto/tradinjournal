@@ -36,7 +36,7 @@ export function enrichUserContent(items: EnrichInputItem[]): string {
   return `<NEWS_ITEMS>\n${JSON.stringify(items)}\n</NEWS_ITEMS>`;
 }
 
-export function briefUserContent(items: Array<{ title: string; source: string; impact?: string }>): string {
+export function briefUserContent(items: Array<{ title: string; source: string; impact?: string | null }>): string {
   const lines = items.map((it, i) => `${i + 1}. [${it.impact ?? 'n/a'}] ${it.title} (${it.source})`);
   return `<HEADLINES>\n${lines.join('\n')}\n</HEADLINES>`;
 }
