@@ -185,6 +185,12 @@ export interface AiReport {
   model?: string;
 }
 
+// Weekly review email opt-in. Absent server-side row reads as { enabled: false }.
+export interface WeeklyReviewPref {
+  enabled: boolean;
+  lastSentAt: string | null;
+}
+
 export interface AiChatResult {
   conversationId?: string;
   // Web citations the coach used for this reply, if any.
@@ -320,5 +326,18 @@ export const api = {
       apiFetch<AiReport>(
         `${PREFIX}/ai/report?accountId=${encodeURIComponent(accountId)}${force ? '&force=1' : ''}`,
       ),
+    weeklyReview: () => apiFetch<WeeklyReviewPref>(`${PREFIX}/ai/weekly-review`),
+    setWeeklyReview: (enabled: boolean) =>
+      apiFetch<WeeklyReviewPref>(`${PREFIX}/ai/weekly-review`, {
+        method: 'PATCH',
+        body: JSON.stringify({ enabled }),
+      }),
+    // Reached from an email link — POST, not GET, so inbox scanners that
+    // prefetch links can't unsubscribe someone who never clicked.
+    unsubscribeWeeklyReview: (token: string) =>
+      apiFetch<{ ok: boolean }>(`${PREFIX}/ai/weekly-review/unsubscribe`, {
+        method: 'POST',
+        body: JSON.stringify({ token }),
+      }),
   },
 };
