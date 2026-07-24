@@ -8,12 +8,12 @@
 //
 // Never throws for AI reasons: no key, provider down, or empty output all degrade
 // to the deterministic rule-based summary — the dashboard always renders.
-import { createHash } from 'node:crypto';
 import { prisma } from '@tradinjournal/db';
 import { logger } from '@tradinjournal/logger';
 import type { TraderContext } from '@tradinjournal/core';
 import { isAiEnabled, getProvider } from '../../lib/ai/provider.js';
 import { loadTraderContext } from '../../lib/ai/context.js';
+import { hashContext } from '../../lib/ai/report-hash.js';
 import { REPORT_PROMPT, contextMessageContent } from '../../lib/ai/prompts.js';
 
 export interface AiReportResult {
@@ -31,25 +31,6 @@ export interface AiReportResult {
 
 /** Minimum closed trades before a narrative is worth generating. */
 const MIN_TRADES = 3;
-
-/**
- * Canonical JSON: keys sorted at every level, so two structurally identical
- * contexts always hash the same regardless of property insertion order.
- */
-function canonical(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(canonical);
-  if (value && typeof value === 'object') {
-    const src = value as Record<string, unknown>;
-    const out: Record<string, unknown> = {};
-    for (const key of Object.keys(src).sort()) out[key] = canonical(src[key]);
-    return out;
-  }
-  return value;
-}
-
-export function hashContext(ctx: TraderContext): string {
-  return createHash('sha256').update(JSON.stringify(canonical(ctx))).digest('hex');
-}
 
 /** Deterministic stand-in used whenever the model can't be reached. */
 function fallbackReport(ctx: TraderContext): string {
