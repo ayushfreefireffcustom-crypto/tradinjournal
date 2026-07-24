@@ -64,6 +64,31 @@ export const aiReportQuerySchema = z.object({
 
 export type AiReportQuery = z.infer<typeof aiReportQuerySchema>;
 
+// ── Weekly AI review email ────────────────────────────────────────────────────
+
+/** Toggle the weekly digest (opt-in: off until the user turns it on). */
+export const weeklyReviewPrefSchema = z.object({
+  enabled: z.boolean(),
+});
+
+export type WeeklyReviewPrefInput = z.infer<typeof weeklyReviewPrefSchema>;
+
+/** Unsubscribe from an email link. Token is 32 random bytes, hex-encoded. */
+export const weeklyReviewUnsubscribeSchema = z.object({
+  token: z.string().min(32).max(128),
+});
+
+export type WeeklyReviewUnsubscribeInput = z.infer<typeof weeklyReviewUnsubscribeSchema>;
+
+/** Worker → API: build and send one user's digest. Internal, token-authenticated. */
+export const weeklyReviewRunSchema = z.object({
+  userId: z.string().min(1),
+  /** Only send if the last send predates this instant — the idempotency window. */
+  sentAfter: z.string().datetime(),
+});
+
+export type WeeklyReviewRunInput = z.infer<typeof weeklyReviewRunSchema>;
+
 // ── AI coach web-search source ────────────────────────────────────────────────
 // A single web result the coach used to ground an external/current-facts answer.
 // Response-only (never part of the chat request); shared so the API and web agree
