@@ -18,6 +18,8 @@ import {
   WEEKLY_REVIEW_SCHEDULER_ID,
   QUEUE_CALENDAR_INGEST,
   CALENDAR_INGEST_SCHEDULER_ID,
+  QUEUE_NEWS_INGEST,
+  NEWS_INGEST_SCHEDULER_ID,
   createRedisConnection,
   getQueue,
   closeQueues,
@@ -25,9 +27,11 @@ import {
   timeBucket,
   type WeeklyReviewJob,
   type CalendarIngestJob,
+  type NewsIngestJob,
 } from '@tradinjournal/queue';
 import { createWeeklyReviewWorker, isUnrecoverable as weeklyUnrecoverable } from './processors/weekly-review.js';
 import { createCalendarWorker, isUnrecoverable as calendarUnrecoverable } from './processors/calendar-ingest.js';
+import { createNewsWorker, isUnrecoverable as newsUnrecoverable } from './processors/news-ingest.js';
 
 const workers: Worker[] = [];
 let connection: ReturnType<typeof createRedisConnection> = null;
@@ -85,6 +89,20 @@ async function start(): Promise<void> {
     );
     attach(createCalendarWorker(connection, calQueue) as unknown as Worker, 'Calendar ingest', calendarUnrecoverable);
     logger.info(`Calendar ingest scheduled: "${env.CALENDAR_INGEST_CRON}" UTC`);
+  }
+
+  // ── News ingestion ──────────────────────────────────────────────────────────
+  // RSS baseline always has something to fetch, so this runs whenever the worker
+  // does; the API bounds LLM enrichment spend server-side.
+  const newsQueue = getQueue<NewsIngestJob>(QUEUE_NEWS_INGEST);
+  if (newsQueue) {
+    await newsQueue.upsertJobScheduler(
+      NEWS_INGEST_SCHEDULER_ID,
+      { pattern: env.NEWS_INGEST_CRON, tz: 'UTC' },
+      { name: 'ingest', data: { kind: 'news-ingest', bucket: timeBucket(new Date(), 'minute') } },
+    );
+    attach(createNewsWorker(connection, newsQueue) as unknown as Worker, 'News ingest', newsUnrecoverable);
+    logger.info(`News ingest scheduled: "${env.NEWS_INGEST_CRON}" UTC`);
   }
 
   logger.info(`Worker ready — ${workers.length} pipeline(s) registered.`);
