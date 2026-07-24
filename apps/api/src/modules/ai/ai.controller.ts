@@ -4,6 +4,7 @@ import type {
   AiChatInput,
   AiReportQuery,
   WeeklyReviewPrefInput,
+  WeeklyReviewRecipientsQuery,
   WeeklyReviewRunInput,
   WeeklyReviewUnsubscribeInput,
 } from '@tradinjournal/contracts';
@@ -28,6 +29,7 @@ import {
   setSubscription,
   unsubscribeByToken,
   sendWeeklyReview,
+  listDueRecipients,
 } from './ai.weekly-review.service.js';
 
 function sseWrite(res: Response, obj: unknown): void {
@@ -236,6 +238,28 @@ export async function handleUnsubscribeWeeklyReview(req: Request, res: Response,
     const found = await unsubscribeByToken(token);
     if (!found) throw new NotFoundError('That unsubscribe link is no longer valid');
     ok(res, { ok: true });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// GET /internal/ai/weekly-review/recipients — worker-only. One page of users due
+// a digest. Paginated so the worker never pulls a whole user base into memory.
+export async function handleListWeeklyReviewRecipients(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const { sentAfter, cursor, limit } = req.query as unknown as WeeklyReviewRecipientsQuery;
+    ok(
+      res,
+      await listDueRecipients({
+        sentAfter: new Date(sentAfter),
+        limit: limit ? Number(limit) : 100,
+        cursor,
+      }),
+    );
   } catch (err) {
     next(err);
   }
