@@ -58,6 +58,12 @@ export function weeklyReviewSendJobId(userId: string, weekKey: string): string {
 // ─── Connection ──────────────────────────────────────────────────────────────
 
 /**
+ * The connection type, re-exported so consumers can pass connections around
+ * without taking a direct dependency on ioredis.
+ */
+export type QueueConnection = Redis;
+
+/**
  * BullMQ requires `maxRetriesPerRequest: null` on its connection — it manages
  * retries itself, and ioredis's default would abort blocking commands mid-wait.
  */
