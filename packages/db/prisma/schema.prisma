@@ -341,6 +341,31 @@ enum AiRole {
   assistant
 }
 
+/// Opt-in for the weekly AI review email. One row per user (the email is a single
+/// digest covering every account they have), created only when the user turns it
+/// on, so an absent row means "not subscribed". Deliberately a separate table:
+/// better-auth owns `user`, and this never touches it.
+model WeeklyReviewSubscription {
+  id     String  @id @default(cuid())
+  userId String  @unique
+  /// Opt-in: false until the user explicitly enables it in settings.
+  enabled Boolean @default(false)
+
+  /// Cryptographically random, generated in application code (NOT a cuid — this
+  /// appears in an unauthenticated unsubscribe link and must be unguessable).
+  unsubscribeToken String @unique
+
+  /// When the digest last went out. Also the idempotency guard: a job for a week
+  /// that was already sent is a no-op, so a duplicate cron fire can't double-send.
+  lastSentAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([enabled, lastSentAt])
+  @@map("weekly_review_subscription")
+}
+
 /// Cached AI narrative for one account. Keyed on a hash of the trader-context it
 /// was written from: while the hash matches, the stored narrative is reused and no
 /// tokens are spent. One row per account (upserted), so the table stays bounded.
