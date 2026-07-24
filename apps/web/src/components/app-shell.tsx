@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Gauge, Table, ChartLineUp, CalendarBlank, CalendarDots, FilmSlate, NotePencil, Bank, Robot, GearSix, type Icon } from '@phosphor-icons/react';
+import { Gauge, Table, ChartLineUp, CalendarBlank, CalendarDots, Newspaper, FilmSlate, NotePencil, Bank, Robot, GearSix, type Icon } from '@phosphor-icons/react';
 import type { BrokerAccount } from '@/lib/api';
 import { authClient } from '@/lib/auth-client';
 import Logo from '@/components/logo';
@@ -26,6 +26,7 @@ const NAV: { href: string; label: string; icon: Icon }[] = [
   { href: '/journal',   label: 'CHART REPLAY', icon: FilmSlate },
   { href: '/notebook',  label: 'JOURNAL',      icon: NotePencil },
   { href: '/economic-calendar', label: 'ECON CALENDAR', icon: CalendarDots },
+  { href: '/news',      label: 'MARKET NEWS',  icon: Newspaper },
   { href: '/coach',     label: 'AI COACH',     icon: Robot },
   { href: '/brokers',   label: 'BROKERS',      icon: Bank },
   { href: '/settings',  label: 'SETTINGS',     icon: GearSix },
