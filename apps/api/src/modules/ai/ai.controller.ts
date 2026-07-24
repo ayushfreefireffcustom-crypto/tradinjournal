@@ -1,6 +1,12 @@
 import type { Request, Response, NextFunction } from 'express';
 import { logger } from '@tradinjournal/logger';
-import type { AiChatInput, AiReportQuery } from '@tradinjournal/contracts';
+import type {
+  AiChatInput,
+  AiReportQuery,
+  WeeklyReviewPrefInput,
+  WeeklyReviewRunInput,
+  WeeklyReviewUnsubscribeInput,
+} from '@tradinjournal/contracts';
 import { ok } from '../../http/response.js';
 import { NotFoundError } from '../../http/errors.js';
 import { isAiEnabled, getProvider } from '../../lib/ai/provider.js';
@@ -17,6 +23,12 @@ import {
   deleteConversation,
 } from './ai.service.js';
 import { getReport } from './ai.report.service.js';
+import {
+  getSubscription,
+  setSubscription,
+  unsubscribeByToken,
+  sendWeeklyReview,
+} from './ai.weekly-review.service.js';
 
 function sseWrite(res: Response, obj: unknown): void {
   res.write(`data: ${JSON.stringify(obj)}\n\n`);
@@ -189,6 +201,53 @@ export async function handleGetReport(req: Request, res: Response, next: NextFun
     const userId = res.locals.user.id as string;
     const { accountId, force } = req.query as unknown as AiReportQuery;
     ok(res, await getReport(userId, accountId, { force: Boolean(force) }));
+  } catch (err) {
+    next(err);
+  }
+}
+
+// GET /api/ai/weekly-review — the signed-in user's opt-in state
+export async function handleGetWeeklyReviewPref(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const userId = res.locals.user.id as string;
+    ok(res, await getSubscription(userId));
+  } catch (err) {
+    next(err);
+  }
+}
+
+// PATCH /api/ai/weekly-review — turn the digest on or off
+export async function handleSetWeeklyReviewPref(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const userId = res.locals.user.id as string;
+    const { enabled } = req.body as WeeklyReviewPrefInput;
+    ok(res, await setSubscription(userId, enabled));
+  } catch (err) {
+    next(err);
+  }
+}
+
+// POST /api/ai/weekly-review/unsubscribe — reached from an email link, no session.
+// Deliberately POST: mail clients and security scanners prefetch GET links, which
+// would unsubscribe people who never clicked anything.
+export async function handleUnsubscribeWeeklyReview(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const { token } = req.body as WeeklyReviewUnsubscribeInput;
+    const found = await unsubscribeByToken(token);
+    if (!found) throw new NotFoundError('That unsubscribe link is no longer valid');
+    ok(res, { ok: true });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// POST /internal/ai/weekly-review — worker-only, guarded by the shared token.
+export async function handleRunWeeklyReview(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const { userId, sentAfter } = req.body as WeeklyReviewRunInput;
+    const outcome = await sendWeeklyReview({ userId, sentAfter: new Date(sentAfter) });
+    if (!outcome.sent) logger.info(`Weekly review skipped for ${userId}: ${outcome.reason}`);
+    ok(res, outcome);
   } catch (err) {
     next(err);
   }
