@@ -14,9 +14,15 @@ interface SendArgs {
   html: string;
   /** optional plaintext shown in the dev-console fallback (e.g. the OTP) */
   devNote?: string;
+  /**
+   * Extra SMTP headers. Recurring (non-transactional) mail should set
+   * List-Unsubscribe / List-Unsubscribe-Post so inbox providers show a native
+   * unsubscribe button — without it bulk sends get filed as spam.
+   */
+  headers?: Record<string, string>;
 }
 
-export async function sendEmail({ to, subject, html, devNote }: SendArgs): Promise<void> {
+export async function sendEmail({ to, subject, html, devNote, headers }: SendArgs): Promise<void> {
   if (!resend) {
     logger.warn(
       `[email:dev] RESEND_API_KEY not set — email not sent. ${devNote ?? ''}`,
@@ -30,6 +36,7 @@ export async function sendEmail({ to, subject, html, devNote }: SendArgs): Promi
     to,
     subject,
     html,
+    ...(headers ? { headers } : {}),
   });
 
   if (error) {
