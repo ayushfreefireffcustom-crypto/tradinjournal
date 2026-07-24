@@ -64,8 +64,24 @@ export function weeklyReviewSendJobId(userId: string, weekKey: string): string {
 export type QueueConnection = Redis;
 
 /**
+ * Describe a connection failure usefully. ioredis surfaces AggregateError for a
+ * multi-address failure, and its `.message` is empty — logging that alone
+ * produces "Queue Redis error:" with nothing after it.
+ */
+function describeError(err: Error): string {
+  const code = (err as NodeJS.ErrnoException).code;
+  if (err.message) return code ? `${code}: ${err.message}` : err.message;
+  const inner = (err as AggregateError).errors?.[0] as Error | undefined;
+  return code ?? inner?.message ?? err.name;
+}
+
+/**
  * BullMQ requires `maxRetriesPerRequest: null` on its connection — it manages
  * retries itself, and ioredis's default would abort blocking commands mid-wait.
+ *
+ * ioredis retries a dead endpoint several times a second, so errors are logged
+ * on the transition into failure and again on recovery, never once per attempt.
+ * An unreachable Redis must not flood the logs of a long-running worker.
  */
 export function createRedisConnection(): Redis | null {
   if (!env.REDIS_URL) return null;
@@ -73,7 +89,18 @@ export function createRedisConnection(): Redis | null {
     maxRetriesPerRequest: null,
     enableReadyCheck: false,
   });
-  redis.on('error', err => logger.error(`Queue Redis error: ${err.message}`));
+
+  let down = false;
+  redis.on('error', err => {
+    if (down) return;
+    down = true;
+    logger.error(`Queue Redis unavailable (retrying): ${describeError(err)}`);
+  });
+  redis.on('ready', () => {
+    if (down) logger.info('Queue Redis connection restored');
+    down = false;
+  });
+
   return redis;
 }
 
