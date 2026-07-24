@@ -61,6 +61,26 @@ const envSchema = z.object({
 
   MT5_BRIDGE_URL: z.string().url().default('http://localhost:8000'),
   MT5_BRIDGE_SHARED_SECRET: z.string().default('dev-secret-change-in-production'),
+
+  // ── Background jobs (weekly AI review) ───────────────────────────────────
+  // The worker schedules; the API executes. The worker never touches the MT5
+  // bridge itself — the bridge serialises on one terminal, so a second process
+  // fetching deals concurrently would break both. Instead the worker calls the
+  // API's internal endpoint, authenticated with a shared token.
+  //
+  // Same optional-with-fallback approach as the AI/Resend blocks: without
+  // REDIS_URL + INTERNAL_API_TOKEN the feature is simply off. The worker idles
+  // and the API is unaffected — nothing that already works can break.
+  INTERNAL_API_TOKEN: z.string().min(16).optional(),
+  // Where the worker reaches the API. On Railway this is the private URL.
+  API_INTERNAL_URL: z.string().url().optional(),
+  // Saturday 09:00 UTC. Standard 5-field cron.
+  WEEKLY_REVIEW_CRON: z.string().default('0 9 * * 6'),
+  // Deliberately 1: report generation reads the MT5 bridge, which serialises on
+  // a single terminal. Raise only when the bridge is horizontally scaled.
+  WEEKLY_REVIEW_CONCURRENCY: z.coerce.number().int().positive().default(1),
+  // Sends per minute, so a Saturday batch trickles instead of stampeding.
+  WEEKLY_REVIEW_PER_MINUTE: z.coerce.number().int().positive().default(6),
 });
 
 export type Env = z.infer<typeof envSchema> & {
@@ -77,6 +97,10 @@ export type Env = z.infer<typeof envSchema> & {
   SEARCH_PROVIDER_RESOLVED: 'tavily' | 'compound' | 'none';
   /** True when the coach can perform a web search (Tavily key set OR AI enabled for the fallback). */
   SEARCH_ENABLED: boolean;
+  /** Base URL the worker uses to reach the API (private URL in prod, API_HOST/PORT locally). */
+  API_INTERNAL_URL_RESOLVED: string;
+  /** True when the weekly-review worker can run: Redis to queue on, token to authenticate with. */
+  WEEKLY_REVIEW_ENABLED: boolean;
 };
 
 const AI_DEFAULTS = {
@@ -120,6 +144,18 @@ function loadEnv(): Env {
   else SEARCH_PROVIDER_RESOLVED = 'none';
   const SEARCH_ENABLED = SEARCH_PROVIDER_RESOLVED !== 'none';
 
+  // The worker reaches the API over the private network in prod; locally the
+  // API's own host/port is the right guess. API_HOST is a bind address, so
+  // 0.0.0.0 is rewritten to a dialable loopback.
+  const localHost = parsed.data.API_HOST === '0.0.0.0' ? '127.0.0.1' : parsed.data.API_HOST;
+  const API_INTERNAL_URL_RESOLVED =
+    parsed.data.API_INTERNAL_URL ?? `http://${localHost}:${parsed.data.API_PORT}`;
+
+  // Both halves are required: Redis to schedule on, and a token so the worker
+  // can prove itself to the API. Missing either means the feature stays off
+  // rather than half-working.
+  const WEEKLY_REVIEW_ENABLED = !!parsed.data.REDIS_URL && !!parsed.data.INTERNAL_API_TOKEN;
+
   return {
     ...parsed.data,
     APP_URL,
@@ -129,6 +165,8 @@ function loadEnv(): Env {
     AI_API_KEY,
     SEARCH_PROVIDER_RESOLVED,
     SEARCH_ENABLED,
+    API_INTERNAL_URL_RESOLVED,
+    WEEKLY_REVIEW_ENABLED,
   };
 }
 
