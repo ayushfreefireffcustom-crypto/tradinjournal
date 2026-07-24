@@ -337,6 +337,20 @@ select.tinput::-ms-expand { display: none; }
   .coach-shimmer { animation: none; color: var(--color-fg-3); }
 }
 
+/* Auth-page candlestick backdrop. Sits low behind the marketing copy; the trend
+   line draws itself in once on load. Both are neutralised under reduced-motion —
+   the composition is designed to look finished while static. */
+.auth-chart { opacity: 0.62; }
+@keyframes auth-line-draw { to { stroke-dashoffset: 0; } }
+.auth-chart-line {
+  stroke-dasharray: 900;
+  stroke-dashoffset: 900;
+  animation: auth-line-draw 1.9s var(--ease-premium, ease-out) 0.15s forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .auth-chart-line { animation: none; stroke-dashoffset: 0; }
+}
+
 /* ─── Scroll-reveal ─────────────────────────────────────────────────────────
    Starts hidden; JS (useInView via <Reveal>) adds .reveal-visible when the
    element scrolls into view. Set --reveal-delay for a per-item stagger.
