@@ -71,3 +71,7 @@ export function runWeeklyReview(params: { userId: string; sentAfter: string }): 
 export function ingestCalendar(params: { from: string; to: string }): Promise<{ upserted: number; providers: number }> {
   return request('/internal/calendar/ingest', { method: 'POST', body: JSON.stringify(params) });
 }
+
+export function ingestNews(params: { bucket: string }): Promise<{ fetched: number; inserted: number; enriched: number }> {
+  return request('/internal/news/ingest', { method: 'POST', body: JSON.stringify(params) });
+}
