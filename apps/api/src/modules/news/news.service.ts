@@ -12,6 +12,7 @@ import { getNewsProviders } from '../../lib/news/providers/index.js';
 import { reconcileNews } from '../../lib/news/reconcile.js';
 import type { NormalizedNews } from '../../lib/news/types.js';
 import { enrichNews, type EnrichableItem } from '../../lib/news/enrich.js';
+import { publishNews } from '../../lib/news/stream.js';
 import { cacheGet, cacheSet } from '../../lib/cache.js';
 
 const FIRST_PAGE_TTL_SECONDS = 30;
@@ -42,6 +43,7 @@ export async function ingestNews(): Promise<{ fetched: number; inserted: number;
 
   // Upsert base fields; collect items still needing enrichment.
   const toEnrich: EnrichableItem[] = [];
+  const insertedIds: string[] = [];
   let inserted = 0;
   for (const r of reconciled) {
     const hash = enrichHash(r.title, r.summary);
@@ -64,7 +66,10 @@ export async function ingestNews(): Promise<{ fetched: number; inserted: number;
         update: { url: base.url, summary: base.summary, sources: base.sources },
         select: { id: true },
       });
-      if (!prior) inserted += 1;
+      if (!prior) {
+        inserted += 1;
+        insertedIds.push(row.id);
+      }
       const needsEnrich = !prior || prior.enrichHash !== hash || !prior.enrichedAt;
       if (needsEnrich) toEnrich.push({ id: row.id, title: r.title, summary: r.summary ?? undefined });
     } catch (err) {
@@ -99,6 +104,19 @@ export async function ingestNews(): Promise<{ fetched: number; inserted: number;
       } catch (err) {
         logger.warn(`News enrich-update failed for ${item.id}: ${(err as Error).message}`);
       }
+    }
+  }
+
+  // Push the newly-inserted items (now enriched) to any live SSE subscribers.
+  if (insertedIds.length > 0) {
+    try {
+      const fresh = await prisma.newsItem.findMany({
+        where: { id: { in: insertedIds } },
+        orderBy: { publishedAt: 'desc' },
+      });
+      await publishNews(fresh.map(toNewsDTO));
+    } catch (err) {
+      logger.warn(`News publish failed (non-fatal): ${(err as Error).message}`);
     }
   }
 
