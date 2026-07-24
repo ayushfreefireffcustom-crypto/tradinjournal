@@ -15,7 +15,8 @@
   "dependencies": {
     "@tradinjournal/config": "workspace:*",
     "@tradinjournal/logger": "workspace:*",
-    "@tradinjournal/queue": "workspace:*"
+    "@tradinjournal/queue": "workspace:*",
+    "bullmq": "^5.34.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
