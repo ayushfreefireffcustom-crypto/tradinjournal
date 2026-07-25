@@ -63,7 +63,7 @@ export async function ingestNews(): Promise<{ fetched: number; inserted: number;
       const row = await prisma.newsItem.upsert({
         where: { dedupKey: r.dedupKey },
         create: { dedupKey: r.dedupKey, ...base },
-        update: { url: base.url, summary: base.summary, sources: base.sources },
+        update: { url: base.url, summary: base.summary, sources: base.sources, imageUrl: base.imageUrl },
         select: { id: true },
       });
       if (!prior) {
