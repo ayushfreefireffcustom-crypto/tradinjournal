@@ -13,7 +13,7 @@ import { journalRouter } from './modules/journal/journal.routes.js';
 import { aiRouter, aiInternalRouter } from './modules/ai/ai.routes.js';
 import { calendarRouter, calendarInternalRouter } from './modules/calendar/calendar.routes.js';
 import { newsRouter, newsInternalRouter } from './modules/news/news.routes.js';
-import { notificationsRouter, pushRouter } from './modules/notifications/notifications.routes.js';
+import { notificationsRouter, pushRouter, notificationsInternalRouter } from './modules/notifications/notifications.routes.js';
 
 export function createApp(): Express {
   const app = express();
@@ -55,6 +55,7 @@ export function createApp(): Express {
   app.use('/internal/ai', aiInternalRouter);
   app.use('/internal/calendar', calendarInternalRouter);
   app.use('/internal/news', newsInternalRouter);
+  app.use('/internal/notifications', notificationsInternalRouter);
 
   app.use((_req: Request, res: Response) => {
     res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Route not found' } });
