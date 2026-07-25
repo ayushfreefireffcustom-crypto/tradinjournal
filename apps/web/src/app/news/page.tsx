@@ -10,6 +10,7 @@ import AppShell from '@/components/app-shell';
 import EmptyState from '@/components/empty-state';
 import MarkdownMessage from '@/components/coach/markdown-message';
 import NewsModal from '@/components/news/news-modal';
+import NewsThumb from '@/components/news/news-thumb';
 import { useAccounts } from '@/lib/use-accounts';
 import { api, type NewsItem, type NewsCategory, type Sentiment, type EventImpact, type BrokerAccount } from '@/lib/api';
 
@@ -185,7 +186,7 @@ export default function NewsPage() {
         </div>
 
         <div className="flex-1 overflow-y-auto px-3 sm:px-4 lg:px-6 py-4" data-testid="news-list">
-          <div className="max-w-6xl mx-auto">
+          <div className="max-w-7xl mx-auto">
             {/* Brief panel */}
             {briefOpen && (
               <div className="max-w-3xl mx-auto mb-5 rounded-[var(--radius-card)] border border-profit/25 bg-surface/40 p-4" data-testid="news-brief">
@@ -214,27 +215,30 @@ export default function NewsPage() {
                       type="button"
                       onClick={() => setSelectedItem(lead)}
                       data-testid="news-lead"
-                      className={`group w-full text-left rounded-[var(--radius-card)] border bg-surface/50 p-5 mb-3 transition-colors hover:bg-surface ${
+                      className={`group w-full text-left rounded-[var(--radius-card)] border bg-surface/50 p-5 mb-3 transition-colors hover:bg-surface flex gap-5 ${
                         high ? 'border-loss/40 border-l-2 border-l-loss' : 'border-border-soft hover:border-border-strong'
                       }`}
                     >
-                      <div className="flex items-center gap-2 flex-wrap text-[10px] mb-2">
-                        <span className="text-[9px] tracking-[0.2em] uppercase text-profit font-semibold">Top story</span>
-                        <span className="text-fg-3">·</span>
-                        <span className="font-semibold tracking-wide text-fg-2">{lead.source}</span>
-                        <span className="text-fg-3">· {timeAgo(lead.publishedAt)}</span>
-                        {lead.category && <span className="px-1.5 py-0.5 rounded border border-border-soft text-fg-3 tracking-wider uppercase">{lead.category}</span>}
-                        {lead.sentiment && <span className={`px-1.5 py-0.5 rounded border tracking-wider uppercase ${sentimentChip[lead.sentiment]}`}>{lead.sentiment}</span>}
-                        {high && <span className="px-1.5 py-0.5 rounded border border-loss/40 text-loss bg-loss/10 tracking-wider uppercase">High impact</span>}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap text-[10px] mb-2">
+                          <span className="text-[9px] tracking-[0.2em] uppercase text-profit font-semibold">Top story</span>
+                          <span className="text-fg-3">·</span>
+                          <span className="font-semibold tracking-wide text-fg-2">{lead.source}</span>
+                          <span className="text-fg-3">· {timeAgo(lead.publishedAt)}</span>
+                          {lead.category && <span className="px-1.5 py-0.5 rounded border border-border-soft text-fg-3 tracking-wider uppercase">{lead.category}</span>}
+                          {lead.sentiment && <span className={`px-1.5 py-0.5 rounded border tracking-wider uppercase ${sentimentChip[lead.sentiment]}`}>{lead.sentiment}</span>}
+                          {high && <span className="px-1.5 py-0.5 rounded border border-loss/40 text-loss bg-loss/10 tracking-wider uppercase">High impact</span>}
+                        </div>
+                        <h2 className="font-display font-bold text-[20px] sm:text-[22px] leading-tight tracking-tight text-fg">{lead.title}</h2>
+                        {lead.summary && <p className="text-[13.5px] text-fg-2 mt-2 leading-relaxed line-clamp-2">{lead.summary}</p>}
+                        <span className="inline-flex items-center gap-1 text-[10px] tracking-[0.14em] uppercase text-fg-3 mt-3 group-hover:text-fg transition-colors">Read more <ArrowUpRight size={11} weight="bold" /></span>
                       </div>
-                      <h2 className="font-display font-bold text-[20px] sm:text-[22px] leading-tight tracking-tight text-fg">{lead.title}</h2>
-                      {lead.summary && <p className="text-[13.5px] text-fg-2 mt-2 leading-relaxed line-clamp-2 max-w-3xl">{lead.summary}</p>}
-                      <span className="inline-flex items-center gap-1 text-[10px] tracking-[0.14em] uppercase text-fg-3 mt-3 group-hover:text-fg transition-colors">Read more <ArrowUpRight size={11} weight="bold" /></span>
+                      <NewsThumb src={lead.imageUrl} className="hidden sm:block shrink-0 w-44 lg:w-56 aspect-video rounded-lg object-cover border border-border-soft" />
                     </button>
                   );
                 })()}
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-3">
                   {gridItems.map(it => {
                     const high = it.impact === 'HIGH' || it.marketMoving;
                     return (
@@ -243,31 +247,32 @@ export default function NewsPage() {
                         type="button"
                         onClick={() => setSelectedItem(it)}
                         data-testid="news-item"
-                        className={`group h-full flex flex-col text-left rounded-[var(--radius-card)] border bg-surface/40 px-4 py-3.5 transition-colors hover:bg-surface ${
+                        className={`group h-full flex gap-3 text-left rounded-[var(--radius-card)] border bg-surface/40 px-4 py-3.5 transition-colors hover:bg-surface ${
                           high ? 'border-loss/40 border-l-2 border-l-loss bg-loss/[0.04]' : 'border-border-soft hover:border-border-strong'
                         }`}
                       >
-                        <div className="flex items-center gap-2 flex-wrap text-[10px] mb-1.5">
-                          <span className="font-semibold tracking-wide text-fg-2">{it.source}</span>
-                          <span className="text-fg-3">· {timeAgo(it.publishedAt)}</span>
-                          {it.category && <span className="px-1.5 py-0.5 rounded border border-border-soft text-fg-3 tracking-wider uppercase">{it.category}</span>}
-                          {it.sentiment && (
-                            <span className={`px-1.5 py-0.5 rounded border tracking-wider uppercase ${sentimentChip[it.sentiment]}`}>{it.sentiment}</span>
-                          )}
-                          {high && <span className="px-1.5 py-0.5 rounded border border-loss/40 text-loss bg-loss/10 tracking-wider uppercase">High</span>}
-                          {typeof it.relevance === 'number' && (
-                            <span className="ml-auto flex items-center gap-1 text-fg-3" title={`Relevance ${it.relevance}/100`}>
-                              <span className="w-10 h-1 rounded-full bg-surface-active overflow-hidden">
-                                <span className="block h-full bg-profit/70" style={{ width: `${it.relevance}%` }} />
+                        <div className="flex-1 min-w-0 flex flex-col">
+                          <div className="flex items-center gap-1.5 flex-wrap text-[10px] mb-1.5">
+                            <span className="font-semibold tracking-wide text-fg-2">{it.source}</span>
+                            <span className="text-fg-3">· {timeAgo(it.publishedAt)}</span>
+                            {it.category && <span className="px-1.5 py-0.5 rounded border border-border-soft text-fg-3 tracking-wider uppercase">{it.category}</span>}
+                            {it.sentiment && (
+                              <span className={`px-1.5 py-0.5 rounded border tracking-wider uppercase ${sentimentChip[it.sentiment]}`}>{it.sentiment}</span>
+                            )}
+                            {high && <span className="px-1.5 py-0.5 rounded border border-loss/40 text-loss bg-loss/10 tracking-wider uppercase">High</span>}
+                          </div>
+                          <div className="text-[14px] font-medium text-fg leading-snug line-clamp-2">{it.title}</div>
+                          {it.summary && <p className="text-[12px] text-fg-3 mt-1.5 line-clamp-2 leading-relaxed">{it.summary}</p>}
+                          <div className="mt-auto pt-2 flex items-center gap-2">
+                            {typeof it.relevance === 'number' && (
+                              <span className="flex items-center gap-1 text-fg-3" title={`Relevance ${it.relevance}/100`}>
+                                <span className="w-10 h-1 rounded-full bg-surface-active overflow-hidden"><span className="block h-full bg-profit/70" style={{ width: `${it.relevance}%` }} /></span>
                               </span>
-                            </span>
-                          )}
+                            )}
+                            <span className="ml-auto flex items-center gap-1 text-[10px] tracking-[0.14em] uppercase text-fg-3 opacity-0 group-hover:opacity-100 transition-opacity">Read <ArrowUpRight size={11} weight="bold" /></span>
+                          </div>
                         </div>
-                        <div className="text-[14px] font-medium text-fg leading-snug line-clamp-2">{it.title}</div>
-                        {it.summary && <p className="text-[12px] text-fg-3 mt-1.5 line-clamp-2 leading-relaxed">{it.summary}</p>}
-                        <div className="mt-auto pt-2 flex items-center gap-1 text-[10px] tracking-[0.14em] uppercase text-fg-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                          Read more <ArrowUpRight size={11} weight="bold" />
-                        </div>
+                        <NewsThumb src={it.imageUrl} className="shrink-0 w-16 h-16 rounded-md object-cover border border-border-soft" />
                       </button>
                     );
                   })}
