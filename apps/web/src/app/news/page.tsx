@@ -4,7 +4,7 @@
 // red (FinancialJuice cue); each carries sentiment, relevance and category from
 // the enrichment pass. New items stream in over SSE (falling back to polling),
 // and a one-click AI "morning brief" summarizes the session.
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Newspaper, Sparkle, ArrowUpRight, Circle } from '@phosphor-icons/react';
 import AppShell from '@/components/app-shell';
 import EmptyState from '@/components/empty-state';
@@ -51,6 +51,17 @@ export default function NewsPage() {
   const [brief, setBrief] = useState('');
   const [briefLoading, setBriefLoading] = useState(false);
   const [selectedItem, setSelectedItem] = useState<NewsItem | null>(null);
+
+  // Featured lead story: the most market-moving / relevant of the recent items.
+  // Only used on the unfiltered feed, so filtered views stay a pure grid.
+  const showLead = !category && !highOnly;
+  const lead = useMemo(() => {
+    if (!showLead || items.length === 0) return null;
+    return [...items.slice(0, 12)].sort(
+      (a, b) => Number(b.marketMoving) - Number(a.marketMoving) || (b.relevance ?? 0) - (a.relevance ?? 0),
+    )[0] ?? null;
+  }, [items, showLead]);
+  const gridItems = lead ? items.filter(i => i.id !== lead.id) : items;
 
   const sentinel = useRef<HTMLDivElement>(null);
 
@@ -195,8 +206,36 @@ export default function NewsPage() {
               <EmptyState icon={Newspaper} title="No news yet" hint="The feed will fill in as headlines are ingested." />
             ) : (
               <>
+                {/* Featured lead story */}
+                {lead && (() => {
+                  const high = lead.impact === 'HIGH' || lead.marketMoving;
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedItem(lead)}
+                      data-testid="news-lead"
+                      className={`group w-full text-left rounded-[var(--radius-card)] border bg-surface/50 p-5 mb-3 transition-colors hover:bg-surface ${
+                        high ? 'border-loss/40 border-l-2 border-l-loss' : 'border-border-soft hover:border-border-strong'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 flex-wrap text-[10px] mb-2">
+                        <span className="text-[9px] tracking-[0.2em] uppercase text-profit font-semibold">Top story</span>
+                        <span className="text-fg-3">·</span>
+                        <span className="font-semibold tracking-wide text-fg-2">{lead.source}</span>
+                        <span className="text-fg-3">· {timeAgo(lead.publishedAt)}</span>
+                        {lead.category && <span className="px-1.5 py-0.5 rounded border border-border-soft text-fg-3 tracking-wider uppercase">{lead.category}</span>}
+                        {lead.sentiment && <span className={`px-1.5 py-0.5 rounded border tracking-wider uppercase ${sentimentChip[lead.sentiment]}`}>{lead.sentiment}</span>}
+                        {high && <span className="px-1.5 py-0.5 rounded border border-loss/40 text-loss bg-loss/10 tracking-wider uppercase">High impact</span>}
+                      </div>
+                      <h2 className="font-display font-bold text-[20px] sm:text-[22px] leading-tight tracking-tight text-fg">{lead.title}</h2>
+                      {lead.summary && <p className="text-[13.5px] text-fg-2 mt-2 leading-relaxed line-clamp-2 max-w-3xl">{lead.summary}</p>}
+                      <span className="inline-flex items-center gap-1 text-[10px] tracking-[0.14em] uppercase text-fg-3 mt-3 group-hover:text-fg transition-colors">Read more <ArrowUpRight size={11} weight="bold" /></span>
+                    </button>
+                  );
+                })()}
+
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                  {items.map(it => {
+                  {gridItems.map(it => {
                     const high = it.impact === 'HIGH' || it.marketMoving;
                     return (
                       <button
