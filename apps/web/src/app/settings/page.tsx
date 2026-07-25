@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { EnvelopeSimple, Check } from '@phosphor-icons/react';
 import AppShell from '@/components/app-shell';
+import NotificationSettings from '@/components/settings/notification-settings';
 import { useAccounts } from '@/lib/use-accounts';
 import { api, type BrokerAccount } from '@/lib/api';
 
@@ -75,7 +76,8 @@ export default function SettingsPage() {
       pageTitle="Settings"
       pageSubtitle="// PREFERENCES"
     >
-      <div className="p-3 sm:p-4 lg:p-6 max-w-2xl" data-testid="settings-page">
+      <div className="p-3 sm:p-4 lg:p-6 max-w-2xl flex flex-col gap-4" data-testid="settings-page">
+        <NotificationSettings />
         <div className="tcard p-5">
           <div className="flex items-start gap-3">
             <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-profit/12 ring-1 ring-profit/20 shrink-0">
