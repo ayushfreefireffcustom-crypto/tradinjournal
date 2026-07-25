@@ -75,3 +75,7 @@ export function ingestCalendar(params: { from: string; to: string }): Promise<{ 
 export function ingestNews(params: { bucket: string }): Promise<{ fetched: number; inserted: number; enriched: number }> {
   return request('/internal/news/ingest', { method: 'POST', body: JSON.stringify(params) });
 }
+
+export function dispatchNotifications(params: { bucket: string }): Promise<{ events: number; delivered: number }> {
+  return request('/internal/notifications/dispatch', { method: 'POST', body: JSON.stringify(params) });
+}
