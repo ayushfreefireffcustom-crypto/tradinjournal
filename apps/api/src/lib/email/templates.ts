@@ -185,3 +185,30 @@ export function weeklyReviewEmail(params: {
     html: shell(inner, { footer, width: 600 }),
   };
 }
+
+// ─── Economic-event reminder ──────────────────────────────────────────────────
+
+export function eventReminderEmail(params: {
+  name: string;
+  eventTitle: string;
+  currency: string;
+  impact: 'LOW' | 'MEDIUM' | 'HIGH';
+  whenLabel: string; // e.g. "in 15 minutes (13:30 UTC)"
+  forecast: string | null;
+  previous: string | null;
+}): { subject: string; html: string } {
+  const { name, eventTitle, currency, impact, whenLabel, forecast, previous } = params;
+  const first = name?.trim().split(' ')[0] || 'trader';
+  const impactColor = impact === 'HIGH' ? '#FE3A31' : impact === 'MEDIUM' ? '#FF9F0A' : MUTED;
+  const inner = `
+    <h1 style="color:${FG};font-size:19px;font-weight:700;margin:0 0 6px;">Heads up, ${escapeHtml(first)} 🔔</h1>
+    <p style="color:${MUTED};font-size:14px;line-height:1.6;margin:0 0 18px;">A ${currency} event you're watching is coming up ${escapeHtml(whenLabel)}.</p>
+    <div style="background:${BG};border:1px solid ${BORDER};border-radius:12px;padding:18px;margin:0 0 18px;">
+      <div style="color:${impactColor};font-size:10px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;">${impact} impact · ${escapeHtml(currency)}</div>
+      <div style="color:${FG};font-size:16px;font-weight:700;margin:6px 0 10px;">${escapeHtml(eventTitle)}</div>
+      <div style="color:${MUTED};font-size:13px;">Forecast: <span style="color:${FG};">${escapeHtml(forecast ?? '—')}</span> &nbsp;·&nbsp; Previous: <span style="color:${FG};">${escapeHtml(previous ?? '—')}</span></div>
+    </div>
+    <a href="${env.APP_URL}/economic-calendar" style="display:inline-block;background:${BRAND};color:${BG};font-size:14px;font-weight:700;text-decoration:none;padding:12px 22px;border-radius:10px;">Open the calendar →</a>`;
+  const footer = `You're receiving this because you enabled event reminders in TRADElogs. Manage them in Settings.`;
+  return { subject: `${impact} ${currency} · ${eventTitle} ${whenLabel}`, html: shell(inner, { footer }) };
+}
