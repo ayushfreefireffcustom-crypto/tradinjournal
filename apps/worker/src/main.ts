@@ -20,6 +20,8 @@ import {
   CALENDAR_INGEST_SCHEDULER_ID,
   QUEUE_NEWS_INGEST,
   NEWS_INGEST_SCHEDULER_ID,
+  QUEUE_NOTIFICATIONS,
+  NOTIFICATIONS_SCHEDULER_ID,
   createRedisConnection,
   getQueue,
   closeQueues,
@@ -28,10 +30,12 @@ import {
   type WeeklyReviewJob,
   type CalendarIngestJob,
   type NewsIngestJob,
+  type NotificationsJob,
 } from '@tradinjournal/queue';
 import { createWeeklyReviewWorker, isUnrecoverable as weeklyUnrecoverable } from './processors/weekly-review.js';
 import { createCalendarWorker, isUnrecoverable as calendarUnrecoverable } from './processors/calendar-ingest.js';
 import { createNewsWorker, isUnrecoverable as newsUnrecoverable } from './processors/news-ingest.js';
+import { createNotificationsWorker, isUnrecoverable as notifUnrecoverable } from './processors/notifications.js';
 
 const workers: Worker[] = [];
 let connection: ReturnType<typeof createRedisConnection> = null;
@@ -103,6 +107,20 @@ async function start(): Promise<void> {
     );
     attach(createNewsWorker(connection, newsQueue) as unknown as Worker, 'News ingest', newsUnrecoverable);
     logger.info(`News ingest scheduled: "${env.NEWS_INGEST_CRON}" UTC`);
+  }
+
+  // ── Notification dispatch (event reminders) ─────────────────────────────────
+  // Every minute so reminder precision is ≤1 min. The API no-ops cheaply when
+  // there are no due reminders.
+  const notifQueue = getQueue<NotificationsJob>(QUEUE_NOTIFICATIONS);
+  if (notifQueue) {
+    await notifQueue.upsertJobScheduler(
+      NOTIFICATIONS_SCHEDULER_ID,
+      { pattern: '* * * * *', tz: 'UTC' },
+      { name: 'dispatch', data: { kind: 'notifications-dispatch', bucket: timeBucket(new Date(), 'minute') } },
+    );
+    attach(createNotificationsWorker(connection, notifQueue) as unknown as Worker, 'Notifications', notifUnrecoverable);
+    logger.info('Notification dispatch scheduled: every minute UTC');
   }
 
   logger.info(`Worker ready — ${workers.length} pipeline(s) registered.`);
