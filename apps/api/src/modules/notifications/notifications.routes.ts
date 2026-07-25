@@ -1,7 +1,8 @@
 import { Router, type IRouter } from 'express';
 import { requireAuth } from '../../http/middleware/require-auth.js';
+import { requireInternalToken } from '../../http/middleware/require-internal-token.js';
 import { validateBody } from '../../http/middleware/validate.js';
-import { notificationPrefsSchema, pushSubscribeSchema } from '@tradinjournal/contracts';
+import { notificationPrefsSchema, pushSubscribeSchema, notificationsDispatchSchema } from '@tradinjournal/contracts';
 import {
   handleGetPrefs,
   handleSetPrefs,
@@ -9,6 +10,7 @@ import {
   handleMarkRead,
   handlePushSubscribe,
   handlePushUnsubscribe,
+  handleDispatch,
 } from './notifications.controller.js';
 
 // All notification routes require a signed-in user.
@@ -24,3 +26,8 @@ export const pushRouter: IRouter = Router();
 pushRouter.use(requireAuth);
 pushRouter.post('/subscribe', validateBody(pushSubscribeSchema), handlePushSubscribe);
 pushRouter.post('/unsubscribe', handlePushUnsubscribe);
+
+// Internal (worker → API) reminder dispatch, token-guarded.
+export const notificationsInternalRouter: IRouter = Router();
+notificationsInternalRouter.use(requireInternalToken);
+notificationsInternalRouter.post('/dispatch', validateBody(notificationsDispatchSchema), handleDispatch);
