@@ -210,18 +210,18 @@ export default function EconomicCalendarPage() {
 
         {/* Week-at-a-glance strip */}
         {!loading && !error && groups.length > 0 && (
-          <div className="shrink-0 border-b border-border-soft px-3 sm:px-5 lg:px-6 py-2.5 flex items-center gap-6 text-[11px]">
+          <div className="shrink-0 border-b border-border-soft px-3 sm:px-5 lg:px-6 py-2.5 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-[11px]">
             <span className="flex items-baseline gap-1.5"><span className="numeric text-fg font-semibold text-[15px]">{overview.total}</span><span className="text-fg-3 tracking-wide uppercase text-[10px]">events</span></span>
-            <span className="flex items-baseline gap-1.5"><span className="numeric text-loss font-semibold text-[15px]">{overview.highCount}</span><span className="text-fg-3 tracking-wide uppercase text-[10px]">high impact</span></span>
+            <span className="flex items-baseline gap-1.5"><span className="numeric text-loss font-semibold text-[15px]">{overview.highCount}</span><span className="text-fg-3 tracking-wide uppercase text-[10px]">high</span></span>
             {overview.watched > 0 && (
               <span className="flex items-baseline gap-1.5"><span className="numeric text-warning font-semibold text-[15px]">{overview.watched}</span><span className="text-fg-3 tracking-wide uppercase text-[10px]">watched</span></span>
             )}
             {overview.nextHigh && (
-              <span className="ml-auto flex items-center gap-2 text-fg-3">
-                <span className="tracking-wide uppercase text-[10px]">Next high impact</span>
-                <span className="text-sm">{flag(overview.nextHigh.country)}</span>
-                <span className="text-fg-2 font-medium truncate max-w-[220px]">{overview.nextHigh.title}</span>
-                <span className="text-loss font-semibold numeric">{countdown(overview.nextHigh.eventTime)}</span>
+              <span className="hidden lg:flex ml-auto items-center gap-2 text-fg-3 min-w-0">
+                <span className="tracking-wide uppercase text-[10px] shrink-0">Next high impact</span>
+                <span className="text-sm shrink-0">{flag(overview.nextHigh.country)}</span>
+                <span className="text-fg-2 font-medium truncate max-w-[200px]">{overview.nextHigh.title}</span>
+                <span className="text-loss font-semibold numeric whitespace-nowrap shrink-0">{countdown(overview.nextHigh.eventTime)}</span>
               </span>
             )}
           </div>
