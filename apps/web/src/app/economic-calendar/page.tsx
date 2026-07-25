@@ -41,6 +41,31 @@ const impactColor: Record<EventImpact, string> = {
   MEDIUM: 'text-warning border-warning/40 bg-warning/10',
   LOW: 'text-fg-3 border-border-strong bg-surface',
 };
+// Left-edge accent + label color per impact — the row's scannable impact cue.
+const impactAccent: Record<EventImpact, string> = {
+  HIGH: 'border-l-loss',
+  MEDIUM: 'border-l-warning',
+  LOW: 'border-l-border-strong',
+};
+const impactText: Record<EventImpact, string> = {
+  HIGH: 'text-loss',
+  MEDIUM: 'text-warning',
+  LOW: 'text-fg-3',
+};
+
+function timeLabel(iso: string): string {
+  return new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+}
+
+/** "in 2h 15m" until an event; empty once it has started. */
+function countdown(iso: string): string {
+  const ms = new Date(iso).getTime() - Date.now();
+  if (ms <= 0) return '';
+  const mins = Math.round(ms / 60_000);
+  if (mins < 60) return `in ${mins}m`;
+  const h = Math.floor(mins / 60);
+  return `in ${h}h ${mins % 60}m`;
+}
 
 /** Compare actual vs forecast → direction for the surprise color, when numeric. */
 function surprise(actual: string | null, forecast: string | null): 'up' | 'down' | null {
@@ -102,6 +127,14 @@ export default function EconomicCalendarPage() {
       (map.get(key) ?? map.set(key, []).get(key)!).push(e);
     }
     return [...map.entries()];
+  }, [filtered]);
+
+  // "This week at a glance" — fills the header with something useful.
+  const overview = useMemo(() => {
+    const now = Date.now();
+    const high = filtered.filter(e => e.impact === 'HIGH');
+    const nextHigh = high.find(e => new Date(e.eventTime).getTime() > now) ?? null;
+    return { total: filtered.length, highCount: high.length, watched: filtered.filter(e => e.watched).length, nextHigh };
   }, [filtered]);
 
   const onWatch = useCallback(async (ev: CalendarEvent) => {
@@ -175,54 +208,72 @@ export default function EconomicCalendarPage() {
           </button>
         </div>
 
-        {/* List */}
-        <div className="flex-1 overflow-y-auto px-3 sm:px-4 lg:px-6 py-4" data-testid="cal-list">
+        {/* Week-at-a-glance strip */}
+        {!loading && !error && groups.length > 0 && (
+          <div className="shrink-0 border-b border-border-soft px-3 sm:px-5 lg:px-6 py-2.5 flex items-center gap-6 text-[11px]">
+            <span className="flex items-baseline gap-1.5"><span className="numeric text-fg font-semibold text-[15px]">{overview.total}</span><span className="text-fg-3 tracking-wide uppercase text-[10px]">events</span></span>
+            <span className="flex items-baseline gap-1.5"><span className="numeric text-loss font-semibold text-[15px]">{overview.highCount}</span><span className="text-fg-3 tracking-wide uppercase text-[10px]">high impact</span></span>
+            {overview.watched > 0 && (
+              <span className="flex items-baseline gap-1.5"><span className="numeric text-warning font-semibold text-[15px]">{overview.watched}</span><span className="text-fg-3 tracking-wide uppercase text-[10px]">watched</span></span>
+            )}
+            {overview.nextHigh && (
+              <span className="ml-auto flex items-center gap-2 text-fg-3">
+                <span className="tracking-wide uppercase text-[10px]">Next high impact</span>
+                <span className="text-sm">{flag(overview.nextHigh.country)}</span>
+                <span className="text-fg-2 font-medium truncate max-w-[220px]">{overview.nextHigh.title}</span>
+                <span className="text-loss font-semibold numeric">{countdown(overview.nextHigh.eventTime)}</span>
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Table */}
+        <div className="flex-1 overflow-y-auto px-3 sm:px-5 lg:px-6 py-3" data-testid="cal-list">
           {loading ? (
-            <div className="max-w-3xl mx-auto flex flex-col gap-2">
-              {Array.from({ length: 8 }).map((_, i) => <div key={i} className="shimmer h-11" />)}
-            </div>
+            <div className="flex flex-col gap-px">{Array.from({ length: 12 }).map((_, i) => <div key={i} className="shimmer h-10" />)}</div>
           ) : error ? (
             <EmptyState icon={CalendarBlank} title="Calendar unavailable" hint={error} />
           ) : groups.length === 0 ? (
             <EmptyState icon={CalendarBlank} title="No events" hint="No events match your filters for this window." />
           ) : (
-            <div className="max-w-3xl mx-auto flex flex-col gap-5">
+            <div>
+              {/* Column header */}
+              <div className="hidden md:flex items-center gap-3 pl-4 pr-2 pb-1.5 text-[9px] tracking-[0.16em] uppercase text-fg-3 border-b border-border-soft">
+                <span className="w-12">Time</span>
+                <span className="w-[4.5rem]">Currency</span>
+                <span className="w-14">Impact</span>
+                <span className="flex-1">Event</span>
+                <span className="w-16 text-right">Previous</span>
+                <span className="w-16 text-right">Forecast</span>
+                <span className="w-16 text-right">Actual</span>
+                <span className="w-14" />
+              </div>
+
               {groups.map(([day, rows]) => (
                 <div key={day}>
-                  <div className="text-[10px] tracking-[0.2em] uppercase text-fg-3 mb-2 sticky top-0 bg-app/80 backdrop-blur py-1">{day}</div>
-                  <div className="flex flex-col gap-1">
-                    {rows.map(ev => {
-                      const dir = surprise(ev.actual, ev.forecast);
-                      const isOpen = expanded === ev.id;
-                      const fresh = ev.actualAt && Date.now() - new Date(ev.actualAt).getTime() < REFRESH_MS * 2;
-                      return (
-                        <div key={ev.id} className="rounded-[var(--radius-card)] border border-border-soft bg-surface/40" data-testid="cal-event">
-                          <button
-                            onClick={() => setExpanded(isOpen ? null : ev.id)}
-                            className="w-full flex items-center gap-2 sm:gap-3 px-3 py-2.5 text-left"
-                          >
-                            <span className="text-[11px] text-fg-3 numeric w-12 shrink-0">
-                              {new Date(ev.eventTime).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
+                  <div className="sticky top-0 z-10 bg-app/95 backdrop-blur px-4 py-1.5 text-[10px] tracking-[0.2em] uppercase text-fg-3 border-b border-border-soft">{day}</div>
+                  {rows.map(ev => {
+                    const dir = surprise(ev.actual, ev.forecast);
+                    const isOpen = expanded === ev.id;
+                    const fresh = ev.actualAt && Date.now() - new Date(ev.actualAt).getTime() < REFRESH_MS * 2;
+                    return (
+                      <div key={ev.id} className={`border-l-2 border-b border-border-soft hover:bg-surface/50 transition-colors ${impactAccent[ev.impact]}`} data-testid="cal-event">
+                        <button onClick={() => setExpanded(isOpen ? null : ev.id)} className="w-full flex items-center gap-3 pl-3.5 pr-2 py-2.5 text-left">
+                          <span className="w-12 shrink-0 text-[11px] text-fg-3 numeric">{timeLabel(ev.eventTime)}</span>
+                          <span className="w-[4.5rem] shrink-0 flex items-center gap-1.5">
+                            <span className="text-sm" title={ev.country}>{flag(ev.country)}</span>
+                            <span className="text-[11px] font-semibold text-fg-2">{ev.currency}</span>
+                          </span>
+                          <span className={`w-14 shrink-0 text-[9px] font-bold tracking-[0.1em] uppercase ${impactText[ev.impact]}`}>{ev.impact}</span>
+                          <span className="flex-1 min-w-0 truncate text-[13px] text-fg">{ev.title}</span>
+                          <span className="hidden md:flex items-center gap-3 text-[11.5px] numeric shrink-0">
+                            <span className="w-16 text-right text-fg-3">{ev.previous ?? '–'}</span>
+                            <span className="w-16 text-right text-fg-2">{ev.forecast ?? '–'}</span>
+                            <span className={`w-16 text-right font-semibold ${fresh ? (dir === 'up' ? 'flash-profit' : dir === 'down' ? 'flash-loss' : '') : ''} ${dir === 'up' ? 'text-profit' : dir === 'down' ? 'text-loss' : 'text-fg'}`}>
+                              {ev.actual ?? '–'}{dir === 'up' ? ' ▲' : dir === 'down' ? ' ▼' : ''}
                             </span>
-                            <span className="text-base shrink-0" title={ev.country}>{flag(ev.country)}</span>
-                            <span className="text-[11px] font-semibold text-fg-2 w-9 shrink-0">{ev.currency}</span>
-                            <span className={`shrink-0 px-1.5 py-0.5 text-[9px] tracking-wider uppercase rounded border ${impactColor[ev.impact]}`}>
-                              {ev.impact}
-                            </span>
-                            <span className="flex-1 min-w-0 truncate text-[13px] text-fg">{ev.title}</span>
-                            {/* Prev / Forecast / Actual */}
-                            <span className="hidden sm:flex items-center gap-3 text-[11px] numeric shrink-0">
-                              <span className="text-fg-3 w-14 text-right" title="Previous">{ev.previous ?? '—'}</span>
-                              <span className="text-fg-2 w-14 text-right" title="Forecast">{ev.forecast ?? '—'}</span>
-                              <span
-                                className={`w-14 text-right font-semibold ${fresh ? (dir === 'up' ? 'flash-profit' : dir === 'down' ? 'flash-loss' : '') : ''} ${
-                                  dir === 'up' ? 'text-profit' : dir === 'down' ? 'text-loss' : 'text-fg'
-                                }`}
-                                title="Actual"
-                              >
-                                {ev.actual ?? '—'}{dir === 'up' ? ' ▲' : dir === 'down' ? ' ▼' : ''}
-                              </span>
-                            </span>
+                          </span>
+                          <span className="w-14 shrink-0 flex items-center justify-end gap-1">
                             <span
                               role="button"
                               tabIndex={0}
@@ -230,26 +281,33 @@ export default function EconomicCalendarPage() {
                               onKeyDown={e => { if (e.key === 'Enter') { e.stopPropagation(); void onWatch(ev); } }}
                               aria-label={ev.watched ? 'Unwatch' : 'Watch'}
                               data-testid="cal-watch"
-                              className="shrink-0 p-1"
+                              className="p-1"
                             >
-                              <Star size={15} weight={ev.watched ? 'fill' : 'regular'} className={ev.watched ? 'text-warning' : 'text-fg-3 hover:text-fg'} />
+                              <Star size={14} weight={ev.watched ? 'fill' : 'regular'} className={ev.watched ? 'text-warning' : 'text-fg-3 hover:text-fg'} />
                             </span>
-                            <CaretDown size={13} className={`shrink-0 text-fg-3 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-                          </button>
-                          {isOpen && (
-                            <div className="border-t border-border-soft px-3 py-3 text-[12px] text-fg-2 grid grid-cols-3 gap-3 sm:hidden">
-                              <div><div className="text-[9px] uppercase text-fg-3">Previous</div>{ev.previous ?? '—'}</div>
-                              <div><div className="text-[9px] uppercase text-fg-3">Forecast</div>{ev.forecast ?? '—'}</div>
-                              <div><div className="text-[9px] uppercase text-fg-3">Actual</div>{ev.actual ?? '—'}</div>
+                            <CaretDown size={12} className={`text-fg-3 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                          </span>
+                        </button>
+                        {isOpen && (
+                          <div className="border-t border-border-soft bg-app/40 px-4 py-3 text-[12px]">
+                            <div className="md:hidden grid grid-cols-3 gap-3 mb-2">
+                              <div><div className="text-[9px] uppercase text-fg-3">Previous</div><span className="numeric text-fg-2">{ev.previous ?? '–'}</span></div>
+                              <div><div className="text-[9px] uppercase text-fg-3">Forecast</div><span className="numeric text-fg-2">{ev.forecast ?? '–'}</span></div>
+                              <div><div className="text-[9px] uppercase text-fg-3">Actual</div><span className="numeric text-fg">{ev.actual ?? '–'}</span></div>
                             </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
+                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-fg-3">
+                              <span>{flag(ev.country)} {ev.currency} · {ev.impact} impact</span>
+                              {ev.category && <span>Category: <span className="text-fg-2">{ev.category}</span></span>}
+                              <span>{new Date(ev.eventTime).toLocaleString(undefined, { weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               ))}
-              <p className="text-center text-[9px] tracking-[0.2em] text-fg-3 mt-2">
+              <p className="text-center text-[9px] tracking-[0.2em] text-fg-3 mt-4 pb-2">
                 TIMES SHOWN IN YOUR LOCAL TIMEZONE · DATA FOR INFORMATION ONLY
               </p>
             </div>
