@@ -38,7 +38,42 @@ function parseFeeds(): FeedDef[] {
   return out.length > 0 ? out : DEFAULT_FEEDS;
 }
 
-const parser = new Parser({ timeout: FETCH_TIMEOUT_MS });
+// Capture the common image-carrying fields feeds use (Media RSS + full content).
+const parser = new Parser({
+  timeout: FETCH_TIMEOUT_MS,
+  customFields: {
+    item: [
+      ['media:content', 'mediaContent', { keepArray: true }],
+      ['media:thumbnail', 'mediaThumbnail'],
+      ['content:encoded', 'contentEncoded'],
+    ],
+  },
+});
+
+const IMG_EXT = /\.(jpe?g|png|webp|gif|avif)(\?|$)/i;
+
+/** Best-effort image URL from an RSS item across the many places feeds put it. */
+function extractImage(it: Record<string, unknown>): string | undefined {
+  const enclosure = it.enclosure as { url?: string; type?: string } | undefined;
+  if (enclosure?.url && (enclosure.type?.startsWith('image') || IMG_EXT.test(enclosure.url))) return enclosure.url;
+
+  const mc = it.mediaContent as Array<{ $?: { url?: string; medium?: string; type?: string } }> | { $?: { url?: string } } | undefined;
+  if (Array.isArray(mc)) {
+    const img = mc.find(m => m?.$?.url && (m.$.medium === 'image' || /image/.test(m.$.type ?? ''))) ?? mc[0];
+    if (img?.$?.url) return img.$.url;
+  } else if (mc?.$?.url) {
+    return mc.$.url;
+  }
+
+  const thumb = it.mediaThumbnail as { $?: { url?: string } } | undefined;
+  if (thumb?.$?.url) return thumb.$.url;
+
+  const html = String(it.contentEncoded ?? it.content ?? '');
+  const m = /<img[^>]+src=["']([^"']+)["']/i.exec(html);
+  if (m?.[1]) return m[1];
+
+  return undefined;
+}
 
 async function fetchXml(url: string, signal?: AbortSignal): Promise<string> {
   const controller = new AbortController();
@@ -79,6 +114,7 @@ export function createRssProvider(): NewsProvider {
               url,
               title,
               summary: (it.contentSnippet ?? '').trim().slice(0, 500) || undefined,
+              imageUrl: extractImage(it as unknown as Record<string, unknown>),
               publishedAt: when ? new Date(when) : new Date(),
               category: feed.category,
             });
