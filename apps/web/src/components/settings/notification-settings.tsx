@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { BellRinging, Check } from '@phosphor-icons/react';
 import { api, type NotificationPrefs, type EventImpact } from '@/lib/api';
+import { enablePush, disablePush } from '@/lib/push-client';
 
 const IMPACTS: EventImpact[] = ['LOW', 'MEDIUM', 'HIGH'];
 
@@ -114,7 +115,23 @@ export default function NotificationSettings() {
           </Row>
           {prefs.pushAvailable && (
             <Row title="Browser push" desc="Push notifications even when the tab is closed.">
-              <Toggle on={prefs.push} onClick={() => patch({ push: !prefs.push })} label="Push alerts" />
+              <Toggle
+                on={prefs.push}
+                onClick={async () => {
+                  if (!prefs.push) {
+                    const res = prefs.vapidPublicKey ? await enablePush(prefs.vapidPublicKey) : { ok: false, reason: 'unavailable' };
+                    if (!res.ok) {
+                      setError(res.reason === 'denied' ? 'Browser blocked notifications — allow them and retry.' : 'Could not enable push on this device.');
+                      return;
+                    }
+                    void patch({ push: true });
+                  } else {
+                    await disablePush().catch(() => {});
+                    void patch({ push: false });
+                  }
+                }}
+                label="Push alerts"
+              />
             </Row>
           )}
           <Row title="Minimum impact" desc="Only remind me for events at or above this level.">
