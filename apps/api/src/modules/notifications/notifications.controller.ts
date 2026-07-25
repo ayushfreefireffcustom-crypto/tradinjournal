@@ -10,6 +10,7 @@ import {
   savePushSubscription,
   removePushSubscription,
 } from './notifications.service.js';
+import { dispatchReminders } from './dispatch.service.js';
 
 // GET /api/notifications/preferences — includes whether push is even available.
 export async function handleGetPrefs(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -48,6 +49,15 @@ export async function handleMarkRead(req: Request, res: Response, next: NextFunc
     const userId = res.locals.user.id as string;
     await markAllRead(userId);
     ok(res, { ok: true });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// POST /internal/notifications/dispatch — worker-only reminder sweep.
+export async function handleDispatch(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    ok(res, await dispatchReminders());
   } catch (err) {
     next(err);
   }
