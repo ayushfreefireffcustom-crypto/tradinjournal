@@ -7,6 +7,7 @@ import { Gauge, Table, ChartLineUp, CalendarBlank, CalendarDots, Newspaper, Film
 import type { BrokerAccount } from '@/lib/api';
 import { authClient } from '@/lib/auth-client';
 import Logo from '@/components/logo';
+import NotificationBell from '@/components/notification-bell';
 
 interface Props {
   children: React.ReactNode;
@@ -204,7 +205,8 @@ export default function AppShell({
           <div className="ml-auto flex items-center gap-3 lg:gap-4 text-[10px] tracking-[0.22em] text-fg-3 shrink-0">
             <span className="hidden xl:inline">SESSION · LONDON</span>
             <span className="hidden lg:inline numeric">{clock} UTC</span>
-            <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-profit pulse-dot" /> LIVE</span>
+            <span className="hidden sm:flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-profit pulse-dot" /> LIVE</span>
+            <NotificationBell />
           </div>
         </header>
 
