@@ -9,6 +9,7 @@ import { Newspaper, Sparkle, ArrowUpRight, Circle } from '@phosphor-icons/react'
 import AppShell from '@/components/app-shell';
 import EmptyState from '@/components/empty-state';
 import MarkdownMessage from '@/components/coach/markdown-message';
+import NewsModal from '@/components/news/news-modal';
 import { useAccounts } from '@/lib/use-accounts';
 import { api, type NewsItem, type NewsCategory, type Sentiment, type EventImpact, type BrokerAccount } from '@/lib/api';
 
@@ -49,6 +50,7 @@ export default function NewsPage() {
   const [briefOpen, setBriefOpen] = useState(false);
   const [brief, setBrief] = useState('');
   const [briefLoading, setBriefLoading] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<NewsItem | null>(null);
 
   const sentinel = useRef<HTMLDivElement>(null);
 
@@ -172,10 +174,10 @@ export default function NewsPage() {
         </div>
 
         <div className="flex-1 overflow-y-auto px-3 sm:px-4 lg:px-6 py-4" data-testid="news-list">
-          <div className="max-w-3xl mx-auto">
+          <div className="max-w-6xl mx-auto">
             {/* Brief panel */}
             {briefOpen && (
-              <div className="mb-4 rounded-[var(--radius-card)] border border-profit/25 bg-surface/40 p-4" data-testid="news-brief">
+              <div className="max-w-3xl mx-auto mb-5 rounded-[var(--radius-card)] border border-profit/25 bg-surface/40 p-4" data-testid="news-brief">
                 <div className="flex items-center gap-2 mb-2">
                   <Sparkle size={14} weight="fill" className="text-profit" />
                   <span className="text-[10px] tracking-[0.2em] uppercase text-fg-3">AI morning brief</span>
@@ -186,60 +188,62 @@ export default function NewsPage() {
             )}
 
             {loading ? (
-              <div className="flex flex-col gap-2">{Array.from({ length: 8 }).map((_, i) => <div key={i} className="shimmer h-16" />)}</div>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">{Array.from({ length: 8 }).map((_, i) => <div key={i} className="shimmer h-28" />)}</div>
             ) : error ? (
               <EmptyState icon={Newspaper} title="News unavailable" hint={error} />
             ) : items.length === 0 ? (
               <EmptyState icon={Newspaper} title="No news yet" hint="The feed will fill in as headlines are ingested." />
             ) : (
-              <div className="flex flex-col gap-1.5">
-                {items.map(it => {
-                  const high = it.impact === 'HIGH' || it.marketMoving;
-                  return (
-                    <a
-                      key={it.id}
-                      href={it.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      data-testid="news-item"
-                      className={`group block rounded-[var(--radius-card)] border bg-surface/40 px-3.5 py-3 transition-colors hover:bg-surface ${
-                        high ? 'border-loss/40 border-l-2 border-l-loss bg-loss/[0.04]' : 'border-border-soft'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 flex-wrap text-[10px] mb-1">
-                        <span className="font-semibold tracking-wide text-fg-2">{it.source}</span>
-                        {it.outlets.length > 1 && <span className="text-fg-3">+{it.outlets.length - 1} more</span>}
-                        <span className="text-fg-3">· {timeAgo(it.publishedAt)}</span>
-                        {it.category && <span className="px-1.5 py-0.5 rounded border border-border-soft text-fg-3 tracking-wider uppercase">{it.category}</span>}
-                        {it.sentiment && (
-                          <span className={`px-1.5 py-0.5 rounded border tracking-wider uppercase ${sentimentChip[it.sentiment]}`}>{it.sentiment}</span>
-                        )}
-                        {high && <span className="px-1.5 py-0.5 rounded border border-loss/40 text-loss bg-loss/10 tracking-wider uppercase">High</span>}
-                        {typeof it.relevance === 'number' && (
-                          <span className="ml-auto flex items-center gap-1 text-fg-3" title={`Relevance ${it.relevance}/100`}>
-                            <span className="w-10 h-1 rounded-full bg-surface-active overflow-hidden">
-                              <span className="block h-full bg-profit/70" style={{ width: `${it.relevance}%` }} />
+              <>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                  {items.map(it => {
+                    const high = it.impact === 'HIGH' || it.marketMoving;
+                    return (
+                      <button
+                        key={it.id}
+                        type="button"
+                        onClick={() => setSelectedItem(it)}
+                        data-testid="news-item"
+                        className={`group h-full flex flex-col text-left rounded-[var(--radius-card)] border bg-surface/40 px-4 py-3.5 transition-colors hover:bg-surface ${
+                          high ? 'border-loss/40 border-l-2 border-l-loss bg-loss/[0.04]' : 'border-border-soft hover:border-border-strong'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 flex-wrap text-[10px] mb-1.5">
+                          <span className="font-semibold tracking-wide text-fg-2">{it.source}</span>
+                          <span className="text-fg-3">· {timeAgo(it.publishedAt)}</span>
+                          {it.category && <span className="px-1.5 py-0.5 rounded border border-border-soft text-fg-3 tracking-wider uppercase">{it.category}</span>}
+                          {it.sentiment && (
+                            <span className={`px-1.5 py-0.5 rounded border tracking-wider uppercase ${sentimentChip[it.sentiment]}`}>{it.sentiment}</span>
+                          )}
+                          {high && <span className="px-1.5 py-0.5 rounded border border-loss/40 text-loss bg-loss/10 tracking-wider uppercase">High</span>}
+                          {typeof it.relevance === 'number' && (
+                            <span className="ml-auto flex items-center gap-1 text-fg-3" title={`Relevance ${it.relevance}/100`}>
+                              <span className="w-10 h-1 rounded-full bg-surface-active overflow-hidden">
+                                <span className="block h-full bg-profit/70" style={{ width: `${it.relevance}%` }} />
+                              </span>
                             </span>
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-[13.5px] text-fg leading-snug flex items-start gap-1">
-                        <span className="flex-1">{it.title}</span>
-                        <ArrowUpRight size={13} className="mt-0.5 shrink-0 text-fg-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-                      </div>
-                      {it.summary && <p className="text-[12px] text-fg-3 mt-1 line-clamp-2 leading-relaxed">{it.summary}</p>}
-                    </a>
-                  );
-                })}
+                          )}
+                        </div>
+                        <div className="text-[14px] font-medium text-fg leading-snug line-clamp-2">{it.title}</div>
+                        {it.summary && <p className="text-[12px] text-fg-3 mt-1.5 line-clamp-2 leading-relaxed">{it.summary}</p>}
+                        <div className="mt-auto pt-2 flex items-center gap-1 text-[10px] tracking-[0.14em] uppercase text-fg-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                          Read more <ArrowUpRight size={11} weight="bold" />
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
                 {cursor && <div ref={sentinel} className="h-10 flex items-center justify-center text-[11px] text-fg-3">{loadingMore ? 'Loading…' : ''}</div>}
-                <p className="text-center text-[9px] tracking-[0.2em] text-fg-3 mt-3">
+                <p className="text-center text-[9px] tracking-[0.2em] text-fg-3 mt-4">
                   AGGREGATED HEADLINES · AI TAGS ARE INFORMATIONAL · NOT INVESTMENT ADVICE
                 </p>
-              </div>
+              </>
             )}
           </div>
         </div>
       </div>
+
+      {selectedItem && <NewsModal item={selectedItem} onClose={() => setSelectedItem(null)} />}
     </AppShell>
   );
 }
