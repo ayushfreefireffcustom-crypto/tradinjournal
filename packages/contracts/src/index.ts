@@ -128,6 +128,12 @@ export const newsIngestSchema = z.object({
 });
 export type NewsIngestInput = z.infer<typeof newsIngestSchema>;
 
+export const newsEnrichSchema = z.object({
+  /** Minute bucket the tick belongs to — carried through for logging/idempotency. */
+  bucket: z.string().min(1),
+});
+export type NewsEnrichInput = z.infer<typeof newsEnrichSchema>;
+
 export const notificationsDispatchSchema = z.object({
   bucket: z.string().min(1),
 });
