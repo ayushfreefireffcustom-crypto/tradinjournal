@@ -6,7 +6,11 @@
 // All times are UTC. Result numbers (actual/forecast/previous) stay STRINGS so
 // units and signs ("%", "K", "-0.2") survive intact — never coerce to number.
 
-export type EventImpact = 'LOW' | 'MEDIUM' | 'HIGH';
+// Impact vocabulary is shared with the request validators — re-exported from the
+// contracts package (the single source) so local consumers keep importing it
+// from here.
+export type { EventImpact } from '@tradinjournal/contracts';
+import type { EventImpact } from '@tradinjournal/contracts';
 
 /** One event as a single provider reports it, already normalized to our vocab. */
 export interface NormalizedEvent {
