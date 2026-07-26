@@ -2,8 +2,8 @@ import { Router, type IRouter } from 'express';
 import { requireAuth } from '../../http/middleware/require-auth.js';
 import { requireInternalToken } from '../../http/middleware/require-internal-token.js';
 import { validateBody, validateQuery } from '../../http/middleware/validate.js';
-import { newsQuerySchema, newsIngestSchema } from '@tradinjournal/contracts';
-import { handleListNews, handleIngestNews, handleNewsStream, handleNewsBrief } from './news.controller.js';
+import { newsQuerySchema, newsIngestSchema, newsEnrichSchema } from '@tradinjournal/contracts';
+import { handleListNews, handleIngestNews, handleEnrichNews, handleNewsStream, handleNewsBrief } from './news.controller.js';
 
 // Public (signed-in) news routes.
 export const newsRouter: IRouter = Router();
@@ -16,3 +16,4 @@ newsRouter.get('/brief/stream', handleNewsBrief);
 export const newsInternalRouter: IRouter = Router();
 newsInternalRouter.use(requireInternalToken);
 newsInternalRouter.post('/ingest', validateBody(newsIngestSchema), handleIngestNews);
+newsInternalRouter.post('/enrich', validateBody(newsEnrichSchema), handleEnrichNews);
