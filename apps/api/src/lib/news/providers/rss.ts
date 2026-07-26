@@ -18,11 +18,24 @@ interface FeedDef {
 // Sensible licensed defaults; override the whole set with NEWS_RSS_FEEDS
 // (CSV of "url|Outlet|CATEGORY").
 const DEFAULT_FEEDS: FeedDef[] = [
+  // ── Crypto ────────────────────────────────────────────────────────────────
   { url: 'https://www.coindesk.com/arc/outboundfeeds/rss/', outlet: 'CoinDesk', category: 'CRYPTO' },
   { url: 'https://cointelegraph.com/rss', outlet: 'CoinTelegraph', category: 'CRYPTO' },
   { url: 'https://decrypt.co/feed', outlet: 'Decrypt', category: 'CRYPTO' },
+  { url: 'https://www.theblock.co/rss.xml', outlet: 'The Block', category: 'CRYPTO' },
+  { url: 'https://bitcoinmagazine.com/.rss/full/', outlet: 'Bitcoin Magazine', category: 'CRYPTO' },
+  { url: 'https://cryptoslate.com/feed/', outlet: 'CryptoSlate', category: 'CRYPTO' },
+  // ── Macro / markets ───────────────────────────────────────────────────────
   { url: 'https://www.investing.com/rss/news_25.rss', outlet: 'Investing.com', category: 'MACRO' },
   { url: 'https://feeds.a.dj.com/rss/RSSMarketsMain.xml', outlet: 'WSJ Markets', category: 'MARKETS' },
+  { url: 'https://www.cnbc.com/id/100003114/device/rss/rss.html', outlet: 'CNBC', category: 'MARKETS' },
+  { url: 'https://www.cnbc.com/id/20910258/device/rss/rss.html', outlet: 'CNBC Economy', category: 'MACRO' },
+  { url: 'https://feeds.marketwatch.com/marketwatch/realtimeheadlines/', outlet: 'MarketWatch', category: 'MARKETS' },
+  { url: 'https://finance.yahoo.com/news/rssindex', outlet: 'Yahoo Finance', category: 'MARKETS' },
+  { url: 'https://www.fxstreet.com/rss/news', outlet: 'FXStreet', category: 'MACRO' },
+  // ── Regulatory / central banks ────────────────────────────────────────────
+  { url: 'https://www.federalreserve.gov/feeds/press_all.xml', outlet: 'Federal Reserve', category: 'REGULATORY' },
+  { url: 'https://www.sec.gov/news/pressreleases.rss', outlet: 'SEC', category: 'REGULATORY' },
 ];
 
 const FETCH_TIMEOUT_MS = 10_000;
