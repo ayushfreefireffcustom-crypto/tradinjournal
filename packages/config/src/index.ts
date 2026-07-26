@@ -100,7 +100,9 @@ const envSchema = z.object({
   CRYPTOPANIC_API_KEY: z.string().optional(),
   // Optional CSV override of the built-in licensed RSS defaults.
   NEWS_RSS_FEEDS: z.string().optional(),
-  NEWS_INGEST_CRON: z.string().default('*/1 * * * *'),
+  // Every 2 min — an ingest tick (15 feeds + LLM enrichment) needs headroom
+  // beyond a 1-min cadence; BullMQ concurrency 1 also prevents overlap.
+  NEWS_INGEST_CRON: z.string().default('*/2 * * * *'),
   // Hard cap on LLM enrichment per ingest tick — bounds spend.
   NEWS_ENRICH_MAX_PER_TICK: z.coerce.number().int().positive().default(40),
 
