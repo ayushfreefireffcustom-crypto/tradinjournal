@@ -100,10 +100,13 @@ const envSchema = z.object({
   CRYPTOPANIC_API_KEY: z.string().optional(),
   // Optional CSV override of the built-in licensed RSS defaults.
   NEWS_RSS_FEEDS: z.string().optional(),
-  // Every 2 min — an ingest tick (15 feeds + LLM enrichment) needs headroom
-  // beyond a 1-min cadence; BullMQ concurrency 1 also prevents overlap.
-  NEWS_INGEST_CRON: z.string().default('*/2 * * * *'),
-  // Hard cap on LLM enrichment per ingest tick — bounds spend.
+  // Ingest is now LLM-free (bulk insert only), so a 1-min cadence is fine;
+  // BullMQ concurrency 1 prevents overlap.
+  NEWS_INGEST_CRON: z.string().default('*/1 * * * *'),
+  // Enrichment runs on its own cron, decoupled from ingest, draining the
+  // un-enriched backlog a batch at a time.
+  NEWS_ENRICH_CRON: z.string().default('*/2 * * * *'),
+  // Hard cap on LLM enrichment per enrich tick — bounds spend.
   NEWS_ENRICH_MAX_PER_TICK: z.coerce.number().int().positive().default(40),
 
   // ── Phase 2: Web Push (VAPID) ─────────────────────────────────────────────
