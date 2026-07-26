@@ -38,7 +38,7 @@ export default function NewsModal({ item, onClose }: { item: NewsItem; onClose: 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" data-testid="news-modal">
       <button className="absolute inset-0 bg-black/60 backdrop-blur-sm" aria-label="Close" onClick={onClose} />
-      <div className="relative w-full max-w-xl max-h-[85vh] overflow-y-auto rounded-[var(--radius-card)] border border-border-strong bg-app shadow-2xl fade-up">
+      <div className="relative w-full max-w-xl max-h-[88dvh] overflow-y-auto rounded-[var(--radius-card)] border border-border-strong bg-app shadow-2xl fade-up">
         {high && <div className="h-1 w-full bg-loss" />}
         <NewsThumb src={item.imageUrl} className="w-full aspect-video object-cover" />
         <div className="p-5 sm:p-6">
