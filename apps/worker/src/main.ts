@@ -20,6 +20,8 @@ import {
   CALENDAR_INGEST_SCHEDULER_ID,
   QUEUE_NEWS_INGEST,
   NEWS_INGEST_SCHEDULER_ID,
+  QUEUE_NEWS_ENRICH,
+  NEWS_ENRICH_SCHEDULER_ID,
   QUEUE_NOTIFICATIONS,
   NOTIFICATIONS_SCHEDULER_ID,
   createRedisConnection,
@@ -30,11 +32,13 @@ import {
   type WeeklyReviewJob,
   type CalendarIngestJob,
   type NewsIngestJob,
+  type NewsEnrichJob,
   type NotificationsJob,
 } from '@tradinjournal/queue';
 import { createWeeklyReviewWorker, isUnrecoverable as weeklyUnrecoverable } from './processors/weekly-review.js';
 import { createCalendarWorker, isUnrecoverable as calendarUnrecoverable } from './processors/calendar-ingest.js';
 import { createNewsWorker, isUnrecoverable as newsUnrecoverable } from './processors/news-ingest.js';
+import { createNewsEnrichWorker, isUnrecoverable as newsEnrichUnrecoverable } from './processors/news-enrich.js';
 import { createNotificationsWorker, isUnrecoverable as notifUnrecoverable } from './processors/notifications.js';
 
 const workers: Worker[] = [];
@@ -97,7 +101,7 @@ async function start(): Promise<void> {
 
   // ── News ingestion ──────────────────────────────────────────────────────────
   // RSS baseline always has something to fetch, so this runs whenever the worker
-  // does; the API bounds LLM enrichment spend server-side.
+  // does. This path is LLM-free (bulk fetch + store); enrichment is separate.
   const newsQueue = getQueue<NewsIngestJob>(QUEUE_NEWS_INGEST);
   if (newsQueue) {
     await newsQueue.upsertJobScheduler(
@@ -107,6 +111,20 @@ async function start(): Promise<void> {
     );
     attach(createNewsWorker(connection, newsQueue) as unknown as Worker, 'News ingest', newsUnrecoverable);
     logger.info(`News ingest scheduled: "${env.NEWS_INGEST_CRON}" UTC`);
+  }
+
+  // ── News enrichment ─────────────────────────────────────────────────────────
+  // Own cron, decoupled from ingest so the LLM never blocks the fetch path. The
+  // API no-ops when AI is off or there's no backlog, and bounds spend per tick.
+  const newsEnrichQueue = getQueue<NewsEnrichJob>(QUEUE_NEWS_ENRICH);
+  if (newsEnrichQueue) {
+    await newsEnrichQueue.upsertJobScheduler(
+      NEWS_ENRICH_SCHEDULER_ID,
+      { pattern: env.NEWS_ENRICH_CRON, tz: 'UTC' },
+      { name: 'enrich', data: { kind: 'news-enrich', bucket: timeBucket(new Date(), 'minute') } },
+    );
+    attach(createNewsEnrichWorker(connection, newsEnrichQueue) as unknown as Worker, 'News enrich', newsEnrichUnrecoverable);
+    logger.info(`News enrich scheduled: "${env.NEWS_ENRICH_CRON}" UTC`);
   }
 
   // ── Notification dispatch (event reminders) ─────────────────────────────────
