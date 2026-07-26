@@ -7,6 +7,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CalendarBlank, Star, MagnifyingGlass, ArrowClockwise } from '@phosphor-icons/react';
 import AppShell from '@/components/app-shell';
 import EmptyState from '@/components/empty-state';
+import EventModal from '@/components/calendar/event-modal';
 import { useAccounts } from '@/lib/use-accounts';
 import { api, type CalendarEvent, type EventImpact, type BrokerAccount } from '@/lib/api';
 
@@ -89,6 +90,7 @@ export default function EconomicCalendarPage() {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
 
   const load = useCallback(async (showSpinner: boolean) => {
     if (showSpinner) setLoading(true);
@@ -150,6 +152,53 @@ export default function EconomicCalendarPage() {
       setEvents(prev => prev.map(e => (e.id === ev.id ? { ...e, watched: ev.watched } : e)));
     }
   }, []);
+
+  // One event card. `isPast` dims events that have already occurred.
+  const renderEventCard = (ev: CalendarEvent, isPast: boolean) => {
+    const dir = surprise(ev.actual, ev.forecast);
+    const fresh = ev.actualAt && Date.now() - new Date(ev.actualAt).getTime() < REFRESH_MS * 2;
+    const hasData = !!(ev.previous || ev.forecast || ev.actual);
+    return (
+      <button
+        key={ev.id}
+        type="button"
+        onClick={() => setSelectedEvent(ev)}
+        data-testid="cal-event"
+        className={`w-full text-left rounded-[var(--radius-card)] border border-border-soft bg-surface/40 border-l-2 ${impactAccent[ev.impact]} px-3.5 py-3 hover:bg-surface transition-all ${isPast ? 'opacity-55 hover:opacity-100' : ''}`}
+      >
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] text-fg-3 numeric shrink-0">{timeLabel(ev.eventTime)}</span>
+          <span className="text-sm shrink-0" title={ev.country}>{flag(ev.country)}</span>
+          <span className="text-[11px] font-semibold text-fg-2 shrink-0">{ev.currency}</span>
+          <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold tracking-wider uppercase shrink-0 ${impactPill[ev.impact]}`}>{ev.impact}</span>
+          <span
+            role="button"
+            tabIndex={0}
+            onClick={e => { e.stopPropagation(); void onWatch(ev); }}
+            onKeyDown={e => { if (e.key === 'Enter') { e.stopPropagation(); void onWatch(ev); } }}
+            aria-label={ev.watched ? 'Unwatch' : 'Watch'}
+            data-testid="cal-watch"
+            className="ml-auto shrink-0 p-1 cursor-pointer"
+          >
+            <Star size={14} weight={ev.watched ? 'fill' : 'regular'} className={ev.watched ? 'text-warning' : 'text-fg-3 hover:text-fg'} />
+          </span>
+        </div>
+        <div className="text-[13px] text-fg leading-snug line-clamp-2 mt-1.5">{ev.title}</div>
+        {hasData && (
+          <div className="flex items-center gap-4 text-[11px] numeric mt-2 pt-2 border-t border-border-soft/60">
+            <span className="text-fg-3">Prev <span className="text-fg-2">{ev.previous ?? '–'}</span></span>
+            <span className="text-fg-3">Fcst <span className="text-fg-2">{ev.forecast ?? '–'}</span></span>
+            <span className="text-fg-3 ml-auto">
+              Act{' '}
+              <span className={`font-semibold ${fresh ? (dir === 'up' ? 'flash-profit' : dir === 'down' ? 'flash-loss' : '') : ''} ${dir === 'up' ? 'text-profit' : dir === 'down' ? 'text-loss' : 'text-fg'}`}>
+                {ev.actual ?? '–'}{dir === 'up' ? ' ▲' : dir === 'down' ? ' ▼' : ''}
+              </span>
+            </span>
+          </div>
+        )}
+      </button>
+    );
+  };
 
   return (
     <AppShell
@@ -260,53 +309,31 @@ export default function EconomicCalendarPage() {
                 </div>
               )}
 
-              {/* Schedule — day-grouped event cards */}
-              {groups.map(([day, rows]) => (
-                <div key={day} className="mb-5">
-                  <div className="sticky top-0 z-10 bg-app/95 backdrop-blur py-1.5 mb-2 text-[10px] tracking-[0.2em] uppercase text-fg-3 border-b border-border-soft">{day}</div>
-                  <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-2">
-                    {rows.map(ev => {
-                      const dir = surprise(ev.actual, ev.forecast);
-                      const fresh = ev.actualAt && Date.now() - new Date(ev.actualAt).getTime() < REFRESH_MS * 2;
-                      const hasData = !!(ev.previous || ev.forecast || ev.actual);
-                      return (
-                        <div key={ev.id} className={`rounded-[var(--radius-card)] border border-border-soft bg-surface/40 border-l-2 ${impactAccent[ev.impact]} px-3.5 py-3 hover:bg-surface transition-colors`} data-testid="cal-event">
-                          <div className="flex items-center gap-2">
-                            <span className="text-[11px] text-fg-3 numeric shrink-0">{timeLabel(ev.eventTime)}</span>
-                            <span className="text-sm shrink-0" title={ev.country}>{flag(ev.country)}</span>
-                            <span className="text-[11px] font-semibold text-fg-2 shrink-0">{ev.currency}</span>
-                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold tracking-wider uppercase shrink-0 ${impactPill[ev.impact]}`}>{ev.impact}</span>
-                            <span
-                              role="button"
-                              tabIndex={0}
-                              onClick={() => void onWatch(ev)}
-                              onKeyDown={e => { if (e.key === 'Enter') void onWatch(ev); }}
-                              aria-label={ev.watched ? 'Unwatch' : 'Watch'}
-                              data-testid="cal-watch"
-                              className="ml-auto shrink-0 p-1 cursor-pointer"
-                            >
-                              <Star size={14} weight={ev.watched ? 'fill' : 'regular'} className={ev.watched ? 'text-warning' : 'text-fg-3 hover:text-fg'} />
-                            </span>
-                          </div>
-                          <div className="text-[13px] text-fg leading-snug line-clamp-2 mt-1.5">{ev.title}</div>
-                          {hasData && (
-                            <div className="flex items-center gap-4 text-[11px] numeric mt-2 pt-2 border-t border-border-soft/60">
-                              <span className="text-fg-3">Prev <span className="text-fg-2">{ev.previous ?? '–'}</span></span>
-                              <span className="text-fg-3">Fcst <span className="text-fg-2">{ev.forecast ?? '–'}</span></span>
-                              <span className="text-fg-3 ml-auto">
-                                Act{' '}
-                                <span className={`font-semibold ${fresh ? (dir === 'up' ? 'flash-profit' : dir === 'down' ? 'flash-loss' : '') : ''} ${dir === 'up' ? 'text-profit' : dir === 'down' ? 'text-loss' : 'text-fg'}`}>
-                                  {ev.actual ?? '–'}{dir === 'up' ? ' ▲' : dir === 'down' ? ' ▼' : ''}
-                                </span>
-                              </span>
-                            </div>
-                          )}
+              {/* Schedule — day-grouped event cards, split by the "now" line */}
+              {(() => {
+                const now = Date.now();
+                const nowLabel = new Date().toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+                const gridCls = 'grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-2';
+                return groups.map(([day, rows]) => {
+                  const past = rows.filter(e => new Date(e.eventTime).getTime() <= now);
+                  const future = rows.filter(e => new Date(e.eventTime).getTime() > now);
+                  return (
+                    <div key={day} className="mb-5">
+                      <div className="sticky top-0 z-10 bg-app/95 backdrop-blur py-1.5 mb-2 text-[10px] tracking-[0.2em] uppercase text-fg-3 border-b border-border-soft">{day}</div>
+                      {past.length > 0 && <div className={gridCls}>{past.map(ev => renderEventCard(ev, true))}</div>}
+                      {past.length > 0 && future.length > 0 && (
+                        <div className="flex items-center gap-2 my-3" data-testid="cal-now-line">
+                          <span className="flex items-center gap-1.5 text-[9px] font-bold tracking-[0.2em] uppercase text-profit whitespace-nowrap">
+                            <span className="w-1.5 h-1.5 rounded-full bg-profit pulse-dot" /> Now · {nowLabel}
+                          </span>
+                          <span className="flex-1 h-px bg-profit/30" />
                         </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
+                      )}
+                      {future.length > 0 && <div className={`${gridCls} ${past.length > 0 ? 'mt-2' : ''}`}>{future.map(ev => renderEventCard(ev, false))}</div>}
+                    </div>
+                  );
+                });
+              })()}
               <p className="text-center text-[9px] tracking-[0.2em] text-fg-3 mt-4 pb-2">
                 TIMES SHOWN IN YOUR LOCAL TIMEZONE · DATA FOR INFORMATION ONLY
               </p>
@@ -314,6 +341,10 @@ export default function EconomicCalendarPage() {
           )}
         </div>
       </div>
+
+      {selectedEvent && (
+        <EventModal event={selectedEvent} onClose={() => setSelectedEvent(null)} onToggleWatch={onWatch} />
+      )}
     </AppShell>
   );
 }
