@@ -5,6 +5,7 @@
 // outlets that carried the story, and a prominent link out to the source.
 import { useEffect } from 'react';
 import { X, ArrowUpRight, Circle } from '@phosphor-icons/react';
+import NewsThumb from '@/components/news/news-thumb';
 import type { NewsItem, Sentiment } from '@/lib/api';
 
 const sentimentChip: Record<Sentiment, string> = {
@@ -39,6 +40,7 @@ export default function NewsModal({ item, onClose }: { item: NewsItem; onClose: 
       <button className="absolute inset-0 bg-black/60 backdrop-blur-sm" aria-label="Close" onClick={onClose} />
       <div className="relative w-full max-w-xl max-h-[85vh] overflow-y-auto rounded-[var(--radius-card)] border border-border-strong bg-app shadow-2xl fade-up">
         {high && <div className="h-1 w-full bg-loss" />}
+        <NewsThumb src={item.imageUrl} className="w-full aspect-video object-cover" />
         <div className="p-5 sm:p-6">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-2 flex-wrap text-[11px]">
