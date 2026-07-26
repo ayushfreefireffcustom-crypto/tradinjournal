@@ -268,7 +268,7 @@ export default function CoachPage() {
       pageTitle="AI Coach"
       pageSubtitle="// TRAINED ON YOUR DATA"
     >
-      <div className="flex h-[calc(100vh-var(--topbar-h,7rem))] min-h-0" data-testid="coach-page">
+      <div className="flex h-full min-h-0" data-testid="coach-page">
         {/* Thread list — fixed column from lg up */}
         <div className="hidden lg:flex w-60 shrink-0 border-r border-border-soft">
           <ConversationSidebar {...sidebarProps} />
