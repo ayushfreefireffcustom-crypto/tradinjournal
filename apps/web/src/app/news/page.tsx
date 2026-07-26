@@ -140,47 +140,50 @@ export default function NewsPage() {
       pageTitle="Market News"
       pageSubtitle="// LIVE FEED"
     >
-      <div className="flex flex-col h-[calc(100vh-var(--topbar-h,7rem))] min-h-0" data-testid="news-page">
+      <div className="flex flex-col h-full min-h-0" data-testid="news-page">
         {/* Filter bar */}
-        <div className="shrink-0 border-b border-border-soft px-3 sm:px-4 lg:px-6 py-3 flex flex-wrap items-center gap-2">
-          <button
-            onClick={() => setCategory(null)}
-            className={`px-2.5 py-1.5 text-[10px] tracking-[0.14em] uppercase rounded-[var(--radius-btn)] border transition-colors ${
-              !category ? 'bg-profit/15 text-fg border-profit/30' : 'text-fg-3 border-border-soft hover:text-fg'
-            }`}
-          >
-            All
-          </button>
-          {CATEGORIES.map(c => (
+        <div className="shrink-0 border-b border-border-soft px-3 sm:px-4 lg:px-6 py-3 flex items-center gap-2">
+          {/* Filter chips — scroll horizontally on narrow screens instead of wrapping */}
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar flex-1 min-w-0 pr-1">
             <button
-              key={c}
-              onClick={() => setCategory(category === c ? null : c)}
-              data-testid={`news-cat-${c}`}
-              className={`px-2.5 py-1.5 text-[10px] tracking-[0.14em] uppercase rounded-[var(--radius-btn)] border transition-colors ${
-                category === c ? 'bg-profit/15 text-fg border-profit/30' : 'text-fg-3 border-border-soft hover:text-fg'
+              onClick={() => setCategory(null)}
+              className={`shrink-0 px-2.5 py-1.5 text-[10px] tracking-[0.14em] uppercase rounded-[var(--radius-btn)] border transition-colors ${
+                !category ? 'bg-profit/15 text-fg border-profit/30' : 'text-fg-3 border-border-soft hover:text-fg'
               }`}
             >
-              {c}
+              All
             </button>
-          ))}
-          <button
-            onClick={() => setHighOnly(v => !v)}
-            data-testid="news-high"
-            className={`px-2.5 py-1.5 text-[10px] tracking-[0.14em] uppercase rounded-[var(--radius-btn)] border transition-colors ${
-              highOnly ? 'text-loss border-loss/40 bg-loss/10' : 'text-fg-3 border-border-soft hover:text-fg'
-            }`}
-          >
-            High impact
-          </button>
+            {CATEGORIES.map(c => (
+              <button
+                key={c}
+                onClick={() => setCategory(category === c ? null : c)}
+                data-testid={`news-cat-${c}`}
+                className={`shrink-0 px-2.5 py-1.5 text-[10px] tracking-[0.14em] uppercase rounded-[var(--radius-btn)] border transition-colors ${
+                  category === c ? 'bg-profit/15 text-fg border-profit/30' : 'text-fg-3 border-border-soft hover:text-fg'
+                }`}
+              >
+                {c}
+              </button>
+            ))}
+            <button
+              onClick={() => setHighOnly(v => !v)}
+              data-testid="news-high"
+              className={`shrink-0 px-2.5 py-1.5 text-[10px] tracking-[0.14em] uppercase rounded-[var(--radius-btn)] border transition-colors ${
+                highOnly ? 'text-loss border-loss/40 bg-loss/10' : 'text-fg-3 border-border-soft hover:text-fg'
+              }`}
+            >
+              High impact
+            </button>
+          </div>
 
-          <div className="ml-auto flex items-center gap-2.5">
+          <div className="shrink-0 flex items-center gap-2.5">
             {live && !category && !highOnly && (
               <span className="hidden sm:flex items-center gap-1.5 text-[10px] tracking-[0.16em] uppercase text-fg-3">
                 <Circle size={7} weight="fill" className="text-profit pulse-dot" /> Live
               </span>
             )}
-            <button onClick={runBrief} data-testid="news-brief-btn" className="btn btn-primary py-1.5 px-3 text-[11px] rounded-[var(--radius-btn)]">
-              <Sparkle size={13} weight="fill" /> Morning brief
+            <button onClick={runBrief} data-testid="news-brief-btn" className="shrink-0 btn btn-primary py-1.5 px-3 text-[11px] rounded-[var(--radius-btn)]">
+              <Sparkle size={13} weight="fill" /> Brief
             </button>
           </div>
         </div>
