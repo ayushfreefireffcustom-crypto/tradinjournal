@@ -126,7 +126,7 @@ export default function AppShell({
   );
 
   return (
-    <div className="flex h-screen overflow-hidden bg-app text-fg" data-testid="app-shell">
+    <div className="flex h-dvh overflow-hidden bg-app text-fg" data-testid="app-shell">
       {/* Desktop sidebar — full viewport height, its footer pinned to the bottom */}
       <aside className="hidden lg:flex w-60 shrink-0 border-r border-border bg-app flex-col overflow-y-auto no-scrollbar" data-testid="sidebar">
         {SidebarBody}
