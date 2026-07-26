@@ -7,7 +7,7 @@
 import { prisma } from '@tradinjournal/db';
 import { env } from '@tradinjournal/config';
 import { logger } from '@tradinjournal/logger';
-import type { CalendarQuery } from '@tradinjournal/contracts';
+import type { CalendarQuery, EventImpact } from '@tradinjournal/contracts';
 import type { Prisma } from '@tradinjournal/db';
 import { getCalendarProviders } from '../../lib/calendar/providers/index.js';
 import { reconcileEvents } from '../../lib/calendar/reconcile.js';
@@ -83,7 +83,7 @@ export interface CalendarEventDTO {
   country: string;
   currency: string;
   category: string | null;
-  impact: 'LOW' | 'MEDIUM' | 'HIGH';
+  impact: EventImpact;
   eventTime: string;
   actual: string | null;
   forecast: string | null;
