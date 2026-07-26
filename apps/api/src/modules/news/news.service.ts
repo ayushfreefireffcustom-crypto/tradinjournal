@@ -120,6 +120,14 @@ export async function ingestNews(): Promise<{ fetched: number; inserted: number;
     }
   }
 
+  // Keep the table lean — news is ephemeral. Drop items older than the window
+  // (indexed on publishedAt; usually a no-op). Non-fatal.
+  try {
+    await prisma.newsItem.deleteMany({ where: { publishedAt: { lt: new Date(Date.now() - 45 * 24 * 3600_000) } } });
+  } catch (err) {
+    logger.warn(`News prune failed (non-fatal): ${(err as Error).message}`);
+  }
+
   return { fetched: rows.length, inserted, enriched };
 }
 
