@@ -1,8 +1,10 @@
-// News service. Ingestion fetches every provider, reconciles duplicates, upserts
-// by dedupKey, and (when AI is on) enriches newly-seen items in a budget-capped
-// batch. Reads are cursor-paginated from Postgres with a short cache on the first
-// page. Providers/LLM are hit ONLY here, never per user request.
-import { createHash } from 'node:crypto';
+// News service. Two decoupled phases (each its own worker cron), so neither the
+// feed fetch nor the LLM blocks the other:
+//   ingestNews()        — fetch every provider, reconcile, BULK-insert new items
+//                         (one createMany, not N upserts), publish to the live feed.
+//   enrichPendingNews() — separately pick un-enriched items and tag them (LLM).
+// Reads are cursor-paginated from Postgres with a short cache on the first page.
+// Providers/LLM are hit ONLY here, never per user request.
 import { prisma } from '@tradinjournal/db';
 import { env } from '@tradinjournal/config';
 import { logger } from '@tradinjournal/logger';
@@ -11,19 +13,19 @@ import type { NewsQuery } from '@tradinjournal/contracts';
 import { getNewsProviders } from '../../lib/news/providers/index.js';
 import { reconcileNews } from '../../lib/news/reconcile.js';
 import type { NormalizedNews } from '../../lib/news/types.js';
-import { enrichNews, type EnrichableItem } from '../../lib/news/enrich.js';
+import { enrichNews } from '../../lib/news/enrich.js';
 import { publishNews } from '../../lib/news/stream.js';
 import { cacheGet, cacheSet } from '../../lib/cache.js';
 
 const FIRST_PAGE_TTL_SECONDS = 30;
 const DEFAULT_LIMIT = 40;
 
-/** Content hash → skip re-enriching an unchanged item. */
-function enrichHash(title: string, summary: string | null): string {
-  return createHash('sha1').update(`${title}\n${summary ?? ''}`).digest('hex');
-}
-
-export async function ingestNews(): Promise<{ fetched: number; inserted: number; enriched: number }> {
+/**
+ * Fetch → reconcile → bulk-insert NEW items → publish. Fast: one `createMany`
+ * instead of a per-row upsert loop, and no LLM in the hot path (that's a separate
+ * pass). Existing items aren't rewritten — news content doesn't change.
+ */
+export async function ingestNews(): Promise<{ fetched: number; inserted: number }> {
   const providers = getNewsProviders();
   const settled = await Promise.allSettled(providers.map(p => p.fetchLatest()));
   const rows: NormalizedNews[] = [];
@@ -31,90 +33,42 @@ export async function ingestNews(): Promise<{ fetched: number; inserted: number;
     if (r.status === 'fulfilled') rows.push(...r.value);
     else logger.warn(`News provider ${providers[i]!.name} failed: ${(r.reason as Error).message}`);
   });
-  if (rows.length === 0) return { fetched: 0, inserted: 0, enriched: 0 };
+  if (rows.length === 0) return { fetched: 0, inserted: 0 };
 
   const reconciled = reconcileNews(rows);
-  const keys = reconciled.map(r => r.dedupKey);
   const existing = await prisma.newsItem.findMany({
-    where: { dedupKey: { in: keys } },
-    select: { id: true, dedupKey: true, enrichHash: true, enrichedAt: true },
+    where: { dedupKey: { in: reconciled.map(r => r.dedupKey) } },
+    select: { dedupKey: true },
   });
-  const priorByKey = new Map(existing.map(e => [e.dedupKey, e]));
+  const existingKeys = new Set(existing.map(e => e.dedupKey));
+  const fresh = reconciled.filter(r => !existingKeys.has(r.dedupKey));
 
-  // Upsert base fields; collect items still needing enrichment.
-  const toEnrich: EnrichableItem[] = [];
-  const insertedIds: string[] = [];
-  let inserted = 0;
-  for (const r of reconciled) {
-    const hash = enrichHash(r.title, r.summary);
-    const prior = priorByKey.get(r.dedupKey);
-    const base = {
-      url: r.url,
-      title: r.title,
-      summary: r.summary,
-      source: r.source,
-      sources: (r.outlets.length > 1 ? { outlets: r.outlets } : undefined) as Prisma.InputJsonValue | undefined,
-      imageUrl: r.imageUrl,
-      publishedAt: r.publishedAt,
-      country: r.country,
-      category: r.category ?? undefined,
-    };
+  if (fresh.length > 0) {
+    // One bulk insert. skipDuplicates guards a race with a concurrent tick.
+    await prisma.newsItem.createMany({
+      data: fresh.map(r => ({
+        dedupKey: r.dedupKey,
+        url: r.url,
+        title: r.title,
+        summary: r.summary,
+        source: r.source,
+        sources: (r.outlets.length > 1 ? { outlets: r.outlets } : undefined) as Prisma.InputJsonValue | undefined,
+        imageUrl: r.imageUrl,
+        publishedAt: r.publishedAt,
+        country: r.country,
+        category: r.category ?? undefined,
+      })),
+      skipDuplicates: true,
+    });
+
+    // Load what we just inserted and push it to any live SSE subscribers. Items
+    // stream in un-enriched (chips appear once the enrich pass tags them).
     try {
-      const row = await prisma.newsItem.upsert({
-        where: { dedupKey: r.dedupKey },
-        create: { dedupKey: r.dedupKey, ...base },
-        update: { url: base.url, summary: base.summary, sources: base.sources, imageUrl: base.imageUrl },
-        select: { id: true },
-      });
-      if (!prior) {
-        inserted += 1;
-        insertedIds.push(row.id);
-      }
-      const needsEnrich = !prior || prior.enrichHash !== hash || !prior.enrichedAt;
-      if (needsEnrich) toEnrich.push({ id: row.id, title: r.title, summary: r.summary ?? undefined });
-    } catch (err) {
-      logger.warn(`News upsert failed for ${r.dedupKey}: ${(err as Error).message}`);
-    }
-  }
-
-  // Enrich a budget-capped slice (newest first — most relevant to surface).
-  let enriched = 0;
-  if (env.NEWS_ENRICH_ENABLED && toEnrich.length > 0) {
-    const batch = toEnrich.slice(0, env.NEWS_ENRICH_MAX_PER_TICK);
-    const results = await enrichNews(batch);
-    const now = new Date();
-    for (const item of batch) {
-      const e = results.get(item.id);
-      if (!e) continue;
-      try {
-        await prisma.newsItem.update({
-          where: { id: item.id },
-          data: {
-            sentiment: e.sentiment,
-            relevance: e.relevance,
-            impact: e.impact,
-            marketMoving: e.marketMoving,
-            category: e.category ?? undefined,
-            country: e.country ?? undefined,
-            enrichedAt: now,
-            enrichHash: enrichHash(item.title, item.summary ?? null),
-          },
-        });
-        enriched += 1;
-      } catch (err) {
-        logger.warn(`News enrich-update failed for ${item.id}: ${(err as Error).message}`);
-      }
-    }
-  }
-
-  // Push the newly-inserted items (now enriched) to any live SSE subscribers.
-  if (insertedIds.length > 0) {
-    try {
-      const fresh = await prisma.newsItem.findMany({
-        where: { id: { in: insertedIds } },
+      const inserted = await prisma.newsItem.findMany({
+        where: { dedupKey: { in: fresh.map(r => r.dedupKey) } },
         orderBy: { publishedAt: 'desc' },
       });
-      await publishNews(fresh.map(toNewsDTO));
+      await publishNews(inserted.map(toNewsDTO));
     } catch (err) {
       logger.warn(`News publish failed (non-fatal): ${(err as Error).message}`);
     }
@@ -128,7 +82,50 @@ export async function ingestNews(): Promise<{ fetched: number; inserted: number;
     logger.warn(`News prune failed (non-fatal): ${(err as Error).message}`);
   }
 
-  return { fetched: rows.length, inserted, enriched };
+  return { fetched: rows.length, inserted: fresh.length };
+}
+
+/**
+ * Enrich up to `limit` un-tagged items with the LLM (sentiment / relevance /
+ * impact / category). Runs on its own cron, decoupled from ingestion. Items the
+ * model omits are marked done so they don't block the queue forever.
+ */
+export async function enrichPendingNews(limit: number): Promise<{ enriched: number }> {
+  if (!env.NEWS_ENRICH_ENABLED) return { enriched: 0 };
+  const pending = await prisma.newsItem.findMany({
+    where: { enrichedAt: null },
+    orderBy: { publishedAt: 'desc' },
+    take: limit,
+    select: { id: true, title: true, summary: true },
+  });
+  if (pending.length === 0) return { enriched: 0 };
+
+  const results = await enrichNews(pending.map(p => ({ id: p.id, title: p.title, summary: p.summary ?? undefined })));
+  const now = new Date();
+  let enriched = 0;
+  for (const item of pending) {
+    const e = results.get(item.id);
+    try {
+      await prisma.newsItem.update({
+        where: { id: item.id },
+        data: e
+          ? {
+              sentiment: e.sentiment,
+              relevance: e.relevance,
+              impact: e.impact,
+              marketMoving: e.marketMoving,
+              category: e.category ?? undefined,
+              country: e.country ?? undefined,
+              enrichedAt: now,
+            }
+          : { enrichedAt: now }, // model omitted it — mark done, don't retry forever
+      });
+      if (e) enriched += 1;
+    } catch (err) {
+      logger.warn(`News enrich-update failed for ${item.id}: ${(err as Error).message}`);
+    }
+  }
+  return { enriched };
 }
 
 // ── Reads ───────────────────────────────────────────────────────────────────
