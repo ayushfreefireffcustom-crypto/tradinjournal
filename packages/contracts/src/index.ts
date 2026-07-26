@@ -139,22 +139,38 @@ export const notificationsDispatchSchema = z.object({
 });
 export type NotificationsDispatchInput = z.infer<typeof notificationsDispatchSchema>;
 
-const eventImpact = z.enum(['LOW', 'MEDIUM', 'HIGH']);
+// ── Shared domain enums (single source of truth) ─────────────────────────────
+// The calendar/news vocabularies live here once, as `as const` tuples + zod
+// schemas + inferred TS types. Request validators, service-layer types, and
+// runtime membership checks all derive from these — so a value is added in
+// exactly one place. (The web app keeps its own copies; it's a standalone build
+// with no workspace deps.)
+export const EVENT_IMPACTS = ['LOW', 'MEDIUM', 'HIGH'] as const;
+export const eventImpactSchema = z.enum(EVENT_IMPACTS);
+export type EventImpact = z.infer<typeof eventImpactSchema>;
+
+export const NEWS_CATEGORIES = ['CRYPTO', 'MACRO', 'GEOPOLITICAL', 'REGULATORY', 'MARKETS'] as const;
+export const newsCategorySchema = z.enum(NEWS_CATEGORIES);
+export type NewsCategory = z.infer<typeof newsCategorySchema>;
+
+export const SENTIMENTS = ['BULLISH', 'BEARISH', 'NEUTRAL'] as const;
+export const sentimentSchema = z.enum(SENTIMENTS);
+export type Sentiment = z.infer<typeof sentimentSchema>;
 
 export const calendarQuerySchema = z.object({
   from: z.string().datetime().optional(),
   to: z.string().datetime().optional(),
-  impact: eventImpact.optional(),
+  impact: eventImpactSchema.optional(),
   currency: z.string().min(1).max(8).optional(),
   category: z.string().min(1).max(40).optional(),
 });
 export type CalendarQuery = z.infer<typeof calendarQuerySchema>;
 
 export const newsQuerySchema = z.object({
-  category: z.enum(['CRYPTO', 'MACRO', 'GEOPOLITICAL', 'REGULATORY', 'MARKETS']).optional(),
+  category: newsCategorySchema.optional(),
   country: z.string().min(2).max(2).optional(),
-  impact: eventImpact.optional(),
-  sentiment: z.enum(['BULLISH', 'BEARISH', 'NEUTRAL']).optional(),
+  impact: eventImpactSchema.optional(),
+  sentiment: sentimentSchema.optional(),
   cursor: z.string().min(1).optional(),
   limit: z.coerce.number().int().min(1).max(100).optional(),
 });
@@ -166,7 +182,7 @@ export const notificationPrefsSchema = z.object({
   inApp: z.boolean().optional(),
   email: z.boolean().optional(),
   push: z.boolean().optional(),
-  minImpact: eventImpact.optional(),
+  minImpact: eventImpactSchema.optional(),
   currencies: z.array(z.string().min(1).max(8)).max(30).optional(),
   categories: z.array(z.string().min(1).max(40)).max(30).optional(),
   leadMinutes: z.coerce.number().int().min(0).max(1440).optional(),
