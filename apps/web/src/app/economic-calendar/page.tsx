@@ -208,7 +208,7 @@ export default function EconomicCalendarPage() {
       pageTitle="Economic Calendar"
       pageSubtitle="// UPCOMING MARKET EVENTS"
     >
-      <div className="flex flex-col h-[calc(100vh-var(--topbar-h,7rem))] min-h-0" data-testid="econ-calendar-page">
+      <div className="flex flex-col h-full min-h-0" data-testid="econ-calendar-page">
         {/* Filter bar */}
         <div className="shrink-0 border-b border-border-soft px-3 sm:px-4 lg:px-6 py-3 flex flex-wrap items-center gap-2.5">
           <div className="inline-flex rounded-[var(--radius-btn)] border border-border-soft overflow-hidden">
@@ -242,20 +242,20 @@ export default function EconomicCalendarPage() {
             ))}
           </div>
 
-          <div className="relative ml-auto">
+          <div className="relative flex-1 min-w-[140px] sm:flex-none sm:ml-auto">
             <MagnifyingGlass size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-fg-3" />
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search events…"
               data-testid="cal-search"
-              className="w-40 sm:w-52 rounded-[var(--radius-btn)] border border-border-soft bg-surface/60 pl-8 pr-2 py-1.5 text-[12px] outline-none focus:border-profit/45"
+              className="w-full sm:w-52 rounded-[var(--radius-btn)] border border-border-soft bg-surface/60 pl-8 pr-2 py-1.5 text-[12px] outline-none focus:border-profit/45"
             />
           </div>
           <button
             onClick={() => void load(true)}
             aria-label="Refresh"
-            className="rounded-[var(--radius-btn)] border border-border-soft p-2 text-fg-3 hover:text-fg transition-colors"
+            className="shrink-0 rounded-[var(--radius-btn)] border border-border-soft p-2 text-fg-3 hover:text-fg transition-colors"
           >
             <ArrowClockwise size={13} className={loading ? 'animate-spin' : undefined} />
           </button>
