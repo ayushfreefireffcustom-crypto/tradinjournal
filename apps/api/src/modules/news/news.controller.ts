@@ -5,7 +5,8 @@ import { ok } from '../../http/response.js';
 import { isAiEnabled, getProvider } from '../../lib/ai/provider.js';
 import { subscribeNews } from '../../lib/news/stream.js';
 import { BRIEF_PROMPT, briefUserContent } from '../../lib/news/prompts.js';
-import { ingestNews, listNews, getBriefHeadlines } from './news.service.js';
+import { env } from '@tradinjournal/config';
+import { ingestNews, enrichPendingNews, listNews, getBriefHeadlines } from './news.service.js';
 
 function sseWrite(res: Response, obj: unknown): void {
   res.write(`data: ${JSON.stringify(obj)}\n\n`);
@@ -94,6 +95,15 @@ export async function handleNewsBrief(req: Request, res: Response): Promise<void
 export async function handleIngestNews(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     ok(res, await ingestNews());
+  } catch (err) {
+    next(err);
+  }
+}
+
+// POST /internal/news/enrich — worker-only. Drains a batch of un-enriched items.
+export async function handleEnrichNews(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    ok(res, await enrichPendingNews(env.NEWS_ENRICH_MAX_PER_TICK));
   } catch (err) {
     next(err);
   }
