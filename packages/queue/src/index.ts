@@ -61,10 +61,12 @@ export function weeklyReviewSendJobId(userId: string, weekKey: string): string {
 
 export const QUEUE_CALENDAR_INGEST = 'calendar-ingest' as const;
 export const QUEUE_NEWS_INGEST = 'news-ingest' as const;
+export const QUEUE_NEWS_ENRICH = 'news-enrich' as const;
 export const QUEUE_NOTIFICATIONS = 'notifications' as const;
 
 export const CALENDAR_INGEST_SCHEDULER_ID = 'calendar-ingest-cron';
 export const NEWS_INGEST_SCHEDULER_ID = 'news-ingest-cron';
+export const NEWS_ENRICH_SCHEDULER_ID = 'news-enrich-cron';
 export const NOTIFICATIONS_SCHEDULER_ID = 'notifications-cron';
 
 /** Trigger a calendar ingest for a UTC window (bucketed for idempotency). */
@@ -77,6 +79,12 @@ export interface CalendarIngestJob {
 /** Trigger a news ingest tick (bucketed to the minute). */
 export interface NewsIngestJob {
   kind: 'news-ingest';
+  bucket: string;
+}
+
+/** Trigger a news enrichment tick — drains the un-enriched backlog (LLM). */
+export interface NewsEnrichJob {
+  kind: 'news-enrich';
   bucket: string;
 }
 
@@ -97,6 +105,9 @@ export function calendarIngestJobId(bucket: string): string {
 }
 export function newsIngestJobId(bucket: string): string {
   return `news-ingest:${bucket}`;
+}
+export function newsEnrichJobId(bucket: string): string {
+  return `news-enrich:${bucket}`;
 }
 export function notificationsJobId(bucket: string): string {
   return `notif:${bucket}`;
