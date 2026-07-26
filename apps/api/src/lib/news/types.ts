@@ -5,7 +5,10 @@
 // RSS is the always-on baseline (no key). Keyed aggregators (Finnhub, Marketaux,
 // CryptoPanic) enrich coverage when their keys are present.
 
-export type RawNewsCategory = 'CRYPTO' | 'MACRO' | 'GEOPOLITICAL' | 'REGULATORY' | 'MARKETS';
+// Category vocabulary is shared with the request validators — re-exported from
+// the contracts package (the single source).
+export type { NewsCategory } from '@tradinjournal/contracts';
+import type { NewsCategory } from '@tradinjournal/contracts';
 
 /** One news item as a single provider reports it, already normalized. */
 export interface NormalizedNews {
@@ -20,7 +23,7 @@ export interface NormalizedNews {
   publishedAt: Date;
   country?: string; // ISO-3166 alpha-2
   /** Provider-supplied category, if any (LLM enrichment refines/overrides). */
-  category?: RawNewsCategory;
+  category?: NewsCategory;
 }
 
 export interface NewsProvider {
