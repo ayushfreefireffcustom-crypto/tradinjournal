@@ -72,8 +72,12 @@ export function ingestCalendar(params: { from: string; to: string }): Promise<{ 
   return request('/internal/calendar/ingest', { method: 'POST', body: JSON.stringify(params) });
 }
 
-export function ingestNews(params: { bucket: string }): Promise<{ fetched: number; inserted: number; enriched: number }> {
+export function ingestNews(params: { bucket: string }): Promise<{ fetched: number; inserted: number }> {
   return request('/internal/news/ingest', { method: 'POST', body: JSON.stringify(params) });
+}
+
+export function enrichNews(params: { bucket: string }): Promise<{ enriched: number }> {
+  return request('/internal/news/enrich', { method: 'POST', body: JSON.stringify(params) });
 }
 
 export function dispatchNotifications(params: { bucket: string }): Promise<{ events: number; delivered: number }> {
