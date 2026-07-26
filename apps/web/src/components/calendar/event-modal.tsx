@@ -132,9 +132,9 @@ export default function EventModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" data-testid="event-modal">
       <button className="absolute inset-0 bg-black/65 backdrop-blur-sm" aria-label="Close" onClick={onClose} />
-      <div className="relative w-full max-w-[440px] overflow-hidden rounded-[var(--radius-card)] border border-border-strong bg-app shadow-2xl fade-up">
-        <div className={`h-1 w-full ${impact.dot}`} />
-        <div className="p-5 sm:p-6">
+      <div className="relative w-full max-w-[440px] max-h-[90dvh] flex flex-col overflow-hidden rounded-[var(--radius-card)] border border-border-strong bg-app shadow-2xl fade-up">
+        <div className={`h-1 w-full shrink-0 ${impact.dot}`} />
+        <div className="p-5 sm:p-6 overflow-y-auto">
           {/* Header */}
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-2">
