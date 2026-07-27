@@ -4,15 +4,20 @@
 // red (FinancialJuice cue); each carries sentiment, relevance and category from
 // the enrichment pass. New items stream in over SSE (falling back to polling),
 // and a one-click AI "morning brief" summarizes the session.
+//
+// Personalization: when a user picks preferred outlets, the feed splits into
+// "From your sources" (those outlets) on top and "More headlines" (everything
+// else) below. With no preference it renders as one plain feed.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Newspaper, Sparkle, ArrowUpRight, Circle } from '@phosphor-icons/react';
+import { Newspaper, Sparkle, ArrowUpRight, Circle, Faders } from '@phosphor-icons/react';
 import AppShell from '@/components/app-shell';
 import EmptyState from '@/components/empty-state';
 import MarkdownMessage from '@/components/coach/markdown-message';
 import NewsModal from '@/components/news/news-modal';
 import NewsThumb from '@/components/news/news-thumb';
+import SourcePicker from '@/components/news/source-picker';
 import { useAccounts } from '@/lib/use-accounts';
-import { api, type NewsItem, type NewsCategory, type Sentiment, type EventImpact, type BrokerAccount } from '@/lib/api';
+import { api, type NewsItem, type NewsCategory, type Sentiment, type EventImpact, type NewsSource, type BrokerAccount } from '@/lib/api';
 
 const CATEGORIES: NewsCategory[] = ['CRYPTO', 'MACRO', 'GEOPOLITICAL', 'REGULATORY', 'MARKETS'];
 const POLL_MS = 60_000;
@@ -37,6 +42,42 @@ function dedupePrepend(prev: NewsItem[], incoming: NewsItem[]): NewsItem[] {
   return fresh.length ? [...fresh, ...prev] : prev;
 }
 
+/** One headline card — shared by the "your sources" and "more headlines" grids. */
+function NewsCard({ it, onOpen }: { it: NewsItem; onOpen: (i: NewsItem) => void }) {
+  const high = it.impact === 'HIGH' || it.marketMoving;
+  return (
+    <button
+      type="button"
+      onClick={() => onOpen(it)}
+      data-testid="news-item"
+      className={`group h-full flex gap-3 text-left rounded-[var(--radius-card)] border bg-surface/40 px-4 py-3.5 transition-colors hover:bg-surface ${
+        high ? 'border-loss/40 border-l-2 border-l-loss bg-loss/[0.04]' : 'border-border-soft hover:border-border-strong'
+      }`}
+    >
+      <div className="flex-1 min-w-0 flex flex-col">
+        <div className="flex items-center gap-1.5 flex-wrap text-[10px] mb-1.5">
+          <span className="font-semibold tracking-wide text-fg-2">{it.source}</span>
+          <span className="text-fg-3">· {timeAgo(it.publishedAt)}</span>
+          {it.category && <span className="px-1.5 py-0.5 rounded border border-border-soft text-fg-3 tracking-wider uppercase">{it.category}</span>}
+          {it.sentiment && <span className={`px-1.5 py-0.5 rounded border tracking-wider uppercase ${sentimentChip[it.sentiment]}`}>{it.sentiment}</span>}
+          {high && <span className="px-1.5 py-0.5 rounded border border-loss/40 text-loss bg-loss/10 tracking-wider uppercase">High</span>}
+        </div>
+        <div className="text-[14px] font-medium text-fg leading-snug line-clamp-2">{it.title}</div>
+        {it.summary && <p className="text-[12px] text-fg-3 mt-1.5 line-clamp-2 leading-relaxed">{it.summary}</p>}
+        <div className="mt-auto pt-2 flex items-center gap-2">
+          {typeof it.relevance === 'number' && (
+            <span className="flex items-center gap-1 text-fg-3" title={`Relevance ${it.relevance}/100`}>
+              <span className="w-10 h-1 rounded-full bg-surface-active overflow-hidden"><span className="block h-full bg-profit/70" style={{ width: `${it.relevance}%` }} /></span>
+            </span>
+          )}
+          <span className="ml-auto flex items-center gap-1 text-[10px] tracking-[0.14em] uppercase text-fg-3 opacity-0 group-hover:opacity-100 transition-opacity">Read <ArrowUpRight size={11} weight="bold" /></span>
+        </div>
+      </div>
+      <NewsThumb src={it.imageUrl} className="shrink-0 w-16 h-16 rounded-md object-cover border border-border-soft" />
+    </button>
+  );
+}
+
 export default function NewsPage() {
   const { accounts, selected, select } = useAccounts();
   const [items, setItems] = useState<NewsItem[]>([]);
@@ -48,14 +89,33 @@ export default function NewsPage() {
   const [highOnly, setHighOnly] = useState(false);
   const [live, setLive] = useState(false);
 
+  // Personalization.
+  const [prefs, setPrefs] = useState<string[]>([]);
+  const [prefsLoaded, setPrefsLoaded] = useState(false);
+  const [catalog, setCatalog] = useState<NewsSource[]>([]);
+  const [topItems, setTopItems] = useState<NewsItem[]>([]);
+  const [topLoading, setTopLoading] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [savingPrefs, setSavingPrefs] = useState(false);
+
   const [briefOpen, setBriefOpen] = useState(false);
   const [brief, setBrief] = useState('');
   const [briefLoading, setBriefLoading] = useState(false);
   const [selectedItem, setSelectedItem] = useState<NewsItem | null>(null);
 
-  // Featured lead story: the most market-moving / relevant of the recent items.
-  // Only used on the unfiltered feed, so filtered views stay a pure grid.
-  const showLead = !category && !highOnly;
+  // Two-section mode: preferences set, and no category/impact filter narrowing
+  // the view (filters collapse back to a single list to stay legible).
+  const personalized = prefsLoaded && prefs.length > 0 && !category && !highOnly;
+
+  // Load the picker catalog + saved preferences once.
+  useEffect(() => {
+    api.news.preferences().then(p => setPrefs(p.sources)).catch(() => {}).finally(() => setPrefsLoaded(true));
+    api.news.sources().then(r => setCatalog(r.sources)).catch(() => {});
+  }, []);
+
+  // Featured lead story: only on the plain (non-personalized, unfiltered) feed —
+  // in two-section mode the "your sources" band is the hero instead.
+  const showLead = !category && !highOnly && !personalized;
   const lead = useMemo(() => {
     if (!showLead || items.length === 0) return null;
     return [...items.slice(0, 12)].sort(
@@ -67,10 +127,15 @@ export default function NewsPage() {
   const sentinel = useRef<HTMLDivElement>(null);
 
   const filters = useCallback(
-    () => ({ ...(category ? { category } : {}), ...(highOnly ? { impact: 'HIGH' as EventImpact } : {}) }),
-    [category, highOnly],
+    () => ({
+      ...(category ? { category } : {}),
+      ...(highOnly ? { impact: 'HIGH' as EventImpact } : {}),
+      ...(personalized ? { excludeSources: prefs } : {}),
+    }),
+    [category, highOnly, personalized, prefs],
   );
 
+  // The bottom feed ("more headlines" when personalized, else the whole feed).
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -87,22 +152,44 @@ export default function NewsPage() {
 
   useEffect(() => { void load(); }, [load]);
 
-  // Live updates over SSE; a poll acts as both fallback and a safety net.
+  // The "from your sources" top band. Capped (a highlight, not infinite-scrolled).
+  useEffect(() => {
+    if (!personalized) { setTopItems([]); return; }
+    let cancelled = false;
+    setTopLoading(true);
+    api.news
+      .list({ sources: prefs, limit: 24 })
+      .then(p => { if (!cancelled) setTopItems(p.items); })
+      .catch(() => { if (!cancelled) setTopItems([]); })
+      .finally(() => { if (!cancelled) setTopLoading(false); });
+    return () => { cancelled = true; };
+  }, [personalized, prefs]);
+
+  // Live updates over SSE; a poll acts as both fallback and a safety net. When
+  // personalized, route each incoming item to the top or bottom by its source.
   useEffect(() => {
     if (category || highOnly) return; // stream only the unfiltered feed
     const controller = new AbortController();
     setLive(true);
-    api.news.stream(incoming => setItems(prev => dedupePrepend(prev, incoming)), controller.signal).catch(() => setLive(false));
+    const pset = new Set(prefs);
+    const route = (incoming: NewsItem[]) => {
+      if (!personalized) { setItems(prev => dedupePrepend(prev, incoming)); return; }
+      const top = incoming.filter(i => pset.has(i.source));
+      const rest = incoming.filter(i => !pset.has(i.source));
+      if (top.length) setTopItems(prev => dedupePrepend(prev, top));
+      if (rest.length) setItems(prev => dedupePrepend(prev, rest));
+    };
+    api.news.stream(route, controller.signal).catch(() => setLive(false));
     const poll = setInterval(async () => {
       try {
         const page = await api.news.list({});
-        setItems(prev => dedupePrepend(prev, page.items));
+        route(page.items);
       } catch { /* ignore */ }
     }, POLL_MS);
     return () => { controller.abort(); clearInterval(poll); setLive(false); };
-  }, [category, highOnly]);
+  }, [category, highOnly, personalized, prefs]);
 
-  // Infinite scroll.
+  // Infinite scroll (bottom feed).
   useEffect(() => {
     const el = sentinel.current;
     if (!el || !cursor) return;
@@ -120,6 +207,17 @@ export default function NewsPage() {
     io.observe(el);
     return () => io.disconnect();
   }, [cursor, loadingMore, filters]);
+
+  const savePrefs = useCallback(async (next: string[]) => {
+    setSavingPrefs(true);
+    try {
+      const res = await api.news.setPreferences(next);
+      setPrefs(res.sources);
+      setPickerOpen(false);
+    } catch { /* ignore */ } finally {
+      setSavingPrefs(false);
+    }
+  }, []);
 
   const runBrief = useCallback(() => {
     setBriefOpen(true);
@@ -182,6 +280,17 @@ export default function NewsPage() {
                 <Circle size={7} weight="fill" className="text-profit pulse-dot" /> Live
               </span>
             )}
+            <button
+              onClick={() => setPickerOpen(true)}
+              data-testid="news-customize-btn"
+              title="Customize your feed"
+              className={`shrink-0 flex items-center gap-1.5 py-1.5 px-2.5 text-[11px] tracking-[0.06em] uppercase rounded-[var(--radius-btn)] border transition-colors ${
+                prefs.length > 0 ? 'text-fg border-profit/30 bg-profit/10' : 'text-fg-3 border-border-soft hover:text-fg'
+              }`}
+            >
+              <Faders size={13} weight="bold" />
+              <span className="hidden sm:inline">Sources{prefs.length > 0 ? ` · ${prefs.length}` : ''}</span>
+            </button>
             <button onClick={runBrief} data-testid="news-brief-btn" className="shrink-0 btn btn-primary py-1.5 px-3 text-[11px] rounded-[var(--radius-btn)]">
               <Sparkle size={13} weight="fill" /> Brief
             </button>
@@ -206,11 +315,31 @@ export default function NewsPage() {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">{Array.from({ length: 8 }).map((_, i) => <div key={i} className="shimmer h-28" />)}</div>
             ) : error ? (
               <EmptyState icon={Newspaper} title="News unavailable" hint={error} />
-            ) : items.length === 0 ? (
+            ) : items.length === 0 && topItems.length === 0 ? (
               <EmptyState icon={Newspaper} title="No news yet" hint="The feed will fill in as headlines are ingested." />
             ) : (
               <>
-                {/* Featured lead story */}
+                {/* ── FROM YOUR SOURCES (personalized top band) ── */}
+                {personalized && (
+                  <section className="mb-6" data-testid="news-your-sources">
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="text-[10px] tracking-[0.2em] uppercase text-profit font-semibold">From your sources</span>
+                      <span className="h-px flex-1 bg-border-soft" />
+                      <button onClick={() => setPickerOpen(true)} className="text-[10px] tracking-[0.14em] uppercase text-fg-3 hover:text-fg transition-colors">Edit</button>
+                    </div>
+                    {topLoading ? (
+                      <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-3">{Array.from({ length: 3 }).map((_, i) => <div key={i} className="shimmer h-28" />)}</div>
+                    ) : topItems.length === 0 ? (
+                      <p className="text-[12px] text-fg-3 py-2">Nothing new from your sources yet — fresh headlines will appear here.</p>
+                    ) : (
+                      <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-3">
+                        {topItems.map(it => <NewsCard key={it.id} it={it} onOpen={setSelectedItem} />)}
+                      </div>
+                    )}
+                  </section>
+                )}
+
+                {/* ── Featured lead (plain feed only) ── */}
                 {lead && (() => {
                   const high = lead.impact === 'HIGH' || lead.marketMoving;
                   return (
@@ -241,44 +370,15 @@ export default function NewsPage() {
                   );
                 })()}
 
+                {/* ── MORE HEADLINES / the main feed ── */}
+                {personalized && (
+                  <div className="flex items-center gap-2 mb-3" data-testid="news-more">
+                    <span className="text-[10px] tracking-[0.2em] uppercase text-fg-3 font-semibold">More headlines</span>
+                    <span className="h-px flex-1 bg-border-soft" />
+                  </div>
+                )}
                 <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-3">
-                  {gridItems.map(it => {
-                    const high = it.impact === 'HIGH' || it.marketMoving;
-                    return (
-                      <button
-                        key={it.id}
-                        type="button"
-                        onClick={() => setSelectedItem(it)}
-                        data-testid="news-item"
-                        className={`group h-full flex gap-3 text-left rounded-[var(--radius-card)] border bg-surface/40 px-4 py-3.5 transition-colors hover:bg-surface ${
-                          high ? 'border-loss/40 border-l-2 border-l-loss bg-loss/[0.04]' : 'border-border-soft hover:border-border-strong'
-                        }`}
-                      >
-                        <div className="flex-1 min-w-0 flex flex-col">
-                          <div className="flex items-center gap-1.5 flex-wrap text-[10px] mb-1.5">
-                            <span className="font-semibold tracking-wide text-fg-2">{it.source}</span>
-                            <span className="text-fg-3">· {timeAgo(it.publishedAt)}</span>
-                            {it.category && <span className="px-1.5 py-0.5 rounded border border-border-soft text-fg-3 tracking-wider uppercase">{it.category}</span>}
-                            {it.sentiment && (
-                              <span className={`px-1.5 py-0.5 rounded border tracking-wider uppercase ${sentimentChip[it.sentiment]}`}>{it.sentiment}</span>
-                            )}
-                            {high && <span className="px-1.5 py-0.5 rounded border border-loss/40 text-loss bg-loss/10 tracking-wider uppercase">High</span>}
-                          </div>
-                          <div className="text-[14px] font-medium text-fg leading-snug line-clamp-2">{it.title}</div>
-                          {it.summary && <p className="text-[12px] text-fg-3 mt-1.5 line-clamp-2 leading-relaxed">{it.summary}</p>}
-                          <div className="mt-auto pt-2 flex items-center gap-2">
-                            {typeof it.relevance === 'number' && (
-                              <span className="flex items-center gap-1 text-fg-3" title={`Relevance ${it.relevance}/100`}>
-                                <span className="w-10 h-1 rounded-full bg-surface-active overflow-hidden"><span className="block h-full bg-profit/70" style={{ width: `${it.relevance}%` }} /></span>
-                              </span>
-                            )}
-                            <span className="ml-auto flex items-center gap-1 text-[10px] tracking-[0.14em] uppercase text-fg-3 opacity-0 group-hover:opacity-100 transition-opacity">Read <ArrowUpRight size={11} weight="bold" /></span>
-                          </div>
-                        </div>
-                        <NewsThumb src={it.imageUrl} className="shrink-0 w-16 h-16 rounded-md object-cover border border-border-soft" />
-                      </button>
-                    );
-                  })}
+                  {gridItems.map(it => <NewsCard key={it.id} it={it} onOpen={setSelectedItem} />)}
                 </div>
                 {cursor && <div ref={sentinel} className="h-10 flex items-center justify-center text-[11px] text-fg-3">{loadingMore ? 'Loading…' : ''}</div>}
                 <p className="text-center text-[9px] tracking-[0.2em] text-fg-3 mt-4">
@@ -290,6 +390,15 @@ export default function NewsPage() {
         </div>
       </div>
 
+      {pickerOpen && (
+        <SourcePicker
+          catalog={catalog}
+          initial={prefs}
+          saving={savingPrefs}
+          onSave={savePrefs}
+          onClose={() => setPickerOpen(false)}
+        />
+      )}
       {selectedItem && <NewsModal item={selectedItem} onClose={() => setSelectedItem(null)} />}
     </AppShell>
   );
