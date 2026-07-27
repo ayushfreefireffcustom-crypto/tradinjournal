@@ -9,7 +9,7 @@ import { prisma } from '@tradinjournal/db';
 import { env } from '@tradinjournal/config';
 import { logger } from '@tradinjournal/logger';
 import type { Prisma } from '@tradinjournal/db';
-import type { NewsQuery } from '@tradinjournal/contracts';
+import type { NewsQuery, NewsCategory, Sentiment, EventImpact } from '@tradinjournal/contracts';
 import { getNewsProviders } from '../../lib/news/providers/index.js';
 import { reconcileNews } from '../../lib/news/reconcile.js';
 import type { NormalizedNews } from '../../lib/news/types.js';
@@ -140,10 +140,10 @@ export interface NewsItemDTO {
   imageUrl: string | null;
   publishedAt: string;
   country: string | null;
-  category: 'CRYPTO' | 'MACRO' | 'GEOPOLITICAL' | 'REGULATORY' | 'MARKETS' | null;
-  sentiment: 'BULLISH' | 'BEARISH' | 'NEUTRAL' | null;
+  category: NewsCategory | null;
+  sentiment: Sentiment | null;
   relevance: number | null;
-  impact: 'LOW' | 'MEDIUM' | 'HIGH' | null;
+  impact: EventImpact | null;
   marketMoving: boolean;
 }
 
