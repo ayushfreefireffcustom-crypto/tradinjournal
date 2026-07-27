@@ -160,28 +160,35 @@ html, body {
   .tcard-hover:hover { transform: translateY(-2px); box-shadow: var(--shadow-hover); }
 }
 
-/* ─── Buttons ────────────────────────────────────────────────────────────── */
-.btn {
-  display: inline-flex; align-items: center; gap: .5rem;
-  padding: .5rem .9rem;
-  border-radius: var(--radius-btn);
-  font-family: var(--font-sans);
-  font-size: 12px; font-weight: 600; letter-spacing: .01em;
-  transition: background-color var(--dur-hover) var(--ease-out),
-              border-color var(--dur-hover) var(--ease-out),
-              box-shadow var(--dur-hover) var(--ease-premium),
-              transform var(--dur-press) var(--ease-out);
-  cursor: pointer; border: 1px solid transparent;
-}
-.btn:active { transform: scale(.97); }
-.btn:focus-visible { outline: none; box-shadow: var(--shadow-focus); }
-.btn-primary { background: #FFFFFF; color: #000000; }
-.btn-primary:hover { background: #E9E9E9; }
-.btn-ghost { background: transparent; border-color: var(--color-border); color: #fff; }
-.btn-ghost:hover { background: var(--color-surface); border-color: var(--color-border-strong); }
-@media (hover: hover) and (pointer: fine) {
-  .btn-primary:hover { box-shadow: var(--shadow-hover); transform: translateY(-1px); }
-  .btn-ghost:hover { transform: translateY(-1px); }
+/* ─── Buttons ────────────────────────────────────────────────────────────────
+   These live in @layer components so Tailwind utilities (which sit in the later
+   @layer utilities) win when combined on a button. Without the layer, `.btn`'s
+   base padding/font were UNLAYERED and beat `py-1.5 px-3` etc. — so white
+   `.btn-primary` buttons kept the bigger .5rem/.9rem padding and looked larger
+   than dark bordered buttons that use plain utilities. */
+@layer components {
+  .btn {
+    display: inline-flex; align-items: center; gap: .5rem;
+    padding: .5rem .9rem;
+    border-radius: var(--radius-btn);
+    font-family: var(--font-sans);
+    font-size: 12px; font-weight: 600; letter-spacing: .01em;
+    transition: background-color var(--dur-hover) var(--ease-out),
+                border-color var(--dur-hover) var(--ease-out),
+                box-shadow var(--dur-hover) var(--ease-premium),
+                transform var(--dur-press) var(--ease-out);
+    cursor: pointer; border: 1px solid transparent;
+  }
+  .btn:active { transform: scale(.97); }
+  .btn:focus-visible { outline: none; box-shadow: var(--shadow-focus); }
+  .btn-primary { background: #FFFFFF; color: #000000; }
+  .btn-primary:hover { background: #E9E9E9; }
+  .btn-ghost { background: transparent; border-color: var(--color-border); color: #fff; }
+  .btn-ghost:hover { background: var(--color-surface); border-color: var(--color-border-strong); }
+  @media (hover: hover) and (pointer: fine) {
+    .btn-primary:hover { box-shadow: var(--shadow-hover); transform: translateY(-1px); }
+    .btn-ghost:hover { transform: translateY(-1px); }
+  }
 }
 
 /* ─── Inputs / selects ───────────────────────────────────────────────────── */
