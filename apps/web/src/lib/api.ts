@@ -368,6 +368,10 @@ export interface NewsFilters {
   country?: string;
   impact?: EventImpact;
   sentiment?: Sentiment;
+  /** Keep only these outlet keys (the "your sources" section). */
+  sources?: string[];
+  /** Drop these outlet keys (the "everything else" section). */
+  excludeSources?: string[];
   cursor?: string;
   limit?: number;
 }
@@ -378,10 +382,21 @@ function newsQuery(f: NewsFilters): string {
   if (f.country) q.set('country', f.country);
   if (f.impact) q.set('impact', f.impact);
   if (f.sentiment) q.set('sentiment', f.sentiment);
+  if (f.sources?.length) q.set('sources', f.sources.join(','));
+  if (f.excludeSources?.length) q.set('excludeSources', f.excludeSources.join(','));
   if (f.cursor) q.set('cursor', f.cursor);
   if (f.limit) q.set('limit', String(f.limit));
   const s = q.toString();
   return s ? `?${s}` : '';
+}
+
+export interface NewsSource {
+  key: string;
+  label: string;
+  category: NewsCategory;
+}
+export interface NewsPreferences {
+  sources: string[];
 }
 
 /** Read an SSE GET stream, invoking `onEvent` per `data:` payload until closed/aborted. */
@@ -491,6 +506,12 @@ export const api = {
   },
   news: {
     list: (filters: NewsFilters = {}) => apiFetch<NewsPage>(`${PREFIX}/news${newsQuery(filters)}`),
+    // Outlet catalog for the personalization picker.
+    sources: () => apiFetch<{ sources: NewsSource[] }>(`${PREFIX}/news/sources`),
+    // The user's preferred outlets (empty = no preference).
+    preferences: () => apiFetch<NewsPreferences>(`${PREFIX}/news/preferences`),
+    setPreferences: (sources: string[]) =>
+      apiFetch<NewsPreferences>(`${PREFIX}/news/preferences`, { method: 'PUT', body: JSON.stringify({ sources }) }),
     // Live feed. Calls onItems with each pushed batch until the signal aborts.
     stream: (onItems: (items: NewsItem[]) => void, signal?: AbortSignal) =>
       sseGet(
