@@ -97,6 +97,7 @@ export default function NewsPage() {
   const [topLoading, setTopLoading] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [savingPrefs, setSavingPrefs] = useState(false);
+  const [prefsError, setPrefsError] = useState('');
 
   const [briefOpen, setBriefOpen] = useState(false);
   const [brief, setBrief] = useState('');
@@ -210,11 +211,14 @@ export default function NewsPage() {
 
   const savePrefs = useCallback(async (next: string[]) => {
     setSavingPrefs(true);
+    setPrefsError('');
     try {
       const res = await api.news.setPreferences(next);
       setPrefs(res.sources);
       setPickerOpen(false);
-    } catch { /* ignore */ } finally {
+    } catch {
+      setPrefsError("Couldn't save your sources. Please try again.");
+    } finally {
       setSavingPrefs(false);
     }
   }, []);
@@ -395,8 +399,9 @@ export default function NewsPage() {
           catalog={catalog}
           initial={prefs}
           saving={savingPrefs}
+          error={prefsError}
           onSave={savePrefs}
-          onClose={() => setPickerOpen(false)}
+          onClose={() => { setPrefsError(''); setPickerOpen(false); }}
         />
       )}
       {selectedItem && <NewsModal item={selectedItem} onClose={() => setSelectedItem(null)} />}
