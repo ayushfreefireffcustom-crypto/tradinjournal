@@ -11,6 +11,7 @@ import { logger } from '@tradinjournal/logger';
 import type { Prisma } from '@tradinjournal/db';
 import type { NewsQuery, NewsCategory, Sentiment, EventImpact } from '@tradinjournal/contracts';
 import { getNewsProviders } from '../../lib/news/providers/index.js';
+import { getSourceCatalog, type SourceCatalogEntry } from '../../lib/news/providers/rss.js';
 import { reconcileNews } from '../../lib/news/reconcile.js';
 import type { NormalizedNews } from '../../lib/news/types.js';
 import { enrichNews } from '../../lib/news/enrich.js';
@@ -177,9 +178,16 @@ export interface NewsPage {
   nextCursor: string | null;
 }
 
+/** Split a CSV query param into a trimmed, de-empted list. */
+function csvList(v: string | undefined): string[] {
+  return v ? v.split(',').map(s => s.trim()).filter(Boolean) : [];
+}
+
 export async function listNews(q: NewsQuery): Promise<NewsPage> {
   const limit = q.limit ?? DEFAULT_LIMIT;
-  const filtered = !!(q.category || q.country || q.impact || q.sentiment);
+  const sources = csvList(q.sources);
+  const excludeSources = csvList(q.excludeSources);
+  const filtered = !!(q.category || q.country || q.impact || q.sentiment || sources.length || excludeSources.length);
   const cacheable = !q.cursor && !filtered; // only the unfiltered first page
 
   const key = 'news:first';
@@ -189,6 +197,8 @@ export async function listNews(q: NewsQuery): Promise<NewsPage> {
   }
 
   const where: Prisma.NewsItemWhereInput = {
+    ...(sources.length ? { source: { in: sources } } : {}),
+    ...(excludeSources.length ? { source: { notIn: excludeSources } } : {}),
     ...(q.category ? { category: q.category } : {}),
     ...(q.country ? { country: q.country.toUpperCase() } : {}),
     ...(q.impact ? { impact: q.impact } : {}),
@@ -209,6 +219,39 @@ export async function listNews(q: NewsQuery): Promise<NewsPage> {
   };
   if (cacheable) await cacheSet(key, result, FIRST_PAGE_TTL_SECONDS);
   return result;
+}
+
+/** The outlets a user can choose to prioritize (the curated feed catalog). */
+export function listSources(): SourceCatalogEntry[] {
+  return getSourceCatalog();
+}
+
+/**
+ * A user's preferred outlet keys. Degrades to "no preference" ([]) if the row is
+ * missing or the table isn't there yet (pre-migration) — the feed then renders
+ * as one unpersonalized list rather than erroring.
+ */
+export async function getNewsPreferences(userId: string): Promise<{ sources: string[] }> {
+  try {
+    const pref = await prisma.newsPreference.findUnique({ where: { userId }, select: { sources: true } });
+    return { sources: pref?.sources ?? [] };
+  } catch (err) {
+    logger.warn(`News preferences read failed (serving empty): ${(err as Error).message}`);
+    return { sources: [] };
+  }
+}
+
+/** Save a user's preferred outlets. Unknown keys are dropped against the catalog. */
+export async function setNewsPreferences(userId: string, sources: string[]): Promise<{ sources: string[] }> {
+  const valid = new Set(getSourceCatalog().map(s => s.key));
+  const clean = [...new Set(sources.filter(s => valid.has(s)))];
+  const pref = await prisma.newsPreference.upsert({
+    where: { userId },
+    create: { userId, sources: clean },
+    update: { sources: clean },
+    select: { sources: true },
+  });
+  return { sources: pref.sources };
 }
 
 /** Top items for the morning brief: highest-impact/most-relevant from the last day. */
