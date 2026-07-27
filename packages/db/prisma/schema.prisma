@@ -503,6 +503,21 @@ model NotificationPreference {
   @@map("notification_preference")
 }
 
+/// A user's news-feed personalization. `sources` is the set of preferred outlet
+/// keys (e.g. "rss:coindesk"); empty means "no preference" and the feed renders
+/// as one unpersonalized list. When set, the feed splits: preferred sources on
+/// top, everything else below.
+model NewsPreference {
+  id      String   @id @default(cuid())
+  userId  String   @unique
+  sources String[] // preferred outlet keys; empty = no preference
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("news_preference")
+}
+
 /// A user pinning a specific event for a reminder.
 model EventWatch {
   id      String        @id @default(cuid())
