@@ -4,6 +4,9 @@ import { Decimal } from 'decimal.js';
 
 export type DealType = 'BUY' | 'SELL' | 'BALANCE';
 export type DealEntry = 'IN' | 'OUT' | 'INOUT' | 'OUT_BY';
+// Raw MT5 deal direction. Distinct from the DTO's user-facing TradeSide
+// ('LONG' | 'SHORT') in @tradinjournal/types — trades.service maps BUY→LONG,
+// SELL→SHORT. Same name, different layer; kept separate on purpose.
 export type TradeSide = 'BUY' | 'SELL';
 export type TradeStatus = 'OPEN' | 'CLOSED';
 export type MarginMode = 'NETTING' | 'HEDGING';
