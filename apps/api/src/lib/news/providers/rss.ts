@@ -7,12 +7,12 @@
 import Parser from 'rss-parser';
 import { env } from '@tradinjournal/config';
 import { logger } from '@tradinjournal/logger';
-import type { NewsProvider, NormalizedNews, RawNewsCategory } from '../types.js';
+import type { NewsProvider, NormalizedNews, NewsCategory } from '../types.js';
 
 interface FeedDef {
   url: string;
   outlet: string;
-  category: RawNewsCategory;
+  category: NewsCategory;
 }
 
 // Sensible licensed defaults; override the whole set with NEWS_RSS_FEEDS
@@ -46,7 +46,7 @@ function parseFeeds(): FeedDef[] {
   const out: FeedDef[] = [];
   for (const entry of env.NEWS_RSS_FEEDS.split(',')) {
     const [url, outlet, category] = entry.split('|').map(s => s.trim());
-    if (url && outlet) out.push({ url, outlet, category: (category as RawNewsCategory) || 'MARKETS' });
+    if (url && outlet) out.push({ url, outlet, category: (category as NewsCategory) || 'MARKETS' });
   }
   return out.length > 0 ? out : DEFAULT_FEEDS;
 }
