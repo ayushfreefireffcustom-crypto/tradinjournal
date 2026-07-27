@@ -5,19 +5,19 @@
 // re-inserts nothing and re-sends nothing.
 import { prisma } from '@tradinjournal/db';
 import { logger } from '@tradinjournal/logger';
+import type { EventImpact } from '@tradinjournal/contracts';
 import { sendEmail } from '../../lib/email/client.js';
 import { eventReminderEmail } from '../../lib/email/templates.js';
 import { sendPush } from '../../lib/push.js';
 
-type Impact = 'LOW' | 'MEDIUM' | 'HIGH';
-const RANK: Record<Impact, number> = { LOW: 0, MEDIUM: 1, HIGH: 2 };
+const RANK: Record<EventImpact, number> = { LOW: 0, MEDIUM: 1, HIGH: 2 };
 
 /** Widest lead we scan for — pref lead is capped at 1440 (24h). */
 const SCAN_MINUTES = 1440;
 
 interface Prefs {
   inApp: boolean; email: boolean; push: boolean;
-  minImpact: Impact; currencies: string[]; categories: string[];
+  minImpact: EventImpact; currencies: string[]; categories: string[];
   leadMinutes: number; timezone: string;
 }
 const DEFAULT_PREFS: Prefs = {
