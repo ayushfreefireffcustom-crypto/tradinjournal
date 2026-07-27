@@ -171,9 +171,20 @@ export const newsQuerySchema = z.object({
   country: z.string().min(2).max(2).optional(),
   impact: eventImpactSchema.optional(),
   sentiment: sentimentSchema.optional(),
+  // Personalization: CSV of outlet keys to keep (`sources`) or drop
+  // (`excludeSources`). Used to render the "your sources" / "everything else"
+  // split. Parsed to arrays in the service.
+  sources: z.string().max(4000).optional(),
+  excludeSources: z.string().max(4000).optional(),
   cursor: z.string().min(1).optional(),
   limit: z.coerce.number().int().min(1).max(100).optional(),
 });
+
+// Body for saving a user's preferred news outlets (keys like "rss:coindesk").
+export const newsPreferencesSchema = z.object({
+  sources: z.array(z.string().min(1).max(64)).max(60),
+});
+export type NewsPreferencesInput = z.infer<typeof newsPreferencesSchema>;
 export type NewsQuery = z.infer<typeof newsQuerySchema>;
 
 // Per-user notification preferences (PATCH body — all fields optional).
