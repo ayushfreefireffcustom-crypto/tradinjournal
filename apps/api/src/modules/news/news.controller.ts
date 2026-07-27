@@ -6,7 +6,16 @@ import { isAiEnabled, getProvider } from '../../lib/ai/provider.js';
 import { subscribeNews } from '../../lib/news/stream.js';
 import { BRIEF_PROMPT, briefUserContent } from '../../lib/news/prompts.js';
 import { env } from '@tradinjournal/config';
-import { ingestNews, enrichPendingNews, listNews, getBriefHeadlines } from './news.service.js';
+import type { NewsPreferencesInput } from '@tradinjournal/contracts';
+import {
+  ingestNews,
+  enrichPendingNews,
+  listNews,
+  listSources,
+  getNewsPreferences,
+  setNewsPreferences,
+  getBriefHeadlines,
+} from './news.service.js';
 
 function sseWrite(res: Response, obj: unknown): void {
   res.write(`data: ${JSON.stringify(obj)}\n\n`);
@@ -25,6 +34,34 @@ export async function handleListNews(req: Request, res: Response, next: NextFunc
   try {
     const q = req.query as unknown as NewsQuery;
     ok(res, await listNews(q));
+  } catch (err) {
+    next(err);
+  }
+}
+
+// GET /api/news/sources — the outlet catalog for the personalization picker.
+export async function handleListSources(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    ok(res, { sources: listSources() });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// GET /api/news/preferences — the user's preferred outlet keys.
+export async function handleGetNewsPrefs(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    ok(res, await getNewsPreferences(res.locals.user.id as string));
+  } catch (err) {
+    next(err);
+  }
+}
+
+// PUT /api/news/preferences — replace the user's preferred outlets.
+export async function handleSetNewsPrefs(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const { sources } = req.body as NewsPreferencesInput;
+    ok(res, await setNewsPreferences(res.locals.user.id as string, sources));
   } catch (err) {
     next(err);
   }
