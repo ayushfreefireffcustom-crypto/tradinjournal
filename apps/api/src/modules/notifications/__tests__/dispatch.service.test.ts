@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type { EventImpact } from '@tradinjournal/contracts';
 
 // The dispatch service is the trickiest new logic: which (user, event) pairs are
 // due, across which channels, exactly once. Everything it touches is mocked so
@@ -23,8 +24,7 @@ vi.mock('../../../lib/push.js', () => ({ sendPush }));
 
 const { dispatchReminders } = await import('../dispatch.service.js');
 
-type Impact = 'LOW' | 'MEDIUM' | 'HIGH';
-function event(p: { id?: string; impact?: Impact; currency?: string; category?: string | null; inMinutes?: number }) {
+function event(p: { id?: string; impact?: EventImpact; currency?: string; category?: string | null; inMinutes?: number }) {
   return {
     id: p.id ?? 'e1',
     title: 'Non-Farm Payrolls',
@@ -37,7 +37,7 @@ function event(p: { id?: string; impact?: Impact; currency?: string; category?: 
     previous: '206K',
   };
 }
-function pref(p: Partial<{ userId: string; inApp: boolean; email: boolean; push: boolean; minImpact: Impact; currencies: string[]; categories: string[]; leadMinutes: number }>) {
+function pref(p: Partial<{ userId: string; inApp: boolean; email: boolean; push: boolean; minImpact: EventImpact; currencies: string[]; categories: string[]; leadMinutes: number }>) {
   return {
     userId: p.userId ?? 'u1', inApp: p.inApp ?? true, email: p.email ?? false, push: p.push ?? false,
     minImpact: p.minImpact ?? 'HIGH', currencies: p.currencies ?? [], categories: p.categories ?? [],
