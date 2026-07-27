@@ -13,12 +13,14 @@ export default function SourcePicker({
   catalog,
   initial,
   saving,
+  error,
   onSave,
   onClose,
 }: {
   catalog: NewsSource[];
   initial: string[];
   saving?: boolean;
+  error?: string;
   onSave: (next: string[]) => void;
   onClose: () => void;
 }) {
@@ -91,7 +93,11 @@ export default function SourcePicker({
         </div>
 
         <div className="shrink-0 flex items-center gap-3 p-4 border-t border-border-soft">
-          <span className="text-[11px] text-fg-3">{sel.size} selected</span>
+          {error ? (
+            <span className="text-[11px] text-loss" data-testid="source-picker-error">{error}</span>
+          ) : (
+            <span className="text-[11px] text-fg-3">{sel.size} selected</span>
+          )}
           {sel.size > 0 && (
             <button onClick={() => setSel(new Set())} className="text-[11px] text-fg-3 hover:text-fg transition-colors">Clear all</button>
           )}
