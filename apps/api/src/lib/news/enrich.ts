@@ -5,20 +5,24 @@
 // Robust to model output: parses the first JSON array, tolerates missing/extra
 // entries, clamps ranges, and drops anything it can't read rather than throwing.
 import { logger } from '@tradinjournal/logger';
+import {
+  EVENT_IMPACTS,
+  NEWS_CATEGORIES,
+  SENTIMENTS,
+  type EventImpact,
+  type NewsCategory,
+  type Sentiment,
+} from '@tradinjournal/contracts';
 import { getProvider } from '../ai/provider.js';
 import { ENRICH_PROMPT, enrichUserContent, type EnrichInputItem } from './prompts.js';
 
 const BATCH_SIZE = 10;
 
-export type Sentiment = 'BULLISH' | 'BEARISH' | 'NEUTRAL';
-export type Impact = 'LOW' | 'MEDIUM' | 'HIGH';
-export type Category = 'CRYPTO' | 'MACRO' | 'GEOPOLITICAL' | 'REGULATORY' | 'MARKETS';
-
 export interface Enrichment {
   sentiment: Sentiment;
   relevance: number; // 0..100
-  impact: Impact;
-  category: Category | null;
+  impact: EventImpact;
+  category: NewsCategory | null;
   marketMoving: boolean;
   country: string | null;
 }
@@ -29,9 +33,10 @@ export interface EnrichableItem {
   summary?: string;
 }
 
-const SENTIMENTS = new Set(['BULLISH', 'BEARISH', 'NEUTRAL']);
-const IMPACTS = new Set(['LOW', 'MEDIUM', 'HIGH']);
-const CATEGORIES = new Set(['CRYPTO', 'MACRO', 'GEOPOLITICAL', 'REGULATORY', 'MARKETS']);
+// Membership sets for defensive parsing, built from the shared enum tuples.
+const SENTIMENT_SET = new Set<string>(SENTIMENTS);
+const IMPACT_SET = new Set<string>(EVENT_IMPACTS);
+const CATEGORY_SET = new Set<string>(NEWS_CATEGORIES);
 
 /** Parse the model's JSON array defensively into index→enrichment. */
 function parseBatch(raw: string): Map<number, Enrichment> {
@@ -55,10 +60,10 @@ function parseBatch(raw: string): Map<number, Enrichment> {
     const category = String(o.category ?? '').toUpperCase();
     const relevanceNum = Math.round(Number(o.relevance));
     out.set(i, {
-      sentiment: (SENTIMENTS.has(sentiment) ? sentiment : 'NEUTRAL') as Sentiment,
+      sentiment: (SENTIMENT_SET.has(sentiment) ? sentiment : 'NEUTRAL') as Sentiment,
       relevance: Number.isFinite(relevanceNum) ? Math.min(100, Math.max(0, relevanceNum)) : 0,
-      impact: (IMPACTS.has(impact) ? impact : 'LOW') as Impact,
-      category: (CATEGORIES.has(category) ? category : null) as Category | null,
+      impact: (IMPACT_SET.has(impact) ? impact : 'LOW') as EventImpact,
+      category: (CATEGORY_SET.has(category) ? category : null) as NewsCategory | null,
       marketMoving: o.marketMoving === true,
       country: typeof o.country === 'string' && /^[A-Za-z]{2}$/.test(o.country) ? o.country.toUpperCase() : null,
     });
