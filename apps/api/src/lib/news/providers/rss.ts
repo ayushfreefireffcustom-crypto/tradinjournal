@@ -41,6 +41,26 @@ const DEFAULT_FEEDS: FeedDef[] = [
 const FETCH_TIMEOUT_MS = 10_000;
 const PER_FEED_LIMIT = 25;
 
+/** Stable outlet key stored on each item's `source` (e.g. "rss:coindesk"). */
+export function sourceKey(outlet: string): string {
+  return `rss:${outlet.toLowerCase().replace(/\s+/g, '')}`;
+}
+
+export interface SourceCatalogEntry {
+  /** Matches NewsItem.source — what preferences store and the feed filters on. */
+  key: string;
+  label: string;
+  category: NewsCategory;
+}
+
+/**
+ * The curated outlets a user can choose from, derived from the configured feeds.
+ * Stable even before any ingestion has run, so the picker is never empty.
+ */
+export function getSourceCatalog(): SourceCatalogEntry[] {
+  return parseFeeds().map(f => ({ key: sourceKey(f.outlet), label: f.outlet, category: f.category }));
+}
+
 function parseFeeds(): FeedDef[] {
   if (!env.NEWS_RSS_FEEDS) return DEFAULT_FEEDS;
   const out: FeedDef[] = [];
@@ -122,7 +142,7 @@ export function createRssProvider(): NewsProvider {
             if (!url || !title) continue;
             const when = it.isoDate ?? it.pubDate;
             items.push({
-              source: `rss:${feed.outlet.toLowerCase().replace(/\s+/g, '')}`,
+              source: sourceKey(feed.outlet),
               outlet: feed.outlet,
               url,
               title,
