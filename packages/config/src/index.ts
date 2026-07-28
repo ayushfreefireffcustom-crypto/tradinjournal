@@ -90,8 +90,14 @@ const envSchema = z.object({
   FINNHUB_API_KEY: z.string().optional(), // shared with news
   // Public weekly JSON feed; isolated behind its own opt-in for ToS clarity.
   FOREXFACTORY_FEED_URL: z.string().url().optional(),
+  // TradingView's public widget calendar — no key, full history + forecasts. The
+  // always-on baseline; set to "false"/"0" to disable (e.g. if the endpoint changes).
+  TRADINGVIEW_CALENDAR_ENABLED: z
+    .string()
+    .default('true')
+    .transform(v => v.toLowerCase() !== 'false' && v !== '0'),
   // Field-merge precedence when several providers describe the same event.
-  CALENDAR_PROVIDER_PRIORITY: z.string().default('forexfactory,fmp,finnhub'),
+  CALENDAR_PROVIDER_PRIORITY: z.string().default('tradingview,forexfactory,fmp,finnhub'),
   CALENDAR_INGEST_CRON: z.string().default('*/15 * * * *'),
 
   // ── Phase 2: News feed ────────────────────────────────────────────────────
@@ -203,6 +209,7 @@ function loadEnv(): Env {
   // Calendar needs at least one source; news has an always-on RSS baseline;
   // enrichment additionally needs the LLM; push needs both VAPID keys.
   const CALENDAR_ENABLED =
+    parsed.data.TRADINGVIEW_CALENDAR_ENABLED ||
     !!parsed.data.FMP_API_KEY || !!parsed.data.FINNHUB_API_KEY || !!parsed.data.FOREXFACTORY_FEED_URL;
   const CALENDAR_PROVIDER_PRIORITY_LIST = parsed.data.CALENDAR_PROVIDER_PRIORITY
     .split(',')
