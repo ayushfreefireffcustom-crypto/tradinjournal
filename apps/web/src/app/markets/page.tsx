@@ -17,7 +17,7 @@ type MobileTab = 'feed' | 'calendar';
 
 export default function MarketsPage() {
   const { accounts, selected, select } = useAccounts();
-  const userSymbols = useTradedSymbols(selected?.id);
+  const { symbols: userSymbols, ready: symbolsReady } = useTradedSymbols(selected?.id);
   const [tab, setTab] = useState<MobileTab>('feed');
 
   return (
@@ -49,7 +49,7 @@ export default function MarketsPage() {
           {/* News feed — main column. Hidden on mobile when the Calendar tab is active.
               flex-col so the h-full NewsFeed stretches to the full pane width. */}
           <div className={`flex-1 min-w-0 min-h-0 flex-col ${tab === 'feed' ? 'flex' : 'hidden'} lg:flex`}>
-            <NewsFeed userSymbols={userSymbols} />
+            <NewsFeed userSymbols={userSymbols} symbolsReady={symbolsReady} />
           </div>
 
           {/* Calendar — right rail on desktop; full column on mobile Calendar tab. */}
