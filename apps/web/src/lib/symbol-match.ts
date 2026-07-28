@@ -6,7 +6,11 @@
 // This is the MVP: a curated alias dictionary matched with word boundaries.
 // A later pass can move tagging server-side (LLM) for macro/indirect relevance.
 
-/** Canonical symbol → the phrases that imply it. Lowercase; matched \b-bounded. */
+/**
+ * Canonical symbol → the phrases that imply it. Lowercase; matched \b-bounded.
+ * Aliases double as broker-name synonyms (e.g. "gold" ⇒ XAUUSD), so a broker
+ * symbol like GOLD canonicalizes to the same key news is tagged with.
+ */
 export const SYMBOL_ALIASES: Record<string, string[]> = {
   BTCUSD: ['bitcoin', 'btc', 'btcusd', 'btcusdt', 'xbt'],
   ETHUSD: ['ethereum', 'ether', 'eth', 'ethusd'],
@@ -15,11 +19,22 @@ export const SYMBOL_ALIASES: Record<string, string[]> = {
   EURUSD: ['euro', 'eurusd', 'eur/usd'],
   GBPUSD: ['sterling', 'cable', 'pound', 'gbpusd', 'gbp/usd'],
   USDJPY: ['yen', 'usdjpy', 'usd/jpy'],
-  US500: ['s&p 500', 's&p500', 'sp500', 'sp 500', 'us500', 'spx', 's&p'],
+  USDCHF: ['swiss franc', 'franc', 'swissie', 'usdchf'],
+  USDCAD: ['canadian dollar', 'loonie', 'usdcad'],
+  AUDUSD: ['aussie', 'australian dollar', 'audusd'],
+  NZDUSD: ['kiwi', 'new zealand dollar', 'nzdusd'],
+  US500: ['s&p 500', 's&p500', 'sp500', 'sp 500', 'us500', 'spx500', 'spx', 's&p'],
   US30: ['dow jones', 'dow', 'us30', 'djia'],
   US100: ['nasdaq 100', 'nasdaq', 'us100', 'nas100', 'ndx'],
   WTIUSD: ['crude oil', 'crude', 'wti', 'usoil', 'wtiusd', 'oil'],
 };
+
+// alias/canonical (lowercased) → canonical symbol, for reverse lookup.
+const ALIAS_TO_CANONICAL = new Map<string, string>();
+for (const [canon, aliases] of Object.entries(SYMBOL_ALIASES)) {
+  ALIAS_TO_CANONICAL.set(canon.toLowerCase(), canon);
+  for (const a of aliases) ALIAS_TO_CANONICAL.set(a.toLowerCase(), canon);
+}
 
 function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -45,6 +60,16 @@ export function matchSymbols(text: string): string[] {
  */
 export function normalizeSymbol(raw: string): string {
   return (raw || '').toUpperCase().split('.')[0]!.replace(/[^A-Z0-9]/g, '');
+}
+
+/**
+ * Map any broker symbol / alias to the canonical key the news matcher emits, so
+ * both sides intersect. GOLD → XAUUSD, SPX500 → US500, EURUSD → EURUSD. Unknown
+ * symbols pass through normalized (still comparable to themselves).
+ */
+export function canonicalize(raw: string): string {
+  const n = normalizeSymbol(raw);
+  return ALIAS_TO_CANONICAL.get(n.toLowerCase()) ?? n;
 }
 
 /** Symbols in `text` that are also in the user's (normalized) traded set. */
