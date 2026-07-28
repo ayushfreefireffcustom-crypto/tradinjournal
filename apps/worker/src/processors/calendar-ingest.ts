@@ -11,9 +11,12 @@ import { ingestCalendar, InternalApiError } from '../lib/api-client.js';
 /** Window fetched each tick: yesterday 00:00 → +8 days, in UTC. */
 function window(): { from: string; to: string } {
   const now = Date.now();
+  // Fetch a wide window so the calendar can show recent past days and browse
+  // ahead by weeks/month. Providers may cap forward coverage; extra range is
+  // harmless (upserts dedupe).
   return {
-    from: new Date(now - 24 * 3600_000).toISOString(),
-    to: new Date(now + 8 * 24 * 3600_000).toISOString(),
+    from: new Date(now - 7 * 24 * 3600_000).toISOString(),
+    to: new Date(now + 30 * 24 * 3600_000).toISOString(),
   };
 }
 
