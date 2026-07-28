@@ -74,8 +74,12 @@ function NewsCard({ it, onOpen, matched = [] }: { it: NewsItem; onOpen: (i: News
           {it.sentiment && <span className={`px-1.5 py-0.5 rounded border tracking-wider uppercase ${sentimentChip[it.sentiment]}`}>{it.sentiment}</span>}
           {high && <span className="px-1.5 py-0.5 rounded border border-loss/40 text-loss bg-loss/10 tracking-wider uppercase">High</span>}
         </div>
-        <div className="text-[14px] font-medium text-fg leading-snug line-clamp-2">{it.title}</div>
-        {it.summary && <p className="text-[12px] text-fg-3 mt-1.5 line-clamp-2 leading-relaxed">{it.summary}</p>}
+        <div className="text-[15px] font-medium text-fg leading-snug line-clamp-2">{it.title}</div>
+        {it.summary ? (
+          <p className="text-[12.5px] text-fg-3 mt-1.5 line-clamp-3 leading-relaxed">{it.summary}</p>
+        ) : (
+          <p className="text-[12px] text-fg-3/60 italic mt-1.5 leading-relaxed">No summary provided — open to read the full story at {it.source}.</p>
+        )}
         <div className="mt-auto pt-2 flex items-center gap-2">
           {mine && (
             <span className="flex items-center gap-1 flex-wrap">
@@ -392,7 +396,7 @@ export default function NewsFeed({ userSymbols = EMPTY_SYMBOLS }: { userSymbols?
               <EmptyState icon={Newspaper} title="No news yet" hint="The feed will fill in as headlines are ingested." />
             ) : symbolFilter ? (
               <>
-                <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-3" data-testid="news-symbol-view">
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-3" data-testid="news-symbol-view">
                   {symbolMatched.map(it => <NewsCard key={it.id} it={it} onOpen={setSelectedItem} matched={matchOf(it)} />)}
                 </div>
                 {symbolMatched.length === 0 && (
@@ -408,7 +412,7 @@ export default function NewsFeed({ userSymbols = EMPTY_SYMBOLS }: { userSymbols?
                       <span className="text-[10px] tracking-[0.2em] uppercase text-profit font-semibold flex items-center gap-1.5"><Target size={11} weight="bold" /> On your radar</span>
                       <span className="h-px flex-1 bg-border-soft" />
                     </div>
-                    <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
                       {radar.map(it => <NewsCard key={it.id} it={it} onOpen={setSelectedItem} matched={matchOf(it)} />)}
                     </div>
                   </section>
@@ -422,11 +426,11 @@ export default function NewsFeed({ userSymbols = EMPTY_SYMBOLS }: { userSymbols?
                       <button onClick={() => setPickerOpen(true)} className="text-[10px] tracking-[0.14em] uppercase text-fg-3 hover:text-fg transition-colors">Edit</button>
                     </div>
                     {topLoading ? (
-                      <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-3">{Array.from({ length: 3 }).map((_, i) => <div key={i} className="shimmer h-28" />)}</div>
+                      <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">{Array.from({ length: 3 }).map((_, i) => <div key={i} className="shimmer h-28" />)}</div>
                     ) : topItems.length === 0 ? (
                       <p className="text-[12px] text-fg-3 py-2">Nothing new from your sources yet — fresh headlines will appear here.</p>
                     ) : (
-                      <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-3">
+                      <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
                         {topItems.map(it => <NewsCard key={it.id} it={it} onOpen={setSelectedItem} matched={matchOf(it)} />)}
                       </div>
                     )}
@@ -471,7 +475,7 @@ export default function NewsFeed({ userSymbols = EMPTY_SYMBOLS }: { userSymbols?
                     <span className="h-px flex-1 bg-border-soft" />
                   </div>
                 )}
-                <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
                   {gridItems.map(it => <NewsCard key={it.id} it={it} onOpen={setSelectedItem} matched={matchOf(it)} />)}
                 </div>
                 {cursor && <div ref={sentinel} className="h-10 flex items-center justify-center text-[11px] text-fg-3">{loadingMore ? 'Loading…' : ''}</div>}
