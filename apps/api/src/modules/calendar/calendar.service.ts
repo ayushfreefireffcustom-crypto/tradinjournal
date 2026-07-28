@@ -94,8 +94,9 @@ export interface CalendarEventDTO {
 
 /** Default hot window when the caller doesn't specify: yesterday → +7 days. */
 function defaultWindow(): { from: Date; to: Date } {
-  const from = new Date(Date.now() - 24 * 3600_000);
-  const to = new Date(Date.now() + 7 * 24 * 3600_000);
+  // Wide default so a request without from/to still surfaces recent past + ahead.
+  const from = new Date(Date.now() - 7 * 24 * 3600_000);
+  const to = new Date(Date.now() + 30 * 24 * 3600_000);
   return { from, to };
 }
 
