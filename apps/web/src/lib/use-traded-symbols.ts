@@ -5,7 +5,7 @@
 // while loading or when the account has no trades → the feature stays dormant.
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
-import { normalizeSymbol } from '@/lib/symbol-match';
+import { canonicalize } from '@/lib/symbol-match';
 
 export function useTradedSymbols(accountId: string | null | undefined): Set<string> {
   const [symbols, setSymbols] = useState<Set<string>>(new Set());
@@ -17,7 +17,9 @@ export function useTradedSymbols(accountId: string | null | undefined): Set<stri
       .stats(accountId)
       .then(stats => {
         if (cancelled) return;
-        setSymbols(new Set(stats.bySymbol.map(s => normalizeSymbol(s.symbol)).filter(Boolean)));
+        // Canonicalize so broker names (GOLD, SPX500) match the keys the news
+        // matcher emits (XAUUSD, US500).
+        setSymbols(new Set(stats.bySymbol.map(s => canonicalize(s.symbol)).filter(Boolean)));
       })
       .catch(() => { if (!cancelled) setSymbols(new Set()); });
     return () => { cancelled = true; };
