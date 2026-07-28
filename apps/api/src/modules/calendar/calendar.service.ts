@@ -35,16 +35,20 @@ export async function ingestWindow(from: Date, to: Date): Promise<{ upserted: nu
 
   const reconciled = reconcileEvents(rows, env.CALENDAR_PROVIDER_PRIORITY_LIST);
 
-  // One read to know prior `actual`/`actualAt`, so we can stamp actualAt only
-  // when a result FIRST arrives (drives the live flash) and never clobber it.
+  // One read of prior state so we can (a) stamp actualAt only when a result FIRST
+  // arrives, and (b) skip rewriting rows that haven't changed. Bulk-insert new
+  // rows (one createMany) and update only the few that actually differ — the old
+  // per-row upsert loop couldn't keep up with a full-history provider like TV.
   const existing = await prisma.economicEvent.findMany({
     where: { dedupKey: { in: reconciled.map(e => e.dedupKey) } },
-    select: { dedupKey: true, actual: true, actualAt: true },
+    select: { dedupKey: true, actual: true, actualAt: true, forecast: true, previous: true, impact: true, eventTime: true, title: true },
   });
   const priorByKey = new Map(existing.map(e => [e.dedupKey, e]));
 
   const now = new Date();
-  let upserted = 0;
+  const toCreate: Prisma.EconomicEventCreateManyInput[] = [];
+  const toUpdate: { dedupKey: string; data: Prisma.EconomicEventUpdateInput }[] = [];
+
   for (const e of reconciled) {
     const prior = priorByKey.get(e.dedupKey);
     const actualJustArrived = !!e.actual && !prior?.actual;
@@ -63,11 +67,31 @@ export async function ingestWindow(from: Date, to: Date): Promise<{ upserted: nu
       actualAt,
       sources: e.sources as unknown as Prisma.InputJsonValue,
     };
+    if (!prior) {
+      toCreate.push({ dedupKey: e.dedupKey, ...data });
+      continue;
+    }
+    const changed =
+      prior.actual !== (e.actual ?? null) ||
+      prior.forecast !== (e.forecast ?? null) ||
+      prior.previous !== (e.previous ?? null) ||
+      prior.impact !== e.impact ||
+      prior.title !== e.title ||
+      prior.eventTime.getTime() !== e.eventTimeUtc.getTime();
+    if (changed) toUpdate.push({ dedupKey: e.dedupKey, data });
+  }
+
+  let upserted = 0;
+  if (toCreate.length > 0) {
+    const res = await prisma.economicEvent.createMany({ data: toCreate, skipDuplicates: true });
+    upserted += res.count;
+  }
+  for (const u of toUpdate) {
     try {
-      await prisma.economicEvent.upsert({ where: { dedupKey: e.dedupKey }, create: { dedupKey: e.dedupKey, ...data }, update: data });
+      await prisma.economicEvent.update({ where: { dedupKey: u.dedupKey }, data: u.data });
       upserted += 1;
     } catch (err) {
-      logger.warn(`Calendar upsert failed for ${e.dedupKey}: ${(err as Error).message}`);
+      logger.warn(`Calendar update failed for ${u.dedupKey}: ${(err as Error).message}`);
     }
   }
   return { upserted, providers: providers.length };
