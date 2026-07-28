@@ -9,7 +9,7 @@
 // "From your sources" (those outlets) on top and "More headlines" (everything
 // else) below. With no preference it renders as one plain feed.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Newspaper, Sparkle, ArrowUpRight, Circle, Faders, Target } from '@phosphor-icons/react';
+import { Newspaper, Sparkle, ArrowUpRight, Circle, Faders, Target, CurrencyBtc, ChartLineUp, Bank, Globe, Scales, type Icon } from '@phosphor-icons/react';
 import EmptyState from '@/components/empty-state';
 import MarkdownMessage from '@/components/coach/markdown-message';
 import NewsModal from '@/components/news/news-modal';
@@ -33,6 +33,17 @@ const sentimentChip: Record<Sentiment, string> = {
   BEARISH: 'text-loss border-loss/40 bg-loss/10',
   NEUTRAL: 'text-fg-3 border-border-strong bg-surface',
 };
+
+// Designed placeholder tile per category — shown when an item has no (or a
+// broken) feed image, so the image column reads as a proper thumbnail.
+const categoryTile: Record<string, { grad: string; icon: Icon; color: string }> = {
+  CRYPTO: { grad: 'from-amber-500/25', icon: CurrencyBtc, color: 'text-amber-400/60' },
+  MARKETS: { grad: 'from-profit/20', icon: ChartLineUp, color: 'text-profit/60' },
+  MACRO: { grad: 'from-sky-500/20', icon: Bank, color: 'text-sky-400/60' },
+  GEOPOLITICAL: { grad: 'from-loss/20', icon: Globe, color: 'text-loss/55' },
+  REGULATORY: { grad: 'from-violet-500/20', icon: Scales, color: 'text-violet-400/60' },
+};
+const defaultTile = { grad: 'from-surface-hover', icon: Newspaper, color: 'text-fg-3/40' };
 
 function timeAgo(iso: string): string {
   const s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
@@ -110,13 +121,20 @@ function NewsCard({ it, onOpen, matched = [] }: { it: NewsItem; onOpen: (i: News
         </div>
       </div>
 
-      {/* Right: full-height image column with a placeholder underneath */}
-      <div className="shrink-0 w-24 sm:w-28 xl:w-32 self-stretch relative bg-gradient-to-br from-surface-hover to-app overflow-hidden">
-        <span className="absolute inset-0 flex items-center justify-center text-fg-3/20 pointer-events-none">
-          <Newspaper size={22} weight="thin" />
-        </span>
-        {it.imageUrl && <NewsThumb src={it.imageUrl} className="absolute inset-0 w-full h-full object-cover" />}
-      </div>
+      {/* Right: full-height image column. A designed category tile sits underneath,
+          so imageless or broken-image items still show a proper thumbnail. */}
+      {(() => {
+        const tile = (it.category && categoryTile[it.category]) || defaultTile;
+        const TileIcon = tile.icon;
+        return (
+          <div className={`shrink-0 w-24 sm:w-28 xl:w-32 self-stretch relative overflow-hidden bg-gradient-to-br ${tile.grad} to-app`}>
+            <span className={`absolute inset-0 flex items-center justify-center pointer-events-none ${tile.color}`}>
+              <TileIcon size={30} weight="duotone" />
+            </span>
+            {it.imageUrl && <NewsThumb src={it.imageUrl} className="absolute inset-0 w-full h-full object-cover" />}
+          </div>
+        );
+      })()}
     </button>
   );
 }
