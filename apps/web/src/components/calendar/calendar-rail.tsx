@@ -1,14 +1,18 @@
 'use client';
 
-// Vertical economic-calendar rail — the compact, single-column list that sits
-// beside the news feed on the Markets page (replaces the old wide card grid).
-// Dense rows: time · impact dot · flag/ccy · title, with Actual/Forecast/Previous
-// and surprise coloring. Self-contained: owns its fetch, filters, and detail modal.
+// Vertical economic-calendar rail — the compact list beside the news feed on the
+// Markets page. Modelled on ForexFactory/Investing.com: a day-grouped scrollable
+// list you navigate by Day / Week / Month over an anchor date, so past days and
+// the whole month are browsable. Dense rows: time · impact dot · flag/ccy · title,
+// with Actual/Forecast/Previous + surprise coloring. Self-contained (fetch,
+// filters, detail modal). All impacts shown by default.
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { CalendarDots, Star, ArrowClockwise } from '@phosphor-icons/react';
+import { CalendarDots, Star, ArrowClockwise, CaretLeft, CaretRight } from '@phosphor-icons/react';
 import EventModal from '@/components/calendar/event-modal';
 import {
-  rangeWindow,
+  scopeWindow,
+  shiftAnchor,
+  periodLabel,
   surprise,
   flag,
   timeLabel,
@@ -16,16 +20,18 @@ import {
   impactAccent,
   impactPill,
   impactDot,
-  type CalRange,
+  type CalScope,
 } from '@/lib/calendar-format';
 import { api, type CalendarEvent, type EventImpact } from '@/lib/api';
 
 const IMPACTS: EventImpact[] = ['HIGH', 'MEDIUM', 'LOW'];
 const REFRESH_MS = 45_000;
+const SCOPES: CalScope[] = ['day', 'week', 'month'];
 
 export default function CalendarRail() {
-  const [range, setRange] = useState<CalRange>('week');
-  const [impacts, setImpacts] = useState<Set<EventImpact>>(new Set(['HIGH', 'MEDIUM']));
+  const [scope, setScope] = useState<CalScope>('week');
+  const [anchor, setAnchor] = useState<Date>(() => new Date());
+  const [impacts, setImpacts] = useState<Set<EventImpact>>(() => new Set(IMPACTS)); // all on
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -33,7 +39,7 @@ export default function CalendarRail() {
 
   const load = useCallback(async (spinner: boolean) => {
     if (spinner) setLoading(true);
-    const { from, to } = rangeWindow(range);
+    const { from, to } = scopeWindow(scope, anchor);
     try {
       const rows = await api.calendar.list({ from, to });
       setEvents(rows);
@@ -43,7 +49,7 @@ export default function CalendarRail() {
     } finally {
       setLoading(false);
     }
-  }, [range]);
+  }, [scope, anchor]);
 
   useEffect(() => { void load(true); }, [load]);
   useEffect(() => {
@@ -70,11 +76,16 @@ export default function CalendarRail() {
   const groups = useMemo(() => {
     const filtered = events.filter(e => impacts.has(e.impact));
     const map = new Map<string, CalendarEvent[]>();
-    for (const e of filtered) (map.get(dayKey(e.eventTime)) ?? map.set(dayKey(e.eventTime), []).get(dayKey(e.eventTime))!).push(e);
+    for (const e of filtered) {
+      const k = dayKey(e.eventTime);
+      (map.get(k) ?? map.set(k, []).get(k)!).push(e);
+    }
     return [...map.entries()];
   }, [events, impacts]);
 
   const now = Date.now();
+  const todayKey = dayKey(new Date().toISOString());
+  const nowLabel = new Date().toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
 
   const row = (ev: CalendarEvent) => {
     const dir = surprise(ev.actual, ev.forecast);
@@ -122,27 +133,54 @@ export default function CalendarRail() {
     );
   };
 
+  // Render a day group; for today, split at the "now" line.
+  const renderDay = (day: string, rows: CalendarEvent[]) => {
+    if (day !== todayKey) {
+      return <div className="space-y-0.5">{rows.map(row)}</div>;
+    }
+    const past = rows.filter(e => new Date(e.eventTime).getTime() <= now);
+    const future = rows.filter(e => new Date(e.eventTime).getTime() > now);
+    return (
+      <div className="space-y-0.5">
+        {past.map(row)}
+        {past.length > 0 && future.length > 0 && (
+          <div className="flex items-center gap-1.5 py-1" data-testid="cal-rail-now">
+            <span className="flex items-center gap-1 text-[8.5px] font-bold tracking-[0.18em] uppercase text-profit whitespace-nowrap">
+              <span className="w-1.5 h-1.5 rounded-full bg-profit pulse-dot" /> Now · {nowLabel}
+            </span>
+            <span className="flex-1 h-px bg-profit/30" />
+          </div>
+        )}
+        {future.map(row)}
+      </div>
+    );
+  };
+
+  const totalShown = groups.reduce((n, [, r]) => n + r.length, 0);
+
   return (
     <div className="flex flex-col h-full min-h-0" data-testid="calendar-rail">
       {/* Header */}
-      <div className="shrink-0 px-3 py-2.5 border-b border-border-soft">
-        <div className="flex items-center gap-2 mb-2">
+      <div className="shrink-0 px-3 py-2.5 border-b border-border-soft space-y-2">
+        <div className="flex items-center gap-2">
           <CalendarDots size={14} className="text-fg-3" />
           <span className="text-[10px] tracking-[0.2em] uppercase text-fg-2 font-semibold">Economic Calendar</span>
           <button onClick={() => void load(true)} aria-label="Refresh" className="ml-auto p-1 text-fg-3 hover:text-fg transition-colors">
             <ArrowClockwise size={12} className={loading ? 'animate-spin' : undefined} />
           </button>
         </div>
+
+        {/* Scope + impact filters */}
         <div className="flex items-center gap-1.5">
           <div className="inline-flex rounded-[var(--radius-btn)] border border-border-soft overflow-hidden">
-            {(['today', 'week'] as CalRange[]).map(r => (
+            {SCOPES.map(s => (
               <button
-                key={r}
-                onClick={() => setRange(r)}
-                data-testid={`cal-rail-range-${r}`}
-                className={`px-2.5 py-1 text-[9.5px] tracking-[0.12em] uppercase transition-colors ${range === r ? 'bg-profit/15 text-fg' : 'text-fg-3 hover:text-fg'}`}
+                key={s}
+                onClick={() => setScope(s)}
+                data-testid={`cal-rail-scope-${s}`}
+                className={`px-2 py-1 text-[9.5px] tracking-[0.1em] uppercase transition-colors ${scope === s ? 'bg-profit/15 text-fg' : 'text-fg-3 hover:text-fg'}`}
               >
-                {r === 'today' ? 'Today' : 'Week'}
+                {s}
               </button>
             ))}
           </div>
@@ -160,6 +198,20 @@ export default function CalendarRail() {
             ))}
           </div>
         </div>
+
+        {/* Period navigation */}
+        <div className="flex items-center gap-1.5">
+          <button onClick={() => setAnchor(a => shiftAnchor(scope, a, -1))} aria-label="Previous" data-testid="cal-rail-prev" className="p-1 text-fg-3 hover:text-fg transition-colors">
+            <CaretLeft size={13} weight="bold" />
+          </button>
+          <span className="text-[11px] text-fg-2 font-medium flex-1 text-center" data-testid="cal-rail-period">{periodLabel(scope, anchor)}</span>
+          <button onClick={() => setAnchor(a => shiftAnchor(scope, a, 1))} aria-label="Next" data-testid="cal-rail-next" className="p-1 text-fg-3 hover:text-fg transition-colors">
+            <CaretRight size={13} weight="bold" />
+          </button>
+          <button onClick={() => setAnchor(new Date())} data-testid="cal-rail-today" className="ml-1 px-2 py-1 text-[9px] tracking-[0.12em] uppercase rounded-[var(--radius-btn)] border border-border-soft text-fg-3 hover:text-fg transition-colors">
+            Today
+          </button>
+        </div>
       </div>
 
       {/* List */}
@@ -168,13 +220,16 @@ export default function CalendarRail() {
           <div className="space-y-2">{Array.from({ length: 8 }).map((_, i) => <div key={i} className="shimmer h-9" />)}</div>
         ) : error ? (
           <p className="text-[11px] text-fg-3 px-2 py-4 text-center">{error}</p>
-        ) : groups.length === 0 ? (
-          <p className="text-[11px] text-fg-3 px-2 py-4 text-center">No events match your filters.</p>
+        ) : totalShown === 0 ? (
+          <p className="text-[11px] text-fg-3 px-2 py-6 text-center">No events for this period{impacts.size < IMPACTS.length ? ' at the selected impact levels' : ''}.</p>
         ) : (
           groups.map(([day, rows]) => (
             <div key={day} className="mb-2">
-              <div className="sticky top-0 z-10 bg-app/95 backdrop-blur px-1.5 py-1 text-[9px] tracking-[0.18em] uppercase text-fg-3">{day}</div>
-              <div className="space-y-0.5">{rows.map(row)}</div>
+              <div className="sticky top-0 z-10 bg-app/95 backdrop-blur px-1.5 py-1 text-[9px] tracking-[0.18em] uppercase text-fg-3 flex items-center justify-between">
+                <span>{day}</span>
+                <span className="text-fg-3/60 numeric">{rows.length}</span>
+              </div>
+              {renderDay(day, rows)}
             </div>
           ))
         )}
