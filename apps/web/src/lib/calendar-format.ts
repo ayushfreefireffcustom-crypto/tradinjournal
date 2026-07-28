@@ -5,6 +5,56 @@ import type { EventImpact } from '@/lib/api';
 
 export type CalRange = 'today' | 'week' | 'upcoming';
 
+// ── Scope-based navigation (day / week / month over an anchor date) ──
+// All boundaries are LOCAL so "today"/"this week"/"this month" match the day the
+// user sees. The window is [from, to) as ISO instants for the API.
+export type CalScope = 'day' | 'week' | 'month';
+
+export function startOfDay(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+/** Monday-anchored week start (ISO week convention). */
+export function startOfWeek(d: Date): Date {
+  const s = startOfDay(d);
+  const dow = (s.getDay() + 6) % 7; // Mon=0 … Sun=6
+  s.setDate(s.getDate() - dow);
+  return s;
+}
+export function startOfMonth(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth(), 1);
+}
+
+/** [from,to) window (ISO) for a scope anchored on `anchor`. */
+export function scopeWindow(scope: CalScope, anchor: Date = new Date()): { from: string; to: string } {
+  if (scope === 'day') {
+    const s = startOfDay(anchor);
+    return { from: s.toISOString(), to: new Date(s.getFullYear(), s.getMonth(), s.getDate() + 1).toISOString() };
+  }
+  if (scope === 'week') {
+    const s = startOfWeek(anchor);
+    return { from: s.toISOString(), to: new Date(s.getFullYear(), s.getMonth(), s.getDate() + 7).toISOString() };
+  }
+  const s = startOfMonth(anchor);
+  return { from: s.toISOString(), to: new Date(s.getFullYear(), s.getMonth() + 1, 1).toISOString() };
+}
+
+/** Move the anchor one scope-unit backward (-1) or forward (+1). */
+export function shiftAnchor(scope: CalScope, anchor: Date, dir: -1 | 1): Date {
+  if (scope === 'day') return new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate() + dir);
+  if (scope === 'week') return new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate() + 7 * dir);
+  return new Date(anchor.getFullYear(), anchor.getMonth() + dir, 1);
+}
+
+/** Human label for the current period, e.g. "Wed 29 Jul", "28 Jul – 03 Aug", "July 2026". */
+export function periodLabel(scope: CalScope, anchor: Date): string {
+  if (scope === 'day') return anchor.toLocaleDateString(undefined, { weekday: 'short', day: '2-digit', month: 'short' });
+  if (scope === 'month') return anchor.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+  const s = startOfWeek(anchor);
+  const e = new Date(s.getFullYear(), s.getMonth(), s.getDate() + 6);
+  const opt = { day: '2-digit', month: 'short' } as const;
+  return `${s.toLocaleDateString(undefined, opt)} – ${e.toLocaleDateString(undefined, opt)}`;
+}
+
 /** ISO-3166 alpha-2 → flag emoji (regional-indicator letters). EU → 🇪🇺. */
 export function flag(cc: string): string {
   const c = cc.toUpperCase();
