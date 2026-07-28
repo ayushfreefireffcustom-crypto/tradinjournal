@@ -1,18 +1,18 @@
 'use client';
 
-// Vertical economic-calendar rail — the compact list beside the news feed on the
-// Markets page. Modelled on ForexFactory/Investing.com: a day-grouped scrollable
-// list you navigate by Day / Week / Month over an anchor date, so past days and
-// the whole month are browsable. Dense rows: time · impact dot · flag/ccy · title,
-// with Actual/Forecast/Previous + surprise coloring. Self-contained (fetch,
-// filters, detail modal). All impacts shown by default.
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { CalendarDots, Star, ArrowClockwise, CaretLeft, CaretRight } from '@phosphor-icons/react';
+// Vertical economic-calendar rail (Markets page). Rearchitected to be robust to
+// the data source: it fetches ONE wide window up front and then filters entirely
+// client-side (Upcoming / Today / Week / All + impact). That removes the whole
+// class of "navigate to an un-fetched window → empty void" bugs the per-nav
+// refetch design had, and it can never race itself. A data-range line makes the
+// available coverage explicit (the free ForexFactory feed only carries the
+// current week; add an FMP/Finnhub key for history + forecasts).
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { CalendarDots, Star, ArrowClockwise } from '@phosphor-icons/react';
 import EventModal from '@/components/calendar/event-modal';
 import {
-  scopeWindow,
-  shiftAnchor,
-  periodLabel,
+  startOfDay,
+  startOfWeek,
   surprise,
   flag,
   timeLabel,
@@ -20,36 +20,50 @@ import {
   impactAccent,
   impactPill,
   impactDot,
-  type CalScope,
 } from '@/lib/calendar-format';
 import { api, type CalendarEvent, type EventImpact } from '@/lib/api';
 
 const IMPACTS: EventImpact[] = ['HIGH', 'MEDIUM', 'LOW'];
 const REFRESH_MS = 45_000;
-const SCOPES: CalScope[] = ['day', 'week', 'month'];
+const FILTERS = ['upcoming', 'today', 'week', 'all'] as const;
+type CalFilter = (typeof FILTERS)[number];
+const FILTER_LABEL: Record<CalFilter, string> = { upcoming: 'Upcoming', today: 'Today', week: 'Week', all: 'All' };
+
+// Wide fetch window: grab everything the provider will give so all client-side
+// filters operate on real data (the API caps at 500 and returns what it has).
+function fetchWindow(): { from: string; to: string } {
+  const now = Date.now();
+  return { from: new Date(now - 30 * 864e5).toISOString(), to: new Date(now + 60 * 864e5).toISOString() };
+}
+
+function shortDate(d: Date): string {
+  return d.toLocaleDateString(undefined, { day: '2-digit', month: 'short' });
+}
 
 export default function CalendarRail() {
-  const [scope, setScope] = useState<CalScope>('week');
-  const [anchor, setAnchor] = useState<Date>(() => new Date());
+  const [filter, setFilter] = useState<CalFilter>('week');
   const [impacts, setImpacts] = useState<Set<EventImpact>>(() => new Set(IMPACTS)); // all on
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selected, setSelected] = useState<CalendarEvent | null>(null);
+  const reqId = useRef(0); // guards against a stale response overwriting a newer one
 
   const load = useCallback(async (spinner: boolean) => {
+    const id = ++reqId.current;
     if (spinner) setLoading(true);
-    const { from, to } = scopeWindow(scope, anchor);
+    const { from, to } = fetchWindow();
     try {
       const rows = await api.calendar.list({ from, to });
+      if (id !== reqId.current) return; // superseded
       setEvents(rows);
       setError('');
     } catch {
-      setError('Calendar unavailable.');
+      if (id === reqId.current) setError('The economic calendar is unavailable right now.');
     } finally {
-      setLoading(false);
+      if (id === reqId.current) setLoading(false);
     }
-  }, [scope, anchor]);
+  }, []);
 
   useEffect(() => { void load(true); }, [load]);
   useEffect(() => {
@@ -73,19 +87,39 @@ export default function CalendarRail() {
     }
   }, []);
 
+  // The full available range (for the coverage line) — independent of filters.
+  const coverage = useMemo(() => {
+    if (events.length === 0) return null;
+    const times = events.map(e => new Date(e.eventTime).getTime());
+    return { min: new Date(Math.min(...times)), max: new Date(Math.max(...times)), count: events.length };
+  }, [events]);
+
+  const now = Date.now();
+  const todayKey = dayKey(new Date().toISOString());
+  const nowLabel = new Date().toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+
   const groups = useMemo(() => {
-    const filtered = events.filter(e => impacts.has(e.impact));
+    const startToday = startOfDay(new Date()).getTime();
+    const weekStart = startOfWeek(new Date()).getTime();
+    const weekEnd = weekStart + 7 * 864e5;
+    const inFilter = (ev: CalendarEvent): boolean => {
+      const t = new Date(ev.eventTime).getTime();
+      if (filter === 'all') return true;
+      if (filter === 'today') return dayKey(ev.eventTime) === todayKey;
+      if (filter === 'week') return t >= weekStart && t < weekEnd;
+      return t >= startToday; // upcoming
+    };
+    const filtered = events.filter(e => impacts.has(e.impact) && inFilter(e));
+    filtered.sort((a, b) => new Date(a.eventTime).getTime() - new Date(b.eventTime).getTime());
     const map = new Map<string, CalendarEvent[]>();
     for (const e of filtered) {
       const k = dayKey(e.eventTime);
       (map.get(k) ?? map.set(k, []).get(k)!).push(e);
     }
     return [...map.entries()];
-  }, [events, impacts]);
+  }, [events, impacts, filter, todayKey]);
 
-  const now = Date.now();
-  const todayKey = dayKey(new Date().toISOString());
-  const nowLabel = new Date().toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  const totalShown = groups.reduce((n, [, r]) => n + r.length, 0);
 
   const row = (ev: CalendarEvent) => {
     const dir = surprise(ev.actual, ev.forecast);
@@ -133,11 +167,9 @@ export default function CalendarRail() {
     );
   };
 
-  // Render a day group; for today, split at the "now" line.
+  // Render a day group; the "today" group is split at the now-line.
   const renderDay = (day: string, rows: CalendarEvent[]) => {
-    if (day !== todayKey) {
-      return <div className="space-y-0.5">{rows.map(row)}</div>;
-    }
+    if (day !== todayKey) return <div className="space-y-0.5">{rows.map(row)}</div>;
     const past = rows.filter(e => new Date(e.eventTime).getTime() <= now);
     const future = rows.filter(e => new Date(e.eventTime).getTime() > now);
     return (
@@ -156,8 +188,6 @@ export default function CalendarRail() {
     );
   };
 
-  const totalShown = groups.reduce((n, [, r]) => n + r.length, 0);
-
   return (
     <div className="flex flex-col h-full min-h-0" data-testid="calendar-rail">
       {/* Header */}
@@ -170,17 +200,17 @@ export default function CalendarRail() {
           </button>
         </div>
 
-        {/* Scope + impact filters */}
+        {/* Time filter + impact filter */}
         <div className="flex items-center gap-1.5">
           <div className="inline-flex rounded-[var(--radius-btn)] border border-border-soft overflow-hidden">
-            {SCOPES.map(s => (
+            {FILTERS.map(f => (
               <button
-                key={s}
-                onClick={() => setScope(s)}
-                data-testid={`cal-rail-scope-${s}`}
-                className={`px-2 py-1 text-[9.5px] tracking-[0.1em] uppercase transition-colors ${scope === s ? 'bg-profit/15 text-fg' : 'text-fg-3 hover:text-fg'}`}
+                key={f}
+                onClick={() => setFilter(f)}
+                data-testid={`cal-rail-filter-${f}`}
+                className={`px-2 py-1 text-[9px] tracking-[0.08em] uppercase transition-colors ${filter === f ? 'bg-profit/15 text-fg' : 'text-fg-3 hover:text-fg'}`}
               >
-                {s}
+                {FILTER_LABEL[f]}
               </button>
             ))}
           </div>
@@ -199,19 +229,12 @@ export default function CalendarRail() {
           </div>
         </div>
 
-        {/* Period navigation */}
-        <div className="flex items-center gap-1.5">
-          <button onClick={() => setAnchor(a => shiftAnchor(scope, a, -1))} aria-label="Previous" data-testid="cal-rail-prev" className="p-1 text-fg-3 hover:text-fg transition-colors">
-            <CaretLeft size={13} weight="bold" />
-          </button>
-          <span className="text-[11px] text-fg-2 font-medium flex-1 text-center" data-testid="cal-rail-period">{periodLabel(scope, anchor)}</span>
-          <button onClick={() => setAnchor(a => shiftAnchor(scope, a, 1))} aria-label="Next" data-testid="cal-rail-next" className="p-1 text-fg-3 hover:text-fg transition-colors">
-            <CaretRight size={13} weight="bold" />
-          </button>
-          <button onClick={() => setAnchor(new Date())} data-testid="cal-rail-today" className="ml-1 px-2 py-1 text-[9px] tracking-[0.12em] uppercase rounded-[var(--radius-btn)] border border-border-soft text-fg-3 hover:text-fg transition-colors">
-            Today
-          </button>
-        </div>
+        {/* Coverage line — what data is actually available */}
+        {coverage && (
+          <p className="text-[9px] tracking-wide text-fg-3/70 numeric">
+            {coverage.count} events · {shortDate(coverage.min)} – {shortDate(coverage.max)}
+          </p>
+        )}
       </div>
 
       {/* List */}
@@ -219,9 +242,17 @@ export default function CalendarRail() {
         {loading ? (
           <div className="space-y-2">{Array.from({ length: 8 }).map((_, i) => <div key={i} className="shimmer h-9" />)}</div>
         ) : error ? (
-          <p className="text-[11px] text-fg-3 px-2 py-4 text-center">{error}</p>
+          <p className="text-[11px] text-fg-3 px-2 py-6 text-center">{error}</p>
+        ) : events.length === 0 ? (
+          <div className="px-3 py-8 text-center">
+            <p className="text-[12px] text-fg-2">No calendar data yet.</p>
+            <p className="text-[10.5px] text-fg-3 mt-1.5 leading-relaxed">Events are ingested from the economic-calendar feed. If this stays empty, the feed may be unconfigured.</p>
+          </div>
         ) : totalShown === 0 ? (
-          <p className="text-[11px] text-fg-3 px-2 py-6 text-center">No events for this period{impacts.size < IMPACTS.length ? ' at the selected impact levels' : ''}.</p>
+          <div className="px-3 py-8 text-center">
+            <p className="text-[12px] text-fg-2">No {FILTER_LABEL[filter].toLowerCase()} events{impacts.size < IMPACTS.length ? ' at these impact levels' : ''}.</p>
+            <button onClick={() => setFilter('all')} className="text-[10.5px] text-profit hover:underline mt-1.5">Show all {coverage?.count ?? ''} available →</button>
+          </div>
         ) : (
           groups.map(([day, rows]) => (
             <div key={day} className="mb-2">
