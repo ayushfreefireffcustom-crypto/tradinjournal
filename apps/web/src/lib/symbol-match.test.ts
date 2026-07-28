@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { matchSymbols, normalizeSymbol, matchesUserSymbols } from './symbol-match';
+import { matchSymbols, normalizeSymbol, matchesUserSymbols, canonicalize } from './symbol-match';
 
 describe('matchSymbols', () => {
   it('matches obvious asset aliases', () => {
@@ -44,11 +44,31 @@ describe('normalizeSymbol', () => {
   });
 });
 
+describe('canonicalize', () => {
+  it('maps broker names/aliases to the news canonical key', () => {
+    expect(canonicalize('GOLD')).toBe('XAUUSD');
+    expect(canonicalize('gold')).toBe('XAUUSD');
+    expect(canonicalize('XAUUSD.m')).toBe('XAUUSD');
+    expect(canonicalize('SPX500')).toBe('US500');
+    expect(canonicalize('BTCUSD')).toBe('BTCUSD');
+    expect(canonicalize('EURUSD')).toBe('EURUSD');
+    expect(canonicalize('USDCHF')).toBe('USDCHF');
+  });
+  it('passes unknown symbols through normalized', () => {
+    expect(canonicalize('XYZ123')).toBe('XYZ123');
+  });
+});
+
 describe('matchesUserSymbols', () => {
   it('returns only symbols the user trades', () => {
     const user = new Set(['XAUUSD', 'BTCUSD']);
     expect(matchesUserSymbols('Gold and Silver rally', user)).toEqual(['XAUUSD']); // silver not traded
     expect(matchesUserSymbols('Bitcoin and gold both up', user).sort()).toEqual(['BTCUSD', 'XAUUSD']);
+  });
+  it('bridges broker "GOLD" to gold news via canonicalize (the reported bug)', () => {
+    const user = new Set(['GOLD', 'BTCUSD', 'USDCHF'].map(canonicalize)); // → XAUUSD, BTCUSD, USDCHF
+    expect(matchesUserSymbols('Gold: Hawkish Fed delays recovery path', user)).toEqual(['XAUUSD']);
+    expect(matchesUserSymbols('Swiss franc firms as risk fades', user)).toEqual(['USDCHF']);
   });
   it('returns [] when the user has no symbols', () => {
     expect(matchesUserSymbols('Gold rallies', new Set())).toEqual([]);
