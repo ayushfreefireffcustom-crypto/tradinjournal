@@ -48,7 +48,12 @@ function dedupePrepend(prev: NewsItem[], incoming: NewsItem[]): NewsItem[] {
   return fresh.length ? [...fresh, ...prev] : prev;
 }
 
-/** One headline card. `matched` = symbols on it the user trades → YOUR MARKET flag. */
+/**
+ * One headline card — fixed-height horizontal layout: content on the left, a
+ * full-height image column on the right (with a glyph placeholder when there's
+ * no/broken image). The title is single-line + ellipsis so two-column rows never
+ * mismatch on title line count. `matched` = symbols on it the user trades.
+ */
 function NewsCard({ it, onOpen, matched = [] }: { it: NewsItem; onOpen: (i: NewsItem) => void; matched?: string[] }) {
   const high = it.impact === 'HIGH' || it.marketMoving;
   const mine = matched.length > 0;
@@ -57,33 +62,41 @@ function NewsCard({ it, onOpen, matched = [] }: { it: NewsItem; onOpen: (i: News
       type="button"
       onClick={() => onOpen(it)}
       data-testid="news-item"
-      className={`group h-full flex gap-3 text-left rounded-[var(--radius-card)] border bg-surface/40 px-4 py-3.5 transition-colors hover:bg-surface ${
-        mine ? 'border-profit/40 border-l-2 border-l-profit' : high ? 'border-loss/40 border-l-2 border-l-loss bg-loss/[0.04]' : 'border-border-soft hover:border-border-strong'
+      className={`group h-[132px] w-full flex items-stretch text-left rounded-[var(--radius-card)] border overflow-hidden bg-surface/40 transition-colors hover:bg-surface ${
+        mine ? 'border-profit/40 border-l-2 border-l-profit' : high ? 'border-loss/40 border-l-2 border-l-loss' : 'border-border-soft hover:border-border-strong'
       }`}
     >
-      <div className="flex-1 min-w-0 flex flex-col">
-        <div className="flex items-center gap-1.5 flex-wrap text-[10px] mb-1.5">
+      {/* Left: content */}
+      <div className="flex-1 min-w-0 flex flex-col p-3">
+        {/* Meta — single row, clips gracefully rather than wrapping (keeps height fixed) */}
+        <div className="flex items-center gap-1.5 text-[10px] mb-1 whitespace-nowrap overflow-hidden">
           {mine && (
-            <span className="px-1.5 py-0.5 rounded border border-profit/40 text-profit bg-profit/10 tracking-wider uppercase flex items-center gap-1" data-testid="news-your-market">
+            <span className="shrink-0 px-1.5 py-0.5 rounded border border-profit/40 text-profit bg-profit/10 tracking-wider uppercase flex items-center gap-1" data-testid="news-your-market">
               <Target size={9} weight="bold" /> Your market
             </span>
           )}
-          <span className="font-semibold tracking-wide text-fg-2">{it.source}</span>
-          <span className="text-fg-3">· {timeAgo(it.publishedAt)}</span>
-          {it.category && <span className="px-1.5 py-0.5 rounded border border-border-soft text-fg-3 tracking-wider uppercase">{it.category}</span>}
-          {it.sentiment && <span className={`px-1.5 py-0.5 rounded border tracking-wider uppercase ${sentimentChip[it.sentiment]}`}>{it.sentiment}</span>}
-          {high && <span className="px-1.5 py-0.5 rounded border border-loss/40 text-loss bg-loss/10 tracking-wider uppercase">High</span>}
+          <span className="shrink-0 font-semibold tracking-wide text-fg-2">{it.source}</span>
+          <span className="shrink-0 text-fg-3">· {timeAgo(it.publishedAt)}</span>
+          {it.sentiment && <span className={`shrink-0 px-1.5 py-0.5 rounded border tracking-wider uppercase ${sentimentChip[it.sentiment]}`}>{it.sentiment}</span>}
+          {high && <span className="shrink-0 px-1.5 py-0.5 rounded border border-loss/40 text-loss bg-loss/10 tracking-wider uppercase">High</span>}
+          {it.category && <span className="shrink-0 px-1.5 py-0.5 rounded border border-border-soft text-fg-3 tracking-wider uppercase">{it.category}</span>}
         </div>
-        <div className="text-[15px] font-medium text-fg leading-snug line-clamp-2">{it.title}</div>
+
+        {/* Title — one line, ellipsis */}
+        <div className="text-[14px] font-semibold text-fg leading-snug truncate">{it.title}</div>
+
+        {/* Summary — two lines */}
         {it.summary ? (
-          <p className="text-[12.5px] text-fg-3 mt-1.5 line-clamp-3 leading-relaxed">{it.summary}</p>
+          <p className="text-[12px] text-fg-3 mt-1 line-clamp-2 leading-relaxed">{it.summary}</p>
         ) : (
-          <p className="text-[12px] text-fg-3/60 italic mt-1.5 leading-relaxed">No summary provided — open to read the full story at {it.source}.</p>
+          <p className="text-[12px] text-fg-3/50 italic mt-1 line-clamp-2 leading-relaxed">No summary — open to read at {it.source}.</p>
         )}
-        <div className="mt-auto pt-2 flex items-center gap-2">
+
+        {/* Footer — pinned to the bottom */}
+        <div className="mt-auto pt-1.5 flex items-center gap-2">
           {mine && (
-            <span className="flex items-center gap-1 flex-wrap">
-              {matched.slice(0, 3).map(s => (
+            <span className="flex items-center gap-1">
+              {matched.slice(0, 2).map(s => (
                 <span key={s} className="px-1 py-0.5 rounded bg-profit/10 text-profit text-[9px] font-semibold tracking-wide numeric">{s}</span>
               ))}
             </span>
@@ -96,7 +109,14 @@ function NewsCard({ it, onOpen, matched = [] }: { it: NewsItem; onOpen: (i: News
           <span className="ml-auto flex items-center gap-1 text-[10px] tracking-[0.14em] uppercase text-fg-3 opacity-0 group-hover:opacity-100 transition-opacity">Read <ArrowUpRight size={11} weight="bold" /></span>
         </div>
       </div>
-      <NewsThumb src={it.imageUrl} className="shrink-0 w-16 h-16 rounded-md object-cover border border-border-soft" />
+
+      {/* Right: full-height image column with a placeholder underneath */}
+      <div className="shrink-0 w-24 sm:w-28 xl:w-32 self-stretch relative bg-gradient-to-br from-surface-hover to-app overflow-hidden">
+        <span className="absolute inset-0 flex items-center justify-center text-fg-3/20 pointer-events-none">
+          <Newspaper size={22} weight="thin" />
+        </span>
+        {it.imageUrl && <NewsThumb src={it.imageUrl} className="absolute inset-0 w-full h-full object-cover" />}
+      </div>
     </button>
   );
 }
@@ -104,7 +124,7 @@ function NewsCard({ it, onOpen, matched = [] }: { it: NewsItem; onOpen: (i: News
 // The Market-News feed: filter bar + personalized two-section list + brief +
 // modals. Extracted from the old /news page so it can live inside the unified
 // Markets page (two-pane) as well as stand alone.
-export default function NewsFeed({ userSymbols = EMPTY_SYMBOLS }: { userSymbols?: ReadonlySet<string> }) {
+export default function NewsFeed({ userSymbols = EMPTY_SYMBOLS, symbolsReady = true }: { userSymbols?: ReadonlySet<string>; symbolsReady?: boolean }) {
   const [items, setItems] = useState<NewsItem[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -152,8 +172,9 @@ export default function NewsFeed({ userSymbols = EMPTY_SYMBOLS }: { userSymbols?
   }, [topItems, items]);
 
   // "On your radar" — items touching a symbol the user trades. Hero when they have
-  // symbols and aren't otherwise filtering.
-  const radarActive = hasSymbols && !category && !highOnly && !symbolFilter;
+  // symbols and aren't otherwise filtering. Wait for stats (symbolsReady) so the
+  // band doesn't pop in after the lead already rendered.
+  const radarActive = symbolsReady && hasSymbols && !category && !highOnly && !symbolFilter;
   const radar = useMemo(
     () => (radarActive ? allLoaded.filter(it => matchOf(it).length > 0).slice(0, 6) : []),
     [radarActive, allLoaded, matchOf],
@@ -167,8 +188,9 @@ export default function NewsFeed({ userSymbols = EMPTY_SYMBOLS }: { userSymbols?
   );
 
   // Featured lead story: only on the plain feed (no personalization, no symbols,
-  // no filter) — otherwise a band above is the hero instead.
-  const showLead = !category && !highOnly && !personalized && !hasSymbols && !symbolFilter;
+  // no filter) — otherwise a band above is the hero instead. Gated on symbolsReady
+  // so it doesn't flash in then vanish once traded symbols resolve.
+  const showLead = symbolsReady && !category && !highOnly && !personalized && !hasSymbols && !symbolFilter;
   const lead = useMemo(() => {
     if (!showLead || items.length === 0) return null;
     return [...items.slice(0, 12)].sort(
@@ -389,7 +411,7 @@ export default function NewsFeed({ userSymbols = EMPTY_SYMBOLS }: { userSymbols?
             )}
 
             {loading ? (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">{Array.from({ length: 8 }).map((_, i) => <div key={i} className="shimmer h-28" />)}</div>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">{Array.from({ length: 8 }).map((_, i) => <div key={i} className="shimmer h-[132px]" />)}</div>
             ) : error ? (
               <EmptyState icon={Newspaper} title="News unavailable" hint={error} />
             ) : items.length === 0 && topItems.length === 0 ? (
@@ -426,7 +448,7 @@ export default function NewsFeed({ userSymbols = EMPTY_SYMBOLS }: { userSymbols?
                       <button onClick={() => setPickerOpen(true)} className="text-[10px] tracking-[0.14em] uppercase text-fg-3 hover:text-fg transition-colors">Edit</button>
                     </div>
                     {topLoading ? (
-                      <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">{Array.from({ length: 3 }).map((_, i) => <div key={i} className="shimmer h-28" />)}</div>
+                      <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">{Array.from({ length: 3 }).map((_, i) => <div key={i} className="shimmer h-[132px]" />)}</div>
                     ) : topItems.length === 0 ? (
                       <p className="text-[12px] text-fg-3 py-2">Nothing new from your sources yet — fresh headlines will appear here.</p>
                     ) : (
