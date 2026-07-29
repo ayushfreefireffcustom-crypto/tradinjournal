@@ -126,6 +126,26 @@ function StatCard({ label, value, accent, children }: { label: string; value: st
   );
 }
 
+// GitHub-style activity heatmap (deterministic green/red/empty grid).
+function MiniHeatmap({ cols = 20, rows = 7 }: { cols?: number; rows?: number }) {
+  const cell = (i: number) => {
+    const r = (i * 47 + 13) % 100;
+    return r < 34 ? 'bg-surface-active' : r < 60 ? 'bg-profit/25' : r < 84 ? 'bg-profit/70' : 'bg-loss/60';
+  };
+  return (
+    <div className="grid gap-[3px]" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0,1fr))`, gridTemplateRows: `repeat(${rows}, 1fr)`, gridAutoFlow: 'column' }}>
+      {Array.from({ length: cols * rows }).map((_, i) => <span key={i} className={`w-[7px] h-[7px] rounded-[2px] ${cell(i)}`} />)}
+    </div>
+  );
+}
+
+const FILLS: { s: string; side: 'LONG' | 'SHORT'; dur: string; pnl: number }[] = [
+  { s: 'XAUUSD', side: 'LONG', dur: '2h 14m', pnl: 1840 },
+  { s: 'BTCUSD', side: 'SHORT', dur: '46m', pnl: 920 },
+  { s: 'US500', side: 'LONG', dur: '3h 02m', pnl: -410 },
+  { s: 'EURUSD', side: 'LONG', dur: '1h 28m', pnl: 610 },
+];
+
 // ── Dashboard mock ───────────────────────────────────────────────────────────
 
 export function DashboardMock() {
@@ -134,8 +154,18 @@ export function DashboardMock() {
       <div className="w-full h-full flex bg-app text-fg font-sans">
         <Sidebar active="Dashboard" />
         <div className="flex-1 flex flex-col min-w-0">
-          <TopBar title="Dashboard" sub="// OVERVIEW" />
-          <div className="flex-1 p-5 flex flex-col gap-4 min-h-0">
+          <header className="h-12 shrink-0 border-b border-border-soft flex items-center gap-3 px-5">
+            <div>
+              <div className="font-display font-bold text-[14px] tracking-tight text-fg leading-none">Dashboard</div>
+              <div className="text-[8px] tracking-[0.2em] text-fg-3 mt-1">// SESSION OVERVIEW</div>
+            </div>
+            <span className="text-[9px] text-fg-3 ml-2">Starting <span className="text-fg-2 numeric">$312,400</span> → <span className="text-fg-2 numeric">$394,883</span></span>
+            <div className="ml-auto flex items-center gap-3 text-[10px] text-fg-3">
+              <span className="tracking-[0.16em]">29 JUL 2026</span>
+              <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-profit" /> LIVE</span>
+            </div>
+          </header>
+          <div className="flex-1 p-4 flex flex-col gap-3 min-h-0">
             <div className="grid grid-cols-4 gap-3">
               <StatCard label="Net P&L" value="+$45,230" accent="profit">
                 <div className="flex items-end gap-[3px] h-full">
@@ -143,23 +173,68 @@ export function DashboardMock() {
                 </div>
               </StatCard>
               <StatCard label="Win Rate" value="67%">
-                <div className="w-full h-1.5 rounded-full bg-surface-active overflow-hidden mt-1.5"><span className="block h-full bg-profit/80" style={{ width: '67%' }} /></div>
+                <div className="w-full h-1.5 rounded-full bg-surface-active overflow-hidden mt-2"><span className="block h-full bg-profit/80" style={{ width: '67%' }} /></div>
+                <div className="text-[8.5px] text-fg-3 numeric mt-1.5">166 W / 82 L</div>
               </StatCard>
               <StatCard label="Profit Factor" value="2.40">
-                <svg viewBox="0 0 24 24" className="h-6 w-6"><circle cx="12" cy="12" r="9" fill="none" stroke="#222" strokeWidth="3" /><circle cx="12" cy="12" r="9" fill="none" stroke="#08C465" strokeWidth="3" strokeDasharray="42 57" strokeLinecap="round" transform="rotate(-90 12 12)" /></svg>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <svg viewBox="0 0 24 24" className="h-6 w-6"><circle cx="12" cy="12" r="9" fill="none" stroke="#222" strokeWidth="3" /><circle cx="12" cy="12" r="9" fill="none" stroke="#08C465" strokeWidth="3" strokeDasharray="42 57" strokeLinecap="round" transform="rotate(-90 12 12)" /></svg>
+                  <span className="text-[8.5px] text-fg-3">1:2.4 R</span>
+                </div>
               </StatCard>
-              <StatCard label="Total Trades" value="248">
-                <div className="flex items-center gap-1 mt-1.5"><span className="text-[10px] text-profit numeric">166 W</span><span className="w-px h-3 bg-border" /><span className="text-[10px] text-loss numeric">82 L</span></div>
+              <StatCard label="Max Drawdown" value="8.4%">
+                <div className="w-full h-1.5 rounded-full bg-surface-active overflow-hidden mt-2"><span className="block h-full bg-loss/70" style={{ width: '34%' }} /></div>
+                <div className="text-[8.5px] text-fg-3 numeric mt-1.5">248 trades · 2 open</div>
               </StatCard>
             </div>
-            <div className="rounded-[var(--radius-card)] border border-border-soft bg-surface/40 p-4 flex-1 flex flex-col min-h-0">
-              <div className="flex items-center justify-between">
-                <div className="text-[12px] font-semibold text-fg">Performance Over Time</div>
-                <div className="flex items-center gap-1.5">
-                  {['1M', '3M', 'YTD', 'ALL'].map((r, i) => <span key={r} className={`px-2 py-0.5 rounded text-[9px] tracking-wide ${i === 3 ? 'bg-profit/15 text-fg' : 'text-fg-3'}`}>{r}</span>)}
+
+            <div className="grid grid-cols-[1.7fr_1fr] gap-3 flex-1 min-h-0">
+              <div className="rounded-[var(--radius-card)] border border-border-soft bg-surface/40 p-4 flex flex-col min-h-0">
+                <div className="flex items-center justify-between">
+                  <div className="text-[12px] font-semibold text-fg">Performance Over Time</div>
+                  <div className="flex items-center gap-1.5">
+                    {['1M', '3M', 'YTD', 'ALL'].map((r, i) => <span key={r} className={`px-2 py-0.5 rounded text-[9px] tracking-wide ${i === 3 ? 'bg-profit/15 text-fg' : 'text-fg-3'}`}>{r}</span>)}
+                  </div>
+                </div>
+                <div className="flex-1 flex items-stretch gap-2 mt-2 min-h-0">
+                  <div className="flex flex-col justify-between py-1 text-[8px] text-fg-3 numeric"><span>$50k</span><span>$40k</span><span>$30k</span><span>$20k</span></div>
+                  <div className="flex-1 flex items-end relative">
+                    <EquityCurve height={168} />
+                    <span className="absolute top-1 right-1 px-1.5 py-0.5 rounded bg-profit/15 text-profit text-[9px] font-semibold numeric">+$45,230</span>
+                  </div>
                 </div>
               </div>
-              <div className="flex-1 flex items-end mt-2"><EquityCurve height={180} /></div>
+
+              <div className="rounded-[var(--radius-card)] border border-border-soft bg-surface/40 p-3.5 flex flex-col">
+                <div className="text-[11px] font-semibold text-fg-2">Trading Activity</div>
+                <div className="text-[8.5px] text-fg-3 mt-0.5">473 trades in 2026</div>
+                <div className="my-3"><MiniHeatmap /></div>
+                <div className="grid grid-cols-3 gap-2 mt-auto">
+                  {[['71', 'Days', 'text-fg'], ['8', 'Streak', 'text-profit'], ['+$29k', 'Total', 'text-profit']].map(([v, l, c]) => (
+                    <div key={l} className="rounded-md border border-border-soft bg-app/40 px-2 py-1.5">
+                      <div className={`font-display font-bold text-[13px] numeric ${c}`}>{v}</div>
+                      <div className="text-[8px] text-fg-3 tracking-wide uppercase">{l}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-[var(--radius-card)] border border-border-soft bg-surface/40 px-4 py-2.5">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[10px] tracking-[0.18em] uppercase text-fg-3">Recent fills</span>
+                <span className="text-[9px] text-fg-3">4 of 248</span>
+              </div>
+              <div className="grid grid-cols-4 gap-3">
+                {FILLS.map(f => (
+                  <div key={f.s} className="flex items-center gap-2 text-[10px]">
+                    <span className="font-semibold text-fg-2 numeric w-12">{f.s}</span>
+                    <span className={`px-1 py-0.5 rounded text-[8px] font-bold ${f.side === 'LONG' ? 'bg-profit/12 text-profit' : 'bg-loss/12 text-loss'}`}>{f.side}</span>
+                    <span className="text-fg-3 numeric">{f.dur}</span>
+                    <span className={`ml-auto numeric font-semibold ${f.pnl >= 0 ? 'text-profit' : 'text-loss'}`}>{f.pnl >= 0 ? '+' : '−'}${Math.abs(f.pnl)}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -188,54 +263,87 @@ const SYMBOLS: { s: string; pnl: number; w: number }[] = [
   { s: 'USDJPY', pnl: -3240, w: -34 },
 ];
 
+// Rolling win-rate line — a gentle wave around ~62%.
+function RollingLine() {
+  const d = 'M0,64 L30,58 L60,66 L90,52 L120,56 L150,44 L180,50 L210,40 L240,46 L270,36 L300,42';
+  return (
+    <svg viewBox="0 0 300 100" preserveAspectRatio="none" className="w-full h-full">
+      <line x1="0" y1="50" x2="300" y2="50" stroke="#1E1E1E" strokeWidth="1" strokeDasharray="3 4" />
+      <path d="M0,50 L30,52 L60,48 L90,54 L120,50 L150,55 L180,49 L210,52 L240,47 L270,50 L300,48" fill="none" stroke="#FF9F0A" strokeWidth="1.5" opacity="0.6" />
+      <path d={d} fill="none" stroke="#08C465" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function AnalyticsMock() {
+  const strip: { l: string; v: string; c?: string }[] = [
+    { l: 'Expectancy', v: '+$182', c: 'text-profit' },
+    { l: 'Profit Factor', v: '2.40', c: 'text-profit' },
+    { l: 'Avg R:R', v: '1:2.4' },
+    { l: 'Max DD', v: '8.4%', c: 'text-loss' },
+    { l: 'Best', v: '+$3,240', c: 'text-profit' },
+    { l: 'Worst', v: '−$1,180', c: 'text-loss' },
+  ];
   return (
     <ScaledMock>
       <div className="w-full h-full flex bg-app text-fg font-sans">
         <Sidebar active="Analytics" />
         <div className="flex-1 flex flex-col min-w-0">
-          <TopBar title="Analytics" sub="// EVERY ANGLE OF YOUR EDGE" />
-          <div className="flex-1 p-4 grid grid-cols-2 grid-rows-2 gap-3 min-h-0">
-            <Panel title="Equity Curve">
-              <div className="h-full flex items-end"><EquityCurve height={150} /></div>
-            </Panel>
-            <Panel title="P&L by Symbol">
-              <div className="flex flex-col gap-2 justify-center h-full">
-                {SYMBOLS.map(r => (
-                  <div key={r.s} className="flex items-center gap-2 text-[10px]">
-                    <span className="w-12 text-fg-3 numeric">{r.s}</span>
-                    <div className="flex-1 h-2.5 relative flex items-center">
-                      <div className="absolute left-1/2 w-px h-full bg-border" />
-                      <span className={`absolute h-2.5 rounded-sm ${r.w >= 0 ? 'left-1/2 bg-profit/70' : 'right-1/2 bg-loss/70'}`} style={{ width: `${Math.abs(r.w) / 2}%` }} />
-                    </div>
-                    <span className={`w-14 text-right numeric ${r.pnl >= 0 ? 'text-profit' : 'text-loss'}`}>{r.pnl >= 0 ? '+' : '−'}${Math.abs(r.pnl).toLocaleString()}</span>
-                  </div>
-                ))}
-              </div>
-            </Panel>
-            <Panel title="Win Rate">
-              <div className="h-full flex items-center justify-center gap-5">
-                <svg viewBox="0 0 42 42" className="h-24 w-24">
-                  <circle cx="21" cy="21" r="15.9" fill="none" stroke="#222" strokeWidth="5" />
-                  <circle cx="21" cy="21" r="15.9" fill="none" stroke="#08C465" strokeWidth="5" strokeDasharray="67 33" strokeDashoffset="25" strokeLinecap="round" />
-                </svg>
-                <div>
-                  <div className="font-display font-black text-[26px] text-fg numeric leading-none">67%</div>
-                  <div className="text-[10px] text-fg-3 mt-1">166W · 82L</div>
-                  <div className="text-[10px] text-fg-3 mt-2">Profit factor <span className="text-profit numeric">2.40</span></div>
+          <TopBar title="Analytics" sub="// EDGE DISCOVERY" />
+          <div className="flex-1 p-4 flex flex-col gap-3 min-h-0">
+            {/* Stats strip */}
+            <div className="grid grid-cols-6 gap-2">
+              {strip.map(s => (
+                <div key={s.l} className="rounded-lg border border-border-soft bg-surface/40 px-3 py-2">
+                  <div className="text-[8px] tracking-[0.16em] uppercase text-fg-3">{s.l}</div>
+                  <div className={`font-display font-bold text-[15px] numeric mt-0.5 ${s.c ?? 'text-fg'}`}>{s.v}</div>
                 </div>
-              </div>
-            </Panel>
-            <Panel title="P&L by Day">
-              <div className="h-full flex items-end justify-between gap-2 pt-2">
-                {[{ d: 'Mon', v: 62, up: true }, { d: 'Tue', v: 40, up: true }, { d: 'Wed', v: 28, up: false }, { d: 'Thu', v: 78, up: true }, { d: 'Fri', v: 52, up: true }].map(b => (
-                  <div key={b.d} className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end">
-                    <span className={`w-full rounded-t-sm ${b.up ? 'bg-profit/70' : 'bg-loss/70'}`} style={{ height: `${b.v}%` }} />
-                    <span className="text-[9px] text-fg-3">{b.d}</span>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-3 grid-rows-2 gap-3 flex-1 min-h-0">
+              <div className="col-span-2 row-span-1"><Panel title="Equity Curve · All time"><div className="h-full flex items-end"><EquityCurve height={128} /></div></Panel></div>
+              <Panel title="Win Rate">
+                <div className="h-full flex items-center justify-center gap-3">
+                  <svg viewBox="0 0 42 42" className="h-[74px] w-[74px]">
+                    <circle cx="21" cy="21" r="15.9" fill="none" stroke="#222" strokeWidth="5" />
+                    <circle cx="21" cy="21" r="15.9" fill="none" stroke="#08C465" strokeWidth="5" strokeDasharray="67 33" strokeDashoffset="25" strokeLinecap="round" />
+                  </svg>
+                  <div>
+                    <div className="font-display font-black text-[22px] text-fg numeric leading-none">67%</div>
+                    <div className="text-[9px] text-fg-3 mt-1">166W · 82L</div>
                   </div>
-                ))}
-              </div>
-            </Panel>
+                </div>
+              </Panel>
+
+              <Panel title="P&L by Symbol">
+                <div className="flex flex-col gap-1.5 justify-center h-full">
+                  {SYMBOLS.map(r => (
+                    <div key={r.s} className="flex items-center gap-2 text-[9px]">
+                      <span className="w-11 text-fg-3 numeric">{r.s}</span>
+                      <div className="flex-1 h-2 relative flex items-center">
+                        <div className="absolute left-1/2 w-px h-full bg-border" />
+                        <span className={`absolute h-2 rounded-sm ${r.w >= 0 ? 'left-1/2 bg-profit/70' : 'right-1/2 bg-loss/70'}`} style={{ width: `${Math.abs(r.w) / 2}%` }} />
+                      </div>
+                      <span className={`w-12 text-right numeric ${r.pnl >= 0 ? 'text-profit' : 'text-loss'}`}>{r.pnl >= 0 ? '+' : '−'}${(Math.abs(r.pnl) / 1000).toFixed(1)}k</span>
+                    </div>
+                  ))}
+                </div>
+              </Panel>
+              <Panel title="P&L by Day">
+                <div className="h-full flex items-end justify-between gap-1.5 pt-1">
+                  {[{ d: 'Mon', v: 62, up: true }, { d: 'Tue', v: 40, up: true }, { d: 'Wed', v: 28, up: false }, { d: 'Thu', v: 78, up: true }, { d: 'Fri', v: 52, up: true }].map(b => (
+                    <div key={b.d} className="flex-1 flex flex-col items-center gap-1 h-full justify-end">
+                      <span className={`w-full rounded-t-sm ${b.up ? 'bg-profit/70' : 'bg-loss/70'}`} style={{ height: `${b.v}%` }} />
+                      <span className="text-[8px] text-fg-3">{b.d}</span>
+                    </div>
+                  ))}
+                </div>
+              </Panel>
+              <Panel title="Rolling win-rate · 20-trade">
+                <div className="h-full pt-1"><RollingLine /></div>
+              </Panel>
+            </div>
           </div>
         </div>
       </div>
