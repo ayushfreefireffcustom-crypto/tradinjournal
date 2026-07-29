@@ -124,6 +124,7 @@ export default function ScreenshotFrame({
               alt={alt}
               width={mobileWidth ?? width}
               height={mobileHeight ?? height}
+              quality={95}
               priority={priority}
               sizes="100vw"
               className="w-full h-auto block select-none sm:hidden"
@@ -134,6 +135,7 @@ export default function ScreenshotFrame({
               alt={alt}
               width={width}
               height={height}
+              quality={95}
               priority={priority}
               sizes={sizes}
               className="w-full h-auto hidden select-none sm:block"
@@ -146,6 +148,7 @@ export default function ScreenshotFrame({
             alt={alt}
             width={width}
             height={height}
+            quality={95}
             priority={priority}
             sizes={sizes}
             className="w-full h-auto block select-none"
