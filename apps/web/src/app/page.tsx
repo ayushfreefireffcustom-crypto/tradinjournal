@@ -7,6 +7,7 @@ import { LinkSimple, Brain, ChatCircle, Target } from '@phosphor-icons/react';
 import Logo from '@/components/logo';
 import Reveal from '@/components/reveal';
 import ScreenshotFrame from '@/components/screenshot-frame';
+import { DashboardMock, AnalyticsMock, ChartReplayMock } from '@/components/landing/product-mocks';
 import FloatingCard from '@/components/floating-card';
 // (BrowserFrame retired from the landing — live-feed now uses a bespoke frame)
 import WatermarkNumber from '@/components/watermark-number';
@@ -601,18 +602,9 @@ function HeroImage() {
           there's more breathing room between it and the copy. */}
       <div ref={ref} className="relative lg:w-[112%] lg:max-w-none lg:ml-8 xl:ml-12 lg:-mt-10">
         <motion.div style={reduce ? undefined : { y }}>
-          <ScreenshotFrame
-            src="/Dashboard.png"
-            alt="TRADElogs dashboard — net P&L, win rate and equity curve"
-            width={3420}
-            height={2214}
-            mobileSrc="/MobileDashboard.png"
-            mobileWidth={2904}
-            mobileHeight={1858}
-            priority
-            sizes="(max-width: 1024px) 96vw, 60vw"
-            className="-mx-2 sm:mx-0"
-          />
+          <ScreenshotFrame priority className="-mx-2 sm:mx-0">
+            <DashboardMock />
+          </ScreenshotFrame>
         </motion.div>
 
         {/* Floating stat cards — hidden on mobile so they never overflow. */}
@@ -1139,7 +1131,7 @@ export default function LandingPage() {
               </Link>
             </Reveal>
             <Reveal delay={120} className="lg:col-span-7 relative">
-              <ScreenshotFrame src="/Analytics.png" alt="TRADElogs analytics screen" width={3420} height={2214} mobileSrc="/MobileAnalytics.png" mobileWidth={2894} mobileHeight={1864} sizes="(max-width: 1024px) 96vw, 58vw" className="-mx-2 sm:mx-0" />
+              <ScreenshotFrame className="-mx-2 sm:mx-0"><AnalyticsMock /></ScreenshotFrame>
               <div className="hidden lg:block absolute -top-5 -left-5 z-20">
                 <FloatingCard parallax={[-26, 26]}>
                   <div className="text-[9px] tracking-[0.18em] text-fg-3 uppercase">Profit factor</div>
@@ -1158,7 +1150,7 @@ export default function LandingPage() {
           {/* Chart replay — big screenshot left, copy right */}
           <div className="grid lg:grid-cols-12 gap-10 lg:gap-14 items-center mt-16 sm:mt-24">
             <Reveal delay={120} className="lg:col-span-7 lg:order-2 relative">
-              <ScreenshotFrame src="/ChartReplay.png" alt="TRADElogs chart replay screen" width={3420} height={2214} mobileSrc="/MobileCharts.png" mobileWidth={2216} mobileHeight={1464} sizes="(max-width: 1024px) 96vw, 58vw" className="-mx-2 sm:mx-0" />
+              <ScreenshotFrame className="-mx-2 sm:mx-0"><ChartReplayMock /></ScreenshotFrame>
               <div className="hidden lg:block absolute -top-5 -right-4 z-20">
                 <FloatingCard parallax={[-24, 24]} className="flex items-center gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-profit pulse-dot" />
