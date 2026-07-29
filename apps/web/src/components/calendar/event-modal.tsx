@@ -183,17 +183,23 @@ export default function EventModal({
             {prov.conflict && <span className="w-full text-warning">Sources disagreed on the impact level.</span>}
           </div>
 
-          {/* Watch toggle — understated, clearly a toggle */}
-          <button
-            onClick={() => { setWatched(w => !w); onToggleWatch(event); }}
-            data-testid="event-modal-watch"
-            className={`w-full flex items-center justify-center gap-2 mt-4 py-2.5 rounded-[var(--radius-btn)] text-[12px] font-semibold tracking-wide border transition-colors ${
-              watched ? 'bg-warning/15 text-warning border-warning/40' : 'border-border-strong text-fg hover:border-profit/50 hover:text-profit'
-            }`}
-          >
-            <Star size={14} weight={watched ? 'fill' : 'regular'} />
-            {watched ? 'Watching — you’ll be reminded' : 'Watch & remind me'}
-          </button>
+          {/* Watch toggle — only for upcoming events (can't remind about a past one) */}
+          {released ? (
+            <div className="w-full flex items-center justify-center gap-2 mt-4 py-2.5 rounded-[var(--radius-btn)] text-[11px] tracking-wide border border-border-soft text-fg-3" data-testid="event-modal-released">
+              <Clock size={13} /> Event already released
+            </div>
+          ) : (
+            <button
+              onClick={() => { setWatched(w => !w); onToggleWatch(event); }}
+              data-testid="event-modal-watch"
+              className={`w-full flex items-center justify-center gap-2 mt-4 py-2.5 rounded-[var(--radius-btn)] text-[12px] font-semibold tracking-wide border transition-colors ${
+                watched ? 'bg-warning/15 text-warning border-warning/40' : 'border-border-strong text-fg hover:border-profit/50 hover:text-profit'
+              }`}
+            >
+              <Star size={14} weight={watched ? 'fill' : 'regular'} />
+              {watched ? 'Watching — you’ll be reminded' : 'Watch & remind me'}
+            </button>
+          )}
         </div>
       </div>
     </div>
