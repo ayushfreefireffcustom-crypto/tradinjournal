@@ -1,13 +1,33 @@
-// Tiny JSON cache over Redis for hot, shared, read-heavy data (calendar window,
-// latest news). Entirely optional: with no REDIS_URL every call is a graceful
-// no-op — `get` returns null (caller falls through to Postgres) and `set` does
-// nothing. Never throws for a Redis hiccup; the source of truth is always the DB.
+// Tiny JSON cache for hot, shared, read-heavy data (calendar window, latest
+// news). Prefers Redis; when Redis is absent or down it falls back to a bounded
+// in-process cache so single-process / no-Redis deployments still get caching
+// (otherwise every read hammers Postgres). Never throws; DB is the source of truth.
 import { Redis } from 'ioredis';
 import { env } from '@tradinjournal/config';
 import { logger } from '@tradinjournal/logger';
 
 let redis: Redis | null = null;
 let down = false;
+
+// In-process fallback cache — bounded (oldest-out) + per-entry TTL.
+const mem = new Map<string, { value: string; expires: number }>();
+const MEM_MAX = 300;
+function memGet(key: string): string | null {
+  const e = mem.get(key);
+  if (!e) return null;
+  if (Date.now() > e.expires) { mem.delete(key); return null; }
+  return e.value;
+}
+function memSet(key: string, value: string, ttlSeconds: number): void {
+  if (mem.size >= MEM_MAX) {
+    const oldest = mem.keys().next().value;
+    if (oldest) mem.delete(oldest);
+  }
+  mem.set(key, { value, expires: Date.now() + ttlSeconds * 1000 });
+}
+function memDel(keys: string[]): void {
+  for (const k of keys) mem.delete(k);
+}
 
 function client(): Redis | null {
   if (!env.REDIS_URL) return null;
@@ -28,28 +48,37 @@ function client(): Redis | null {
 
 export async function cacheGet<T>(key: string): Promise<T | null> {
   const c = client();
-  if (!c || down) return null;
-  try {
-    const raw = await c.get(key);
-    return raw ? (JSON.parse(raw) as T) : null;
-  } catch {
-    return null;
+  if (c && !down) {
+    try {
+      const raw = await c.get(key);
+      if (raw) return JSON.parse(raw) as T;
+    } catch {
+      /* fall through to the in-process cache */
+    }
   }
+  const raw = memGet(key);
+  return raw ? (JSON.parse(raw) as T) : null;
 }
 
 export async function cacheSet(key: string, value: unknown, ttlSeconds: number): Promise<void> {
+  const json = JSON.stringify(value);
   const c = client();
-  if (!c || down) return;
-  try {
-    await c.set(key, JSON.stringify(value), 'EX', ttlSeconds);
-  } catch {
-    // Best-effort — a failed cache write must never fail the request.
+  if (c && !down) {
+    try {
+      await c.set(key, json, 'EX', ttlSeconds);
+      return;
+    } catch {
+      /* fall through to the in-process cache */
+    }
   }
+  memSet(key, json, ttlSeconds);
 }
 
 export async function cacheDel(...keys: string[]): Promise<void> {
+  if (keys.length === 0) return;
+  memDel(keys);
   const c = client();
-  if (!c || down || keys.length === 0) return;
+  if (!c || down) return;
   try {
     await c.del(...keys);
   } catch {
