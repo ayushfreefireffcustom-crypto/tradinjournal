@@ -161,6 +161,8 @@ export const calendarQuerySchema = z.object({
   from: z.string().datetime().optional(),
   to: z.string().datetime().optional(),
   impact: eventImpactSchema.optional(),
+  /** CSV of impacts to keep (e.g. "HIGH,MEDIUM") — trims the payload server-side. */
+  impacts: z.string().max(40).optional(),
   currency: z.string().min(1).max(8).optional(),
   category: z.string().min(1).max(40).optional(),
 });
