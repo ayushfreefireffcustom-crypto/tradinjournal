@@ -63,11 +63,13 @@ export const QUEUE_CALENDAR_INGEST = 'calendar-ingest' as const;
 export const QUEUE_NEWS_INGEST = 'news-ingest' as const;
 export const QUEUE_NEWS_ENRICH = 'news-enrich' as const;
 export const QUEUE_NOTIFICATIONS = 'notifications' as const;
+export const QUEUE_NOTIFICATIONS_DIGEST = 'notifications-digest' as const;
 
 export const CALENDAR_INGEST_SCHEDULER_ID = 'calendar-ingest-cron';
 export const NEWS_INGEST_SCHEDULER_ID = 'news-ingest-cron';
 export const NEWS_ENRICH_SCHEDULER_ID = 'news-enrich-cron';
 export const NOTIFICATIONS_SCHEDULER_ID = 'notifications-cron';
+export const NOTIFICATIONS_DIGEST_SCHEDULER_ID = 'notifications-digest-cron';
 
 /** Trigger a calendar ingest for a UTC window (bucketed for idempotency). */
 export interface CalendarIngestJob {
@@ -94,6 +96,12 @@ export interface NotificationsJob {
   bucket: string;
 }
 
+/** Trigger the daily email digest (bucketed to the day). */
+export interface NotificationsDigestJob {
+  kind: 'notifications-digest';
+  bucket: string;
+}
+
 /** Truncate a Date to an idempotency bucket at hour or minute granularity. */
 export function timeBucket(date: Date, granularity: 'hour' | 'minute'): string {
   const iso = date.toISOString(); // YYYY-MM-DDTHH:MM:SS.sssZ
@@ -111,6 +119,9 @@ export function newsEnrichJobId(bucket: string): string {
 }
 export function notificationsJobId(bucket: string): string {
   return `notif:${bucket}`;
+}
+export function notificationsDigestJobId(bucket: string): string {
+  return `notif-digest:${bucket}`;
 }
 
 // ─── Connection ──────────────────────────────────────────────────────────────
