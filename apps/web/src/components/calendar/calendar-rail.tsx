@@ -142,17 +142,20 @@ export default function CalendarRail() {
           <span className="text-[11px] shrink-0" title={ev.country}>{flag(ev.country)}</span>
           <span className="text-[10px] font-semibold text-fg-2 shrink-0">{ev.currency}</span>
           <span className="text-[11.5px] text-fg leading-tight truncate flex-1 min-w-0">{ev.title}</span>
-          <span
-            role="button"
-            tabIndex={0}
-            onClick={e => { e.stopPropagation(); void onWatch(ev); }}
-            onKeyDown={e => { if (e.key === 'Enter') { e.stopPropagation(); void onWatch(ev); } }}
-            aria-label={ev.watched ? 'Unwatch' : 'Watch'}
-            data-testid="cal-rail-watch"
-            className="shrink-0 p-0.5 cursor-pointer"
-          >
-            <Star size={12} weight={ev.watched ? 'fill' : 'regular'} className={ev.watched ? 'text-warning' : 'text-fg-3 hover:text-fg'} />
-          </span>
+          {/* Watch only for upcoming events — no point reminding about a past one. */}
+          {!past && (
+            <span
+              role="button"
+              tabIndex={0}
+              onClick={e => { e.stopPropagation(); void onWatch(ev); }}
+              onKeyDown={e => { if (e.key === 'Enter') { e.stopPropagation(); void onWatch(ev); } }}
+              aria-label={ev.watched ? 'Unwatch' : 'Watch'}
+              data-testid="cal-rail-watch"
+              className="shrink-0 p-0.5 cursor-pointer"
+            >
+              <Star size={12} weight={ev.watched ? 'fill' : 'regular'} className={ev.watched ? 'text-warning' : 'text-fg-3 hover:text-fg'} />
+            </span>
+          )}
         </div>
         {hasData && (
           <div className="flex items-center gap-2.5 text-[10px] numeric mt-1 pl-[3.375rem]">
