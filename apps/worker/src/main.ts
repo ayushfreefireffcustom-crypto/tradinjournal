@@ -24,6 +24,8 @@ import {
   NEWS_ENRICH_SCHEDULER_ID,
   QUEUE_NOTIFICATIONS,
   NOTIFICATIONS_SCHEDULER_ID,
+  QUEUE_NOTIFICATIONS_DIGEST,
+  NOTIFICATIONS_DIGEST_SCHEDULER_ID,
   createRedisConnection,
   getQueue,
   closeQueues,
@@ -34,12 +36,14 @@ import {
   type NewsIngestJob,
   type NewsEnrichJob,
   type NotificationsJob,
+  type NotificationsDigestJob,
 } from '@tradinjournal/queue';
 import { createWeeklyReviewWorker, isUnrecoverable as weeklyUnrecoverable } from './processors/weekly-review.js';
 import { createCalendarWorker, isUnrecoverable as calendarUnrecoverable } from './processors/calendar-ingest.js';
 import { createNewsWorker, isUnrecoverable as newsUnrecoverable } from './processors/news-ingest.js';
 import { createNewsEnrichWorker, isUnrecoverable as newsEnrichUnrecoverable } from './processors/news-enrich.js';
 import { createNotificationsWorker, isUnrecoverable as notifUnrecoverable } from './processors/notifications.js';
+import { createDigestWorker, isUnrecoverable as digestUnrecoverable } from './processors/notifications-digest.js';
 
 const workers: Worker[] = [];
 let connection: ReturnType<typeof createRedisConnection> = null;
@@ -139,6 +143,20 @@ async function start(): Promise<void> {
     );
     attach(createNotificationsWorker(connection, notifQueue) as unknown as Worker, 'Notifications', notifUnrecoverable);
     logger.info('Notification dispatch scheduled: every minute UTC');
+  }
+
+  // ── Daily email digest ──────────────────────────────────────────────────────
+  // Once a day: one compilation email per opted-in user (the email channel; push
+  // covers real-time). The API bounds it to one send per user per day.
+  const digestQueue = getQueue<NotificationsDigestJob>(QUEUE_NOTIFICATIONS_DIGEST);
+  if (digestQueue) {
+    await digestQueue.upsertJobScheduler(
+      NOTIFICATIONS_DIGEST_SCHEDULER_ID,
+      { pattern: env.NOTIFICATIONS_DIGEST_CRON, tz: 'UTC' },
+      { name: 'digest', data: { kind: 'notifications-digest', bucket: timeBucket(new Date(), 'hour') } },
+    );
+    attach(createDigestWorker(connection, digestQueue) as unknown as Worker, 'Digest', digestUnrecoverable);
+    logger.info(`Daily digest scheduled: "${env.NOTIFICATIONS_DIGEST_CRON}" UTC`);
   }
 
   logger.info(`Worker ready — ${workers.length} pipeline(s) registered.`);

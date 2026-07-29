@@ -83,3 +83,7 @@ export function enrichNews(params: { bucket: string }): Promise<{ enriched: numb
 export function dispatchNotifications(params: { bucket: string }): Promise<{ events: number; delivered: number }> {
   return request('/internal/notifications/dispatch', { method: 'POST', body: JSON.stringify(params) });
 }
+
+export function dispatchDigest(params: { bucket: string }): Promise<{ users: number; sent: number }> {
+  return request('/internal/notifications/digest', { method: 'POST', body: JSON.stringify(params) });
+}
