@@ -14,7 +14,7 @@ import { reconcileEvents } from '../../lib/calendar/reconcile.js';
 import type { NormalizedEvent } from '../../lib/calendar/types.js';
 import { cacheGet, cacheSet } from '../../lib/cache.js';
 
-const READ_TTL_SECONDS = 45;
+const READ_TTL_SECONDS = 120;
 
 /**
  * Fetch every provider for [from,to], reconcile, and upsert. Returns how many
@@ -98,7 +98,14 @@ export async function ingestWindow(from: Date, to: Date): Promise<{ upserted: nu
 }
 
 function cacheKey(q: CalendarQuery): string {
-  return `cal:${q.from ?? ''}:${q.to ?? ''}:${q.impact ?? ''}:${q.currency ?? ''}:${q.category ?? ''}`;
+  return `cal:${q.from ?? ''}:${q.to ?? ''}:${q.impact ?? ''}:${q.impacts ?? ''}:${q.currency ?? ''}:${q.category ?? ''}`;
+}
+
+const IMPACT_SET = new Set<EventImpact>(['HIGH', 'MEDIUM', 'LOW']);
+/** Parse the `impacts` CSV (falls back to single `impact`), keeping only valid values. */
+function parseImpacts(q: CalendarQuery): EventImpact[] {
+  const raw = q.impacts ? q.impacts.split(',') : q.impact ? [q.impact] : [];
+  return raw.map(s => s.trim().toUpperCase()).filter((s): s is EventImpact => IMPACT_SET.has(s as EventImpact));
 }
 
 export interface CalendarEventDTO {
@@ -130,19 +137,32 @@ export async function listEvents(q: CalendarQuery): Promise<CalendarEventDTO[]> 
   if (cached) return cached;
 
   const win = defaultWindow();
+  const impacts = parseImpacts(q);
   const where: Prisma.EconomicEventWhereInput = {
     eventTime: {
       gte: q.from ? new Date(q.from) : win.from,
       lte: q.to ? new Date(q.to) : win.to,
     },
-    ...(q.impact ? { impact: q.impact } : {}),
+    ...(impacts.length ? { impact: { in: impacts } } : {}),
     ...(q.currency ? { currency: q.currency.toUpperCase() } : {}),
     ...(q.category ? { category: q.category } : {}),
   };
   // Cap generously: a wide window with the full (holiday-inclusive) feed can hold
   // >500 events, and a 500 asc cap would return only the earliest (all past),
   // hiding today + upcoming entirely.
-  const rows = await prisma.economicEvent.findMany({ where, orderBy: { eventTime: 'asc' }, take: 2000 });
+  // Select ONLY the DTO columns — crucially NOT the `sources` provenance JSON,
+  // which the list never uses and which ballooned the payload + query time
+  // (~1.1MB / 40s for a wide window). Detail view (getEvent) still loads sources.
+  const rows = await prisma.economicEvent.findMany({
+    where,
+    orderBy: { eventTime: 'asc' },
+    take: 2000,
+    select: {
+      id: true, title: true, country: true, currency: true, category: true,
+      impact: true, eventTime: true, actual: true, forecast: true,
+      previous: true, unit: true, actualAt: true,
+    },
+  });
   const dto = rows.map(toDTO);
   await cacheSet(key, dto, READ_TTL_SECONDS);
   return dto;
