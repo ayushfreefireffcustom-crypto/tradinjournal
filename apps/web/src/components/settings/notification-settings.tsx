@@ -110,18 +110,30 @@ export default function NotificationSettings() {
           <Row title="In-app" desc="Show alerts in the notification bell.">
             <Toggle on={prefs.inApp} onClick={() => patch({ inApp: !prefs.inApp })} label="In-app alerts" />
           </Row>
-          <Row title="Email" desc="Send event reminders to your account email.">
-            <Toggle on={prefs.email} onClick={() => patch({ email: !prefs.email })} label="Email alerts" />
+          <Row title="Email digest" desc="One daily email compiling your upcoming events, to your account address.">
+            <Toggle on={prefs.email} onClick={() => patch({ email: !prefs.email })} label="Email digest" />
           </Row>
           {prefs.pushAvailable && (
-            <Row title="Browser push" desc="Push notifications even when the tab is closed.">
+            <Row title="Browser push" desc="Real-time alerts even when the tab is closed.">
               <Toggle
                 on={prefs.push}
                 onClick={async () => {
                   if (!prefs.push) {
+                    // If the browser has already blocked notifications, requestPermission()
+                    // resolves to 'denied' with no prompt — guide the user to unblock.
+                    if (typeof Notification !== 'undefined' && Notification.permission === 'denied') {
+                      setError('Notifications are blocked for this site. Click the site icon at the left of the address bar → Notifications → Allow, then toggle again. (In Brave, also turn on brave://settings/privacy → “Use Google services for push messaging”.)');
+                      return;
+                    }
                     const res = prefs.vapidPublicKey ? await enablePush(prefs.vapidPublicKey) : { ok: false, reason: 'unavailable' };
                     if (!res.ok) {
-                      setError(res.reason === 'denied' ? 'Browser blocked notifications — allow them and retry.' : 'Could not enable push on this device.');
+                      setError(
+                        res.reason === 'denied'
+                          ? 'Notifications are blocked for this site. Allow them via the site icon in the address bar → Notifications → Allow, then try again.'
+                          : res.reason === 'unsupported'
+                            ? 'This browser doesn’t support web push.'
+                            : 'Could not enable push on this device.',
+                      );
                       return;
                     }
                     void patch({ push: true });
