@@ -123,6 +123,14 @@ const envSchema = z.object({
 
   // Daily email digest — one compilation email/user/day. Default 07:00 UTC.
   NOTIFICATIONS_DIGEST_CRON: z.string().default('0 7 * * *'),
+
+  // Run the background jobs (reminders / ingest / digest) INSIDE the API process
+  // instead of a separate worker. For local dev or single-service deploys with no
+  // Redis. Leave off when a real worker is running to avoid double execution.
+  IN_PROCESS_SCHEDULER: z
+    .string()
+    .default('false')
+    .transform(v => v.toLowerCase() === 'true' || v === '1'),
 });
 
 export type Env = z.infer<typeof envSchema> & {
