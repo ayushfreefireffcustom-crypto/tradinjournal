@@ -1,13 +1,14 @@
 // Notification dispatch — runs once a minute (worker → /internal). Finds economic
-// events entering each user's reminder window and delivers across their enabled
-// channels (in-app / email / push), exactly once per (event, user, channel) via
-// the NotificationDelivery ledger. Idempotent: a duplicate cron fire or retry
+// events entering each user's reminder window and delivers REAL-TIME reminders
+// via in-app + web push, exactly once per (event, user, channel) via the
+// NotificationDelivery ledger. Idempotent: a duplicate cron fire or retry
 // re-inserts nothing and re-sends nothing.
+//
+// Email is deliberately NOT a real-time channel here — a per-event email would
+// blow the Resend free tier. Users who opt into email get ONE daily digest
+// instead (see digest.service.ts).
 import { prisma } from '@tradinjournal/db';
-import { logger } from '@tradinjournal/logger';
 import type { EventImpact } from '@tradinjournal/contracts';
-import { sendEmail } from '../../lib/email/client.js';
-import { eventReminderEmail } from '../../lib/email/templates.js';
 import { sendPush } from '../../lib/push.js';
 
 const RANK: Record<EventImpact, number> = { LOW: 0, MEDIUM: 1, HIGH: 2 };
@@ -74,14 +75,11 @@ export async function dispatchReminders(): Promise<{ events: number; delivered: 
   }
   if (work.length === 0) return { events: events.length, delivered: 0 };
 
-  // Emails + push subs needed for the work set — batch load.
-  const emailUserIds = [...new Set(work.filter(w => w.prefs.email).map(w => w.userId))];
+  // Push subscriptions for the work set — batch load.
   const pushUserIds = [...new Set(work.filter(w => w.prefs.push).map(w => w.userId))];
-  const [emailUsers, pushSubs] = await Promise.all([
-    emailUserIds.length ? prisma.user.findMany({ where: { id: { in: emailUserIds } }, select: { id: true, name: true, email: true } }) : Promise.resolve([]),
-    pushUserIds.length ? prisma.pushSubscription.findMany({ where: { userId: { in: pushUserIds } } }) : Promise.resolve([]),
-  ]);
-  const userById = new Map(emailUsers.map(u => [u.id, u]));
+  const pushSubs = pushUserIds.length
+    ? await prisma.pushSubscription.findMany({ where: { userId: { in: pushUserIds } } })
+    : [];
   const subsByUser = new Map<string, typeof pushSubs>();
   for (const s of pushSubs) (subsByUser.get(s.userId) ?? subsByUser.set(s.userId, []).get(s.userId)!).push(s);
 
@@ -108,32 +106,18 @@ export async function dispatchReminders(): Promise<{ events: number; delivered: 
           kind: 'event_reminder',
           title: `${event.currency} · ${event.title}`,
           body: `${event.impact} impact ${label}`,
-          href: '/economic-calendar',
+          href: '/markets',
           eventId: event.id,
         },
       });
       delivered += 1;
     }
 
-    if (prefs.email) {
-      const u = userById.get(userId);
-      if (u?.email && (await claim(userId, dedupKey, 'email'))) {
-        const { subject, html } = eventReminderEmail({
-          name: u.name, eventTitle: event.title, currency: event.currency,
-          impact: event.impact, whenLabel: label, forecast: event.forecast, previous: event.previous,
-        });
-        await sendEmail({ to: u.email, subject, html, devNote: `[event-reminder] ${event.title}` }).catch(err =>
-          logger.warn(`Reminder email failed for ${userId}: ${(err as Error).message}`),
-        );
-        delivered += 1;
-      }
-    }
-
     if (prefs.push) {
       const subs = subsByUser.get(userId) ?? [];
       if (subs.length && (await claim(userId, dedupKey, 'push'))) {
         for (const sub of subs) {
-          const res = await sendPush(sub, { title: `${event.currency} · ${event.title}`, body: `${event.impact} impact ${label}`, url: '/economic-calendar' });
+          const res = await sendPush(sub, { title: `${event.currency} · ${event.title}`, body: `${event.impact} impact ${label}`, url: '/markets' });
           if (res === 'gone') await prisma.pushSubscription.deleteMany({ where: { endpoint: sub.endpoint } });
         }
         delivered += 1;
