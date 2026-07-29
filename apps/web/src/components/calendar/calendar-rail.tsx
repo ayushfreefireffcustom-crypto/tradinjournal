@@ -42,7 +42,9 @@ function shortDate(d: Date): string {
 
 export default function CalendarRail() {
   const [filter, setFilter] = useState<CalFilter>('week');
-  const [impacts, setImpacts] = useState<Set<EventImpact>>(() => new Set(IMPACTS)); // all on
+  // Default to HIGH+MEDIUM — the real economic releases. LOW (which includes bank
+  // holidays from the TradingView feed) is a toggle so it doesn't flood the list.
+  const [impacts, setImpacts] = useState<Set<EventImpact>>(() => new Set<EventImpact>(['HIGH', 'MEDIUM']));
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
