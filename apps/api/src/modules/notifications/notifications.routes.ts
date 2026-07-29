@@ -11,6 +11,7 @@ import {
   handlePushSubscribe,
   handlePushUnsubscribe,
   handleDispatch,
+  handleDispatchDigest,
 } from './notifications.controller.js';
 
 // All notification routes require a signed-in user.
@@ -31,3 +32,4 @@ pushRouter.post('/unsubscribe', handlePushUnsubscribe);
 export const notificationsInternalRouter: IRouter = Router();
 notificationsInternalRouter.use(requireInternalToken);
 notificationsInternalRouter.post('/dispatch', validateBody(notificationsDispatchSchema), handleDispatch);
+notificationsInternalRouter.post('/digest', validateBody(notificationsDispatchSchema), handleDispatchDigest);

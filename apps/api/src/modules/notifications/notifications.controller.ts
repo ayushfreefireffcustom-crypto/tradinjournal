@@ -11,6 +11,7 @@ import {
   removePushSubscription,
 } from './notifications.service.js';
 import { dispatchReminders } from './dispatch.service.js';
+import { sendDailyDigests } from './digest.service.js';
 
 // GET /api/notifications/preferences — includes whether push is even available.
 export async function handleGetPrefs(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -58,6 +59,15 @@ export async function handleMarkRead(req: Request, res: Response, next: NextFunc
 export async function handleDispatch(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     ok(res, await dispatchReminders());
+  } catch (err) {
+    next(err);
+  }
+}
+
+// POST /internal/notifications/digest — worker-only daily email digest.
+export async function handleDispatchDigest(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    ok(res, await sendDailyDigests());
   } catch (err) {
     next(err);
   }
