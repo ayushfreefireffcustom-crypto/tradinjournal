@@ -29,11 +29,12 @@ const FILTERS = ['upcoming', 'today', 'week', 'all'] as const;
 type CalFilter = (typeof FILTERS)[number];
 const FILTER_LABEL: Record<CalFilter, string> = { upcoming: 'Upcoming', today: 'Today', week: 'Week', all: 'All' };
 
-// Wide fetch window: grab everything the provider will give so all client-side
-// filters operate on real data (the API caps at 500 and returns what it has).
+// Fetch window centred near now (recent past + the month ahead) so the client-side
+// filters (Upcoming/Today/Week/All) all have real data. Kept tight enough that the
+// API's row cap comfortably includes today + future rather than only old events.
 function fetchWindow(): { from: string; to: string } {
   const now = Date.now();
-  return { from: new Date(now - 30 * 864e5).toISOString(), to: new Date(now + 60 * 864e5).toISOString() };
+  return { from: new Date(now - 7 * 864e5).toISOString(), to: new Date(now + 30 * 864e5).toISOString() };
 }
 
 function shortDate(d: Date): string {
