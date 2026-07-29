@@ -120,6 +120,9 @@ const envSchema = z.object({
   VAPID_PUBLIC_KEY: z.string().optional(),
   VAPID_PRIVATE_KEY: z.string().optional(),
   VAPID_SUBJECT: z.string().default('mailto:hello@tradelogs.com'),
+
+  // Daily email digest — one compilation email/user/day. Default 07:00 UTC.
+  NOTIFICATIONS_DIGEST_CRON: z.string().default('0 7 * * *'),
 });
 
 export type Env = z.infer<typeof envSchema> & {
