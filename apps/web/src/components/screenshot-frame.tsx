@@ -14,15 +14,18 @@ import { motion, useMotionValue, useSpring, useMotionTemplate, useReducedMotion 
 import { useRef, useState, useEffect } from 'react';
 
 interface Props {
-  src: string;
-  alt: string;
+  /** Raster source. Omit when passing live `children` instead. */
+  src?: string;
+  alt?: string;
   /** intrinsic pixel size of the source (for next/image ratio) */
-  width: number;
-  height: number;
+  width?: number;
+  height?: number;
   /** optional art-directed mobile source (tighter/zoomed crop) shown below sm */
   mobileSrc?: string;
   mobileWidth?: number;
   mobileHeight?: number;
+  /** Live mock content — rendered inside the frame instead of an image. */
+  children?: React.ReactNode;
   chrome?: boolean;
   glow?: boolean;
   tilt?: boolean;
@@ -35,12 +38,13 @@ const MAX_TILT = 5; // degrees
 
 export default function ScreenshotFrame({
   src,
-  alt,
+  alt = '',
   width,
   height,
   mobileSrc,
   mobileWidth,
   mobileHeight,
+  children,
   chrome = true,
   glow = true,
   tilt = true,
@@ -116,14 +120,16 @@ export default function ScreenshotFrame({
             <span className="w-2.5 h-2.5 rounded-full bg-profit/70" />
           </div>
         )}
-        {mobileSrc ? (
+        {children ? (
+          children
+        ) : mobileSrc && src ? (
           <>
             {/* Zoomed mobile crop — reads clearly on small screens */}
             <Image
               src={mobileSrc}
               alt={alt}
-              width={mobileWidth ?? width}
-              height={mobileHeight ?? height}
+              width={mobileWidth ?? width ?? 1000}
+              height={mobileHeight ?? height ?? 640}
               quality={95}
               priority={priority}
               sizes="100vw"
@@ -133,8 +139,8 @@ export default function ScreenshotFrame({
             <Image
               src={src}
               alt={alt}
-              width={width}
-              height={height}
+              width={width ?? 1000}
+              height={height ?? 640}
               quality={95}
               priority={priority}
               sizes={sizes}
@@ -142,19 +148,19 @@ export default function ScreenshotFrame({
               draggable={false}
             />
           </>
-        ) : (
+        ) : src ? (
           <Image
             src={src}
             alt={alt}
-            width={width}
-            height={height}
+            width={width ?? 1000}
+            height={height ?? 640}
             quality={95}
             priority={priority}
             sizes={sizes}
             className="w-full h-auto block select-none"
             draggable={false}
           />
-        )}
+        ) : null}
         {/* Cursor-following glare — makes the hovered area feel lifted */}
         {enabled && (
           <motion.span
