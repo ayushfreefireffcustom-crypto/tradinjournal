@@ -212,3 +212,45 @@ export function eventReminderEmail(params: {
   const footer = `You're receiving this because you enabled event reminders in TRADElogs. Manage them in Settings.`;
   return { subject: `${impact} ${currency} · ${eventTitle} ${whenLabel}`, html: shell(inner, { footer }) };
 }
+
+/**
+ * Daily market digest — ONE email compiling the day's upcoming events a user
+ * cares about, with a link back to the site. This is the email channel (per-event
+ * mail would blow the Resend free tier); real-time nudges go over web push.
+ */
+export function dailyDigestEmail(params: {
+  name: string;
+  events: Array<{
+    timeLabel: string; // "13:30 UTC"
+    currency: string;
+    title: string;
+    impact: 'LOW' | 'MEDIUM' | 'HIGH';
+    forecast: string | null;
+    previous: string | null;
+  }>;
+}): { subject: string; html: string } {
+  const { name, events } = params;
+  const first = name?.trim().split(' ')[0] || 'trader';
+  const n = events.length;
+  const rows = events
+    .map(e => {
+      const color = e.impact === 'HIGH' ? '#FE3A31' : e.impact === 'MEDIUM' ? '#FF9F0A' : MUTED;
+      return `
+      <div style="border-left:3px solid ${color};padding:10px 0 10px 12px;margin:0 0 10px;">
+        <div style="color:${MUTED};font-size:11px;">
+          <span style="color:${FG};font-weight:600;">${escapeHtml(e.timeLabel)}</span> &nbsp;·&nbsp;
+          <span style="color:${color};font-weight:700;">${e.impact}</span> &nbsp;·&nbsp; ${escapeHtml(e.currency)}
+        </div>
+        <div style="color:${FG};font-size:14px;font-weight:600;margin:3px 0 4px;">${escapeHtml(e.title)}</div>
+        <div style="color:${MUTED};font-size:12px;">Forecast: <span style="color:${FG};">${escapeHtml(e.forecast ?? '—')}</span> &nbsp;·&nbsp; Previous: <span style="color:${FG};">${escapeHtml(e.previous ?? '—')}</span></div>
+      </div>`;
+    })
+    .join('');
+  const inner = `
+    <h1 style="color:${FG};font-size:19px;font-weight:700;margin:0 0 6px;">Your day ahead, ${escapeHtml(first)} 📊</h1>
+    <p style="color:${MUTED};font-size:14px;line-height:1.6;margin:0 0 18px;">${n} market event${n === 1 ? '' : 's'} on your radar in the next 24 hours.</p>
+    ${rows}
+    <a href="${env.APP_URL}/markets" style="display:inline-block;background:${BRAND};color:${BG};font-size:14px;font-weight:700;text-decoration:none;padding:12px 22px;border-radius:10px;margin-top:8px;">Open Markets →</a>`;
+  const footer = `Your daily market digest from TRADElogs. Turn this off anytime in Settings → Notifications.`;
+  return { subject: `Your market day: ${n} event${n === 1 ? '' : 's'} to watch`, html: shell(inner, { footer, width: 520 }) };
+}
