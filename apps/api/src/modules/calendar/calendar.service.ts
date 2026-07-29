@@ -139,7 +139,10 @@ export async function listEvents(q: CalendarQuery): Promise<CalendarEventDTO[]> 
     ...(q.currency ? { currency: q.currency.toUpperCase() } : {}),
     ...(q.category ? { category: q.category } : {}),
   };
-  const rows = await prisma.economicEvent.findMany({ where, orderBy: { eventTime: 'asc' }, take: 500 });
+  // Cap generously: a wide window with the full (holiday-inclusive) feed can hold
+  // >500 events, and a 500 asc cap would return only the earliest (all past),
+  // hiding today + upcoming entirely.
+  const rows = await prisma.economicEvent.findMany({ where, orderBy: { eventTime: 'asc' }, take: 2000 });
   const dto = rows.map(toDTO);
   await cacheSet(key, dto, READ_TTL_SECONDS);
   return dto;
