@@ -113,13 +113,12 @@ describe('dispatchReminders', () => {
     expect(out.delivered).toBe(0);
   });
 
-  it('sends email on the email channel and stamps the ledger per-channel', async () => {
+  it('does NOT send email in real-time — email is the daily digest, not a dispatch channel', async () => {
     prisma.economicEvent.findMany.mockResolvedValue([event({ inMinutes: 10 })]);
     prisma.notificationPreference.findMany.mockResolvedValue([pref({ inApp: false, email: true })]);
     prisma.user.findMany.mockResolvedValue([{ id: 'u1', name: 'Ayush', email: 'a@example.com' }]);
     await dispatchReminders();
-    expect(sendEmail).toHaveBeenCalledTimes(1);
-    expect(sendEmail.mock.calls[0]![0].to).toBe('a@example.com');
+    expect(sendEmail).not.toHaveBeenCalled();
   });
 
   it('prunes a dead push endpoint reported gone', async () => {
