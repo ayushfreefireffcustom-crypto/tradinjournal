@@ -62,7 +62,7 @@ export default function AiReportCard({ accountId }: Props) {
   if (!accountId || failed) return null;
 
   return (
-    <div className="tcard p-5" data-testid="ai-report-card">
+    <div className="tcard p-5 mb-3" data-testid="ai-report-card">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2.5">
           <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-profit/12 ring-1 ring-profit/20 shrink-0">
