@@ -209,7 +209,7 @@ export default function NotebookPage() {
           </div>
         )}
 
-        <div className="grid grid-cols-12 gap-3">
+        <div className="grid grid-cols-12 gap-3 items-start">
           {/* Composer */}
           <section className="col-span-12 lg:col-span-5 xl:col-span-4">
             <div className="tcard p-0 lg:sticky lg:top-4" data-testid="notebook-composer">
