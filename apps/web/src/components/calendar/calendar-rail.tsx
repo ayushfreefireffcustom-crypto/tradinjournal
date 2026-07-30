@@ -30,11 +30,16 @@ type CalFilter = (typeof FILTERS)[number];
 const FILTER_LABEL: Record<CalFilter, string> = { upcoming: 'Upcoming', today: 'Today', week: 'Week', all: 'All' };
 
 // Fetch window centred near now (recent past + the month ahead) so the client-side
-// filters (Upcoming/Today/Week/All) all have real data. Kept tight enough that the
-// API's row cap comfortably includes today + future rather than only old events.
+// filters (Upcoming/Today/Week/All) all have real data. DAY-ALIGNED so the from/to
+// don't change every render — otherwise a millisecond-precise window makes every
+// request a fresh cache miss (the calendar read caches on the exact from/to).
 function fetchWindow(): { from: string; to: string } {
-  const now = Date.now();
-  return { from: new Date(now - 7 * 864e5).toISOString(), to: new Date(now + 30 * 864e5).toISOString() };
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return {
+    from: new Date(startOfToday.getTime() - 7 * 864e5).toISOString(),
+    to: new Date(startOfToday.getTime() + 31 * 864e5).toISOString(),
+  };
 }
 
 function shortDate(d: Date): string {
@@ -52,12 +57,16 @@ export default function CalendarRail() {
   const [selected, setSelected] = useState<CalendarEvent | null>(null);
   const reqId = useRef(0); // guards against a stale response overwriting a newer one
 
+  // Fetch only the selected impacts server-side — the default HIGH+MEDIUM is ~3×
+  // smaller than every-impact (which includes bank-holiday noise). Refetch when
+  // the impact set changes.
+  const impactsKey = [...impacts].sort().join(',');
   const load = useCallback(async (spinner: boolean) => {
     const id = ++reqId.current;
     if (spinner) setLoading(true);
     const { from, to } = fetchWindow();
     try {
-      const rows = await api.calendar.list({ from, to });
+      const rows = await api.calendar.list({ from, to, impacts: impactsKey ? (impactsKey.split(',') as EventImpact[]) : undefined });
       if (id !== reqId.current) return; // superseded
       setEvents(rows);
       setError('');
@@ -66,7 +75,7 @@ export default function CalendarRail() {
     } finally {
       if (id === reqId.current) setLoading(false);
     }
-  }, []);
+  }, [impactsKey]);
 
   useEffect(() => { void load(true); }, [load]);
   useEffect(() => {
