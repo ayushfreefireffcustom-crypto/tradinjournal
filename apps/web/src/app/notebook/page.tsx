@@ -299,7 +299,7 @@ export default function NotebookPage() {
                     onChange={e => setDraft(d => ({ ...d, body: e.target.value }))}
                     placeholder="What happened, what you saw, what you'll do differently…"
                     data-testid="composer-body"
-                    className="tinput min-h-[160px] resize-y leading-relaxed"
+                    className="tinput min-h-[120px] resize-y leading-relaxed"
                   />
                 </label>
 
