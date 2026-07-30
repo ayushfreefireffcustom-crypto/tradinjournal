@@ -18,6 +18,23 @@ function ago(iso: string): string {
   return `${Math.floor(s / 86400)}d`;
 }
 
+// Currency → flag emoji, for the notification avatar.
+const CCY_FLAG: Record<string, string> = {
+  USD: '🇺🇸', EUR: '🇪🇺', GBP: '🇬🇧', JPY: '🇯🇵', AUD: '🇦🇺', CAD: '🇨🇦', CHF: '🇨🇭',
+  NZD: '🇳🇿', CNY: '🇨🇳', INR: '🇮🇳', BRL: '🇧🇷', KRW: '🇰🇷', MXN: '🇲🇽', ZAR: '🇿🇦',
+  SEK: '🇸🇪', NOK: '🇳🇴', SGD: '🇸🇬', HKD: '🇭🇰', RUB: '🇷🇺', TRY: '🇹🇷', PLN: '🇵🇱',
+};
+
+/** Avatar glyph + impact-colored ring for a notification, parsed from its text. */
+function visualFor(n: { kind?: string; title: string; body?: string | null }): { glyph: string; ring: string } {
+  const ccy = (n.title.split(/[ ·]/)[0] ?? '').toUpperCase();
+  const b = (n.body ?? '').toUpperCase();
+  const ring = b.includes('HIGH') ? 'border-loss/50' : b.includes('MEDIUM') ? 'border-warning/50' : 'border-border-strong';
+  const isNews = (n.kind ?? '').includes('news');
+  const glyph = isNews ? '📰' : CCY_FLAG[ccy] ?? '📅';
+  return { glyph, ring };
+}
+
 export default function NotificationBell() {
   const [items, setItems] = useState<AppNotification[]>([]);
   const [unread, setUnread] = useState(0);
@@ -91,12 +108,16 @@ export default function NotificationBell() {
             ) : (
               <ul className="divide-y divide-border-soft">
                 {items.map(n => {
+                  const v = visualFor(n);
                   const body = (
-                    <>
-                      <div className="text-[12.5px] text-fg leading-snug">{n.title}</div>
-                      {n.body && <div className="text-[11.5px] text-fg-3 mt-0.5 leading-snug">{n.body}</div>}
-                      <div className="text-[9.5px] tracking-widest uppercase text-fg-3 mt-1">{ago(n.createdAt)} ago</div>
-                    </>
+                    <div className="flex gap-2.5">
+                      <span className={`shrink-0 w-8 h-8 rounded-full border ${v.ring} bg-surface flex items-center justify-center text-[15px] leading-none`} aria-hidden>{v.glyph}</span>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-[12.5px] text-fg leading-snug">{n.title}</div>
+                        {n.body && <div className="text-[11.5px] text-fg-3 mt-0.5 leading-snug">{n.body}</div>}
+                        <div className="text-[9.5px] tracking-widest uppercase text-fg-3 mt-1">{ago(n.createdAt)} ago</div>
+                      </div>
+                    </div>
                   );
                   return (
                     <li key={n.id} className={n.read ? '' : 'bg-profit/[0.04]'}>
