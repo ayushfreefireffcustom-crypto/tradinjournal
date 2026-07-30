@@ -7,6 +7,7 @@ import { EnvelopeSimple, Check } from '@phosphor-icons/react';
 import AppShell from '@/components/app-shell';
 import NotificationSettings from '@/components/settings/notification-settings';
 import ProfileCard from '@/components/settings/profile-card';
+import SettingsAside from '@/components/settings/settings-aside';
 import { useAccounts } from '@/lib/use-accounts';
 import { api, type BrokerAccount } from '@/lib/api';
 
@@ -77,10 +78,12 @@ export default function SettingsPage() {
       pageTitle="Settings"
       pageSubtitle="// PREFERENCES"
     >
-      <div className="p-3 sm:p-4 lg:p-6 w-full max-w-2xl mx-auto flex flex-col gap-4" data-testid="settings-page">
+      <div className="p-3 sm:p-4 lg:p-6 w-full max-w-5xl mx-auto" data-testid="settings-page">
         <ProfileCard accountCount={accounts.length} />
-        <NotificationSettings />
-        <div className="tcard p-5">
+        <div className="grid lg:grid-cols-[1.65fr_1fr] gap-4 mt-4 items-start">
+          <div className="flex flex-col gap-4 min-w-0">
+            <NotificationSettings />
+            <div className="tcard p-5">
           <div className="flex items-start gap-3">
             <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-profit/12 ring-1 ring-profit/20 shrink-0">
               <EnvelopeSimple size={16} weight="fill" className="text-profit" />
@@ -135,6 +138,9 @@ export default function SettingsPage() {
               {error}
             </p>
           )}
+            </div>
+          </div>
+          <SettingsAside />
         </div>
       </div>
     </AppShell>
