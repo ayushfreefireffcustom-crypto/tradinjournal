@@ -321,6 +321,8 @@ export interface CalendarFilters {
   from?: string;
   to?: string;
   impact?: EventImpact;
+  /** CSV of impacts to keep, e.g. ["HIGH","MEDIUM"] — trims the payload. */
+  impacts?: EventImpact[];
   currency?: string;
   category?: string;
 }
@@ -330,6 +332,7 @@ function calendarQuery(f: CalendarFilters): string {
   if (f.from) q.set('from', f.from);
   if (f.to) q.set('to', f.to);
   if (f.impact) q.set('impact', f.impact);
+  if (f.impacts?.length) q.set('impacts', f.impacts.join(','));
   if (f.currency) q.set('currency', f.currency);
   if (f.category) q.set('category', f.category);
   const s = q.toString();
