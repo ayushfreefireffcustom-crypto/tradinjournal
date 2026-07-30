@@ -7,9 +7,8 @@ import { api, type BrokerAccount, type JournalEntry } from '@/lib/api';
 import { useAccounts } from '@/lib/use-accounts';
 import { toCsv, downloadCsv, dateStamp } from '@/lib/csv';
 import { useToast } from '@/components/toast';
-import EmptyState from '@/components/empty-state';
 import JournalEmpty from '@/components/journal/journal-empty';
-import { NotePencil } from '@phosphor-icons/react';
+import JournalStats from '@/components/journal/journal-stats';
 
 const EMOTIONS = ['Disciplined', 'Confident', 'Patient', 'FOMO', 'Revenge', 'Hesitant'];
 const NEGATIVE = ['FOMO', 'Revenge', 'Hesitant'];
@@ -180,20 +179,27 @@ export default function NotebookPage() {
       pageSubtitle="// TRADING LOGBOOK"
     >
       <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto fade-up" data-testid="notebook-page">
-        <div className="flex items-end justify-between gap-4 flex-wrap mb-6">
-          <div className="min-w-0">
-            <div className="text-[10px] tracking-[0.25em] text-fg-3">[ JOURNAL // LOGBOOK ]</div>
-            <h1 className="font-display font-black text-3xl sm:text-4xl tracking-tighter mt-2">{entries.length} ENTRIES</h1>
-            <div className="text-[10px] sm:text-[11px] text-fg-3 tracking-widest mt-1">FREEFORM NOTES · REVIEWS · TRADE PLANS</div>
+        {/* Header card — title + live journaling stats + mindset mix */}
+        <div className="tcard p-5 sm:p-6 mb-4">
+          <div className="flex items-start justify-between gap-4 flex-wrap mb-5">
+            <div className="min-w-0">
+              <div className="text-[10px] tracking-[0.25em] text-fg-3">[ JOURNAL // LOGBOOK ]</div>
+              <h1 className="font-display font-black text-3xl sm:text-4xl tracking-tighter mt-2 flex items-baseline gap-2">
+                {entries.length}
+                <span className="text-fg-3 text-xl sm:text-2xl font-bold tracking-tight">{entries.length === 1 ? 'entry' : 'entries'}</span>
+              </h1>
+              <div className="text-[11px] sm:text-[12px] text-fg-3 mt-1.5">Your trading psychology, one note at a time.</div>
+            </div>
+            <button
+              onClick={exportCsv}
+              disabled={entries.length === 0}
+              data-testid="export-csv"
+              className="btn btn-ghost py-2 text-[10px] tracking-[0.22em] shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              ↓ EXPORT CSV
+            </button>
           </div>
-          <button
-            onClick={exportCsv}
-            disabled={entries.length === 0}
-            data-testid="export-csv"
-            className="btn btn-ghost py-2 text-[10px] tracking-[0.22em] shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            ↓ EXPORT CSV
-          </button>
+          <JournalStats entries={entries} />
         </div>
 
         {error && (
@@ -327,7 +333,7 @@ export default function NotebookPage() {
               sorted.map(e => {
                 const acc = accountName(e.brokerAccountId);
                 return (
-                  <article key={e.id} className="tcard tcard-hover p-4 sm:p-5" data-testid={`entry-${e.id}`}>
+                  <article key={e.id} className={`tcard tcard-hover p-4 sm:p-5 border-l-2 ${e.emotion ? (NEGATIVE.includes(e.emotion) ? 'border-l-loss/60' : 'border-l-profit/60') : 'border-l-border-strong'}`} data-testid={`entry-${e.id}`}>
                     <div className="flex items-start justify-between gap-3 flex-wrap">
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap text-[10px] tracking-widest text-fg-3">
@@ -339,8 +345,8 @@ export default function NotebookPage() {
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
                         {e.emotion && (
-                          <span className={`px-2 py-1 text-[9px] tracking-widest border ${NEGATIVE.includes(e.emotion) ? 'border-loss/50 text-loss' : 'border-profit/50 text-profit'}`}>
-                            {e.emotion.toUpperCase()}
+                          <span className={`px-2 py-1 rounded-full text-[9px] tracking-widest border flex items-center gap-1.5 ${NEGATIVE.includes(e.emotion) ? 'border-loss/50 text-loss bg-loss/5' : 'border-profit/50 text-profit bg-profit/5'}`}>
+                            <span className="w-1.5 h-1.5 rounded-full bg-current" /> {e.emotion.toUpperCase()}
                           </span>
                         )}
                         <button
@@ -368,7 +374,7 @@ export default function NotebookPage() {
                     {e.tags.length > 0 && (
                       <div className="flex flex-wrap gap-1.5 mt-3">
                         {e.tags.map(t => (
-                          <span key={t} className="px-2 py-0.5 text-[9px] tracking-widest border border-border-soft text-fg-3">{t.toUpperCase()}</span>
+                          <span key={t} className="px-2 py-0.5 rounded-full text-[9px] tracking-widest border border-border-soft text-fg-3">#{t.toUpperCase()}</span>
                         ))}
                       </div>
                     )}
