@@ -77,7 +77,7 @@ export default function SettingsPage() {
       pageTitle="Settings"
       pageSubtitle="// PREFERENCES"
     >
-      <div className="p-3 sm:p-4 lg:p-6 max-w-3xl mx-auto lg:mx-0 flex flex-col gap-4" data-testid="settings-page">
+      <div className="p-3 sm:p-4 lg:p-6 w-full max-w-2xl mx-auto flex flex-col gap-4" data-testid="settings-page">
         <ProfileCard accountCount={accounts.length} />
         <NotificationSettings />
         <div className="tcard p-5">
