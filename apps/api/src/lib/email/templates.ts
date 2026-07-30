@@ -20,14 +20,29 @@ const SIGNUP_FOOTER = `You're receiving this because someone used this address t
 // transactional OTP does not. `width` widens the card for long-form content.
 function shell(inner: string, opts: { footer?: string; width?: number } = {}): string {
   const { footer = SIGNUP_FOOTER, width = 480 } = opts;
+  // Fluid + responsive: the card is width:100% capped at `width` on desktop, and
+  // a media query tightens padding/logo on phones (supported by iOS/Apple Mail,
+  // and gracefully ignored elsewhere — the fluid width already handles those).
   return `<!doctype html>
-<html>
-  <body style="margin:0;padding:0;background:${BG};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,Roboto,Helvetica,Arial,sans-serif;">
-    <div style="max-width:${width}px;margin:0 auto;padding:40px 24px;">
-      <div style="font-size:20px;font-weight:800;letter-spacing:-0.02em;color:${FG};margin-bottom:28px;">
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="dark">
+    <style>
+      @media only screen and (max-width: 600px) {
+        .tl-wrap { padding: 22px 14px !important; }
+        .tl-card { padding: 20px !important; border-radius: 12px !important; }
+        .tl-logo { font-size: 18px !important; margin-bottom: 20px !important; }
+      }
+    </style>
+  </head>
+  <body style="margin:0;padding:0;background:${BG};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,Roboto,Helvetica,Arial,sans-serif;-webkit-text-size-adjust:100%;">
+    <div class="tl-wrap" style="width:100%;max-width:${width}px;margin:0 auto;padding:40px 24px;box-sizing:border-box;">
+      <div class="tl-logo" style="font-size:20px;font-weight:800;letter-spacing:-0.02em;color:${FG};margin-bottom:28px;">
         TRADE<span style="color:${BRAND};">logs</span>
       </div>
-      <div style="background:${CARD};border:1px solid ${BORDER};border-radius:16px;padding:32px;">
+      <div class="tl-card" style="background:${CARD};border:1px solid ${BORDER};border-radius:16px;padding:32px;">
         ${inner}
       </div>
       <p style="color:${MUTED};font-size:12px;line-height:1.6;margin:24px 4px 0;">
