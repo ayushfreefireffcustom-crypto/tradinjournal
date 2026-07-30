@@ -15,6 +15,7 @@ import MarkdownMessage from '@/components/coach/markdown-message';
 import NewsModal from '@/components/news/news-modal';
 import NewsThumb from '@/components/news/news-thumb';
 import SourcePicker from '@/components/news/source-picker';
+import { Loader } from '@/components/loader';
 import { matchSymbols, matchesUserSymbols } from '@/lib/symbol-match';
 import { api, type NewsItem, type NewsCategory, type Sentiment, type EventImpact, type NewsSource } from '@/lib/api';
 
@@ -518,7 +519,7 @@ export default function NewsFeed({ userSymbols = EMPTY_SYMBOLS, symbolsReady = t
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
                   {gridItems.map(it => <NewsCard key={it.id} it={it} onOpen={setSelectedItem} matched={matchOf(it)} />)}
                 </div>
-                {cursor && <div ref={sentinel} className="h-10 flex items-center justify-center text-[11px] text-fg-3">{loadingMore ? 'Loading…' : ''}</div>}
+                {cursor && <div ref={sentinel} className="h-12 flex items-center justify-center">{loadingMore && <Loader size={20} />}</div>}
                 <p className="text-center text-[9px] tracking-[0.2em] text-fg-3 mt-4">
                   AGGREGATED HEADLINES · AI TAGS ARE INFORMATIONAL · NOT INVESTMENT ADVICE
                 </p>
