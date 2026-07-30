@@ -1,35 +1,20 @@
-// Illustrative empty state for the Journal — instead of a bare icon, it shows a
-// faded stack of sample entries (what you're about to create) plus guidance, so
-// the page reads intentional and inviting rather than blank.
+// Illustrative empty state for the Journal — a single clean "example entry"
+// preview (so you see exactly what you're about to create) plus guidance.
+// Centered and appropriately sized so the column never looks half-empty.
 import { NotePencil, ArrowLeft } from '@phosphor-icons/react';
-
-// A faded, non-interactive preview of a journal entry.
-function GhostEntry({ accent, emotion, lines, className = '' }: { accent: string; emotion: string; lines: number[]; className?: string }) {
-  return (
-    <div className={`rounded-[var(--radius-card)] border border-border-soft bg-surface/40 p-4 ${className}`}>
-      <div className="flex items-center justify-between mb-2.5">
-        <div className="flex items-center gap-2 text-[9px] tracking-widest text-fg-3/70">
-          <span className="numeric">12 JUL</span>
-          <span className={accent}>· {emotion}</span>
-        </div>
-        <span className={`px-2 py-0.5 text-[8px] tracking-widest border rounded ${accent} border-current/40`}>{emotion}</span>
-      </div>
-      <div className="h-2.5 w-1/2 rounded bg-fg/10 mb-2.5" />
-      <div className="space-y-1.5">
-        {lines.map((w, i) => <div key={i} className="h-1.5 rounded bg-fg/[0.06]" style={{ width: `${w}%` }} />)}
-      </div>
-    </div>
-  );
-}
 
 export default function JournalEmpty() {
   return (
-    <div className="tcard p-8 sm:p-10 flex flex-col items-center text-center" data-testid="notebook-empty">
-      {/* Illustrative stack of sample entries */}
-      <div className="relative w-full max-w-[320px] h-[168px] mb-7" aria-hidden>
-        <div className="absolute inset-x-6 top-6 opacity-40 scale-[0.96]"><GhostEntry accent="text-loss" emotion="TILTED" lines={[100, 82, 60]} /></div>
-        <div className="absolute inset-x-3 top-3 opacity-70 scale-[0.98]"><GhostEntry accent="text-warning" emotion="ANXIOUS" lines={[100, 74]} /></div>
-        <div className="absolute inset-x-0 top-0"><GhostEntry accent="text-profit" emotion="DISCIPLINED" lines={[100, 88, 66]} /></div>
+    <div className="tcard flex flex-col items-center justify-center text-center px-5 sm:px-8 py-10 sm:py-14 min-h-[440px]" data-testid="notebook-empty">
+      {/* A single, tasteful sample entry — shows the shape of a journal note. */}
+      <div className="relative w-full max-w-[360px] rounded-[var(--radius-card)] border border-dashed border-border-strong bg-surface/30 p-4 text-left mb-8">
+        <span className="absolute -top-2 left-4 px-1.5 py-0.5 text-[8px] tracking-[0.18em] bg-app text-fg-3 border border-border-soft rounded">EXAMPLE</span>
+        <div className="flex items-center justify-between mb-2.5">
+          <span className="text-[9px] tracking-[0.16em] text-fg-3 numeric">12 JUL · LONDON</span>
+          <span className="px-1.5 py-0.5 text-[8px] tracking-[0.16em] border border-profit/50 text-profit rounded">DISCIPLINED</span>
+        </div>
+        <div className="text-[13px] font-semibold text-fg/80 mb-1.5">Waited for the London open</div>
+        <p className="text-[11px] text-fg-3 leading-relaxed">Held back until the range broke with volume. No revenge trades after the first stop — followed the plan and let it run to target.</p>
       </div>
 
       <span className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-profit/12 ring-1 ring-profit/25 mb-4">
@@ -46,12 +31,11 @@ export default function JournalEmpty() {
         ))}
       </div>
 
-      <div className="flex items-center gap-1.5 text-[11px] text-profit mt-6 lg:hidden">
-        Write your first note below
-      </div>
-      <div className="hidden lg:flex items-center gap-1.5 text-[11px] text-profit mt-6">
-        <ArrowLeft size={13} weight="bold" /> Write your first note on the left
-      </div>
+      <span className="flex items-center gap-1.5 text-[11px] text-profit mt-6">
+        <ArrowLeft size={13} weight="bold" className="hidden lg:inline" />
+        <span className="lg:hidden">Write your first note below</span>
+        <span className="hidden lg:inline">Write your first note on the left</span>
+      </span>
     </div>
   );
 }
