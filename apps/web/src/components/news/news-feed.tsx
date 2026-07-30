@@ -219,6 +219,7 @@ export default function NewsFeed({ userSymbols = EMPTY_SYMBOLS, symbolsReady = t
   const gridItems = (lead ? items.filter(i => i.id !== lead.id) : items).filter(i => !radarIds.has(i.id));
 
   const sentinel = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const filters = useCallback(
     () => ({
@@ -283,7 +284,9 @@ export default function NewsFeed({ userSymbols = EMPTY_SYMBOLS, symbolsReady = t
     return () => { controller.abort(); clearInterval(poll); setLive(false); };
   }, [category, highOnly, personalized, prefs]);
 
-  // Infinite scroll (bottom feed).
+  // Infinite scroll (bottom feed). The feed scrolls inside an inner
+  // overflow-y-auto container, so the observer must watch THAT element as its
+  // root — not the viewport (which never moves), or it never fires.
   useEffect(() => {
     const el = sentinel.current;
     if (!el || !cursor) return;
@@ -297,7 +300,7 @@ export default function NewsFeed({ userSymbols = EMPTY_SYMBOLS, symbolsReady = t
       } catch { /* ignore */ } finally {
         setLoadingMore(false);
       }
-    }, { rootMargin: '400px' });
+    }, { root: scrollRef.current, rootMargin: '600px' });
     io.observe(el);
     return () => io.disconnect();
   }, [cursor, loadingMore, filters]);
@@ -415,7 +418,7 @@ export default function NewsFeed({ userSymbols = EMPTY_SYMBOLS, symbolsReady = t
           </div>
         )}
 
-        <div className="flex-1 overflow-y-auto px-3 sm:px-4 lg:px-6 py-4" data-testid="news-list">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 sm:px-4 lg:px-6 py-4" data-testid="news-list">
           <div className="max-w-7xl mx-auto">
             {/* Brief panel */}
             {briefOpen && (
