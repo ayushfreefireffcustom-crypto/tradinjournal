@@ -39,7 +39,6 @@ export default function NotificationBell() {
   const [items, setItems] = useState<AppNotification[]>([]);
   const [unread, setUnread] = useState(0);
   const [open, setOpen] = useState(false);
-  const [failed, setFailed] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   const load = useCallback(async () => {
@@ -48,7 +47,8 @@ export default function NotificationBell() {
       setItems(res.items);
       setUnread(res.unread);
     } catch {
-      setFailed(true);
+      // Keep the bell visible on a transient failure (e.g. a DB blip) — the
+      // poll retries. Hiding it permanently made it vanish on some page loads.
     }
   }, []);
 
@@ -75,8 +75,6 @@ export default function NotificationBell() {
       try { await api.notifications.markRead(); } catch { /* ignore */ }
     }
   }, [open, unread]);
-
-  if (failed) return null;
 
   return (
     <div className="relative" ref={ref}>
