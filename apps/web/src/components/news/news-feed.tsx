@@ -8,7 +8,7 @@
 // Personalization: when a user picks preferred outlets, the feed splits into
 // "From your sources" (those outlets) on top and "More headlines" (everything
 // else) below. With no preference it renders as one plain feed.
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Newspaper, Sparkle, ArrowUpRight, Circle, Faders, Target, CurrencyBtc, ChartLineUp, Bank, Globe, Scales, type Icon } from '@phosphor-icons/react';
 import EmptyState from '@/components/empty-state';
 import MarkdownMessage from '@/components/coach/markdown-message';
@@ -66,7 +66,7 @@ function dedupePrepend(prev: NewsItem[], incoming: NewsItem[]): NewsItem[] {
  * no/broken image). The title is single-line + ellipsis so two-column rows never
  * mismatch on title line count. `matched` = symbols on it the user trades.
  */
-function NewsCard({ it, onOpen, matched = [] }: { it: NewsItem; onOpen: (i: NewsItem) => void; matched?: string[] }) {
+function NewsCardBase({ it, onOpen, matched = [] }: { it: NewsItem; onOpen: (i: NewsItem) => void; matched?: string[] }) {
   const high = it.impact === 'HIGH' || it.marketMoving;
   const mine = matched.length > 0;
   return (
@@ -139,6 +139,19 @@ function NewsCard({ it, onOpen, matched = [] }: { it: NewsItem; onOpen: (i: News
     </button>
   );
 }
+
+// Memoized: appending/prepending a page re-renders the parent, but each existing
+// card's `it` object keeps its reference and `onOpen` is stable, so untouched
+// cards skip re-render. Without this, every load-more re-rendered the whole list
+// (images + SVGs) synchronously — a heavy frame that flashed black mid-scroll.
+const NewsCard = memo(
+  NewsCardBase,
+  (a, b) =>
+    a.it === b.it &&
+    a.onOpen === b.onOpen &&
+    (a.matched?.length ?? 0) === (b.matched?.length ?? 0) &&
+    (a.matched ?? []).every((m, i) => m === (b.matched ?? [])[i]),
+);
 
 // The Market-News feed: filter bar + personalized two-section list + brief +
 // modals. Extracted from the old /news page so it can live inside the unified
@@ -219,6 +232,20 @@ export default function NewsFeed({ userSymbols = EMPTY_SYMBOLS, symbolsReady = t
   const gridItems = (lead ? items.filter(i => i.id !== lead.id) : items).filter(i => !radarIds.has(i.id));
 
   const scrollRef = useRef<HTMLDivElement>(null);
+  const prependAnchor = useRef<{ h: number; top: number } | null>(null);
+
+  // After a live prepend (see route()), keep the reader where they were: add the
+  // height that appeared above the viewport back onto scrollTop. Runs before
+  // paint so there's no visible jump. Appends at the bottom never set the anchor.
+  useLayoutEffect(() => {
+    const a = prependAnchor.current;
+    if (!a) return;
+    prependAnchor.current = null;
+    const el = scrollRef.current;
+    if (!el) return;
+    const delta = el.scrollHeight - a.h;
+    if (delta > 0) el.scrollTop = a.top + delta;
+  });
 
   const filters = useCallback(
     () => ({
@@ -266,12 +293,25 @@ export default function NewsFeed({ userSymbols = EMPTY_SYMBOLS, symbolsReady = t
     const controller = new AbortController();
     setLive(true);
     const pset = new Set(prefs);
+    // Live items are prepended at the top of the feed. If the reader is scrolled
+    // down, that would shove everything below the viewport and make the browser's
+    // scroll-anchoring lurch (content flashing / snapping). So before a prepend
+    // that actually adds something, record the pre-update scroll metrics; a
+    // layout effect restores the visual position after commit (see below).
+    const anchorIfScrolled = () => {
+      const el = scrollRef.current;
+      if (el && el.scrollTop > 40) prependAnchor.current = { h: el.scrollHeight, top: el.scrollTop };
+    };
     const route = (incoming: NewsItem[]) => {
-      if (!personalized) { setItems(prev => dedupePrepend(prev, incoming)); return; }
+      if (!incoming.length) return;
+      if (!personalized) {
+        setItems(prev => { const next = dedupePrepend(prev, incoming); if (next !== prev) anchorIfScrolled(); return next; });
+        return;
+      }
       const top = incoming.filter(i => pset.has(i.source));
       const rest = incoming.filter(i => !pset.has(i.source));
-      if (top.length) setTopItems(prev => dedupePrepend(prev, top));
-      if (rest.length) setItems(prev => dedupePrepend(prev, rest));
+      if (top.length) setTopItems(prev => { const next = dedupePrepend(prev, top); if (next !== prev) anchorIfScrolled(); return next; });
+      if (rest.length) setItems(prev => { const next = dedupePrepend(prev, rest); if (next !== prev) anchorIfScrolled(); return next; });
     };
     api.news.stream(route, controller.signal).catch(() => setLive(false));
     const poll = setInterval(async () => {
@@ -445,7 +485,10 @@ export default function NewsFeed({ userSymbols = EMPTY_SYMBOLS, symbolsReady = t
               </div>
             )}
 
-            {loading ? (
+            {loading && items.length === 0 && topItems.length === 0 ? (
+              // Full-page shimmers only on the very first load. A background refresh
+              // (filter change, live refresh) keeps the existing feed on screen so it
+              // never blanks out and bumps your scroll position.
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">{Array.from({ length: 8 }).map((_, i) => <div key={i} className="shimmer h-[132px]" />)}</div>
             ) : error ? (
               <EmptyState icon={Newspaper} title="News unavailable" hint={error} />
