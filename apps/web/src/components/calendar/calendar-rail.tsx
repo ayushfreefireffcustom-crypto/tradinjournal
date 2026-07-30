@@ -10,6 +10,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CalendarDots, Star, ArrowClockwise } from '@phosphor-icons/react';
 import EventModal from '@/components/calendar/event-modal';
+import { Loader } from '@/components/loader';
 import {
   startOfDay,
   startOfWeek,
@@ -255,7 +256,7 @@ export default function CalendarRail() {
       {/* List */}
       <div className="flex-1 overflow-y-auto px-2 py-2" data-testid="cal-rail-list">
         {loading ? (
-          <div className="space-y-2">{Array.from({ length: 8 }).map((_, i) => <div key={i} className="shimmer h-9" />)}</div>
+          <div className="h-full flex items-center justify-center py-16"><Loader label="Loading events" /></div>
         ) : error ? (
           <p className="text-[11px] text-fg-3 px-2 py-6 text-center">{error}</p>
         ) : events.length === 0 ? (
