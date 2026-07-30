@@ -218,7 +218,6 @@ export default function NewsFeed({ userSymbols = EMPTY_SYMBOLS, symbolsReady = t
   }, [items, showLead]);
   const gridItems = (lead ? items.filter(i => i.id !== lead.id) : items).filter(i => !radarIds.has(i.id));
 
-  const sentinel = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const filters = useCallback(
@@ -285,25 +284,39 @@ export default function NewsFeed({ userSymbols = EMPTY_SYMBOLS, symbolsReady = t
   }, [category, highOnly, personalized, prefs]);
 
   // Infinite scroll (bottom feed). The feed scrolls inside an inner
-  // overflow-y-auto container, so the observer must watch THAT element as its
-  // root — not the viewport (which never moves), or it never fires.
+  // overflow-y-auto container, so we watch THAT element's scroll position. (An
+  // IntersectionObserver rooted on it proved unreliable — it silently no-ops
+  // when the tab loses focus and on some layout edges.) A ref guard prevents
+  // double-fires; a ref for the cursor keeps the handler stable across pages.
+  const loadingMoreRef = useRef(false);
+  const cursorRef = useRef<string | null>(null);
+  useEffect(() => { cursorRef.current = cursor; }, [cursor]);
+
+  const loadMore = useCallback(async () => {
+    if (loadingMoreRef.current || !cursorRef.current) return;
+    loadingMoreRef.current = true;
+    setLoadingMore(true);
+    try {
+      const page = await api.news.list({ ...filters(), cursor: cursorRef.current });
+      setItems(prev => [...prev, ...page.items]);
+      setCursor(page.nextCursor);
+      cursorRef.current = page.nextCursor;
+    } catch { /* ignore */ } finally {
+      loadingMoreRef.current = false;
+      setLoadingMore(false);
+    }
+  }, [filters]);
+
   useEffect(() => {
-    const el = sentinel.current;
-    if (!el || !cursor) return;
-    const io = new IntersectionObserver(async entries => {
-      if (!entries[0]?.isIntersecting || loadingMore || !cursor) return;
-      setLoadingMore(true);
-      try {
-        const page = await api.news.list({ ...filters(), cursor });
-        setItems(prev => [...prev, ...page.items]);
-        setCursor(page.nextCursor);
-      } catch { /* ignore */ } finally {
-        setLoadingMore(false);
-      }
-    }, { root: scrollRef.current, rootMargin: '600px' });
-    io.observe(el);
-    return () => io.disconnect();
-  }, [cursor, loadingMore, filters]);
+    const el = scrollRef.current;
+    if (!el) return;
+    const onScroll = () => {
+      if (el.scrollHeight - el.scrollTop - el.clientHeight < 600) void loadMore();
+    };
+    el.addEventListener('scroll', onScroll, { passive: true });
+    onScroll(); // auto-fill when the first page is shorter than the container
+    return () => el.removeEventListener('scroll', onScroll);
+  }, [loadMore, cursor]);
 
   const savePrefs = useCallback(async (next: string[]) => {
     setSavingPrefs(true);
@@ -522,7 +535,7 @@ export default function NewsFeed({ userSymbols = EMPTY_SYMBOLS, symbolsReady = t
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
                   {gridItems.map(it => <NewsCard key={it.id} it={it} onOpen={setSelectedItem} matched={matchOf(it)} />)}
                 </div>
-                {cursor && <div ref={sentinel} className="h-12 flex items-center justify-center">{loadingMore && <Loader size={20} />}</div>}
+                {cursor && <div className="h-12 flex items-center justify-center">{loadingMore && <Loader size={20} />}</div>}
                 <p className="text-center text-[9px] tracking-[0.2em] text-fg-3 mt-4">
                   AGGREGATED HEADLINES · AI TAGS ARE INFORMATIONAL · NOT INVESTMENT ADVICE
                 </p>
