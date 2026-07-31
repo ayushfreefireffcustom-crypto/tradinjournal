@@ -210,3 +210,47 @@ export const pushSubscribeSchema = z.object({
   userAgent: z.string().max(400).optional(),
 });
 export type PushSubscribeInput = z.infer<typeof pushSubscribeSchema>;
+
+// ── Advanced charting / market data ───────────────────────────────────────────
+
+// Chart timeframes, shared by the bridge, providers and the web client.
+export const MARKET_TIMEFRAMES = ['1m', '5m', '15m', '30m', '1h', '4h', '1d', '1w', '1M'] as const;
+export const marketTimeframeSchema = z.enum(MARKET_TIMEFRAMES);
+export type MarketTimeframe = z.infer<typeof marketTimeframeSchema>;
+
+// Asset classes route a symbol to the right provider (crypto→Binance,
+// broker→MT5, stock/forex→Twelve Data).
+export const ASSET_CLASSES = ['crypto', 'forex', 'stock', 'commodity', 'broker'] as const;
+export const assetClassSchema = z.enum(ASSET_CLASSES);
+export type AssetClass = z.infer<typeof assetClassSchema>;
+
+// GET /api/market/candles query.
+export const candlesQuerySchema = z.object({
+  symbol: z.string().min(1).max(32),
+  tf: marketTimeframeSchema,
+  // Optional epoch-second window; when absent the service returns the latest `limit` bars.
+  from: z.coerce.number().int().nonnegative().optional(),
+  to: z.coerce.number().int().nonnegative().optional(),
+  limit: z.coerce.number().int().min(1).max(1000).optional(),
+  // Broker symbols need an account to reach the right MT5 terminal/broker.
+  accountId: z.string().min(1).optional(),
+});
+export type CandlesQuery = z.infer<typeof candlesQuerySchema>;
+
+// GET /api/market/search query.
+export const symbolSearchSchema = z.object({
+  q: z.string().min(1).max(64),
+});
+export type SymbolSearchQuery = z.infer<typeof symbolSearchSchema>;
+
+// PUT /api/market/watchlist body.
+export const watchlistSchema = z.object({
+  symbols: z.array(z.string().min(1).max(32)).max(100),
+});
+export type WatchlistInput = z.infer<typeof watchlistSchema>;
+
+// POST /internal/market/warm body (worker → API).
+export const marketWarmSchema = z.object({
+  bucket: z.string().min(1).max(64).optional(),
+});
+export type MarketWarmInput = z.infer<typeof marketWarmSchema>;
