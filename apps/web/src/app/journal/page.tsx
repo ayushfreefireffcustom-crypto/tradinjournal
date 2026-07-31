@@ -6,6 +6,7 @@ import AppShell from '@/components/app-shell';
 import ConnectBrokerModal from '@/components/connect-broker-modal';
 import ReplayEmpty from '@/components/replay/replay-empty';
 import { TradeChart, fmtPrice, pipMove } from '@/components/replay/trade-chart';
+import { marketApi, type Candle, type MarketTimeframe } from '@/lib/market-api';
 import { api, type BrokerAccount, type Trade, type JournalEntry } from '@/lib/api';
 import { useAccounts } from '@/lib/use-accounts';
 
@@ -21,6 +22,26 @@ function fmtDur(s: number | null) {
   return `${Math.floor(s / 86400)}d`;
 }
 const money = (v: number) => `${v >= 0 ? '+' : '−'}$${Math.abs(v).toFixed(2)}`;
+
+// Pick a timeframe that fits ~≤400 bars across the (padded) trade window.
+const TF_SECONDS: [MarketTimeframe, number][] = [
+  ['1m', 60], ['5m', 300], ['15m', 900], ['30m', 1800],
+  ['1h', 3600], ['4h', 14400], ['1d', 86400], ['1w', 604800], ['1M', 2592000],
+];
+function chooseTf(windowSec: number): MarketTimeframe {
+  for (const [tf, s] of TF_SECONDS) if (windowSec / s <= 400) return tf;
+  return '1M';
+}
+/** Padded from/to (epoch seconds) + timeframe for a trade's chart window. */
+function tradeWindow(trade: Trade): { from: number; to: number; tf: MarketTimeframe } {
+  const openSec = Math.floor(new Date(trade.openTime).getTime() / 1000);
+  const closeSec = trade.closeTime ? Math.floor(new Date(trade.closeTime).getTime() / 1000) : openSec + 3600;
+  const dur = Math.max(closeSec - openSec, 300);
+  const pad = Math.round(dur * 0.4);
+  const from = openSec - pad;
+  const to = closeSec + pad;
+  return { from, to, tf: chooseTf(to - from) };
+}
 
 export default function ChartReplayPage() {
   const { accounts, selected, select, setAccounts, loading: accountsLoading } = useAccounts();
@@ -59,6 +80,21 @@ export default function ChartReplayPage() {
   }, [selected, accountsLoading, loadTrades]);
 
   const active = trades.find(t => t.positionId === activeId) ?? null;
+
+  // Real candles for the active trade (crypto → Binance, broker → MT5 bridge).
+  // Falls back to the synthetic chart when no provider/history covers the symbol.
+  const [chartCandles, setChartCandles] = useState<Candle[] | null>(null);
+  useEffect(() => {
+    if (!active) { setChartCandles(null); return; }
+    let alive = true;
+    setChartCandles(null);
+    const { from, to, tf } = tradeWindow(active);
+    marketApi
+      .candles({ symbol: active.symbol, tf, from, to, limit: 500, accountId: selected?.id })
+      .then(r => { if (alive) setChartCandles(r.candles.length >= 2 ? r.candles : null); })
+      .catch(() => { if (alive) setChartCandles(null); });
+    return () => { alive = false; };
+  }, [activeId, active, selected?.id]);
 
   const journalByTrade = useMemo(() => {
     const map = new Map<string, JournalEntry>();
@@ -274,12 +310,18 @@ export default function ChartReplayPage() {
                     )}
                     {active && <span className={`numeric font-display font-bold text-[16px] sm:text-[18px] ${win ? 'text-profit' : 'text-loss'}`}>{money(active.netPnl)}</span>}
                   </div>
-                  <span className="text-[9px] tracking-[0.2em] text-fg-3 border border-border-soft px-2 py-1 rounded" title="Illustrative price path reconstructed from entry/exit fills — not tick data">
-                    SCHEMATIC · NOT TICK DATA
-                  </span>
+                  {chartCandles ? (
+                    <span className="text-[9px] tracking-[0.2em] text-profit border border-profit/30 bg-profit/10 px-2 py-1 rounded" title="Real market candles for the trade window">
+                      LIVE DATA
+                    </span>
+                  ) : (
+                    <span className="text-[9px] tracking-[0.2em] text-fg-3 border border-border-soft px-2 py-1 rounded" title="Illustrative price path reconstructed from entry/exit fills — not tick data">
+                      SCHEMATIC · NOT TICK DATA
+                    </span>
+                  )}
                 </div>
 
-                <div className="flex-1 min-h-[260px]"><TradeChart trade={active} /></div>
+                <div className="flex-1 min-h-[260px]"><TradeChart trade={active} realCandles={chartCandles ?? undefined} /></div>
 
                 <div className="px-3 sm:px-5 py-3 border-t border-border-soft grid grid-cols-3 sm:grid-cols-6 gap-3 text-[11px] shrink-0">
                   {[
