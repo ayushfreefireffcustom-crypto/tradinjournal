@@ -1,12 +1,13 @@
 'use client';
 
-// The replay chart. A deterministic synthetic OHLC walk anchored to the trade's
-// real entry/exit fills, drawn TradingView-style: a shaded position zone between
-// entry and exit over the held region, floating price pills on the right axis,
-// and direction-aware markers. It is explicitly schematic (not tick data) — a
-// visual aid for reviewing where you got in and out, not a data feed.
+// The replay chart. When REAL candles are available (crypto via Binance, broker
+// symbols via the MT5 bridge) it draws them; otherwise it falls back to a
+// deterministic synthetic OHLC walk anchored to the trade's entry/exit fills.
+// Either way it's drawn TradingView-style: a shaded position zone between entry
+// and exit, floating price pills on the right axis, and direction-aware markers.
 import { useMemo } from 'react';
 import type { Trade } from '@/lib/api';
+import type { Candle } from '@/lib/market-api';
 
 // Broker symbols carry suffixes (AUDCAD.z, GOLD.i#), so name-matching alone is
 // brittle. Decimals and pip size are derived from the price magnitude, which
@@ -78,8 +79,31 @@ function buildCandles(trade: Trade | null, n = 72) {
   return { candles, entryIdx, exitIdx, min, max };
 }
 
-export function TradeChart({ trade }: { trade: Trade | null }) {
-  const { candles, entryIdx, exitIdx, min, max } = useMemo(() => buildCandles(trade, 72), [trade]);
+// Map real OHLC bars into the renderer's shape, aligning entry/exit to the bars
+// nearest the trade's open/close times.
+function candlesFromReal(trade: Trade, real: Candle[]) {
+  const candles = real.map(c => ({ o: c.open, h: c.high, l: c.low, c: c.close }));
+  const openMs = new Date(trade.openTime).getTime();
+  const closeMs = trade.closeTime ? new Date(trade.closeTime).getTime() : openMs;
+  const nearest = (t: number) => {
+    let best = 0;
+    let bestD = Infinity;
+    real.forEach((c, i) => {
+      const d = Math.abs(c.openTime - t);
+      if (d < bestD) { bestD = d; best = i; }
+    });
+    return best;
+  };
+  const min = Math.min(...candles.map(c => c.l));
+  const max = Math.max(...candles.map(c => c.h));
+  return { candles, entryIdx: nearest(openMs), exitIdx: nearest(closeMs), min, max };
+}
+
+export function TradeChart({ trade, realCandles }: { trade: Trade | null; realCandles?: Candle[] }) {
+  const { candles, entryIdx, exitIdx, min, max } = useMemo(
+    () => (trade && realCandles && realCandles.length >= 2 ? candlesFromReal(trade, realCandles) : buildCandles(trade, 72)),
+    [trade, realCandles],
+  );
   if (!trade || candles.length === 0) {
     return <div className="flex items-center justify-center h-full text-fg-3 text-[12px]">Select a position to replay</div>;
   }
