@@ -200,6 +200,7 @@ export const notificationPrefsSchema = z.object({
   categories: z.array(z.string().min(1).max(40)).max(30).optional(),
   leadMinutes: z.coerce.number().int().min(0).max(1440).optional(),
   newsAlerts: z.boolean().optional(),
+  priceAlerts: z.boolean().optional(),
 });
 export type NotificationPrefsInput = z.infer<typeof notificationPrefsSchema>;
 
@@ -254,3 +255,36 @@ export const marketWarmSchema = z.object({
   bucket: z.string().min(1).max(64).optional(),
 });
 export type MarketWarmInput = z.infer<typeof marketWarmSchema>;
+
+// ── Price alerts ──────────────────────────────────────────────────────────────
+
+// Fire when price crosses above/below the threshold.
+export const ALERT_DIRECTIONS = ['above', 'below'] as const;
+export const alertDirectionSchema = z.enum(ALERT_DIRECTIONS);
+export type AlertDirection = z.infer<typeof alertDirectionSchema>;
+
+// POST /api/alerts — create a price alert.
+export const createAlertSchema = z.object({
+  symbol: z.string().min(1).max(32),
+  direction: alertDirectionSchema,
+  threshold: z.coerce.number().positive(),
+  accountId: z.string().min(1).optional(), // broker symbols route via the account's MT5 creds
+  recurring: z.boolean().optional(),
+  note: z.string().max(200).optional(),
+});
+export type CreateAlertInput = z.infer<typeof createAlertSchema>;
+
+// PATCH /api/alerts/:id — edit an alert.
+export const updateAlertSchema = z.object({
+  threshold: z.coerce.number().positive().optional(),
+  status: z.enum(['active', 'disabled']).optional(),
+  recurring: z.boolean().optional(),
+  note: z.string().max(200).optional(),
+});
+export type UpdateAlertInput = z.infer<typeof updateAlertSchema>;
+
+// POST /internal/alerts/dispatch body (worker → API).
+export const alertsDispatchSchema = z.object({
+  bucket: z.string().min(1).max(64).optional(),
+});
+export type AlertsDispatchInput = z.infer<typeof alertsDispatchSchema>;
