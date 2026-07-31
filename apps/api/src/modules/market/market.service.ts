@@ -74,6 +74,24 @@ export async function getCandles(q: CandlesQuery, userId: string): Promise<{ can
   return { candles: await loadCandles(q.symbol, q.tf, opts, scope) };
 }
 
+// Latest price is stale-guarded: a bar older than this is treated as a dead feed
+// and yields null (price alerts then skip that symbol rather than false-fire).
+const STALE_PRICE_MS = 10 * 60_000;
+
+/**
+ * Latest price for a symbol = the last 1m bar's close, via the cached candle
+ * path (broker symbols use the account's creds). Returns null when no provider
+ * covers the symbol or the latest bar is stale — callers skip, never crash.
+ */
+export async function getLatestPrice(symbol: string, accountId?: string, userId = ''): Promise<number | null> {
+  const { creds, scope } = await brokerCredsFor(accountId, userId);
+  const bars = await loadCandles(symbol, '1m', { limit: 2, broker: creds }, scope);
+  const last = bars[bars.length - 1];
+  if (!last) return null;
+  if (Date.now() - last.openTime > STALE_PRICE_MS) return null;
+  return last.close;
+}
+
 export async function searchSymbols(query: string): Promise<{ symbols: SymbolInfo[] }> {
   const key = `market:search:${query.toLowerCase()}`;
   const cached = await cacheGet<SymbolInfo[]>(key);
