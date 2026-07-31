@@ -13,6 +13,7 @@ import { sendDailyDigests } from './modules/notifications/digest.service.js';
 import { ingestNews, enrichPendingNews } from './modules/news/news.service.js';
 import { ingestWindow } from './modules/calendar/calendar.service.js';
 import { warmSymbols } from './modules/market/market.service.js';
+import { dispatchPriceAlerts } from './modules/alerts/alerts.service.js';
 
 const MIN = 60_000;
 const timers: NodeJS.Timeout[] = [];
@@ -47,6 +48,10 @@ export function startInProcessScheduler(): void {
   // Keep the configured warm symbol set a cache hit for everyone (no-op when unset).
   if (env.MARKET_ENABLED && env.MARKET_WARM_SYMBOLS_LIST.length > 0) {
     every(1 * MIN, 'market-warm', warmSymbols);
+  }
+  // Price alerts — check every minute; cheap no-op when no alerts are active.
+  if (env.PRICE_ALERTS_ENABLED) {
+    every(1 * MIN, 'price-alerts', dispatchPriceAlerts);
   }
 
   // Warm the data shortly after boot so it's fresh without waiting a full interval.
