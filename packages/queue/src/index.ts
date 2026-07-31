@@ -64,12 +64,14 @@ export const QUEUE_NEWS_INGEST = 'news-ingest' as const;
 export const QUEUE_NEWS_ENRICH = 'news-enrich' as const;
 export const QUEUE_NOTIFICATIONS = 'notifications' as const;
 export const QUEUE_NOTIFICATIONS_DIGEST = 'notifications-digest' as const;
+export const QUEUE_MARKET_WARM = 'market-warm' as const;
 
 export const CALENDAR_INGEST_SCHEDULER_ID = 'calendar-ingest-cron';
 export const NEWS_INGEST_SCHEDULER_ID = 'news-ingest-cron';
 export const NEWS_ENRICH_SCHEDULER_ID = 'news-enrich-cron';
 export const NOTIFICATIONS_SCHEDULER_ID = 'notifications-cron';
 export const NOTIFICATIONS_DIGEST_SCHEDULER_ID = 'notifications-digest-cron';
+export const MARKET_WARM_SCHEDULER_ID = 'market-warm-cron';
 
 /** Trigger a calendar ingest for a UTC window (bucketed for idempotency). */
 export interface CalendarIngestJob {
@@ -102,6 +104,12 @@ export interface NotificationsDigestJob {
   bucket: string;
 }
 
+/** Trigger a market warm refresh — refetch the hot symbol set (bucketed/minute). */
+export interface MarketWarmJob {
+  kind: 'market-warm';
+  bucket: string;
+}
+
 /** Truncate a Date to an idempotency bucket at hour or minute granularity. */
 export function timeBucket(date: Date, granularity: 'hour' | 'minute'): string {
   const iso = date.toISOString(); // YYYY-MM-DDTHH:MM:SS.sssZ
@@ -122,6 +130,9 @@ export function notificationsJobId(bucket: string): string {
 }
 export function notificationsDigestJobId(bucket: string): string {
   return `notif-digest:${bucket}`;
+}
+export function marketWarmJobId(bucket: string): string {
+  return `market-warm:${bucket}`;
 }
 
 // ─── Connection ──────────────────────────────────────────────────────────────
