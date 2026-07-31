@@ -8,6 +8,8 @@
 // immediate no-op cleanup; the SSE endpoint then just heartbeats and the client
 // falls back to periodic re-fetch.
 import { Redis } from 'ioredis';
+import { EventEmitter } from 'node:events';
+import { randomUUID } from 'node:crypto';
 import { env } from '@tradinjournal/config';
 import { logger } from '@tradinjournal/logger';
 import type { MarketTimeframe } from '@tradinjournal/contracts';
@@ -17,6 +19,15 @@ import { resolveProvider } from './providers/index.js';
 function channel(symbol: string, tf: MarketTimeframe): string {
   return `market:candle:${symbol}:${tf}`;
 }
+
+// Same-process delivery bus. It ALWAYS delivers (no Redis needed), so a single
+// instance — local dev or a no-Redis deploy — still gets live updates. Redis
+// only adds cross-instance fan-out on top. A per-process id lets a Redis
+// subscriber drop its own instance's echo so same-process subscribers aren't
+// delivered twice.
+const localBus = new EventEmitter();
+localBus.setMaxListeners(0); // one listener per open SSE connection
+const INSTANCE_ID = randomUUID();
 
 let publisher: Redis | null = null;
 let pubDown = false;
@@ -35,10 +46,14 @@ function pub(): Redis | null {
 
 /** Publish one forming/closed bar to every connected stream. Best-effort. */
 export async function publishCandle(symbol: string, tf: MarketTimeframe, candle: NormalizedCandle): Promise<void> {
+  const ch = channel(symbol, tf);
+  // Same-process subscribers, always (works without Redis).
+  localBus.emit(ch, candle);
+  // Cross-instance fan-out via Redis (tagged so we drop our own echo on receive).
   const c = pub();
   if (!c || pubDown) return;
   try {
-    await c.publish(channel(symbol, tf), JSON.stringify(candle));
+    await c.publish(ch, JSON.stringify({ candle, origin: INSTANCE_ID }));
   } catch {
     /* best-effort — the client sees the bar on its next re-fetch */
   }
@@ -54,19 +69,31 @@ export function subscribeCandle(
   tf: MarketTimeframe,
   onCandle: (c: NormalizedCandle) => void,
 ): () => void {
-  if (!env.REDIS_URL) return () => {};
-  const sub = new Redis(env.REDIS_URL, { maxRetriesPerRequest: null });
-  sub.on('error', () => {}); // no live updates just means the client re-fetches
-  void sub.subscribe(channel(symbol, tf)).catch(() => {});
-  sub.on('message', (_channel, message) => {
-    try {
-      onCandle(JSON.parse(message) as NormalizedCandle);
-    } catch {
-      /* ignore malformed */
-    }
-  });
+  const ch = channel(symbol, tf);
+  // Same-process delivery — always on, no Redis required.
+  const localHandler = (candle: NormalizedCandle) => onCandle(candle);
+  localBus.on(ch, localHandler);
+
+  // Cross-instance delivery via Redis, when configured. Drop our own echo so a
+  // same-process subscriber isn't delivered twice.
+  let sub: Redis | null = null;
+  if (env.REDIS_URL) {
+    sub = new Redis(env.REDIS_URL, { maxRetriesPerRequest: null });
+    sub.on('error', () => {}); // no cross-instance updates just means fewer sources
+    void sub.subscribe(ch).catch(() => {});
+    sub.on('message', (_channel, message) => {
+      try {
+        const parsed = JSON.parse(message) as { candle: NormalizedCandle; origin?: string };
+        if (parsed.origin !== INSTANCE_ID) onCandle(parsed.candle);
+      } catch {
+        /* ignore malformed */
+      }
+    });
+  }
+
   return () => {
-    void sub.quit().catch(() => {});
+    localBus.off(ch, localHandler);
+    if (sub) void sub.quit().catch(() => {});
   };
 }
 
