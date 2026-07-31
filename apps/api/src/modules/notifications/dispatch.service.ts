@@ -10,6 +10,7 @@
 import { prisma } from '@tradinjournal/db';
 import type { EventImpact } from '@tradinjournal/contracts';
 import { sendPush } from '../../lib/push.js';
+import { claimDelivery } from '../../lib/notifications/claim.js';
 
 const RANK: Record<EventImpact, number> = { LOW: 0, MEDIUM: 1, HIGH: 2 };
 
@@ -85,21 +86,11 @@ export async function dispatchReminders(): Promise<{ events: number; delivered: 
 
   let delivered = 0;
 
-  /** Claim (dedupKey, channel) in the ledger; false if already delivered. */
-  const claim = async (userId: string, dedupKey: string, channel: string): Promise<boolean> => {
-    try {
-      await prisma.notificationDelivery.create({ data: { userId, dedupKey, channel } });
-      return true;
-    } catch {
-      return false; // unique violation → already delivered
-    }
-  };
-
   for (const { userId, event, prefs } of work) {
     const dedupKey = `reminder:${event.id}:${userId}`;
     const label = whenLabel(event.eventTime, now);
 
-    if (prefs.inApp && (await claim(userId, dedupKey, 'in_app'))) {
+    if (prefs.inApp && (await claimDelivery(userId, dedupKey, 'in_app'))) {
       await prisma.notification.create({
         data: {
           userId,
@@ -115,7 +106,7 @@ export async function dispatchReminders(): Promise<{ events: number; delivered: 
 
     if (prefs.push) {
       const subs = subsByUser.get(userId) ?? [];
-      if (subs.length && (await claim(userId, dedupKey, 'push'))) {
+      if (subs.length && (await claimDelivery(userId, dedupKey, 'push'))) {
         for (const sub of subs) {
           const res = await sendPush(sub, { title: `${event.currency} · ${event.title}`, body: `${event.impact} impact ${label}`, url: '/markets' });
           if (res === 'gone') await prisma.pushSubscription.deleteMany({ where: { endpoint: sub.endpoint } });
