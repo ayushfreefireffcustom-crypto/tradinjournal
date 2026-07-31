@@ -87,3 +87,7 @@ export function dispatchNotifications(params: { bucket: string }): Promise<{ eve
 export function dispatchDigest(params: { bucket: string }): Promise<{ users: number; sent: number }> {
   return request('/internal/notifications/digest', { method: 'POST', body: JSON.stringify(params) });
 }
+
+export function warmMarket(params: { bucket: string }): Promise<{ warmed: number }> {
+  return request('/internal/market/warm', { method: 'POST', body: JSON.stringify(params) });
+}
