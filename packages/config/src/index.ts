@@ -131,6 +131,20 @@ const envSchema = z.object({
     .string()
     .default('false')
     .transform(v => v.toLowerCase() === 'true' || v === '1'),
+
+  // ── Advanced charting / market data ───────────────────────────────────────
+  // Crypto (Binance) needs no key; broker symbols come from the MT5 bridge;
+  // stocks/forex need a Twelve Data key. Absent key → those symbols just don't
+  // resolve (nothing crashes).
+  BINANCE_REST_URL: z.string().url().default('https://data-api.binance.vision'),
+  BINANCE_WS_URL: z.string().default('wss://data-stream.binance.vision'),
+  TWELVEDATA_API_KEY: z.string().optional(),
+  // CSV of symbols kept "hot" by the warm cron (so popular symbols stay a cache
+  // hit for everyone — 1 provider call per symbol per refresh, not per user).
+  MARKET_WARM_SYMBOLS: z.string().optional(),
+  // Immutable historical bars can cache long; only the forming bar streams live.
+  MARKET_CANDLE_CACHE_TTL: z.coerce.number().int().positive().default(300),
+  MARKET_WARM_CRON: z.string().default('*/1 * * * *'),
 });
 
 export type Env = z.infer<typeof envSchema> & {
@@ -161,6 +175,12 @@ export type Env = z.infer<typeof envSchema> & {
   NEWS_ENRICH_ENABLED: boolean;
   /** True when Web Push is fully configured (both VAPID keys present). */
   PUSH_ENABLED: boolean;
+  /** True when charting can run — Binance is keyless, so effectively always on. */
+  MARKET_ENABLED: boolean;
+  /** True when the Twelve Data stock/forex provider is configured. */
+  TWELVEDATA_ENABLED: boolean;
+  /** Symbols the warm cron keeps hot, derived from MARKET_WARM_SYMBOLS. */
+  MARKET_WARM_SYMBOLS_LIST: string[];
 };
 
 const AI_DEFAULTS = {
@@ -230,6 +250,12 @@ function loadEnv(): Env {
   const NEWS_ENRICH_ENABLED = NEWS_ENABLED && AI_ENABLED;
   const PUSH_ENABLED = !!parsed.data.VAPID_PUBLIC_KEY && !!parsed.data.VAPID_PRIVATE_KEY;
 
+  const MARKET_ENABLED = true; // Binance market data needs no key
+  const TWELVEDATA_ENABLED = !!parsed.data.TWELVEDATA_API_KEY;
+  const MARKET_WARM_SYMBOLS_LIST = parsed.data.MARKET_WARM_SYMBOLS
+    ? parsed.data.MARKET_WARM_SYMBOLS.split(',').map(s => s.trim()).filter(Boolean)
+    : [];
+
   return {
     ...parsed.data,
     APP_URL,
@@ -246,6 +272,9 @@ function loadEnv(): Env {
     NEWS_ENABLED,
     NEWS_ENRICH_ENABLED,
     PUSH_ENABLED,
+    MARKET_ENABLED,
+    TWELVEDATA_ENABLED,
+    MARKET_WARM_SYMBOLS_LIST,
   };
 }
 
