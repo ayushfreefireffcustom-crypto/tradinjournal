@@ -26,6 +26,8 @@ import {
   NOTIFICATIONS_SCHEDULER_ID,
   QUEUE_NOTIFICATIONS_DIGEST,
   NOTIFICATIONS_DIGEST_SCHEDULER_ID,
+  QUEUE_MARKET_WARM,
+  MARKET_WARM_SCHEDULER_ID,
   createRedisConnection,
   getQueue,
   closeQueues,
@@ -37,6 +39,7 @@ import {
   type NewsEnrichJob,
   type NotificationsJob,
   type NotificationsDigestJob,
+  type MarketWarmJob,
 } from '@tradinjournal/queue';
 import { createWeeklyReviewWorker, isUnrecoverable as weeklyUnrecoverable } from './processors/weekly-review.js';
 import { createCalendarWorker, isUnrecoverable as calendarUnrecoverable } from './processors/calendar-ingest.js';
@@ -44,6 +47,7 @@ import { createNewsWorker, isUnrecoverable as newsUnrecoverable } from './proces
 import { createNewsEnrichWorker, isUnrecoverable as newsEnrichUnrecoverable } from './processors/news-enrich.js';
 import { createNotificationsWorker, isUnrecoverable as notifUnrecoverable } from './processors/notifications.js';
 import { createDigestWorker, isUnrecoverable as digestUnrecoverable } from './processors/notifications-digest.js';
+import { createMarketWarmWorker, isUnrecoverable as marketWarmUnrecoverable } from './processors/market-warm.js';
 
 const workers: Worker[] = [];
 let connection: ReturnType<typeof createRedisConnection> = null;
@@ -157,6 +161,20 @@ async function start(): Promise<void> {
     );
     attach(createDigestWorker(connection, digestQueue) as unknown as Worker, 'Digest', digestUnrecoverable);
     logger.info(`Daily digest scheduled: "${env.NOTIFICATIONS_DIGEST_CRON}" UTC`);
+  }
+
+  // ── Market data warm refresh ────────────────────────────────────────────────
+  // Keeps the configured hot symbol set a cache hit for everyone. The API no-ops
+  // cheaply when no warm symbols are configured.
+  const marketQueue = getQueue<MarketWarmJob>(QUEUE_MARKET_WARM);
+  if (marketQueue) {
+    await marketQueue.upsertJobScheduler(
+      MARKET_WARM_SCHEDULER_ID,
+      { pattern: env.MARKET_WARM_CRON, tz: 'UTC' },
+      { name: 'warm', data: { kind: 'market-warm', bucket: timeBucket(new Date(), 'minute') } },
+    );
+    attach(createMarketWarmWorker(connection, marketQueue) as unknown as Worker, 'Market warm', marketWarmUnrecoverable);
+    logger.info(`Market warm scheduled: "${env.MARKET_WARM_CRON}" UTC`);
   }
 
   logger.info(`Worker ready — ${workers.length} pipeline(s) registered.`);
