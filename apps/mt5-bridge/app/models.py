@@ -93,3 +93,26 @@ class OpenPosition(BaseModel):
 class PositionsResponse(BaseModel):
     positions: list[OpenPosition]
     total: int
+
+
+# ─── /candles ────────────────────────────────────────────────────────────────
+
+class CandlesRequest(Credentials):
+    symbol: str
+    timeframe: str                    # '1m' | '5m' | '15m' | '30m' | '1h' | '4h' | '1d' | '1w' | '1M'
+    count: int | None = None          # latest N bars (takes precedence over the range)
+    from_time: datetime | None = None # inclusive lower bound (used when count is absent)
+    to_time: datetime | None = None   # inclusive upper bound (defaults to "now")
+
+class Candle(BaseModel):
+    time: int           # bar open time, Unix seconds
+    open: str           # Decimal strings — never float
+    high: str
+    low: str
+    close: str
+    volume: str         # tick_volume as a Decimal string
+    spread: int
+
+class CandlesResponse(BaseModel):
+    candles: list[Candle]
+    total: int
