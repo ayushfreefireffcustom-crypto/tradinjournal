@@ -11,6 +11,7 @@ import logging
 import threading
 import time
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 
 import MetaTrader5 as mt5
 from fastapi import Depends, FastAPI, Header, HTTPException
@@ -18,6 +19,7 @@ from fastapi import Depends, FastAPI, Header, HTTPException
 from app.config import settings
 from app.models import (
     AccountRequest, AccountResponse,
+    Candle, CandlesRequest, CandlesResponse,
     DealsRequest, DealsResponse, RawDeal,
     OpenPosition, PositionsRequest, PositionsResponse,
     VerifyRequest, VerifyResponse,
@@ -288,3 +290,68 @@ def positions(req: PositionsRequest) -> PositionsResponse:
                 open_time=p.time,
             ))
         return PositionsResponse(positions=result, total=len(result))
+
+
+# ─── POST /candles ──────────────────────────────────────────────────────────
+
+# Our timeframe tokens → MT5 timeframe constants.
+TF_MAP = {
+    "1m": mt5.TIMEFRAME_M1,
+    "5m": mt5.TIMEFRAME_M5,
+    "15m": mt5.TIMEFRAME_M15,
+    "30m": mt5.TIMEFRAME_M30,
+    "1h": mt5.TIMEFRAME_H1,
+    "4h": mt5.TIMEFRAME_H4,
+    "1d": mt5.TIMEFRAME_D1,
+    "1w": mt5.TIMEFRAME_W1,
+    "1M": mt5.TIMEFRAME_MN1,
+}
+
+# Default bar count when neither `count` nor a `from_time` range is supplied.
+DEFAULT_CANDLE_COUNT = 500
+
+
+@app.post("/candles", response_model=CandlesResponse, dependencies=[Depends(verify_secret)])
+def candles(req: CandlesRequest) -> CandlesResponse:
+    log.info(f"[candles] login={req.login} symbol={req.symbol} tf={req.timeframe} count={req.count}")
+    tf = TF_MAP.get(req.timeframe)
+    if tf is None:
+        # Unknown timeframe token — behave like "no data" rather than 500ing.
+        log.warning(f"[candles] unknown timeframe {req.timeframe!r}")
+        return CandlesResponse(candles=[], total=0)
+    with _lock:
+        _connect(req.login, req.password, req.server)
+        # Ensure the symbol is selected in Market Watch; a symbol that has never
+        # been selected may have no series cached until it is. Best-effort.
+        if not mt5.symbol_select(req.symbol, True):
+            log.warning(f"[candles] symbol_select({req.symbol}) failed: {_last_error()}")
+        # Warm-up: nudge the terminal to pull the series before the real request —
+        # brokers lazily download deep history on first access.
+        mt5.copy_rates_from_pos(req.symbol, tf, 0, 1)
+
+        if req.count:
+            rates = mt5.copy_rates_from_pos(req.symbol, tf, 0, req.count)
+        elif req.from_time:
+            to_time = req.to_time or datetime.now(timezone.utc)
+            rates = mt5.copy_rates_range(req.symbol, tf, req.from_time, to_time)
+        else:
+            rates = mt5.copy_rates_from_pos(req.symbol, tf, 0, DEFAULT_CANDLE_COUNT)
+
+        if rates is None or len(rates) == 0:
+            log.warning(f"[candles] no rates for {req.symbol} {req.timeframe}: {_last_error()}")
+            return CandlesResponse(candles=[], total=0)
+
+        result: list[Candle] = [
+            Candle(
+                time=int(r["time"]),
+                open=str(r["open"]),
+                high=str(r["high"]),
+                low=str(r["low"]),
+                close=str(r["close"]),
+                volume=str(r["tick_volume"]),
+                spread=int(r["spread"]),
+            )
+            for r in rates
+        ]
+        log.info(f"[candles] pulled {len(result)} bars for {req.symbol} {req.timeframe}")
+        return CandlesResponse(candles=result, total=len(result))
