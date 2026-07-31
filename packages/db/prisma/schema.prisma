@@ -496,6 +496,7 @@ model NotificationPreference {
   categories  String[] // empty = all
   leadMinutes Int         @default(15)
   newsAlerts  Boolean     @default(false)
+  priceAlerts Boolean     @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -606,4 +607,29 @@ model Watchlist {
   updatedAt DateTime @updatedAt
 
   @@map("watchlist")
+}
+
+// A user's price alert: notify when `symbol` crosses `threshold`. Fires on a
+// transition (tracked via lastPrice) — one-shot (status→triggered) or recurring
+// (re-arms, fireSeq++ for a fresh idempotency slot).
+model PriceAlert {
+  id          String    @id @default(cuid())
+  userId      String
+  symbol      String
+  accountId   String? // broker symbols route via the account's MT5 creds
+  direction   String // "above" | "below"
+  threshold   Decimal   @db.Decimal(18, 8)
+  lastPrice   Decimal?  @db.Decimal(18, 8) // last observed price (cross detection)
+  status      String    @default("active") // active | triggered | disabled
+  recurring   Boolean   @default(false)
+  fireSeq     Int       @default(0)
+  note        String?
+  triggeredAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, symbol])
+  @@index([userId])
+  @@map("price_alert")
 }
