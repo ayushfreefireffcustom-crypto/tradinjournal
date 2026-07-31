@@ -145,6 +145,10 @@ const envSchema = z.object({
   // Immutable historical bars can cache long; only the forming bar streams live.
   MARKET_CANDLE_CACHE_TTL: z.coerce.number().int().positive().default(300),
   MARKET_WARM_CRON: z.string().default('*/1 * * * *'),
+
+  // Price alerts — checked every minute; each tick fetches the latest price per
+  // distinct alerted symbol (cached) and fires on a threshold cross.
+  PRICE_ALERT_CRON: z.string().default('* * * * *'),
 });
 
 export type Env = z.infer<typeof envSchema> & {
@@ -181,6 +185,8 @@ export type Env = z.infer<typeof envSchema> & {
   TWELVEDATA_ENABLED: boolean;
   /** Symbols the warm cron keeps hot, derived from MARKET_WARM_SYMBOLS. */
   MARKET_WARM_SYMBOLS_LIST: string[];
+  /** True when price alerts can run — gated on the market layer being live. */
+  PRICE_ALERTS_ENABLED: boolean;
 };
 
 const AI_DEFAULTS = {
@@ -255,6 +261,7 @@ function loadEnv(): Env {
   const MARKET_WARM_SYMBOLS_LIST = parsed.data.MARKET_WARM_SYMBOLS
     ? parsed.data.MARKET_WARM_SYMBOLS.split(',').map(s => s.trim()).filter(Boolean)
     : [];
+  const PRICE_ALERTS_ENABLED = MARKET_ENABLED;
 
   return {
     ...parsed.data,
@@ -275,6 +282,7 @@ function loadEnv(): Env {
     MARKET_ENABLED,
     TWELVEDATA_ENABLED,
     MARKET_WARM_SYMBOLS_LIST,
+    PRICE_ALERTS_ENABLED,
   };
 }
 
