@@ -5,6 +5,7 @@
 // with another broker's series in the shared table.
 import { prisma } from '@tradinjournal/db';
 import { env } from '@tradinjournal/config';
+import { logger } from '@tradinjournal/logger';
 import type { CandlesQuery, MarketTimeframe } from '@tradinjournal/contracts';
 import { cacheGet, cacheSet } from '../../lib/cache.js';
 import { resolveProvider, searchAllSymbols } from '../../lib/market/providers/index.js';
@@ -98,16 +99,29 @@ export async function warmSymbols(): Promise<{ warmed: number }> {
   return { warmed };
 }
 
+// Watchlist reads/writes degrade gracefully: if the `watchlist` table is missing
+// (a migration lagging behind a deploy), we return empty / echo the input rather
+// than 500 the chart page. Persistence resumes automatically once migrated.
 export async function getWatchlist(userId: string): Promise<{ symbols: string[] }> {
-  const row = await prisma.watchlist.findUnique({ where: { userId } });
-  return { symbols: row?.symbols ?? [] };
+  try {
+    const row = await prisma.watchlist.findUnique({ where: { userId } });
+    return { symbols: row?.symbols ?? [] };
+  } catch (err) {
+    logger.warn(`Watchlist read failed (migration applied?): ${(err as Error).message}`);
+    return { symbols: [] };
+  }
 }
 
 export async function setWatchlist(userId: string, symbols: string[]): Promise<{ symbols: string[] }> {
-  const row = await prisma.watchlist.upsert({
-    where: { userId },
-    create: { userId, symbols },
-    update: { symbols },
-  });
-  return { symbols: row.symbols };
+  try {
+    const row = await prisma.watchlist.upsert({
+      where: { userId },
+      create: { userId, symbols },
+      update: { symbols },
+    });
+    return { symbols: row.symbols };
+  } catch (err) {
+    logger.warn(`Watchlist write failed (migration applied?): ${(err as Error).message}`);
+    return { symbols }; // optimistic — session-only until the table exists
+  }
 }
