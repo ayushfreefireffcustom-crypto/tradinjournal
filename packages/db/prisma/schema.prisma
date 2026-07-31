@@ -72,12 +72,12 @@ model Account {
 }
 
 model Verification {
-  id         String    @id @default(cuid())
+  id         String   @id @default(cuid())
   identifier String
-  value      String    @db.Text
+  value      String   @db.Text
   expiresAt  DateTime
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   @@index([identifier])
   @@map("verification")
@@ -86,24 +86,24 @@ model Verification {
 // ─── Broker tables (Phase 1) ──────────────────────────────────────────────────
 
 model BrokerAccount {
-  id             String   @id @default(cuid())
-  userId         String
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  broker         String
-  mt5Login       BigInt
-  server         String
-  password       String?
-  baseCurrency   String   @default("USD")
-  marginMode     MarginMode
-  status         AccountStatus @default(ACTIVE)
-  lastSyncAt     DateTime?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  broker       String
+  mt5Login     BigInt
+  server       String
+  password     String?
+  baseCurrency String        @default("USD")
+  marginMode   MarginMode
+  status       AccountStatus @default(ACTIVE)
+  lastSyncAt   DateTime?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 
-  syncRuns       SyncRun[]
-  executions     Execution[]
-  trades         Trade[]
+  syncRuns   SyncRun[]
+  executions Execution[]
+  trades     Trade[]
 
   @@unique([mt5Login, server])
   @@index([userId])
@@ -124,32 +124,32 @@ enum AccountStatus {
 // ─── Raw MT5 deals (immutable source of truth) ────────────────────────────────
 
 model Execution {
-  id               String      @id @default(cuid())
-  brokerAccountId  String
-  brokerAccount    BrokerAccount @relation(fields: [brokerAccountId], references: [id], onDelete: Cascade)
+  id              String        @id @default(cuid())
+  brokerAccountId String
+  brokerAccount   BrokerAccount @relation(fields: [brokerAccountId], references: [id], onDelete: Cascade)
 
-  dealTicket       BigInt      @unique
-  orderTicket      BigInt
-  positionId       BigInt
-  symbol           String
-  type             DealType
-  entry            DealEntry
-  volume           Decimal     @db.Decimal(18, 8)
-  price            Decimal     @db.Decimal(18, 8)
-  profit           Decimal     @db.Decimal(18, 8)
-  commission       Decimal     @db.Decimal(18, 8)
-  swap             Decimal     @db.Decimal(18, 8)
-  fee              Decimal     @db.Decimal(18, 8) @default(0)
-  dealTime         DateTime
-  magic            Int         @default(0)
-  comment          String?
-  reason           Int         @default(0)
-  externalId       String?
+  dealTicket  BigInt    @unique
+  orderTicket BigInt
+  positionId  BigInt
+  symbol      String
+  type        DealType
+  entry       DealEntry
+  volume      Decimal   @db.Decimal(18, 8)
+  price       Decimal   @db.Decimal(18, 8)
+  profit      Decimal   @db.Decimal(18, 8)
+  commission  Decimal   @db.Decimal(18, 8)
+  swap        Decimal   @db.Decimal(18, 8)
+  fee         Decimal   @default(0) @db.Decimal(18, 8)
+  dealTime    DateTime
+  magic       Int       @default(0)
+  comment     String?
+  reason      Int       @default(0)
+  externalId  String?
 
-  tradeId          String?
-  trade            Trade?      @relation(fields: [tradeId], references: [id])
+  tradeId String?
+  trade   Trade?  @relation(fields: [tradeId], references: [id])
 
-  createdAt        DateTime    @default(now())
+  createdAt DateTime @default(now())
 
   @@index([brokerAccountId])
   @@index([positionId])
@@ -178,30 +178,30 @@ model Trade {
   brokerAccountId String
   brokerAccount   BrokerAccount @relation(fields: [brokerAccountId], references: [id], onDelete: Cascade)
 
-  symbol          String
-  side            TradeSide
-  status          TradeStatus   @default(OPEN)
+  symbol String
+  side   TradeSide
+  status TradeStatus @default(OPEN)
 
-  openTime        DateTime
-  closeTime       DateTime?
+  openTime  DateTime
+  closeTime DateTime?
 
-  volume          Decimal       @db.Decimal(18, 8)
-  avgEntry        Decimal       @db.Decimal(18, 8)
-  avgExit         Decimal?      @db.Decimal(18, 8)
+  volume   Decimal  @db.Decimal(18, 8)
+  avgEntry Decimal  @db.Decimal(18, 8)
+  avgExit  Decimal? @db.Decimal(18, 8)
 
-  grossPnl        Decimal       @db.Decimal(18, 8) @default(0)
-  commission      Decimal       @db.Decimal(18, 8) @default(0)
-  swap            Decimal       @db.Decimal(18, 8) @default(0)
-  netPnl          Decimal       @db.Decimal(18, 8) @default(0)
+  grossPnl   Decimal @default(0) @db.Decimal(18, 8)
+  commission Decimal @default(0) @db.Decimal(18, 8)
+  swap       Decimal @default(0) @db.Decimal(18, 8)
+  netPnl     Decimal @default(0) @db.Decimal(18, 8)
 
-  riskAmount      Decimal?      @db.Decimal(18, 8)
-  rMultiple       Decimal?      @db.Decimal(18, 8)
+  riskAmount Decimal? @db.Decimal(18, 8)
+  rMultiple  Decimal? @db.Decimal(18, 8)
 
-  executions      Execution[]
-  metric          TradeMetric?
+  executions Execution[]
+  metric     TradeMetric?
 
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([brokerAccountId])
   @@index([symbol])
@@ -211,17 +211,17 @@ model Trade {
 }
 
 model TradeMetric {
-  id          String   @id @default(cuid())
-  tradeId     String   @unique
-  trade       Trade    @relation(fields: [tradeId], references: [id], onDelete: Cascade)
+  id      String @id @default(cuid())
+  tradeId String @unique
+  trade   Trade  @relation(fields: [tradeId], references: [id], onDelete: Cascade)
 
   mae         Decimal? @db.Decimal(18, 8)
   mfe         Decimal? @db.Decimal(18, 8)
   captureRate Decimal? @db.Decimal(8, 4)
   durationSec Int?
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("trade_metric")
 }
@@ -239,13 +239,13 @@ enum TradeStatus {
 // ─── Balance events (deposits / withdrawals) ──────────────────────────────────
 
 model BalanceEvent {
-  id              String        @id @default(cuid())
+  id              String   @id @default(cuid())
   brokerAccountId String
-  ticket          BigInt        @unique
-  amount          Decimal       @db.Decimal(18, 8)
+  ticket          BigInt   @unique
+  amount          Decimal  @db.Decimal(18, 8)
   comment         String?
   eventTime       DateTime
-  createdAt       DateTime      @default(now())
+  createdAt       DateTime @default(now())
 
   @@index([brokerAccountId])
   @@map("balance_event")
@@ -254,19 +254,19 @@ model BalanceEvent {
 // ─── Journal entries ──────────────────────────────────────────────────────────
 
 model JournalEntry {
-  id              String   @id @default(cuid())
+  id              String  @id @default(cuid())
   userId          String
   brokerAccountId String?
 
-  title           String?
-  body            String   @db.Text
-  emotion         String?
-  tags            String[]
-  tradeId         String?
+  title   String?
+  body    String   @db.Text
+  emotion String?
+  tags    String[]
+  tradeId String?
 
-  entryDate       DateTime @default(now())
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  entryDate DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([userId])
   @@index([brokerAccountId])
@@ -281,12 +281,12 @@ model SyncRun {
   brokerAccountId String
   brokerAccount   BrokerAccount @relation(fields: [brokerAccountId], references: [id], onDelete: Cascade)
 
-  status          SyncStatus    @default(RUNNING)
-  dealsPulled     Int           @default(0)
-  tradesBuilt     Int           @default(0)
-  error           String?
-  startedAt       DateTime      @default(now())
-  finishedAt      DateTime?
+  status      SyncStatus @default(RUNNING)
+  dealsPulled Int        @default(0)
+  tradesBuilt Int        @default(0)
+  error       String?
+  startedAt   DateTime   @default(now())
+  finishedAt  DateTime?
 
   @@index([brokerAccountId])
   @@map("sync_run")
@@ -301,15 +301,15 @@ enum SyncStatus {
 // ─── AI coach conversations ───────────────────────────────────────────────────
 
 model AiConversation {
-  id              String      @id @default(cuid())
+  id              String  @id @default(cuid())
   userId          String
   brokerAccountId String?
   title           String?
 
-  messages        AiMessage[]
+  messages AiMessage[]
 
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([userId])
   @@map("ai_conversation")
@@ -320,17 +320,17 @@ model AiMessage {
   conversationId String
   conversation   AiConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
-  role           AiRole
-  content        String         @db.Text
+  role    AiRole
+  content String @db.Text
 
   // Web-search citations the assistant used for this message (array of
   // {title,url,snippet}); null for personal answers and all pre-search messages.
-  sources        Json?
+  sources Json?
   // Router lane that produced this message ('personal' | 'web' | 'hybrid').
   // Nullable for observability only; null on legacy rows.
-  lane           String?
+  lane    String?
 
-  createdAt      DateTime       @default(now())
+  createdAt DateTime @default(now())
 
   @@index([conversationId])
   @@map("ai_message")
@@ -346,8 +346,8 @@ enum AiRole {
 /// on, so an absent row means "not subscribed". Deliberately a separate table:
 /// better-auth owns `user`, and this never touches it.
 model WeeklyReviewSubscription {
-  id     String  @id @default(cuid())
-  userId String  @unique
+  id      String  @id @default(cuid())
+  userId  String  @unique
   /// Opt-in: false until the user explicitly enables it in settings.
   enabled Boolean @default(false)
 
@@ -370,18 +370,18 @@ model WeeklyReviewSubscription {
 /// was written from: while the hash matches, the stored narrative is reused and no
 /// tokens are spent. One row per account (upserted), so the table stays bounded.
 model AiReport {
-  id              String   @id @default(cuid())
+  id              String @id @default(cuid())
   userId          String
   brokerAccountId String
 
   /// SHA-256 of the TraderContext used to generate `content`.
-  dataHash        String
-  content         String   @db.Text
+  dataHash String
+  content  String  @db.Text
   /// Model that produced the narrative — for debugging drift after a model swap.
-  model           String?
+  model    String?
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([userId, brokerAccountId])
   @@index([userId])
@@ -576,4 +576,34 @@ model NotificationDelivery {
 
   @@unique([dedupKey, channel])
   @@map("notification_delivery")
+}
+
+// ─── Advanced charting: durable candle store + per-user watchlist ─────────────
+
+// Immutable historical bars, persisted for backfill/deep-history. The forming
+// (latest) bar is served live over SSE and re-upserted as it closes. Shared
+// across all users — keyed by symbol + timeframe + bar open time.
+model Candle {
+  symbol    String
+  timeframe String // 1m | 5m | 15m | 30m | 1h | 4h | 1d | 1w | 1M
+  openTime  DateTime
+  open      Decimal  @db.Decimal(18, 8)
+  high      Decimal  @db.Decimal(18, 8)
+  low       Decimal  @db.Decimal(18, 8)
+  close     Decimal  @db.Decimal(18, 8)
+  volume    Decimal  @db.Decimal(24, 8)
+  source    String // binance | mt5 | twelvedata
+
+  @@id([symbol, timeframe, openTime])
+  @@index([symbol, timeframe, openTime(sort: Desc)])
+  @@map("candle")
+}
+
+// One row per user — the symbols they've pinned to their chart watchlist.
+model Watchlist {
+  userId    String   @id
+  symbols   String[]
+  updatedAt DateTime @updatedAt
+
+  @@map("watchlist")
 }
