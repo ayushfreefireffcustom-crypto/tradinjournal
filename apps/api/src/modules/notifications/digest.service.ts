@@ -10,6 +10,7 @@ import { logger } from '@tradinjournal/logger';
 import type { EventImpact } from '@tradinjournal/contracts';
 import { sendEmail } from '../../lib/email/client.js';
 import { dailyDigestEmail } from '../../lib/email/templates.js';
+import { claimDelivery } from '../../lib/notifications/claim.js';
 
 const RANK: Record<EventImpact, number> = { LOW: 0, MEDIUM: 1, HIGH: 2 };
 const HORIZON_MINUTES = 24 * 60;
@@ -65,11 +66,7 @@ export async function sendDailyDigests(): Promise<{ users: number; sent: number 
 
     // Idempotent: at most one digest per user per calendar day.
     const dedupKey = `digest:${p.userId}:${dayKey}`;
-    try {
-      await prisma.notificationDelivery.create({ data: { userId: p.userId, dedupKey, channel: 'email' } });
-    } catch {
-      continue; // already sent today
-    }
+    if (!(await claimDelivery(p.userId, dedupKey, 'email'))) continue; // already sent today
 
     const { subject, html } = dailyDigestEmail({
       name: user.name,
