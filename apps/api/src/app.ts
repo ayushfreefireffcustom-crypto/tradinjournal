@@ -15,6 +15,7 @@ import { calendarRouter, calendarInternalRouter } from './modules/calendar/calen
 import { newsRouter, newsInternalRouter } from './modules/news/news.routes.js';
 import { notificationsRouter, pushRouter, notificationsInternalRouter } from './modules/notifications/notifications.routes.js';
 import { marketRouter, marketInternalRouter } from './modules/market/market.routes.js';
+import { alertsRouter, alertsInternalRouter } from './modules/alerts/alerts.routes.js';
 
 export function createApp(): Express {
   const app = express();
@@ -52,6 +53,7 @@ export function createApp(): Express {
   app.use('/api/notifications', notificationsRouter);
   app.use('/api/push', pushRouter);
   app.use('/api/market', marketRouter);
+  app.use('/api/alerts', alertsRouter);
   // Worker-to-API routes. Not under /api: no session, no CORS use case — the
   // shared-token guard on the router is the only way in.
   app.use('/internal/ai', aiInternalRouter);
@@ -59,6 +61,7 @@ export function createApp(): Express {
   app.use('/internal/news', newsInternalRouter);
   app.use('/internal/notifications', notificationsInternalRouter);
   app.use('/internal/market', marketInternalRouter);
+  app.use('/internal/alerts', alertsInternalRouter);
 
   app.use((_req: Request, res: Response) => {
     res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Route not found' } });
