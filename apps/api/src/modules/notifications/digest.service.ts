@@ -37,16 +37,28 @@ export async function sendDailyDigests(): Promise<{ users: number; sent: number 
   if (events.length === 0) return { users: emailPrefs.length, sent: 0 };
 
   const userIds = emailPrefs.map(p => p.userId);
-  const [users, watches] = await Promise.all([
+  const startOfDay = new Date(now);
+  startOfDay.setUTCHours(0, 0, 0, 0);
+  const [users, watches, triggeredAlerts] = await Promise.all([
     prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, name: true, email: true } }),
     prisma.eventWatch.findMany({
       where: { eventId: { in: events.map(e => e.id) }, userId: { in: userIds } },
       select: { eventId: true, userId: true },
     }),
+    // One-shot alerts that fired today (recurring fires go real-time only).
+    prisma.priceAlert.findMany({
+      where: { userId: { in: userIds }, triggeredAt: { gte: startOfDay } },
+      select: { userId: true, symbol: true, direction: true, threshold: true },
+    }),
   ]);
   const userById = new Map(users.map(u => [u.id, u]));
   const watchedByUser = new Map<string, Set<string>>();
   for (const w of watches) (watchedByUser.get(w.userId) ?? watchedByUser.set(w.userId, new Set()).get(w.userId)!).add(w.eventId);
+  const alertsByUser = new Map<string, { symbol: string; direction: string; threshold: string }[]>();
+  for (const a of triggeredAlerts) {
+    const list = alertsByUser.get(a.userId) ?? alertsByUser.set(a.userId, []).get(a.userId)!;
+    list.push({ symbol: a.symbol, direction: a.direction, threshold: String(a.threshold) });
+  }
 
   let sent = 0;
   for (const p of emailPrefs) {
@@ -78,6 +90,7 @@ export async function sendDailyDigests(): Promise<{ users: number; sent: number 
         forecast: e.forecast,
         previous: e.previous,
       })),
+      alerts: alertsByUser.get(p.userId) ?? [],
     });
     await sendEmail({ to: user.email, subject, html, devNote: `[daily-digest] ${relevant.length} events` }).catch(err =>
       logger.warn(`Digest email failed for ${p.userId}: ${(err as Error).message}`),
