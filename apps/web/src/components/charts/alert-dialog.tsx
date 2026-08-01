@@ -25,6 +25,11 @@ export default function AlertDialog({ symbol, currentPrice, accountId, onCreate,
   const [error, setError] = useState('');
 
   useEffect(() => { setMounted(true); }, []);
+  // The current price is fetched async after the dialog opens — prefill the
+  // threshold when it arrives, unless the user has already typed one.
+  useEffect(() => {
+    if (currentPrice != null) setThreshold(prev => (prev === '' ? String(currentPrice) : prev));
+  }, [currentPrice]);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && !submitting) onClose(); };
     document.addEventListener('keydown', onKey);
