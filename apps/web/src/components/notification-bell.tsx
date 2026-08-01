@@ -30,8 +30,8 @@ function visualFor(n: { kind?: string; title: string; body?: string | null }): {
   const ccy = (n.title.split(/[ ·]/)[0] ?? '').toUpperCase();
   const b = (n.body ?? '').toUpperCase();
   const ring = b.includes('HIGH') ? 'border-loss/50' : b.includes('MEDIUM') ? 'border-warning/50' : 'border-border-strong';
-  const isNews = (n.kind ?? '').includes('news');
-  const glyph = isNews ? '📰' : CCY_FLAG[ccy] ?? '📅';
+  const kind = n.kind ?? '';
+  const glyph = kind.includes('price') ? '🔔' : kind.includes('news') ? '📰' : CCY_FLAG[ccy] ?? '📅';
   return { glyph, ring };
 }
 
