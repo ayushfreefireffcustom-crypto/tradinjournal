@@ -22,9 +22,11 @@ export async function listAlerts(userId: string) {
 }
 
 export async function createAlert(userId: string, input: CreateAlertInput) {
-  // Seed lastPrice with the current price so the alert is armed against the side
-  // it's created on — it fires on a real cross, not instantly if already past.
-  const lastPrice = await getLatestPrice(input.symbol, input.accountId, userId);
+  // Seed lastPrice from the price the client already holds — the alert is armed
+  // against the side it's created on (fires on a real cross, not instantly if
+  // already past). We deliberately DON'T fetch the price server-side here: that
+  // blocked the create response on a slow provider call. If no seed is given,
+  // the next dispatch tick arms it (cross detection ignores a null lastPrice).
   return prisma.priceAlert.create({
     data: {
       userId,
@@ -32,7 +34,7 @@ export async function createAlert(userId: string, input: CreateAlertInput) {
       accountId: input.accountId ?? null,
       direction: input.direction,
       threshold: input.threshold,
-      lastPrice: lastPrice ?? null,
+      lastPrice: input.seedPrice ?? null,
       recurring: input.recurring ?? false,
       note: input.note ?? null,
     },
