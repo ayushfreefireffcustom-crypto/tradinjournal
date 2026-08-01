@@ -439,6 +439,7 @@ export interface NotificationPrefs {
   categories: string[];
   leadMinutes: number;
   newsAlerts: boolean;
+  priceAlerts: boolean;
   pushAvailable: boolean;
   vapidPublicKey: string | null;
 }
