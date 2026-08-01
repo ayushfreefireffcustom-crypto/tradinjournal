@@ -271,6 +271,9 @@ export const createAlertSchema = z.object({
   accountId: z.string().min(1).optional(), // broker symbols route via the account's MT5 creds
   recurring: z.boolean().optional(),
   note: z.string().max(200).optional(),
+  // Current price the client already has (from the chart) — seeds lastPrice so
+  // the alert is armed instantly without the server blocking on a price fetch.
+  seedPrice: z.coerce.number().positive().optional(),
 });
 export type CreateAlertInput = z.infer<typeof createAlertSchema>;
 
