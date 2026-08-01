@@ -57,21 +57,32 @@ interface ExchangeInfo {
   symbols: { symbol: string; baseAsset: string; quoteAsset: string; status: string }[];
 }
 
+// In-flight dedup: exchangeInfo is ~2MB, so concurrent callers during a cold
+// start must share ONE fetch instead of each pulling it (a thundering herd that
+// made concurrent lookups take many seconds).
+let symbolsInFlight: Promise<SymbolInfo[]> | null = null;
+
 /** Load + cache the tradable symbol catalog (drives search + crypto detection). */
 async function loadSymbols(signal?: AbortSignal): Promise<SymbolInfo[]> {
   const key = 'market:binance:symbols';
   const cached = await cacheGet<SymbolInfo[]>(key);
   if (cached) return cached;
-  try {
-    const info = await fetchJson<ExchangeInfo>(`${env.BINANCE_REST_URL}/api/v3/exchangeInfo`, signal);
-    const list: SymbolInfo[] = (info.symbols ?? [])
-      .filter(s => s.status === 'TRADING')
-      .map(s => ({ symbol: s.symbol, name: `${s.baseAsset}/${s.quoteAsset}`, assetClass: 'crypto' as const, provider: 'binance' }));
-    await cacheSet(key, list, EXCHANGE_INFO_TTL);
-    return list;
-  } catch {
-    return [];
-  }
+  if (symbolsInFlight) return symbolsInFlight;
+  symbolsInFlight = (async () => {
+    try {
+      const info = await fetchJson<ExchangeInfo>(`${env.BINANCE_REST_URL}/api/v3/exchangeInfo`, signal);
+      const list: SymbolInfo[] = (info.symbols ?? [])
+        .filter(s => s.status === 'TRADING')
+        .map(s => ({ symbol: s.symbol, name: `${s.baseAsset}/${s.quoteAsset}`, assetClass: 'crypto' as const, provider: 'binance' }));
+      await cacheSet(key, list, EXCHANGE_INFO_TTL);
+      return list;
+    } catch {
+      return [];
+    } finally {
+      symbolsInFlight = null;
+    }
+  })();
+  return symbolsInFlight;
 }
 
 async function searchSymbols(q: string, signal?: AbortSignal): Promise<SymbolInfo[]> {
