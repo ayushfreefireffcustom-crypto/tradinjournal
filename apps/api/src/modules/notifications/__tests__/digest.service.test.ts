@@ -9,6 +9,7 @@ const prisma = {
   economicEvent: { findMany: vi.fn() },
   user: { findMany: vi.fn() },
   eventWatch: { findMany: vi.fn() },
+  priceAlert: { findMany: vi.fn() },
   notificationDelivery: { create: vi.fn() },
 };
 const sendEmail = vi.fn();
@@ -48,6 +49,7 @@ beforeEach(() => {
   prisma.notificationDelivery.create.mockResolvedValue({});
   prisma.user.findMany.mockResolvedValue([{ id: 'u1', name: 'Ayush', email: 'a@example.com' }]);
   prisma.eventWatch.findMany.mockResolvedValue([]);
+  prisma.priceAlert.findMany.mockResolvedValue([]);
 });
 
 describe('sendDailyDigests', () => {
