@@ -171,6 +171,9 @@ export default function NotificationSettings() {
           <Row title="High-impact news alerts" desc="Notify me when market-moving news breaks.">
             <Toggle on={prefs.newsAlerts} onClick={() => patch({ newsAlerts: !prefs.newsAlerts })} label="News alerts" />
           </Row>
+          <Row title="Price alerts" desc="Notify me when a symbol crosses a price I set on the chart.">
+            <Toggle on={prefs.priceAlerts} onClick={() => patch({ priceAlerts: !prefs.priceAlerts })} label="Price alerts" />
+          </Row>
 
           <p className="text-[10px] tracking-[0.14em] uppercase text-fg-3 mt-3">Timezone · {prefs.timezone}</p>
           {saved && <p className="flex items-center gap-1.5 text-[11px] text-profit mt-2"><Check size={12} weight="bold" /> Saved</p>}
