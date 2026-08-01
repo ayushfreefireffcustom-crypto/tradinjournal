@@ -3,7 +3,7 @@
 // Advanced charting platform — real candles (crypto via Binance, stocks/forex
 // via Twelve Data) rendered with klinecharts, with indicators, drawing tools,
 // live updates, symbol search, a persisted watchlist, and 1 / 2×1 / 2×2 layouts.
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { SquaresFour, Square, Columns, BellRinging } from '@phosphor-icons/react';
 import AppShell from '@/components/app-shell';
 import { useAccounts } from '@/lib/use-accounts';
@@ -64,6 +64,17 @@ export default function ChartsPage() {
   const registerRef = useCallback((id: string, handle: KlineChartHandle | null) => {
     if (handle) chartRefs.current.set(id, handle);
     else chartRefs.current.delete(id);
+  }, []);
+
+  // Deep-link support: /charts?symbol=ETHUSDT (e.g. from a price-alert notification)
+  // opens that symbol in the active pane. Read after mount to avoid an SSR/hydration
+  // mismatch from reading window during render.
+  useEffect(() => {
+    const sym = new URLSearchParams(window.location.search).get('symbol');
+    if (sym && sym.trim()) {
+      const symbol = sym.trim().toUpperCase();
+      setPanes(prev => prev.map((p, i) => (i === 0 ? { ...p, symbol } : p)));
+    }
   }, []);
 
   const patchActive = (patch: Partial<Pane>) =>
