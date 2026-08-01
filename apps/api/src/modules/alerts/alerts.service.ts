@@ -4,13 +4,21 @@
 // the daily digest. Prices come from the market layer's cached path, fetched
 // once per distinct (symbol, account) group (fetch-once-serve-many).
 import { prisma } from '@tradinjournal/db';
+import { logger } from '@tradinjournal/logger';
 import type { CreateAlertInput, UpdateAlertInput } from '@tradinjournal/contracts';
 import { getLatestPrice } from '../market/market.service.js';
 import { claimDelivery } from '../../lib/notifications/claim.js';
 import { sendPush } from '../../lib/push.js';
 
-export function listAlerts(userId: string) {
-  return prisma.priceAlert.findMany({ where: { userId }, orderBy: { createdAt: 'desc' } });
+// Read degrades gracefully if the table is missing (migration lagging a deploy)
+// so the chart page's alerts panel shows empty instead of 500ing.
+export async function listAlerts(userId: string) {
+  try {
+    return await prisma.priceAlert.findMany({ where: { userId }, orderBy: { createdAt: 'desc' } });
+  } catch (err) {
+    logger.warn(`Alerts read failed (migration applied?): ${(err as Error).message}`);
+    return [];
+  }
 }
 
 export async function createAlert(userId: string, input: CreateAlertInput) {
