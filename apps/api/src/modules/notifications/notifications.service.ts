@@ -14,6 +14,7 @@ export interface NotificationPrefsDTO {
   categories: string[];
   leadMinutes: number;
   newsAlerts: boolean;
+  priceAlerts: boolean;
 }
 
 /** Schema defaults, returned when a user has never touched their preferences. */
@@ -27,6 +28,7 @@ const DEFAULTS: NotificationPrefsDTO = {
   categories: [],
   leadMinutes: 15,
   newsAlerts: false,
+  priceAlerts: true,
 };
 
 export async function getPreferences(userId: string): Promise<NotificationPrefsDTO> {
@@ -42,6 +44,7 @@ export async function getPreferences(userId: string): Promise<NotificationPrefsD
     categories: row.categories,
     leadMinutes: row.leadMinutes,
     newsAlerts: row.newsAlerts,
+    priceAlerts: row.priceAlerts,
   };
 }
 
@@ -56,6 +59,7 @@ export async function setPreferences(userId: string, input: NotificationPrefsInp
     ...(input.categories !== undefined ? { categories: input.categories } : {}),
     ...(input.leadMinutes !== undefined ? { leadMinutes: input.leadMinutes } : {}),
     ...(input.newsAlerts !== undefined ? { newsAlerts: input.newsAlerts } : {}),
+    ...(input.priceAlerts !== undefined ? { priceAlerts: input.priceAlerts } : {}),
   };
   await prisma.notificationPreference.upsert({ where: { userId }, create: { userId, ...data }, update: data });
   return getPreferences(userId);
