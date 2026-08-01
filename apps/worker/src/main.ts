@@ -28,6 +28,8 @@ import {
   NOTIFICATIONS_DIGEST_SCHEDULER_ID,
   QUEUE_MARKET_WARM,
   MARKET_WARM_SCHEDULER_ID,
+  QUEUE_PRICE_ALERTS,
+  PRICE_ALERTS_SCHEDULER_ID,
   createRedisConnection,
   getQueue,
   closeQueues,
@@ -40,6 +42,7 @@ import {
   type NotificationsJob,
   type NotificationsDigestJob,
   type MarketWarmJob,
+  type PriceAlertsJob,
 } from '@tradinjournal/queue';
 import { createWeeklyReviewWorker, isUnrecoverable as weeklyUnrecoverable } from './processors/weekly-review.js';
 import { createCalendarWorker, isUnrecoverable as calendarUnrecoverable } from './processors/calendar-ingest.js';
@@ -48,6 +51,7 @@ import { createNewsEnrichWorker, isUnrecoverable as newsEnrichUnrecoverable } fr
 import { createNotificationsWorker, isUnrecoverable as notifUnrecoverable } from './processors/notifications.js';
 import { createDigestWorker, isUnrecoverable as digestUnrecoverable } from './processors/notifications-digest.js';
 import { createMarketWarmWorker, isUnrecoverable as marketWarmUnrecoverable } from './processors/market-warm.js';
+import { createPriceAlertsWorker, isUnrecoverable as priceAlertsUnrecoverable } from './processors/price-alerts.js';
 
 const workers: Worker[] = [];
 let connection: ReturnType<typeof createRedisConnection> = null;
@@ -175,6 +179,19 @@ async function start(): Promise<void> {
     );
     attach(createMarketWarmWorker(connection, marketQueue) as unknown as Worker, 'Market warm', marketWarmUnrecoverable);
     logger.info(`Market warm scheduled: "${env.MARKET_WARM_CRON}" UTC`);
+  }
+
+  // ── Price alerts ────────────────────────────────────────────────────────────
+  // Every minute; the API no-ops cheaply when no alerts are active.
+  const alertsQueue = getQueue<PriceAlertsJob>(QUEUE_PRICE_ALERTS);
+  if (alertsQueue) {
+    await alertsQueue.upsertJobScheduler(
+      PRICE_ALERTS_SCHEDULER_ID,
+      { pattern: env.PRICE_ALERT_CRON, tz: 'UTC' },
+      { name: 'dispatch', data: { kind: 'price-alerts', bucket: timeBucket(new Date(), 'minute') } },
+    );
+    attach(createPriceAlertsWorker(connection, alertsQueue) as unknown as Worker, 'Price alerts', priceAlertsUnrecoverable);
+    logger.info(`Price alerts scheduled: "${env.PRICE_ALERT_CRON}" UTC`);
   }
 
   logger.info(`Worker ready — ${workers.length} pipeline(s) registered.`);
