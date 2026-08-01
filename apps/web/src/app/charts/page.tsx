@@ -46,9 +46,11 @@ export default function ChartsPage() {
   const openAlert = async () => {
     setAlertPrice(null);
     setAlertOpen(true);
-    // Prefill the threshold with the active symbol's current price.
+    // Prefill the threshold with the active symbol's current price. /charts only
+    // charts public symbols (crypto/stocks/forex) — no accountId (that would
+    // route a crypto ticker to the broker).
     try {
-      const { candles } = await marketApi.candles({ symbol: active.symbol, tf: '1m', limit: 1, accountId: selected?.id });
+      const { candles } = await marketApi.candles({ symbol: active.symbol, tf: '1m', limit: 1 });
       setAlertPrice(candles.length ? candles[candles.length - 1]!.close : null);
     } catch {
       setAlertPrice(null);
@@ -161,7 +163,6 @@ export default function ChartsPage() {
         <AlertDialog
           symbol={active.symbol}
           currentPrice={alertPrice}
-          accountId={selected?.id}
           onCreate={createAlert}
           onClose={() => setAlertOpen(false)}
         />
