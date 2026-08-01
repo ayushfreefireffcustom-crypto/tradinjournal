@@ -21,6 +21,7 @@ export interface CreateAlertBody {
   accountId?: string;
   recurring?: boolean;
   note?: string;
+  seedPrice?: number; // current price from the chart — arms the alert instantly
 }
 
 export interface UpdateAlertBody {

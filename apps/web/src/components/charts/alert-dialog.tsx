@@ -44,7 +44,7 @@ export default function AlertDialog({ symbol, currentPrice, accountId, onCreate,
     setSubmitting(true);
     setError('');
     try {
-      await onCreate({ symbol, direction, threshold: t, accountId, recurring, note: note.trim() || undefined });
+      await onCreate({ symbol, direction, threshold: t, accountId, recurring, note: note.trim() || undefined, seedPrice: currentPrice ?? undefined });
       onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not create the alert.');
