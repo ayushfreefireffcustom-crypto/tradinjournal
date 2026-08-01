@@ -91,3 +91,7 @@ export function dispatchDigest(params: { bucket: string }): Promise<{ users: num
 export function warmMarket(params: { bucket: string }): Promise<{ warmed: number }> {
   return request('/internal/market/warm', { method: 'POST', body: JSON.stringify(params) });
 }
+
+export function dispatchPriceAlerts(params: { bucket: string }): Promise<{ checked: number; fired: number }> {
+  return request('/internal/alerts/dispatch', { method: 'POST', body: JSON.stringify(params) });
+}
