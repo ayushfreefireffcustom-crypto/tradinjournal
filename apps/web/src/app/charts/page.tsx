@@ -4,11 +4,12 @@
 // via Twelve Data) rendered with klinecharts, with indicators, drawing tools,
 // live updates, symbol search, a persisted watchlist, and 1 / 2×1 / 2×2 layouts.
 import { useCallback, useRef, useState } from 'react';
-import { SquaresFour, Square, Columns } from '@phosphor-icons/react';
+import { SquaresFour, Square, Columns, BellRinging } from '@phosphor-icons/react';
 import AppShell from '@/components/app-shell';
 import { useAccounts } from '@/lib/use-accounts';
 import type { BrokerAccount } from '@/lib/api';
-import type { MarketTimeframe } from '@/lib/market-api';
+import { marketApi, type MarketTimeframe } from '@/lib/market-api';
+import { alertsApi, type CreateAlertBody } from '@/lib/alerts-api';
 import LayoutGrid, { type Pane } from '@/components/charts/layout-grid';
 import type { KlineChartHandle } from '@/components/charts/kline-chart';
 import SymbolSearch from '@/components/charts/symbol-search';
@@ -16,6 +17,8 @@ import TimeframeBar from '@/components/charts/timeframe-bar';
 import IndicatorMenu from '@/components/charts/indicator-menu';
 import DrawingToolbar from '@/components/charts/drawing-toolbar';
 import Watchlist from '@/components/charts/watchlist';
+import AlertsPanel from '@/components/charts/alerts-panel';
+import AlertDialog from '@/components/charts/alert-dialog';
 
 const DEFAULT_SYMBOLS = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT'];
 const newId = () => (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `p${Math.random()}`);
@@ -34,6 +37,27 @@ export default function ChartsPage() {
 
   const active = panes.find(p => p.id === activeId) ?? panes[0]!;
   const activeChart = () => chartRefs.current.get(activeId);
+
+  // Price alerts.
+  const [alertOpen, setAlertOpen] = useState(false);
+  const [alertPrice, setAlertPrice] = useState<number | null>(null);
+  const [alertsReload, setAlertsReload] = useState(0);
+
+  const openAlert = async () => {
+    setAlertPrice(null);
+    setAlertOpen(true);
+    // Prefill the threshold with the active symbol's current price.
+    try {
+      const { candles } = await marketApi.candles({ symbol: active.symbol, tf: '1m', limit: 1, accountId: selected?.id });
+      setAlertPrice(candles.length ? candles[candles.length - 1]!.close : null);
+    } catch {
+      setAlertPrice(null);
+    }
+  };
+  const createAlert = async (body: CreateAlertBody) => {
+    await alertsApi.create(body);
+    setAlertsReload(t => t + 1);
+  };
 
   const registerRef = useCallback((id: string, handle: KlineChartHandle | null) => {
     if (handle) chartRefs.current.set(id, handle);
@@ -84,6 +108,13 @@ export default function ChartsPage() {
           <div className="h-5 w-px bg-border-soft hidden sm:block" />
           <IndicatorMenu onAdd={name => activeChart()?.createIndicator(name)} onClear={() => activeChart()?.removeIndicators()} />
           <DrawingToolbar onDraw={name => activeChart()?.createOverlay(name)} onClear={() => activeChart()?.removeOverlays()} />
+          <button
+            onClick={openAlert}
+            data-testid="add-alert"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded text-[10px] tracking-wide uppercase text-fg-2 border border-border-soft hover:text-profit hover:border-profit/30 transition-colors"
+          >
+            <BellRinging size={13} weight="bold" /> Alert
+          </button>
           <div className="ml-auto flex items-center gap-1">
             {LAYOUTS.map(l => {
               const I = l.icon;
@@ -115,11 +146,26 @@ export default function ChartsPage() {
               registerRef={registerRef}
             />
           </div>
-          <div className="order-1 lg:order-2 min-h-0 max-h-[280px] lg:max-h-none flex flex-col">
-            <Watchlist activeSymbol={active.symbol} onPick={symbol => patchActive({ symbol })} />
+          <div className="order-1 lg:order-2 min-h-0 lg:max-h-none flex flex-col gap-2 sm:gap-3">
+            <div className="max-h-[240px] lg:max-h-none lg:flex-1 min-h-0 flex flex-col">
+              <Watchlist activeSymbol={active.symbol} onPick={symbol => patchActive({ symbol })} />
+            </div>
+            <div className="max-h-[240px] lg:max-h-none lg:flex-1 min-h-0 flex flex-col">
+              <AlertsPanel activeSymbol={active.symbol} reloadToken={alertsReload} />
+            </div>
           </div>
         </div>
       </div>
+
+      {alertOpen && (
+        <AlertDialog
+          symbol={active.symbol}
+          currentPrice={alertPrice}
+          accountId={selected?.id}
+          onCreate={createAlert}
+          onClose={() => setAlertOpen(false)}
+        />
+      )}
     </AppShell>
   );
 }
