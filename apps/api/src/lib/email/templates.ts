@@ -243,8 +243,9 @@ export function dailyDigestEmail(params: {
     forecast: string | null;
     previous: string | null;
   }>;
+  alerts?: Array<{ symbol: string; direction: string; threshold: string }>;
 }): { subject: string; html: string } {
-  const { name, events } = params;
+  const { name, events, alerts = [] } = params;
   const first = name?.trim().split(' ')[0] || 'trader';
   const n = events.length;
   const rows = events
@@ -261,10 +262,24 @@ export function dailyDigestEmail(params: {
       </div>`;
     })
     .join('');
+  const alertRows = alerts
+    .map(a => {
+      const color = a.direction === 'above' ? BRAND : '#FE3A31';
+      return `
+      <div style="border-left:3px solid ${color};padding:8px 0 8px 12px;margin:0 0 8px;">
+        <span style="color:${FG};font-weight:600;font-size:14px;">${escapeHtml(a.symbol)}</span>
+        <span style="color:${MUTED};font-size:12px;"> crossed ${escapeHtml(a.direction)} <span style="color:${color};font-weight:600;">${escapeHtml(a.threshold)}</span></span>
+      </div>`;
+    })
+    .join('');
+  const alertsBlock = alerts.length
+    ? `<h2 style="color:${FG};font-size:15px;font-weight:700;margin:22px 0 10px;">🔔 Alerts triggered today</h2>${alertRows}`
+    : '';
   const inner = `
     <h1 style="color:${FG};font-size:19px;font-weight:700;margin:0 0 6px;">Your day ahead, ${escapeHtml(first)} 📊</h1>
     <p style="color:${MUTED};font-size:14px;line-height:1.6;margin:0 0 18px;">${n} market event${n === 1 ? '' : 's'} on your radar in the next 24 hours.</p>
     ${rows}
+    ${alertsBlock}
     <a href="${env.APP_URL}/markets" style="display:inline-block;background:${BRAND};color:${BG};font-size:14px;font-weight:700;text-decoration:none;padding:12px 22px;border-radius:10px;margin-top:8px;">Open Markets →</a>`;
   const footer = `Your daily market digest from TRADElogs. Turn this off anytime in Settings → Notifications.`;
   return { subject: `Your market day: ${n} event${n === 1 ? '' : 's'} to watch`, html: shell(inner, { footer, width: 520 }) };
