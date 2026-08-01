@@ -148,11 +148,14 @@ export default function ChartsPage() {
               registerRef={registerRef}
             />
           </div>
-          <div className="order-1 lg:order-2 min-h-0 lg:max-h-none flex flex-col gap-2 sm:gap-3">
-            <div className="max-h-[240px] lg:max-h-none lg:flex-1 min-h-0 flex flex-col">
+          {/* Right rail: both panels size to their content (scrolling internally
+              past a cap) and stack at the top — never a forced 50/50 split, so an
+              empty watchlist can't strand the alerts panel at the bottom. */}
+          <div className="order-1 lg:order-2 flex flex-col gap-2 sm:gap-3 min-h-0">
+            <div className="flex flex-col min-h-0 max-h-[220px] lg:max-h-[calc(50%-6px)] [&>*]:flex-1 [&>*]:min-h-0">
               <Watchlist activeSymbol={active.symbol} onPick={symbol => patchActive({ symbol })} />
             </div>
-            <div className="max-h-[240px] lg:max-h-none lg:flex-1 min-h-0 flex flex-col">
+            <div className="flex flex-col min-h-0 max-h-[220px] lg:max-h-[calc(50%-6px)] [&>*]:flex-1 [&>*]:min-h-0">
               <AlertsPanel activeSymbol={active.symbol} reloadToken={alertsReload} />
             </div>
           </div>
