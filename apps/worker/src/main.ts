@@ -30,6 +30,8 @@ import {
   MARKET_WARM_SCHEDULER_ID,
   QUEUE_PRICE_ALERTS,
   PRICE_ALERTS_SCHEDULER_ID,
+  QUEUE_MACRO_INGEST,
+  MACRO_INGEST_SCHEDULER_ID,
   createRedisConnection,
   getQueue,
   closeQueues,
@@ -43,6 +45,7 @@ import {
   type NotificationsDigestJob,
   type MarketWarmJob,
   type PriceAlertsJob,
+  type MacroIngestJob,
 } from '@tradinjournal/queue';
 import { createWeeklyReviewWorker, isUnrecoverable as weeklyUnrecoverable } from './processors/weekly-review.js';
 import { createCalendarWorker, isUnrecoverable as calendarUnrecoverable } from './processors/calendar-ingest.js';
@@ -52,6 +55,7 @@ import { createNotificationsWorker, isUnrecoverable as notifUnrecoverable } from
 import { createDigestWorker, isUnrecoverable as digestUnrecoverable } from './processors/notifications-digest.js';
 import { createMarketWarmWorker, isUnrecoverable as marketWarmUnrecoverable } from './processors/market-warm.js';
 import { createPriceAlertsWorker, isUnrecoverable as priceAlertsUnrecoverable } from './processors/price-alerts.js';
+import { createMacroWorker, isUnrecoverable as macroUnrecoverable } from './processors/macro-ingest.js';
 
 const workers: Worker[] = [];
 let connection: ReturnType<typeof createRedisConnection> = null;
@@ -192,6 +196,20 @@ async function start(): Promise<void> {
     );
     attach(createPriceAlertsWorker(connection, alertsQueue) as unknown as Worker, 'Price alerts', priceAlertsUnrecoverable);
     logger.info(`Price alerts scheduled: "${env.PRICE_ALERT_CRON}" UTC`);
+  }
+
+  // ── Macro data spine ────────────────────────────────────────────────────────
+  // Scheduled unconditionally — the API no-ops when the macro segment is off
+  // (no FRED key), so the worker needn't know the provider keys.
+  const macroQueue = getQueue<MacroIngestJob>(QUEUE_MACRO_INGEST);
+  if (macroQueue) {
+    await macroQueue.upsertJobScheduler(
+      MACRO_INGEST_SCHEDULER_ID,
+      { pattern: env.MACRO_INGEST_CRON, tz: 'UTC' },
+      { name: 'ingest', data: { kind: 'macro-ingest', bucket: timeBucket(new Date(), 'minute') } },
+    );
+    attach(createMacroWorker(connection, macroQueue) as unknown as Worker, 'Macro ingest', macroUnrecoverable);
+    logger.info(`Macro ingest scheduled: "${env.MACRO_INGEST_CRON}" UTC`);
   }
 
   logger.info(`Worker ready — ${workers.length} pipeline(s) registered.`);
