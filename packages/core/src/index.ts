@@ -18,5 +18,35 @@ export type { Insight, Tone, InsightIcon, JournalLike } from './analysis/insight
 export { buildTraderContext, RECENT_TRADES_CAP } from './analysis/context.js';
 export type { TraderContext, RecentTradeDigest } from './analysis/context.js';
 
-export { ENGINE_VER, MACRO_ASSETS, scoreAsset } from './macro/index.js';
-export type { MacroAsset, BiasLabel, BiasResult } from './macro/index.js';
+export {
+  ENGINE_VER,
+  MACRO_ASSETS,
+  scoreAsset,
+  scoreAll,
+  classifyRegime,
+  recessionOdds,
+  readFactors,
+  explainFactors,
+  labelForScore,
+  FACTORS,
+  SENSITIVITIES,
+  computeAtr,
+  computeSignal,
+  directionFromBias,
+  DEFAULT_ACCOUNT_SIZE,
+} from './macro/index.js';
+export type {
+  MacroAsset,
+  BiasLabel,
+  BiasResult,
+  EngineInput,
+  EngineIndicator,
+  EngineMarket,
+  RegimeResult,
+  FactorReading,
+  FactorKey,
+  SignalDirection,
+  SignalResult,
+  SignalInput,
+  OhlcBar,
+} from './macro/index.js';
