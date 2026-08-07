@@ -66,6 +66,7 @@ export const QUEUE_NOTIFICATIONS = 'notifications' as const;
 export const QUEUE_NOTIFICATIONS_DIGEST = 'notifications-digest' as const;
 export const QUEUE_MARKET_WARM = 'market-warm' as const;
 export const QUEUE_PRICE_ALERTS = 'price-alerts' as const;
+export const QUEUE_MACRO_INGEST = 'macro-ingest' as const;
 
 export const CALENDAR_INGEST_SCHEDULER_ID = 'calendar-ingest-cron';
 export const NEWS_INGEST_SCHEDULER_ID = 'news-ingest-cron';
@@ -74,6 +75,7 @@ export const NOTIFICATIONS_SCHEDULER_ID = 'notifications-cron';
 export const NOTIFICATIONS_DIGEST_SCHEDULER_ID = 'notifications-digest-cron';
 export const MARKET_WARM_SCHEDULER_ID = 'market-warm-cron';
 export const PRICE_ALERTS_SCHEDULER_ID = 'price-alerts-cron';
+export const MACRO_INGEST_SCHEDULER_ID = 'macro-ingest-cron';
 
 /** Trigger a calendar ingest for a UTC window (bucketed for idempotency). */
 export interface CalendarIngestJob {
@@ -118,6 +120,12 @@ export interface PriceAlertsJob {
   bucket: string;
 }
 
+/** Trigger a macro ingest tick (FRED + markets → engine → cached state). */
+export interface MacroIngestJob {
+  kind: 'macro-ingest';
+  bucket: string;
+}
+
 /** Truncate a Date to an idempotency bucket at hour or minute granularity. */
 export function timeBucket(date: Date, granularity: 'hour' | 'minute'): string {
   const iso = date.toISOString(); // YYYY-MM-DDTHH:MM:SS.sssZ
@@ -144,6 +152,9 @@ export function marketWarmJobId(bucket: string): string {
 }
 export function priceAlertsJobId(bucket: string): string {
   return `price-alerts:${bucket}`;
+}
+export function macroIngestJobId(bucket: string): string {
+  return `macro-ingest:${bucket}`;
 }
 
 // ─── Connection ──────────────────────────────────────────────────────────────
