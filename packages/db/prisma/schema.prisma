@@ -633,3 +633,96 @@ model PriceAlert {
   @@index([userId])
   @@map("price_alert")
 }
+
+// ─── Macro segment (global-macro intelligence dashboard) ─────────────────────
+// Automated macro data (FRED) + market snapshots + engine outputs, all
+// historized (snapshot per asOf) so we get trends / regime trail / backtests.
+
+model MacroIndicator {
+  id        String   @id @default(cuid())
+  key       String // FRED series key, e.g. CPIAUCSL, WALCL, T10Y2Y
+  label     String
+  value     Decimal  @db.Decimal(24, 8)
+  prev      Decimal? @db.Decimal(24, 8)
+  forecast  Decimal? @db.Decimal(24, 8)
+  unit      String?
+  source    String // fred
+  asOf      DateTime
+  createdAt DateTime @default(now())
+
+  @@unique([key, asOf])
+  @@index([key, asOf(sort: Desc)])
+  @@map("macro_indicator")
+}
+
+model MacroMarketQuote {
+  id        String   @id @default(cuid())
+  symbol    String // BTCUSDT, XAU, SPX, DXY
+  price     Decimal  @db.Decimal(24, 8)
+  changePct Decimal? @db.Decimal(12, 6)
+  source    String
+  asOf      DateTime
+  createdAt DateTime @default(now())
+
+  @@unique([symbol, asOf])
+  @@index([symbol, asOf(sort: Desc)])
+  @@map("macro_market_quote")
+}
+
+model BiasScore {
+  id        String   @id @default(cuid())
+  asset     String // BTC | XAU | SPX | DXY
+  score     Int // 0-100
+  label     String
+  evidence  Json // { supporting: string[], opposing: string[] }
+  engineVer String
+  asOf      DateTime
+  createdAt DateTime @default(now())
+
+  @@index([asset, asOf(sort: Desc)])
+  @@map("bias_score")
+}
+
+enum MacroMemberStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model MacroMember {
+  id          String            @id @default(cuid())
+  userId      String            @unique // better-auth user id (no FK edit on User)
+  exchange    String // DELTA | COINDCX | ...
+  exchangeUid String
+  status      MacroMemberStatus @default(PENDING)
+  plan        String            @default("tradeai")
+  expiresAt   DateTime?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@index([status])
+  @@map("macro_member")
+}
+
+model MacroSignal {
+  id           String   @id @default(cuid())
+  asset        String
+  direction    String // LONG | SHORT | WAIT
+  entryLow     Decimal  @db.Decimal(24, 8)
+  entryHigh    Decimal  @db.Decimal(24, 8)
+  stop         Decimal  @db.Decimal(24, 8)
+  t1           Decimal  @db.Decimal(24, 8)
+  t2           Decimal  @db.Decimal(24, 8)
+  t3           Decimal  @db.Decimal(24, 8)
+  confidence   Int
+  rationale    String   @db.Text
+  invalidation String   @db.Text
+  accountSize  Decimal  @default(100000) @db.Decimal(18, 2)
+  qty          Decimal? @db.Decimal(24, 8)
+  asOf         DateTime
+  engineVer    String
+  createdAt    DateTime @default(now())
+
+  @@index([asset, asOf(sort: Desc)])
+  @@map("macro_signal")
+}
