@@ -95,3 +95,7 @@ export function warmMarket(params: { bucket: string }): Promise<{ warmed: number
 export function dispatchPriceAlerts(params: { bucket: string }): Promise<{ checked: number; fired: number }> {
   return request('/internal/alerts/dispatch', { method: 'POST', body: JSON.stringify(params) });
 }
+
+export function ingestMacro(params: { reason: string }): Promise<{ ingested: number }> {
+  return request('/internal/macro/ingest', { method: 'POST', body: JSON.stringify(params) });
+}
