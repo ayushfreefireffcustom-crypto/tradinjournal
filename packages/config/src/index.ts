@@ -149,6 +149,20 @@ const envSchema = z.object({
   // Price alerts — checked every minute; each tick fetches the latest price per
   // distinct alerted symbol (cached) and fires on a threshold cross.
   PRICE_ALERT_CRON: z.string().default('* * * * *'),
+
+  // ── Macro segment (global-macro intelligence dashboard) ───────────────────
+  // FRED (free, official Fed data) drives the automated macro indicators — the
+  // segment's core input — so MACRO_ENABLED gates on it. Market prices are
+  // keyless (Binance) or reuse FINNHUB_API_KEY above. Anthropic powers the macro
+  // assistant (added later). Same optional-with-fallback pattern as the blocks
+  // above: absent keys → the feature is simply off (idle-safe), nothing crashes.
+  FRED_API_KEY: z.string().optional(),
+  MACRO_INGEST_CRON: z.string().default('*/30 * * * *'),
+  MACRO_STATE_CACHE_TTL: z.coerce.number().int().positive().default(90),
+  // Macro assistant (Anthropic Claude) — separate from the Groq trading coach.
+  ANTHROPIC_API_KEY: z.string().optional(),
+  // Emails allowed to approve macro members, until a full admin UI (comma-separated).
+  MACRO_ADMIN_EMAILS: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema> & {
@@ -187,6 +201,12 @@ export type Env = z.infer<typeof envSchema> & {
   MARKET_WARM_SYMBOLS_LIST: string[];
   /** True when price alerts can run — gated on the market layer being live. */
   PRICE_ALERTS_ENABLED: boolean;
+  /** True when the macro data spine can run — gated on FRED (its core input). */
+  MACRO_ENABLED: boolean;
+  /** True when the macro Claude assistant is configured (Anthropic key present). */
+  MACRO_ASSISTANT_ENABLED: boolean;
+  /** Emails allowed to approve macro members, derived from MACRO_ADMIN_EMAILS. */
+  MACRO_ADMIN_EMAILS_LIST: string[];
 };
 
 const AI_DEFAULTS = {
@@ -263,6 +283,14 @@ function loadEnv(): Env {
     : [];
   const PRICE_ALERTS_ENABLED = MARKET_ENABLED;
 
+  // Macro segment — FRED drives the automated macro data, so it's the gate.
+  // Markets are keyless; without FRED the segment shows an empty state (idle-safe).
+  const MACRO_ENABLED = !!parsed.data.FRED_API_KEY;
+  const MACRO_ASSISTANT_ENABLED = !!parsed.data.ANTHROPIC_API_KEY;
+  const MACRO_ADMIN_EMAILS_LIST = parsed.data.MACRO_ADMIN_EMAILS
+    ? parsed.data.MACRO_ADMIN_EMAILS.split(',').map(s => s.trim().toLowerCase()).filter(Boolean)
+    : [];
+
   return {
     ...parsed.data,
     APP_URL,
@@ -283,6 +311,9 @@ function loadEnv(): Env {
     TWELVEDATA_ENABLED,
     MARKET_WARM_SYMBOLS_LIST,
     PRICE_ALERTS_ENABLED,
+    MACRO_ENABLED,
+    MACRO_ASSISTANT_ENABLED,
+    MACRO_ADMIN_EMAILS_LIST,
   };
 }
 
