@@ -364,3 +364,66 @@ export const macroStateSchema = z.object({
   engineVer: z.string(),
 });
 export type MacroState = z.infer<typeof macroStateSchema>;
+
+// ── Macro membership (P4 gating) ─────────────────────────────────────────────
+
+export const macroExchangeSchema = z.enum(['DELTA', 'COINDCX']);
+export type MacroExchange = z.infer<typeof macroExchangeSchema>;
+
+export const macroMemberApplySchema = z.object({
+  exchange: macroExchangeSchema,
+  /** Exchange user id — trimmed, non-empty, length-capped. */
+  exchangeUid: z.string().trim().min(1).max(128),
+});
+export type MacroMemberApplyInput = z.infer<typeof macroMemberApplySchema>;
+
+export const macroMemberStatusSchema = z.enum(['PENDING', 'APPROVED', 'REJECTED']);
+
+export const macroMemberDtoSchema = z.object({
+  id: z.string(),
+  exchange: z.string(),
+  exchangeUid: z.string(),
+  status: macroMemberStatusSchema,
+  plan: z.string(),
+  expiresAt: z.string().nullable(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+export type MacroMemberDto = z.infer<typeof macroMemberDtoSchema>;
+
+export const macroMemberDecisionSchema = z.object({
+  /** Optional note for logs; not shown to the applicant in MVP. */
+  note: z.string().max(500).optional(),
+});
+export type MacroMemberDecisionInput = z.infer<typeof macroMemberDecisionSchema>;
+
+// ── Macro signals (P5) ───────────────────────────────────────────────────────
+
+export const macroSignalDirectionSchema = z.enum(['LONG', 'SHORT', 'WAIT']);
+
+export const macroSignalDtoSchema = z.object({
+  id: z.string().optional(),
+  asset: z.string(),
+  direction: macroSignalDirectionSchema,
+  entryLow: z.number(),
+  entryHigh: z.number(),
+  stop: z.number(),
+  t1: z.number(),
+  t2: z.number(),
+  t3: z.number(),
+  confidence: z.number(),
+  rationale: z.string(),
+  invalidation: z.string(),
+  accountSize: z.number(),
+  qty: z.number().nullable(),
+  asOf: z.string(),
+  engineVer: z.string(),
+});
+export type MacroSignalDto = z.infer<typeof macroSignalDtoSchema>;
+
+// ── Macro assistant (P6) ─────────────────────────────────────────────────────
+
+export const macroAssistantSchema = z.object({
+  question: z.string().trim().min(1).max(2000),
+});
+export type MacroAssistantInput = z.infer<typeof macroAssistantSchema>;
