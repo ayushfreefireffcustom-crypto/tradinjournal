@@ -291,3 +291,76 @@ export const alertsDispatchSchema = z.object({
   bucket: z.string().min(1).max(64).optional(),
 });
 export type AlertsDispatchInput = z.infer<typeof alertsDispatchSchema>;
+
+// ── Macro segment ─────────────────────────────────────────────────────────────
+// The single dashboard JSON the terminal AND the Claude assistant both consume.
+// Decimals are serialized to numbers, timestamps to ISO strings over the wire.
+
+export const macroIngestSchema = z.object({
+  /** Marker carried through for logging/idempotency (cron tick). */
+  reason: z.string().default('cron'),
+});
+export type MacroIngestInput = z.infer<typeof macroIngestSchema>;
+
+export const macroRegimeSchema = z.object({
+  growth: z.enum(['up', 'down']),
+  inflation: z.enum(['up', 'down']),
+  label: z.string(),
+  recessionOdds: z.number().optional(),
+});
+export type MacroRegime = z.infer<typeof macroRegimeSchema>;
+
+export const macroIndicatorDtoSchema = z.object({
+  key: z.string(),
+  label: z.string(),
+  value: z.number(),
+  prev: z.number().nullable().optional(),
+  forecast: z.number().nullable().optional(),
+  unit: z.string().nullable().optional(),
+  source: z.string(),
+  asOf: z.string(),
+});
+
+export const macroMarketDtoSchema = z.object({
+  symbol: z.string(),
+  price: z.number(),
+  changePct: z.number().nullable().optional(),
+  asOf: z.string(),
+});
+
+export const macroBiasDtoSchema = z.object({
+  asset: z.string(),
+  score: z.number(),
+  label: z.string(),
+  supporting: z.array(z.string()),
+  opposing: z.array(z.string()),
+});
+
+export const macroEventDtoSchema = z.object({
+  title: z.string(),
+  country: z.string().nullable().optional(),
+  impact: z.string().nullable().optional(),
+  at: z.string(),
+  actual: z.string().nullable().optional(),
+  forecast: z.string().nullable().optional(),
+  prev: z.string().nullable().optional(),
+});
+
+export const macroHeadlineDtoSchema = z.object({
+  title: z.string(),
+  source: z.string().nullable().optional(),
+  url: z.string(),
+  at: z.string(),
+});
+
+export const macroStateSchema = z.object({
+  asOf: z.string(),
+  regime: macroRegimeSchema.nullable(),
+  macro: z.array(macroIndicatorDtoSchema),
+  markets: z.array(macroMarketDtoSchema),
+  bias: z.array(macroBiasDtoSchema),
+  events: z.array(macroEventDtoSchema),
+  headlines: z.array(macroHeadlineDtoSchema),
+  engineVer: z.string(),
+});
+export type MacroState = z.infer<typeof macroStateSchema>;
