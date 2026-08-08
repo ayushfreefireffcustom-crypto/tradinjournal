@@ -92,9 +92,12 @@ export const macroApi = {
       body: JSON.stringify({ question }),
     }),
   /**
-   * SSE stream. Returns true if streaming worked; false to fall back to JSON.
+   * SSE stream. Returns true only if at least one text chunk was received, so the
+   * caller can fall back to the JSON endpoint when the stream yields nothing
+   * (e.g. a mid-stream provider error). `onChunk` is invoked per token.
    */
   async assistantStream(question: string, onChunk: (text: string) => void): Promise<boolean> {
+    let got = false;
     try {
       const res = await fetch(`${API}${PREFIX}/macro/assistant/stream`, {
         method: 'POST',
@@ -118,16 +121,20 @@ export const macroApi = {
           const t = line.trim();
           if (!t.startsWith('data:')) continue;
           const payload = t.slice(5).trim();
-          if (payload === '[DONE]') return true;
+          if (payload === '[DONE]') return got;
           try {
             const json = JSON.parse(payload) as { text?: string; error?: string };
-            if (json.text) onChunk(json.text);
-          } catch { /* ignore */ }
+            if (json.error) return got; // fall back to JSON if nothing streamed yet
+            if (json.text) {
+              got = true;
+              onChunk(json.text);
+            }
+          } catch { /* ignore malformed frame */ }
         }
       }
-      return true;
+      return got;
     } catch {
-      return false;
+      return got;
     }
   },
 };
