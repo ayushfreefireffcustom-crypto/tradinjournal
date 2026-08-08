@@ -28,7 +28,7 @@ export function templateFallback(question: string, state: MacroState): string {
   const top = state.bias.slice().sort((a, b) => b.score - a.score)[0];
   const indCount = state.macro.length;
   return [
-    `Assistant is offline (no Anthropic key). Template summary for: "${question.trim().slice(0, 120)}"`,
+    `The AI desk is unavailable right now — here's a quick read from the live dashboard for: "${question.trim().slice(0, 120)}"`,
     '',
     `Regime: ${regime}. Indicators loaded: ${indCount}. Engine: ${state.engineVer}.`,
     top
