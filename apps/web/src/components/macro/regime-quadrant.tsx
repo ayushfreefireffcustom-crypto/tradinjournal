@@ -48,15 +48,17 @@ export default function RegimeQuadrant({ regime }: { regime: MacroState['regime'
   const odds = regime.recessionOdds;
 
   return (
-    <div className="tcard p-4 flex flex-col" data-testid="macro-regime-quadrant">
+    <div className="tcard p-4 flex flex-col @container" data-testid="macro-regime-quadrant">
       <div className="flex items-center justify-between">
         <div className="text-[10px] tracking-[0.2em] text-fg-3">// REGIME</div>
         <div className="text-[10px] tracking-[0.14em] text-fg-3">GROWTH × INFLATION</div>
       </div>
 
-      <div className="mt-3 flex flex-col sm:flex-row gap-4 items-start">
+      {/* Container query: only sit the read beside the quadrant when the CARD
+          itself is wide enough — a narrow 2-col grid cell keeps them stacked. */}
+      <div className="mt-3 flex flex-col @md:flex-row gap-4 items-start">
         {/* Quadrant grid — capped so the card stays a sensible height */}
-        <div className="w-full sm:w-[220px] shrink-0">
+        <div className="w-full @md:w-[220px] shrink-0">
           <div className="flex gap-2">
             {/* Y axis (growth) */}
             <div className="flex flex-col items-center justify-between py-1 text-[9px] tracking-[0.14em] text-fg-3">
