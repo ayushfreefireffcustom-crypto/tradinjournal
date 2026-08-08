@@ -116,7 +116,7 @@ export default function MacroPage() {
           {tab === 'dashboard' && state && <MacroDashboard state={state} />}
 
           {tab === 'scanner' && <BullBearScanner bias={state?.bias ?? []} />}
-          {tab === 'signals' && <SignalBoard onPaperFill={onPaperFill} />}
+          {tab === 'signals' && <SignalBoard onPaperFill={onPaperFill} onRequestAccess={() => setTab('access')} />}
           {tab === 'assistant' && <MacroAssistant />}
           {tab === 'paper' && <PaperBlotter fills={fills} onClear={() => setFills([])} />}
           {tab === 'access' && <MembershipPanel />}
