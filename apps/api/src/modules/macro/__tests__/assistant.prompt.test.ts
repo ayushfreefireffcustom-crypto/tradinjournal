@@ -39,9 +39,9 @@ describe('macro assistant prompts', () => {
     expect(sys).toContain('"label":"Goldilocks"');
   });
 
-  it('template fallback works offline and includes NFA', () => {
+  it('template fallback degrades gracefully and includes NFA', () => {
     const text = templateFallback('Why is gold firm?', sampleState);
-    expect(text).toContain('Assistant is offline');
+    expect(text).toContain('AI desk is unavailable');
     expect(text).toContain('Goldilocks');
     expect(text).toContain(NFA_DISCLAIMER);
   });
