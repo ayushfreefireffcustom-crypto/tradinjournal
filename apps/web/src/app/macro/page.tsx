@@ -3,11 +3,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import AppShell from '@/components/app-shell';
 import MacroTicker from '@/components/macro/macro-ticker';
-import BiasGauge from '@/components/macro/bias-gauge';
-import MacroCards from '@/components/macro/macro-cards';
-import BiasRow from '@/components/macro/bias-row';
+import MacroDashboard from '@/components/macro/macro-dashboard';
 import BullBearScanner from '@/components/macro/bull-bear-scanner';
-import MacroEventsHeadlines from '@/components/macro/events-headlines';
 import MembershipPanel from '@/components/macro/membership-panel';
 import SignalBoard from '@/components/macro/signal-board';
 import MacroAssistant from '@/components/macro/macro-assistant';
@@ -116,16 +113,7 @@ export default function MacroPage() {
             </div>
           )}
 
-          {tab === 'dashboard' && state && (
-            <>
-              <div className="grid lg:grid-cols-[220px_1fr] gap-3">
-                <BiasGauge bias={state.bias} regime={state.regime} />
-                <BiasRow bias={state.bias} />
-              </div>
-              <MacroCards macro={state.macro} />
-              <MacroEventsHeadlines events={state.events} headlines={state.headlines} />
-            </>
-          )}
+          {tab === 'dashboard' && state && <MacroDashboard state={state} />}
 
           {tab === 'scanner' && <BullBearScanner bias={state?.bias ?? []} />}
           {tab === 'signals' && <SignalBoard onPaperFill={onPaperFill} />}
