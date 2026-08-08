@@ -30,7 +30,7 @@ describe('parseFinnhubSpy', () => {
 });
 
 describe('parseErApiDxy', () => {
-  it('builds a USD-strength geo-mean from the DXY-like basket', () => {
+  it('computes the ICE Dollar Index in a realistic range from USD-base rates', () => {
     const q = parseErApiDxy({
       result: 'success',
       time_last_update_unix: 1_700_000_000,
@@ -39,7 +39,9 @@ describe('parseErApiDxy', () => {
     expect(q).not.toBeNull();
     expect(q!.symbol).toBe('DXY');
     expect(q!.source).toBe('er-api');
-    expect(q!.price).toBeGreaterThan(0);
+    // Real DXY is roughly 80–120; the old geo-mean produced ~3.2 (a bug).
+    expect(q!.price).toBeGreaterThan(80);
+    expect(q!.price).toBeLessThan(130);
     expect(q!.asOf.toISOString()).toBe(new Date(1_700_000_000 * 1000).toISOString());
   });
   it('rejects incomplete baskets', () => {
