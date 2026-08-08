@@ -55,6 +55,93 @@ export function formatAsOf(iso: string, now = Date.now()): string {
   return `${Math.floor(sec / 86400)}d ago`;
 }
 
+/** Compact a raw USD amount into $T / $B / $M. */
+function compactUsd(n: number): string {
+  const a = Math.abs(n);
+  if (a >= 1e12) return `$${(n / 1e12).toFixed(2)}T`;
+  if (a >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
+  if (a >= 1e6) return `$${(n / 1e6).toFixed(2)}M`;
+  if (a >= 1e3) return `$${(n / 1e3).toFixed(1)}K`;
+  return `$${n.toFixed(0)}`;
+}
+
+/** Compact a raw count into M / K. */
+function compactCount(n: number): string {
+  const a = Math.abs(n);
+  if (a >= 1e6) return `${(n / 1e6).toFixed(2)}M`;
+  if (a >= 1e3) return `${(n / 1e3).toFixed(1)}K`;
+  return n.toFixed(0);
+}
+
+/**
+ * Format an indicator value honoring its FRED unit — percentages as-is,
+ * monetary series scaled to $T/$B, head-counts to M, indices to one decimal.
+ */
+export function formatIndicatorValue(value: number, unit: string | null | undefined): string {
+  if (!Number.isFinite(value)) return '—';
+  const u = (unit ?? '').toLowerCase();
+  if (u.includes('%')) return `${value.toFixed(2)}%`;
+  if ((u.includes('mn') || u.includes('million')) && u.includes('$')) return compactUsd(value * 1e6);
+  if ((u.includes('bn') || u.includes('billion')) && u.includes('$')) return compactUsd(value * 1e9);
+  if (u.includes('thousand')) return compactCount(value * 1e3);
+  if (u.includes('index')) return value.toFixed(1);
+  return formatMacroNumber(value);
+}
+
+export interface IndicatorDelta {
+  text: string;
+  /** -1 down, 0 flat, 1 up — for movement coloring (not a good/bad judgment). */
+  dir: -1 | 0 | 1;
+}
+
+/**
+ * Movement of an indicator vs its prior print. Rate/percentage series are shown
+ * in basis points; everything else as a signed percent change.
+ */
+export function indicatorDelta(
+  value: number,
+  prev: number | null | undefined,
+  unit: string | null | undefined,
+): IndicatorDelta | null {
+  if (prev == null || !Number.isFinite(prev) || !Number.isFinite(value)) return null;
+  const diff = value - prev;
+  const dir: -1 | 0 | 1 = diff > 0 ? 1 : diff < 0 ? -1 : 0;
+  const u = (unit ?? '').toLowerCase();
+  if (u.includes('%')) {
+    const bp = Math.round(diff * 100);
+    return { text: `${bp > 0 ? '+' : ''}${bp}bp`, dir };
+  }
+  const pct = deltaPct(value, prev);
+  return { text: pct == null ? '—' : formatSignedPct(pct), dir };
+}
+
+/**
+ * Relative time that reads both directions — "in 3h" / "in 2d" for upcoming
+ * events, "5m ago" for past ones.
+ */
+export function formatWhen(iso: string, now = Date.now()): string {
+  const t = Date.parse(iso);
+  if (!Number.isFinite(t)) return '—';
+  const diff = t - now;
+  const future = diff >= 0;
+  const sec = Math.round(Math.abs(diff) / 1000);
+  let core: string;
+  if (sec < 60) core = `${sec}s`;
+  else if (sec < 3600) core = `${Math.floor(sec / 60)}m`;
+  else if (sec < 86400) core = `${Math.floor(sec / 3600)}h`;
+  else core = `${Math.floor(sec / 86400)}d`;
+  return future ? `in ${core}` : `${core} ago`;
+}
+
+/** Map a calendar-impact string to a UI tone. */
+export function impactTone(impact: string | null | undefined): 'high' | 'medium' | 'low' | 'none' {
+  const u = (impact ?? '').toLowerCase();
+  if (u.includes('high') || u === '3') return 'high';
+  if (u.includes('med') || u === '2') return 'medium';
+  if (u.includes('low') || u === '1') return 'low';
+  return 'none';
+}
+
 /** Average bias score across assets (for the headline gauge). */
 export function averageBiasScore(bias: { score: number }[]): number | null {
   if (!bias.length) return null;
