@@ -159,8 +159,9 @@ const envSchema = z.object({
   FRED_API_KEY: z.string().optional(),
   MACRO_INGEST_CRON: z.string().default('*/30 * * * *'),
   MACRO_STATE_CACHE_TTL: z.coerce.number().int().positive().default(90),
-  // Macro assistant (Anthropic Claude) — separate from the Groq trading coach.
-  ANTHROPIC_API_KEY: z.string().optional(),
+  // The macro assistant reuses the trading coach's AI provider (AI_PROVIDER +
+  // GROQ_API_KEY / OPENAI_API_KEY above) — no separate key. No AI key → it falls
+  // back to a deterministic template summary, exactly like the coach.
   // Emails allowed to approve macro members, until a full admin UI (comma-separated).
   MACRO_ADMIN_EMAILS: z.string().optional(),
 });
@@ -203,8 +204,6 @@ export type Env = z.infer<typeof envSchema> & {
   PRICE_ALERTS_ENABLED: boolean;
   /** True when the macro data spine can run — gated on FRED (its core input). */
   MACRO_ENABLED: boolean;
-  /** True when the macro Claude assistant is configured (Anthropic key present). */
-  MACRO_ASSISTANT_ENABLED: boolean;
   /** Emails allowed to approve macro members, derived from MACRO_ADMIN_EMAILS. */
   MACRO_ADMIN_EMAILS_LIST: string[];
 };
@@ -286,7 +285,6 @@ function loadEnv(): Env {
   // Macro segment — FRED drives the automated macro data, so it's the gate.
   // Markets are keyless; without FRED the segment shows an empty state (idle-safe).
   const MACRO_ENABLED = !!parsed.data.FRED_API_KEY;
-  const MACRO_ASSISTANT_ENABLED = !!parsed.data.ANTHROPIC_API_KEY;
   const MACRO_ADMIN_EMAILS_LIST = parsed.data.MACRO_ADMIN_EMAILS
     ? parsed.data.MACRO_ADMIN_EMAILS.split(',').map(s => s.trim().toLowerCase()).filter(Boolean)
     : [];
@@ -312,7 +310,6 @@ function loadEnv(): Env {
     MARKET_WARM_SYMBOLS_LIST,
     PRICE_ALERTS_ENABLED,
     MACRO_ENABLED,
-    MACRO_ASSISTANT_ENABLED,
     MACRO_ADMIN_EMAILS_LIST,
   };
 }
