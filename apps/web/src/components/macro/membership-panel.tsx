@@ -99,7 +99,7 @@ export default function MembershipPanel() {
           until your exchange mapping is approved (24–48h verification).
         </p>
 
-        {member === undefined && <p className="text-[12px] text-fg-3 mt-3">Loading membership…</p>}
+        {member === undefined && !error && <p className="text-[12px] text-fg-3 mt-3">Loading membership…</p>}
 
         {member && (
           <div className="mt-3 flex items-center gap-2 flex-wrap" data-testid="macro-membership-status">
