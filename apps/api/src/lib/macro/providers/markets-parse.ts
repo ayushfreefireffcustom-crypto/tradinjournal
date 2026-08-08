@@ -65,28 +65,51 @@ interface ErApiResponse {
 }
 
 /**
- * Build a simple USD-strength proxy from er-api major rates (DXY-like basket).
- * er-api `/latest/USD` quotes foreign units per 1 USD — all six rise when the
- * dollar strengthens, so the geometric mean tracks USD strength.
+ * Compute the ICE U.S. Dollar Index (DXY) from er-api `/latest/USD` rates.
+ * er-api quotes foreign units per 1 USD, so USDJPY/USDCAD/USDSEK/USDCHF are the
+ * rates directly, and EURUSD/GBPUSD are their reciprocals. The official ICE
+ * formula uses fixed weights:
+ *   DXY = 50.14348112 · EURUSD^-0.576 · USDJPY^0.136 · GBPUSD^-0.119
+ *                     · USDCAD^0.091 · USDSEK^0.042 · USDCHF^0.036
+ * With USD-base rates (rates.EUR = 1/EURUSD, rates.GBP = 1/GBPUSD) this becomes:
+ *   50.14348112 · rates.EUR^0.576 · rates.JPY^0.136 · rates.GBP^0.119
+ *              · rates.CAD^0.091 · rates.SEK^0.042 · rates.CHF^0.036
+ * (Earlier this was a plain geometric mean of mixed-scale rates → ~3.2 nonsense.)
  */
 export function parseErApiDxy(json: ErApiResponse, asOf = new Date()): NormalizedMacroQuote | null {
   const rates = json.rates;
   if (!rates || json.result !== 'success') return null;
-  const basket = ['EUR', 'JPY', 'GBP', 'CAD', 'SEK', 'CHF'] as const;
-  const values: number[] = [];
-  for (const pair of basket) {
-    const r = rates[pair];
-    if (typeof r !== 'number' || !(r > 0)) return null;
-    values.push(r);
+  const EUR = rates.EUR;
+  const JPY = rates.JPY;
+  const GBP = rates.GBP;
+  const CAD = rates.CAD;
+  const SEK = rates.SEK;
+  const CHF = rates.CHF;
+  if (
+    typeof EUR !== 'number' || typeof JPY !== 'number' || typeof GBP !== 'number' ||
+    typeof CAD !== 'number' || typeof SEK !== 'number' || typeof CHF !== 'number'
+  ) {
+    return null;
   }
-  const geo = Math.exp(values.reduce((s, v) => s + Math.log(v), 0) / values.length);
+  if (EUR <= 0 || JPY <= 0 || GBP <= 0 || CAD <= 0 || SEK <= 0 || CHF <= 0) return null;
+
+  const dxy =
+    50.14348112 *
+    EUR ** 0.576 *
+    JPY ** 0.136 *
+    GBP ** 0.119 *
+    CAD ** 0.091 *
+    SEK ** 0.042 *
+    CHF ** 0.036;
+  if (!Number.isFinite(dxy) || dxy <= 0) return null;
+
   const asOfDate =
     typeof json.time_last_update_unix === 'number'
       ? new Date(json.time_last_update_unix * 1000)
       : asOf;
   return {
     symbol: 'DXY',
-    price: geo,
+    price: dxy,
     changePct: null,
     source: 'er-api',
     asOf: asOfDate,
