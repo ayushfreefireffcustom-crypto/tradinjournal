@@ -117,6 +117,7 @@ export interface MacroIndicator {
   unit?: string | null;
   source: string;
   asOf: string;
+  history?: number[];
 }
 
 export interface IndicatorGroup {
