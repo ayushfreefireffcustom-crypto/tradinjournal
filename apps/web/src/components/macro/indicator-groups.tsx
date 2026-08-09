@@ -4,6 +4,7 @@ import type { MacroState } from '@/lib/macro-api';
 import { formatIndicatorValue, indicatorDelta } from '@/lib/macro-format';
 import { groupIndicators, blurbFor, formatObsDate, sourceLabel, type IndicatorGroup } from '@/lib/macro-meta';
 import InfoTip from './info-tip';
+import Sparkline from './sparkline';
 
 function deltaTone(dir: -1 | 0 | 1): string {
   if (dir > 0) return 'text-profit';
@@ -32,8 +33,8 @@ function Panel({ g }: { g: IndicatorGroup }) {
           const d = indicatorDelta(m.value, m.prev, m.unit);
           const blurb = blurbFor(m.key);
           return (
-            <li key={m.key} className="flex items-center justify-between gap-3 py-2" data-testid={`macro-ind-${m.key}`}>
-              <div className="min-w-0">
+            <li key={m.key} className="flex items-center gap-3 py-2" data-testid={`macro-ind-${m.key}`}>
+              <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5">
                   <span className="text-[12px] text-fg-2 truncate">{m.label}</span>
                   {blurb && <InfoTip text={blurb} label={m.label} />}
@@ -42,6 +43,9 @@ function Panel({ g }: { g: IndicatorGroup }) {
                   {sourceLabel(m.source)} · {formatObsDate(m.asOf)}
                 </div>
               </div>
+              {m.history && m.history.length >= 2 && (
+                <div className="shrink-0 hidden sm:block"><Sparkline values={m.history} /></div>
+              )}
               <div className="text-right shrink-0">
                 <div className="numeric text-[15px] text-fg leading-none">
                   {formatIndicatorValue(m.value, m.unit)}
