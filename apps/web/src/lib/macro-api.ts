@@ -86,6 +86,13 @@ export const macroApi = {
       body: JSON.stringify(body),
     }),
   signals: () => req<MacroSignal[]>(`${PREFIX}/macro/signals`),
+  // Admin-only (server returns 403 for non-admins → callers hide the panel).
+  adminMembers: (status?: 'PENDING' | 'APPROVED' | 'REJECTED') =>
+    req<MacroMember[]>(`${PREFIX}/macro/admin/members${status ? `?status=${status}` : ''}`),
+  adminApprove: (id: string) =>
+    req<MacroMember>(`${PREFIX}/macro/admin/members/${id}/approve`, { method: 'POST', body: JSON.stringify({}) }),
+  adminReject: (id: string) =>
+    req<MacroMember>(`${PREFIX}/macro/admin/members/${id}/reject`, { method: 'POST', body: JSON.stringify({}) }),
   assistant: (question: string) =>
     req<{ answer: string }>(`${PREFIX}/macro/assistant`, {
       method: 'POST',
