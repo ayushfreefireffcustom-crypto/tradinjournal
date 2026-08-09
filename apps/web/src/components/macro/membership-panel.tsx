@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import type { MacroMember, MacroMemberApplyInput } from '@/lib/macro-api';
 import { macroApi } from '@/lib/macro-api';
 
@@ -23,12 +23,39 @@ export default function MembershipPanel() {
   const [error, setError] = useState('');
   const [signalsNote, setSignalsNote] = useState('');
 
+  // Admin queue — the probe 403s for non-admins, which hides the whole section.
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [pending, setPending] = useState<MacroMember[]>([]);
+  const [adminBusy, setAdminBusy] = useState<string | null>(null);
+  const [adminError, setAdminError] = useState('');
+
+  const loadPending = useCallback(async () => {
+    const rows = await macroApi.adminMembers('PENDING');
+    setIsAdmin(true);
+    setPending(rows);
+  }, []);
+
   useEffect(() => {
     macroApi
       .membership()
       .then(setMember)
       .catch(e => setError(e instanceof Error ? e.message : 'Failed to load membership'));
-  }, []);
+    loadPending().catch(() => setIsAdmin(false)); // 403 → not an admin
+  }, [loadPending]);
+
+  async function decide(id: string, action: 'approve' | 'reject') {
+    setAdminBusy(id);
+    setAdminError('');
+    try {
+      if (action === 'approve') await macroApi.adminApprove(id);
+      else await macroApi.adminReject(id);
+      await loadPending();
+    } catch (e) {
+      setAdminError(e instanceof Error ? e.message : 'Action failed');
+    } finally {
+      setAdminBusy(null);
+    }
+  }
 
   async function apply(e: FormEvent) {
     e.preventDefault();
@@ -172,6 +199,52 @@ export default function MembershipPanel() {
         {error && <p className="text-loss text-[12px] mt-2" data-testid="macro-membership-error">{error}</p>}
         {signalsNote && <p className="text-fg-3 text-[12px] mt-2" data-testid="macro-signals-note">{signalsNote}</p>}
       </div>
+
+      {/* Admin queue — only rendered when the admin probe succeeded. */}
+      {isAdmin && (
+        <div className="tcard p-4" data-testid="macro-admin-queue">
+          <div className="flex items-center justify-between border-b border-border-soft pb-2">
+            <div className="text-[10px] tracking-[0.2em] text-fg-3">// ADMIN · PENDING APPLICATIONS</div>
+            <span className="text-[10px] text-fg-3 numeric">{pending.length}</span>
+          </div>
+
+          {pending.length === 0 ? (
+            <p className="text-[12px] text-fg-3 mt-3">No pending applications.</p>
+          ) : (
+            <ul className="mt-2 divide-y divide-border-soft">
+              {pending.map(m => (
+                <li key={m.id} className="flex items-center justify-between gap-3 py-2.5" data-testid={`macro-admin-row-${m.id}`}>
+                  <div className="min-w-0">
+                    <div className="text-[12px] text-fg">{m.exchange} · {m.exchangeUid}</div>
+                    <div className="text-[10px] text-fg-3 numeric">applied {new Date(m.createdAt).toLocaleString()}</div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      disabled={adminBusy === m.id}
+                      onClick={() => decide(m.id, 'approve')}
+                      className="px-3 py-1.5 text-[10px] tracking-[0.12em] uppercase rounded-[var(--radius-btn)] border border-profit/30 bg-profit/10 text-profit disabled:opacity-40"
+                      data-testid={`macro-admin-approve-${m.id}`}
+                    >
+                      {adminBusy === m.id ? '…' : 'Approve'}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={adminBusy === m.id}
+                      onClick={() => decide(m.id, 'reject')}
+                      className="px-3 py-1.5 text-[10px] tracking-[0.12em] uppercase rounded-[var(--radius-btn)] border border-loss/30 text-loss hover:bg-loss/10 disabled:opacity-40"
+                      data-testid={`macro-admin-reject-${m.id}`}
+                    >
+                      Reject
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+          {adminError && <p className="text-loss text-[12px] mt-2">{adminError}</p>}
+        </div>
+      )}
     </div>
   );
 }
