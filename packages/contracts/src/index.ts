@@ -319,6 +319,8 @@ export const macroIndicatorDtoSchema = z.object({
   unit: z.string().nullable().optional(),
   source: z.string(),
   asOf: z.string(),
+  /** Recent values oldest → newest, for a sparkline. */
+  history: z.array(z.number()).optional(),
 });
 
 export const macroMarketDtoSchema = z.object({
