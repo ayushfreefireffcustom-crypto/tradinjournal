@@ -37,7 +37,7 @@ export default function ConfluencePanel({ bias }: { bias: MacroState['bias'] }) 
         <div className="text-[10px] tracking-[0.14em] text-fg-3">{bias.length} ASSETS</div>
       </div>
 
-      <div className="flex items-center gap-4 mt-2">
+      <div className="flex-1 flex items-center gap-4 mt-2">
         <div className="flex flex-col items-center shrink-0">
           <svg viewBox="0 0 120 70" className="w-[132px]" aria-hidden>
             <path d="M 18 58 A 42 42 0 0 1 102 58" fill="none" stroke="var(--color-border-strong)" strokeWidth="8" strokeLinecap="round" />

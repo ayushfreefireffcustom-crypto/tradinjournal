@@ -19,7 +19,7 @@ export default function PolicyRates({ macro }: { macro: MacroState['macro'] }) {
   const divergence = typeof fed === 'number' && typeof ecb === 'number' ? fed - ecb : null;
 
   const Row = ({ label, value, sub }: { label: string; value: string; sub?: React.ReactNode }) => (
-    <div className="flex items-center justify-between py-2 border-b border-border-soft last:border-b-0">
+    <div className="flex-1 flex items-center justify-between py-2 border-b border-border-soft last:border-b-0">
       <span className="text-[12px] text-fg-2">{label}</span>
       <span className="text-right">
         <span className="numeric text-[15px] text-fg">{value}</span>
@@ -29,13 +29,13 @@ export default function PolicyRates({ macro }: { macro: MacroState['macro'] }) {
   );
 
   return (
-    <div className="tcard p-4" data-testid="macro-policy-rates">
+    <div className="tcard p-4 flex flex-col" data-testid="macro-policy-rates">
       <div className="flex items-center justify-between border-b border-border-soft pb-2">
         <div className="text-[10px] tracking-[0.2em] text-fg-3">// POLICY RATES</div>
         <div className="text-[10px] tracking-[0.14em] text-fg-3">FED · ECB</div>
       </div>
 
-      <div className="mt-1">
+      <div className="mt-1 flex-1 flex flex-col">
         {typeof fed === 'number' && <Row label="US · Fed Funds" value={`${fed.toFixed(2)}%`} />}
         {typeof dot === 'number' && (
           <Row

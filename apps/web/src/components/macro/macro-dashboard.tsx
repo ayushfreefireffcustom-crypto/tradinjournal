@@ -13,12 +13,12 @@ import MacroEventsHeadlines from './events-headlines';
 export default function MacroDashboard({ state }: { state: MacroState }) {
   return (
     <div className="space-y-3" data-testid="macro-dashboard">
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 items-start">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
         <RegimeQuadrant regime={state.regime} />
         <ConfluencePanel bias={state.bias} />
       </div>
       <MarketTiles markets={state.markets} bias={state.bias} />
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         <YieldCurve macro={state.macro} />
         <PolicyRates macro={state.macro} />
       </div>
