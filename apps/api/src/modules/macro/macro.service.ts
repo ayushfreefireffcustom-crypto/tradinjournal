@@ -13,6 +13,7 @@ import type { MacroState, MacroIngestInput } from '@tradinjournal/contracts';
 import { logger } from '@tradinjournal/logger';
 import { cacheGet, cacheSet, cacheDel } from '../../lib/cache.js';
 import { fetchFredIndicators } from '../../lib/macro/providers/fred.js';
+import { fetchCotPositioning } from '../../lib/macro/providers/cot.js';
 import { fetchMarketQuotes } from '../../lib/macro/providers/markets.js';
 import { toEngineInput } from '../../lib/macro/engine-input.js';
 import { computeAndPersistSignals } from './macro-signals.service.js';
@@ -52,10 +53,14 @@ export async function ingestMacro(input: MacroIngestInput): Promise<{ ingested: 
     return { ingested: 0 };
   }
 
-  const [indicators, quotes] = await Promise.all([
+  const [fredIndicators, cotPositioning, quotes] = await Promise.all([
     fetchFredIndicators(env.FRED_API_KEY),
+    fetchCotPositioning(),
     fetchMarketQuotes(),
   ]);
+  // COT positioning rides the same indicator pipeline (keys COT_*), so no schema
+  // change is needed — it persists as MacroIndicator snapshots like FRED series.
+  const indicators = [...fredIndicators, ...cotPositioning];
 
   let ingested = 0;
 
