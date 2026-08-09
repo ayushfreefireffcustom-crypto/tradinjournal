@@ -11,6 +11,7 @@ export interface MacroState {
     unit?: string | null;
     source: string;
     asOf: string;
+    history?: number[];
   }[];
   markets: { symbol: string; price: number; changePct?: number | null; asOf: string }[];
   bias: { asset: string; score: number; label: string; supporting: string[]; opposing: string[] }[];
