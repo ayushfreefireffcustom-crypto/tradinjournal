@@ -102,15 +102,19 @@ export default function RegimeQuadrant({ regime }: { regime: MacroState['regime'
           </div>
         </div>
 
-        {/* Read + recession odds */}
-        <div className="flex-1 min-w-0 flex flex-col self-stretch">
-          <div className="font-display font-black text-xl tracking-tight text-fg" data-testid="regime-active-label">
-            {active.name}
+        {/* Read + recession odds — content is grouped and vertically centered so
+            a wide/tall card never opens a big empty gap. Capped width keeps the
+            recession bar readable instead of stretching across the whole row. */}
+        <div className="flex-1 min-w-0 flex flex-col justify-center gap-4 self-stretch max-w-md">
+          <div>
+            <div className="font-display font-black text-xl tracking-tight text-fg" data-testid="regime-active-label">
+              {active.name}
+            </div>
+            <p className="text-[12px] text-fg-3 leading-snug mt-1">{active.read}</p>
           </div>
-          <p className="text-[12px] text-fg-3 leading-snug mt-1">{active.read}</p>
 
           {odds != null && (
-            <div className="mt-auto pt-4">
+            <div>
               <div className="flex items-center justify-between text-[10px] tracking-[0.14em] text-fg-3">
                 <span>RECESSION ODDS</span>
                 <span className="numeric text-fg">{Math.round(odds)}%</span>
