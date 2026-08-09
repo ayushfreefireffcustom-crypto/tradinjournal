@@ -108,6 +108,9 @@ export function indicatorDelta(
   const dir: -1 | 0 | 1 = diff > 0 ? 1 : diff < 0 ? -1 : 0;
   const u = (unit ?? '').toLowerCase();
   if (u.includes('%')) {
+    // Rate/yield moves are tiny → basis points; a large swing (e.g. a GDP nowcast
+    // jumping several points) reads better as percentage points.
+    if (Math.abs(diff) >= 1) return { text: `${diff > 0 ? '+' : ''}${diff.toFixed(1)}pp`, dir };
     const bp = Math.round(diff * 100);
     return { text: `${bp > 0 ? '+' : ''}${bp}bp`, dir };
   }
