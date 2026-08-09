@@ -8,7 +8,7 @@ export interface NormalizedMacroIndicator {
   value: number;
   prev: number | null;
   unit: string | null;
-  source: 'fred';
+  source: 'fred' | 'cftc';
   /** Observation date (UTC midnight for FRED daily/monthly series). */
   asOf: Date;
 }
