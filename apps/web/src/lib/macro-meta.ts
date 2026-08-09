@@ -15,6 +15,7 @@ export type MacroGroup =
   | 'Growth & Demand'
   | 'Labor'
   | 'Rates & Yield Curve'
+  | 'Central Banks'
   | 'Liquidity Plumbing'
   | 'Risk & Credit'
   | 'FX';
@@ -22,6 +23,7 @@ export type MacroGroup =
 /** Reading order of the themed panels on the dashboard. */
 export const GROUP_ORDER: MacroGroup[] = [
   'Rates & Yield Curve',
+  'Central Banks',
   'Liquidity Plumbing',
   'Inflation & Prices',
   'Growth & Demand',
@@ -36,6 +38,7 @@ export const GROUP_GLYPH: Record<MacroGroup, string> = {
   'Growth & Demand': '◱',
   'Labor': '⚒',
   'Rates & Yield Curve': '∿',
+  'Central Banks': '◈',
   'Liquidity Plumbing': '≋',
   'Risk & Credit': '⚡',
   'FX': '$',
@@ -50,20 +53,35 @@ export const INDICATOR_META: Record<string, IndicatorMeta> = {
 
   // Growth & Demand
   GDPC1: { group: 'Growth & Demand', blurb: 'Real GDP — inflation-adjusted output, the headline growth number.' },
+  GDPNOW: { group: 'Growth & Demand', blurb: 'Atlanta Fed GDPNow — a real-time nowcast of current-quarter GDP growth.' },
   RSAFS: { group: 'Growth & Demand', blurb: 'Retail sales — the pulse of US consumer spending.' },
+  INDPRO: { group: 'Growth & Demand', blurb: 'Industrial production — factory, mine and utility output; a cyclical read.' },
+  HOUST: { group: 'Growth & Demand', blurb: 'Housing starts — new-home construction, a rate-sensitive leading indicator.' },
+  PERMIT: { group: 'Growth & Demand', blurb: 'Building permits — the future construction pipeline; leads housing starts.' },
   UMCSENT: { group: 'Growth & Demand', blurb: 'U. Michigan consumer sentiment — how confident households feel.' },
   MORTGAGE30US: { group: 'Growth & Demand', blurb: '30-year mortgage rate — housing affordability and credit tightness.' },
 
   // Labor
   UNRATE: { group: 'Labor', blurb: "Unemployment rate — labor-market slack; the Fed's other mandate." },
   PAYEMS: { group: 'Labor', blurb: 'Nonfarm payrolls — total jobs on US books, the marquee labor print.' },
+  ICSA: { group: 'Labor', blurb: 'Initial jobless claims — weekly layoffs; the fastest labor-market signal.' },
 
   // Rates & Yield Curve
   FEDFUNDS: { group: 'Rates & Yield Curve', blurb: 'Fed funds target — the policy rate that anchors all short-term rates.' },
   DFF: { group: 'Rates & Yield Curve', blurb: 'Effective fed funds — the actual overnight rate trading in the market.' },
+  DGS3MO: { group: 'Rates & Yield Curve', blurb: "3-month T-bill yield — the front end, tracks the Fed's policy rate." },
   DGS2: { group: 'Rates & Yield Curve', blurb: "2-year yield — the market's read on near-term Fed policy." },
+  DGS5: { group: 'Rates & Yield Curve', blurb: '5-year yield — the belly of the curve, sensitive to the rate path.' },
   DGS10: { group: 'Rates & Yield Curve', blurb: '10-year yield — the global benchmark risk-free rate.' },
+  DGS30: { group: 'Rates & Yield Curve', blurb: '30-year yield — the long bond, driven by growth & inflation expectations.' },
+  DFII10: { group: 'Rates & Yield Curve', blurb: '10-year real (TIPS) yield — the inflation-adjusted cost of money.' },
   T10Y2Y: { group: 'Rates & Yield Curve', blurb: '2s10s spread — negative = inverted curve, a classic recession flag.' },
+  T10Y3M: { group: 'Rates & Yield Curve', blurb: "10y–3m spread — the Fed's preferred recession signal; negative = inverted." },
+  T10YIE: { group: 'Rates & Yield Curve', blurb: '10-year breakeven — the bond market’s expected average inflation.' },
+
+  // Central Banks
+  FEDTARMD: { group: 'Central Banks', blurb: "FOMC median projection — the 'dot plot' path for the fed funds rate." },
+  ECBDFR: { group: 'Central Banks', blurb: 'ECB deposit rate — the euro-area policy rate; cross-central-bank divergence.' },
 
   // Liquidity Plumbing
   WALCL: { group: 'Liquidity Plumbing', blurb: 'Fed balance sheet — total assets; QE expands it, QT shrinks it.' },
@@ -74,6 +92,7 @@ export const INDICATOR_META: Record<string, IndicatorMeta> = {
   // Risk & Credit
   VIXCLS: { group: 'Risk & Credit', blurb: 'VIX — 30-day expected S&P 500 volatility, the market fear gauge.' },
   BAMLH0A0HYM2: { group: 'Risk & Credit', blurb: 'High-yield OAS — the junk-bond risk premium; widening signals stress.' },
+  NFCI: { group: 'Risk & Credit', blurb: 'Chicago Fed financial conditions — positive = tight, negative = loose.' },
 
   // FX
   DTWEXBGS: { group: 'FX', blurb: 'Broad USD index — the dollar against a wide basket of trade partners.' },
