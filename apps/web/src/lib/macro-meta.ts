@@ -18,6 +18,7 @@ export type MacroGroup =
   | 'Central Banks'
   | 'Liquidity Plumbing'
   | 'Risk & Credit'
+  | 'Positioning'
   | 'FX';
 
 /** Reading order of the themed panels on the dashboard. */
@@ -29,6 +30,7 @@ export const GROUP_ORDER: MacroGroup[] = [
   'Growth & Demand',
   'Labor',
   'Risk & Credit',
+  'Positioning',
   'FX',
 ];
 
@@ -41,6 +43,7 @@ export const GROUP_GLYPH: Record<MacroGroup, string> = {
   'Central Banks': '◈',
   'Liquidity Plumbing': '≋',
   'Risk & Credit': '⚡',
+  'Positioning': '⇅',
   'FX': '$',
 };
 
@@ -82,6 +85,13 @@ export const INDICATOR_META: Record<string, IndicatorMeta> = {
   // Central Banks
   FEDTARMD: { group: 'Central Banks', blurb: "FOMC median projection — the 'dot plot' path for the fed funds rate." },
   ECBDFR: { group: 'Central Banks', blurb: 'ECB deposit rate — the euro-area policy rate; cross-central-bank divergence.' },
+
+  // Positioning (CFTC Commitments of Traders — net large-speculator position)
+  COT_SPX: { group: 'Positioning', blurb: 'Net speculator position in S&P 500 futures (CFTC COT) — positive = crowd long.' },
+  COT_BTC: { group: 'Positioning', blurb: 'Net speculator position in CME Bitcoin futures — extremes can mean-revert.' },
+  COT_XAU: { group: 'Positioning', blurb: 'Net speculator position in Gold futures — crowded longs warn of pullbacks.' },
+  COT_USD: { group: 'Positioning', blurb: 'Net speculator position in US Dollar Index futures.' },
+  COT_UST10: { group: 'Positioning', blurb: 'Net speculator position in 10Y Treasury-note futures — bond positioning.' },
 
   // Liquidity Plumbing
   WALCL: { group: 'Liquidity Plumbing', blurb: 'Fed balance sheet — total assets; QE expands it, QT shrinks it.' },
