@@ -2,7 +2,7 @@
 // Worker cron → POST /internal/macro/ingest → FRED + market providers → PG
 // snapshots → confluence engine → BiasScore → invalidate cache.
 // Authenticated GET /api/macro/state serves the cached dashboard JSON.
-import { prisma } from '@tradinjournal/db';
+import { prisma, Prisma } from '@tradinjournal/db';
 import { env } from '@tradinjournal/config';
 import {
   ENGINE_VER,
@@ -232,9 +232,10 @@ export async function buildMacroState(): Promise<MacroState> {
     url: string;
     publishedAt: Date;
   }[];
+  let historyRows: { key: string; value: Prisma.Decimal }[];
 
   try {
-    [indicatorRows, quoteRows, eventRows, newsRows] = await Promise.all([
+    [indicatorRows, quoteRows, eventRows, newsRows, historyRows] = await Promise.all([
       // DISTINCT ON (key) ORDER BY key, asOf desc → exactly the latest row per key,
       // independent of how much history has accumulated. (A plain take+dedup would
       // drop later keys once any single key's history exceeded the take limit.)
@@ -267,6 +268,13 @@ export async function buildMacroState(): Promise<MacroState> {
         take: HEADLINES_LIMIT,
         select: { title: true, source: true, url: true, publishedAt: true },
       }),
+      // Recent history per indicator for sparklines (oldest → newest).
+      prisma.macroIndicator.findMany({
+        where: { asOf: { gte: new Date(now.getTime() - 200 * 24 * 3600_000) } },
+        orderBy: [{ key: 'asc' }, { asOf: 'asc' }],
+        select: { key: true, value: true },
+        take: 12_000,
+      }),
     ]);
   } catch (err) {
     logger.warn(`[macro] state build failed (serving empty): ${(err as Error).message}`);
@@ -275,6 +283,15 @@ export async function buildMacroState(): Promise<MacroState> {
 
   const latestIndicators = latestBy(indicatorRows, r => r.key);
   const latestQuotes = latestBy(quoteRows, r => r.symbol);
+
+  // Group recent values by key (already ordered oldest → newest), capped for the
+  // sparkline so the payload stays small.
+  const historyByKey = new Map<string, number[]>();
+  for (const r of historyRows) {
+    const arr = historyByKey.get(r.key);
+    if (arr) arr.push(dec(r.value));
+    else historyByKey.set(r.key, [dec(r.value)]);
+  }
 
   const macro = latestIndicators.map(r => ({
     key: r.key,
@@ -285,6 +302,7 @@ export async function buildMacroState(): Promise<MacroState> {
     unit: r.unit,
     source: r.source,
     asOf: r.asOf.toISOString(),
+    history: (historyByKey.get(r.key) ?? []).slice(-40),
   }));
 
   const markets = latestQuotes.map(r => ({
