@@ -26,6 +26,7 @@ const sampleState: MacroState = {
   ],
   events: [],
   headlines: [],
+  fx: [],
   engineVer: 'macro-0.1.0',
 };
 
