@@ -1,5 +1,14 @@
 import { describe, it, expect } from 'vitest';
-import { parseBinanceBtc, parseGoldXau, parseFinnhubSpy, parseErApiDxy } from '../markets-parse.js';
+import {
+  parseBinanceBtc,
+  parseBinanceTicker,
+  parseGoldXau,
+  parseGoldApi,
+  parseFinnhubSpy,
+  parseFinnhubQuote,
+  parseErApiDxy,
+  parseErApiFxBasket,
+} from '../markets-parse.js';
 
 describe('parseBinanceBtc', () => {
   it('maps lastPrice + priceChangePercent', () => {
@@ -9,6 +18,13 @@ describe('parseBinanceBtc', () => {
   it('rejects non-positive prices', () => {
     expect(parseBinanceBtc({ lastPrice: '0' })).toBeNull();
     expect(parseBinanceBtc({})).toBeNull();
+  });
+});
+
+describe('parseBinanceTicker', () => {
+  it('maps ETH', () => {
+    const q = parseBinanceTicker({ lastPrice: '3500', priceChangePercent: '-1.1' }, 'ETH');
+    expect(q).toMatchObject({ symbol: 'ETH', price: 3500, changePct: -1.1 });
   });
 });
 
@@ -22,10 +38,22 @@ describe('parseGoldXau', () => {
   });
 });
 
+describe('parseGoldApi', () => {
+  it('maps silver', () => {
+    expect(parseGoldApi({ price: 30.5 }, 'XAG')?.symbol).toBe('XAG');
+  });
+});
+
 describe('parseFinnhubSpy', () => {
   it('maps current + percent change as SPX proxy', () => {
     const q = parseFinnhubSpy({ c: 520.1, dp: -0.4 });
     expect(q).toMatchObject({ symbol: 'SPX', price: 520.1, changePct: -0.4, source: 'finnhub' });
+  });
+});
+
+describe('parseFinnhubQuote', () => {
+  it('maps NDX proxy', () => {
+    expect(parseFinnhubQuote({ c: 450, dp: 0.5 }, 'NDX')?.symbol).toBe('NDX');
   });
 });
 
@@ -39,7 +67,6 @@ describe('parseErApiDxy', () => {
     expect(q).not.toBeNull();
     expect(q!.symbol).toBe('DXY');
     expect(q!.source).toBe('er-api');
-    // Real DXY is roughly 80–120; the old geo-mean produced ~3.2 (a bug).
     expect(q!.price).toBeGreaterThan(80);
     expect(q!.price).toBeLessThan(130);
     expect(q!.asOf.toISOString()).toBe(new Date(1_700_000_000 * 1000).toISOString());
@@ -47,5 +74,15 @@ describe('parseErApiDxy', () => {
   it('rejects incomplete baskets', () => {
     expect(parseErApiDxy({ result: 'success', rates: { EUR: 0.92 } })).toBeNull();
     expect(parseErApiDxy({ result: 'error', rates: {} })).toBeNull();
+  });
+});
+
+describe('parseErApiFxBasket', () => {
+  it('extracts selected codes', () => {
+    const rows = parseErApiFxBasket(
+      { result: 'success', rates: { EUR: 0.92, JPY: 150, GBP: 0.79 } },
+      ['EUR', 'JPY', 'AUD'],
+    );
+    expect(rows.map(r => r.code)).toEqual(['EUR', 'JPY']);
   });
 });

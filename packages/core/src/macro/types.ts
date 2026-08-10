@@ -1,7 +1,29 @@
 // Shared types for the pure confluence engine (no I/O).
 
-export type MacroAsset = 'BTC' | 'XAU' | 'SPX' | 'DXY';
-export const MACRO_ASSETS: readonly MacroAsset[] = ['BTC', 'XAU', 'SPX', 'DXY'] as const;
+export type MacroAsset =
+  | 'BTC'
+  | 'ETH'
+  | 'SOL'
+  | 'XAU'
+  | 'XAG'
+  | 'SPX'
+  | 'NDX'
+  | 'OIL'
+  | 'DXY'
+  | 'UST';
+
+export const MACRO_ASSETS: readonly MacroAsset[] = [
+  'BTC',
+  'ETH',
+  'SOL',
+  'XAU',
+  'XAG',
+  'SPX',
+  'NDX',
+  'OIL',
+  'DXY',
+  'UST',
+] as const;
 
 /** Seven-tier bias labels (thresholds in score.ts). */
 export type BiasLabel =
@@ -47,7 +69,7 @@ export interface FactorReading {
   key: FactorKey;
   label: string;
   weight: number;
-  /** Raw observed value used (for debugging/tests). */
+  /** Raw observed value used for debugging/tests. */
   value: number | null;
   /** +1 = factor "up" in its natural sense (see factors.ts). */
   direction: FactorDirection;

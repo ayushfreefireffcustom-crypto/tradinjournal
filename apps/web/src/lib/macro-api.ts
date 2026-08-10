@@ -25,6 +25,8 @@ export interface MacroState {
     prev?: string | null;
   }[];
   headlines: { title: string; source?: string | null; url: string; at: string }[];
+  /** FX basket (foreign units per 1 USD) for the strength matrix. */
+  fx?: { code: string; rate: number; asOf: string }[];
   engineVer: string;
 }
 

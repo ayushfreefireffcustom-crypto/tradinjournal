@@ -49,10 +49,11 @@ describe('macroStateSchema (P2 contract)', () => {
       engineVer: ENGINE_VER,
     };
     const parsed = macroStateSchema.parse(state);
-    expect(parsed.engineVer).toBe('macro-0.1.0');
+    expect(parsed.engineVer).toBe('macro-0.2.0');
     expect(parsed.regime?.label).toBe('Goldilocks');
-    expect(parsed.bias).toHaveLength(4);
+    expect(parsed.bias).toHaveLength(10);
     expect(parsed.bias.every(b => b.score >= 0 && b.score <= 100)).toBe(true);
+    expect(parsed.fx).toEqual([]);
   });
 
   it('toEngineInput maps nullish prev/changePct', () => {

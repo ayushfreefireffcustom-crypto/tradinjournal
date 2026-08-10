@@ -1,13 +1,10 @@
 // Per-asset signed sensitivity to each factor.
 // Positive = asset tends to rise when the factor's natural direction is +1.
-// Examples: Gold likes weaker USD (dollar −1), weaker real yields/hawkish policy (−),
-// and mild risk-off (+). Equities like growth/liquidity and hate credit stress/VIX.
 import type { FactorKey, MacroAsset } from './types.js';
 
 export type SensitivityMatrix = Record<MacroAsset, Record<FactorKey, number>>;
 
 export const SENSITIVITIES: SensitivityMatrix = {
-  // Risk-on crypto: loves liquidity + growth, hates hawkish policy / strong USD / credit stress / VIX.
   BTC: {
     inflation: -0.3,
     policy: -0.8,
@@ -18,7 +15,26 @@ export const SENSITIVITIES: SensitivityMatrix = {
     risk: -1.0,
     dollar: -0.6,
   },
-  // Gold: anti-USD, anti-real-yields/hawkish, mild safe-haven into risk.
+  ETH: {
+    inflation: -0.2,
+    policy: -0.7,
+    growth: 0.8,
+    rates: -0.4,
+    liquidity: 1.0,
+    credit: -0.7,
+    risk: -0.9,
+    dollar: -0.5,
+  },
+  SOL: {
+    inflation: -0.2,
+    policy: -0.6,
+    growth: 0.9,
+    rates: -0.3,
+    liquidity: 1.0,
+    credit: -0.7,
+    risk: -1.0,
+    dollar: -0.4,
+  },
   XAU: {
     inflation: 0.6,
     policy: -0.9,
@@ -29,7 +45,16 @@ export const SENSITIVITIES: SensitivityMatrix = {
     risk: 0.5,
     dollar: -1.0,
   },
-  // Equities: pro-growth/liquidity, anti credit-stress / VIX / hawkish surprise.
+  XAG: {
+    inflation: 0.5,
+    policy: -0.7,
+    growth: 0.3,
+    rates: -0.6,
+    liquidity: 0.8,
+    credit: -0.2,
+    risk: 0.2,
+    dollar: -0.9,
+  },
   SPX: {
     inflation: -0.5,
     policy: -0.7,
@@ -40,7 +65,26 @@ export const SENSITIVITIES: SensitivityMatrix = {
     risk: -1.0,
     dollar: -0.2,
   },
-  // Dollar: stronger when hawkish / risk-off / growth relative; weaker with liquidity flood.
+  NDX: {
+    inflation: -0.6,
+    policy: -0.8,
+    growth: 1.0,
+    rates: -0.5,
+    liquidity: 0.9,
+    credit: -1.0,
+    risk: -1.0,
+    dollar: -0.3,
+  },
+  OIL: {
+    inflation: 0.4,
+    policy: -0.3,
+    growth: 0.8,
+    rates: -0.2,
+    liquidity: 0.4,
+    credit: -0.5,
+    risk: -0.4,
+    dollar: -0.6,
+  },
   DXY: {
     inflation: 0.3,
     policy: 0.9,
@@ -49,6 +93,16 @@ export const SENSITIVITIES: SensitivityMatrix = {
     liquidity: -0.6,
     credit: 0.5,
     risk: 0.6,
-    dollar: 1.0, // identity — dollar factor tracks itself
+    dollar: 1.0,
+  },
+  UST: {
+    inflation: -0.8,
+    policy: -0.6,
+    growth: -0.5,
+    rates: -1.0,
+    liquidity: 0.5,
+    credit: 0.4,
+    risk: 0.7,
+    dollar: -0.2,
   },
 };

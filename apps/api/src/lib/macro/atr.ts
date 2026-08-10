@@ -54,12 +54,22 @@ export async function resolveAtrMap(
   if (btcAtr != null) out.BTC = btcAtr;
   else if (prices.BTC != null) out.BTC = proxyAtr(prices.BTC) ?? undefined;
 
-  for (const asset of ['XAU', 'SPX', 'DXY'] as const) {
+  for (const asset of ['ETH', 'SOL', 'XAU', 'XAG', 'SPX', 'NDX', 'OIL', 'DXY', 'UST'] as const) {
     const px = prices[asset];
     if (px == null) continue;
-    // Metals/indices: slightly different vol proxies.
-    const frac = asset === 'XAU' ? 0.012 : asset === 'SPX' ? 0.01 : 0.008;
+    const frac =
+      asset === 'XAU' || asset === 'XAG' ? 0.012
+      : asset === 'SPX' || asset === 'NDX' ? 0.01
+      : asset === 'OIL' ? 0.018
+      : asset === 'UST' ? 0.006
+      : asset === 'ETH' || asset === 'SOL' ? 0.025
+      : 0.008;
     const atr = proxyAtr(px, frac);
+    if (atr != null) out[asset] = atr;
+  }
+  // Prefer live ATR for liquid crypto pairs when available.
+  for (const [pair, asset] of [['ETHUSDT', 'ETH'], ['SOLUSDT', 'SOL']] as const) {
+    const atr = await fetchBinanceAtr(pair, signal);
     if (atr != null) out[asset] = atr;
   }
   return out;

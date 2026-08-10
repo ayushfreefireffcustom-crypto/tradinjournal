@@ -105,7 +105,9 @@ describe('edge cases: malformed / extreme inputs', () => {
 
   it('never duplicates an asset in scoreAll', () => {
     const all = scoreAll({ indicators: [], markets: [] });
-    expect(all.map(a => a.asset).sort()).toEqual(['BTC', 'DXY', 'SPX', 'XAU']);
+    expect(all.map(a => a.asset).sort()).toEqual([
+      'BTC', 'DXY', 'ETH', 'NDX', 'OIL', 'SOL', 'SPX', 'UST', 'XAG', 'XAU',
+    ]);
   });
 
   it('recessionOdds stays in [5, 85] even with max stress stack', () => {

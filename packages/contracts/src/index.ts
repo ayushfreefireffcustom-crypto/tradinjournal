@@ -355,6 +355,13 @@ export const macroHeadlineDtoSchema = z.object({
   at: z.string(),
 });
 
+export const macroFxRateDtoSchema = z.object({
+  code: z.string(),
+  /** Foreign units per 1 USD. */
+  rate: z.number(),
+  asOf: z.string(),
+});
+
 export const macroStateSchema = z.object({
   asOf: z.string(),
   regime: macroRegimeSchema.nullable(),
@@ -363,6 +370,8 @@ export const macroStateSchema = z.object({
   bias: z.array(macroBiasDtoSchema),
   events: z.array(macroEventDtoSchema),
   headlines: z.array(macroHeadlineDtoSchema),
+  /** Optional FX basket for the strength matrix (USD base). */
+  fx: z.array(macroFxRateDtoSchema).optional().default([]),
   engineVer: z.string(),
 });
 export type MacroState = z.infer<typeof macroStateSchema>;

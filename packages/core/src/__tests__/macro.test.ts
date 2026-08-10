@@ -59,8 +59,8 @@ function stagflationInput(): EngineInput {
 }
 
 describe('ENGINE_VER', () => {
-  it('is stamped macro-0.1.x after P2', () => {
-    expect(ENGINE_VER).toBe('macro-0.1.0');
+  it('is stamped macro-0.2.x after asset expansion', () => {
+    expect(ENGINE_VER).toBe('macro-0.2.0');
   });
 });
 

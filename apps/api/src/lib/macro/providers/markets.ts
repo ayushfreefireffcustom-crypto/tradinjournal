@@ -1,4 +1,4 @@
-// Market quote providers for the macro ticker (BTC / XAU / SPX / DXY).
+// Market quote providers for the macro ticker.
 // Keys stay server-side; browsers never call these. Individual provider failures
 // are skipped so a gold-api blip doesn't kill the whole ingest.
 import { env } from '@tradinjournal/config';
@@ -6,51 +6,69 @@ import { logger } from '@tradinjournal/logger';
 import { fetchJson } from '../http.js';
 import type { NormalizedMacroQuote } from '../types.js';
 import {
-  parseBinanceBtc,
-  parseGoldXau,
-  parseFinnhubSpy,
+  parseBinanceTicker,
+  parseGoldApi,
+  parseFinnhubQuote,
   parseErApiDxy,
+  parseErApiFxBasket,
 } from './markets-parse.js';
 
 export {
   parseBinanceBtc,
+  parseBinanceTicker,
   parseGoldXau,
+  parseGoldApi,
   parseFinnhubSpy,
+  parseFinnhubQuote,
   parseErApiDxy,
+  parseErApiFxBasket,
 } from './markets-parse.js';
 
-async function fetchBinanceBtc(signal?: AbortSignal): Promise<NormalizedMacroQuote | null> {
+const FX_CODES = ['EUR', 'JPY', 'GBP', 'CAD', 'CHF', 'AUD', 'NZD', 'CNY', 'INR', 'SEK'] as const;
+
+async function fetchBinance(
+  pair: string,
+  symbol: string,
+  signal?: AbortSignal,
+): Promise<NormalizedMacroQuote | null> {
   try {
     const json = await fetchJson<{ lastPrice?: string; priceChangePercent?: string }>(
-      `${env.BINANCE_REST_URL}/api/v3/ticker/24hr?symbol=BTCUSDT`,
+      `${env.BINANCE_REST_URL}/api/v3/ticker/24hr?symbol=${pair}`,
       signal,
     );
-    return parseBinanceBtc(json);
+    return parseBinanceTicker(json, symbol);
   } catch (err) {
-    logger.warn(`[macro/markets] binance BTC failed: ${(err as Error).message}`);
+    logger.warn(`[macro/markets] binance ${symbol} failed: ${(err as Error).message}`);
     return null;
   }
 }
 
-async function fetchGoldXau(signal?: AbortSignal): Promise<NormalizedMacroQuote | null> {
+async function fetchMetal(
+  metal: 'XAU' | 'XAG',
+  signal?: AbortSignal,
+): Promise<NormalizedMacroQuote | null> {
   try {
-    const json = await fetchJson<{ price?: number }>('https://api.gold-api.com/price/XAU', signal);
-    return parseGoldXau(json);
+    const json = await fetchJson<{ price?: number }>(`https://api.gold-api.com/price/${metal}`, signal);
+    return parseGoldApi(json, metal);
   } catch (err) {
-    logger.warn(`[macro/markets] gold-api XAU failed: ${(err as Error).message}`);
+    logger.warn(`[macro/markets] gold-api ${metal} failed: ${(err as Error).message}`);
     return null;
   }
 }
 
-async function fetchFinnhubSpx(apiKey: string, signal?: AbortSignal): Promise<NormalizedMacroQuote | null> {
+async function fetchFinnhub(
+  apiKey: string,
+  ticker: string,
+  symbol: string,
+  signal?: AbortSignal,
+): Promise<NormalizedMacroQuote | null> {
   try {
-    // Free Finnhub tier doesn't serve ^GSPC cleanly; SPY is the liquid proxy.
     const url =
-      `https://finnhub.io/api/v1/quote?symbol=SPY&token=${encodeURIComponent(apiKey)}`;
+      `https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(ticker)}&token=${encodeURIComponent(apiKey)}`;
     const json = await fetchJson<{ c?: number; dp?: number }>(url, signal);
-    return parseFinnhubSpy(json);
+    return parseFinnhubQuote(json, symbol);
   } catch (err) {
-    logger.warn(`[macro/markets] finnhub SPX failed: ${(err as Error).message}`);
+    logger.warn(`[macro/markets] finnhub ${symbol} failed: ${(err as Error).message}`);
     return null;
   }
 }
@@ -69,18 +87,42 @@ async function fetchErApiDxy(signal?: AbortSignal): Promise<NormalizedMacroQuote
   }
 }
 
+/** Fetch FX basket for the strength matrix (same er-api call as DXY). */
+export async function fetchFxBasket(signal?: AbortSignal): Promise<{ code: string; rate: number; asOf: Date }[]> {
+  try {
+    const json = await fetchJson<{
+      result?: string;
+      rates?: Record<string, number>;
+      time_last_update_unix?: number;
+    }>('https://open.er-api.com/v6/latest/USD', signal);
+    return parseErApiFxBasket(json, FX_CODES);
+  } catch (err) {
+    logger.warn(`[macro/markets] er-api FX basket failed: ${(err as Error).message}`);
+    return [];
+  }
+}
+
 /**
- * Fetch all MVP market quotes in parallel. Finnhub is optional (SPX skipped
- * when FINNHUB_API_KEY is unset).
+ * Fetch all market quotes in parallel. Finnhub is optional (index/oil proxies
+ * skipped when FINNHUB_API_KEY is unset).
  */
 export async function fetchMarketQuotes(signal?: AbortSignal): Promise<NormalizedMacroQuote[]> {
   const jobs: Promise<NormalizedMacroQuote | null>[] = [
-    fetchBinanceBtc(signal),
-    fetchGoldXau(signal),
+    fetchBinance('BTCUSDT', 'BTC', signal),
+    fetchBinance('ETHUSDT', 'ETH', signal),
+    fetchBinance('SOLUSDT', 'SOL', signal),
+    fetchMetal('XAU', signal),
+    fetchMetal('XAG', signal),
     fetchErApiDxy(signal),
   ];
   if (env.FINNHUB_API_KEY) {
-    jobs.push(fetchFinnhubSpx(env.FINNHUB_API_KEY, signal));
+    const key = env.FINNHUB_API_KEY;
+    jobs.push(
+      fetchFinnhub(key, 'SPY', 'SPX', signal),
+      fetchFinnhub(key, 'QQQ', 'NDX', signal),
+      fetchFinnhub(key, 'USO', 'OIL', signal),
+      fetchFinnhub(key, 'TLT', 'UST', signal),
+    );
   }
 
   const settled = await Promise.all(jobs);

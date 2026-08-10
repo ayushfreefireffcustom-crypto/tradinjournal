@@ -3,7 +3,7 @@
 // Bump ENGINE_VER on any change to factors, sensitivities, scale, or thresholds.
 
 /** Bump on any change to factors, sensitivities, or scoring math. */
-export const ENGINE_VER = 'macro-0.1.0';
+export const ENGINE_VER = 'macro-0.2.0';
 
 export type {
   MacroAsset,

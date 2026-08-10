@@ -14,12 +14,12 @@ import { logger } from '@tradinjournal/logger';
 import { cacheGet, cacheSet, cacheDel } from '../../lib/cache.js';
 import { fetchFredIndicators } from '../../lib/macro/providers/fred.js';
 import { fetchCotPositioning } from '../../lib/macro/providers/cot.js';
-import { fetchMarketQuotes } from '../../lib/macro/providers/markets.js';
+import { fetchMarketQuotes, fetchFxBasket } from '../../lib/macro/providers/markets.js';
 import { toEngineInput } from '../../lib/macro/engine-input.js';
 import { computeAndPersistSignals } from './macro-signals.service.js';
 
 export { toEngineInput } from '../../lib/macro/engine-input.js';
-export const MACRO_STATE_CACHE_KEY = 'macro:state:v1';
+export const MACRO_STATE_CACHE_KEY = 'macro:state:v2';
 
 const EVENTS_LIMIT = 40;
 const HEADLINES_LIMIT = 20;
@@ -205,6 +205,7 @@ function emptyState(asOf = new Date().toISOString()): MacroState {
     bias,
     events: [],
     headlines: [],
+    fx: [],
     engineVer: ENGINE_VER,
   };
 }
@@ -361,6 +362,14 @@ export async function buildMacroState(): Promise<MacroState> {
   ];
   const asOf = newest.length > 0 ? new Date(Math.max(...newest)).toISOString() : now.toISOString();
 
+  let fx: { code: string; rate: number; asOf: string }[] = [];
+  try {
+    const basket = await fetchFxBasket();
+    fx = basket.map(r => ({ code: r.code, rate: r.rate, asOf: r.asOf.toISOString() }));
+  } catch (err) {
+    logger.warn(`[macro] fx basket failed: ${(err as Error).message}`);
+  }
+
   return {
     asOf,
     regime,
@@ -369,6 +378,7 @@ export async function buildMacroState(): Promise<MacroState> {
     bias,
     events,
     headlines,
+    fx,
     engineVer: ENGINE_VER,
   };
 }
