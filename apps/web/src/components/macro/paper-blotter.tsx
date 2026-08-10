@@ -2,7 +2,7 @@
 
 // Client-side paper blotter — educational only, no real orders.
 import { useMemo, useState } from 'react';
-import { Rows } from '@phosphor-icons/react';
+import { NotePencil } from '@phosphor-icons/react';
 import type { MacroSignal } from '@/lib/macro-api';
 import { formatMacroNumber } from '@/lib/macro-format';
 
@@ -37,14 +37,23 @@ export default function PaperBlotter({
 
   if (!fills.length) {
     return (
-      <section className="tcard p-6 sm:p-8 text-center max-w-xl mx-auto" data-testid="macro-paper-empty">
-        <div className="w-11 h-11 mx-auto rounded-full border border-border-strong flex items-center justify-center text-fg-3">
-          <Rows size={20} />
-        </div>
-        <h3 className="mt-3 font-display font-black text-lg tracking-tight">Paper blotter is empty</h3>
-        <p className="text-[12px] text-fg-3 mt-2 leading-relaxed">
-          Fill a signal from the <span className="text-fg-2">Signals</span> tab (approved members) to track a simulated
-          position here. Zero real-money risk — this is a practice ledger only.
+      <section
+        className="flex flex-col items-center justify-center text-center min-h-[min(62vh,560px)] px-4"
+        data-testid="macro-paper-empty"
+      >
+        <span className="inline-flex h-20 w-20 sm:h-24 sm:w-24 items-center justify-center rounded-[1.5rem] bg-profit/10 ring-1 ring-profit/25">
+          <NotePencil size={40} weight="fill" className="text-profit sm:hidden" />
+          <NotePencil size={48} weight="fill" className="text-profit hidden sm:block" />
+        </span>
+        <h3 className="mt-6 font-display font-black text-xl sm:text-2xl tracking-tight text-fg">
+          Paper blotter is empty
+        </h3>
+        <p className="text-[13px] sm:text-[14px] text-fg-2 mt-3 leading-relaxed max-w-md">
+          Fill a signal from the <span className="text-fg">Signals</span> tab (approved members) to track a
+          simulated position here.
+        </p>
+        <p className="text-[11px] text-fg-3 mt-2 max-w-sm leading-relaxed">
+          Zero real-money risk — this is a practice ledger only.
         </p>
       </section>
     );

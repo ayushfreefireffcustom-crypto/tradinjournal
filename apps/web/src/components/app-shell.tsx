@@ -238,7 +238,7 @@ export default function AppShell({
           </div>
         )}
 
-        <main className="flex-1 overflow-y-auto bg-app">{children}</main>
+        <main className="flex-1 min-h-0 overflow-y-auto bg-app flex flex-col">{children}</main>
       </div>
     </div>
   );

@@ -1,19 +1,18 @@
 'use client';
 
 import type { MacroState } from '@/lib/macro-api';
+import CountUp from './count-up';
 
 type Regime = NonNullable<MacroState['regime']>;
 
 interface Quad {
   key: string;
   name: string;
-  /** growth direction, inflation direction */
   g: 'up' | 'down';
   i: 'up' | 'down';
   read: string;
 }
 
-// Classic macro four-quadrant map (growth × inflation).
 const QUADS: Quad[] = [
   { key: 'goldilocks', name: 'Goldilocks', g: 'up', i: 'down', read: 'Growth firms while inflation cools — the friendliest tape for risk.' },
   { key: 'reflation', name: 'Reflation', g: 'up', i: 'up', read: 'Growth and inflation both rising — commodities and cyclicals lead.' },
@@ -27,7 +26,6 @@ function activeQuad(regime: Regime): Quad {
   return QUADS.find(q => q.g === regime.growth && q.i === regime.inflation) ?? DEFLATION;
 }
 
-/** Grid position: columns = inflation (left down / right up), rows = growth (top up / bottom down). */
 function cellFor(g: 'up' | 'down', i: 'up' | 'down'): string {
   const col = i === 'down' ? 1 : 2;
   const row = g === 'up' ? 1 : 2;
@@ -37,9 +35,9 @@ function cellFor(g: 'up' | 'down', i: 'up' | 'down'): string {
 export default function RegimeQuadrant({ regime }: { regime: MacroState['regime'] }) {
   if (!regime) {
     return (
-      <div className="tcard p-4 flex flex-col" data-testid="macro-regime-quadrant-empty">
+      <div className="tcard p-4 flex flex-col h-full" data-testid="macro-regime-quadrant-empty">
         <div className="text-[10px] tracking-[0.2em] text-fg-3">// REGIME</div>
-        <p className="text-sm text-fg-3 mt-3">No regime classified yet.</p>
+        <p className="text-sm text-fg-3 mt-3 flex-1 flex items-center">No regime classified yet.</p>
       </div>
     );
   }
@@ -48,25 +46,22 @@ export default function RegimeQuadrant({ regime }: { regime: MacroState['regime'
   const odds = regime.recessionOdds;
 
   return (
-    <div className="tcard p-4 flex flex-col @container" data-testid="macro-regime-quadrant">
-      <div className="flex items-center justify-between">
+    <div className="tcard p-4 sm:p-5 flex flex-col h-full rise" style={{ ['--i' as string]: 0 }} data-testid="macro-regime-quadrant">
+      <div className="flex items-center justify-between shrink-0 gap-2">
         <div className="text-[10px] tracking-[0.2em] text-fg-3">// REGIME</div>
         <div className="text-[10px] tracking-[0.14em] text-fg-3">GROWTH × INFLATION</div>
       </div>
 
-      {/* Container query: only sit the read beside the quadrant when the CARD
-          itself is wide enough — a narrow 2-col grid cell keeps them stacked. */}
-      <div className="mt-3 flex flex-col @md:flex-row gap-4 items-start">
-        {/* Quadrant grid — capped so the card stays a sensible height */}
-        <div className="w-full @md:w-[220px] shrink-0">
-          <div className="flex gap-2">
-            {/* Y axis (growth) */}
-            <div className="flex flex-col items-center justify-between py-1 text-[9px] tracking-[0.14em] text-fg-3">
+      {/* One centered composition — grid + read stay locked together at all widths */}
+      <div className="flex-1 flex items-center py-3 min-h-0">
+        <div className="w-full grid grid-cols-1 sm:grid-cols-[minmax(0,200px)_1fr] gap-5 sm:gap-6 items-center">
+          <div className="flex gap-2 mx-auto sm:mx-0 w-full max-w-[220px]">
+            <div className="flex flex-col items-center justify-between py-1 text-[9px] tracking-[0.14em] text-fg-3 shrink-0">
               <span>G+</span>
               <span className="[writing-mode:vertical-rl] rotate-180 tracking-[0.3em]">GROWTH</span>
               <span>G−</span>
             </div>
-            <div className="flex-1">
+            <div className="flex-1 min-w-0">
               <div className="grid grid-cols-2 grid-rows-2 gap-1.5 aspect-square">
                 {QUADS.map(q => {
                   const isActive = q.key === active.key;
@@ -76,57 +71,55 @@ export default function RegimeQuadrant({ regime }: { regime: MacroState['regime'
                       style={{ gridArea: cellFor(q.g, q.i) }}
                       data-testid={`regime-quad-${q.key}`}
                       data-active={isActive}
-                      className={`relative rounded-[var(--radius-btn)] border flex items-center justify-center p-1 text-center transition-colors ${
+                      className={`relative rounded-[var(--radius-btn)] border flex items-center justify-center p-1.5 text-center transition-colors ${
                         isActive
                           ? 'border-profit/50 bg-profit/10 text-fg shadow-[var(--shadow-glow-green)]'
                           : 'border-border-soft bg-surface/40 text-fg-3'
                       }`}
                     >
-                      <span className={`text-[10px] font-display tracking-tight ${isActive ? 'font-black' : 'font-medium'}`}>
+                      <span className={`text-[10px] sm:text-[11px] font-display tracking-tight ${isActive ? 'font-black' : 'font-medium'}`}>
                         {q.name}
                       </span>
                       {isActive && (
-                        <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-profit pulse-dot" />
+                        <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-profit pulse-dot" />
                       )}
                     </div>
                   );
                 })}
               </div>
-              {/* X axis (inflation) */}
-              <div className="flex items-center justify-between mt-1 text-[9px] tracking-[0.14em] text-fg-3">
+              <div className="flex items-center justify-between mt-1.5 text-[9px] tracking-[0.14em] text-fg-3">
                 <span>INFL−</span>
                 <span className="tracking-[0.24em]">INFL</span>
                 <span>INFL+</span>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Read + recession odds — content is grouped and vertically centered so
-            a wide/tall card never opens a big empty gap. Capped width keeps the
-            recession bar readable instead of stretching across the whole row. */}
-        <div className="flex-1 min-w-0 flex flex-col justify-center gap-4 self-stretch max-w-md">
-          <div>
-            <div className="font-display font-black text-xl tracking-tight text-fg" data-testid="regime-active-label">
-              {active.name}
-            </div>
-            <p className="text-[12px] text-fg-3 leading-snug mt-1">{active.read}</p>
-          </div>
-
-          {odds != null && (
+          <div className="min-w-0 flex flex-col justify-center gap-3 text-center sm:text-left">
             <div>
-              <div className="flex items-center justify-between text-[10px] tracking-[0.14em] text-fg-3">
-                <span>RECESSION ODDS</span>
-                <span className="numeric text-fg">{Math.round(odds)}%</span>
+              <div className="font-display font-black text-xl sm:text-2xl tracking-tight text-fg" data-testid="regime-active-label">
+                {active.name}
               </div>
-              <div className="mt-1 h-1.5 rounded-full bg-border-soft overflow-hidden">
-                <div
-                  className={`h-full ${odds >= 50 ? 'bg-loss' : odds >= 30 ? 'bg-warning' : 'bg-profit'}`}
-                  style={{ width: `${Math.max(0, Math.min(100, odds))}%` }}
-                />
-              </div>
+              <p className="text-[12px] text-fg-3 leading-relaxed mt-1.5 max-w-sm mx-auto sm:mx-0">
+                {active.read}
+              </p>
             </div>
-          )}
+
+            {odds != null && (
+              <div className="max-w-sm mx-auto sm:mx-0 w-full">
+                <div className="flex items-center justify-between text-[10px] tracking-[0.14em] text-fg-3">
+                  <span>RECESSION ODDS</span>
+                  <CountUp value={odds} suffix="%" className="numeric text-fg" duration={1000} />
+                </div>
+                <div className="mt-1.5 h-1.5 rounded-full bg-border-soft overflow-hidden">
+                  <div
+                    className={`h-full bar-grow-x ${odds >= 50 ? 'bg-loss' : odds >= 30 ? 'bg-warning' : 'bg-profit'}`}
+                    style={{ width: `${Math.max(0, Math.min(100, odds))}%` }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

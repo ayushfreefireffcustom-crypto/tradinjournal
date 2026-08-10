@@ -1,7 +1,7 @@
 export default function MacroCompliance() {
   return (
     <aside
-      className="border-t border-border-soft px-3 py-2 text-[10px] leading-relaxed text-fg-3"
+      className="shrink-0 border-t border-border-soft px-3 py-2 text-[10px] leading-relaxed text-fg-3"
       data-testid="macro-compliance"
     >
       <strong className="text-fg-2">Educational use only.</strong> Macro scores and TradeAI signals are

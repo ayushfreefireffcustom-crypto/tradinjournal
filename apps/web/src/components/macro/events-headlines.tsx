@@ -19,16 +19,16 @@ export default function MacroEventsHeadlines({
 }) {
   const now = Date.now();
   return (
-    <div className="grid lg:grid-cols-2 gap-3" data-testid="macro-events-headlines">
-      <section className="tcard p-4 min-h-[200px]">
-        <div className="flex items-center justify-between border-b border-border-soft pb-2">
+    <div className="grid lg:grid-cols-2 gap-3 items-stretch" data-testid="macro-events-headlines">
+      <section className="tcard p-4 min-h-[280px] h-full flex flex-col">
+        <div className="flex items-center justify-between border-b border-border-soft pb-2 shrink-0">
           <div className="text-[10px] tracking-[0.2em] text-fg-3">// ECONOMIC CALENDAR</div>
           <div className="text-[10px] text-fg-3 numeric">{events.length}</div>
         </div>
         {!events.length ? (
-          <p className="text-sm text-fg-3 mt-3">No calendar events in window.</p>
+          <p className="text-sm text-fg-3 mt-3 flex-1 flex items-center">No calendar events in window.</p>
         ) : (
-          <ul className="mt-1 divide-y divide-border-soft">
+          <ul className="mt-1 divide-y divide-border-soft flex-1">
             {events.slice(0, 8).map((e, i) => {
               const tone = impactTone(e.impact);
               const upcoming = Date.parse(e.at) >= now;
@@ -63,15 +63,15 @@ export default function MacroEventsHeadlines({
         )}
       </section>
 
-      <section className="tcard p-4 min-h-[200px]">
-        <div className="flex items-center justify-between border-b border-border-soft pb-2">
+      <section className="tcard p-4 min-h-[280px] h-full flex flex-col">
+        <div className="flex items-center justify-between border-b border-border-soft pb-2 shrink-0">
           <div className="text-[10px] tracking-[0.2em] text-fg-3">// MARKET HEADLINES</div>
           <div className="text-[10px] text-fg-3 numeric">{headlines.length}</div>
         </div>
         {!headlines.length ? (
-          <p className="text-sm text-fg-3 mt-3">No headlines yet.</p>
+          <p className="text-sm text-fg-3 mt-3 flex-1 flex items-center">No headlines yet.</p>
         ) : (
-          <ul className="mt-1 divide-y divide-border-soft">
+          <ul className="mt-1 divide-y divide-border-soft flex-1">
             {headlines.slice(0, 8).map((h, i) => (
               <li key={`${h.url}-${i}`} className="py-2">
                 <a

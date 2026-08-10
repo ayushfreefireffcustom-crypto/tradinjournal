@@ -50,8 +50,8 @@ export default function YieldCurve({ macro }: { macro: MacroState['macro'] }) {
   const spread10y3m = byKey.get('T10Y3M');
 
   return (
-    <div className="tcard p-4" data-testid="macro-yield-curve">
-      <div className="flex items-center justify-between border-b border-border-soft pb-2">
+    <div className="tcard p-4 flex flex-col h-full min-h-[260px]" data-testid="macro-yield-curve">
+      <div className="flex items-center justify-between border-b border-border-soft pb-2 shrink-0">
         <div className="text-[10px] tracking-[0.2em] text-fg-3">// YIELD CURVE</div>
         <span
           className={`text-[9px] px-1.5 py-0.5 rounded border ${
@@ -62,51 +62,53 @@ export default function YieldCurve({ macro }: { macro: MacroState['macro'] }) {
         </span>
       </div>
 
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full mt-1" role="img" aria-label="US Treasury yield curve">
-        <defs>
-          <linearGradient id="yc-fill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="var(--color-profit)" stopOpacity="0.22" />
-            <stop offset="100%" stopColor="var(--color-profit)" stopOpacity="0" />
-          </linearGradient>
-        </defs>
+      <div className="flex-1 flex items-center">
+        <svg viewBox={`0 0 ${W} ${H}`} className="w-full mt-1" role="img" aria-label="US Treasury yield curve">
+          <defs>
+            <linearGradient id="yc-fill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="var(--color-profit)" stopOpacity="0.22" />
+              <stop offset="100%" stopColor="var(--color-profit)" stopOpacity="0" />
+            </linearGradient>
+          </defs>
 
-        {/* horizontal guides */}
-        {[0, 0.5, 1].map(f => (
-          <line
-            key={f}
-            x1={padL}
-            x2={padL + innerW}
-            y1={padT + f * innerH}
-            y2={padT + f * innerH}
-            stroke="var(--color-border-soft)"
-            strokeWidth="1"
+          {/* horizontal guides */}
+          {[0, 0.5, 1].map(f => (
+            <line
+              key={f}
+              x1={padL}
+              x2={padL + innerW}
+              y1={padT + f * innerH}
+              y2={padT + f * innerH}
+              stroke="var(--color-border-soft)"
+              strokeWidth="1"
+            />
+          ))}
+
+          <polygon points={areaPts} fill="url(#yc-fill)" />
+          <polyline
+            points={linePts}
+            fill="none"
+            stroke="var(--color-profit)"
+            strokeWidth="2"
+            strokeLinejoin="round"
+            strokeLinecap="round"
           />
-        ))}
 
-        <polygon points={areaPts} fill="url(#yc-fill)" />
-        <polyline
-          points={linePts}
-          fill="none"
-          stroke="var(--color-profit)"
-          strokeWidth="2"
-          strokeLinejoin="round"
-          strokeLinecap="round"
-        />
+          {pts.map((p, i) => (
+            <g key={p.label}>
+              <circle cx={xAt(i)} cy={yAt(p.value)} r="3" fill="var(--color-app)" stroke="var(--color-profit)" strokeWidth="1.6" />
+              <text x={xAt(i)} y={yAt(p.value) - 8} textAnchor="middle" fontSize="9.5" fill="var(--color-fg)" className="numeric">
+                {p.value.toFixed(2)}
+              </text>
+              <text x={xAt(i)} y={H - 8} textAnchor="middle" fontSize="9" fill="var(--color-fg-3)" letterSpacing="0.5">
+                {p.label}
+              </text>
+            </g>
+          ))}
+        </svg>
+      </div>
 
-        {pts.map((p, i) => (
-          <g key={p.label}>
-            <circle cx={xAt(i)} cy={yAt(p.value)} r="3" fill="var(--color-app)" stroke="var(--color-profit)" strokeWidth="1.6" />
-            <text x={xAt(i)} y={yAt(p.value) - 8} textAnchor="middle" fontSize="9.5" fill="var(--color-fg)" className="numeric">
-              {p.value.toFixed(2)}
-            </text>
-            <text x={xAt(i)} y={H - 8} textAnchor="middle" fontSize="9" fill="var(--color-fg-3)" letterSpacing="0.5">
-              {p.label}
-            </text>
-          </g>
-        ))}
-      </svg>
-
-      <div className="mt-2 pt-2 border-t border-border-soft flex items-center justify-between text-[10px]">
+      <div className="mt-auto pt-2 border-t border-border-soft flex items-center justify-between text-[10px] shrink-0">
         <span className="text-fg-3 tracking-[0.12em]">
           2s10s <span className={`numeric ${(spread2s10s ?? 0) < 0 ? 'text-loss' : 'text-fg'}`}>
             {typeof spread2s10s === 'number' ? `${spread2s10s >= 0 ? '+' : ''}${Math.round(spread2s10s * 100)}bp` : '—'}

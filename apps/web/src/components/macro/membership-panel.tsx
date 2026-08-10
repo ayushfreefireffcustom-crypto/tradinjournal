@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { LoadingScreen } from '@/components/loader';
 import type { MacroMember, MacroMemberApplyInput } from '@/lib/macro-api';
 import { macroApi } from '@/lib/macro-api';
 
@@ -83,18 +84,26 @@ export default function MembershipPanel() {
 
   const showForm = member === null || member?.status === 'REJECTED';
 
+  if (member === undefined && !error) {
+    return (
+      <div className="min-h-[40vh]" data-testid="macro-membership-loading">
+        <LoadingScreen label="Loading access" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-3 max-w-3xl mx-auto" data-testid="macro-membership">
       {/* Tier comparison */}
-      <div className="grid sm:grid-cols-2 gap-3">
-        <div className="tcard p-4 border-profit/25">
+      <div className="grid sm:grid-cols-2 gap-3 items-stretch">
+        <div className="tcard p-4 border-profit/25 h-full flex flex-col">
           <div className="flex items-center justify-between">
             <span className="text-[11px] tracking-[0.16em] text-fg">EXPLORER</span>
             <span className="text-[9px] px-1.5 py-0.5 rounded border border-profit/30 bg-profit/10 text-profit">
               ACTIVE · FREE
             </span>
           </div>
-          <ul className="mt-3 space-y-1.5">
+          <ul className="mt-3 space-y-1.5 flex-1">
             {EXPLORER_PERKS.map(p => (
               <li key={p} className="text-[12px] text-fg-2 flex gap-2">
                 <span className="text-profit">✓</span> {p}
@@ -103,12 +112,12 @@ export default function MembershipPanel() {
           </ul>
         </div>
 
-        <div className="tcard p-4">
+        <div className="tcard p-4 h-full flex flex-col">
           <div className="flex items-center justify-between">
             <span className="text-[11px] tracking-[0.16em] text-fg">TRADEAI MEMBER</span>
             <span className="text-[9px] px-1.5 py-0.5 rounded border border-border text-fg-3">VERIFIED</span>
           </div>
-          <ul className="mt-3 space-y-1.5">
+          <ul className="mt-3 space-y-1.5 flex-1">
             {MEMBER_PERKS.map(p => (
               <li key={p} className="text-[12px] text-fg-2 flex gap-2">
                 <span className="text-fg-3">◆</span> {p}
@@ -125,8 +134,6 @@ export default function MembershipPanel() {
           Free dashboards are open to every signed-in user. Signal levels stay <span className="text-fg-2">server-gated</span>{' '}
           until your exchange mapping is approved (24–48h verification).
         </p>
-
-        {member === undefined && !error && <p className="text-[12px] text-fg-3 mt-3">Loading membership…</p>}
 
         {member && (
           <div className="mt-3 flex items-center gap-2 flex-wrap" data-testid="macro-membership-status">

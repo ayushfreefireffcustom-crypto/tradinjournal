@@ -15,7 +15,7 @@ interface Props {
 // so the same component drives currency, percentages, counts, etc. The final
 // (settled) value always formats from the exact target to avoid rounding drift.
 export default function AnimatedNumber({ value, format, className, durationMs, ...rest }: Props) {
-  const display = useCountUp(value, durationMs);
+  const display = useCountUp(value, durationMs ?? 650) ?? value;
   const shown = Math.abs(display - value) < 1e-6 ? value : display;
   return (
     <span className={className} data-testid={rest['data-testid']}>

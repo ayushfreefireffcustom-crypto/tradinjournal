@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { LockKey } from '@phosphor-icons/react';
+import { LoadingScreen } from '@/components/loader';
 import { macroApi, type MacroSignal } from '@/lib/macro-api';
 import { formatMacroNumber } from '@/lib/macro-format';
 
@@ -49,7 +50,11 @@ export default function SignalBoard({
   }, [load]);
 
   if (loading) {
-    return <div className="tcard p-4 text-sm text-fg-3" data-testid="macro-signals-loading">Loading signals…</div>;
+    return (
+      <div className="min-h-[40vh]" data-testid="macro-signals-loading">
+        <LoadingScreen label="Loading signals" />
+      </div>
+    );
   }
 
   if (error) {
@@ -95,19 +100,19 @@ export default function SignalBoard({
   }
 
   return (
-    <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-3" data-testid="macro-signals">
+    <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-3 items-stretch" data-testid="macro-signals">
       {signals.map(s => {
         const conf = Math.max(0, Math.min(100, s.confidence));
         return (
-          <article key={`${s.asset}-${s.asOf}`} className="tcard p-4 flex flex-col" data-testid={`macro-signal-${s.asset}`}>
-            <div className="flex items-center justify-between gap-2">
+          <article key={`${s.asset}-${s.asOf}`} className="tcard p-4 flex flex-col h-full" data-testid={`macro-signal-${s.asset}`}>
+            <div className="flex items-center justify-between gap-2 shrink-0">
               <span className="font-display font-black text-xl tracking-tight">{s.asset}</span>
               <span className={`text-[10px] tracking-[0.16em] px-2.5 py-1 rounded border ${dirClass(s.direction)}`}>
                 {s.direction}
               </span>
             </div>
 
-            <div className="mt-2">
+            <div className="mt-2 shrink-0">
               <div className="flex items-center justify-between text-[9px] tracking-[0.14em] text-fg-3">
                 <span>CONFIDENCE</span>
                 <span className="numeric text-fg">{s.confidence}%</span>
@@ -127,12 +132,12 @@ export default function SignalBoard({
               <Row label="1% Risk Size">{s.qty == null ? '—' : formatMacroNumber(s.qty)}</Row>
             </div>
 
-            <p className="text-[12px] text-fg-2 mt-3 leading-relaxed">{s.rationale}</p>
+            <p className="text-[12px] text-fg-2 mt-3 leading-relaxed flex-1">{s.rationale}</p>
             <p className="text-[11px] text-fg-3 mt-2">
               <span className="text-fg-2">Invalidation:</span> {s.invalidation}
             </p>
 
-            <div className="mt-3 pt-3 border-t border-border-soft flex items-center justify-between">
+            <div className="mt-auto pt-3 border-t border-border-soft flex items-center justify-between shrink-0">
               <span className="text-[9px] tracking-[0.14em] text-fg-3">{s.engineVer}</span>
               {onPaperFill && s.direction !== 'WAIT' && (
                 <button

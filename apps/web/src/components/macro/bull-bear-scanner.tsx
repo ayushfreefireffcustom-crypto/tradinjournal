@@ -1,7 +1,8 @@
 'use client';
 
 import type { MacroState } from '@/lib/macro-api';
-import { biasTone, formatBiasLabel, formatScore } from '@/lib/macro-format';
+import { biasTone, formatBiasLabel } from '@/lib/macro-format';
+import CountUp from './count-up';
 
 function toneText(tone: ReturnType<typeof biasTone>): string {
   if (tone === 'bull') return 'text-profit';
@@ -28,7 +29,10 @@ function Meter({ score, tone }: { score: number; tone: ReturnType<typeof biasTon
   return (
     <div className="relative h-2 rounded-full bg-border-soft overflow-hidden">
       <span className="absolute left-1/2 top-0 h-full w-px bg-border-strong z-10" />
-      <div className={`absolute top-0 h-full ${color}`} style={{ left: `${left}%`, width: `${width}%` }} />
+      <div
+        className={`absolute top-0 h-full bar-grow-x ${color}`}
+        style={{ left: `${left}%`, width: `${width}%`, transformOrigin: s >= 50 ? 'left center' : 'right center' }}
+      />
     </div>
   );
 }
@@ -61,7 +65,8 @@ export default function BullBearScanner({ bias }: { bias: MacroState['bias'] }) 
           return (
             <div
               key={b.asset}
-              className="rounded-[var(--radius-card)] border border-border-soft bg-surface/30 p-3"
+              className="rounded-[var(--radius-card)] border border-border-soft bg-surface/30 p-3 rise"
+              style={{ ['--i' as string]: i }}
               data-testid={`macro-scanner-${b.asset}`}
             >
               <div className="flex items-center gap-3">
@@ -72,9 +77,10 @@ export default function BullBearScanner({ bias }: { bias: MacroState['bias'] }) 
                 </span>
                 <div className="flex-1" />
                 <span className={`text-[9px] tracking-[0.14em] ${toneText(tone)}`}>{lean(b.score)}</span>
-                <span className={`numeric text-xl font-display font-black w-8 text-right ${toneText(tone)}`}>
-                  {formatScore(b.score)}
-                </span>
+                <CountUp
+                  value={b.score}
+                  className={`numeric text-xl font-display font-black w-8 text-right ${toneText(tone)}`}
+                />
               </div>
 
               <div className="mt-2">

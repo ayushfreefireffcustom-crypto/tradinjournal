@@ -73,7 +73,7 @@ export default function MacroAssistant() {
   return (
     <ChatConversation
       data-testid="macro-assistant"
-      className="h-[min(70vh,620px)]"
+      className="h-full"
       headerLabel="// MACRO AI"
       headerRight="Grounded on live state · not financial advice"
       live
