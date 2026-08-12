@@ -32,6 +32,10 @@ export const BROKERS: BrokerDef[] = [
     name: 'Xellion',
     servers: ['Xellion-Live'],
   },
+  {
+    name: 'Elefin',
+    servers: ['Elefin-Trade'],
+  },
 ];
 
 // Sentinel for the "type it manually" option in the server dropdown.
