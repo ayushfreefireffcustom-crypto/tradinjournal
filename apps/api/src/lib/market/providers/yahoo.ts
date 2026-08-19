@@ -53,7 +53,7 @@ const ALIASES: Record<string, string> = {
 export function yahooSymbol(symbol: string): string {
   const s = symbol.trim().toUpperCase();
   if (ALIASES[s]) return ALIASES[s];
-  if (/[=^.\-]/.test(s)) return s; // already a Yahoo-style ticker
+  if (/[=^.-]/.test(s)) return s; // already a Yahoo-style ticker
   if (/^[A-Z]{6}$/.test(s)) return `${s}=X`; // 6-letter FX pair
   return s; // equities etc.
 }
