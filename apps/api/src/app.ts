@@ -16,6 +16,7 @@ import { macroRouter, macroInternalRouter } from './modules/macro/macro.routes.j
 import { newsRouter, newsInternalRouter } from './modules/news/news.routes.js';
 import { notificationsRouter, pushRouter, notificationsInternalRouter } from './modules/notifications/notifications.routes.js';
 import { marketRouter, marketInternalRouter } from './modules/market/market.routes.js';
+import { traderRouter } from './modules/trader/trader.routes.js';
 import { alertsRouter, alertsInternalRouter } from './modules/alerts/alerts.routes.js';
 
 export function createApp(): Express {
@@ -56,6 +57,7 @@ export function createApp(): Express {
   app.use('/api/market', marketRouter);
   app.use('/api/alerts', alertsRouter);
   app.use('/api/macro', macroRouter);
+  app.use('/api/trader', traderRouter);
   // Worker-to-API routes. Not under /api: no session, no CORS use case — the
   // shared-token guard on the router is the only way in.
   app.use('/internal/ai', aiInternalRouter);
