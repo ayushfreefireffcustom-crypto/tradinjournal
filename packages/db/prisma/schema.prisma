@@ -726,3 +726,35 @@ model MacroSignal {
   @@index([asset, asOf(sort: Desc)])
   @@map("macro_signal")
 }
+
+// On-demand Trader Master analysis. One row per analyze request. Levels are
+// always engine-validated; `aiUsed` records whether an LLM wrote the narrative.
+model TraderAnalysis {
+  id           String   @id @default(cuid())
+  userId       String? // null = anonymous / unauthenticated free use
+  symbol       String
+  assetClass   String
+  timeframes   String[] // e.g. ["1h","4h"]
+  direction    String // LONG | SHORT | WAIT
+  entryLow     Decimal  @db.Decimal(24, 8)
+  entryHigh    Decimal  @db.Decimal(24, 8)
+  stop         Decimal  @db.Decimal(24, 8)
+  t1           Decimal  @db.Decimal(24, 8)
+  t2           Decimal  @db.Decimal(24, 8)
+  t3           Decimal  @db.Decimal(24, 8)
+  support      Json // [{ price, label }]
+  resistance   Json // [{ price, label }]
+  confidence   Int
+  rationale    String   @db.Text
+  invalidation String   @db.Text
+  detail       String   @db.Text
+  perTimeframe Json // [{ tf, trend, rsi, atr, note }]
+  aiUsed       Boolean  @default(false)
+  asOf         DateTime
+  engineVer    String
+  createdAt    DateTime @default(now())
+
+  @@index([symbol, asOf(sort: Desc)])
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("trader_analysis")
+}

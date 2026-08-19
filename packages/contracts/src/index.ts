@@ -438,3 +438,68 @@ export const macroAssistantSchema = z.object({
   question: z.string().trim().min(1).max(2000),
 });
 export type MacroAssistantInput = z.infer<typeof macroAssistantSchema>;
+
+// ── Trader Master (on-demand technical analysis) ─────────────────────────────
+// An instrument + timeframe(s) → a structured "Analysis Report": direction,
+// entry zone, stop, three targets, support/resistance, confidence, rationale.
+// Chart-driven (OHLCV features), LLM-narrated, engine-validated levels.
+
+// TA-meaningful subset of MARKET_TIMEFRAMES. A single tf = single-timeframe
+// analysis; more than one = top-down multi-timeframe.
+export const TRADER_TIMEFRAMES = ['15m', '1h', '4h', '1d'] as const;
+export const traderTimeframeSchema = z.enum(TRADER_TIMEFRAMES);
+export type TraderTimeframe = z.infer<typeof traderTimeframeSchema>;
+
+export const traderDirectionSchema = z.enum(['LONG', 'SHORT', 'WAIT']);
+export type TraderDirection = z.infer<typeof traderDirectionSchema>;
+
+// POST /api/trader/analyze body.
+export const traderAnalyzeSchema = z.object({
+  symbol: z.string().trim().min(1).max(32),
+  // 1..4 distinct timeframes; deduped/validated server-side too.
+  timeframes: z.array(traderTimeframeSchema).min(1).max(TRADER_TIMEFRAMES.length),
+});
+export type TraderAnalyzeInput = z.infer<typeof traderAnalyzeSchema>;
+
+// A support or resistance price with a short human label (e.g. "swing low").
+export const traderLevelSchema = z.object({
+  price: z.number(),
+  label: z.string(),
+});
+export type TraderLevel = z.infer<typeof traderLevelSchema>;
+
+// Per-timeframe read shown in the "View Detailed Analysis" breakdown.
+export const traderTimeframeReadSchema = z.object({
+  tf: traderTimeframeSchema,
+  trend: z.enum(['up', 'down', 'range']),
+  rsi: z.number(),
+  atr: z.number(),
+  note: z.string(),
+});
+export type TraderTimeframeRead = z.infer<typeof traderTimeframeReadSchema>;
+
+export const traderAnalysisDtoSchema = z.object({
+  id: z.string().optional(),
+  symbol: z.string(),
+  assetClass: assetClassSchema,
+  timeframes: z.array(traderTimeframeSchema),
+  direction: traderDirectionSchema,
+  entryLow: z.number(),
+  entryHigh: z.number(),
+  stop: z.number(),
+  t1: z.number(),
+  t2: z.number(),
+  t3: z.number(),
+  support: z.array(traderLevelSchema),
+  resistance: z.array(traderLevelSchema),
+  confidence: z.number().min(0).max(100),
+  rationale: z.string(),
+  invalidation: z.string(),
+  detail: z.string(),
+  perTimeframe: z.array(traderTimeframeReadSchema),
+  // true when an LLM produced the narrative (levels are always engine-validated).
+  aiUsed: z.boolean(),
+  asOf: z.string(),
+  engineVer: z.string(),
+});
+export type TraderAnalysisDto = z.infer<typeof traderAnalysisDtoSchema>;
