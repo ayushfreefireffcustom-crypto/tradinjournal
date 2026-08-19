@@ -50,3 +50,34 @@ export type {
   SignalInput,
   OhlcBar,
 } from './macro/index.js';
+
+// Trader Master engine (on-demand technical analysis).
+export {
+  TRADER_ENGINE_VER,
+  sma,
+  ema,
+  rsi,
+  swingPoints,
+  clusterLevels,
+  classifyTrend,
+  extractFeatures,
+  deriveLevels,
+  roundPx as roundTraderPx,
+  validateLevels,
+  directionFromFeatures,
+  buildTechnicalAnalysis,
+  reconcileTimeframes,
+} from './trader/index.js';
+export type {
+  TraderDirection,
+  Trend,
+  Candle as TraderCandle,
+  SRLevel,
+  TechnicalFeatures,
+  TfFeatures,
+  AnalysisLevels,
+  TimeframeRead,
+  AnalysisResult,
+  SwingPoint,
+  ValidationResult,
+} from './trader/index.js';
