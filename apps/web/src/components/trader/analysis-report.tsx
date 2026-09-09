@@ -45,13 +45,45 @@ export default function AnalysisReport({ a }: { a: TraderAnalysis }) {
   const conf = Math.max(0, Math.min(100, a.confidence));
   const confTone = a.direction === 'LONG' ? 'bg-profit' : a.direction === 'SHORT' ? 'bg-loss' : 'bg-fg-2';
 
+  const isLong = a.direction === 'LONG';
+  const isShort = a.direction === 'SHORT';
+  const accent = isLong ? 'var(--color-profit)' : isShort ? 'var(--color-loss)' : 'var(--color-fg-3)';
+
   return (
     <article
-      className="rounded-xl border border-border bg-surface p-4 sm:p-5 animate-[fade-up_0.4s_ease_both]"
+      className="relative overflow-hidden rounded-xl border border-border bg-surface p-4 sm:p-5 animate-[fade-up_0.4s_ease_both]"
       data-testid="trader-report"
+      style={{
+        boxShadow: isLong || isShort
+          ? `0 0 0 1px color-mix(in oklab, ${accent} 22%, transparent), 0 20px 50px -24px color-mix(in oklab, ${accent} 28%, transparent)`
+          : undefined,
+      }}
     >
+      {/* Direction wash — top + soft side bleed */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background: isLong || isShort
+            ? `
+              radial-gradient(ellipse 90% 55% at 50% -5%, color-mix(in oklab, ${accent} 22%, transparent), transparent 70%),
+              linear-gradient(90deg, color-mix(in oklab, ${accent} 10%, transparent), transparent 18%, transparent 82%, color-mix(in oklab, ${accent} 10%, transparent))
+            `
+            : undefined,
+        }}
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-px"
+        style={{
+          background: isLong || isShort
+            ? `linear-gradient(90deg, transparent, color-mix(in oklab, ${accent} 55%, transparent), transparent)`
+            : undefined,
+        }}
+      />
+
       {/* Header */}
-      <div className="flex items-start justify-between gap-3">
+      <div className="relative flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <h2 className="font-display font-semibold text-xl tracking-tight text-fg">{a.symbol}</h2>
