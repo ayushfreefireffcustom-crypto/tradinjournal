@@ -138,6 +138,8 @@ const envSchema = z.object({
   // resolve (nothing crashes).
   BINANCE_REST_URL: z.string().url().default('https://data-api.binance.vision'),
   BINANCE_WS_URL: z.string().default('wss://data-stream.binance.vision'),
+  // USDT-M futures public REST for Trader Master Flow lane (funding / OI / aggTrades).
+  BINANCE_FUTURES_REST_URL: z.string().url().default('https://fapi.binance.com'),
   TWELVEDATA_API_KEY: z.string().optional(),
   // CSV of symbols kept "hot" by the warm cron (so popular symbols stay a cache
   // hit for everyone — 1 provider call per symbol per refresh, not per user).

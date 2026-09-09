@@ -72,6 +72,12 @@ export {
   timeframeMs,
   outcomeRMultiple,
   DEFAULT_HORIZON_BARS,
+  reconcileLanes,
+  technicalLane,
+  macroBiasToLane,
+  flowLane,
+  directionToScore,
+  mapSymbolToMacroAsset,
 } from './trader/index.js';
 export type {
   TraderDirection,
@@ -89,4 +95,7 @@ export type {
   GradeResult,
   GradeOutcome,
   HitLevel,
+  LaneId,
+  LaneResult,
+  ReconcileLanesResult,
 } from './trader/index.js';

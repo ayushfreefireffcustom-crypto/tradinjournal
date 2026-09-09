@@ -2,7 +2,7 @@
 // Bump TRADER_ENGINE_VER on any change to indicators, level geometry, guardrails
 // or scoring so persisted analyses stay traceable to the logic that made them.
 
-export const TRADER_ENGINE_VER = 'trader-0.1.0';
+export const TRADER_ENGINE_VER = 'trader-0.2.0';
 
 export type {
   TraderDirection,
@@ -48,3 +48,13 @@ export {
   DEFAULT_HORIZON_BARS,
 } from './grade.js';
 export type { GradeInput, GradeResult, GradeOutcome, HitLevel } from './grade.js';
+
+export {
+  reconcileLanes,
+  technicalLane,
+  macroBiasToLane,
+  flowLane,
+  directionToScore,
+  mapSymbolToMacroAsset,
+} from './lanes.js';
+export type { LaneId, LaneResult, ReconcileLanesResult } from './lanes.js';

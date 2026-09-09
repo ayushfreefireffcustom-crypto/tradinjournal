@@ -87,6 +87,47 @@ export default function AnalysisReport({ a }: { a: TraderAnalysis }) {
         </div>
       </div>
 
+      {a.laneBreakdown && a.laneBreakdown.length > 0 && (
+        <div className="relative mt-3" data-testid="trader-lanes">
+          <div className="text-[9px] tracking-[0.14em] text-fg-3 mb-1.5">LANES</div>
+          <ul className="space-y-1.5">
+            {a.laneBreakdown.map((lane, i) => {
+              const bull = lane.score > 0.08;
+              const bear = lane.score < -0.08;
+              const pct = Math.round(Math.abs(lane.score) * 100);
+              return (
+                <li
+                  key={lane.id}
+                  className="rounded-lg border border-border-soft bg-app/30 px-2.5 py-1.5 animate-[fade-up_0.35s_ease_both]"
+                  style={{ animationDelay: `${i * 40}ms` }}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] tracking-[0.14em] uppercase text-fg-2 w-16 shrink-0">
+                      {lane.id}
+                    </span>
+                    <div className="flex-1 h-1 rounded-full bg-border-soft overflow-hidden">
+                      <div
+                        className={`h-full origin-left ${bull ? 'bg-profit' : bear ? 'bg-loss' : 'bg-fg-3'}`}
+                        style={{ width: `${Math.max(6, pct)}%` }}
+                      />
+                    </div>
+                    <span
+                      className={`numeric text-[10px] w-10 text-right ${
+                        bull ? 'text-profit' : bear ? 'text-loss' : 'text-fg-3'
+                      }`}
+                    >
+                      {lane.score > 0 ? '+' : ''}
+                      {lane.score.toFixed(2)}
+                    </span>
+                  </div>
+                  <p className="mt-0.5 text-[10px] text-fg-3 truncate pl-[4.5rem]">{lane.rationale}</p>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+
       <div className="relative mt-3 rounded-lg border border-border-soft bg-app/30 px-3 py-1">
         <Row label="Entry">
           {formatMacroNumber(a.entryLow)} – {formatMacroNumber(a.entryHigh)}

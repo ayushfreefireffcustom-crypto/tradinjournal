@@ -9,19 +9,27 @@
 //  • Anything unusable (no data) is a 422, never a crash.
 import { prisma } from '@tradinjournal/db';
 import { logger } from '@tradinjournal/logger';
-import type { AssetClass, TraderAnalyzeInput, TraderAnalysisDto, TraderTimeframe } from '@tradinjournal/contracts';
+import type { AssetClass, TraderAnalyzeInput, TraderAnalysisDto, TraderTimeframe, TraderLaneResult } from '@tradinjournal/contracts';
 import {
   TRADER_ENGINE_VER,
   extractFeatures,
   reconcileTimeframes,
   validateLevels,
+  reconcileLanes,
+  macroBiasToLane,
+  mapSymbolToMacroAsset,
+  deriveLevels,
   type AnalysisResult,
   type TfFeatures,
   type TraderDirection,
+  type LaneResult,
 } from '@tradinjournal/core';
 import { getProvider, isAiEnabled, type ChatMessage } from '../../lib/ai/provider.js';
 import { ValidationError } from '../../http/errors.js';
 import { loadPublicCandles } from '../market/market.service.js';
+import { fetchCryptoFlowLane } from '../../lib/market/flow/binance-flow.js';
+import { getMacroState } from '../macro/macro.service.js';
+import { env } from '@tradinjournal/config';
 import { buildSystemPrompt, parseAnalysisJson, NFA, type LlmAnalysis } from './trader.prompt.js';
 
 /** Bars pulled per timeframe (enough for EMA50 + swing structure). */
@@ -105,6 +113,7 @@ function toDto(
   timeframes: TraderTimeframe[],
   result: AnalysisResult,
   aiUsed: boolean,
+  lanes?: TraderLaneResult[],
 ): TraderAnalysisDto {
   return {
     symbol,
@@ -124,10 +133,88 @@ function toDto(
     invalidation: result.invalidation,
     detail: result.detail,
     perTimeframe: result.perTimeframe as TraderAnalysisDto['perTimeframe'],
+    laneBreakdown: lanes,
     aiUsed,
     asOf: new Date().toISOString(),
     engineVer: TRADER_ENGINE_VER,
   };
+}
+
+/** Collect Macro + Flow lanes (best-effort; missing data = lane omitted). */
+async function collectExtraLanes(symbol: string, assetClass: AssetClass): Promise<LaneResult[]> {
+  const extras: LaneResult[] = [];
+
+  const macroAsset = mapSymbolToMacroAsset(symbol);
+  if (macroAsset && env.MACRO_ENABLED) {
+    try {
+      const state = await getMacroState();
+      const bias = state.bias.find((b) => b.asset === macroAsset);
+      if (bias) extras.push(macroBiasToLane(bias.score, bias.label));
+    } catch (err) {
+      logger.warn(`[trader] macro lane skipped: ${(err as Error).message}`);
+    }
+  }
+
+  if (assetClass === 'crypto') {
+    try {
+      const flow = await fetchCryptoFlowLane(symbol);
+      if (flow) extras.push(flow);
+    } catch (err) {
+      logger.warn(`[trader] flow lane skipped: ${(err as Error).message}`);
+    }
+  }
+
+  return extras;
+}
+
+/**
+ * Apply lane reconciliation onto a technical analysis. May force WAIT on
+ * disagreement; never flips LONG↔SHORT without the technical baseline agreeing.
+ */
+function applyLanes(det: AnalysisResult, extras: LaneResult[], ltf: TfFeatures): {
+  result: AnalysisResult;
+  lanes: TraderLaneResult[];
+} {
+  const rec = reconcileLanes(det.direction, det.confidence, extras);
+  let result = { ...det, confidence: rec.confidence };
+
+  if (rec.direction !== det.direction) {
+    // Only WAIT overrides happen today — re-price reference levels for WAIT.
+    const levels = deriveLevels({
+      price: ltf.features.price,
+      atr: ltf.features.atr,
+      direction: rec.direction,
+      support: ltf.features.support,
+      resistance: ltf.features.resistance,
+    });
+    result = {
+      ...result,
+      ...levels,
+      direction: rec.direction,
+      confidence: rec.confidence,
+      invalidation: invalidationText(rec.direction, levels.stop),
+      rationale: withNfa(
+        `${det.rationale.replace(/\s*Not financial advice.*$/i, '').trim()} Lanes disagree (${Math.round(rec.agreement * 100)}% agree) — waiting for confluence.`,
+      ),
+    };
+  } else if (extras.length > 0) {
+    const agreePct = Math.round(rec.agreement * 100);
+    result = {
+      ...result,
+      rationale: withNfa(
+        `${det.rationale.replace(/\s*Not financial advice.*$/i, '').trim()} Lanes ${agreePct}% aligned.`,
+      ),
+    };
+  }
+
+  const lanes = rec.lanes.map((l) => ({
+    id: l.id,
+    score: Math.round(l.score * 1000) / 1000,
+    weight: l.weight,
+    rationale: l.rationale,
+  }));
+
+  return { result, lanes };
 }
 
 async function persist(dto: TraderAnalysisDto, userId: string | undefined): Promise<string | undefined> {
@@ -190,18 +277,22 @@ export async function analyze(input: TraderAnalyzeInput, userId?: string): Promi
   const ltf = [...perTf].sort((a, b) => rank(a.tf) - rank(b.tf))[0]!;
   const ctx = { price: ltf.features.price, atr: ltf.features.atr };
 
-  let result = det;
+  const assetClass = classifyAsset(input.symbol);
+  const extras = await collectExtraLanes(input.symbol, assetClass);
+  const { result: engineResult, lanes } = applyLanes(det, extras, ltf);
+
+  let result = engineResult;
   let aiUsed = false;
   if (isAiEnabled()) {
     try {
       const messages: ChatMessage[] = [
-        { role: 'system', content: buildSystemPrompt(input.symbol, timeframes, perTf, det) },
+        { role: 'system', content: buildSystemPrompt(input.symbol, timeframes, perTf, engineResult) },
         { role: 'user', content: `Analyze ${input.symbol} on ${timeframes.join(', ')} and return the JSON.` },
       ];
       const raw = await getProvider().complete(messages);
       const parsed = parseAnalysisJson(raw);
       if (parsed) {
-        result = mergeLlm(det, parsed, ctx);
+        result = mergeLlm(engineResult, parsed, ctx);
         aiUsed = true;
       }
     } catch (err) {
@@ -211,10 +302,10 @@ export async function analyze(input: TraderAnalyzeInput, userId?: string): Promi
 
   // Belt-and-suspenders: never ship a level set that fails validation.
   if (result.direction !== 'WAIT' && !validateLevels(result, ctx).ok) {
-    result = det;
+    result = engineResult;
   }
 
-  const dto = toDto(input.symbol, timeframes, result, aiUsed);
+  const dto = toDto(input.symbol, timeframes, result, aiUsed, lanes);
   const id = await persist(dto, userId);
   if (id) dto.id = id;
   return dto;
