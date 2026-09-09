@@ -164,6 +164,8 @@ const envSchema = z.object({
   // Grade Trader Master analyses against subsequent candles (triple-barrier).
   TRADER_GRADE_CRON: z.string().default('*/15 * * * *'),
   TRADER_GRADE_BATCH: z.coerce.number().int().positive().default(40),
+  // Retrain meta-label model from graded analyses (needs enough samples).
+  TRADER_META_TRAIN_CRON: z.string().default('0 */6 * * *'),
   // The macro assistant reuses the trading coach's AI provider (AI_PROVIDER +
   // GROQ_API_KEY / OPENAI_API_KEY above) — no separate key. No AI key → it falls
   // back to a deterministic template summary, exactly like the coach.

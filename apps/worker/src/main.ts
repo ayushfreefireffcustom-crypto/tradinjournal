@@ -34,6 +34,8 @@ import {
   MACRO_INGEST_SCHEDULER_ID,
   QUEUE_TRADER_GRADE,
   TRADER_GRADE_SCHEDULER_ID,
+  QUEUE_TRADER_META,
+  TRADER_META_SCHEDULER_ID,
   createRedisConnection,
   getQueue,
   closeQueues,
@@ -49,6 +51,7 @@ import {
   type PriceAlertsJob,
   type MacroIngestJob,
   type TraderGradeJob,
+  type TraderMetaTrainJob,
 } from '@tradinjournal/queue';
 import { createWeeklyReviewWorker, isUnrecoverable as weeklyUnrecoverable } from './processors/weekly-review.js';
 import { createCalendarWorker, isUnrecoverable as calendarUnrecoverable } from './processors/calendar-ingest.js';
@@ -60,6 +63,7 @@ import { createMarketWarmWorker, isUnrecoverable as marketWarmUnrecoverable } fr
 import { createPriceAlertsWorker, isUnrecoverable as priceAlertsUnrecoverable } from './processors/price-alerts.js';
 import { createMacroWorker, isUnrecoverable as macroUnrecoverable } from './processors/macro-ingest.js';
 import { createTraderGradeWorker, isUnrecoverable as traderGradeUnrecoverable } from './processors/trader-grade.js';
+import { createTraderMetaWorker, isUnrecoverable as traderMetaUnrecoverable } from './processors/trader-meta.js';
 
 const workers: Worker[] = [];
 let connection: ReturnType<typeof createRedisConnection> = null;
@@ -231,6 +235,21 @@ async function start(): Promise<void> {
       traderGradeUnrecoverable,
     );
     logger.info(`Trader grade scheduled: "${env.TRADER_GRADE_CRON}" UTC`);
+  }
+
+  const traderMetaQueue = getQueue<TraderMetaTrainJob>(QUEUE_TRADER_META);
+  if (traderMetaQueue) {
+    await traderMetaQueue.upsertJobScheduler(
+      TRADER_META_SCHEDULER_ID,
+      { pattern: env.TRADER_META_TRAIN_CRON, tz: 'UTC' },
+      { name: 'train', data: { kind: 'trader-meta-train', bucket: timeBucket(new Date(), 'hour') } },
+    );
+    attach(
+      createTraderMetaWorker(connection, traderMetaQueue) as unknown as Worker,
+      'Trader meta',
+      traderMetaUnrecoverable,
+    );
+    logger.info(`Trader meta train scheduled: "${env.TRADER_META_TRAIN_CRON}" UTC`);
   }
 
   logger.info(`Worker ready — ${workers.length} pipeline(s) registered.`);

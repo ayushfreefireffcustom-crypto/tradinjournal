@@ -65,7 +65,9 @@ describe('analyze — data + AI paths', () => {
     const dto = await analyze({ symbol: 'BTCUSDT', timeframes: ['1h'] }, 'u1');
     expect(dto.aiUsed).toBe(true);
     expect(dto.direction).toBe('LONG');
-    expect(dto.confidence).toBe(72);
+    // Confidence stays engine/meta-owned — LLM must not overwrite it.
+    expect(dto.confidence).not.toBe(72);
+    expect(dto.confidence).toBeGreaterThan(0);
     expect(dto.rationale).toMatch(/Momentum favours longs/);
     expect(dto.rationale.toLowerCase()).toContain('not financial advice');
   });

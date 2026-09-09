@@ -109,3 +109,19 @@ export function gradeTraderAnalyses(params: {
     body: JSON.stringify({ bucket: params.bucket, limit: params.limit }),
   });
 }
+
+export function trainTraderMeta(params: {
+  bucket: string;
+}): Promise<{
+  trained: boolean;
+  reason?: string;
+  sampleSize?: number;
+  oofAuc?: number | null;
+  trainHits?: number;
+  trainMisses?: number;
+}> {
+  return request('/internal/trader/meta/train', {
+    method: 'POST',
+    body: JSON.stringify({ bucket: params.bucket }),
+  });
+}

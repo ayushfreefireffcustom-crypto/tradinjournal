@@ -7,7 +7,7 @@
 //    pass validateLevels; otherwise the engine's levels stand.
 //  • The shipped level set is validated once more before returning.
 //  • Anything unusable (no data) is a 422, never a crash.
-import { prisma } from '@tradinjournal/db';
+import { prisma, Prisma } from '@tradinjournal/db';
 import { logger } from '@tradinjournal/logger';
 import type { AssetClass, TraderAnalyzeInput, TraderAnalysisDto, TraderTimeframe, TraderLaneResult } from '@tradinjournal/contracts';
 import {
@@ -20,10 +20,12 @@ import {
   mapSymbolToMacroAsset,
   deriveLevels,
   newsLane,
+  buildMetaFeatures,
   type AnalysisResult,
   type TfFeatures,
   type TraderDirection,
   type LaneResult,
+  type MetaFeatureSnapshot,
 } from '@tradinjournal/core';
 import { getProvider, isAiEnabled, type ChatMessage } from '../../lib/ai/provider.js';
 import { ValidationError } from '../../http/errors.js';
@@ -33,6 +35,7 @@ import { fetchFearGreed } from '../../lib/market/flow/fear-greed.js';
 import { getMacroState } from '../macro/macro.service.js';
 import { env } from '@tradinjournal/config';
 import { buildSystemPrompt, parseAnalysisJson, NFA, type LlmAnalysis } from './trader.prompt.js';
+import { applyMetaConfidence } from './trader.meta.service.js';
 
 /** Bars pulled per timeframe (enough for EMA50 + swing structure). */
 const CANDLE_LIMIT = 300;
@@ -116,6 +119,11 @@ function toDto(
   result: AnalysisResult,
   aiUsed: boolean,
   lanes?: TraderLaneResult[],
+  meta?: {
+    featureSnapshot?: MetaFeatureSnapshot;
+    confidenceSource?: 'heuristic' | 'meta_v1';
+    rawConfidence?: number;
+  },
 ): TraderAnalysisDto {
   return {
     symbol,
@@ -136,6 +144,16 @@ function toDto(
     detail: result.detail,
     perTimeframe: result.perTimeframe as TraderAnalysisDto['perTimeframe'],
     laneBreakdown: lanes,
+    confidenceSource: meta?.confidenceSource,
+    rawConfidence: meta?.rawConfidence,
+    featureSnapshot: meta?.featureSnapshot
+      ? {
+          version: 1 as const,
+          names: [...meta.featureSnapshot.names],
+          values: [...meta.featureSnapshot.values],
+          heuristicConfidence: meta.featureSnapshot.heuristicConfidence,
+        }
+      : undefined,
     aiUsed,
     asOf: new Date().toISOString(),
     engineVer: TRADER_ENGINE_VER,
@@ -240,13 +258,13 @@ async function buildNewsLane(symbol: string, assetClass: AssetClass): Promise<La
  */
 function applyLanes(det: AnalysisResult, extras: LaneResult[], ltf: TfFeatures): {
   result: AnalysisResult;
-  lanes: TraderLaneResult[];
+  lanes: LaneResult[];
+  agreement: number;
 } {
   const rec = reconcileLanes(det.direction, det.confidence, extras);
   let result = { ...det, confidence: rec.confidence };
 
   if (rec.direction !== det.direction) {
-    // Only WAIT overrides happen today — re-price reference levels for WAIT.
     const levels = deriveLevels({
       price: ltf.features.price,
       atr: ltf.features.atr,
@@ -274,14 +292,7 @@ function applyLanes(det: AnalysisResult, extras: LaneResult[], ltf: TfFeatures):
     };
   }
 
-  const lanes = rec.lanes.map((l) => ({
-    id: l.id,
-    score: Math.round(l.score * 1000) / 1000,
-    weight: l.weight,
-    rationale: l.rationale,
-  }));
-
-  return { result, lanes };
+  return { result, lanes: rec.lanes, agreement: rec.agreement };
 }
 
 async function persist(dto: TraderAnalysisDto, userId: string | undefined): Promise<string | undefined> {
@@ -306,7 +317,10 @@ async function persist(dto: TraderAnalysisDto, userId: string | undefined): Prom
         invalidation: dto.invalidation,
         detail: dto.detail,
         perTimeframe: dto.perTimeframe,
-        laneBreakdown: dto.laneBreakdown ?? undefined,
+        laneBreakdown: (dto.laneBreakdown ?? undefined) as unknown as Prisma.InputJsonValue | undefined,
+        featureSnapshot: (dto.featureSnapshot ?? undefined) as unknown as Prisma.InputJsonValue | undefined,
+        confidenceSource: dto.confidenceSource ?? undefined,
+        rawConfidence: dto.rawConfidence ?? undefined,
         aiUsed: dto.aiUsed,
         asOf: new Date(dto.asOf),
         engineVer: dto.engineVer,
@@ -315,8 +329,6 @@ async function persist(dto: TraderAnalysisDto, userId: string | undefined): Prom
     });
     return row.id;
   } catch (err) {
-    // Persistence is best-effort — a logging/analytics record must never fail
-    // the user's analysis (e.g. migration lagging a deploy).
     logger.warn(`[trader] persist failed: ${(err as Error).message}`);
     return undefined;
   }
@@ -340,13 +352,38 @@ export async function analyze(input: TraderAnalyzeInput, userId?: string): Promi
   }
 
   const det = reconcileTimeframes(perTf);
-  // Validation context = lowest timeframe (where entry/stop are priced).
   const ltf = [...perTf].sort((a, b) => rank(a.tf) - rank(b.tf))[0]!;
   const ctx = { price: ltf.features.price, atr: ltf.features.atr };
 
   const assetClass = classifyAsset(input.symbol);
   const extras = await collectExtraLanes(input.symbol, assetClass);
-  const { result: engineResult, lanes } = applyLanes(det, extras, ltf);
+  const { result: laneResult, lanes: baseLanes, agreement } = applyLanes(det, extras, ltf);
+
+  const snapshot = buildMetaFeatures({
+    direction: laneResult.direction,
+    heuristicConfidence: laneResult.confidence,
+    features: ltf.features,
+    lanes: baseLanes,
+    agreement,
+  });
+
+  const meta = await applyMetaConfidence({
+    direction: laneResult.direction,
+    heuristicConfidence: laneResult.confidence,
+    snapshot,
+    lanes: baseLanes,
+  });
+
+  let engineResult: AnalysisResult = {
+    ...laneResult,
+    confidence: meta.confidence,
+  };
+  const lanes: TraderLaneResult[] = meta.lanes.map((l) => ({
+    id: l.id as TraderLaneResult['id'],
+    score: Math.round(l.score * 1000) / 1000,
+    weight: l.weight,
+    rationale: l.rationale,
+  }));
 
   let result = engineResult;
   let aiUsed = false;
@@ -360,6 +397,8 @@ export async function analyze(input: TraderAnalyzeInput, userId?: string): Promi
       const parsed = parseAnalysisJson(raw);
       if (parsed) {
         result = mergeLlm(engineResult, parsed, ctx);
+        // Keep calibrated confidence — LLM must not overwrite meta/heuristic confidence.
+        result = { ...result, confidence: engineResult.confidence };
         aiUsed = true;
       }
     } catch (err) {
@@ -367,12 +406,15 @@ export async function analyze(input: TraderAnalyzeInput, userId?: string): Promi
     }
   }
 
-  // Belt-and-suspenders: never ship a level set that fails validation.
   if (result.direction !== 'WAIT' && !validateLevels(result, ctx).ok) {
     result = engineResult;
   }
 
-  const dto = toDto(input.symbol, timeframes, result, aiUsed, lanes);
+  const dto = toDto(input.symbol, timeframes, result, aiUsed, lanes, {
+    featureSnapshot: snapshot,
+    confidenceSource: meta.confidenceSource,
+    rawConfidence: meta.rawConfidence,
+  });
   const id = await persist(dto, userId);
   if (id) dto.id = id;
   return dto;

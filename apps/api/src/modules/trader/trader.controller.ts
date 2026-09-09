@@ -1,11 +1,22 @@
 // Trader Master HTTP handlers.
 import type { Request, Response, NextFunction } from 'express';
-import type { TraderAnalyzeInput } from '@tradinjournal/contracts';
+import type {
+  TraderAnalyzeInput,
+  TraderStrategyCreateInput,
+  TraderStrategyBacktestInput,
+  TraderTimeframe,
+} from '@tradinjournal/contracts';
 import { ok } from '../../http/response.js';
 import { analyze } from './trader.service.js';
 import { listHistory } from './trader.history.service.js';
 import { gradePendingAnalyses } from './trader.grade.service.js';
 import { getTrackRecord } from './trader.track-record.service.js';
+import { trainMetaModelFromDb } from './trader.meta.service.js';
+import {
+  createStrategy,
+  listStrategies,
+  backtestUserStrategy,
+} from './trader.strategy.service.js';
 
 export async function handleAnalyze(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
@@ -24,7 +35,6 @@ export async function handleHistory(_req: Request, res: Response, next: NextFunc
   }
 }
 
-/** Platform-wide honest track record (also scoped mine via ?scope=me). */
 export async function handleTrackRecord(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const scope = typeof req.query.scope === 'string' ? req.query.scope : 'all';
@@ -39,6 +49,49 @@ export async function handleGradePending(req: Request, res: Response, next: Next
   try {
     const limit = typeof req.body?.limit === 'number' ? req.body.limit : 40;
     ok(res, await gradePendingAnalyses(limit));
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function handleMetaTrain(_req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    ok(res, await trainMetaModelFromDb());
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function handleListStrategies(_req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    ok(res, await listStrategies(res.locals.user.id as string));
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function handleCreateStrategy(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const body = req.body as TraderStrategyCreateInput;
+    ok(res, await createStrategy(res.locals.user.id as string, body.prompt));
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function handleBacktestStrategy(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const body = req.body as TraderStrategyBacktestInput;
+    const id = req.params.id as string;
+    ok(
+      res,
+      await backtestUserStrategy(
+        res.locals.user.id as string,
+        id,
+        body.symbol,
+        (body.timeframe ?? '1h') as TraderTimeframe,
+      ),
+    );
   } catch (err) {
     next(err);
   }

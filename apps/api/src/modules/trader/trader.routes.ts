@@ -5,12 +5,22 @@ import { requireAuth } from '../../http/middleware/require-auth.js';
 import { requirePlatformAccess } from '../../http/middleware/require-platform-access.js';
 import { requireInternalToken } from '../../http/middleware/require-internal-token.js';
 import { validateBody } from '../../http/middleware/validate.js';
-import { traderAnalyzeSchema, traderGradeJobSchema } from '@tradinjournal/contracts';
+import {
+  traderAnalyzeSchema,
+  traderGradeJobSchema,
+  traderMetaTrainSchema,
+  traderStrategyCreateSchema,
+  traderStrategyBacktestSchema,
+} from '@tradinjournal/contracts';
 import {
   handleAnalyze,
   handleHistory,
   handleTrackRecord,
   handleGradePending,
+  handleMetaTrain,
+  handleListStrategies,
+  handleCreateStrategy,
+  handleBacktestStrategy,
 } from './trader.controller.js';
 import { traderRateLimit } from './trader.rate-limit.js';
 
@@ -21,7 +31,16 @@ traderRouter.post('/analyze', traderRateLimit, validateBody(traderAnalyzeSchema)
 traderRouter.get('/history', handleHistory);
 traderRouter.get('/track-record', handleTrackRecord);
 
-/** Worker cron → grade pending analyses against subsequent candles. */
+traderRouter.get('/strategies', handleListStrategies);
+traderRouter.post('/strategies', validateBody(traderStrategyCreateSchema), handleCreateStrategy);
+traderRouter.post(
+  '/strategies/:id/backtest',
+  validateBody(traderStrategyBacktestSchema),
+  handleBacktestStrategy,
+);
+
+/** Worker cron → grade pending analyses / retrain meta-model. */
 export const traderInternalRouter: IRouter = Router();
 traderInternalRouter.use(requireInternalToken);
 traderInternalRouter.post('/grade', validateBody(traderGradeJobSchema), handleGradePending);
+traderInternalRouter.post('/meta/train', validateBody(traderMetaTrainSchema), handleMetaTrain);
