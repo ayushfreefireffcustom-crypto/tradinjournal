@@ -87,6 +87,29 @@ export async function loadPublicCandles(
   return loadCandles(symbol, tf, { limit }, 'public');
 }
 
+/**
+ * Public candles in an inclusive epoch-ms window (converted to seconds for
+ * providers). Used by Trader Master grading to fetch bars after `asOf`.
+ */
+export async function loadPublicCandlesWindow(
+  symbol: string,
+  tf: MarketTimeframe,
+  fromMs: number,
+  toMs: number,
+  limit = 500,
+): Promise<NormalizedCandle[]> {
+  return loadCandles(
+    symbol,
+    tf,
+    {
+      from: Math.floor(fromMs / 1000),
+      to: Math.floor(toMs / 1000),
+      limit,
+    },
+    'public',
+  );
+}
+
 // Latest price is stale-guarded: a bar older than this is treated as a dead feed
 // and yields null (price alerts then skip that symbol rather than false-fire).
 const STALE_PRICE_MS = 10 * 60_000;

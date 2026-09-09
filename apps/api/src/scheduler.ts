@@ -14,6 +14,7 @@ import { ingestNews, enrichPendingNews } from './modules/news/news.service.js';
 import { ingestWindow } from './modules/calendar/calendar.service.js';
 import { warmSymbols } from './modules/market/market.service.js';
 import { dispatchPriceAlerts } from './modules/alerts/alerts.service.js';
+import { gradePendingAnalyses } from './modules/trader/trader.grade.service.js';
 
 const MIN = 60_000;
 const timers: NodeJS.Timeout[] = [];
@@ -54,10 +55,14 @@ export function startInProcessScheduler(): void {
     every(1 * MIN, 'price-alerts', dispatchPriceAlerts);
   }
 
+  // Trader Master grading — every 15 min; no-ops when nothing pending.
+  every(15 * MIN, 'trader-grade', () => gradePendingAnalyses(env.TRADER_GRADE_BATCH));
+
   // Warm the data shortly after boot so it's fresh without waiting a full interval.
   setTimeout(() => void dispatchReminders().catch(() => {}), 4_000);
   if (env.CALENDAR_ENABLED) setTimeout(() => { const w = calWindow(); void ingestWindow(w.from, w.to).catch(() => {}); }, 6_000);
   if (env.NEWS_ENABLED) setTimeout(() => void ingestNews().catch(() => {}), 9_000);
+  setTimeout(() => void gradePendingAnalyses(env.TRADER_GRADE_BATCH).catch(() => {}), 12_000);
 }
 
 export function stopInProcessScheduler(): void {

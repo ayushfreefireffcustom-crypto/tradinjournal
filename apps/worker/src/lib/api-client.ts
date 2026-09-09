@@ -99,3 +99,13 @@ export function dispatchPriceAlerts(params: { bucket: string }): Promise<{ check
 export function ingestMacro(params: { reason: string }): Promise<{ ingested: number }> {
   return request('/internal/macro/ingest', { method: 'POST', body: JSON.stringify(params) });
 }
+
+export function gradeTraderAnalyses(params: {
+  bucket: string;
+  limit?: number;
+}): Promise<{ scanned: number; graded: number; stillOpen: number; errors: number }> {
+  return request('/internal/trader/grade', {
+    method: 'POST',
+    body: JSON.stringify({ bucket: params.bucket, limit: params.limit }),
+  });
+}

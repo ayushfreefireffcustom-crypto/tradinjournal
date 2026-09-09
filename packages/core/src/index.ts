@@ -67,6 +67,11 @@ export {
   directionFromFeatures,
   buildTechnicalAnalysis,
   reconcileTimeframes,
+  gradeAnalysis,
+  lowestTimeframe,
+  timeframeMs,
+  outcomeRMultiple,
+  DEFAULT_HORIZON_BARS,
 } from './trader/index.js';
 export type {
   TraderDirection,
@@ -80,4 +85,8 @@ export type {
   AnalysisResult,
   SwingPoint,
   ValidationResult,
+  GradeInput,
+  GradeResult,
+  GradeOutcome,
+  HitLevel,
 } from './trader/index.js';

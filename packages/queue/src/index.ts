@@ -67,6 +67,7 @@ export const QUEUE_NOTIFICATIONS_DIGEST = 'notifications-digest' as const;
 export const QUEUE_MARKET_WARM = 'market-warm' as const;
 export const QUEUE_PRICE_ALERTS = 'price-alerts' as const;
 export const QUEUE_MACRO_INGEST = 'macro-ingest' as const;
+export const QUEUE_TRADER_GRADE = 'trader-grade' as const;
 
 export const CALENDAR_INGEST_SCHEDULER_ID = 'calendar-ingest-cron';
 export const NEWS_INGEST_SCHEDULER_ID = 'news-ingest-cron';
@@ -76,6 +77,7 @@ export const NOTIFICATIONS_DIGEST_SCHEDULER_ID = 'notifications-digest-cron';
 export const MARKET_WARM_SCHEDULER_ID = 'market-warm-cron';
 export const PRICE_ALERTS_SCHEDULER_ID = 'price-alerts-cron';
 export const MACRO_INGEST_SCHEDULER_ID = 'macro-ingest-cron';
+export const TRADER_GRADE_SCHEDULER_ID = 'trader-grade-cron';
 
 /** Trigger a calendar ingest for a UTC window (bucketed for idempotency). */
 export interface CalendarIngestJob {
@@ -126,6 +128,12 @@ export interface MacroIngestJob {
   bucket: string;
 }
 
+/** Grade pending Trader Master analyses against subsequent candles. */
+export interface TraderGradeJob {
+  kind: 'trader-grade';
+  bucket: string;
+}
+
 /** Truncate a Date to an idempotency bucket at hour or minute granularity. */
 export function timeBucket(date: Date, granularity: 'hour' | 'minute'): string {
   const iso = date.toISOString(); // YYYY-MM-DDTHH:MM:SS.sssZ
@@ -155,6 +163,9 @@ export function priceAlertsJobId(bucket: string): string {
 }
 export function macroIngestJobId(bucket: string): string {
   return `macro-ingest:${bucket}`;
+}
+export function traderGradeJobId(bucket: string): string {
+  return `trader-grade:${bucket}`;
 }
 
 // ─── Connection ──────────────────────────────────────────────────────────────
