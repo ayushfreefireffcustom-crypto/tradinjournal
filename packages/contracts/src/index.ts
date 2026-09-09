@@ -478,6 +478,21 @@ export const traderTimeframeReadSchema = z.object({
 });
 export type TraderTimeframeRead = z.infer<typeof traderTimeframeReadSchema>;
 
+export const traderOutcomeSchema = z.enum(['TARGET_HIT', 'STOP_HIT', 'EXPIRED', 'SKIPPED']);
+export type TraderOutcome = z.infer<typeof traderOutcomeSchema>;
+
+export const traderHitLevelSchema = z.enum(['T1', 'T2', 'T3']);
+export type TraderHitLevel = z.infer<typeof traderHitLevelSchema>;
+
+/** Independent lane score fed into reconcileLanes (−1 bearish … +1 bullish). */
+export const traderLaneResultSchema = z.object({
+  id: z.enum(['technical', 'macro', 'flow', 'news', 'ml']),
+  score: z.number().min(-1).max(1),
+  weight: z.number().min(0).max(1),
+  rationale: z.string(),
+});
+export type TraderLaneResult = z.infer<typeof traderLaneResultSchema>;
+
 export const traderAnalysisDtoSchema = z.object({
   id: z.string().optional(),
   symbol: z.string(),
@@ -497,9 +512,120 @@ export const traderAnalysisDtoSchema = z.object({
   invalidation: z.string(),
   detail: z.string(),
   perTimeframe: z.array(traderTimeframeReadSchema),
+  laneBreakdown: z.array(traderLaneResultSchema).optional(),
   // true when an LLM produced the narrative (levels are always engine-validated).
   aiUsed: z.boolean(),
   asOf: z.string(),
   engineVer: z.string(),
+  // Triple-barrier grade — null while still open / pending candles.
+  outcome: traderOutcomeSchema.nullable().optional(),
+  hitLevel: traderHitLevelSchema.nullable().optional(),
+  gradedAt: z.string().nullable().optional(),
+  horizonBars: z.number().int().nullable().optional(),
+  horizonTf: traderTimeframeSchema.nullable().optional(),
+  mfePct: z.number().nullable().optional(),
+  maePct: z.number().nullable().optional(),
 });
 export type TraderAnalysisDto = z.infer<typeof traderAnalysisDtoSchema>;
+
+/** Honest aggregate track record for Trader Master (wins + losses + calibration). */
+export const traderCalibrationBucketSchema = z.object({
+  bucket: z.string(), // e.g. "70-79"
+  predicted: z.number(), // midpoint confidence used as predicted hit rate
+  count: z.number().int(),
+  hitRate: z.number().nullable(), // null when count === 0
+  targetHits: z.number().int(),
+  stopHits: z.number().int(),
+  expired: z.number().int(),
+});
+export type TraderCalibrationBucket = z.infer<typeof traderCalibrationBucketSchema>;
+
+export const traderTrackRecordSchema = z.object({
+  sampleSize: z.number().int(),
+  graded: z.number().int(),
+  pending: z.number().int(),
+  skipped: z.number().int(),
+  targetHits: z.number().int(),
+  stopHits: z.number().int(),
+  expired: z.number().int(),
+  /** Among TARGET_HIT + STOP_HIT only (expired excluded from win-rate denom). */
+  hitRate: z.number().nullable(),
+  /** Avg R expectancy using mid-entry → stop as 1R; T1=+1R, T2=+2R, T3=+3.2R approx. */
+  expectancyR: z.number().nullable(),
+  calibration: z.array(traderCalibrationBucketSchema),
+  bySymbol: z.array(z.object({
+    symbol: z.string(),
+    count: z.number().int(),
+    hitRate: z.number().nullable(),
+    targetHits: z.number().int(),
+    stopHits: z.number().int(),
+  })),
+  methodology: z.string(),
+  disclaimer: z.string(),
+  asOf: z.string(),
+});
+export type TraderTrackRecord = z.infer<typeof traderTrackRecordSchema>;
+
+export const traderGradeJobSchema = z.object({
+  bucket: z.string().min(1).max(32),
+  limit: z.number().int().min(1).max(200).optional(),
+});
+export type TraderGradeJob = z.infer<typeof traderGradeJobSchema>;
+
+// ── Platform access control + admin ───────────────────────────────────────────
+
+export {
+  accessSourceSchema,
+  elefinStatusSchema,
+  activityStatusSchema,
+  platformAccessStatusSchema,
+  accessStatusDtoSchema,
+  verifyElefinSchema,
+  createAccessGrantSchema,
+  accessGrantDtoSchema,
+  maintenanceModeSchema,
+  maintenanceModeDtoSchema,
+  adminOverviewDtoSchema,
+  adminUserRowDtoSchema,
+  adminUsersQuerySchema,
+  adminBrokerDetailSchema,
+  brokerBreakdownItemSchema,
+  signupDayCountSchema,
+  adminAuditItemSchema,
+  adminEngagementDtoSchema,
+  adminEngagementDaySchema,
+  adminUserDossierDtoSchema,
+  activityCheckResultSchema,
+  type AccessSourceDto,
+  type ElefinStatusDto,
+  type ActivityStatusDto,
+  type PlatformAccessStatusDto,
+  type AccessStatusDto,
+  type VerifyElefinInput,
+  type CreateAccessGrantInput,
+  type AccessGrantDto,
+  type MaintenanceModeInput,
+  type MaintenanceModeDto,
+  type AdminOverviewDto,
+  type AdminUserRowDto,
+  type AdminBrokerDetailDto,
+  type BrokerBreakdownItemDto,
+  type SignupDayCountDto,
+  type AdminAuditItemDto,
+  type AdminEngagementDto,
+  type AdminEngagementDayDto,
+  type AdminUserDossierDto,
+  type AdminUsersQuery,
+  type ActivityCheckResult,
+} from './schema/access.js';
+
+export {
+  updateLocationSchema,
+  userLocationDtoSchema,
+  adminGeoPointSchema,
+  adminGeoDtoSchema,
+  type UpdateLocationInput,
+  type UserLocationDto,
+  type AdminGeoPointDto,
+  type AdminGeoDto,
+} from './schema/location.js';

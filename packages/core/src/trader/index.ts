@@ -39,3 +39,12 @@ export {
   buildTechnicalAnalysis,
   reconcileTimeframes,
 } from './analysis.js';
+
+export {
+  gradeAnalysis,
+  lowestTimeframe,
+  timeframeMs,
+  outcomeRMultiple,
+  DEFAULT_HORIZON_BARS,
+} from './grade.js';
+export type { GradeInput, GradeResult, GradeOutcome, HitLevel } from './grade.js';
