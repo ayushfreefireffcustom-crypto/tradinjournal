@@ -28,12 +28,14 @@ export default function TraderMaster({
   const [error, setError] = useState('');
   const [historyKey, setHistoryKey] = useState(0);
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchWrap = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (searchTimer.current) clearTimeout(searchTimer.current);
     const q = query.trim();
     if (q.length < 2) {
       setResults([]);
+      setShowResults(false);
       return;
     }
     searchTimer.current = setTimeout(async () => {
@@ -43,12 +45,21 @@ export default function TraderMaster({
         setShowResults(true);
       } catch {
         setResults([]);
+        setShowResults(false);
       }
-    }, 250);
+    }, 220);
     return () => {
       if (searchTimer.current) clearTimeout(searchTimer.current);
     };
   }, [query]);
+
+  useEffect(() => {
+    function onDoc(e: MouseEvent) {
+      if (!searchWrap.current?.contains(e.target as Node)) setShowResults(false);
+    }
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, []);
 
   function pick(s: MarketSymbol) {
     setSymbol(s.symbol);
@@ -69,7 +80,7 @@ export default function TraderMaster({
   const runAnalyze = useCallback(async () => {
     const sym = (symbol || query).trim().toUpperCase();
     if (!sym) {
-      setError('Enter a symbol first (e.g. BTCUSDT, EURUSD, XAUUSD).');
+      setError('Enter a symbol first.');
       return;
     }
     const order: TraderTimeframe[] = ['15m', '1h', '4h', '1d'];
@@ -83,56 +94,56 @@ export default function TraderMaster({
       setHistoryKey((k) => k + 1);
       onAnalyzed?.();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Analysis failed. Try another symbol or timeframe.');
+      setError(e instanceof Error ? e.message : 'Analysis failed.');
     } finally {
       setAnalyzing(false);
     }
   }, [symbol, query, timeframes, onAnalyzed]);
 
   return (
-    <div className="space-y-4" data-testid="trader-master">
-      <div className="tcard p-4 space-y-3 relative overflow-hidden animate-[fade-up_0.4s_ease_both]">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -right-8 -top-10 size-40 rounded-full opacity-40"
-          style={{
-            background: 'radial-gradient(circle, color-mix(in oklab, var(--color-profit) 22%, transparent), transparent 70%)',
-          }}
-        />
-
-        <div className="relative">
-          <div className="flex items-center gap-2 bg-app/60 border border-border-soft focus-within:border-profit/40 focus-within:shadow-[0_0_0_3px] focus-within:shadow-profit/10 rounded-full px-3 py-2.5 transition-all duration-200">
-            <MagnifyingGlass size={16} className="shrink-0 text-fg-3" />
+    <div className="space-y-3" data-testid="trader-master">
+      {/* Search + TF — overflow visible so the popover isn’t clipped */}
+      <div className="rounded-xl border border-border bg-surface p-3 sm:p-3.5 space-y-3 overflow-visible relative z-30 shadow-sm animate-[fade-up_0.35s_ease_both]">
+        <div ref={searchWrap} className="relative">
+          <div className="flex items-center gap-2 h-10 rounded-lg border border-border bg-app px-3 transition-colors focus-within:border-border-strong focus-within:ring-2 focus-within:ring-white/10">
+            <MagnifyingGlass size={15} className="shrink-0 text-fg-2" />
             <input
               value={query}
               onChange={(e) => {
                 setQuery(e.target.value);
                 setSymbol('');
               }}
-              onFocus={() => results.length && setShowResults(true)}
-              onKeyDown={(e) => e.key === 'Enter' && void runAnalyze()}
-              placeholder="Search a symbol — BTCUSDT, EURUSD, XAUUSD, AAPL…"
-              className="flex-1 min-w-0 bg-transparent text-[13px] text-fg placeholder:text-fg-3 outline-none"
+              onFocus={() => results.length > 0 && setShowResults(true)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') void runAnalyze();
+                if (e.key === 'Escape') setShowResults(false);
+              }}
+              placeholder="Search symbol…"
+              className="flex-1 min-w-0 bg-transparent text-sm text-fg placeholder:text-fg-3 outline-none"
               data-testid="trader-symbol-input"
               autoComplete="off"
               spellCheck={false}
             />
           </div>
+
           {showResults && results.length > 0 && (
             <ul
-              className="absolute z-20 mt-1.5 w-full max-h-64 overflow-y-auto rounded-xl border border-border-soft bg-surface/95 backdrop-blur-md shadow-xl animate-[fade-up_0.2s_ease_both]"
+              role="listbox"
+              className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 max-h-72 overflow-y-auto rounded-lg border border-border-strong bg-[#1a1a1a] shadow-lg ring-1 ring-white/10 animate-[fade-up_0.15s_ease_both]"
               data-testid="trader-search-results"
             >
-              {results.map((s) => (
-                <li key={`${s.provider}:${s.symbol}`}>
+              {results.map((s, i) => (
+                <li key={`${s.provider}:${s.symbol}`} role="option">
                   <button
                     type="button"
                     onClick={() => pick(s)}
-                    className="w-full flex items-center gap-2 px-3 py-2.5 text-left hover:bg-surface-hover transition-colors"
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-white/10 ${
+                      i > 0 ? 'border-t border-border' : ''
+                    }`}
                   >
-                    <span className="numeric text-[12px] text-fg font-medium">{s.symbol}</span>
-                    <span className="text-[11px] text-fg-3 truncate">{s.name}</span>
-                    <span className="ml-auto text-[9px] tracking-[0.12em] uppercase text-fg-3">
+                    <span className="font-medium text-sm text-white tabular-nums">{s.symbol}</span>
+                    <span className="text-xs text-zinc-400 truncate flex-1">{s.name}</span>
+                    <span className="text-[10px] uppercase tracking-wider text-zinc-500 shrink-0">
                       {s.assetClass}
                     </span>
                   </button>
@@ -142,8 +153,7 @@ export default function TraderMaster({
           )}
         </div>
 
-        <div className="relative flex items-center gap-2 flex-wrap">
-          <span className="text-[10px] tracking-[0.14em] text-fg-3 uppercase">Timeframes</span>
+        <div className="flex items-center gap-1.5 flex-wrap">
           {TRADER_TIMEFRAMES.map((tf) => {
             const on = timeframes.includes(tf);
             return (
@@ -151,10 +161,10 @@ export default function TraderMaster({
                 key={tf}
                 type="button"
                 onClick={() => toggleTf(tf)}
-                className={`numeric text-[11px] px-2.5 py-1 rounded-full border transition-all duration-150 ${
+                className={`h-8 px-3 rounded-md text-xs tabular-nums transition-colors ${
                   on
-                    ? 'text-fg border-border-strong bg-surface-hover scale-[1.02]'
-                    : 'text-fg-3 border-border-soft hover:text-fg-2 hover:border-border'
+                    ? 'bg-white text-black font-medium'
+                    : 'bg-transparent text-fg-2 border border-border hover:text-fg hover:border-border-strong'
                 }`}
                 data-testid={`trader-tf-${tf}`}
                 aria-pressed={on}
@@ -163,37 +173,30 @@ export default function TraderMaster({
               </button>
             );
           })}
-          <span className="text-[10px] text-fg-3 ml-1">
-            {timeframes.length > 1 ? 'multi-timeframe' : 'single'}
-          </span>
 
           <button
             type="button"
             onClick={() => void runAnalyze()}
             disabled={analyzing}
-            className="ml-auto btn px-4 py-2 text-[11px] tracking-[0.12em] uppercase bg-profit/15 text-profit border border-profit/30 hover:bg-profit/25 disabled:opacity-50 inline-flex items-center gap-1.5 transition-all"
+            className="ml-auto h-8 px-4 rounded-md text-xs font-medium bg-profit text-black hover:brightness-110 disabled:opacity-50 inline-flex items-center gap-1.5 transition-all"
             data-testid="trader-analyze"
           >
-            {analyzing ? <Loader size={14} className="!gap-0" /> : <Lightning size={14} weight="fill" />}
-            {analyzing ? 'Analyzing…' : 'Analyze'}
+            {analyzing ? <Loader size={14} className="!gap-0" /> : <Lightning size={13} weight="fill" />}
+            {analyzing ? '…' : 'Analyze'}
           </button>
         </div>
       </div>
 
       {error && (
-        <div
-          className="tcard p-3 text-loss text-sm animate-[shake_0.35s_ease]"
-          role="alert"
-          data-testid="trader-error"
-        >
+        <div className="rounded-lg border border-loss/30 bg-loss/10 px-3 py-2 text-sm text-loss" role="alert" data-testid="trader-error">
           {error}
         </div>
       )}
 
       {analyzing && !analysis && (
-        <div className="tcard p-8 text-center text-fg-3 text-sm animate-[fade-up_0.3s_ease_both]" data-testid="trader-analyzing">
-          <Loader size={20} />
-          <p className="mt-2">Reading structure across your timeframes…</p>
+        <div className="rounded-xl border border-border bg-surface py-12 flex flex-col items-center gap-2 text-fg-3 text-sm" data-testid="trader-analyzing">
+          <Loader size={18} />
+          <span>Analyzing…</span>
         </div>
       )}
 
@@ -201,13 +204,10 @@ export default function TraderMaster({
 
       {!analysis && !analyzing && !error && (
         <div
-          className="rounded-xl border border-dashed border-border-soft px-6 py-10 text-center text-fg-3 text-sm animate-[fade-up_0.45s_ease_both]"
+          className="rounded-xl border border-dashed border-border px-4 py-12 text-center text-sm text-fg-3"
           data-testid="trader-empty"
         >
-          <p className="font-display font-bold text-fg-2 text-base">Ready when you are</p>
-          <p className="mt-1.5 max-w-sm mx-auto leading-relaxed">
-            Pick a symbol and timeframe, then hit Analyze — direction, entry, stop, and three targets from live structure.
-          </p>
+          Search a symbol and analyze.
         </div>
       )}
 
