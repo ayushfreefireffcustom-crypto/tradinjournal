@@ -6,6 +6,8 @@ export const TRADER_TIMEFRAMES = ['15m', '1h', '4h', '1d'] as const;
 export type TraderTimeframe = (typeof TRADER_TIMEFRAMES)[number];
 
 export type TraderDirection = 'LONG' | 'SHORT' | 'WAIT';
+export type TraderOutcome = 'TARGET_HIT' | 'STOP_HIT' | 'EXPIRED' | 'SKIPPED';
+export type TraderHitLevel = 'T1' | 'T2' | 'T3';
 
 const API = process.env.NEXT_PUBLIC_API_URL || '';
 
@@ -20,6 +22,13 @@ export interface TraderTimeframeRead {
   rsi: number;
   atr: number;
   note: string;
+}
+
+export interface TraderLaneResult {
+  id: 'technical' | 'macro' | 'flow' | 'news' | 'ml';
+  score: number;
+  weight: number;
+  rationale: string;
 }
 
 export interface TraderAnalysis {
@@ -41,9 +50,50 @@ export interface TraderAnalysis {
   invalidation: string;
   detail: string;
   perTimeframe: TraderTimeframeRead[];
+  laneBreakdown?: TraderLaneResult[];
   aiUsed: boolean;
   asOf: string;
   engineVer: string;
+  outcome?: TraderOutcome | null;
+  hitLevel?: TraderHitLevel | null;
+  gradedAt?: string | null;
+  horizonBars?: number | null;
+  horizonTf?: TraderTimeframe | null;
+  mfePct?: number | null;
+  maePct?: number | null;
+}
+
+export interface TraderCalibrationBucket {
+  bucket: string;
+  predicted: number;
+  count: number;
+  hitRate: number | null;
+  targetHits: number;
+  stopHits: number;
+  expired: number;
+}
+
+export interface TraderTrackRecord {
+  sampleSize: number;
+  graded: number;
+  pending: number;
+  skipped: number;
+  targetHits: number;
+  stopHits: number;
+  expired: number;
+  hitRate: number | null;
+  expectancyR: number | null;
+  calibration: TraderCalibrationBucket[];
+  bySymbol: Array<{
+    symbol: string;
+    count: number;
+    hitRate: number | null;
+    targetHits: number;
+    stopHits: number;
+  }>;
+  methodology: string;
+  disclaimer: string;
+  asOf: string;
 }
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
@@ -64,4 +114,6 @@ export const traderApi = {
       body: JSON.stringify({ symbol, timeframes }),
     }),
   history: () => req<TraderAnalysis[]>('/api/trader/history'),
+  trackRecord: (scope: 'all' | 'me' = 'all') =>
+    req<TraderTrackRecord>(`/api/trader/track-record?scope=${scope}`),
 };

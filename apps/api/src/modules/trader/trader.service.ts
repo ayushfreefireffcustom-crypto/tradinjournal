@@ -130,9 +130,9 @@ function toDto(
   };
 }
 
-async function persist(dto: TraderAnalysisDto, userId: string | undefined): Promise<void> {
+async function persist(dto: TraderAnalysisDto, userId: string | undefined): Promise<string | undefined> {
   try {
-    await prisma.traderAnalysis.create({
+    const row = await prisma.traderAnalysis.create({
       data: {
         userId: userId ?? null,
         symbol: dto.symbol,
@@ -152,15 +152,19 @@ async function persist(dto: TraderAnalysisDto, userId: string | undefined): Prom
         invalidation: dto.invalidation,
         detail: dto.detail,
         perTimeframe: dto.perTimeframe,
+        laneBreakdown: dto.laneBreakdown ?? undefined,
         aiUsed: dto.aiUsed,
         asOf: new Date(dto.asOf),
         engineVer: dto.engineVer,
       },
+      select: { id: true },
     });
+    return row.id;
   } catch (err) {
     // Persistence is best-effort — a logging/analytics record must never fail
     // the user's analysis (e.g. migration lagging a deploy).
     logger.warn(`[trader] persist failed: ${(err as Error).message}`);
+    return undefined;
   }
 }
 
@@ -211,7 +215,8 @@ export async function analyze(input: TraderAnalyzeInput, userId?: string): Promi
   }
 
   const dto = toDto(input.symbol, timeframes, result, aiUsed);
-  await persist(dto, userId);
+  const id = await persist(dto, userId);
+  if (id) dto.id = id;
   return dto;
 }
 
