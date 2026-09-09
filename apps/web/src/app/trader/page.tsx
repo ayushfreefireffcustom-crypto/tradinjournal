@@ -4,6 +4,7 @@ import AppShell from '@/components/app-shell';
 import MacroCompliance from '@/components/macro/macro-compliance';
 import TraderMaster from '@/components/trader/trader-master';
 import TrackRecordPanel from '@/components/trader/track-record';
+import StrategyBuilder from '@/components/trader/strategy-builder';
 
 export default function TraderPage() {
   return (
@@ -22,8 +23,9 @@ export default function TraderPage() {
               <div className="lg:col-span-3 min-w-0">
                 <TraderMaster />
               </div>
-              <div className="lg:col-span-2 min-w-0 lg:sticky lg:top-3">
+              <div className="lg:col-span-2 min-w-0 lg:sticky lg:top-3 space-y-3">
                 <TrackRecordPanel scope="all" />
+                <StrategyBuilder />
               </div>
             </div>
           </div>

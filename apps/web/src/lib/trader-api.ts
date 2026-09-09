@@ -51,6 +51,8 @@ export interface TraderAnalysis {
   detail: string;
   perTimeframe: TraderTimeframeRead[];
   laneBreakdown?: TraderLaneResult[];
+  confidenceSource?: 'heuristic' | 'meta_v1';
+  rawConfidence?: number;
   aiUsed: boolean;
   asOf: string;
   engineVer: string;
@@ -61,6 +63,37 @@ export interface TraderAnalysis {
   horizonTf?: TraderTimeframe | null;
   mfePct?: number | null;
   maePct?: number | null;
+}
+
+export interface TraderStrategyRules {
+  kind: 'ema_cross' | 'rsi_threshold' | 'price_vs_ema';
+  direction: 'LONG' | 'SHORT' | 'BOTH';
+  fast?: number;
+  slow?: number;
+  rsiPeriod?: number;
+  rsiAbove?: number;
+  rsiBelow?: number;
+  stopAtr?: number;
+  targetR?: number;
+  horizonBars?: number;
+}
+
+export interface TraderStrategy {
+  id: string;
+  name: string;
+  prompt: string;
+  rules: TraderStrategyRules;
+  status: string;
+  lastBacktest: {
+    trades: number;
+    wins: number;
+    losses: number;
+    hitRate: number | null;
+    expectancyPct: number | null;
+    maxDrawdownPct: number | null;
+  } | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface TraderCalibrationBucket {
@@ -116,4 +149,15 @@ export const traderApi = {
   history: () => req<TraderAnalysis[]>('/api/trader/history'),
   trackRecord: (scope: 'all' | 'me' = 'all') =>
     req<TraderTrackRecord>(`/api/trader/track-record?scope=${scope}`),
+  strategies: () => req<TraderStrategy[]>('/api/trader/strategies'),
+  createStrategy: (prompt: string) =>
+    req<TraderStrategy>('/api/trader/strategies', {
+      method: 'POST',
+      body: JSON.stringify({ prompt }),
+    }),
+  backtestStrategy: (id: string, symbol: string, timeframe: TraderTimeframe = '1h') =>
+    req<TraderStrategy>(`/api/trader/strategies/${id}/backtest`, {
+      method: 'POST',
+      body: JSON.stringify({ symbol, timeframe }),
+    }),
 };

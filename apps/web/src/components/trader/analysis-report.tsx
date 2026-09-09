@@ -84,7 +84,9 @@ export default function AnalysisReport({ a }: { a: TraderAnalysis }) {
           </p>
         </div>
         <div className="text-right shrink-0">
-          <div className="text-[10px] uppercase tracking-wider text-fg-3">Conf</div>
+          <div className="text-[10px] uppercase tracking-wider text-fg-3">
+            {a.confidenceSource === 'meta_v1' ? 'Meta' : 'Conf'}
+          </div>
           <div className="text-lg font-semibold tabular-nums text-fg leading-none">{a.confidence}%</div>
         </div>
       </div>
