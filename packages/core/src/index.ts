@@ -79,6 +79,10 @@ export {
   newsLane,
   directionToScore,
   mapSymbolToMacroAsset,
+  buildMetaFeatures,
+  META_FEATURE_NAMES,
+  trainMetaModel,
+  predictHitProbability,
 } from './trader/index.js';
 export type {
   TraderDirection,
@@ -99,4 +103,6 @@ export type {
   LaneId,
   LaneResult,
   ReconcileLanesResult,
+  MetaFeatureSnapshot,
+  MetaModelArtifact,
 } from './trader/index.js';

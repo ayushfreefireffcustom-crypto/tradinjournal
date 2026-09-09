@@ -2,7 +2,7 @@
 // Bump TRADER_ENGINE_VER on any change to indicators, level geometry, guardrails
 // or scoring so persisted analyses stay traceable to the logic that made them.
 
-export const TRADER_ENGINE_VER = 'trader-0.2.0';
+export const TRADER_ENGINE_VER = 'trader-0.3.0';
 
 export type {
   TraderDirection,
@@ -59,3 +59,18 @@ export {
   mapSymbolToMacroAsset,
 } from './lanes.js';
 export type { LaneId, LaneResult, ReconcileLanesResult } from './lanes.js';
+
+export { buildMetaFeatures, META_FEATURE_NAMES } from './meta-features.js';
+export type { MetaFeatureSnapshot, MetaFeatureName } from './meta-features.js';
+
+export {
+  trainLogistic,
+  predictLogistic,
+  fitIsotonic,
+  applyIsotonic,
+  aucScore,
+  purgedWalkForwardPredict,
+  trainMetaModel,
+  predictHitProbability,
+} from './meta-model.js';
+export type { LogisticModel, IsotonicModel, MetaModelArtifact } from './meta-model.js';

@@ -513,6 +513,16 @@ export const traderAnalysisDtoSchema = z.object({
   detail: z.string(),
   perTimeframe: z.array(traderTimeframeReadSchema),
   laneBreakdown: z.array(traderLaneResultSchema).optional(),
+  confidenceSource: z.enum(['heuristic', 'meta_v1']).optional(),
+  rawConfidence: z.number().int().min(0).max(100).optional(),
+  featureSnapshot: z
+    .object({
+      version: z.literal(1),
+      names: z.array(z.string()),
+      values: z.array(z.number()),
+      heuristicConfidence: z.number(),
+    })
+    .optional(),
   // true when an LLM produced the narrative (levels are always engine-validated).
   aiUsed: z.boolean(),
   asOf: z.string(),
@@ -527,6 +537,22 @@ export const traderAnalysisDtoSchema = z.object({
   maePct: z.number().nullable().optional(),
 });
 export type TraderAnalysisDto = z.infer<typeof traderAnalysisDtoSchema>;
+
+export const traderStrategyCreateSchema = z.object({
+  prompt: z.string().trim().min(8).max(2000),
+});
+export type TraderStrategyCreateInput = z.infer<typeof traderStrategyCreateSchema>;
+
+export const traderStrategyBacktestSchema = z.object({
+  symbol: z.string().trim().min(1).max(32),
+  timeframe: traderTimeframeSchema.optional(),
+});
+export type TraderStrategyBacktestInput = z.infer<typeof traderStrategyBacktestSchema>;
+
+export const traderMetaTrainSchema = z.object({
+  bucket: z.string().min(1).max(32),
+});
+export type TraderMetaTrainJob = z.infer<typeof traderMetaTrainSchema>;
 
 /** Honest aggregate track record for Trader Master (wins + losses + calibration). */
 export const traderCalibrationBucketSchema = z.object({

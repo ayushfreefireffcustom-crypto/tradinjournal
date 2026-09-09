@@ -760,6 +760,11 @@ model TraderAnalysis {
   perTimeframe Json // [{ tf, trend, rsi, atr, note }]
   // Multi-lane breakdown once reconciler ships: [{ id, score, weight, rationale }]
   laneBreakdown Json?
+  // Meta-label feature snapshot at analyze time (for training / audit).
+  featureSnapshot Json?
+  // heuristic | meta_v1 — how `confidence` was produced.
+  confidenceSource String?
+  rawConfidence    Int? // pre-calibration heuristic when meta overrides
   aiUsed       Boolean  @default(false)
   asOf         DateTime
   engineVer    String
@@ -779,6 +784,22 @@ model TraderAnalysis {
   @@index([userId, createdAt(sort: Desc)])
   @@index([outcome, asOf])
   @@map("trader_analysis")
+}
+
+// Plain-English → compiled rules → backtest (Phase 4 strategy builder).
+model TraderStrategy {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String
+  prompt      String   @db.Text
+  rules       Json // typed rule object from LLM parse
+  status      String   @default("draft") // draft | paper | archived
+  lastBacktest Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("trader_strategy")
 }
 
 // ─── Platform access control + admin ─────────────────────────────────────────
