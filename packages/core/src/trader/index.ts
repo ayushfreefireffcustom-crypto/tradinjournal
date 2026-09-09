@@ -54,6 +54,7 @@ export {
   technicalLane,
   macroBiasToLane,
   flowLane,
+  newsLane,
   directionToScore,
   mapSymbolToMacroAsset,
 } from './lanes.js';

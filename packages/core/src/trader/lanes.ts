@@ -67,6 +67,16 @@ export function flowLane(score: number, rationale: string, weight = 0.2): LaneRe
   };
 }
 
+/** News / sentiment composite already in [-1, 1]. */
+export function newsLane(score: number, rationale: string, weight = 0.15): LaneResult {
+  return {
+    id: 'news',
+    score: Math.max(-1, Math.min(1, score)),
+    weight,
+    rationale,
+  };
+}
+
 function clamp01to100(n: number): number {
   return Math.max(0, Math.min(100, Math.round(n)));
 }

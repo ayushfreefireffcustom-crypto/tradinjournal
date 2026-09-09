@@ -19,6 +19,7 @@ import {
   macroBiasToLane,
   mapSymbolToMacroAsset,
   deriveLevels,
+  newsLane,
   type AnalysisResult,
   type TfFeatures,
   type TraderDirection,
@@ -28,6 +29,7 @@ import { getProvider, isAiEnabled, type ChatMessage } from '../../lib/ai/provide
 import { ValidationError } from '../../http/errors.js';
 import { loadPublicCandles } from '../market/market.service.js';
 import { fetchCryptoFlowLane } from '../../lib/market/flow/binance-flow.js';
+import { fetchFearGreed } from '../../lib/market/flow/fear-greed.js';
 import { getMacroState } from '../macro/macro.service.js';
 import { env } from '@tradinjournal/config';
 import { buildSystemPrompt, parseAnalysisJson, NFA, type LlmAnalysis } from './trader.prompt.js';
@@ -164,7 +166,72 @@ async function collectExtraLanes(symbol: string, assetClass: AssetClass): Promis
     }
   }
 
+  // News / sentiment: Fear & Greed (crypto) + recent enriched headline tilt.
+  try {
+    const news = await buildNewsLane(symbol, assetClass);
+    if (news) extras.push(news);
+  } catch (err) {
+    logger.warn(`[trader] news lane skipped: ${(err as Error).message}`);
+  }
+
   return extras;
+}
+
+async function buildNewsLane(symbol: string, assetClass: AssetClass): Promise<LaneResult | null> {
+  const parts: string[] = [];
+  let score = 0;
+  let weight = 0;
+
+  if (assetClass === 'crypto') {
+    const fng = await fetchFearGreed();
+    if (fng) {
+      score += fng.score * 0.55;
+      weight += 0.55;
+      parts.push(`F&G ${fng.value} (${fng.label})`);
+    }
+  }
+
+  const since = new Date(Date.now() - 48 * 3600_000);
+  const needle = symbol.replace(/USDT$|USDC$|USD$/i, '').slice(0, 12);
+  try {
+    const items = await prisma.newsItem.findMany({
+      where: {
+        publishedAt: { gte: since },
+        sentiment: { not: null },
+        OR: [
+          { title: { contains: needle, mode: 'insensitive' } },
+          { summary: { contains: needle, mode: 'insensitive' } },
+        ],
+      },
+      select: { sentiment: true, publishedAt: true },
+      take: 40,
+      orderBy: { publishedAt: 'desc' },
+    });
+    if (items.length > 0) {
+      const now = Date.now();
+      let wSum = 0;
+      let sSum = 0;
+      for (const it of items) {
+        const ageH = Math.max(0, (now - it.publishedAt.getTime()) / 3600_000);
+        const decay = Math.exp(-ageH / 24); // ~24h half-ish life
+        const s = it.sentiment === 'BULLISH' ? 1 : it.sentiment === 'BEARISH' ? -1 : 0;
+        sSum += s * decay;
+        wSum += decay;
+      }
+      if (wSum > 0) {
+        const headlineScore = sSum / wSum;
+        score += headlineScore * 0.45;
+        weight += 0.45;
+        parts.push(`${items.length} headlines (48h)`);
+      }
+    }
+  } catch {
+    /* news table may be empty / unavailable — F&G alone is fine */
+  }
+
+  if (weight <= 0 || parts.length === 0) return null;
+  const blended = score / weight;
+  return newsLane(blended, parts.join(' · '), 0.15);
 }
 
 /**

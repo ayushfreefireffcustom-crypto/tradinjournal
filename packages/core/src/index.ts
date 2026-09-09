@@ -76,6 +76,7 @@ export {
   technicalLane,
   macroBiasToLane,
   flowLane,
+  newsLane,
   directionToScore,
   mapSymbolToMacroAsset,
 } from './trader/index.js';
