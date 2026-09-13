@@ -13,6 +13,11 @@ vi.mock('../../../lib/ai/provider.js', () => ({
   getProvider: () => ({ model: 'test', complete, stream: async function* () {} }),
 }));
 vi.mock('@tradinjournal/db', () => ({ prisma: { traderAnalysis: { create } } }));
+vi.mock('../../../lib/market/flow/deribit-options.js', () => ({ fetchDeribitOptions: vi.fn(async () => null) }));
+vi.mock('../../../lib/market/flow/unusual-whales.js', () => ({ fetchUnusualWhales: vi.fn(async () => null) }));
+vi.mock('../../../lib/market/flow/benzinga.js', () => ({ fetchBenzinga: vi.fn(async () => null) }));
+vi.mock('../../../lib/market/flow/santiment.js', () => ({ fetchSantiment: vi.fn(async () => null) }));
+vi.mock('../trader.lgbm.service.js', () => ({ predictLgbmIfServing: vi.fn(async () => null) }));
 
 import { analyze, mergeLlm, classifyAsset } from '../trader.service.js';
 

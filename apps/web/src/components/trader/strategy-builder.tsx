@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { Flask, Play, Sparkle } from '@phosphor-icons/react';
-import { traderApi, type TraderStrategy, type TraderStrategyRules } from '@/lib/trader-api';
+import { traderApi, type TraderStrategy, type TraderStrategyRules, type TraderTimeframe } from '@/lib/trader-api';
 import { pct } from './outcome-badge';
 
 const IDEAS = [
@@ -18,11 +18,19 @@ const IDEAS = [
     label: 'Trend follow',
     prompt: 'Trade price vs EMA50. Long above, short below. Stop 1.2 ATR, target 2.5R.',
   },
+  {
+    label: 'Breakout',
+    prompt: 'Long on a 20-bar high breakout, short on a 20-bar low. Stop 1.5 ATR, target 2R.',
+  },
 ] as const;
+
+const TFS: TraderTimeframe[] = ['15m', '1h', '4h', '1d'];
 
 function kindLabel(kind: TraderStrategyRules['kind']): string {
   if (kind === 'ema_cross') return 'EMA cross';
   if (kind === 'rsi_threshold') return 'RSI';
+  if (kind === 'breakout') return 'Breakout';
+  if (kind === 'macd_cross') return 'MACD';
   return 'Price vs EMA';
 }
 
@@ -34,6 +42,8 @@ function ruleChips(rules: TraderStrategyRules): string[] {
   if (rules.kind === 'rsi_threshold') {
     chips.push(`RSI ${rules.rsiPeriod ?? 14}`);
   }
+  if (rules.kind === 'breakout') chips.push(`${rules.lookback ?? 20} bars`);
+  if (rules.timeframe) chips.push(rules.timeframe);
   chips.push(`${rules.stopAtr ?? 1.5} ATR`);
   chips.push(`${rules.targetR ?? 2}R`);
   return chips;
@@ -52,10 +62,12 @@ function SplitBar({ wins, losses }: { wins: number; losses: number }) {
 export default function StrategyBuilder() {
   const [prompt, setPrompt] = useState('');
   const [symbol, setSymbol] = useState('BTCUSDT');
+  const [timeframe, setTimeframe] = useState<TraderTimeframe>('1h');
   const [rows, setRows] = useState<TraderStrategy[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [runningId, setRunningId] = useState<string | null>(null);
+  const [actingId, setActingId] = useState<string | null>(null);
   const [activeIdea, setActiveIdea] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -76,7 +88,7 @@ export default function StrategyBuilder() {
     setBusy(true);
     setError('');
     try {
-      await traderApi.createStrategy(text);
+      await traderApi.createStrategy(text, symbol.trim().toUpperCase() || 'BTCUSDT', timeframe);
       setPrompt('');
       setActiveIdea(null);
       await load();
@@ -91,12 +103,39 @@ export default function StrategyBuilder() {
     setRunningId(id);
     setError('');
     try {
-      await traderApi.backtestStrategy(id, symbol.trim().toUpperCase() || 'BTCUSDT', '1h');
+      await traderApi.backtestStrategy(id, symbol.trim().toUpperCase() || 'BTCUSDT', timeframe);
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Backtest failed');
     } finally {
       setRunningId(null);
+    }
+  }
+
+  async function promote(id: string) {
+    setActingId(id);
+    setError('');
+    try {
+      const res = await traderApi.promoteStrategy(id);
+      if (!res.emailOn) setError('Paper is on. Email is off in notification settings — inbox only.');
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not promote');
+    } finally {
+      setActingId(null);
+    }
+  }
+
+  async function archive(id: string) {
+    setActingId(id);
+    setError('');
+    try {
+      await traderApi.archiveStrategy(id);
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not stop');
+    } finally {
+      setActingId(null);
     }
   }
 
@@ -122,7 +161,7 @@ export default function StrategyBuilder() {
           </div>
           <span className="text-[10px] tabular-nums text-fg-3">{rows.length}</span>
         </div>
-        <p className="mt-0.5 text-xs text-fg-3">Write a rule. We compile it and test it on candles.</p>
+        <p className="mt-0.5 text-xs text-fg-3">Compile a rule, test the holdout, then paper it. Paper fills are not the public hit rate.</p>
 
         <div className="mt-3 flex flex-wrap gap-1.5">
           {IDEAS.map((idea) => {
@@ -165,7 +204,20 @@ export default function StrategyBuilder() {
               className="h-7 w-[6.5rem] rounded-md bg-surface px-2 text-[11px] tabular-nums text-fg outline-none border border-transparent focus:border-border"
               aria-label="Backtest symbol"
             />
-            <span className="text-[10px] text-fg-3">1h</span>
+            <div className="flex rounded-md border border-border overflow-hidden">
+              {TFS.map((tf) => (
+                <button
+                  key={tf}
+                  type="button"
+                  onClick={() => setTimeframe(tf)}
+                  className={`h-7 px-1.5 text-[10px] tabular-nums ${
+                    timeframe === tf ? 'bg-white text-black font-medium' : 'text-fg-3 hover:text-fg'
+                  }`}
+                >
+                  {tf}
+                </button>
+              ))}
+            </div>
             <button
               type="button"
               disabled={busy || prompt.trim().length < 8}
@@ -208,7 +260,7 @@ export default function StrategyBuilder() {
                               : 'border-border text-fg-3'
                           }`}
                         >
-                          {s.status === 'paper' ? 'Tested' : 'Draft'}
+                          {s.status === 'paper' ? 'Paper' : 'Draft'}
                         </span>
                       </div>
                       <div className="mt-1.5 flex flex-wrap gap-1">
@@ -235,6 +287,14 @@ export default function StrategyBuilder() {
 
                   {bt ? (
                     <div className="mt-2.5 space-y-1.5">
+                      <div className="flex items-center justify-between text-[10px] uppercase tracking-wider text-fg-3">
+                        <span>Holdout {bt.symbol ? `· ${bt.symbol}` : ''} {bt.timeframe ? bt.timeframe : ''}</span>
+                        {bt.inSample && (
+                          <span className="tabular-nums normal-case tracking-normal">
+                            in-sample {bt.inSample.trades} · {bt.inSample.expectancyPct == null ? '—' : `${bt.inSample.expectancyPct >= 0 ? '+' : ''}${bt.inSample.expectancyPct.toFixed(2)}%`}
+                          </span>
+                        )}
+                      </div>
                       <SplitBar wins={bt.wins} losses={bt.losses} />
                       <div className="flex items-center gap-3 text-[11px] tabular-nums">
                         <span className="text-fg-3">{bt.trades} trades</span>
@@ -249,9 +309,50 @@ export default function StrategyBuilder() {
                           {edge == null ? '—' : `${edge >= 0 ? '+' : ''}${edge.toFixed(2)}%`}
                         </span>
                       </div>
+                      {s.status !== 'paper' && (
+                        <button
+                          type="button"
+                          disabled={!bt.promote?.ok || actingId === s.id}
+                          title={bt.promote?.reasons?.[0]}
+                          onClick={() => void promote(s.id)}
+                          className="h-7 px-2 rounded-md text-[11px] font-medium bg-white text-black disabled:opacity-40"
+                        >
+                          {bt.promote?.ok ? 'Promote to paper' : bt.promote?.reasons?.[0] ?? 'Test first'}
+                        </button>
+                      )}
+                      {s.status === 'paper' && (
+                        <button
+                          type="button"
+                          disabled={actingId === s.id}
+                          onClick={() => void archive(s.id)}
+                          className="h-7 px-2 rounded-md border border-border text-[11px] text-fg-2 hover:text-fg"
+                        >
+                          Stop paper
+                        </button>
+                      )}
+                      {s.status !== 'paper' && !s.emailOn && bt.promote?.ok && (
+                        <p className="text-[11px] text-fg-3">
+                          Email is off. <a className="underline" href="/settings">Turn it on</a> or you will only see fills in the inbox.
+                        </p>
+                      )}
                     </div>
                   ) : (
                     <p className="mt-2 text-[11px] text-fg-3">Not tested on {symbol || 'a symbol'} yet.</p>
+                  )}
+
+                  {(s.positions ?? []).length > 0 && (
+                    <ul className="mt-2 space-y-1">
+                      {(s.positions ?? []).map((p) => (
+                        <li key={p.id} className="flex items-center gap-2 text-[11px] tabular-nums">
+                          <span className={p.side === 'LONG' ? 'text-profit' : 'text-loss'}>{p.side}</span>
+                          <span className="text-fg-2">{p.symbol}</span>
+                          <span className="text-fg-3">{p.status}</span>
+                          <span className="ml-auto text-fg-3">
+                            {p.pnlPct == null ? 'open' : `${p.pnlPct >= 0 ? '+' : ''}${p.pnlPct.toFixed(2)}%`}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
                   )}
                 </li>
               );

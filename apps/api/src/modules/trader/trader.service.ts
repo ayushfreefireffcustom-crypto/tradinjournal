@@ -17,6 +17,7 @@ import {
   validateLevels,
   reconcileLanes,
   macroBiasToLane,
+  flowLane,
   mapSymbolToMacroAsset,
   deriveLevels,
   newsLane,
@@ -30,7 +31,11 @@ import {
 import { getProvider, isAiEnabled, type ChatMessage } from '../../lib/ai/provider.js';
 import { ValidationError } from '../../http/errors.js';
 import { loadPublicCandles } from '../market/market.service.js';
-import { fetchCryptoFlowLane } from '../../lib/market/flow/binance-flow.js';
+import { fetchCryptoFlow } from '../../lib/market/flow/binance-flow.js';
+import { fetchDeribitOptions } from '../../lib/market/flow/deribit-options.js';
+import { fetchUnusualWhales } from '../../lib/market/flow/unusual-whales.js';
+import { fetchBenzinga } from '../../lib/market/flow/benzinga.js';
+import { fetchSantiment } from '../../lib/market/flow/santiment.js';
 import { fetchFearGreed } from '../../lib/market/flow/fear-greed.js';
 import { getMacroState } from '../macro/macro.service.js';
 import { env } from '@tradinjournal/config';
@@ -121,7 +126,7 @@ function toDto(
   lanes?: TraderLaneResult[],
   meta?: {
     featureSnapshot?: MetaFeatureSnapshot;
-    confidenceSource?: 'heuristic' | 'meta_v1';
+    confidenceSource?: 'heuristic' | 'meta_v1' | 'meta_lgbm';
     rawConfidence?: number;
   },
 ): TraderAnalysisDto {
@@ -175,13 +180,11 @@ async function collectExtraLanes(symbol: string, assetClass: AssetClass): Promis
     }
   }
 
-  if (assetClass === 'crypto') {
-    try {
-      const flow = await fetchCryptoFlowLane(symbol);
-      if (flow) extras.push(flow);
-    } catch (err) {
-      logger.warn(`[trader] flow lane skipped: ${(err as Error).message}`);
-    }
+  try {
+    const flow = await buildFlowLane(symbol, assetClass);
+    if (flow) extras.push(flow);
+  } catch (err) {
+    logger.warn(`[trader] flow lane skipped: ${(err as Error).message}`);
   }
 
   // News / sentiment: Fear & Greed (crypto) + recent enriched headline tilt.
@@ -195,17 +198,85 @@ async function collectExtraLanes(symbol: string, assetClass: AssetClass): Promis
   return extras;
 }
 
+function stamp(lane: LaneResult, meta: { source?: string; asOf?: string; stale?: boolean }): LaneResult {
+  if (meta.source) lane.source = meta.source;
+  if (meta.asOf) lane.asOf = meta.asOf;
+  if (meta.stale) lane.stale = true;
+  return lane;
+}
+
+async function buildFlowLane(symbol: string, assetClass: AssetClass): Promise<LaneResult | null> {
+  if (assetClass === 'stock') {
+    const uw = await fetchUnusualWhales(symbol);
+    if (!uw) return null;
+    return stamp(flowLane(uw.score, uw.rationale, 0.22), uw);
+  }
+  if (assetClass !== 'crypto') return null;
+
+  const [binance, deribit] = await Promise.all([
+    fetchCryptoFlow(symbol).catch(() => null),
+    fetchDeribitOptions(symbol).catch(() => null),
+  ]);
+  if (!binance && !deribit) return null;
+
+  let score = 0;
+  let w = 0;
+  const parts: string[] = [];
+  const sources: string[] = [];
+  let asOf: string | undefined;
+  let stale = false;
+  if (binance) {
+    score += binance.score * 0.55;
+    w += 0.55;
+    parts.push(`Binance ${binance.rationale}`);
+    sources.push('Binance');
+  }
+  if (deribit) {
+    score += deribit.score * 0.45;
+    w += 0.45;
+    parts.push(deribit.rationale);
+    sources.push(deribit.source);
+    asOf = deribit.asOf;
+    stale = deribit.stale;
+  }
+  return stamp(flowLane(score / w, parts.join(' · '), 0.22), {
+    source: sources.join(' + '),
+    asOf,
+    stale,
+  });
+}
+
 async function buildNewsLane(symbol: string, assetClass: AssetClass): Promise<LaneResult | null> {
   const parts: string[] = [];
   let score = 0;
   let weight = 0;
+  let source: string | undefined;
+  let asOf: string | undefined;
+  let stale = false;
+
+  const paid =
+    assetClass === 'crypto'
+      ? await fetchSantiment(symbol).catch(() => null)
+      : assetClass === 'stock' || assetClass === 'forex'
+        ? await fetchBenzinga(symbol).catch(() => null)
+        : null;
+  if (paid) {
+    score += paid.score * 0.7;
+    weight += 0.7;
+    parts.push(paid.rationale);
+    source = paid.source;
+    asOf = paid.asOf;
+    stale = paid.stale;
+  }
 
   if (assetClass === 'crypto') {
     const fng = await fetchFearGreed();
     if (fng) {
-      score += fng.score * 0.55;
-      weight += 0.55;
+      const w = paid ? 0.2 : 0.55;
+      score += fng.score * w;
+      weight += w;
       parts.push(`F&G ${fng.value} (${fng.label})`);
+      if (!source) source = 'Fear & Greed';
     }
   }
 
@@ -238,9 +309,11 @@ async function buildNewsLane(symbol: string, assetClass: AssetClass): Promise<La
       }
       if (wSum > 0) {
         const headlineScore = sSum / wSum;
-        score += headlineScore * 0.45;
-        weight += 0.45;
+        const hw = paid ? 0.2 : 0.45;
+        score += headlineScore * hw;
+        weight += hw;
         parts.push(`${items.length} headlines (48h)`);
+        if (!source) source = 'Headlines';
       }
     }
   } catch {
@@ -249,7 +322,7 @@ async function buildNewsLane(symbol: string, assetClass: AssetClass): Promise<La
 
   if (weight <= 0 || parts.length === 0) return null;
   const blended = score / weight;
-  return newsLane(blended, parts.join(' · '), 0.15);
+  return stamp(newsLane(blended, parts.join(' · '), 0.15), { source, asOf, stale });
 }
 
 /**

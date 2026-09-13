@@ -22,6 +22,8 @@ export interface MetaModelArtifact {
   trainMisses: number;
   /** Out-of-fold AUC proxy (0.5 = chance). */
   oofAuc: number | null;
+  /** Out-of-fold Brier score (lower is better). Absent on artifacts trained before this field. */
+  oofBrier?: number | null;
   logistic: LogisticModel;
   isotonic: IsotonicModel | null;
   featureNames: string[];
@@ -100,6 +102,22 @@ export function aucScore(scores: number[], labels: number[]): number | null {
     }
   }
   return wins / (pos.length * neg.length);
+}
+
+/** Mean squared error of probabilities vs labels. Lower is better. */
+export function brierScore(probs: number[], labels: number[]): number | null {
+  if (probs.length === 0 || probs.length !== labels.length) return null;
+  let sum = 0;
+  let n = 0;
+  for (let i = 0; i < probs.length; i++) {
+    const p = probs[i]!;
+    const y = labels[i]!;
+    if (!Number.isFinite(p) || (y !== 0 && y !== 1)) continue;
+    const d = p - y;
+    sum += d * d;
+    n += 1;
+  }
+  return n > 0 ? sum / n : null;
 }
 
 /**
@@ -219,6 +237,10 @@ export function trainMetaModel(input: {
     oofPairs.map((r) => r.p),
     oofPairs.map((r) => r.y),
   );
+  const oofBrier = brierScore(
+    oofPairs.map((r) => r.p),
+    oofPairs.map((r) => r.y),
+  );
 
   // Final model on all data (production); calibration from OOF only (no leakage).
   const logistic = models.length > 0 ? trainLogistic(X, y) : trainLogistic(X, y);
@@ -237,6 +259,7 @@ export function trainMetaModel(input: {
     trainHits: y.filter((v) => v === 1).length,
     trainMisses: y.filter((v) => v === 0).length,
     oofAuc,
+    oofBrier,
     logistic,
     isotonic,
     featureNames,

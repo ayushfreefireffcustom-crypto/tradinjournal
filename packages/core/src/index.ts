@@ -83,6 +83,9 @@ export {
   META_FEATURE_NAMES,
   trainMetaModel,
   predictHitProbability,
+  brierScore,
+  shouldPromoteLgbm,
+  LGBM_MIN_SAMPLES,
 } from './trader/index.js';
 export type {
   TraderDirection,

@@ -17,6 +17,8 @@ import {
   listStrategies,
   backtestUserStrategy,
 } from './trader.strategy.service.js';
+import { archiveStrategy, promoteStrategy, tickPaperBook } from './trader.paper.service.js';
+import { trainLgbmChallenger } from './trader.lgbm.service.js';
 
 export async function handleAnalyze(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
@@ -73,7 +75,46 @@ export async function handleListStrategies(_req: Request, res: Response, next: N
 export async function handleCreateStrategy(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const body = req.body as TraderStrategyCreateInput;
-    ok(res, await createStrategy(res.locals.user.id as string, body.prompt));
+    ok(
+      res,
+      await createStrategy(res.locals.user.id as string, body.prompt, {
+        symbol: body.symbol,
+        timeframe: body.timeframe,
+      }),
+    );
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function handlePromoteStrategy(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    ok(res, await promoteStrategy(res.locals.user.id as string, req.params.id as string));
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function handleArchiveStrategy(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    ok(res, await archiveStrategy(res.locals.user.id as string, req.params.id as string));
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function handlePaperTick(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const limit = typeof req.body?.limit === 'number' ? req.body.limit : 40;
+    ok(res, await tickPaperBook(limit));
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function handleLgbmTrain(_req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    ok(res, await trainLgbmChallenger());
   } catch (err) {
     next(err);
   }

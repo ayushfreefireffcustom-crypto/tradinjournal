@@ -490,6 +490,9 @@ export const traderLaneResultSchema = z.object({
   score: z.number().min(-1).max(1),
   weight: z.number().min(0).max(1),
   rationale: z.string(),
+  source: z.string().optional(),
+  asOf: z.string().optional(),
+  stale: z.boolean().optional(),
 });
 export type TraderLaneResult = z.infer<typeof traderLaneResultSchema>;
 
@@ -513,7 +516,7 @@ export const traderAnalysisDtoSchema = z.object({
   detail: z.string(),
   perTimeframe: z.array(traderTimeframeReadSchema),
   laneBreakdown: z.array(traderLaneResultSchema).optional(),
-  confidenceSource: z.enum(['heuristic', 'meta_v1']).optional(),
+  confidenceSource: z.enum(['heuristic', 'meta_v1', 'meta_lgbm']).optional(),
   rawConfidence: z.number().int().min(0).max(100).optional(),
   featureSnapshot: z
     .object({
@@ -540,6 +543,8 @@ export type TraderAnalysisDto = z.infer<typeof traderAnalysisDtoSchema>;
 
 export const traderStrategyCreateSchema = z.object({
   prompt: z.string().trim().min(8).max(2000),
+  symbol: z.string().trim().min(1).max(32).optional(),
+  timeframe: traderTimeframeSchema.optional(),
 });
 export type TraderStrategyCreateInput = z.infer<typeof traderStrategyCreateSchema>;
 
@@ -553,6 +558,12 @@ export const traderMetaTrainSchema = z.object({
   bucket: z.string().min(1).max(32),
 });
 export type TraderMetaTrainJob = z.infer<typeof traderMetaTrainSchema>;
+
+export const traderPaperTickSchema = z.object({
+  bucket: z.string().min(1).max(32),
+  limit: z.number().int().min(1).max(200).optional(),
+});
+export type TraderPaperTickJob = z.infer<typeof traderPaperTickSchema>;
 
 /** Honest aggregate track record for Trader Master (wins + losses + calibration). */
 export const traderCalibrationBucketSchema = z.object({

@@ -12,6 +12,12 @@ export interface LaneResult {
   score: number;
   weight: number;
   rationale: string;
+  /** Vendor or feed name shown on the chip (Unusual Whales, Deribit, …). */
+  source?: string;
+  /** ISO time of the snapshot used for this lane. */
+  asOf?: string;
+  /** True when a refresh failed and a snapshot older than its TTL was reused. */
+  stale?: boolean;
 }
 
 export interface ReconcileLanesResult {

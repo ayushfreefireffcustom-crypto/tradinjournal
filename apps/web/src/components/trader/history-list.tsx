@@ -87,6 +87,9 @@ export default function AnalysisHistory({
                 <span className="text-sm font-medium truncate">{a.symbol}</span>
                 <span className={`text-[11px] font-medium ${dirTone(a.direction)}`}>{a.direction}</span>
                 <span className="text-[11px] tabular-nums text-fg-3">{a.confidence}%</span>
+                {a.confidenceSource === 'meta_lgbm' && (
+                  <span className="text-[9px] uppercase tracking-wider text-profit/80">model</span>
+                )}
                 {a.confidenceSource === 'meta_v1' && (
                   <span className="text-[9px] uppercase tracking-wider text-profit/80">meta</span>
                 )}

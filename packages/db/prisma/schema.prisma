@@ -799,7 +799,35 @@ model TraderStrategy {
   updatedAt   DateTime @updatedAt
 
   @@index([userId, createdAt(sort: Desc)])
+  @@index([status])
   @@map("trader_strategy")
+}
+
+// Paper book for a promoted strategy. Educational fills only — never a broker order.
+model TraderPaperPosition {
+  id           String    @id @default(cuid())
+  strategyId   String
+  userId       String
+  symbol       String
+  timeframe    String
+  side         String // LONG | SHORT
+  entry        Decimal   @db.Decimal(24, 8)
+  stop         Decimal   @db.Decimal(24, 8)
+  target       Decimal   @db.Decimal(24, 8)
+  status       String    @default("open") // open | target | stop | expired
+  entryBarTime DateTime
+  exit         Decimal?  @db.Decimal(24, 8)
+  exitBarTime  DateTime?
+  mfePct       Float?
+  maePct       Float?
+  pnlPct       Float?
+  openedAt     DateTime  @default(now())
+  closedAt     DateTime?
+
+  @@unique([strategyId, symbol, entryBarTime])
+  @@index([status, strategyId])
+  @@index([userId, openedAt(sort: Desc)])
+  @@map("trader_paper_position")
 }
 
 // ─── Platform access control + admin ─────────────────────────────────────────

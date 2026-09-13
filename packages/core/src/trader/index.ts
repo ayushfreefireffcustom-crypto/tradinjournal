@@ -69,8 +69,12 @@ export {
   fitIsotonic,
   applyIsotonic,
   aucScore,
+  brierScore,
   purgedWalkForwardPredict,
   trainMetaModel,
   predictHitProbability,
 } from './meta-model.js';
 export type { LogisticModel, IsotonicModel, MetaModelArtifact } from './meta-model.js';
+
+export { shouldPromoteLgbm, LGBM_MIN_SAMPLES, LGBM_MIN_AUC_EDGE } from './model-gate.js';
+export type { LgbmPromoteInput, LgbmPromoteDecision } from './model-gate.js';

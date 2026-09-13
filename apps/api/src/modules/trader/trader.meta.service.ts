@@ -10,6 +10,7 @@ import {
   type MetaFeatureSnapshot,
   type LaneResult,
 } from '@tradinjournal/core';
+import { predictLgbmIfServing } from './trader.lgbm.service.js';
 
 export const META_MODEL_KEY = 'trader_meta_model_v1';
 const MIN_SAMPLES = 24;
@@ -129,7 +130,7 @@ export async function applyMetaConfidence(input: {
   lanes: LaneResult[];
 }): Promise<{
   confidence: number;
-  confidenceSource: 'heuristic' | 'meta_v1';
+  confidenceSource: 'heuristic' | 'meta_v1' | 'meta_lgbm';
   rawConfidence: number;
   lanes: LaneResult[];
   mlProb: number | null;
@@ -146,6 +147,10 @@ export async function applyMetaConfidence(input: {
   }
 
   const model = await loadMetaModel();
+  const lgbm = await predictLgbmIfServing(input.snapshot.values).catch(() => null);
+  if (lgbm) {
+    return finishMeta(input, lgbm.p, 'meta_lgbm', lgbm.artifact.oofAuc ?? null, 'LightGBM');
+  }
   if (!model) {
     return {
       confidence: rawConfidence,
@@ -157,22 +162,40 @@ export async function applyMetaConfidence(input: {
   }
 
   const pHit = predictHitProbability(model, input.snapshot.values);
-  const confidence = Math.max(5, Math.min(95, Math.round(pHit * 100)));
+  return finishMeta(input, pHit, 'meta_v1', model.oofAuc, 'logistic');
+}
 
-  // ML lane: map P(hit) centered at 0.5 into [-1,1], signed by direction.
+function finishMeta(
+  input: {
+    direction: 'LONG' | 'SHORT' | 'WAIT';
+    heuristicConfidence: number;
+    lanes: LaneResult[];
+  },
+  pHit: number,
+  source: 'meta_v1' | 'meta_lgbm',
+  auc: number | null,
+  label: string,
+): {
+  confidence: number;
+  confidenceSource: 'heuristic' | 'meta_v1' | 'meta_lgbm';
+  rawConfidence: number;
+  lanes: LaneResult[];
+  mlProb: number | null;
+} {
+  const confidence = Math.max(5, Math.min(95, Math.round(pHit * 100)));
   const signed = (pHit - 0.5) * 2;
   const dirSign = input.direction === 'SHORT' ? -1 : 1;
   const mlLane: LaneResult = {
     id: 'ml',
     score: Math.max(-1, Math.min(1, signed * dirSign)),
     weight: 0.18,
-    rationale: `Meta P(hit)=${(pHit * 100).toFixed(0)}% (AUC ${model.oofAuc != null ? model.oofAuc.toFixed(2) : '—'})`,
+    rationale: `${label} P(hit)=${(pHit * 100).toFixed(0)}% (AUC ${auc != null ? auc.toFixed(2) : '—'})`,
+    source: label,
   };
-
   return {
     confidence,
-    confidenceSource: 'meta_v1',
-    rawConfidence,
+    confidenceSource: source,
+    rawConfidence: input.heuristicConfidence,
     lanes: [...input.lanes.filter((l) => l.id !== 'ml'), mlLane],
     mlProb: pHit,
   };

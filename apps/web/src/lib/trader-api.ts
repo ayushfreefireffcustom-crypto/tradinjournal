@@ -29,6 +29,9 @@ export interface TraderLaneResult {
   score: number;
   weight: number;
   rationale: string;
+  source?: string;
+  asOf?: string;
+  stale?: boolean;
 }
 
 export interface TraderAnalysis {
@@ -51,7 +54,7 @@ export interface TraderAnalysis {
   detail: string;
   perTimeframe: TraderTimeframeRead[];
   laneBreakdown?: TraderLaneResult[];
-  confidenceSource?: 'heuristic' | 'meta_v1';
+  confidenceSource?: 'heuristic' | 'meta_v1' | 'meta_lgbm';
   rawConfidence?: number;
   aiUsed: boolean;
   asOf: string;
@@ -66,16 +69,42 @@ export interface TraderAnalysis {
 }
 
 export interface TraderStrategyRules {
-  kind: 'ema_cross' | 'rsi_threshold' | 'price_vs_ema';
+  kind: 'ema_cross' | 'rsi_threshold' | 'price_vs_ema' | 'breakout' | 'macd_cross';
   direction: 'LONG' | 'SHORT' | 'BOTH';
+  symbol?: string;
+  timeframe?: TraderTimeframe;
   fast?: number;
   slow?: number;
   rsiPeriod?: number;
   rsiAbove?: number;
   rsiBelow?: number;
+  lookback?: number;
   stopAtr?: number;
   targetR?: number;
   horizonBars?: number;
+}
+
+export interface TraderBacktestSlice {
+  trades: number;
+  wins: number;
+  losses: number;
+  hitRate: number | null;
+  expectancyPct: number | null;
+  maxDrawdownPct: number | null;
+}
+
+export interface TraderPaperPosition {
+  id: string;
+  symbol: string;
+  timeframe: string;
+  side: string;
+  entry: number;
+  stop: number;
+  target: number;
+  status: string;
+  pnlPct: number | null;
+  openedAt: string;
+  closedAt: string | null;
 }
 
 export interface TraderStrategy {
@@ -84,14 +113,15 @@ export interface TraderStrategy {
   prompt: string;
   rules: TraderStrategyRules;
   status: string;
-  lastBacktest: {
-    trades: number;
-    wins: number;
-    losses: number;
-    hitRate: number | null;
-    expectancyPct: number | null;
-    maxDrawdownPct: number | null;
-  } | null;
+  lastBacktest: (TraderBacktestSlice & {
+    symbol?: string;
+    timeframe?: TraderTimeframe;
+    inSample?: TraderBacktestSlice;
+    holdout?: TraderBacktestSlice;
+    promote?: { ok: boolean; reasons: string[] };
+  }) | null;
+  positions?: TraderPaperPosition[];
+  emailOn?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -150,14 +180,20 @@ export const traderApi = {
   trackRecord: (scope: 'all' | 'me' = 'all') =>
     req<TraderTrackRecord>(`/api/trader/track-record?scope=${scope}`),
   strategies: () => req<TraderStrategy[]>('/api/trader/strategies'),
-  createStrategy: (prompt: string) =>
+  createStrategy: (prompt: string, symbol?: string, timeframe?: TraderTimeframe) =>
     req<TraderStrategy>('/api/trader/strategies', {
       method: 'POST',
-      body: JSON.stringify({ prompt }),
+      body: JSON.stringify({ prompt, symbol, timeframe }),
     }),
   backtestStrategy: (id: string, symbol: string, timeframe: TraderTimeframe = '1h') =>
     req<TraderStrategy>(`/api/trader/strategies/${id}/backtest`, {
       method: 'POST',
       body: JSON.stringify({ symbol, timeframe }),
     }),
+  promoteStrategy: (id: string) =>
+    req<{ id: string; status: string; emailOn: boolean }>(`/api/trader/strategies/${id}/promote`, {
+      method: 'POST',
+    }),
+  archiveStrategy: (id: string) =>
+    req<{ id: string; status: string }>(`/api/trader/strategies/${id}/archive`, { method: 'POST' }),
 };

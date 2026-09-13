@@ -85,7 +85,7 @@ export default function AnalysisReport({ a }: { a: TraderAnalysis }) {
         </div>
         <div className="text-right shrink-0">
           <div className="text-[10px] uppercase tracking-wider text-fg-3">
-            {a.confidenceSource === 'meta_v1' ? 'Meta' : 'Conf'}
+            {a.confidenceSource === 'meta_lgbm' ? 'Model' : a.confidenceSource === 'meta_v1' ? 'Meta' : 'Conf'}
           </div>
           <div className="text-lg font-semibold tabular-nums text-fg leading-none">{a.confidence}%</div>
         </div>
@@ -116,11 +116,12 @@ export default function AnalysisReport({ a }: { a: TraderAnalysis }) {
                       : 'border-border bg-app text-fg-2'
                 }`}
               >
-                <span className="uppercase tracking-wider opacity-80">{lane.id}</span>
+                <span className="uppercase tracking-wider opacity-80">{lane.source ?? lane.id}</span>
                 <span className="tabular-nums font-medium">
                   {lane.score > 0 ? '+' : ''}
                   {lane.score.toFixed(2)}
                 </span>
+                {lane.stale && <span className="text-[9px] uppercase tracking-wider opacity-70">stale</span>}
               </span>
             );
           })}

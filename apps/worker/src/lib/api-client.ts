@@ -125,3 +125,27 @@ export function trainTraderMeta(params: {
     body: JSON.stringify({ bucket: params.bucket }),
   });
 }
+
+export function trainTraderLgbm(params: { bucket: string }): Promise<{
+  trained: boolean;
+  serving: boolean;
+  reason?: string;
+  sampleSize?: number;
+}> {
+  return request('/internal/trader/meta/lgbm', {
+    method: 'POST',
+    body: JSON.stringify({ bucket: params.bucket }),
+  });
+}
+
+export function tickTraderPaper(params: { bucket: string }): Promise<{
+  scanned: number;
+  opened: number;
+  closed: number;
+  errors: number;
+}> {
+  return request('/internal/trader/paper/tick', {
+    method: 'POST',
+    body: JSON.stringify({ bucket: params.bucket }),
+  });
+}

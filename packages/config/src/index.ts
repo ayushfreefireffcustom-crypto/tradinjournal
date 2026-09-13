@@ -166,6 +166,16 @@ const envSchema = z.object({
   TRADER_GRADE_BATCH: z.coerce.number().int().positive().default(40),
   // Retrain meta-label model from graded analyses (needs enough samples).
   TRADER_META_TRAIN_CRON: z.string().default('0 */6 * * *'),
+  // Paper-book tick — evaluate promoted strategies on the last closed bar.
+  TRADER_PAPER_CRON: z.string().default('*/5 * * * *'),
+  // LightGBM challenger. Served only if it beats the logistic champion.
+  TRADER_LGBM_TRAIN_CRON: z.string().default('30 */6 * * *'),
+  TRADER_ML_URL: z.string().url().default('http://127.0.0.1:4010'),
+  // Paid flow / sentiment. Absent key → that lane is omitted, nothing crashes.
+  UNUSUAL_WHALES_API_KEY: z.string().optional(),
+  BENZINGA_API_KEY: z.string().optional(),
+  SANTIMENT_API_KEY: z.string().optional(),
+  DERIBIT_REST_URL: z.string().url().default('https://www.deribit.com'),
   // The macro assistant reuses the trading coach's AI provider (AI_PROVIDER +
   // GROQ_API_KEY / OPENAI_API_KEY above) — no separate key. No AI key → it falls
   // back to a deterministic template summary, exactly like the coach.
