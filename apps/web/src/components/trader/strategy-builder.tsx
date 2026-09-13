@@ -1,17 +1,62 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Flask, Play } from '@phosphor-icons/react';
-import { traderApi, type TraderStrategy } from '@/lib/trader-api';
+import { Flask, Play, Sparkle } from '@phosphor-icons/react';
+import { traderApi, type TraderStrategy, type TraderStrategyRules } from '@/lib/trader-api';
 import { pct } from './outcome-badge';
 
+const IDEAS = [
+  {
+    label: 'EMA cross',
+    prompt: 'Long when EMA20 crosses above EMA50. Stop 1.5 ATR, target 2R, 48 bars.',
+  },
+  {
+    label: 'RSI bounce',
+    prompt: 'Long when RSI(14) drops under 30. Stop 1.5 ATR, target 2R. Short above 70.',
+  },
+  {
+    label: 'Trend follow',
+    prompt: 'Trade price vs EMA50. Long above, short below. Stop 1.2 ATR, target 2.5R.',
+  },
+] as const;
+
+function kindLabel(kind: TraderStrategyRules['kind']): string {
+  if (kind === 'ema_cross') return 'EMA cross';
+  if (kind === 'rsi_threshold') return 'RSI';
+  return 'Price vs EMA';
+}
+
+function ruleChips(rules: TraderStrategyRules): string[] {
+  const chips = [kindLabel(rules.kind), rules.direction];
+  if (rules.kind === 'ema_cross' || rules.kind === 'price_vs_ema') {
+    chips.push(`${rules.fast ?? 20}/${rules.slow ?? 50}`);
+  }
+  if (rules.kind === 'rsi_threshold') {
+    chips.push(`RSI ${rules.rsiPeriod ?? 14}`);
+  }
+  chips.push(`${rules.stopAtr ?? 1.5} ATR`);
+  chips.push(`${rules.targetR ?? 2}R`);
+  return chips;
+}
+
+function SplitBar({ wins, losses }: { wins: number; losses: number }) {
+  const total = wins + losses;
+  const winPct = total > 0 ? (wins / total) * 100 : 50;
+  return (
+    <div className="h-1.5 rounded-full overflow-hidden bg-loss/40 flex">
+      <div className="h-full bg-profit" style={{ width: `${winPct}%` }} />
+    </div>
+  );
+}
+
 export default function StrategyBuilder() {
-  const [prompt, setPrompt] = useState('Buy when EMA20 crosses above EMA50; exit on 1.5 ATR stop or 2R target.');
+  const [prompt, setPrompt] = useState('');
   const [symbol, setSymbol] = useState('BTCUSDT');
   const [rows, setRows] = useState<TraderStrategy[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [runningId, setRunningId] = useState<string | null>(null);
+  const [activeIdea, setActiveIdea] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -26,14 +71,17 @@ export default function StrategyBuilder() {
   }, [load]);
 
   async function create() {
+    const text = prompt.trim();
+    if (text.length < 8) return;
     setBusy(true);
     setError('');
     try {
-      await traderApi.createStrategy(prompt);
+      await traderApi.createStrategy(text);
       setPrompt('');
+      setActiveIdea(null);
       await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed');
+      setError(e instanceof Error ? e.message : 'Could not compile');
     } finally {
       setBusy(false);
     }
@@ -54,74 +102,163 @@ export default function StrategyBuilder() {
 
   return (
     <section
-      className="rounded-xl border border-border bg-surface p-4 animate-[fade-up_0.5s_ease_both]"
+      className="relative overflow-hidden rounded-xl border border-border bg-surface p-4 animate-[fade-up_0.5s_ease_both]"
       data-testid="trader-strategy-builder"
     >
-      <div className="flex items-center gap-2 mb-1">
-        <Flask size={14} className="text-fg-3" />
-        <h3 className="text-sm font-medium text-fg">Strategy builder</h3>
-      </div>
-      <p className="text-xs text-fg-3 mb-3">Describe a rule → compile → backtest on candles.</p>
-
-      <textarea
-        value={prompt}
-        onChange={(e) => setPrompt(e.target.value)}
-        rows={3}
-        placeholder="e.g. Long when RSI &lt; 30, stop 1.5 ATR, target 2R…"
-        className="w-full rounded-lg border border-border bg-app px-3 py-2 text-sm text-fg placeholder:text-fg-3 outline-none focus:border-border-strong focus:ring-2 focus:ring-white/10 resize-none"
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-16 opacity-50"
+        style={{
+          background:
+            'linear-gradient(180deg, color-mix(in oklab, var(--color-profit) 12%, transparent), transparent)',
+        }}
       />
 
-      <div className="mt-2 flex items-center gap-2">
-        <input
-          value={symbol}
-          onChange={(e) => setSymbol(e.target.value.toUpperCase())}
-          className="h-8 w-28 rounded-md border border-border bg-app px-2 text-xs tabular-nums outline-none focus:border-border-strong"
-          placeholder="BTCUSDT"
-        />
-        <button
-          type="button"
-          disabled={busy || prompt.trim().length < 8}
-          onClick={() => void create()}
-          className="h-8 px-3 rounded-md text-xs font-medium bg-white text-black disabled:opacity-40"
-        >
-          {busy ? '…' : 'Compile'}
-        </button>
-      </div>
+      <div className="relative">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Flask size={14} className="text-profit" />
+            <h3 className="text-sm font-medium text-fg">Strategies</h3>
+          </div>
+          <span className="text-[10px] tabular-nums text-fg-3">{rows.length}</span>
+        </div>
+        <p className="mt-0.5 text-xs text-fg-3">Write a rule. We compile it and test it on candles.</p>
 
-      {error && <p className="mt-2 text-xs text-loss">{error}</p>}
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {IDEAS.map((idea) => {
+            const on = activeIdea === idea.label;
+            return (
+              <button
+                key={idea.label}
+                type="button"
+                onClick={() => {
+                  setActiveIdea(idea.label);
+                  setPrompt(idea.prompt);
+                }}
+                className={`h-7 px-2.5 rounded-md text-[11px] transition-colors ${
+                  on
+                    ? 'bg-white text-black font-medium'
+                    : 'border border-border text-fg-2 hover:text-fg hover:border-border-strong'
+                }`}
+              >
+                {idea.label}
+              </button>
+            );
+          })}
+        </div>
 
-      {rows.length > 0 && (
-        <ul className="mt-4 space-y-2">
-          {rows.map((s) => (
-            <li key={s.id} className="rounded-lg border border-border bg-app/50 px-3 py-2.5">
-              <div className="flex items-start gap-2">
-                <div className="min-w-0 flex-1">
-                  <div className="text-sm font-medium truncate">{s.name}</div>
-                  <div className="text-[11px] text-fg-3 truncate">{s.rules.kind} · {s.rules.direction}</div>
-                  {s.lastBacktest && (
-                    <div className="mt-1 text-[11px] tabular-nums text-fg-2">
-                      {s.lastBacktest.trades} trades · hit {pct(s.lastBacktest.hitRate, 0)} · E[
-                      {s.lastBacktest.expectancyPct == null
-                        ? '—'
-                        : `${s.lastBacktest.expectancyPct >= 0 ? '+' : ''}${s.lastBacktest.expectancyPct.toFixed(2)}%`}
-                      ]
-                    </div>
-                  )}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => void runBacktest(s.id)}
-                  disabled={runningId === s.id}
-                  className="h-7 px-2 rounded-md border border-border text-[11px] text-fg-2 hover:text-fg inline-flex items-center gap-1 disabled:opacity-50"
+        <div className="mt-2.5 rounded-lg border border-border bg-app focus-within:border-border-strong focus-within:ring-2 focus-within:ring-white/10 transition-all">
+          <textarea
+            value={prompt}
+            onChange={(e) => {
+              setPrompt(e.target.value);
+              setActiveIdea(null);
+            }}
+            rows={2}
+            placeholder="Long when RSI dips under 30…"
+            className="w-full bg-transparent px-3 pt-2.5 pb-1 text-sm text-fg placeholder:text-fg-3 outline-none resize-none"
+          />
+          <div className="flex items-center gap-2 px-2 pb-2">
+            <input
+              value={symbol}
+              onChange={(e) => setSymbol(e.target.value.toUpperCase())}
+              className="h-7 w-[6.5rem] rounded-md bg-surface px-2 text-[11px] tabular-nums text-fg outline-none border border-transparent focus:border-border"
+              aria-label="Backtest symbol"
+            />
+            <span className="text-[10px] text-fg-3">1h</span>
+            <button
+              type="button"
+              disabled={busy || prompt.trim().length < 8}
+              onClick={() => void create()}
+              className="ml-auto h-7 px-2.5 rounded-md text-[11px] font-medium bg-profit text-black disabled:opacity-40 inline-flex items-center gap-1 transition-opacity"
+            >
+              <Sparkle size={11} weight="fill" />
+              {busy ? 'Compiling' : 'Compile'}
+            </button>
+          </div>
+        </div>
+
+        {error && <p className="mt-2 text-xs text-loss">{error}</p>}
+
+        {rows.length === 0 ? (
+          <div className="mt-4 rounded-lg border border-dashed border-border px-3 py-6 text-center">
+            <p className="text-sm text-fg-2">No strategies yet</p>
+            <p className="mt-1 text-xs text-fg-3">Pick a preset, or write your own rule.</p>
+          </div>
+        ) : (
+          <ul className="mt-3 space-y-2">
+            {rows.map((s, i) => {
+              const bt = s.lastBacktest;
+              const edge = bt?.expectancyPct;
+              const running = runningId === s.id;
+              return (
+                <li
+                  key={s.id}
+                  className="rounded-lg border border-border bg-app/60 px-3 py-2.5 animate-[fade-up_0.35s_ease_both]"
+                  style={{ animationDelay: `${Math.min(i, 8) * 30}ms` }}
                 >
-                  <Play size={11} weight="fill" />
-                  {runningId === s.id ? '…' : 'Test'}
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
+                  <div className="flex items-start gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium truncate">{s.name}</span>
+                        <span
+                          className={`text-[10px] px-1.5 py-0.5 rounded border ${
+                            s.status === 'paper'
+                              ? 'border-profit/25 text-profit bg-profit/10'
+                              : 'border-border text-fg-3'
+                          }`}
+                        >
+                          {s.status === 'paper' ? 'Tested' : 'Draft'}
+                        </span>
+                      </div>
+                      <div className="mt-1.5 flex flex-wrap gap-1">
+                        {ruleChips(s.rules).map((chip) => (
+                          <span
+                            key={chip}
+                            className="text-[10px] tracking-wide uppercase px-1.5 py-0.5 rounded bg-white/5 text-fg-3"
+                          >
+                            {chip}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => void runBacktest(s.id)}
+                      disabled={running}
+                      className="h-7 shrink-0 px-2 rounded-md border border-border text-[11px] text-fg-2 hover:text-fg hover:border-border-strong inline-flex items-center gap-1 disabled:opacity-50"
+                    >
+                      <Play size={11} weight="fill" />
+                      {running ? '…' : 'Test'}
+                    </button>
+                  </div>
+
+                  {bt ? (
+                    <div className="mt-2.5 space-y-1.5">
+                      <SplitBar wins={bt.wins} losses={bt.losses} />
+                      <div className="flex items-center gap-3 text-[11px] tabular-nums">
+                        <span className="text-fg-3">{bt.trades} trades</span>
+                        <span className="text-profit">{bt.wins}W</span>
+                        <span className="text-loss">{bt.losses}L</span>
+                        <span className="text-fg-2">{pct(bt.hitRate, 0)}</span>
+                        <span
+                          className={`ml-auto font-medium ${
+                            edge == null ? 'text-fg-3' : edge >= 0 ? 'text-profit' : 'text-loss'
+                          }`}
+                        >
+                          {edge == null ? '—' : `${edge >= 0 ? '+' : ''}${edge.toFixed(2)}%`}
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-[11px] text-fg-3">Not tested on {symbol || 'a symbol'} yet.</p>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
     </section>
   );
 }

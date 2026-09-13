@@ -77,11 +77,19 @@ export default function AnalysisHistory({
               <button
                 type="button"
                 onClick={() => onSelect?.(a)}
-                className="w-full flex items-center gap-2 py-2.5 text-left hover:bg-white/[0.03] -mx-1 px-1 rounded-md transition-colors"
+                className="w-full flex items-center gap-2 py-2.5 text-left hover:bg-white/[0.04] -mx-1 px-1.5 rounded-md transition-colors"
               >
+                <span
+                  className={`size-1.5 rounded-full shrink-0 ${
+                    a.direction === 'LONG' ? 'bg-profit' : a.direction === 'SHORT' ? 'bg-loss' : 'bg-fg-3'
+                  }`}
+                />
                 <span className="text-sm font-medium truncate">{a.symbol}</span>
                 <span className={`text-[11px] font-medium ${dirTone(a.direction)}`}>{a.direction}</span>
                 <span className="text-[11px] tabular-nums text-fg-3">{a.confidence}%</span>
+                {a.confidenceSource === 'meta_v1' && (
+                  <span className="text-[9px] uppercase tracking-wider text-profit/80">meta</span>
+                )}
                 <span className="ml-auto shrink-0 flex items-center gap-2">
                   <OutcomeBadge
                     outcome={a.outcome}
