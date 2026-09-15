@@ -1,5 +1,6 @@
 import { Router, type IRouter } from 'express';
 import { requireAuth } from '../../http/middleware/require-auth.js';
+import { requirePlatformAccess } from '../../http/middleware/require-platform-access.js';
 import { requireInternalToken } from '../../http/middleware/require-internal-token.js';
 import { requireMember } from '../../http/middleware/require-member.js';
 import { validateBody } from '../../http/middleware/validate.js';
@@ -24,7 +25,7 @@ import {
 import { macroAssistantRateLimit } from './macro-assistant.rate-limit.js';
 
 export const macroRouter: IRouter = Router();
-macroRouter.use(requireAuth);
+macroRouter.use(requireAuth, requirePlatformAccess);
 macroRouter.get('/state', handleGetMacroState);
 macroRouter.get('/membership', handleGetMembership);
 macroRouter.post('/membership/apply', validateBody(macroMemberApplySchema), handleApplyMembership);

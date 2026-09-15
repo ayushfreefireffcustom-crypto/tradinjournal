@@ -1,5 +1,6 @@
 import { Router, type IRouter } from 'express';
 import { requireAuth } from '../../http/middleware/require-auth.js';
+import { requirePlatformAccess } from '../../http/middleware/require-platform-access.js';
 import { requireInternalToken } from '../../http/middleware/require-internal-token.js';
 import { validateBody, validateQuery } from '../../http/middleware/validate.js';
 import { candlesQuerySchema, symbolSearchSchema, watchlistSchema, marketWarmSchema } from '@tradinjournal/contracts';
@@ -14,7 +15,7 @@ import {
 
 // Public (signed-in) market routes.
 export const marketRouter: IRouter = Router();
-marketRouter.use(requireAuth);
+marketRouter.use(requireAuth, requirePlatformAccess);
 marketRouter.get('/candles', validateQuery(candlesQuerySchema), handleCandles);
 marketRouter.get('/search', validateQuery(symbolSearchSchema), handleSymbolSearch);
 marketRouter.get('/stream', validateQuery(candlesQuerySchema), handleCandleStream);

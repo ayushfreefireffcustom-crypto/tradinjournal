@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useRef, useState } from 'react';
 import AuthAside from '@/components/auth-aside';
 import Logo from '@/components/logo';
+import { LoadingScreen } from '@/components/loader';
 import { authClient } from '@/lib/auth-client';
 
 const OTP_LEN = 6;
@@ -201,7 +202,7 @@ function VerifyInner() {
 
 export default function VerifyPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-app" />}>
+    <Suspense fallback={<div className="h-dvh bg-app"><LoadingScreen label="Loading" /></div>}>
       <VerifyInner />
     </Suspense>
   );

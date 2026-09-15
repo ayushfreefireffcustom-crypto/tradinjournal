@@ -1,7 +1,7 @@
 // Macro membership — apply / status / admin approve|reject.
 // userId is the better-auth user id (no FK on User table).
 import { prisma } from '@tradinjournal/db';
-import { env } from '@tradinjournal/config';
+import { isAdmin } from '../../lib/admin.js';
 import { logger } from '@tradinjournal/logger';
 import type { MacroMemberApplyInput, MacroMemberDto } from '@tradinjournal/contracts';
 import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from '../../http/errors.js';
@@ -31,8 +31,7 @@ function toDto(row: {
 }
 
 export function isMacroAdmin(email: string | null | undefined): boolean {
-  if (!email) return false;
-  return env.MACRO_ADMIN_EMAILS_LIST.includes(email.trim().toLowerCase());
+  return isAdmin(email);
 }
 
 /** Current membership for a user, or null if they never applied. */

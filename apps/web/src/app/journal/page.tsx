@@ -186,12 +186,12 @@ export default function ChartReplayPage() {
 
       {loading ? (
         <div className="grid grid-cols-12 gap-2 sm:gap-3 p-2 sm:p-3 lg:p-4">
-          <div className="col-span-12 lg:col-span-3 tcard p-0 h-[420px] lg:h-[calc(100dvh-120px)]">
+          <div className="hidden lg:block col-span-3 tcard p-0 h-[calc(100dvh-120px)]">
             <div className="p-4 border-b border-border-soft"><div className="shimmer h-4 w-24" /></div>
             <div className="p-3 flex flex-col gap-2">{Array.from({ length: 8 }).map((_, i) => <div key={i} className="shimmer h-14" />)}</div>
           </div>
-          <div className="col-span-12 lg:col-span-6 tcard p-0 h-[420px] lg:h-[calc(100dvh-120px)]"><div className="shimmer w-full h-full" /></div>
-          <div className="col-span-12 lg:col-span-3 tcard p-0 h-[420px] lg:h-[calc(100dvh-120px)]">
+          <div className="col-span-12 lg:col-span-6 tcard p-0 h-[280px] sm:h-[360px] lg:h-[calc(100dvh-120px)]"><div className="shimmer w-full h-full" /></div>
+          <div className="hidden lg:block col-span-3 tcard p-0 h-[calc(100dvh-120px)]">
             <div className="p-4 border-b border-border-soft"><div className="shimmer h-4 w-28" /></div>
             <div className="p-4 flex flex-col gap-3">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="shimmer h-16" />)}</div>
           </div>

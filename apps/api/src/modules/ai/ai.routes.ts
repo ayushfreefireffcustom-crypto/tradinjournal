@@ -1,5 +1,6 @@
 import { Router, type IRouter } from 'express';
 import { requireAuth } from '../../http/middleware/require-auth.js';
+import { requirePlatformAccess } from '../../http/middleware/require-platform-access.js';
 import { requireInternalToken } from '../../http/middleware/require-internal-token.js';
 import { validateBody, validateQuery } from '../../http/middleware/validate.js';
 import {
@@ -36,7 +37,7 @@ aiRouter.post(
 );
 
 // Everything past this point requires a signed-in user.
-aiRouter.use(requireAuth);
+aiRouter.use(requireAuth, requirePlatformAccess);
 
 aiRouter.post('/chat', aiRateLimit, validateBody(aiChatSchema), handleChat);
 // Rate-limited alongside chat: a cache miss (or ?force=1) costs a model call.

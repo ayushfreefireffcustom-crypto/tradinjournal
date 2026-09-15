@@ -6,6 +6,7 @@ import { env } from '@tradinjournal/config';
 import { logger } from '@tradinjournal/logger';
 import { sendEmail } from './email/client.js';
 import { verificationOtpEmail, welcomeEmail, resetPasswordEmail } from './email/templates.js';
+import { geocodeUserIfNeeded } from '../modules/me/location.service.js';
 
 export const auth = betterAuth({
   database: prismaAdapter(prisma, {
@@ -16,20 +17,36 @@ export const auth = betterAuth({
   baseURL: env.AUTH_URL,
   trustedOrigins: [env.CORS_ORIGIN, env.APP_URL],
 
+  user: {
+    additionalFields: {
+      country: { type: 'string', required: false, input: true },
+      city: { type: 'string', required: false, input: true },
+      postalCode: { type: 'string', required: false, input: true },
+      lat: { type: 'number', required: false, input: false },
+      lng: { type: 'number', required: false, input: false },
+      locationUpdatedAt: { type: 'date', required: false, input: false },
+    },
+  },
+
+  databaseHooks: {
+    user: {
+      create: {
+        after: async (user) => {
+          // Best-effort geocode when signup included location fields.
+          void geocodeUserIfNeeded(user.id).catch(err => {
+            logger.warn('[auth] post-signup geocode failed', { userId: user.id, err });
+          });
+        },
+      },
+    },
+  },
+
   // ── Email + password ───────────────────────────────────────────────────────
-  // Password sign-ups must verify their email (via the OTP plugin below) before
-  // they can sign in. OAuth users skip this — their provider already verified
-  // the address.
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: true,
   },
 
-  // ── Email verification lifecycle ─────────────────────────────────────────────
-  // Fired by the emailOTP verify-email route once the code checks out. We use it
-  // to send a one-time welcome email. autoSignInAfterVerification creates a
-  // session on successful OTP verify so the user lands straight on /dashboard
-  // instead of bouncing to /login to enter their password again.
   emailVerification: {
     autoSignInAfterVerification: true,
     afterEmailVerification: async (user) => {
@@ -37,17 +54,11 @@ export const auth = betterAuth({
         const { subject, html } = welcomeEmail(user.name ?? '');
         await sendEmail({ to: user.email, subject, html });
       } catch (err) {
-        // Never let a welcome-email failure break the verify flow.
         logger.error('Failed to send welcome email', { userId: user.id, err });
       }
     },
   },
 
-  // ── Account linking ──────────────────────────────────────────────────────────
-  // If someone signed up with email+password and later signs in with Google
-  // (same address), link the Google identity to the existing account instead of
-  // erroring with `account_not_linked`. Safe because Google is a verified-email
-  // provider, so it proves ownership of the address.
   account: {
     accountLinking: {
       enabled: true,
@@ -55,10 +66,6 @@ export const auth = betterAuth({
     },
   },
 
-  // ── Google OAuth ───────────────────────────────────────────────────────────
-  // Activated only when credentials are present in .env.
-  // Callback URL (register this in Google Cloud Console):
-  //   {AUTH_URL}/api/auth/callback/google
   socialProviders: {
     ...(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
       ? {
@@ -70,21 +77,15 @@ export const auth = betterAuth({
       : {}),
   },
 
-  // ── Session ────────────────────────────────────────────────────────────────
   session: {
-    expiresIn: 60 * 60 * 24 * 7,   // 7 days
-    updateAge: 60 * 60 * 24,        // refresh cookie if older than 1 day
+    expiresIn: 60 * 60 * 24 * 7,
+    updateAge: 60 * 60 * 24,
     cookieCache: {
       enabled: true,
-      maxAge: 60 * 5,               // re-validate session every 5 min
+      maxAge: 60 * 5,
     },
   },
 
-  // The web app (www.tradelogs.com) fetches the API (api.tradelogs.com) with
-  // credentials. Even though they share the tradelogs.com registrable domain,
-  // browsers treat different subdomains as cross-site for cookies, so the session
-  // cookie must be SameSite=None; Secure to be sent on that cross-subdomain fetch.
-  // (Secure cookies are also allowed on http://localhost, so local dev works too.)
   advanced: {
     defaultCookieAttributes: {
       sameSite: 'none',
@@ -92,18 +93,12 @@ export const auth = betterAuth({
     },
   },
 
-  // ── Plugins ──────────────────────────────────────────────────────────────────
-  // Email OTP: on sign-up we auto-send a 6-digit code; the user confirms it on
-  // the /verify screen. Delivery goes through Resend (or the dev-console
-  // fallback when RESEND_API_KEY is unset).
   plugins: [
     emailOTP({
       otpLength: 6,
-      expiresIn: 60 * 10, // 10 minutes
+      expiresIn: 60 * 10,
       sendVerificationOnSignUp: true,
       async sendVerificationOTP({ email, otp, type }) {
-        // Same OTP plumbing serves signup verification and password reset — pick
-        // the right email for each.
         if (type === 'email-verification') {
           const { subject, html } = verificationOtpEmail(otp);
           await sendEmail({ to: email, subject, html, devNote: `Verify OTP for ${email}: ${otp}` });
