@@ -33,7 +33,7 @@ const NAV: { href: string; label: string; icon: Icon }[] = [
   { href: '/notebook',  label: 'JOURNAL',      icon: NotePencil },
   { href: '/markets',   label: 'MARKETS',      icon: Newspaper },
   { href: '/macro',     label: 'MACRO',        icon: Globe },
-  { href: '/trader',    label: 'TRADER MASTER', icon: Crosshair },
+  { href: '/trader',    label: 'SIGNALX',       icon: Crosshair },
   { href: '/coach',     label: 'AI COACH',     icon: Robot },
   { href: '/brokers',   label: 'BROKERS',      icon: Bank },
   { href: '/settings',  label: 'SETTINGS',     icon: GearSix },

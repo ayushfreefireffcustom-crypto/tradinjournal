@@ -8,13 +8,13 @@ import StrategyBuilder from '@/components/trader/strategy-builder';
 
 export default function TraderPage() {
   return (
-    <AppShell pageTitle="Trader Master" pageSubtitle="// AI TRADE ANALYSIS">
+    <AppShell pageTitle="SignalX" pageSubtitle="// AI TRADE ANALYSIS">
       <div className="flex flex-col h-full min-h-0" data-testid="trader-page">
         <div className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-5">
           <div className="mx-auto w-full max-w-6xl">
             <header className="mb-5 animate-[fade-up_0.35s_ease_both]">
               <h1 className="font-display font-semibold text-xl sm:text-2xl tracking-tight text-fg">
-                Trader Master
+                SignalX
               </h1>
               <p className="mt-1 text-sm text-fg-2">Direction, levels, and graded outcomes.</p>
             </header>

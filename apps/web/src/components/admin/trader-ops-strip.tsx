@@ -36,7 +36,7 @@ export function TraderOpsStrip() {
   return (
     <section className="tcard p-4 sm:p-5 min-w-0" data-testid="admin-trader-ops">
       <div className="flex items-center justify-between gap-2 mb-3">
-        <div className="text-[10px] tracking-[0.2em] text-fg-3 uppercase">Trader Master</div>
+        <div className="text-[10px] tracking-[0.2em] text-fg-3 uppercase">SignalX</div>
         <div className="text-[11px] text-fg-2">{champ}</div>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">

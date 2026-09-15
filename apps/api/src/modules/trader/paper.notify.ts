@@ -59,7 +59,7 @@ export function paperAlertEmail(a: PaperAlert): { subject: string; html: string 
 <p>${text[0]}</p>
 <p>${text[1]}</p>
 ${text[2] && a.event === 'close' ? `<p>${text[2]}</p>` : ''}
-<p><a href="${href}">Open Trader Master</a></p>
+<p><a href="${href}">Open SignalX</a></p>
 <p style="color:#666;font-size:12px">${text[text.length - 1]}</p>
 </div>`;
   return { subject: subject(a), html };
