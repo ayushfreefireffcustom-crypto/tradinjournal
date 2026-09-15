@@ -44,7 +44,7 @@ export default function ConfluencePanel({ bias }: { bias: MacroState['bias'] }) 
 
       <div className="flex-1 flex items-center gap-4 mt-2 min-h-0">
         <div className="flex flex-col items-center shrink-0">
-          <svg viewBox="0 0 120 70" className="w-[132px]" aria-hidden>
+          <svg viewBox="0 0 120 70" className="w-[132px] h-auto aspect-[120/70]" aria-hidden>
             <path d="M 18 58 A 42 42 0 0 1 102 58" fill="none" stroke="var(--color-border-strong)" strokeWidth="8" strokeLinecap="round" />
             <path
               d="M 18 58 A 42 42 0 0 1 102 58"
@@ -53,7 +53,6 @@ export default function ConfluencePanel({ bias }: { bias: MacroState['bias'] }) 
               strokeWidth="8"
               strokeLinecap="round"
               strokeDasharray={`${(live / 100) * arcLen} ${arcLen}`}
-              className="gauge-arc-anim"
             />
             <line x1={cx} y1={cy} x2={nx} y2={ny} stroke="var(--color-fg)" strokeWidth="2" strokeLinecap="round" />
             <circle cx={cx} cy={cy} r="3" fill="var(--color-fg)" />
@@ -80,14 +79,23 @@ export default function ConfluencePanel({ bias }: { bias: MacroState['bias'] }) 
                     </span>
                   </div>
                   <div className="mt-1 h-1.5 rounded-full bg-border-soft overflow-hidden relative">
-                    <span className="absolute left-1/2 top-0 h-full w-px bg-border-strong/70" />
-                    <div
-                      className={`h-full bar-grow-x ${toneBar(tone)}`}
-                      style={{
-                        width: `${Math.max(0, Math.min(100, b.score))}%`,
-                        ['--i' as string]: i,
-                      }}
-                    />
+                    <span className="absolute left-1/2 top-0 h-full w-px bg-border-strong/70 z-10" />
+                    {(() => {
+                      const s = Math.max(0, Math.min(100, b.score));
+                      const left = Math.min(s, 50);
+                      const width = Math.abs(s - 50);
+                      return (
+                        <div
+                          className={`absolute top-0 h-full bar-grow-x ${toneBar(tone)}`}
+                          style={{
+                            left: `${left}%`,
+                            width: `${width}%`,
+                            transformOrigin: s >= 50 ? 'left center' : 'right center',
+                            ['--i' as string]: i,
+                          }}
+                        />
+                      );
+                    })()}
                   </div>
                 </div>
               );

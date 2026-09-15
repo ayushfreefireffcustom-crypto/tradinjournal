@@ -51,7 +51,7 @@ export default function LayoutGrid({
               </button>
             )}
           </div>
-          <div className="flex-1 min-h-0">
+          <div className="flex-1 min-h-[200px] sm:min-h-[280px] h-full relative">
             <KlineChart ref={handle => registerRef(p.id, handle)} symbol={p.symbol} tf={p.tf} />
           </div>
         </div>

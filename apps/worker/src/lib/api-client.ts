@@ -99,3 +99,53 @@ export function dispatchPriceAlerts(params: { bucket: string }): Promise<{ check
 export function ingestMacro(params: { reason: string }): Promise<{ ingested: number }> {
   return request('/internal/macro/ingest', { method: 'POST', body: JSON.stringify(params) });
 }
+
+export function gradeTraderAnalyses(params: {
+  bucket: string;
+  limit?: number;
+}): Promise<{ scanned: number; graded: number; stillOpen: number; errors: number }> {
+  return request('/internal/trader/grade', {
+    method: 'POST',
+    body: JSON.stringify({ bucket: params.bucket, limit: params.limit }),
+  });
+}
+
+export function trainTraderMeta(params: {
+  bucket: string;
+}): Promise<{
+  trained: boolean;
+  reason?: string;
+  sampleSize?: number;
+  oofAuc?: number | null;
+  trainHits?: number;
+  trainMisses?: number;
+}> {
+  return request('/internal/trader/meta/train', {
+    method: 'POST',
+    body: JSON.stringify({ bucket: params.bucket }),
+  });
+}
+
+export function trainTraderLgbm(params: { bucket: string }): Promise<{
+  trained: boolean;
+  serving: boolean;
+  reason?: string;
+  sampleSize?: number;
+}> {
+  return request('/internal/trader/meta/lgbm', {
+    method: 'POST',
+    body: JSON.stringify({ bucket: params.bucket }),
+  });
+}
+
+export function tickTraderPaper(params: { bucket: string }): Promise<{
+  scanned: number;
+  opened: number;
+  closed: number;
+  errors: number;
+}> {
+  return request('/internal/trader/paper/tick', {
+    method: 'POST',
+    body: JSON.stringify({ bucket: params.bucket }),
+  });
+}

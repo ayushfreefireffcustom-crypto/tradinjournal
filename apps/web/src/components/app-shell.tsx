@@ -3,11 +3,15 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Gauge, Table, ChartLineUp, CalendarBlank, Newspaper, FilmSlate, NotePencil, Bank, Robot, GearSix, ChartBar, Globe, type Icon } from '@phosphor-icons/react';
+import { Gauge, Table, ChartLineUp, CalendarBlank, Newspaper, FilmSlate, NotePencil, Bank, Robot, GearSix, ChartBar, Globe, Crosshair, type Icon } from '@phosphor-icons/react';
 import type { BrokerAccount } from '@/lib/api';
 import { authClient } from '@/lib/auth-client';
 import Logo from '@/components/logo';
 import NotificationBell from '@/components/notification-bell';
+import { LoadingScreen } from '@/components/loader';
+import { usePlatformAccess } from '@/lib/use-platform-access';
+import { UsageTracker } from '@/components/usage-tracker';
+import LocationGate from '@/components/location-gate';
 
 interface Props {
   children: React.ReactNode;
@@ -29,10 +33,13 @@ const NAV: { href: string; label: string; icon: Icon }[] = [
   { href: '/notebook',  label: 'JOURNAL',      icon: NotePencil },
   { href: '/markets',   label: 'MARKETS',      icon: Newspaper },
   { href: '/macro',     label: 'MACRO',        icon: Globe },
+  { href: '/trader',    label: 'TRADER MASTER', icon: Crosshair },
   { href: '/coach',     label: 'AI COACH',     icon: Robot },
   { href: '/brokers',   label: 'BROKERS',      icon: Bank },
   { href: '/settings',  label: 'SETTINGS',     icon: GearSix },
 ];
+
+const ADMIN_NAV = { href: '/admin', label: 'ADMIN', icon: GearSix };
 
 export default function AppShell({
   children, accounts = [], selectedAccount, onSelectAccount, pageTitle, pageSubtitle,
@@ -40,6 +47,7 @@ export default function AppShell({
   const pathname = usePathname();
   const router = useRouter();
   const { data: session, isPending } = authClient.useSession();
+  const { status: accessStatus, loading: accessLoading, blocked: accessBlocked } = usePlatformAccess();
   const [clock, setClock] = useState('');
   const [drawerOpen, setDrawerOpen] = useState(false);
 
@@ -64,7 +72,41 @@ export default function AppShell({
     return () => { document.body.style.overflow = ''; };
   }, [drawerOpen]);
 
-  if (isPending || !session?.session) return null;
+  // Only show the full-screen gate on the very first load (session pending or
+  // first-ever access fetch). Once resolved, navigating never blanks the shell.
+  const gatePending = isPending || (!session?.session && !isPending) || (accessLoading && !accessStatus);
+
+  if (gatePending) {
+    return (
+      <div className="h-dvh w-full bg-app flex items-center justify-center" data-testid="app-shell-loading">
+        <LoadingScreen />
+      </div>
+    );
+  }
+
+  if (accessBlocked) {
+    return (
+      <div className="min-h-dvh flex items-center justify-center bg-app p-6">
+        <div className="tcard p-8 max-w-sm text-center space-y-4">
+          <div className="font-display font-black text-[17px] tracking-tight select-none">
+            TRADE<span className="text-profit">logs</span>
+          </div>
+          <div className="text-[10px] tracking-[0.2em] text-warning">// ACCESS CHECK FAILED</div>
+          <p className="text-sm text-fg-2">Could not verify platform access. Check your connection and retry.</p>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="btn btn-primary w-full py-2.5 text-[11px]"
+          >
+            RETRY
+          </button>
+          <a href="/" className="block text-[10px] text-fg-3 hover:text-fg transition-colors tracking-widest">
+            ← GO HOME
+          </a>
+        </div>
+      </div>
+    );
+  }
 
   const SidebarBody = (
     <>
@@ -81,7 +123,7 @@ export default function AppShell({
       </div>
 
       <nav className="px-2 py-4 flex flex-col gap-0.5">
-        {NAV.map(({ href, label, icon: Icon }) => {
+        {[...(accessStatus?.isAdmin ? [ADMIN_NAV] : []), ...NAV].map(({ href, label, icon: Icon }) => {
           const active = pathname === href;
           return (
             <Link
@@ -128,6 +170,8 @@ export default function AppShell({
 
   return (
     <div className="flex h-dvh overflow-hidden bg-app text-fg" data-testid="app-shell">
+      <UsageTracker />
+      <LocationGate />
       {/* Desktop sidebar — full viewport height, its footer pinned to the bottom */}
       <aside className="hidden lg:flex w-60 shrink-0 border-r border-border bg-app flex-col overflow-y-auto no-scrollbar" data-testid="sidebar">
         {SidebarBody}

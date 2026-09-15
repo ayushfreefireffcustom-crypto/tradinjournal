@@ -26,6 +26,14 @@ model User {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
+  // Worldwide location (collected at signup / blocking modal)
+  country           String?
+  city              String?
+  postalCode        String?
+  lat               Float?
+  lng               Float?
+  locationUpdatedAt DateTime?
+
   sessions       Session[]
   accounts       Account[]
   brokerAccounts BrokerAccount[]
@@ -725,4 +733,211 @@ model MacroSignal {
 
   @@index([asset, asOf(sort: Desc)])
   @@map("macro_signal")
+}
+
+// On-demand Trader Master analysis. One row per analyze request. Levels are
+// always engine-validated; `aiUsed` records whether an LLM wrote the narrative.
+// Outcome fields are filled by the grading cron (triple-barrier vs later candles).
+model TraderAnalysis {
+  id           String   @id @default(cuid())
+  userId       String? // null = anonymous / unauthenticated free use
+  symbol       String
+  assetClass   String
+  timeframes   String[] // e.g. ["1h","4h"]
+  direction    String // LONG | SHORT | WAIT
+  entryLow     Decimal  @db.Decimal(24, 8)
+  entryHigh    Decimal  @db.Decimal(24, 8)
+  stop         Decimal  @db.Decimal(24, 8)
+  t1           Decimal  @db.Decimal(24, 8)
+  t2           Decimal  @db.Decimal(24, 8)
+  t3           Decimal  @db.Decimal(24, 8)
+  support      Json // [{ price, label }]
+  resistance   Json // [{ price, label }]
+  confidence   Int
+  rationale    String   @db.Text
+  invalidation String   @db.Text
+  detail       String   @db.Text
+  perTimeframe Json // [{ tf, trend, rsi, atr, note }]
+  // Multi-lane breakdown once reconciler ships: [{ id, score, weight, rationale }]
+  laneBreakdown Json?
+  // Meta-label feature snapshot at analyze time (for training / audit).
+  featureSnapshot Json?
+  // heuristic | meta_v1 — how `confidence` was produced.
+  confidenceSource String?
+  rawConfidence    Int? // pre-calibration heuristic when meta overrides
+  aiUsed       Boolean  @default(false)
+  asOf         DateTime
+  engineVer    String
+  createdAt    DateTime @default(now())
+
+  // Triple-barrier grading — null until the grader resolves a terminal outcome.
+  // TARGET_HIT | STOP_HIT | EXPIRED | SKIPPED (WAIT never graded as a trade).
+  outcome      String?
+  hitLevel     String? // T1 | T2 | T3 when TARGET_HIT
+  gradedAt     DateTime?
+  horizonBars  Int?
+  horizonTf    String?
+  mfePct       Float? // max favorable excursion % from entry mid
+  maePct       Float? // max adverse excursion % from entry mid
+
+  @@index([symbol, asOf(sort: Desc)])
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([outcome, asOf])
+  @@map("trader_analysis")
+}
+
+// Plain-English → compiled rules → backtest (Phase 4 strategy builder).
+model TraderStrategy {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String
+  prompt      String   @db.Text
+  rules       Json // typed rule object from LLM parse
+  status      String   @default("draft") // draft | paper | archived
+  lastBacktest Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([status])
+  @@map("trader_strategy")
+}
+
+// Paper book for a promoted strategy. Educational fills only — never a broker order.
+model TraderPaperPosition {
+  id           String    @id @default(cuid())
+  strategyId   String
+  userId       String
+  symbol       String
+  timeframe    String
+  side         String // LONG | SHORT
+  entry        Decimal   @db.Decimal(24, 8)
+  stop         Decimal   @db.Decimal(24, 8)
+  target       Decimal   @db.Decimal(24, 8)
+  status       String    @default("open") // open | target | stop | expired
+  entryBarTime DateTime
+  exit         Decimal?  @db.Decimal(24, 8)
+  exitBarTime  DateTime?
+  mfePct       Float?
+  maePct       Float?
+  pnlPct       Float?
+  openedAt     DateTime  @default(now())
+  closedAt     DateTime?
+
+  @@unique([strategyId, symbol, entryBarTime])
+  @@index([status, strategyId])
+  @@index([userId, openedAt(sort: Desc)])
+  @@map("trader_paper_position")
+}
+
+// ─── Platform access control + admin ─────────────────────────────────────────
+
+enum AccessSource {
+  MANUAL_GRANT
+  ELEFIN_VERIFIED
+}
+
+enum ElefinStatus {
+  PENDING
+  VERIFIED
+  FAILED
+}
+
+enum ActivityStatus {
+  UNKNOWN
+  ACTIVE
+  INACTIVE
+}
+
+/// Manual email whitelist — admin-granted full bypass with audit note.
+model AccessGrant {
+  id             String    @id @default(cuid())
+  email          String    @unique
+  note           String    @db.Text
+  grantedBy      String
+  grantedByEmail String
+  revokedAt      DateTime?
+  createdAt      DateTime  @default(now())
+
+  @@index([revokedAt])
+  @@map("access_grant")
+}
+
+/// Per-user platform access state (better-auth user id, no FK on User).
+model UserAccess {
+  id                String         @id @default(cuid())
+  userId            String         @unique
+  source            AccessSource?
+  elefinStatus      ElefinStatus   @default(PENDING)
+  elefinUid         String?
+  elefinVerifiedAt  DateTime?
+  activityStatus    ActivityStatus @default(UNKNOWN)
+  tradeCount7d      Int            @default(0)
+  activityCheckedAt DateTime?
+  lastDeniedReason  String?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  @@index([elefinStatus])
+  @@index([activityStatus])
+  @@map("user_access")
+}
+
+/// Key-value system settings (maintenance mode, etc.).
+model SystemSetting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+
+  @@map("system_setting")
+}
+
+/// Admin action audit trail.
+model AdminAuditLog {
+  id          String   @id @default(cuid())
+  action      String
+  actorId     String
+  actorEmail  String
+  targetType  String?
+  targetId    String?
+  details     Json?
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt(sort: Desc)])
+  @@index([actorId])
+  @@map("admin_audit_log")
+}
+
+/// Product dwell-time session (heartbeat-based, separate from auth Session).
+model UsageSession {
+  id          String    @id @default(cuid())
+  userId      String
+  startedAt   DateTime  @default(now())
+  lastSeenAt  DateTime  @default(now())
+  endedAt     DateTime?
+  durationSec Int       @default(0)
+  pagePath    String?
+  userAgent   String?
+
+  @@index([userId, startedAt])
+  @@index([lastSeenAt])
+  @@map("usage_session")
+}
+
+/// Product analytics events (page views, features, heartbeats).
+model UsageEvent {
+  id        String   @id @default(cuid())
+  userId    String
+  sessionId String?
+  type      String
+  path      String?
+  feature   String?
+  meta      Json?
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([type, createdAt])
+  @@index([feature, createdAt])
+  @@map("usage_event")
 }

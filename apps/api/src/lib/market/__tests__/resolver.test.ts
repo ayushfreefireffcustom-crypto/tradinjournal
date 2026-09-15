@@ -14,6 +14,9 @@ vi.mock('../providers/mt5.js', () => ({
 vi.mock('../providers/twelvedata.js', () => ({
   createTwelveDataProvider: () => ({ name: 'twelvedata', getCandles: async () => [] }),
 }));
+vi.mock('../providers/yahoo.js', () => ({
+  createYahooProvider: () => ({ name: 'yahoo', getCandles: async () => [] }),
+}));
 
 import { resolveProvider } from '../providers/index.js';
 
@@ -32,9 +35,9 @@ describe('resolveProvider routing', () => {
     expect(p?.name).toBe('binance');
   });
 
-  it('non-crypto symbol resolves to null when Twelve Data is not configured', async () => {
+  it('non-crypto symbol falls back to the free Yahoo provider when Twelve Data is off', async () => {
     isBinanceSymbol.mockResolvedValue(false);
     const p = await resolveProvider('AAPL', false);
-    expect(p).toBeNull();
+    expect(p?.name).toBe('yahoo');
   });
 });

@@ -375,6 +375,9 @@ select.tinput::-ms-expand { display: none; }
   animation: shimmer 1.5s linear infinite;
   border-radius: var(--radius-btn);
 }
+@media (prefers-reduced-motion: reduce) {
+  .shimmer { animation: none; }
+}
 
 /* Text shimmer for the coach's "Searching / Thinking…" state — a moving
    highlight sweeps across the label so the wait reads as intentional. */

@@ -1,6 +1,11 @@
 import type { Request, Response, NextFunction } from 'express';
 import { logger } from '@tradinjournal/logger';
-import { AppError, ValidationError } from '../errors.js';
+import {
+  AppError,
+  ValidationError,
+  AccessInactiveError,
+  MaintenanceError,
+} from '../errors.js';
 
 export function errorHandler(
   err: Error,
@@ -23,8 +28,15 @@ export function errorHandler(
     if (err.statusCode >= 500) {
       logger.error(err.message, { code: err.code, stack: err.stack });
     }
+    const extra: Record<string, unknown> = {};
+    if (err instanceof AccessInactiveError && err.tradeCount7d != null) {
+      extra.tradeCount7d = err.tradeCount7d;
+    }
+    if (err instanceof MaintenanceError && err.maintenanceMessage) {
+      extra.maintenanceMessage = err.maintenanceMessage;
+    }
     res.status(err.statusCode).json({
-      error: { code: err.code, message: err.message },
+      error: { code: err.code, message: err.message, ...extra },
     });
     return;
   }

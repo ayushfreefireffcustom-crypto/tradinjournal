@@ -5,6 +5,7 @@ import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import AppShell from '@/components/app-shell';
 import DealsTable from '@/components/deals-table';
+import { LoadingScreen } from '@/components/loader';
 import { api, type BrokerAccount, type Deal, type Trade, type JournalEntry } from '@/lib/api';
 import { persistSelectedAccountId } from '@/lib/use-accounts';
 
@@ -30,7 +31,7 @@ function price(v: number | null | undefined, symbol: string) {
 
 export default function TradeDetailPage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<div className="h-dvh bg-app"><LoadingScreen label="Loading trade" /></div>}>
       <TradeDetail />
     </Suspense>
   );

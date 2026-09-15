@@ -6,9 +6,10 @@
 // history + live for us. klinecharts touches `window` at import, so it's loaded
 // dynamically inside useEffect (SSR-safe). The parent drives indicators/drawings
 // through the imperative handle.
-import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import type { Chart, KLineData, DataLoader, Period, Styles, DeepPartial } from 'klinecharts';
 import { marketApi, streamCandles, type Candle, type MarketTimeframe } from '@/lib/market-api';
+import { Loader } from '@/components/loader';
 
 export interface KlineChartHandle {
   createIndicator: (name: string) => void;
@@ -73,14 +74,22 @@ const OBSIDIAN_STYLES: DeepPartial<Styles> = {
   yAxis: { tickText: { color: '#71717A' } },
 };
 
+const BAR_LIMIT = 500;
+
 const KlineChart = forwardRef<KlineChartHandle, Props>(function KlineChart({ symbol, tf, accountId }, ref) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<Chart | null>(null);
   const accountIdRef = useRef<string | undefined>(accountId);
+  const symbolRef = useRef(symbol);
+  const tfRef = useRef(tf);
   const precisionForRef = useRef<string | null>(null);
   const liveUnsubRef = useRef<(() => void) | null>(null);
+  const resizeObsRef = useRef<ResizeObserver | null>(null);
+  const [ready, setReady] = useState(false);
 
   accountIdRef.current = accountId;
+  symbolRef.current = symbol;
+  tfRef.current = tf;
 
   useImperativeHandle(ref, () => ({
     createIndicator: name => { chartRef.current?.createIndicator(name); },
@@ -107,9 +116,11 @@ const KlineChart = forwardRef<KlineChartHandle, Props>(function KlineChart({ sym
         getBars: async ({ type, timestamp, symbol: sym, period, callback }) => {
           const barTf = periodToTf(period);
           const params: Parameters<typeof marketApi.candles>[0] = {
-            symbol: sym.ticker, tf: barTf, limit: 500, accountId: accountIdRef.current,
+            symbol: sym.ticker, tf: barTf, limit: BAR_LIMIT, accountId: accountIdRef.current,
           };
-          if (type === 'backward' && timestamp) params.to = Math.floor(timestamp / 1000) - 1;
+          // v10: forward = older bars (left edge), backward = newer bars (right edge).
+          if (type === 'forward' && timestamp) params.to = Math.floor(timestamp / 1000) - 1;
+          else if (type === 'backward' && timestamp) params.from = Math.floor(timestamp / 1000) + 1;
           try {
             const { candles } = await marketApi.candles(params);
             // One-time precision fit for this ticker (avoids trailing-zero prices).
@@ -118,9 +129,18 @@ const KlineChart = forwardRef<KlineChartHandle, Props>(function KlineChart({ sym
               precisionForRef.current = sym.ticker;
               chart.setSymbol({ ticker: sym.ticker, pricePrecision: derivePrecision(last.close), volumePrecision: 2 });
             }
-            callback(candles.map(toKLine), candles.length > 0);
+            const hasMore = candles.length >= BAR_LIMIT;
+            const more =
+              type === 'forward'
+                ? { forward: hasMore, backward: false }
+                : type === 'backward'
+                  ? { forward: false, backward: hasMore }
+                  : { forward: hasMore, backward: false };
+            callback(candles.map(toKLine), more);
+            if (type === 'init') setReady(true);
           } catch {
             callback([], false);
+            if (type === 'init') setReady(true);
           }
         },
         subscribeBar: ({ symbol: sym, period, callback }) => {
@@ -134,19 +154,27 @@ const KlineChart = forwardRef<KlineChartHandle, Props>(function KlineChart({ sym
           liveUnsubRef.current = null;
         },
       };
+      chart.setSymbol({ ticker: symbolRef.current });
+      chart.setPeriod(tfPeriod(tfRef.current));
       chart.setDataLoader(dataLoader);
-      chart.setSymbol({ ticker: symbol });
-      chart.setPeriod(tfPeriod(tf));
+      chart.resize();
+
+      const el = containerRef.current;
+      if (el && typeof ResizeObserver !== 'undefined') {
+        resizeObsRef.current = new ResizeObserver(() => chart.resize());
+        resizeObsRef.current.observe(el);
+      }
     })();
 
+    const mountEl = containerRef.current;
     return () => {
       disposed = true;
       liveUnsubRef.current?.();
+      resizeObsRef.current?.disconnect();
+      resizeObsRef.current = null;
       chartRef.current = null;
-      if (localChart && containerRef.current) {
-        void import('klinecharts').then(({ dispose }) => {
-          if (containerRef.current) dispose(containerRef.current);
-        });
+      if (localChart && mountEl) {
+        void import('klinecharts').then(({ dispose }) => dispose(mountEl));
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -156,12 +184,23 @@ const KlineChart = forwardRef<KlineChartHandle, Props>(function KlineChart({ sym
   useEffect(() => {
     const chart = chartRef.current;
     if (!chart) return;
+    setReady(false);
     precisionForRef.current = null; // re-fit precision for the new symbol
     chart.setSymbol({ ticker: symbol });
     chart.setPeriod(tfPeriod(tf));
+    chart.resize();
   }, [symbol, tf, accountId]);
 
-  return <div ref={containerRef} className="w-full h-full" data-testid="kline-chart" />;
+  return (
+    <div className="relative w-full h-full" data-testid="kline-chart-wrap">
+      {!ready && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-app/60 pointer-events-none">
+          <Loader size={24} label="Loading chart" />
+        </div>
+      )}
+      <div ref={containerRef} className="w-full h-full" data-testid="kline-chart" />
+    </div>
+  );
 });
 
 export default KlineChart;

@@ -1,5 +1,6 @@
 import { Router, type IRouter } from 'express';
 import { requireAuth } from '../../http/middleware/require-auth.js';
+import { requirePlatformAccess } from '../../http/middleware/require-platform-access.js';
 import { requireInternalToken } from '../../http/middleware/require-internal-token.js';
 import { validateBody } from '../../http/middleware/validate.js';
 import { createAlertSchema, updateAlertSchema, alertsDispatchSchema } from '@tradinjournal/contracts';
@@ -13,7 +14,7 @@ import {
 
 // Public (signed-in) price-alert routes.
 export const alertsRouter: IRouter = Router();
-alertsRouter.use(requireAuth);
+alertsRouter.use(requireAuth, requirePlatformAccess);
 alertsRouter.get('/', handleListAlerts);
 alertsRouter.post('/', validateBody(createAlertSchema), handleCreateAlert);
 alertsRouter.patch('/:id', validateBody(updateAlertSchema), handleUpdateAlert);

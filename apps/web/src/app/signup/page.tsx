@@ -8,6 +8,7 @@ import Logo from '@/components/logo';
 import GoogleButton from '@/components/google-button';
 import { authClient } from '@/lib/auth-client';
 import { useRedirectIfAuthed } from '@/lib/use-redirect-if-authed';
+import { COUNTRIES } from '@/lib/countries';
 
 function passwordStrength(pw: string): { score: number; label: string; color: string } {
   let score = 0;
@@ -28,13 +29,23 @@ export default function SignupPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [country, setCountry] = useState('');
+  const [city, setCity] = useState('');
+  const [postalCode, setPostalCode] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [agree, setAgree] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const strength = useMemo(() => passwordStrength(password), [password]);
-  const canSubmit = name.trim().length > 1 && email.includes('@') && strength.score >= 2 && agree;
+  const canSubmit =
+    name.trim().length > 1 &&
+    email.includes('@') &&
+    strength.score >= 2 &&
+    agree &&
+    country.length === 2 &&
+    city.trim().length > 0 &&
+    postalCode.trim().length > 0;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -42,9 +53,15 @@ export default function SignupPage() {
     setError('');
     setLoading(true);
     try {
-      const res = await authClient.signUp.email({ email, password, name });
+      const res = await authClient.signUp.email({
+        email,
+        password,
+        name,
+        country: country.toUpperCase(),
+        city: city.trim(),
+        postalCode: postalCode.trim(),
+      });
       if (res?.error) throw new Error(res.error.message ?? 'Could not create account');
-      // Email must be verified before sign-in — a 6-digit code was just emailed.
       router.push(`/verify?email=${encodeURIComponent(email)}`);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Sign up failed');
@@ -121,6 +138,39 @@ export default function SignupPage() {
                   className="tinput" data-testid="signup-email" placeholder="ops@yourdesk.io" autoComplete="email"
                 />
               </label>
+
+              <label className="flex flex-col gap-1.5">
+                <span className="text-[10px] tracking-[0.22em] text-fg-3">COUNTRY</span>
+                <select
+                  required
+                  value={country}
+                  onChange={e => setCountry(e.target.value)}
+                  className="tinput"
+                  data-testid="signup-country"
+                >
+                  <option value="">Select country…</option>
+                  {COUNTRIES.map(c => (
+                    <option key={c.code} value={c.code}>{c.name}</option>
+                  ))}
+                </select>
+              </label>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <label className="flex flex-col gap-1.5">
+                  <span className="text-[10px] tracking-[0.22em] text-fg-3">CITY</span>
+                  <input
+                    type="text" required value={city} onChange={e => setCity(e.target.value)}
+                    className="tinput" data-testid="signup-city" placeholder="e.g. London" autoComplete="address-level2"
+                  />
+                </label>
+                <label className="flex flex-col gap-1.5">
+                  <span className="text-[10px] tracking-[0.22em] text-fg-3">POSTAL / ZIP / PIN</span>
+                  <input
+                    type="text" required value={postalCode} onChange={e => setPostalCode(e.target.value)}
+                    className="tinput" data-testid="signup-postal" placeholder="e.g. SW1A 1AA" autoComplete="postal-code"
+                  />
+                </label>
+              </div>
 
               <label className="flex flex-col gap-1.5">
                 <span className="text-[10px] tracking-[0.22em] text-fg-3 flex items-center justify-between">

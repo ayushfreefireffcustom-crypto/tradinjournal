@@ -16,7 +16,12 @@ import { macroRouter, macroInternalRouter } from './modules/macro/macro.routes.j
 import { newsRouter, newsInternalRouter } from './modules/news/news.routes.js';
 import { notificationsRouter, pushRouter, notificationsInternalRouter } from './modules/notifications/notifications.routes.js';
 import { marketRouter, marketInternalRouter } from './modules/market/market.routes.js';
+import { traderRouter, traderInternalRouter } from './modules/trader/trader.routes.js';
 import { alertsRouter, alertsInternalRouter } from './modules/alerts/alerts.routes.js';
+import { adminRouter } from './modules/admin/admin.routes.js';
+import { accessRouter } from './modules/admin/access.routes.js';
+import { usageRouter } from './modules/usage/usage.routes.js';
+import { meRouter } from './modules/me/me.routes.js';
 
 export function createApp(): Express {
   const app = express();
@@ -41,9 +46,33 @@ export function createApp(): Express {
 
   app.use(express.json());
 
-  app.get('/health', (_req: Request, res: Response) => {
-    res.json({ data: { status: 'ok', service: 'api', time: new Date().toISOString() } });
+  app.get('/health', async (_req: Request, res: Response) => {
+    let maintenance: Awaited<ReturnType<typeof import('./modules/admin/settings.service.js').getMaintenanceMode>> = {
+      enabled: false,
+      message: null,
+      toggledBy: null,
+      toggledAt: null,
+    };
+    try {
+      const { getMaintenanceMode } = await import('./modules/admin/settings.service.js');
+      maintenance = await getMaintenanceMode();
+    } catch (err) {
+      logger.warn('[health] maintenance check failed', { err });
+    }
+    res.json({
+      data: {
+        status: 'ok',
+        service: 'api',
+        time: new Date().toISOString(),
+        maintenance,
+      },
+    });
   });
+
+  app.use('/api/access', accessRouter);
+  app.use('/api/admin', adminRouter);
+  app.use('/api/usage', usageRouter);
+  app.use('/api/me', meRouter);
 
   app.use('/api/accounts', accountsRouter);
   app.use('/api/trades', tradesRouter);
@@ -56,6 +85,7 @@ export function createApp(): Express {
   app.use('/api/market', marketRouter);
   app.use('/api/alerts', alertsRouter);
   app.use('/api/macro', macroRouter);
+  app.use('/api/trader', traderRouter);
   // Worker-to-API routes. Not under /api: no session, no CORS use case — the
   // shared-token guard on the router is the only way in.
   app.use('/internal/ai', aiInternalRouter);
@@ -65,6 +95,7 @@ export function createApp(): Express {
   app.use('/internal/market', marketInternalRouter);
   app.use('/internal/alerts', alertsInternalRouter);
   app.use('/internal/macro', macroInternalRouter);
+  app.use('/internal/trader', traderInternalRouter);
 
   app.use((_req: Request, res: Response) => {
     res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Route not found' } });

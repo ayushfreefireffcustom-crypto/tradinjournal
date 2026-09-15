@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
-import { LoadingScreen } from '@/components/loader';
+import { Loader } from '@/components/loader';
 import type { MacroMember, MacroMemberApplyInput } from '@/lib/macro-api';
 import { macroApi } from '@/lib/macro-api';
 
@@ -86,8 +86,8 @@ export default function MembershipPanel() {
 
   if (member === undefined && !error) {
     return (
-      <div className="min-h-[40vh]" data-testid="macro-membership-loading">
-        <LoadingScreen label="Loading access" />
+      <div className="min-h-[160px] flex items-center justify-center" data-testid="macro-membership-loading">
+        <Loader size={28} label="Loading access" />
       </div>
     );
   }

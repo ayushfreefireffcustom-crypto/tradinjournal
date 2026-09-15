@@ -63,7 +63,7 @@ export default function YieldCurve({ macro }: { macro: MacroState['macro'] }) {
       </div>
 
       <div className="flex-1 flex items-center">
-        <svg viewBox={`0 0 ${W} ${H}`} className="w-full mt-1" role="img" aria-label="US Treasury yield curve">
+        <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto aspect-[340/150] mt-1" role="img" aria-label="US Treasury yield curve">
           <defs>
             <linearGradient id="yc-fill" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="var(--color-profit)" stopOpacity="0.22" />

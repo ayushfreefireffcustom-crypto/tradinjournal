@@ -32,6 +32,14 @@ import {
   PRICE_ALERTS_SCHEDULER_ID,
   QUEUE_MACRO_INGEST,
   MACRO_INGEST_SCHEDULER_ID,
+  QUEUE_TRADER_GRADE,
+  TRADER_GRADE_SCHEDULER_ID,
+  QUEUE_TRADER_META,
+  TRADER_META_SCHEDULER_ID,
+  QUEUE_TRADER_LGBM,
+  TRADER_LGBM_SCHEDULER_ID,
+  QUEUE_TRADER_PAPER,
+  TRADER_PAPER_SCHEDULER_ID,
   createRedisConnection,
   getQueue,
   closeQueues,
@@ -46,6 +54,10 @@ import {
   type MarketWarmJob,
   type PriceAlertsJob,
   type MacroIngestJob,
+  type TraderGradeJob,
+  type TraderMetaTrainJob,
+  type TraderLgbmJob,
+  type TraderPaperJob,
 } from '@tradinjournal/queue';
 import { createWeeklyReviewWorker, isUnrecoverable as weeklyUnrecoverable } from './processors/weekly-review.js';
 import { createCalendarWorker, isUnrecoverable as calendarUnrecoverable } from './processors/calendar-ingest.js';
@@ -56,6 +68,10 @@ import { createDigestWorker, isUnrecoverable as digestUnrecoverable } from './pr
 import { createMarketWarmWorker, isUnrecoverable as marketWarmUnrecoverable } from './processors/market-warm.js';
 import { createPriceAlertsWorker, isUnrecoverable as priceAlertsUnrecoverable } from './processors/price-alerts.js';
 import { createMacroWorker, isUnrecoverable as macroUnrecoverable } from './processors/macro-ingest.js';
+import { createTraderGradeWorker, isUnrecoverable as traderGradeUnrecoverable } from './processors/trader-grade.js';
+import { createTraderMetaWorker, isUnrecoverable as traderMetaUnrecoverable } from './processors/trader-meta.js';
+import { createTraderLgbmWorker, isUnrecoverable as traderLgbmUnrecoverable } from './processors/trader-lgbm.js';
+import { createTraderPaperWorker, isUnrecoverable as traderPaperUnrecoverable } from './processors/trader-paper.js';
 
 const workers: Worker[] = [];
 let connection: ReturnType<typeof createRedisConnection> = null;
@@ -210,6 +226,68 @@ async function start(): Promise<void> {
     );
     attach(createMacroWorker(connection, macroQueue) as unknown as Worker, 'Macro ingest', macroUnrecoverable);
     logger.info(`Macro ingest scheduled: "${env.MACRO_INGEST_CRON}" UTC`);
+  }
+
+  // ── Trader Master grading ───────────────────────────────────────────────────
+  // Triple-barrier outcomes for published analyses — feeds the public track record.
+  const traderGradeQueue = getQueue<TraderGradeJob>(QUEUE_TRADER_GRADE);
+  if (traderGradeQueue) {
+    await traderGradeQueue.upsertJobScheduler(
+      TRADER_GRADE_SCHEDULER_ID,
+      { pattern: env.TRADER_GRADE_CRON, tz: 'UTC' },
+      { name: 'grade', data: { kind: 'trader-grade', bucket: timeBucket(new Date(), 'minute') } },
+    );
+    attach(
+      createTraderGradeWorker(connection, traderGradeQueue) as unknown as Worker,
+      'Trader grade',
+      traderGradeUnrecoverable,
+    );
+    logger.info(`Trader grade scheduled: "${env.TRADER_GRADE_CRON}" UTC`);
+  }
+
+  const traderMetaQueue = getQueue<TraderMetaTrainJob>(QUEUE_TRADER_META);
+  if (traderMetaQueue) {
+    await traderMetaQueue.upsertJobScheduler(
+      TRADER_META_SCHEDULER_ID,
+      { pattern: env.TRADER_META_TRAIN_CRON, tz: 'UTC' },
+      { name: 'train', data: { kind: 'trader-meta-train', bucket: timeBucket(new Date(), 'hour') } },
+    );
+    attach(
+      createTraderMetaWorker(connection, traderMetaQueue) as unknown as Worker,
+      'Trader meta',
+      traderMetaUnrecoverable,
+    );
+    logger.info(`Trader meta train scheduled: "${env.TRADER_META_TRAIN_CRON}" UTC`);
+  }
+
+  const traderLgbmQueue = getQueue<TraderLgbmJob>(QUEUE_TRADER_LGBM);
+  if (traderLgbmQueue) {
+    await traderLgbmQueue.upsertJobScheduler(
+      TRADER_LGBM_SCHEDULER_ID,
+      { pattern: env.TRADER_LGBM_TRAIN_CRON, tz: 'UTC' },
+      { name: 'train', data: { kind: 'trader-lgbm', bucket: timeBucket(new Date(), 'hour') } },
+    );
+    attach(
+      createTraderLgbmWorker(connection, traderLgbmQueue) as unknown as Worker,
+      'Trader lgbm',
+      traderLgbmUnrecoverable,
+    );
+    logger.info(`Trader LightGBM scheduled: "${env.TRADER_LGBM_TRAIN_CRON}" UTC`);
+  }
+
+  const traderPaperQueue = getQueue<TraderPaperJob>(QUEUE_TRADER_PAPER);
+  if (traderPaperQueue) {
+    await traderPaperQueue.upsertJobScheduler(
+      TRADER_PAPER_SCHEDULER_ID,
+      { pattern: env.TRADER_PAPER_CRON, tz: 'UTC' },
+      { name: 'tick', data: { kind: 'trader-paper', bucket: timeBucket(new Date(), 'minute') } },
+    );
+    attach(
+      createTraderPaperWorker(connection, traderPaperQueue) as unknown as Worker,
+      'Trader paper',
+      traderPaperUnrecoverable,
+    );
+    logger.info(`Trader paper scheduled: "${env.TRADER_PAPER_CRON}" UTC`);
   }
 
   logger.info(`Worker ready — ${workers.length} pipeline(s) registered.`);

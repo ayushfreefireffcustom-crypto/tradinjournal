@@ -14,6 +14,7 @@ import WatermarkNumber from '@/components/watermark-number';
 import { RevealGroup, RevealItem } from '@/components/reveal-group';
 import AnimatedNumber from '@/components/animated-number';
 import { useInView } from '@/hooks/use-in-view';
+import TerminalCtaButton from '@/components/terminal-cta-button';
 
 // Count-up number that starts when it scrolls into view (0 → value). Reuses the
 // AnimatedNumber tween; under reduced-motion it snaps instantly.
@@ -777,11 +778,11 @@ export default function LandingPage() {
           </nav>
           <div className="flex items-center gap-2 shrink-0">
             <Link href="/login" className="btn btn-ghost hidden xs:inline-flex" data-testid="nav-signin">SIGN IN</Link>
-            <Link href="/dashboard" className="btn btn-primary group" data-testid="nav-open-terminal">
+            <TerminalCtaButton className="btn btn-primary group" testId="nav-open-terminal">
               <span className="hidden sm:inline">GET STARTED</span>
               <span className="sm:hidden">START</span>
               <span aria-hidden className="transition-transform duration-[var(--dur-hover)] group-hover:translate-x-0.5">→</span>
-            </Link>
+            </TerminalCtaButton>
           </div>
         </div>
       </header>
@@ -803,10 +804,10 @@ export default function LandingPage() {
               Connects to MetaTrader 5, imports every trade automatically, and shows you the habits quietly costing you money.
             </Reveal>
             <Reveal delay={240} className="mt-8 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-5">
-              <Link href="/dashboard" className="btn btn-primary group px-6 py-3 text-[13px] justify-center" data-testid="hero-cta-launch">
+              <TerminalCtaButton className="btn btn-primary group px-6 py-3 text-[13px] justify-center" testId="hero-cta-launch">
                 GET STARTED FREE
                 <span aria-hidden className="transition-transform duration-[var(--dur-hover)] group-hover:translate-x-0.5">→</span>
-              </Link>
+              </TerminalCtaButton>
               <a href="#how" className="group inline-flex items-center justify-center gap-1.5 text-[13px] tracking-wide text-fg-2 hover:text-fg transition-colors" data-testid="hero-cta-features">
                 See how it works
                 <span aria-hidden className="transition-transform duration-[var(--dur-hover)] group-hover:translate-x-0.5">→</span>
@@ -1354,9 +1355,9 @@ export default function LandingPage() {
               Ready to find your <span className="text-gradient-brand">edge?</span>
             </h2>
             <p className="text-fg-2 text-[14px] sm:text-[15px] max-w-md mx-auto mt-5 sm:mt-6">Connect your MT5 in 90 seconds. See what&apos;s working by tomorrow morning.</p>
-            <Link href="/dashboard" className="btn btn-primary px-7 py-3 sm:px-8 sm:py-3.5 mt-7 sm:mt-8 inline-flex" data-testid="footer-cta-launch">
+            <TerminalCtaButton className="btn btn-primary px-7 py-3 sm:px-8 sm:py-3.5 mt-7 sm:mt-8 inline-flex" testId="footer-cta-launch">
               GET STARTED FREE →
-            </Link>
+            </TerminalCtaButton>
           </div>
         </Reveal>
       </section>

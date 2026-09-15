@@ -150,7 +150,7 @@ export default function ChartsPage() {
 
         {/* Chart grid + watchlist */}
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_220px] gap-2 sm:gap-3 lg:flex-1 lg:min-h-0">
-          <div className="min-h-[420px] lg:min-h-0 order-2 lg:order-1">
+          <div className="min-h-[420px] h-[min(70vh,640px)] lg:h-full lg:min-h-0 order-2 lg:order-1">
             <LayoutGrid
               panes={panes}
               activeId={activeId}

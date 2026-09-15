@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { LockKey } from '@phosphor-icons/react';
-import { LoadingScreen } from '@/components/loader';
+import { Loader } from '@/components/loader';
 import { macroApi, type MacroSignal } from '@/lib/macro-api';
 import { formatMacroNumber } from '@/lib/macro-format';
 
@@ -51,8 +51,8 @@ export default function SignalBoard({
 
   if (loading) {
     return (
-      <div className="min-h-[40vh]" data-testid="macro-signals-loading">
-        <LoadingScreen label="Loading signals" />
+      <div className="min-h-[200px] flex items-center justify-center" data-testid="macro-signals-loading">
+        <Loader size={28} label="Loading signals" />
       </div>
     );
   }

@@ -74,3 +74,27 @@ export class BrokerAuthError extends AppError {
     super(409, 'BROKER_AUTH_FAILED', message);
   }
 }
+
+export class MaintenanceError extends AppError {
+  constructor(
+    message = 'The platform is temporarily under maintenance. Please try again later.',
+    public readonly maintenanceMessage?: string,
+  ) {
+    super(503, 'MAINTENANCE', message);
+  }
+}
+
+export class AccessElefinRequiredError extends AppError {
+  constructor(message = 'Elefin account verification required') {
+    super(403, 'ACCESS_ELEFIN_REQUIRED', message);
+  }
+}
+
+export class AccessInactiveError extends AppError {
+  constructor(
+    message = 'Active trading required — connect your Elefin account and complete at least 2 trades in the past 7 days.',
+    public readonly tradeCount7d?: number,
+  ) {
+    super(403, 'ACCESS_INACTIVE', message);
+  }
+}

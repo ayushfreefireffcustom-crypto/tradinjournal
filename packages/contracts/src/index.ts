@@ -438,3 +438,231 @@ export const macroAssistantSchema = z.object({
   question: z.string().trim().min(1).max(2000),
 });
 export type MacroAssistantInput = z.infer<typeof macroAssistantSchema>;
+
+// ── Trader Master (on-demand technical analysis) ─────────────────────────────
+// An instrument + timeframe(s) → a structured "Analysis Report": direction,
+// entry zone, stop, three targets, support/resistance, confidence, rationale.
+// Chart-driven (OHLCV features), LLM-narrated, engine-validated levels.
+
+// TA-meaningful subset of MARKET_TIMEFRAMES. A single tf = single-timeframe
+// analysis; more than one = top-down multi-timeframe.
+export const TRADER_TIMEFRAMES = ['15m', '1h', '4h', '1d'] as const;
+export const traderTimeframeSchema = z.enum(TRADER_TIMEFRAMES);
+export type TraderTimeframe = z.infer<typeof traderTimeframeSchema>;
+
+export const traderDirectionSchema = z.enum(['LONG', 'SHORT', 'WAIT']);
+export type TraderDirection = z.infer<typeof traderDirectionSchema>;
+
+// POST /api/trader/analyze body.
+export const traderAnalyzeSchema = z.object({
+  symbol: z.string().trim().min(1).max(32),
+  // 1..4 distinct timeframes; deduped/validated server-side too.
+  timeframes: z.array(traderTimeframeSchema).min(1).max(TRADER_TIMEFRAMES.length),
+});
+export type TraderAnalyzeInput = z.infer<typeof traderAnalyzeSchema>;
+
+// A support or resistance price with a short human label (e.g. "swing low").
+export const traderLevelSchema = z.object({
+  price: z.number(),
+  label: z.string(),
+});
+export type TraderLevel = z.infer<typeof traderLevelSchema>;
+
+// Per-timeframe read shown in the "View Detailed Analysis" breakdown.
+export const traderTimeframeReadSchema = z.object({
+  tf: traderTimeframeSchema,
+  trend: z.enum(['up', 'down', 'range']),
+  rsi: z.number(),
+  atr: z.number(),
+  note: z.string(),
+});
+export type TraderTimeframeRead = z.infer<typeof traderTimeframeReadSchema>;
+
+export const traderOutcomeSchema = z.enum(['TARGET_HIT', 'STOP_HIT', 'EXPIRED', 'SKIPPED']);
+export type TraderOutcome = z.infer<typeof traderOutcomeSchema>;
+
+export const traderHitLevelSchema = z.enum(['T1', 'T2', 'T3']);
+export type TraderHitLevel = z.infer<typeof traderHitLevelSchema>;
+
+/** Independent lane score fed into reconcileLanes (−1 bearish … +1 bullish). */
+export const traderLaneResultSchema = z.object({
+  id: z.enum(['technical', 'macro', 'flow', 'news', 'ml']),
+  score: z.number().min(-1).max(1),
+  weight: z.number().min(0).max(1),
+  rationale: z.string(),
+  source: z.string().optional(),
+  asOf: z.string().optional(),
+  stale: z.boolean().optional(),
+});
+export type TraderLaneResult = z.infer<typeof traderLaneResultSchema>;
+
+export const traderAnalysisDtoSchema = z.object({
+  id: z.string().optional(),
+  symbol: z.string(),
+  assetClass: assetClassSchema,
+  timeframes: z.array(traderTimeframeSchema),
+  direction: traderDirectionSchema,
+  entryLow: z.number(),
+  entryHigh: z.number(),
+  stop: z.number(),
+  t1: z.number(),
+  t2: z.number(),
+  t3: z.number(),
+  support: z.array(traderLevelSchema),
+  resistance: z.array(traderLevelSchema),
+  confidence: z.number().min(0).max(100),
+  rationale: z.string(),
+  invalidation: z.string(),
+  detail: z.string(),
+  perTimeframe: z.array(traderTimeframeReadSchema),
+  laneBreakdown: z.array(traderLaneResultSchema).optional(),
+  confidenceSource: z.enum(['heuristic', 'meta_v1', 'meta_lgbm']).optional(),
+  rawConfidence: z.number().int().min(0).max(100).optional(),
+  featureSnapshot: z
+    .object({
+      version: z.literal(1),
+      names: z.array(z.string()),
+      values: z.array(z.number()),
+      heuristicConfidence: z.number(),
+    })
+    .optional(),
+  // true when an LLM produced the narrative (levels are always engine-validated).
+  aiUsed: z.boolean(),
+  asOf: z.string(),
+  engineVer: z.string(),
+  // Triple-barrier grade — null while still open / pending candles.
+  outcome: traderOutcomeSchema.nullable().optional(),
+  hitLevel: traderHitLevelSchema.nullable().optional(),
+  gradedAt: z.string().nullable().optional(),
+  horizonBars: z.number().int().nullable().optional(),
+  horizonTf: traderTimeframeSchema.nullable().optional(),
+  mfePct: z.number().nullable().optional(),
+  maePct: z.number().nullable().optional(),
+});
+export type TraderAnalysisDto = z.infer<typeof traderAnalysisDtoSchema>;
+
+export const traderStrategyCreateSchema = z.object({
+  prompt: z.string().trim().min(8).max(2000),
+  symbol: z.string().trim().min(1).max(32).optional(),
+  timeframe: traderTimeframeSchema.optional(),
+});
+export type TraderStrategyCreateInput = z.infer<typeof traderStrategyCreateSchema>;
+
+export const traderStrategyBacktestSchema = z.object({
+  symbol: z.string().trim().min(1).max(32),
+  timeframe: traderTimeframeSchema.optional(),
+});
+export type TraderStrategyBacktestInput = z.infer<typeof traderStrategyBacktestSchema>;
+
+export const traderMetaTrainSchema = z.object({
+  bucket: z.string().min(1).max(32),
+});
+export type TraderMetaTrainJob = z.infer<typeof traderMetaTrainSchema>;
+
+export const traderPaperTickSchema = z.object({
+  bucket: z.string().min(1).max(32),
+  limit: z.number().int().min(1).max(200).optional(),
+});
+export type TraderPaperTickJob = z.infer<typeof traderPaperTickSchema>;
+
+/** Honest aggregate track record for Trader Master (wins + losses + calibration). */
+export const traderCalibrationBucketSchema = z.object({
+  bucket: z.string(), // e.g. "70-79"
+  predicted: z.number(), // midpoint confidence used as predicted hit rate
+  count: z.number().int(),
+  hitRate: z.number().nullable(), // null when count === 0
+  targetHits: z.number().int(),
+  stopHits: z.number().int(),
+  expired: z.number().int(),
+});
+export type TraderCalibrationBucket = z.infer<typeof traderCalibrationBucketSchema>;
+
+export const traderTrackRecordSchema = z.object({
+  sampleSize: z.number().int(),
+  graded: z.number().int(),
+  pending: z.number().int(),
+  skipped: z.number().int(),
+  targetHits: z.number().int(),
+  stopHits: z.number().int(),
+  expired: z.number().int(),
+  /** Among TARGET_HIT + STOP_HIT only (expired excluded from win-rate denom). */
+  hitRate: z.number().nullable(),
+  /** Avg R expectancy using mid-entry → stop as 1R; T1=+1R, T2=+2R, T3=+3.2R approx. */
+  expectancyR: z.number().nullable(),
+  calibration: z.array(traderCalibrationBucketSchema),
+  bySymbol: z.array(z.object({
+    symbol: z.string(),
+    count: z.number().int(),
+    hitRate: z.number().nullable(),
+    targetHits: z.number().int(),
+    stopHits: z.number().int(),
+  })),
+  methodology: z.string(),
+  disclaimer: z.string(),
+  asOf: z.string(),
+});
+export type TraderTrackRecord = z.infer<typeof traderTrackRecordSchema>;
+
+export const traderGradeJobSchema = z.object({
+  bucket: z.string().min(1).max(32),
+  limit: z.number().int().min(1).max(200).optional(),
+});
+export type TraderGradeJob = z.infer<typeof traderGradeJobSchema>;
+
+// ── Platform access control + admin ───────────────────────────────────────────
+
+export {
+  accessSourceSchema,
+  elefinStatusSchema,
+  activityStatusSchema,
+  platformAccessStatusSchema,
+  accessStatusDtoSchema,
+  verifyElefinSchema,
+  createAccessGrantSchema,
+  accessGrantDtoSchema,
+  maintenanceModeSchema,
+  maintenanceModeDtoSchema,
+  adminOverviewDtoSchema,
+  adminUserRowDtoSchema,
+  adminUsersQuerySchema,
+  adminBrokerDetailSchema,
+  brokerBreakdownItemSchema,
+  signupDayCountSchema,
+  adminAuditItemSchema,
+  adminEngagementDtoSchema,
+  adminEngagementDaySchema,
+  adminUserDossierDtoSchema,
+  activityCheckResultSchema,
+  type AccessSourceDto,
+  type ElefinStatusDto,
+  type ActivityStatusDto,
+  type PlatformAccessStatusDto,
+  type AccessStatusDto,
+  type VerifyElefinInput,
+  type CreateAccessGrantInput,
+  type AccessGrantDto,
+  type MaintenanceModeInput,
+  type MaintenanceModeDto,
+  type AdminOverviewDto,
+  type AdminUserRowDto,
+  type AdminBrokerDetailDto,
+  type BrokerBreakdownItemDto,
+  type SignupDayCountDto,
+  type AdminAuditItemDto,
+  type AdminEngagementDto,
+  type AdminEngagementDayDto,
+  type AdminUserDossierDto,
+  type AdminUsersQuery,
+  type ActivityCheckResult,
+} from './schema/access.js';
+
+export {
+  updateLocationSchema,
+  userLocationDtoSchema,
+  adminGeoPointSchema,
+  adminGeoDtoSchema,
+  type UpdateLocationInput,
+  type UserLocationDto,
+  type AdminGeoPointDto,
+  type AdminGeoDto,
+} from './schema/location.js';

@@ -1,10 +1,13 @@
 'use client';
 
-// Profile header for the Settings page — avatar, name, email, sign-out, and a
-// couple of at-a-glance stats, over a tasteful decorative banner (a faint rising
-// equity line + dot grid) that echoes the product without shouting.
+// Profile header for the Settings page — avatar, name, email, sign-out, location,
+// and a couple of at-a-glance stats.
+import { useCallback, useEffect, useState } from 'react';
 import { authClient } from '@/lib/auth-client';
 import { SignOut } from '@phosphor-icons/react';
+import { countryName } from '@/lib/countries';
+import { locationApi, type UserLocationDto } from '@/lib/location-api';
+import LocationForm from '@/components/location-form';
 
 function initialsOf(name: string): string {
   return (
@@ -22,10 +25,19 @@ export default function ProfileCard({ accountCount }: { accountCount: number }) 
   const { data: session } = authClient.useSession();
   const name = session?.user?.name ?? 'Trader';
   const email = session?.user?.email ?? '';
+  const [loc, setLoc] = useState<UserLocationDto | null>(null);
+  const [editing, setEditing] = useState(false);
+
+  const loadLoc = useCallback(() => {
+    locationApi.get().then(setLoc).catch(() => setLoc(null));
+  }, []);
+
+  useEffect(() => {
+    loadLoc();
+  }, [loadLoc]);
 
   return (
     <div className="tcard overflow-hidden" data-testid="profile-card">
-      {/* Decorative banner */}
       <div className="relative h-24 bg-gradient-to-br from-profit/18 via-profit/5 to-app border-b border-border-soft overflow-hidden">
         <svg viewBox="0 0 600 120" preserveAspectRatio="none" className="absolute inset-0 w-full h-full opacity-70" aria-hidden>
           <defs>
@@ -75,6 +87,37 @@ export default function ProfileCard({ accountCount }: { accountCount: number }) 
               </div>
             </div>
           ))}
+        </div>
+
+        <div className="mt-5 rounded-lg border border-border-soft bg-surface/40 px-3.5 py-3" data-testid="profile-location">
+          <div className="flex items-center justify-between gap-2">
+            <div className="text-[9px] tracking-[0.18em] uppercase text-fg-3">Location</div>
+            <button
+              type="button"
+              onClick={() => setEditing(e => !e)}
+              className="text-[10px] tracking-widest text-fg-3 hover:text-fg"
+            >
+              {editing ? 'CANCEL' : 'EDIT'}
+            </button>
+          </div>
+          {!editing && (
+            <div className="text-[13px] mt-1.5 text-fg">
+              {loc?.complete
+                ? `${loc.city}, ${countryName(loc.country)} · ${loc.postalCode}`
+                : <span className="text-warning">Not set — required</span>}
+            </div>
+          )}
+          {editing && (
+            <div className="mt-3">
+              <LocationForm
+                initial={loc ?? undefined}
+                onSaved={() => {
+                  setEditing(false);
+                  loadLoc();
+                }}
+              />
+            </div>
+          )}
         </div>
       </div>
     </div>

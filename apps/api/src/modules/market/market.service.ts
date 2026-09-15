@@ -74,6 +74,42 @@ export async function getCandles(q: CandlesQuery, userId: string): Promise<{ can
   return { candles: await loadCandles(q.symbol, q.tf, opts, scope) };
 }
 
+/**
+ * Latest-N public candles for a symbol+timeframe via the shared
+ * cache→provider→persist path. Used by server-side analysis (Trader Master)
+ * that only ever needs public (non-broker) data.
+ */
+export async function loadPublicCandles(
+  symbol: string,
+  tf: MarketTimeframe,
+  limit = 300,
+): Promise<NormalizedCandle[]> {
+  return loadCandles(symbol, tf, { limit }, 'public');
+}
+
+/**
+ * Public candles in an inclusive epoch-ms window (converted to seconds for
+ * providers). Used by Trader Master grading to fetch bars after `asOf`.
+ */
+export async function loadPublicCandlesWindow(
+  symbol: string,
+  tf: MarketTimeframe,
+  fromMs: number,
+  toMs: number,
+  limit = 500,
+): Promise<NormalizedCandle[]> {
+  return loadCandles(
+    symbol,
+    tf,
+    {
+      from: Math.floor(fromMs / 1000),
+      to: Math.floor(toMs / 1000),
+      limit,
+    },
+    'public',
+  );
+}
+
 // Latest price is stale-guarded: a bar older than this is treated as a dead feed
 // and yields null (price alerts then skip that symbol rather than false-fire).
 const STALE_PRICE_MS = 10 * 60_000;

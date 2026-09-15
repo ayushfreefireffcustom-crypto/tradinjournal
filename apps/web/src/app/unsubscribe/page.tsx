@@ -11,6 +11,7 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { EnvelopeSimple, Check, Warning } from '@phosphor-icons/react';
 import Logo from '@/components/logo';
+import { LoadingScreen } from '@/components/loader';
 import { api } from '@/lib/api';
 
 type State = 'idle' | 'working' | 'done' | 'error';
@@ -104,7 +105,7 @@ function UnsubscribeInner() {
 
 export default function UnsubscribePage() {
   return (
-    <Suspense fallback={<main className="min-h-screen bg-app" />}>
+    <Suspense fallback={<div className="h-dvh bg-app"><LoadingScreen label="Loading" /></div>}>
       <UnsubscribeInner />
     </Suspense>
   );

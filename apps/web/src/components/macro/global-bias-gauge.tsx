@@ -50,7 +50,7 @@ export default function GlobalBiasGauge({ bias }: { bias: MacroState['bias'] }) 
       </div>
 
       <div className="flex-1 flex flex-col items-center justify-center py-2">
-        <svg viewBox="0 0 200 120" className="w-full max-w-[280px]" aria-hidden>
+        <svg viewBox="0 0 200 120" className="w-full max-w-[280px] h-auto aspect-[200/120]" aria-hidden>
           <path
             d="M 28 96 A 72 72 0 0 1 172 96"
             fill="none"
@@ -65,8 +65,6 @@ export default function GlobalBiasGauge({ bias }: { bias: MacroState['bias'] }) 
             strokeWidth="12"
             strokeLinecap="round"
             strokeDasharray={`${dash} ${arcLen}`}
-            className="gauge-arc-anim"
-            style={{ transition: 'stroke-dasharray 80ms linear' }}
           />
           <line
             x1={cx}
@@ -76,7 +74,6 @@ export default function GlobalBiasGauge({ bias }: { bias: MacroState['bias'] }) 
             stroke="var(--color-fg)"
             strokeWidth="2.5"
             strokeLinecap="round"
-            style={{ transition: 'x2 80ms linear, y2 80ms linear' }}
           />
           <circle cx={cx} cy={cy} r="4" fill="var(--color-fg)" />
           <text x="28" y="114" fontSize="9" fill="var(--color-loss)" letterSpacing="1">BEAR</text>

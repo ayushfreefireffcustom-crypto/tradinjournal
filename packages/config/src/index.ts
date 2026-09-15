@@ -138,6 +138,8 @@ const envSchema = z.object({
   // resolve (nothing crashes).
   BINANCE_REST_URL: z.string().url().default('https://data-api.binance.vision'),
   BINANCE_WS_URL: z.string().default('wss://data-stream.binance.vision'),
+  // USDT-M futures public REST for Trader Master Flow lane (funding / OI / aggTrades).
+  BINANCE_FUTURES_REST_URL: z.string().url().default('https://fapi.binance.com'),
   TWELVEDATA_API_KEY: z.string().optional(),
   // CSV of symbols kept "hot" by the warm cron (so popular symbols stay a cache
   // hit for everyone — 1 provider call per symbol per refresh, not per user).
@@ -159,11 +161,40 @@ const envSchema = z.object({
   FRED_API_KEY: z.string().optional(),
   MACRO_INGEST_CRON: z.string().default('*/30 * * * *'),
   MACRO_STATE_CACHE_TTL: z.coerce.number().int().positive().default(90),
+  // Grade Trader Master analyses against subsequent candles (triple-barrier).
+  TRADER_GRADE_CRON: z.string().default('*/15 * * * *'),
+  TRADER_GRADE_BATCH: z.coerce.number().int().positive().default(40),
+  // Retrain meta-label model from graded analyses (needs enough samples).
+  TRADER_META_TRAIN_CRON: z.string().default('0 */6 * * *'),
+  // Paper-book tick — evaluate promoted strategies on the last closed bar.
+  TRADER_PAPER_CRON: z.string().default('*/5 * * * *'),
+  // LightGBM challenger. Served only if it beats the logistic champion.
+  TRADER_LGBM_TRAIN_CRON: z.string().default('30 */6 * * *'),
+  TRADER_ML_URL: z.string().url().default('http://127.0.0.1:4010'),
+  // Paid flow / sentiment. Absent key → that lane is omitted, nothing crashes.
+  UNUSUAL_WHALES_API_KEY: z.string().optional(),
+  BENZINGA_API_KEY: z.string().optional(),
+  SANTIMENT_API_KEY: z.string().optional(),
+  DERIBIT_REST_URL: z.string().url().default('https://www.deribit.com'),
   // The macro assistant reuses the trading coach's AI provider (AI_PROVIDER +
   // GROQ_API_KEY / OPENAI_API_KEY above) — no separate key. No AI key → it falls
   // back to a deterministic template summary, exactly like the coach.
   // Emails allowed to approve macro members, until a full admin UI (comma-separated).
   MACRO_ADMIN_EMAILS: z.string().optional(),
+
+  // ── Platform admin + access control ───────────────────────────────────────
+  ADMIN_EMAILS: z.string().optional(),
+  // When false (default for open launch), Elefin + activity gates are no-ops.
+  // Flip to true later to re-enable partner-only access without undeleting code.
+  PLATFORM_ACCESS_ENABLED: z
+    .string()
+    .default('false')
+    .transform(v => v.toLowerCase() === 'true' || v === '1'),
+  ELEFIN_VERIFY_MODE: z.enum(['stub', 'live']).default('stub'),
+  ELEFIN_API_URL: z.string().url().optional(),
+  ELEFIN_API_KEY: z.string().optional(),
+  ACCESS_MIN_TRADES_7D: z.coerce.number().int().positive().default(2),
+  ACCESS_ACTIVITY_WINDOW_DAYS: z.coerce.number().int().positive().default(7),
 });
 
 export type Env = z.infer<typeof envSchema> & {
@@ -206,6 +237,8 @@ export type Env = z.infer<typeof envSchema> & {
   MACRO_ENABLED: boolean;
   /** Emails allowed to approve macro members, derived from MACRO_ADMIN_EMAILS. */
   MACRO_ADMIN_EMAILS_LIST: string[];
+  /** Platform admin emails (ADMIN_EMAILS + MACRO_ADMIN_EMAILS merged). */
+  ADMIN_EMAILS_LIST: string[];
 };
 
 const AI_DEFAULTS = {
@@ -288,6 +321,14 @@ function loadEnv(): Env {
   const MACRO_ADMIN_EMAILS_LIST = parsed.data.MACRO_ADMIN_EMAILS
     ? parsed.data.MACRO_ADMIN_EMAILS.split(',').map(s => s.trim().toLowerCase()).filter(Boolean)
     : [];
+  const ADMIN_EMAILS_LIST = [
+    ...new Set([
+      ...(parsed.data.ADMIN_EMAILS
+        ? parsed.data.ADMIN_EMAILS.split(',').map(s => s.trim().toLowerCase()).filter(Boolean)
+        : []),
+      ...MACRO_ADMIN_EMAILS_LIST,
+    ]),
+  ];
 
   return {
     ...parsed.data,
@@ -311,6 +352,7 @@ function loadEnv(): Env {
     PRICE_ALERTS_ENABLED,
     MACRO_ENABLED,
     MACRO_ADMIN_EMAILS_LIST,
+    ADMIN_EMAILS_LIST,
   };
 }
 
