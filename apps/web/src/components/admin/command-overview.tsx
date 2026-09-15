@@ -1,5 +1,6 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import type { AdminEngagementDto, AdminOverviewDto } from '@/lib/admin-api';
 import { GaugeRing, LiquidBar } from './gauge-ring';
 import { pct, fmtRelative } from './admin-utils';
@@ -7,8 +8,13 @@ import { StatCard } from '@/components/stat-card';
 import {
   Pulse, Clock, Bank, ChartLineUp, Users, ShieldCheck,
 } from '@phosphor-icons/react';
-import { AdminGeoMap } from './admin-geo-map';
 import { TraderOpsStrip } from './trader-ops-strip';
+
+// Leaflet reads `window` on import — must be client-only, never SSR'd.
+const AdminGeoMap = dynamic(
+  () => import('./admin-geo-map').then(m => ({ default: m.AdminGeoMap })),
+  { ssr: false, loading: () => <div className="tcard p-4 h-[200px] flex items-center justify-center text-sm text-fg-3">Loading map…</div> },
+);
 
 function Funnel({ overview }: { overview: AdminOverviewDto }) {
   const steps = [
