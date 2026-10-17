@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 
 // On every desktop mouse click, 4 short lines fan out from the click point and
 // fade (~800ms). Uses mix-blend-mode: difference so it reads on any background.
@@ -11,7 +12,11 @@ const startGap = 14;
 const travelDistance = 36;
 
 export default function ClickBurstEffect() {
+  // Disabled on the marketing landing ('/'), which uses its own micro-interactions.
+  const off = usePathname() === '/';
+
   useEffect(() => {
+    if (off) return;
     const handleClick = (event: MouseEvent) => {
       if (!window.matchMedia('(pointer: fine)').matches) return;
       if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
@@ -40,7 +45,7 @@ export default function ClickBurstEffect() {
 
     document.addEventListener('click', handleClick);
     return () => document.removeEventListener('click', handleClick);
-  }, []);
+  }, [off]);
 
   return null;
 }

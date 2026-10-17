@@ -1,14 +1,17 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { usePathname } from 'next/navigation';
 
 // A subtle soft white glow that trails the cursor with a little easing.
 // Desktop / fine-pointer only, and disabled under reduced-motion.
 export default function CursorGlow() {
   const ref = useRef<HTMLDivElement>(null);
+  // The marketing landing has its own calmer motion language — no cursor glow there.
+  const off = usePathname() === '/';
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (off || typeof window === 'undefined') return;
     if (!window.matchMedia('(pointer: fine)').matches) return;
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
@@ -44,7 +47,8 @@ export default function CursorGlow() {
       document.removeEventListener('pointerenter', enter);
       if (raf) cancelAnimationFrame(raf);
     };
-  }, []);
+  }, [off]);
 
+  if (off) return null;
   return <div ref={ref} aria-hidden className="cursor-glow" />;
 }
