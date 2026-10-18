@@ -31,8 +31,8 @@ function Showcase({ variant }: { variant: Variant }) {
 }
 
 const COPY: Record<Variant, { h: ReactNode; p?: string; foot: ReactNode }> = {
-  signin: { h: <>Your trades know.<br /><em>Now</em> you will too.</>, p: 'Pick up where you left off — your journal synced while you were away.', foot: <><span>{LOCK} Read-only MT5 access</span><span>{SHIELD} Encrypted investor password</span></> },
-  signup: { h: <>Start journaling<br />in <em>90 seconds.</em></>, foot: <><span>{LOCK} We never place trades</span><span>{SHIELD} Encrypted at rest</span></> },
+  signin: { h: <>Your trades know.<br /><em>Now</em> you will too.</>, p: 'Pick up where you left off — your journal synced while you were away.', foot: <><span>{LOCK} Read-only MT5 access</span><span>{SHIELD} Can’t trade or withdraw</span></> },
+  signup: { h: <>Start journaling<br />in <em>90 seconds.</em></>, foot: <><span>{LOCK} We never place trades</span><span>{SHIELD} Your data is never sold</span></> },
   verify: { h: <>One step<br />from your <em>edge.</em></>, p: 'Confirm your email, connect MT5 read-only, and your history backfills automatically.', foot: <span>{LOCK} Codes expire after 10 minutes</span> },
   forgot: { h: <>Locked out?<br /><em>We’ve got you.</em></>, p: 'Reset your password with a 6-digit code. Your journal and broker connections stay exactly as they are.', foot: <span>{LOCK} Codes expire after 10 minutes</span> },
 };
@@ -68,7 +68,7 @@ export default function AuthShell({ variant, top, children, testId }: { variant:
       <main className="au-main">
         <div className="au-top"><Link href="/" className="au-wm sm">TRADE<span>logs</span></Link>{top}</div>
         <div className="au-form">{children}</div>
-        <div className="au-legal"><span>© {new Date().getFullYear()} TRADElogs</span><span>·</span><span>Read-only MT5 journal</span></div>
+        <div className="au-legal"><span>© {new Date().getFullYear()} TRADElogs</span><span>·</span><Link href="/terms">Terms</Link><span>·</span><Link href="/privacy">Privacy</Link></div>
       </main>
     </div>
   );

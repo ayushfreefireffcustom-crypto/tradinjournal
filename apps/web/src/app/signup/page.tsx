@@ -112,7 +112,7 @@ export default function SignupPage() {
           <label className="au-check">
             <input type="checkbox" checked={agree} onChange={e => setAgree(e.target.checked)} data-testid="agree-toggle" />
             <span className="box"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg></span>
-            <span>I agree to the <b>Terms</b> and <b>Data policy</b>. TRADElogs is a journal, not investment advice — we only use your read-only MT5 login.</span>
+            <span>I agree to the <Link href="/terms" target="_blank">Terms</Link> and <Link href="/privacy" target="_blank">Privacy policy</Link>. TRADElogs is a journal, not investment advice — we only use your read-only MT5 login.</span>
           </label>
           {error && <div className="au-err" data-testid="signup-error" role="alert">{error}</div>}
           <AuthSubmit loading={loading} disabled={!canSubmit} testId="signup-submit">{loading ? 'Creating account…' : 'Create account'}</AuthSubmit>

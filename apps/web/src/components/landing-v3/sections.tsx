@@ -319,7 +319,7 @@ const FAQS = [
   { q: 'Can TRADElogs place trades on my account?', a: <>No. You connect with MT5&rsquo;s investor (read-only) password, which can view your history but cannot open, modify or close positions.</> },
   { q: 'Which brokers are supported?', a: <>Any broker that offers MetaTrader&nbsp;5 — XM, Exness, Vantage, Elefin, Xellion and hundreds more. You only need your MT5 login, investor password and your broker&rsquo;s server name.</> },
   { q: 'Is it really free?', a: <>Yes. TRADElogs is free while we&rsquo;re getting started, and you don&rsquo;t need a card to sign up.</> },
-  { q: 'How is my data stored?', a: <>Your investor password is encrypted at rest and only ever used for read-only access. You can disconnect a broker account at any time from your settings.</> },
+  { q: 'How is my data stored?', a: <>Your investor password is stored so we can keep syncing, and it can only read your account — never trade or withdraw. Disconnecting a broker from the Brokers page deletes its synced data. Details are in our <a href="/privacy">Privacy policy</a>.</> },
   { q: 'Do I need to export CSVs?', a: <>Never. Once your account is connected, your history backfills automatically and new trades appear as they close.</> },
 ];
 
@@ -383,7 +383,7 @@ export function Footer() {
           </nav>
           <nav aria-label="Account">
             <h3>Account</h3>
-            <ul><li><a href="/signup">Create account</a></li><li><a href="/login">Sign in</a></li><li><a href="#faq">FAQ</a></li></ul>
+            <ul><li><a href="/signup">Create account</a></li><li><a href="/login">Sign in</a></li><li><a href="#faq">FAQ</a></li><li><a href="/terms">Terms</a></li><li><a href="/privacy">Privacy</a></li></ul>
           </nav>
         </div>
         <div className="lp-huge" aria-hidden>TRADE<span>logs</span></div>
