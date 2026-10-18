@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Flask, Play, Sparkle } from '@phosphor-icons/react';
 import { traderApi, type TraderStrategy, type TraderStrategyRules, type TraderTimeframe } from '@/lib/trader-api';
 import { pct } from './outcome-badge';
 
@@ -51,12 +50,7 @@ function ruleChips(rules: TraderStrategyRules): string[] {
 
 function SplitBar({ wins, losses }: { wins: number; losses: number }) {
   const total = wins + losses;
-  const winPct = total > 0 ? (wins / total) * 100 : 50;
-  return (
-    <div className="h-1.5 rounded-full overflow-hidden bg-loss/40 flex">
-      <div className="h-full bg-profit" style={{ width: `${winPct}%` }} />
-    </div>
-  );
+  return <div className="sx-split"><i style={{ flex: total ? wins : 1 }} /><i className="l" style={{ flex: total ? losses : 1 }} /></div>;
 }
 
 export default function StrategyBuilder() {
@@ -139,220 +133,60 @@ export default function StrategyBuilder() {
     }
   }
 
+  const visible = rows.filter(r => r.status !== 'archived');
   return (
-    <section
-      className="relative overflow-hidden rounded-xl border border-border bg-surface p-4 animate-[fade-up_0.5s_ease_both]"
-      data-testid="trader-strategy-builder"
-    >
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 h-16 opacity-50"
-        style={{
-          background:
-            'linear-gradient(180deg, color-mix(in oklab, var(--color-profit) 12%, transparent), transparent)',
-        }}
-      />
-
-      <div className="relative">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <Flask size={14} className="text-profit" />
-            <h3 className="text-sm font-medium text-fg">Strategies</h3>
-          </div>
-          <span className="text-[10px] tabular-nums text-fg-3">{rows.length}</span>
+    <section className="v3-card sx-st" data-testid="trader-strategy-builder" aria-labelledby="sx-st-t">
+      <div className="sx-tr-hd">
+        <h3 id="sx-st-t">Strategies <span>· {visible.length}</span></h3>
+        <p>Compile a rule, test the holdout, then paper it.</p>
+      </div>
+      <div className="sx-st-bd">
+        <div className="sx-ideas">
+          {IDEAS.map(idea => (
+            <button key={idea.label} type="button" aria-pressed={activeIdea === idea.label} onClick={() => { setActiveIdea(idea.label); setPrompt(idea.prompt); }}>{idea.label}</button>
+          ))}
         </div>
-        <p className="mt-0.5 text-xs text-fg-3">Compile a rule, test the holdout, then paper it. Paper fills are not the public hit rate.</p>
-
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          {IDEAS.map((idea) => {
-            const on = activeIdea === idea.label;
-            return (
-              <button
-                key={idea.label}
-                type="button"
-                onClick={() => {
-                  setActiveIdea(idea.label);
-                  setPrompt(idea.prompt);
-                }}
-                className={`h-7 px-2.5 rounded-md text-[11px] transition-colors ${
-                  on
-                    ? 'bg-white text-black font-medium'
-                    : 'border border-border text-fg-2 hover:text-fg hover:border-border-strong'
-                }`}
-              >
-                {idea.label}
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="mt-2.5 rounded-lg border border-border bg-app focus-within:border-border-strong focus-within:ring-2 focus-within:ring-white/10 transition-all">
-          <textarea
-            value={prompt}
-            onChange={(e) => {
-              setPrompt(e.target.value);
-              setActiveIdea(null);
-            }}
-            rows={2}
-            placeholder="Long when RSI dips under 30…"
-            className="w-full bg-transparent px-3 pt-2.5 pb-1 text-sm text-fg placeholder:text-fg-3 outline-none resize-none"
-          />
-          <div className="flex items-center gap-2 px-2 pb-2">
-            <input
-              value={symbol}
-              onChange={(e) => setSymbol(e.target.value.toUpperCase())}
-              className="h-7 w-[6.5rem] rounded-md bg-surface px-2 text-[11px] tabular-nums text-fg outline-none border border-transparent focus:border-border"
-              aria-label="Backtest symbol"
-            />
-            <div className="flex rounded-md border border-border overflow-hidden">
-              {TFS.map((tf) => (
-                <button
-                  key={tf}
-                  type="button"
-                  onClick={() => setTimeframe(tf)}
-                  className={`h-7 px-1.5 text-[10px] tabular-nums ${
-                    timeframe === tf ? 'bg-white text-black font-medium' : 'text-fg-3 hover:text-fg'
-                  }`}
-                >
-                  {tf}
-                </button>
-              ))}
-            </div>
-            <button
-              type="button"
-              disabled={busy || prompt.trim().length < 8}
-              onClick={() => void create()}
-              className="ml-auto h-7 px-2.5 rounded-md text-[11px] font-medium bg-profit text-black disabled:opacity-40 inline-flex items-center gap-1 transition-opacity"
-            >
-              <Sparkle size={11} weight="fill" />
-              {busy ? 'Compiling' : 'Compile'}
-            </button>
+        <div className="sx-compose">
+          <textarea value={prompt} onChange={e => { setPrompt(e.target.value); setActiveIdea(null); }} rows={2} placeholder="Long when RSI dips under 30 on the 1h and price is above the 200-EMA…" aria-label="Strategy rule" />
+          <div className="sx-compose-ft">
+            <input value={symbol} onChange={e => setSymbol(e.target.value.toUpperCase())} aria-label="Backtest symbol" className="num" />
+            <div className="v3-seg sm">{TFS.map(tf => <button key={tf} type="button" aria-pressed={timeframe === tf} onClick={() => setTimeframe(tf)}>{tf}</button>)}</div>
+            <button type="button" disabled={busy || prompt.trim().length < 8} onClick={() => void create()} className="v3-btn v3-btn--ink sx-compile">{busy ? 'Compiling…' : 'Compile'}</button>
           </div>
         </div>
-
-        {error && <p className="mt-2 text-xs text-loss">{error}</p>}
-
-        {rows.length === 0 ? (
-          <div className="mt-4 rounded-lg border border-dashed border-border px-3 py-6 text-center">
-            <p className="text-sm text-fg-2">No strategies yet</p>
-            <p className="mt-1 text-xs text-fg-3">Pick a preset, or write your own rule.</p>
-          </div>
+        {error && <p className="r-err">{error}</p>}
+        {visible.length === 0 ? (
+          <div className="sx-none"><b>No strategies yet</b>Pick a preset, or write your own rule.</div>
         ) : (
-          <ul className="mt-3 space-y-2">
-            {rows.map((s, i) => {
+          <ul className="sx-list">
+            {visible.map((s, i) => {
               const bt = s.lastBacktest;
               const edge = bt?.expectancyPct;
               const running = runningId === s.id;
               return (
-                <li
-                  key={s.id}
-                  className="rounded-lg border border-border bg-app/60 px-3 py-2.5 animate-[fade-up_0.35s_ease_both]"
-                  style={{ animationDelay: `${Math.min(i, 8) * 30}ms` }}
-                >
-                  <div className="flex items-start gap-2">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium truncate">{s.name}</span>
-                        <span
-                          className={`text-[10px] px-1.5 py-0.5 rounded border ${
-                            s.status === 'paper'
-                              ? 'border-profit/25 text-profit bg-profit/10'
-                              : 'border-border text-fg-3'
-                          }`}
-                        >
-                          {s.status === 'paper' ? 'Paper' : 'Draft'}
-                        </span>
-                      </div>
-                      <div className="mt-1.5 flex flex-wrap gap-1">
-                        {ruleChips(s.rules).map((chip) => (
-                          <span
-                            key={chip}
-                            className="text-[10px] tracking-wide uppercase px-1.5 py-0.5 rounded bg-white/5 text-fg-3"
-                          >
-                            {chip}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => void runBacktest(s.id)}
-                      disabled={running}
-                      className="h-7 shrink-0 px-2 rounded-md border border-border text-[11px] text-fg-2 hover:text-fg hover:border-border-strong inline-flex items-center gap-1 disabled:opacity-50"
-                    >
-                      <Play size={11} weight="fill" />
-                      {running ? '…' : 'Test'}
-                    </button>
-                  </div>
-
+                <li key={s.id} style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}>
+                  <div className="t"><b>{s.name}</b><span className={s.status === 'paper' ? 'v3-pill v' : 'mute'}>{s.status === 'paper' ? 'Paper' : 'Draft'}</span></div>
+                  <div className="chips">{ruleChips(s.rules).map(c => <span key={c}>{c}</span>)}</div>
                   {bt ? (
-                    <div className="mt-2.5 space-y-1.5">
-                      <div className="flex items-center justify-between text-[10px] uppercase tracking-wider text-fg-3">
-                        <span>Holdout {bt.symbol ? `· ${bt.symbol}` : ''} {bt.timeframe ? bt.timeframe : ''}</span>
-                        {bt.inSample && (
-                          <span className="tabular-nums normal-case tracking-normal">
-                            in-sample {bt.inSample.trades} · {bt.inSample.expectancyPct == null ? '—' : `${bt.inSample.expectancyPct >= 0 ? '+' : ''}${bt.inSample.expectancyPct.toFixed(2)}%`}
-                          </span>
-                        )}
-                      </div>
+                    <>
+                      <p className="m num">Holdout · {bt.trades} trades · {bt.wins}W {bt.losses}L · hit {pct(bt.hitRate, 0)} · edge <b className={edge == null ? '' : edge >= 0 ? 'lg' : 'sh'}>{edge == null ? '—' : `${edge >= 0 ? '+' : '−'}${Math.abs(edge).toFixed(2)}%`}</b>{bt.symbol ? ` · ${bt.symbol} ${bt.timeframe ?? ''}` : ''}</p>
                       <SplitBar wins={bt.wins} losses={bt.losses} />
-                      <div className="flex items-center gap-3 text-[11px] tabular-nums">
-                        <span className="text-fg-3">{bt.trades} trades</span>
-                        <span className="text-profit">{bt.wins}W</span>
-                        <span className="text-loss">{bt.losses}L</span>
-                        <span className="text-fg-2">{pct(bt.hitRate, 0)}</span>
-                        <span
-                          className={`ml-auto font-medium ${
-                            edge == null ? 'text-fg-3' : edge >= 0 ? 'text-profit' : 'text-loss'
-                          }`}
-                        >
-                          {edge == null ? '—' : `${edge >= 0 ? '+' : ''}${edge.toFixed(2)}%`}
-                        </span>
-                      </div>
-                      {s.status !== 'paper' && (
-                        <button
-                          type="button"
-                          disabled={!bt.promote?.ok || actingId === s.id}
-                          title={bt.promote?.reasons?.[0]}
-                          onClick={() => void promote(s.id)}
-                          className="h-7 px-2 rounded-md text-[11px] font-medium bg-white text-black disabled:opacity-40"
-                        >
-                          {bt.promote?.ok ? 'Promote to paper' : bt.promote?.reasons?.[0] ?? 'Test first'}
-                        </button>
-                      )}
-                      {s.status === 'paper' && (
-                        <button
-                          type="button"
-                          disabled={actingId === s.id}
-                          onClick={() => void archive(s.id)}
-                          className="h-7 px-2 rounded-md border border-border text-[11px] text-fg-2 hover:text-fg"
-                        >
-                          Stop paper
-                        </button>
-                      )}
-                      {s.status !== 'paper' && !s.emailOn && bt.promote?.ok && (
-                        <p className="text-[11px] text-fg-3">
-                          Email is off. <a className="underline" href="/settings">Turn it on</a> or you will only see fills in the inbox.
-                        </p>
-                      )}
-                    </div>
-                  ) : (
-                    <p className="mt-2 text-[11px] text-fg-3">Not tested on {symbol || 'a symbol'} yet.</p>
-                  )}
-
+                    </>
+                  ) : <p className="m">Not tested yet.</p>}
+                  <div className="a">
+                    <button type="button" className="v3-btn v3-btn--o" onClick={() => void runBacktest(s.id)} disabled={running}>{running ? 'Testing…' : bt ? 'Re-test' : 'Test'}</button>
+                    {s.status !== 'paper' && bt && (
+                      <button type="button" className="v3-btn v3-btn--ink" disabled={!bt.promote?.ok || actingId === s.id} title={bt.promote?.reasons?.[0]} onClick={() => void promote(s.id)} style={{ paddingRight: 16 }}>
+                        {bt.promote?.ok ? 'Promote to paper' : bt.promote?.reasons?.[0] ?? 'Test first'}
+                      </button>
+                    )}
+                    {s.status === 'paper' && <button type="button" className="v3-btn v3-btn--o" disabled={actingId === s.id} onClick={() => void archive(s.id)}>Stop paper</button>}
+                  </div>
+                  {s.status !== 'paper' && !s.emailOn && bt?.promote?.ok && <p className="m">Email alerts are off — <a className="v3-link" href="/settings" style={{ margin: 0, fontSize: 13 }}>turn them on</a> or fills only show in the inbox.</p>}
                   {(s.positions ?? []).length > 0 && (
-                    <ul className="mt-2 space-y-1">
-                      {(s.positions ?? []).map((p) => (
-                        <li key={p.id} className="flex items-center gap-2 text-[11px] tabular-nums">
-                          <span className={p.side === 'LONG' ? 'text-profit' : 'text-loss'}>{p.side}</span>
-                          <span className="text-fg-2">{p.symbol}</span>
-                          <span className="text-fg-3">{p.status}</span>
-                          <span className="ml-auto text-fg-3">
-                            {p.pnlPct == null ? 'open' : `${p.pnlPct >= 0 ? '+' : ''}${p.pnlPct.toFixed(2)}%`}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
+                    <ul className="pos">{(s.positions ?? []).map(p => (
+                      <li key={p.id} className="num"><span className={p.side === 'LONG' ? 'lg' : 'sh'}>{p.side === 'LONG' ? 'Long' : 'Short'}</span> {p.symbol} · {p.status}<span className="r">{p.pnlPct == null ? 'open' : `${p.pnlPct >= 0 ? '+' : '−'}${Math.abs(p.pnlPct).toFixed(2)}%`}</span></li>
+                    ))}</ul>
                   )}
                 </li>
               );

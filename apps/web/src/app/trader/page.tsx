@@ -5,32 +5,26 @@ import MacroCompliance from '@/components/macro/macro-compliance';
 import TraderMaster from '@/components/trader/trader-master';
 import TrackRecordPanel from '@/components/trader/track-record';
 import StrategyBuilder from '@/components/trader/strategy-builder';
+import { useAccounts } from '@/lib/use-accounts';
+import type { BrokerAccount } from '@/lib/api';
 
 export default function TraderPage() {
+  const { accounts, selected, select } = useAccounts();
   return (
-    <AppShell pageTitle="SignalX" pageSubtitle="// AI TRADE ANALYSIS">
-      <div className="flex flex-col h-full min-h-0" data-testid="trader-page">
-        <div className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-5">
-          <div className="mx-auto w-full max-w-6xl">
-            <header className="mb-5 animate-[fade-up_0.35s_ease_both]">
-              <h1 className="font-display font-semibold text-xl sm:text-2xl tracking-tight text-fg">
-                SignalX
-              </h1>
-              <p className="mt-1 text-sm text-fg-2">Direction, levels, and graded outcomes.</p>
-            </header>
-
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 lg:gap-5 items-start">
-              <div className="lg:col-span-3 min-w-0">
-                <TraderMaster />
-              </div>
-              <div className="lg:col-span-2 min-w-0 lg:sticky lg:top-3 space-y-3">
-                <TrackRecordPanel scope="all" />
-                <StrategyBuilder />
-              </div>
-            </div>
-          </div>
+    <AppShell accounts={accounts} selectedAccount={selected} onSelectAccount={(a: BrokerAccount) => select(a)} pageTitle="SignalX">
+      <div className="v3-page" data-testid="trader-page">
+        <header>
+          <h1 className="v3-h1 t-h1"><b>Signal<em className="sx-x">X</em></b></h1>
+          <p className="v3-sub" style={{ fontSize: 15.5 }}>Direction, levels, and graded outcomes.</p>
+        </header>
+        <div className="sx-grid">
+          <div className="sx-main"><TraderMaster /></div>
+          <aside className="sx-side">
+            <TrackRecordPanel scope="all" />
+            <StrategyBuilder />
+          </aside>
         </div>
-        <MacroCompliance />
+        <div className="sx-legal"><MacroCompliance /></div>
       </div>
     </AppShell>
   );

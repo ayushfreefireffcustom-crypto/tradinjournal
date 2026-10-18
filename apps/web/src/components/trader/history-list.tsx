@@ -1,16 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { ArrowClockwise } from '@phosphor-icons/react';
 import { traderApi, type TraderAnalysis } from '@/lib/trader-api';
-import { formatAsOf } from '@/lib/macro-format';
 import { OutcomeBadge } from './outcome-badge';
-
-function dirTone(d: string): string {
-  if (d === 'LONG') return 'text-profit';
-  if (d === 'SHORT') return 'text-loss';
-  return 'text-fg-3';
-}
 
 export default function AnalysisHistory({
   refreshKey,
@@ -40,70 +32,22 @@ export default function AnalysisHistory({
   }, [load, refreshKey]);
 
   return (
-    <section
-      className="rounded-xl border border-border bg-surface p-4 animate-[fade-up_0.45s_ease_both]"
-      data-testid="trader-history"
-    >
-      <div className="flex items-center justify-between gap-2 mb-2">
-        <h3 className="text-sm font-medium text-fg">Recent</h3>
-        <button
-          type="button"
-          onClick={() => void load()}
-          className="text-fg-3 hover:text-fg p-1 rounded-md transition-colors"
-          aria-label="Refresh"
-        >
-          <ArrowClockwise size={14} className={loading ? 'animate-spin' : ''} />
-        </button>
+    <section className="v3-card sx-hist" data-testid="trader-history" aria-labelledby="sx-h-t">
+      <div className="v3-ch"><h3 id="sx-h-t">Recent</h3>
+        <button type="button" onClick={() => void load()} className="cr-ref" aria-label="Refresh"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" className={loading ? 'spin' : undefined}><path d="M20 11a8 8 0 10-2.3 5.7M20 4v7h-7" /></svg></button>
       </div>
-
-      {loading && rows.length === 0 && (
-        <div className="space-y-2">
-          {[0, 1, 2].map((i) => (
-            <div key={i} className="h-10 rounded-lg bg-surface-hover animate-pulse" />
-          ))}
-        </div>
-      )}
-
-      {error && <p className="text-sm text-loss">{error}</p>}
-
-      {!loading && !error && rows.length === 0 && (
-        <p className="text-sm text-fg-3 py-6 text-center">No calls yet.</p>
-      )}
-
+      {loading && rows.length === 0 && <div style={{ padding: '4px 22px 18px', display: 'grid', gap: 8 }}>{[0, 1, 2].map(i => <div key={i} className="skel d-sk" style={{ height: 24 }} />)}</div>}
+      {error && <p className="r-err" style={{ padding: '0 22px 18px' }}>{error}</p>}
+      {!loading && !error && rows.length === 0 && <div className="d-empty">No calls yet — analyse a symbol above.</div>}
       {rows.length > 0 && (
-        <ul className="divide-y divide-border">
-          {rows.map((a) => (
+        <ul>
+          {rows.map(a => (
             <li key={a.id ?? `${a.symbol}-${a.asOf}`}>
-              <button
-                type="button"
-                onClick={() => onSelect?.(a)}
-                className="w-full flex items-center gap-2 py-2.5 text-left hover:bg-white/[0.04] -mx-1 px-1.5 rounded-md transition-colors"
-              >
-                <span
-                  className={`size-1.5 rounded-full shrink-0 ${
-                    a.direction === 'LONG' ? 'bg-profit' : a.direction === 'SHORT' ? 'bg-loss' : 'bg-fg-3'
-                  }`}
-                />
-                <span className="text-sm font-medium truncate">{a.symbol}</span>
-                <span className={`text-[11px] font-medium ${dirTone(a.direction)}`}>{a.direction}</span>
-                <span className="text-[11px] tabular-nums text-fg-3">{a.confidence}%</span>
-                {a.confidenceSource === 'meta_lgbm' && (
-                  <span className="text-[9px] uppercase tracking-wider text-profit/80">model</span>
-                )}
-                {a.confidenceSource === 'meta_v1' && (
-                  <span className="text-[9px] uppercase tracking-wider text-profit/80">meta</span>
-                )}
-                <span className="ml-auto shrink-0 flex items-center gap-2">
-                  <OutcomeBadge
-                    outcome={a.outcome}
-                    hitLevel={a.hitLevel}
-                    pending={!a.outcome}
-                    compact
-                  />
-                  <span className="text-[10px] tabular-nums text-fg-3 hidden sm:inline">
-                    {formatAsOf(a.asOf)}
-                  </span>
-                </span>
+              <button type="button" onClick={() => onSelect?.(a)}>
+                <b>{a.symbol}</b>
+                <span className={`v3-pill ${a.direction === 'LONG' ? 'g' : a.direction === 'SHORT' ? 'r' : 'n'}`}>{a.direction === 'LONG' ? 'Long' : a.direction === 'SHORT' ? 'Short' : 'Wait'}</span>
+                <span className="mute num">· {a.timeframes.join('/')} · {new Date(a.asOf).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · {a.confidence}%</span>
+                <span className="end"><OutcomeBadge outcome={a.outcome} hitLevel={a.hitLevel} pending={!a.outcome} /></span>
               </button>
             </li>
           ))}

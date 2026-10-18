@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { MagnifyingGlass, Lightning } from '@phosphor-icons/react';
 import { Loader } from '@/components/loader';
 import { marketApi, type MarketSymbol } from '@/lib/market-api';
 import {
@@ -21,6 +20,8 @@ export default function TraderMaster({
   const [query, setQuery] = useState('');
   const [symbol, setSymbol] = useState('');
   const [results, setResults] = useState<MarketSymbol[]>([]);
+  const [picked, setPicked] = useState<MarketSymbol | null>(null);
+  const [focused, setFocused] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [timeframes, setTimeframes] = useState<TraderTimeframe[]>(['1h']);
   const [analyzing, setAnalyzing] = useState(false);
@@ -33,6 +34,8 @@ export default function TraderMaster({
   useEffect(() => {
     if (searchTimer.current) clearTimeout(searchTimer.current);
     const q = query.trim();
+    // Don't reopen the list right after a pick (query becomes the symbol).
+    if (picked && q === picked.symbol) { setShowResults(false); return; }
     if (q.length < 2) {
       setResults([]);
       setShowResults(false);
@@ -51,7 +54,7 @@ export default function TraderMaster({
     return () => {
       if (searchTimer.current) clearTimeout(searchTimer.current);
     };
-  }, [query]);
+  }, [query, picked]);
 
   useEffect(() => {
     function onDoc(e: MouseEvent) {
@@ -62,6 +65,7 @@ export default function TraderMaster({
   }, []);
 
   function pick(s: MarketSymbol) {
+    setPicked(s);
     setSymbol(s.symbol);
     setQuery(s.symbol);
     setShowResults(false);
@@ -100,125 +104,54 @@ export default function TraderMaster({
     }
   }, [symbol, query, timeframes, onAnalyzed]);
 
+  const CLASS: Record<string, string> = { crypto: 'Crypto', forex: 'Forex', stock: 'Stocks', commodity: 'Metals', broker: 'Broker' };
   return (
-    <div className="space-y-3" data-testid="trader-master">
-      {/* Search + TF — overflow visible so the popover isn’t clipped */}
-      <div className="rounded-xl border border-border bg-surface p-3 sm:p-3.5 space-y-3 overflow-visible relative z-30 shadow-sm animate-[fade-up_0.35s_ease_both]">
-        <div ref={searchWrap} className="relative">
-          <div className="flex items-center gap-2 h-10 rounded-lg border border-border bg-app px-3 transition-colors focus-within:border-border-strong focus-within:ring-2 focus-within:ring-white/10">
-            <MagnifyingGlass size={15} className="shrink-0 text-fg-2" />
-            <input
-              value={query}
-              onChange={(e) => {
-                setQuery(e.target.value);
-                setSymbol('');
-              }}
-              onFocus={() => results.length > 0 && setShowResults(true)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') void runAnalyze();
-                if (e.key === 'Escape') setShowResults(false);
-              }}
-              placeholder="Search symbol…"
-              className="flex-1 min-w-0 bg-transparent text-sm text-fg placeholder:text-fg-3 outline-none"
-              data-testid="trader-symbol-input"
-              autoComplete="off"
-              spellCheck={false}
-            />
-          </div>
-
+    <div className="sx-master" data-testid="trader-master">
+      <div className="v3-card sx-bar">
+        <div ref={searchWrap} className={`ch-search sx-search ${focused ? 'on' : ''}`}>
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" strokeLinecap="round" /></svg>
+          <input value={query} onChange={e => { setQuery(e.target.value); setSymbol(''); setPicked(null); }}
+            onFocus={() => { setFocused(true); if (results.length > 0) setShowResults(true); }} onBlur={() => setFocused(false)}
+            onKeyDown={e => { if (e.key === 'Enter') void runAnalyze(); if (e.key === 'Escape') setShowResults(false); }}
+            placeholder="Search a symbol — XAUUSD, BTCUSDT, EURUSD…" data-testid="trader-symbol-input" autoComplete="off" spellCheck={false} aria-label="Symbol" />
+          {picked && !focused && query === picked.symbol && <span className="sx-pick" aria-hidden><b>{picked.symbol}</b> {picked.name} · {CLASS[picked.assetClass] ?? picked.assetClass}</span>}
           {showResults && results.length > 0 && (
-            <ul
-              role="listbox"
-              className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 max-h-72 overflow-y-auto rounded-lg border border-border-strong bg-[#1a1a1a] shadow-lg ring-1 ring-white/10 animate-[fade-up_0.15s_ease_both]"
-              data-testid="trader-search-results"
-            >
-              {results.map((s, i) => (
-                <li key={`${s.provider}:${s.symbol}`} role="option">
-                  <button
-                    type="button"
-                    onClick={() => pick(s)}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-white/10 ${
-                      i > 0 ? 'border-t border-border' : ''
-                    }`}
-                  >
-                    <span className="font-medium text-sm text-white tabular-nums">{s.symbol}</span>
-                    <span className="text-xs text-zinc-400 truncate flex-1">{s.name}</span>
-                    <span className="text-[10px] uppercase tracking-wider text-zinc-500 shrink-0">
-                      {s.assetClass}
-                    </span>
-                  </button>
-                </li>
+            <div className="ch-pop ch-results" role="listbox" data-testid="trader-search-results" style={{ width: '100%' }}>
+              {results.map(s => (
+                <button key={`${s.provider}:${s.symbol}`} type="button" role="option" aria-selected={false} onMouseDown={e => e.preventDefault()} onClick={() => pick(s)}>
+                  <span>{s.symbol}<small>{s.name}</small></span><em>{CLASS[s.assetClass] ?? s.assetClass}</em>
+                </button>
               ))}
-            </ul>
+            </div>
           )}
         </div>
-
-        <div className="flex items-center gap-1.5 flex-wrap">
-          {TRADER_TIMEFRAMES.map((tf) => {
-            const on = timeframes.includes(tf);
-            return (
-              <button
-                key={tf}
-                type="button"
-                onClick={() => toggleTf(tf)}
-                className={`h-8 px-3 rounded-md text-xs tabular-nums transition-colors ${
-                  on
-                    ? 'bg-white text-black font-medium'
-                    : 'bg-transparent text-fg-2 border border-border hover:text-fg hover:border-border-strong'
-                }`}
-                data-testid={`trader-tf-${tf}`}
-                aria-pressed={on}
-              >
-                {tf}
-              </button>
-            );
-          })}
-
-          <button
-            type="button"
-            onClick={() => void runAnalyze()}
-            disabled={analyzing}
-            className="ml-auto h-8 px-4 rounded-md text-xs font-medium bg-profit text-black hover:brightness-110 disabled:opacity-50 inline-flex items-center gap-1.5 transition-all"
-            data-testid="trader-analyze"
-          >
-            {analyzing ? <Loader size={14} className="!gap-0" /> : <Lightning size={13} weight="fill" />}
-            {analyzing ? '…' : 'Analyze'}
-          </button>
+        <div className="v3-seg sx-tf" role="group" aria-label="Timeframes (multi-select)">
+          {TRADER_TIMEFRAMES.map(tf => (
+            <button key={tf} type="button" onClick={() => toggleTf(tf)} aria-pressed={timeframes.includes(tf)} data-testid={`trader-tf-${tf}`}>{tf}</button>
+          ))}
         </div>
+        <button type="button" onClick={() => void runAnalyze()} disabled={analyzing} className="mk-brief-btn sx-go" data-testid="trader-analyze">
+          {analyzing ? <><Loader size={16} className="!gap-0" /> Analysing</> : <>⚡ Analyze</>}
+        </button>
       </div>
 
-      {error && (
-        <div className="rounded-lg border border-loss/30 bg-loss/10 px-3 py-2 text-sm text-loss" role="alert" data-testid="trader-error">
-          {error}
-        </div>
-      )}
+      {error && <div className="d-err" role="alert" data-testid="trader-error"><span>{error}</span></div>}
 
       {analyzing && !analysis && (
-        <div className="rounded-xl border border-border bg-surface py-12 flex flex-col items-center gap-2 text-fg-3 text-sm" data-testid="trader-analyzing">
-          <Loader size={18} />
-          <span>Analyzing…</span>
-        </div>
+        <div className="v3-card sx-busy" data-testid="trader-analyzing"><Loader size={22} /><span>Reading {(symbol || query).toUpperCase()} across {timeframes.join(', ')}…</span></div>
       )}
 
-      {analysis && <AnalysisReport a={analysis} />}
+      {analysis && <div className={analyzing ? 'sx-dim' : ''}><AnalysisReport a={analysis} /></div>}
 
       {!analysis && !analyzing && !error && (
-        <div
-          className="rounded-xl border border-dashed border-border px-4 py-12 text-center text-sm text-fg-3"
-          data-testid="trader-empty"
-        >
-          Search a symbol and analyze.
+        <div className="v3-card sx-empty" data-testid="trader-empty">
+          <b>Pick a symbol and timeframe</b>
+          <p>SignalX returns a direction, entry zone, stop and three targets — then grades the call when the horizon closes.</p>
+          <div>{['XAUUSD', 'BTCUSDT', 'EURUSD'].map(x => <button key={x} type="button" className="t-tag" onClick={() => { setQuery(x); setSymbol(x); }}>{x}</button>)}</div>
         </div>
       )}
 
-      <AnalysisHistory
-        refreshKey={historyKey}
-        onSelect={(a) => {
-          setAnalysis(a);
-          setQuery(a.symbol);
-          setSymbol(a.symbol);
-        }}
-      />
+      <AnalysisHistory refreshKey={historyKey} onSelect={a => { setAnalysis(a); setQuery(a.symbol); setSymbol(a.symbol); setPicked(null); }} />
     </div>
   );
 }

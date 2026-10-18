@@ -9,7 +9,10 @@ export type TraderDirection = 'LONG' | 'SHORT' | 'WAIT';
 export type TraderOutcome = 'TARGET_HIT' | 'STOP_HIT' | 'EXPIRED' | 'SKIPPED';
 export type TraderHitLevel = 'T1' | 'T2' | 'T3';
 
-const API = process.env.NEXT_PUBLIC_API_URL || '';
+const USE_MOCKS = process.env.NEXT_PUBLIC_USE_MOCKS === 'true';
+const API = USE_MOCKS ? '' : process.env.NEXT_PUBLIC_API_URL || '';
+/** Mock mode serves the trader routes from Next's /data handlers. */
+const P = USE_MOCKS ? '/data' : '/api';
 
 export interface TraderLevel {
   price: number;
@@ -161,7 +164,7 @@ export interface TraderTrackRecord {
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API}${path}`, {
-    credentials: 'include',
+    ...(USE_MOCKS ? {} : { credentials: 'include' as const }),
     headers: { 'Content-Type': 'application/json', ...init?.headers },
     ...init,
   });
@@ -172,28 +175,28 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const traderApi = {
   analyze: (symbol: string, timeframes: TraderTimeframe[]) =>
-    req<TraderAnalysis>('/api/trader/analyze', {
+    req<TraderAnalysis>(`${P}/trader/analyze`, {
       method: 'POST',
       body: JSON.stringify({ symbol, timeframes }),
     }),
-  history: () => req<TraderAnalysis[]>('/api/trader/history'),
+  history: () => req<TraderAnalysis[]>(`${P}/trader/history`),
   trackRecord: (scope: 'all' | 'me' = 'all') =>
-    req<TraderTrackRecord>(`/api/trader/track-record?scope=${scope}`),
-  strategies: () => req<TraderStrategy[]>('/api/trader/strategies'),
+    req<TraderTrackRecord>(`${P}/trader/track-record?scope=${scope}`),
+  strategies: () => req<TraderStrategy[]>(`${P}/trader/strategies`),
   createStrategy: (prompt: string, symbol?: string, timeframe?: TraderTimeframe) =>
-    req<TraderStrategy>('/api/trader/strategies', {
+    req<TraderStrategy>(`${P}/trader/strategies`, {
       method: 'POST',
       body: JSON.stringify({ prompt, symbol, timeframe }),
     }),
   backtestStrategy: (id: string, symbol: string, timeframe: TraderTimeframe = '1h') =>
-    req<TraderStrategy>(`/api/trader/strategies/${id}/backtest`, {
+    req<TraderStrategy>(`${P}/trader/strategies/${id}/backtest`, {
       method: 'POST',
       body: JSON.stringify({ symbol, timeframe }),
     }),
   promoteStrategy: (id: string) =>
-    req<{ id: string; status: string; emailOn: boolean }>(`/api/trader/strategies/${id}/promote`, {
+    req<{ id: string; status: string; emailOn: boolean }>(`${P}/trader/strategies/${id}/promote`, {
       method: 'POST',
     }),
   archiveStrategy: (id: string) =>
-    req<{ id: string; status: string }>(`/api/trader/strategies/${id}/archive`, { method: 'POST' }),
+    req<{ id: string; status: string }>(`${P}/trader/strategies/${id}/archive`, { method: 'POST' }),
 };

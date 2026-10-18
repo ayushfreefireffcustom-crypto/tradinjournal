@@ -17,44 +17,17 @@ export function outcomeTone(outcome: TraderOutcome | null | undefined): string {
   return 'text-fg-3 border-border-soft bg-app/40';
 }
 
-export function OutcomeBadge({
-  outcome,
-  hitLevel,
-  pending,
-  compact,
-}: {
+export function OutcomeBadge({ outcome, hitLevel, pending }: {
   outcome?: TraderOutcome | null;
   hitLevel?: TraderHitLevel | null;
   pending?: boolean;
   compact?: boolean;
 }) {
-  if (!outcome && pending) {
-    return (
-      <span
-        className={`inline-flex items-center gap-1 rounded border border-border-soft bg-app/40 text-fg-3 ${
-          compact ? 'px-1.5 py-0.5 text-[9px]' : 'px-2 py-0.5 text-[10px]'
-        } tracking-[0.12em] uppercase`}
-      >
-        <span className="inline-block size-1 rounded-full bg-fg-3 animate-pulse" />
-        Open
-      </span>
-    );
-  }
+  if (!outcome && pending) return <span className="v3-pill a sx-out">Open</span>;
   if (!outcome) return null;
-  const label =
-    outcome === 'TARGET_HIT' && hitLevel
-      ? `${LABELS[outcome]} · ${hitLevel}`
-      : LABELS[outcome];
-  return (
-    <span
-      className={`inline-flex items-center rounded border tracking-[0.12em] uppercase ${outcomeTone(outcome)} ${
-        compact ? 'px-1.5 py-0.5 text-[9px]' : 'px-2 py-0.5 text-[10px]'
-      }`}
-      data-testid={`outcome-${outcome}`}
-    >
-      {label}
-    </span>
-  );
+  const label = outcome === 'TARGET_HIT' && hitLevel ? `Hit ${hitLevel}` : outcome === 'STOP_HIT' ? 'Stopped' : LABELS[outcome];
+  const tone = outcome === 'TARGET_HIT' ? 'g' : outcome === 'STOP_HIT' ? 'r' : 'n';
+  return <span className={`v3-pill ${tone} sx-out`} data-testid={`outcome-${outcome}`}>{label}</span>;
 }
 
 export function pct(n: number | null | undefined, digits = 0): string {
