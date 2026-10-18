@@ -219,8 +219,13 @@ async function aiChat(
   const { onError, onStatus, signal } = opts;
 
   if (USE_MOCKS) {
-    const text = 'Preview mode: connect the real backend to chat with your AI coach about your trading data.';
-    for (const word of text.split(' ')) onToken(word + ' ');
+    // Preview: stream a sample reply word by word so the UI can be exercised.
+    const { SAMPLE_ANSWER } = await import('@/lib/mock-coach');
+    for (const word of SAMPLE_ANSWER.split(/(?<= )/)) {
+      if (signal?.aborted) return { stopped: true };
+      await new Promise(r => setTimeout(r, 12));
+      onToken(word);
+    }
     return {};
   }
 

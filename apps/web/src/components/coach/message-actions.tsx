@@ -4,7 +4,6 @@
 // re-sending the user message that produced it. Regenerate is only offered on the
 // last reply, where re-running the turn is unambiguous.
 import { useEffect, useState } from 'react';
-import { Copy, Check, ArrowsClockwise } from '@phosphor-icons/react';
 
 interface Props {
   content: string;
@@ -13,8 +12,6 @@ interface Props {
   disabled?: boolean;
 }
 
-const BTN =
-  'inline-flex items-center gap-1 rounded-[var(--radius-btn)] px-1.5 py-1 text-[10px] tracking-[0.1em] uppercase text-fg-3 hover:text-fg hover:bg-surface-hover transition-colors disabled:opacity-40 disabled:hover:bg-transparent';
 
 export default function MessageActions({ content, onRegenerate, disabled }: Props) {
   const [copied, setCopied] = useState(false);
@@ -37,23 +34,9 @@ export default function MessageActions({ content, onRegenerate, disabled }: Prop
   };
 
   return (
-    <div className="flex items-center gap-0.5 mt-2 -ml-1.5" data-testid="coach-msg-actions">
-      <button onClick={copy} className={BTN} data-testid="coach-copy" aria-label="Copy reply">
-        {copied ? <Check size={12} weight="bold" className="text-profit" /> : <Copy size={12} weight="bold" />}
-        {copied ? 'Copied' : 'Copy'}
-      </button>
-      {onRegenerate && (
-        <button
-          onClick={onRegenerate}
-          disabled={disabled}
-          className={BTN}
-          data-testid="coach-regenerate"
-          aria-label="Regenerate reply"
-        >
-          <ArrowsClockwise size={12} weight="bold" />
-          Retry
-        </button>
-      )}
+    <div className="ca" data-testid="coach-msg-actions">
+      <button onClick={copy} data-testid="coach-copy" aria-label="Copy reply" className={copied ? 'ok' : ''}>{copied ? 'Copied ✓' : 'Copy'}</button>
+      {onRegenerate && <button onClick={onRegenerate} disabled={disabled} data-testid="coach-regenerate" aria-label="Regenerate reply">Regenerate</button>}
     </div>
   );
 }
