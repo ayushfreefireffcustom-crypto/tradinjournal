@@ -7,6 +7,7 @@
 
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
+import '@/styles/app-v3.css';
 
 interface Props {
   title: string;
@@ -22,8 +23,8 @@ interface Props {
 export default function ConfirmDialog({
   title,
   message,
-  confirmLabel = 'CONFIRM',
-  cancelLabel = 'CANCEL',
+  confirmLabel = 'Confirm',
+  cancelLabel = 'Cancel',
   danger = false,
   loading = false,
   onConfirm,
@@ -44,33 +45,15 @@ export default function ConfirmDialog({
   if (!mounted) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" data-testid="confirm-dialog">
-      <div className="absolute inset-0 bg-app/80 backdrop-blur-sm" onClick={() => !loading && onClose()} />
-      <div className="relative w-full max-w-sm tcard p-6 fade-up">
-        <div className="text-[10px] tracking-[0.25em] text-fg-3">// CONFIRM</div>
-        <h2 className="font-display font-black text-xl tracking-tight mt-1">{title}</h2>
-        <p className="text-fg-2 text-[12px] mt-2 leading-relaxed">{message}</p>
-
-        <div className="flex justify-end gap-2 pt-4 border-t border-border-soft mt-5">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={loading}
-            data-testid="confirm-cancel"
-            className="btn btn-ghost"
-          >
-            {cancelLabel}
-          </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            disabled={loading}
-            data-testid="confirm-accept"
-            className={`btn ${danger ? 'bg-loss text-white hover:opacity-90' : 'btn-primary'} ${loading ? 'opacity-60 cursor-wait' : ''}`}
-          >
-            {loading ? 'WORKING…' : confirmLabel}
-          </button>
-        </div>
+    <div className="v3 v3-modal" role="alertdialog" aria-modal="true" aria-labelledby="cd-t" aria-describedby="cd-m" data-testid="confirm-dialog">
+      <div className="v3-modal-bg" onClick={() => !loading && onClose()} />
+      <div className="v3-modal-card cd">
+        <h2 id="cd-t">{title}</h2>
+        <p id="cd-m">{message}</p>
+        <footer>
+          <button type="button" onClick={onClose} disabled={loading} data-testid="confirm-cancel" className="v3-btn v3-btn--o">{cancelLabel}</button>
+          <button type="button" onClick={onConfirm} disabled={loading} data-testid="confirm-accept" className={`v3-btn ${danger ? 'cd-danger' : 'v3-btn--ink'}`} autoFocus>{loading ? 'Working…' : confirmLabel}</button>
+        </footer>
       </div>
     </div>,
     document.body,

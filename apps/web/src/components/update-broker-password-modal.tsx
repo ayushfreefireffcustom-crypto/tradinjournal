@@ -41,36 +41,16 @@ export default function UpdateBrokerPasswordModal({ account, onClose, onUpdated 
   const initials = account.broker.replace(/[^A-Za-z]/g, '').slice(0, 2).toUpperCase() || 'MT';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" data-testid="update-password-modal">
-      <div className="absolute inset-0 bg-app/80 backdrop-blur-sm" onClick={onClose} />
-      <div className={`relative w-full max-w-md tcard p-6 fade-up ${shaking ? 'shake' : ''}`}>
-        <div className="flex items-start justify-between mb-5">
-          <div>
-            <div className="text-[10px] tracking-[0.25em] text-fg-3">// UPDATE</div>
-            <h2 className="font-display font-black text-2xl tracking-tight mt-1">MT5 PASSWORD</h2>
-            <p className="text-fg-2 text-[12px] mt-1">Changed your password at the broker? Enter the new one to keep syncing.</p>
-          </div>
-          <button
-            onClick={onClose}
-            data-testid="update-password-close"
-            className="w-7 h-7 border border-border text-fg-3 hover:text-fg hover:border-border-strong transition-colors"
-          >
-            ×
-          </button>
-        </div>
-
-        {/* Account summary */}
-        <div className="flex items-center gap-3 border border-border-soft p-3 mb-5">
-          <div className="w-9 h-9 bg-surface-hover border border-border flex items-center justify-center text-[11px] font-bold">{initials}</div>
-          <div className="flex-1 min-w-0">
-            <div className="text-[12px] truncate">{account.broker} · #{account.mt5Login}</div>
-            <div className="text-[10px] tracking-[0.18em] text-fg-3 uppercase truncate">{account.server}</div>
-          </div>
-        </div>
-
-        <form onSubmit={submit} className="flex flex-col gap-3">
-          <label className="flex flex-col gap-1.5">
-            <span className="text-[10px] tracking-[0.22em] text-fg-3">NEW INVESTOR PASSWORD</span>
+    <div className="v3 v3-modal" role="dialog" aria-modal="true" aria-labelledby="up-t" data-testid="update-password-modal">
+      <div className="v3-modal-bg" onClick={onClose} />
+      <div className={`v3-modal-card bm ${shaking ? 'shake' : ''}`}>
+        <header className="v3-modal-hd">
+          <div><small>Update</small><h2 id="up-t">MT5 password</h2><p>Changed it at the broker? Enter the new investor password to keep syncing.</p></div>
+          <button onClick={onClose} aria-label="Close" className="v3-modal-x" style={{ marginLeft: 'auto' }}>×</button>
+        </header>
+        <form onSubmit={submit} className="bm-bd">
+          <div className="bm-sum"><span className="bm-mono">{initials}</span><span className="bm-id"><b>{account.broker} · #{account.mt5Login}</b><small>{account.server}</small></span></div>
+          <label className="n-fld"><span>New investor password</span>
             <input
               type="password"
               value={password}
@@ -79,27 +59,14 @@ export default function UpdateBrokerPasswordModal({ account, onClose, onUpdated 
               required
               autoFocus
               data-testid="update-password-input"
-              className="tinput"
+              className="n-in"
             />
           </label>
-
-          {error && (
-            <div className="border border-loss/30 bg-loss/10 px-3 py-2 text-loss text-[12px]" data-testid="update-password-error">
-              {error}
-            </div>
-          )}
-
-          <div className="flex justify-end gap-2 pt-2 border-t border-border-soft mt-2">
-            <button type="button" onClick={onClose} className="btn btn-ghost">CANCEL</button>
-            <button
-              type="submit"
-              disabled={loading}
-              data-testid="update-password-submit"
-              className={`btn btn-primary ${loading ? 'opacity-60 cursor-wait' : ''}`}
-            >
-              {loading ? 'VERIFYING...' : 'UPDATE PASSWORD'}
-            </button>
-          </div>
+          {error && <div className="d-err" data-testid="update-password-error" role="alert"><span>{error}</span></div>}
+          <footer className="bm-ft">
+            <button type="button" onClick={onClose} className="v3-btn v3-btn--o">Cancel</button>
+            <button type="submit" disabled={loading} data-testid="update-password-submit" className="v3-btn v3-btn--ink" style={{ paddingRight: 18 }}>{loading ? 'Verifying…' : 'Update password'}</button>
+          </footer>
         </form>
       </div>
     </div>
