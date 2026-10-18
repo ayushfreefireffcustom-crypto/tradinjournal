@@ -4,15 +4,12 @@
 // all AI enrichment (sentiment / relevance / impact / category / country), the
 // outlets that carried the story, and a prominent link out to the source.
 import { useEffect } from 'react';
-import { X, ArrowUpRight, Circle } from '@phosphor-icons/react';
+import { IClose } from '@/components/v3/icons';
 import NewsThumb from '@/components/news/news-thumb';
 import type { NewsItem, Sentiment } from '@/lib/api';
 
-const sentimentChip: Record<Sentiment, string> = {
-  BULLISH: 'text-profit border-profit/40 bg-profit/10',
-  BEARISH: 'text-loss border-loss/40 bg-loss/10',
-  NEUTRAL: 'text-fg-3 border-border-strong bg-surface',
-};
+const SENT: Record<Sentiment, [string, string]> = { BULLISH: ['g', 'Bullish'], BEARISH: ['r', 'Bearish'], NEUTRAL: ['v', 'Neutral'] };
+const CAT: Record<string, string> = { CRYPTO: 'Crypto', MACRO: 'Macro', GEOPOLITICAL: 'Geopolitical', REGULATORY: 'Regulatory', MARKETS: 'Markets' };
 
 function flag(cc: string | null): string {
   if (!cc || !/^[A-Z]{2}$/i.test(cc)) return '';
@@ -36,54 +33,30 @@ export default function NewsModal({ item, onClose }: { item: NewsItem; onClose: 
   const others = item.outlets.filter(o => o !== item.source);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" data-testid="news-modal">
-      <button className="absolute inset-0 bg-black/60 backdrop-blur-sm" aria-label="Close" onClick={onClose} />
-      <div className="relative w-full max-w-xl max-h-[88dvh] overflow-y-auto rounded-[var(--radius-card)] border border-border-strong bg-app shadow-2xl fade-up">
-        {high && <div className="h-1 w-full bg-loss" />}
-        <NewsThumb src={item.imageUrl} className="w-full aspect-video object-cover" />
-        <div className="p-5 sm:p-6">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex items-center gap-2 flex-wrap text-[11px]">
-              <span className="font-semibold tracking-wide text-fg-2">{item.source}</span>
-              <span className="text-fg-3">· {fullTime(item.publishedAt)}</span>
-              {item.country && <span className="text-base leading-none" title={item.country}>{flag(item.country)}</span>}
-            </div>
-            <button onClick={onClose} aria-label="Close" className="shrink-0 w-8 h-8 -mt-1 -mr-1 rounded-md border border-border-soft flex items-center justify-center text-fg-3 hover:text-fg hover:border-border-strong transition-colors">
-              <X size={14} weight="bold" />
-            </button>
+    <div className="v3 v3-modal" role="dialog" aria-modal="true" aria-labelledby="nm-t" data-testid="news-modal">
+      <div className="v3-modal-bg" onClick={onClose} />
+      <div className="v3-modal-card nm-card">
+        <NewsThumb src={item.imageUrl} className="nm-img" />
+        <div className="nm-bd">
+          <div className="nm-top">
+            <span className="mk-meta"><span className="src">{item.source} · {fullTime(item.publishedAt)}</span>{item.country && <span title={item.country}>{flag(item.country)}</span>}</span>
+            <button onClick={onClose} aria-label="Close" className="v3-modal-x"><IClose size={16} /></button>
           </div>
-
-          {/* Tags */}
-          <div className="flex items-center gap-1.5 flex-wrap mt-3 text-[10px]">
-            {item.category && <span className="px-1.5 py-0.5 rounded border border-border-soft text-fg-3 tracking-wider uppercase">{item.category}</span>}
-            {item.sentiment && <span className={`px-1.5 py-0.5 rounded border tracking-wider uppercase ${sentimentChip[item.sentiment]}`}>{item.sentiment}</span>}
-            {high && <span className="px-1.5 py-0.5 rounded border border-loss/40 text-loss bg-loss/10 tracking-wider uppercase flex items-center gap-1"><Circle size={6} weight="fill" /> High impact</span>}
-            {typeof item.relevance === 'number' && (
-              <span className="flex items-center gap-1.5 text-fg-3 ml-auto" title={`Relevance ${item.relevance}/100`}>
-                <span className="tracking-wider uppercase">Relevance</span>
-                <span className="w-16 h-1.5 rounded-full bg-surface-active overflow-hidden"><span className="block h-full bg-profit/70" style={{ width: `${item.relevance}%` }} /></span>
-                <span className="numeric text-fg-2">{item.relevance}</span>
-              </span>
-            )}
+          <div className="mk-meta" style={{ marginTop: 12 }}>
+            {item.sentiment && <span className={`v3-pill ${SENT[item.sentiment][0]}`}>{SENT[item.sentiment][1]}</span>}
+            {high && <span className="v3-pill r">High impact</span>}
+            {item.category && <span className="cat">{CAT[item.category]}</span>}
           </div>
-
-          <h2 className="font-display font-bold text-[19px] leading-snug tracking-tight text-fg mt-4">{item.title}</h2>
-          {item.summary && <p className="text-[13.5px] text-fg-2 leading-relaxed mt-3">{item.summary}</p>}
-
-          {others.length > 0 && (
-            <p className="text-[11px] text-fg-3 mt-4">Also reported by <span className="text-fg-2">{others.join(', ')}</span></p>
+          <h2 id="nm-t">{item.title}</h2>
+          {item.summary && <p className="nm-sum">{item.summary}</p>}
+          {typeof item.relevance === 'number' && (
+            <div className="nm-rel"><span>Relevance to traders</span><span className="mk-rel" style={{ flex: 1, marginTop: 0 }}><i style={{ width: `${item.relevance}%` }} /></span><b className="num">{item.relevance}</b></div>
           )}
-
-          <a
-            href={item.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            data-testid="news-modal-source"
-            className="btn btn-primary w-full justify-center mt-5 py-2.5 rounded-[var(--radius-btn)]"
-          >
-            Read full story at {item.source} <ArrowUpRight size={15} weight="bold" />
+          {others.length > 0 && <p className="nm-also">Also reported by {others.join(', ')}</p>}
+          <a href={item.url} target="_blank" rel="noopener noreferrer" data-testid="news-modal-source" className="v3-btn v3-btn--ink nm-go">
+            <span>Read at {item.source}</span><span className="ar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M7 17L17 7M9 7h8v8" /></svg></span>
           </a>
-          <p className="text-center text-[9px] tracking-[0.18em] uppercase text-fg-3 mt-3">Opens the original source · AI tags are informational</p>
+          <p className="nm-note">Opens the original source · AI tags are informational</p>
         </div>
       </div>
     </div>

@@ -4,7 +4,7 @@
 // grouped by category with checkboxes; saving replaces the user's preferred
 // sources, which pins those outlets to the top of the feed.
 import { useEffect, useMemo, useState } from 'react';
-import { X, Check } from '@phosphor-icons/react';
+import { IClose, ICheck } from '@/components/v3/icons';
 import type { NewsSource, NewsCategory } from '@/lib/api';
 
 const CATEGORY_ORDER: NewsCategory[] = ['CRYPTO', 'MACRO', 'MARKETS', 'REGULATORY', 'GEOPOLITICAL'];
@@ -49,41 +49,25 @@ export default function SourcePicker({
       return next;
     });
 
+  const CAT: Record<string, string> = { CRYPTO: 'Crypto', MACRO: 'Macro', GEOPOLITICAL: 'Geopolitical', REGULATORY: 'Regulatory', MARKETS: 'Markets' };
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" data-testid="source-picker">
-      <button className="absolute inset-0 bg-black/60 backdrop-blur-sm" aria-label="Close" onClick={onClose} />
-      <div className="relative w-full max-w-lg max-h-[85dvh] flex flex-col rounded-[var(--radius-card)] border border-border-strong bg-app shadow-2xl fade-up">
-        <div className="shrink-0 flex items-start justify-between gap-3 p-5 pb-3 border-b border-border-soft">
-          <div>
-            <h2 className="font-display font-bold text-[16px] tracking-tight text-fg">Customize your feed</h2>
-            <p className="text-[11.5px] text-fg-3 mt-1">Pick the outlets you follow — their headlines pin to the top.</p>
-          </div>
-          <button onClick={onClose} aria-label="Close" className="shrink-0 w-8 h-8 -mt-1 -mr-1 rounded-md border border-border-soft flex items-center justify-center text-fg-3 hover:text-fg hover:border-border-strong transition-colors">
-            <X size={14} weight="bold" />
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+    <div className="v3 v3-modal" role="dialog" aria-modal="true" aria-labelledby="sp-t" data-testid="source-picker">
+      <div className="v3-modal-bg" onClick={onClose} />
+      <div className="v3-modal-card">
+        <header className="v3-modal-hd">
+          <div><small>Your feed</small><h2 id="sp-t">Choose your sources</h2><p>Headlines from these outlets pin to the top.</p></div>
+          <button onClick={onClose} aria-label="Close" className="v3-modal-x" style={{ marginLeft: 'auto' }}><IClose size={16} /></button>
+        </header>
+        <div className="v3-modal-bd sp-bd">
           {groups.map(([cat, sources]) => (
-            <div key={cat}>
-              <div className="text-[9px] tracking-[0.2em] uppercase text-fg-3 mb-2">{cat}</div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+            <div key={cat} className="sp-g">
+              <h4>{CAT[cat] ?? cat}</h4>
+              <div className="sp-grid">
                 {sources.map(s => {
                   const on = sel.has(s.key);
                   return (
-                    <button
-                      key={s.key}
-                      type="button"
-                      onClick={() => toggle(s.key)}
-                      data-testid={`source-opt-${s.key}`}
-                      className={`flex items-center gap-2.5 rounded-[var(--radius-btn)] border px-3 py-2 text-left transition-colors ${
-                        on ? 'border-profit/40 bg-profit/10 text-fg' : 'border-border-soft text-fg-2 hover:border-border-strong'
-                      }`}
-                    >
-                      <span className={`shrink-0 w-4 h-4 rounded-[4px] border flex items-center justify-center ${on ? 'bg-profit border-profit text-black' : 'border-border-strong'}`}>
-                        {on && <Check size={11} weight="bold" />}
-                      </span>
-                      <span className="text-[13px] font-medium truncate">{s.label}</span>
+                    <button key={s.key} type="button" aria-pressed={on} onClick={() => toggle(s.key)} data-testid={`source-opt-${s.key}`} className="sp-opt">
+                      <span className="box">{on && <ICheck size={13} />}</span><span>{s.label}</span>
                     </button>
                   );
                 })}
@@ -91,25 +75,11 @@ export default function SourcePicker({
             </div>
           ))}
         </div>
-
-        <div className="shrink-0 flex items-center gap-3 p-4 border-t border-border-soft">
-          {error ? (
-            <span className="text-[11px] text-loss" data-testid="source-picker-error">{error}</span>
-          ) : (
-            <span className="text-[11px] text-fg-3">{sel.size} selected</span>
-          )}
-          {sel.size > 0 && (
-            <button onClick={() => setSel(new Set())} className="text-[11px] text-fg-3 hover:text-fg transition-colors">Clear all</button>
-          )}
-          <button
-            onClick={() => onSave([...sel])}
-            disabled={saving}
-            data-testid="source-picker-save"
-            className="ml-auto btn btn-primary py-2 px-4 text-[12px] rounded-[var(--radius-btn)] disabled:opacity-60"
-          >
-            {saving ? 'Saving…' : 'Save'}
-          </button>
-        </div>
+        <footer className="v3-modal-ft" style={{ justifyContent: 'flex-start', gap: 12 }}>
+          {error ? <span className="r-err" style={{ margin: 0 }} data-testid="source-picker-error">{error}</span> : <span className="mute" style={{ fontSize: 14 }}>{sel.size} selected</span>}
+          {sel.size > 0 && <button onClick={() => setSel(new Set())} className="v3-link" style={{ margin: 0 }}>Clear</button>}
+          <button onClick={() => onSave([...sel])} disabled={saving} data-testid="source-picker-save" className="v3-btn v3-btn--ink" style={{ marginLeft: 'auto', paddingRight: 18 }}>{saving ? 'Saving…' : 'Save'}</button>
+        </footer>
       </div>
     </div>
   );

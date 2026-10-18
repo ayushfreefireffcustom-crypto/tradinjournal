@@ -9,8 +9,6 @@
 // "From your sources" (those outlets) on top and "More headlines" (everything
 // else) below. With no preference it renders as one plain feed.
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Newspaper, Sparkle, ArrowUpRight, Circle, Faders, Target, CurrencyBtc, ChartLineUp, Bank, Globe, Scales, type Icon } from '@phosphor-icons/react';
-import EmptyState from '@/components/empty-state';
 import MarkdownMessage from '@/components/coach/markdown-message';
 import NewsModal from '@/components/news/news-modal';
 import NewsThumb from '@/components/news/news-thumb';
@@ -29,29 +27,24 @@ function itemText(it: NewsItem): string {
 const CATEGORIES: NewsCategory[] = ['CRYPTO', 'MACRO', 'GEOPOLITICAL', 'REGULATORY', 'MARKETS'];
 const POLL_MS = 60_000;
 
-const sentimentChip: Record<Sentiment, string> = {
-  BULLISH: 'text-profit border-profit/40 bg-profit/10',
-  BEARISH: 'text-loss border-loss/40 bg-loss/10',
-  NEUTRAL: 'text-fg-3 border-border-strong bg-surface',
-};
-
-// Designed placeholder tile per category — shown when an item has no (or a
-// broken) feed image, so the image column reads as a proper thumbnail.
-const categoryTile: Record<string, { grad: string; icon: Icon; color: string }> = {
-  CRYPTO: { grad: 'from-amber-500/25', icon: CurrencyBtc, color: 'text-amber-400/60' },
-  MARKETS: { grad: 'from-profit/20', icon: ChartLineUp, color: 'text-profit/60' },
-  MACRO: { grad: 'from-sky-500/20', icon: Bank, color: 'text-sky-400/60' },
-  GEOPOLITICAL: { grad: 'from-loss/20', icon: Globe, color: 'text-loss/55' },
-  REGULATORY: { grad: 'from-violet-500/20', icon: Scales, color: 'text-violet-400/60' },
-};
-const defaultTile = { grad: 'from-surface-hover', icon: Newspaper, color: 'text-fg-3/40' };
+const SENT_LABEL: Record<Sentiment, string> = { BULLISH: 'Bullish', BEARISH: 'Bearish', NEUTRAL: 'Neutral' };
+const SENT_PILL: Record<Sentiment, string> = { BULLISH: 'g', BEARISH: 'r', NEUTRAL: 'v' };
+const CAT_LABEL: Record<string, string> = { CRYPTO: 'Crypto', MACRO: 'Macro', GEOPOLITICAL: 'Geopolitical', REGULATORY: 'Regulatory', MARKETS: 'Markets' };
+// Short ticker for the card tile: the first traded symbol it mentions, else any
+// symbol it mentions, else the category.
+const TILE_ABBR: Record<string, string> = { XAUUSD: 'XAU', BTCUSD: 'BTC', ETHUSD: 'ETH', EURUSD: 'EUR', US100: 'NDX', NAS100: 'NDX', US30: 'DOW', US500: 'SPX', GBPUSD: 'GBP', USDJPY: 'JPY' };
+function tileFor(it: NewsItem, matched: string[]): string {
+  const sym = matched[0] ?? matchSymbols(itemText(it))[0];
+  if (sym) return TILE_ABBR[sym] ?? sym.slice(0, 3);
+  return it.category ? CAT_LABEL[it.category]!.slice(0, 3).toUpperCase() : 'NEWS';
+}
 
 function timeAgo(iso: string): string {
   const s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
-  if (s < 60) return 'now';
-  if (s < 3600) return `${Math.floor(s / 60)}m`;
-  if (s < 86400) return `${Math.floor(s / 3600)}h`;
-  return `${Math.floor(s / 86400)}d`;
+  if (s < 60) return 'just now';
+  if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+  if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+  return `${Math.floor(s / 86400)}d ago`;
 }
 
 function dedupePrepend(prev: NewsItem[], incoming: NewsItem[]): NewsItem[] {
@@ -66,76 +59,32 @@ function dedupePrepend(prev: NewsItem[], incoming: NewsItem[]): NewsItem[] {
  * no/broken image). The title is single-line + ellipsis so two-column rows never
  * mismatch on title line count. `matched` = symbols on it the user trades.
  */
+function ArrowNE() { return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><path d="M7 17L17 7M9 7h8v8" /></svg>; }
+
 function NewsCardBase({ it, onOpen, matched = [] }: { it: NewsItem; onOpen: (i: NewsItem) => void; matched?: string[] }) {
   const high = it.impact === 'HIGH' || it.marketMoving;
   const mine = matched.length > 0;
+  const tone = it.sentiment ? SENT_PILL[it.sentiment] : 'v';
   return (
-    <button
-      type="button"
-      onClick={() => onOpen(it)}
-      data-testid="news-item"
-      className={`group h-[132px] w-full flex items-stretch text-left rounded-[var(--radius-card)] border overflow-hidden bg-surface/40 transition-colors hover:bg-surface ${
-        mine ? 'border-profit/40 border-l-2 border-l-profit' : high ? 'border-loss/40 border-l-2 border-l-loss' : 'border-border-soft hover:border-border-strong'
-      }`}
-    >
-      {/* Left: content */}
-      <div className="flex-1 min-w-0 flex flex-col p-3">
-        {/* Meta — single row, clips gracefully rather than wrapping (keeps height fixed) */}
-        <div className="flex items-center gap-1.5 text-[10px] mb-1 whitespace-nowrap overflow-hidden">
-          {mine && (
-            <span className="shrink-0 px-1.5 py-0.5 rounded border border-profit/40 text-profit bg-profit/10 tracking-wider uppercase flex items-center gap-1" data-testid="news-your-market">
-              <Target size={9} weight="bold" /> Your market
-            </span>
-          )}
-          <span className="shrink-0 font-semibold tracking-wide text-fg-2">{it.source}</span>
-          <span className="shrink-0 text-fg-3">· {timeAgo(it.publishedAt)}</span>
-          {it.sentiment && <span className={`shrink-0 px-1.5 py-0.5 rounded border tracking-wider uppercase ${sentimentChip[it.sentiment]}`}>{it.sentiment}</span>}
-          {high && <span className="shrink-0 px-1.5 py-0.5 rounded border border-loss/40 text-loss bg-loss/10 tracking-wider uppercase">High</span>}
-          {it.category && <span className="shrink-0 px-1.5 py-0.5 rounded border border-border-soft text-fg-3 tracking-wider uppercase">{it.category}</span>}
+    <button type="button" onClick={() => onOpen(it)} data-testid="news-item" className={`mk-card ${mine ? 'mine' : ''}`}>
+      <div className="mk-card-m">
+        <div className="mk-meta">
+          {mine && <span className="v3-pill v mk-mine" data-testid="news-your-market">Your market</span>}
+          <span className="src">{it.source} · {timeAgo(it.publishedAt)}</span>
+          {it.sentiment && <span className={`v3-pill ${SENT_PILL[it.sentiment]}`}>{SENT_LABEL[it.sentiment]}</span>}
+          {high && <span className="v3-pill r">High</span>}
+          {it.category && <span className="cat">{CAT_LABEL[it.category]}</span>}
         </div>
-
-        {/* Title — one line, ellipsis */}
-        <div className="text-[14px] font-semibold text-fg leading-snug truncate">{it.title}</div>
-
-        {/* Summary — two lines */}
-        {it.summary ? (
-          <p className="text-[12px] text-fg-3 mt-1 line-clamp-2 leading-relaxed">{it.summary}</p>
-        ) : (
-          <p className="text-[12px] text-fg-3/50 italic mt-1 line-clamp-2 leading-relaxed">No summary — open to read at {it.source}.</p>
+        <h3>{it.title}</h3>
+        {it.summary ? <p>{it.summary}</p> : <p className="mute">Open to read at {it.source}.</p>}
+        {typeof it.relevance === 'number' && (
+          <span className="mk-rel" title={`Relevance to traders ${it.relevance}/100`}><i style={{ width: `${it.relevance}%` }} /></span>
         )}
-
-        {/* Footer — pinned to the bottom */}
-        <div className="mt-auto pt-1.5 flex items-center gap-2">
-          {mine && (
-            <span className="flex items-center gap-1">
-              {matched.slice(0, 2).map(s => (
-                <span key={s} className="px-1 py-0.5 rounded bg-profit/10 text-profit text-[9px] font-semibold tracking-wide numeric">{s}</span>
-              ))}
-            </span>
-          )}
-          {typeof it.relevance === 'number' && (
-            <span className="flex items-center gap-1 text-fg-3" title={`Relevance ${it.relevance}/100`}>
-              <span className="w-10 h-1 rounded-full bg-surface-active overflow-hidden"><span className="block h-full bg-profit/70" style={{ width: `${it.relevance}%` }} /></span>
-            </span>
-          )}
-          <span className="ml-auto flex items-center gap-1 text-[10px] tracking-[0.14em] uppercase text-fg-3 opacity-0 group-hover:opacity-100 transition-opacity">Read <ArrowUpRight size={11} weight="bold" /></span>
-        </div>
       </div>
-
-      {/* Right: full-height image column. A designed category tile sits underneath,
-          so imageless or broken-image items still show a proper thumbnail. */}
-      {(() => {
-        const tile = (it.category && categoryTile[it.category]) || defaultTile;
-        const TileIcon = tile.icon;
-        return (
-          <div className={`shrink-0 w-24 sm:w-28 xl:w-32 self-stretch relative overflow-hidden bg-gradient-to-br ${tile.grad} to-app`}>
-            <span className={`absolute inset-0 flex items-center justify-center pointer-events-none ${tile.color}`}>
-              <TileIcon size={30} weight="duotone" />
-            </span>
-            {it.imageUrl && <NewsThumb src={it.imageUrl} className="absolute inset-0 w-full h-full object-cover" />}
-          </div>
-        );
-      })()}
+      <div className={`mk-tile ${tone}`}>
+        <b>{tileFor(it, matched)}</b>
+        {it.imageUrl && <NewsThumb src={it.imageUrl} className="mk-img" />}
+      </div>
     </button>
   );
 }
@@ -222,7 +171,7 @@ export default function NewsFeed({ userSymbols = EMPTY_SYMBOLS, symbolsReady = t
   // Featured lead story: only on the plain feed (no personalization, no symbols,
   // no filter) — otherwise a band above is the hero instead. Gated on symbolsReady
   // so it doesn't flash in then vanish once traded symbols resolve.
-  const showLead = symbolsReady && !category && !highOnly && !personalized && !hasSymbols && !symbolFilter;
+  const showLead = symbolsReady && !category && !highOnly && !personalized && !symbolFilter;
   const lead = useMemo(() => {
     if (!showLead || items.length === 0) return null;
     return [...items.slice(0, 12)].sort(
@@ -230,6 +179,8 @@ export default function NewsFeed({ userSymbols = EMPTY_SYMBOLS, symbolsReady = t
     )[0] ?? null;
   }, [items, showLead]);
   const gridItems = (lead ? items.filter(i => i.id !== lead.id) : items).filter(i => !radarIds.has(i.id));
+  // The lead never repeats in the radar band.
+  const radarShown = lead ? radar.filter(i => i.id !== lead.id) : radar;
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const prependAnchor = useRef<{ h: number; top: number } | null>(null);
@@ -385,206 +336,106 @@ export default function NewsFeed({ userSymbols = EMPTY_SYMBOLS, symbolsReady = t
 
   return (
     <>
-      <div className="flex flex-col h-full min-h-0" data-testid="news-page">
-        {/* Filter bar */}
-        <div className="shrink-0 border-b border-border-soft px-3 sm:px-4 lg:px-6 py-3 flex items-center gap-2">
-          {/* Filter chips — scroll horizontally on narrow screens instead of wrapping */}
-          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar flex-1 min-w-0 pr-1">
-            <button
-              onClick={() => setCategory(null)}
-              className={`shrink-0 px-2.5 py-1.5 text-[10px] tracking-[0.14em] uppercase rounded-[var(--radius-btn)] border transition-colors ${
-                !category ? 'bg-profit/15 text-fg border-profit/30' : 'text-fg-3 border-border-soft hover:text-fg'
-              }`}
-            >
-              All
-            </button>
+      <div className="mk-feed" data-testid="news-page">
+        <div className="mk-bar">
+          <div className="mk-chips" role="group" aria-label="Category">
+            <button aria-pressed={!category} onClick={() => setCategory(null)}>All</button>
             {CATEGORIES.map(c => (
-              <button
-                key={c}
-                onClick={() => setCategory(category === c ? null : c)}
-                data-testid={`news-cat-${c}`}
-                className={`shrink-0 px-2.5 py-1.5 text-[10px] tracking-[0.14em] uppercase rounded-[var(--radius-btn)] border transition-colors ${
-                  category === c ? 'bg-profit/15 text-fg border-profit/30' : 'text-fg-3 border-border-soft hover:text-fg'
-                }`}
-              >
-                {c}
-              </button>
+              <button key={c} aria-pressed={category === c} onClick={() => setCategory(category === c ? null : c)} data-testid={`news-cat-${c}`}>{CAT_LABEL[c]}</button>
             ))}
-            <button
-              onClick={() => setHighOnly(v => !v)}
-              data-testid="news-high"
-              className={`shrink-0 px-2.5 py-1.5 text-[10px] tracking-[0.14em] uppercase rounded-[var(--radius-btn)] border transition-colors ${
-                highOnly ? 'text-loss border-loss/40 bg-loss/10' : 'text-fg-3 border-border-soft hover:text-fg'
-              }`}
-            >
-              High impact
-            </button>
+            <button aria-pressed={highOnly} className="hi" onClick={() => setHighOnly(v => !v)} data-testid="news-high">High impact</button>
           </div>
-
-          <div className="shrink-0 flex items-center gap-2.5">
-            {live && !category && !highOnly && (
-              <span className="hidden sm:flex items-center gap-1.5 text-[10px] tracking-[0.16em] uppercase text-fg-3">
-                <Circle size={7} weight="fill" className="text-profit pulse-dot" /> Live
-              </span>
-            )}
-            <button
-              onClick={() => setPickerOpen(true)}
-              data-testid="news-customize-btn"
-              title="Customize your feed"
-              className={`shrink-0 flex items-center gap-1.5 py-1.5 px-2.5 text-[11px] tracking-[0.06em] uppercase rounded-[var(--radius-btn)] border transition-colors ${
-                prefs.length > 0 ? 'text-fg border-profit/30 bg-profit/10' : 'text-fg-3 border-border-soft hover:text-fg'
-              }`}
-            >
-              <Faders size={13} weight="bold" />
-              <span className="hidden sm:inline">Sources{prefs.length > 0 ? ` · ${prefs.length}` : ''}</span>
+          <div className="mk-acts">
+            {live && !category && !highOnly && <span className="mk-live"><i />Live</span>}
+            <button onClick={() => setPickerOpen(true)} data-testid="news-customize-btn" className={`ch-pill ${prefs.length ? 'on' : ''}`} title="Choose your outlets">
+              Sources{prefs.length > 0 ? ` · ${prefs.length}` : ` · ${catalog.length || ''}`.replace(/ · $/, '')}
             </button>
-            <button onClick={runBrief} data-testid="news-brief-btn" className="shrink-0 btn btn-primary py-1.5 px-3 text-[11px] rounded-[var(--radius-btn)]">
-              <Sparkle size={13} weight="fill" /> Brief
-            </button>
+            <button onClick={runBrief} data-testid="news-brief-btn" className="mk-brief-btn">✦ Brief</button>
           </div>
         </div>
 
-        {/* Symbol tabs — pivot the feed to a market you trade. */}
         {hasSymbols && (
-          <div className="shrink-0 border-b border-border-soft px-3 sm:px-4 lg:px-6 py-2 flex items-center gap-1.5 overflow-x-auto no-scrollbar" data-testid="news-symbol-tabs">
-            <span className="shrink-0 text-[9px] tracking-[0.18em] uppercase text-fg-3 flex items-center gap-1 mr-1"><Target size={10} weight="bold" /> Your markets</span>
-            <button
-              onClick={() => setSymbolFilter(null)}
-              className={`shrink-0 px-2 py-1 text-[10px] font-semibold tracking-wide rounded-[var(--radius-btn)] border transition-colors ${
-                !symbolFilter ? 'bg-profit/15 text-fg border-profit/30' : 'text-fg-3 border-border-soft hover:text-fg'
-              }`}
-            >
-              All
-            </button>
-            {symbolTabs.map(s => (
-              <button
-                key={s}
-                onClick={() => setSymbolFilter(symbolFilter === s ? null : s)}
-                data-testid={`news-symbol-${s}`}
-                className={`shrink-0 px-2 py-1 text-[10px] font-semibold tracking-wide numeric rounded-[var(--radius-btn)] border transition-colors ${
-                  symbolFilter === s ? 'bg-profit/15 text-fg border-profit/30' : 'text-fg-3 border-border-soft hover:text-fg'
-                }`}
-              >
-                {s}
-              </button>
-            ))}
+          <div className="mk-syms" data-testid="news-symbol-tabs">
+            <span className="lbl"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="8" /><circle cx="12" cy="12" r="3" /></svg> Your markets</span>
+            <button aria-pressed={!symbolFilter} onClick={() => setSymbolFilter(null)}>All</button>
+            {symbolTabs.map(s => <button key={s} aria-pressed={symbolFilter === s} onClick={() => setSymbolFilter(symbolFilter === s ? null : s)} data-testid={`news-symbol-${s}`}>{s}</button>)}
           </div>
         )}
 
-        <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 sm:px-4 lg:px-6 py-4" data-testid="news-list">
-          <div className="max-w-7xl mx-auto">
-            {/* Brief panel */}
-            {briefOpen && (
-              <div className="max-w-3xl mx-auto mb-5 rounded-[var(--radius-card)] border border-profit/25 bg-surface/40 p-4" data-testid="news-brief">
-                <div className="flex items-center gap-2 mb-2">
-                  <Sparkle size={14} weight="fill" className="text-profit" />
-                  <span className="text-[10px] tracking-[0.2em] uppercase text-fg-3">AI morning brief</span>
-                  <button onClick={() => setBriefOpen(false)} className="ml-auto text-[11px] text-fg-3 hover:text-fg">Close</button>
-                </div>
-                {brief ? <MarkdownMessage content={brief} /> : briefLoading ? <div className="coach-shimmer text-[13px]">Writing your brief…</div> : null}
+        <div ref={scrollRef} className="mk-list" data-testid="news-list">
+          {briefOpen && (
+            <section className="mk-brief" data-testid="news-brief" aria-live="polite">
+              <div className="hd">
+                <h3>✦ Your morning brief</h3>
+                <span>{new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} · written for {hasSymbols ? `your ${userSymbols.size} market${userSymbols.size === 1 ? '' : 's'}` : 'today’s session'} · <button onClick={() => setBriefOpen(false)}>Close</button></span>
               </div>
-            )}
+              {brief ? <MarkdownMessage content={brief} /> : briefLoading ? <p className="wr">Writing your brief<span className="dots" /></p> : <p className="wr">The brief isn’t available right now.</p>}
+            </section>
+          )}
 
-            {loading && items.length === 0 && topItems.length === 0 ? (
-              // Full-page shimmers only on the very first load. A background refresh
-              // (filter change, live refresh) keeps the existing feed on screen so it
-              // never blanks out and bumps your scroll position.
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">{Array.from({ length: 8 }).map((_, i) => <div key={i} className="shimmer h-[132px]" />)}</div>
-            ) : error ? (
-              <EmptyState icon={Newspaper} title="News unavailable" hint={error} />
-            ) : items.length === 0 && topItems.length === 0 ? (
-              <EmptyState icon={Newspaper} title="No news yet" hint="The feed will fill in as headlines are ingested." />
-            ) : symbolFilter ? (
-              <>
-                <div className="grid grid-cols-1 xl:grid-cols-2 gap-3" data-testid="news-symbol-view">
-                  {symbolMatched.map(it => <NewsCard key={it.id} it={it} onOpen={setSelectedItem} matched={matchOf(it)} />)}
-                </div>
-                {symbolMatched.length === 0 && (
-                  <p className="text-[12px] text-fg-3 py-6 text-center">No loaded headlines mention {symbolFilter} yet — they'll appear as the feed updates.</p>
-                )}
-              </>
-            ) : (
-              <>
-                {/* ── ON YOUR RADAR (symbol-matched hero band) ── */}
-                {radar.length > 0 && (
-                  <section className="mb-6" data-testid="news-radar">
-                    <div className="flex items-center gap-2 mb-3">
-                      <span className="text-[10px] tracking-[0.2em] uppercase text-profit font-semibold flex items-center gap-1.5"><Target size={11} weight="bold" /> On your radar</span>
-                      <span className="h-px flex-1 bg-border-soft" />
-                    </div>
-                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
-                      {radar.map(it => <NewsCard key={it.id} it={it} onOpen={setSelectedItem} matched={matchOf(it)} />)}
-                    </div>
-                  </section>
-                )}
-                {/* ── FROM YOUR SOURCES (personalized top band) ── */}
-                {personalized && (
-                  <section className="mb-6" data-testid="news-your-sources">
-                    <div className="flex items-center gap-2 mb-3">
-                      <span className="text-[10px] tracking-[0.2em] uppercase text-profit font-semibold">From your sources</span>
-                      <span className="h-px flex-1 bg-border-soft" />
-                      <button onClick={() => setPickerOpen(true)} className="text-[10px] tracking-[0.14em] uppercase text-fg-3 hover:text-fg transition-colors">Edit</button>
-                    </div>
-                    {topLoading ? (
-                      <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">{Array.from({ length: 3 }).map((_, i) => <div key={i} className="shimmer h-[132px]" />)}</div>
-                    ) : topItems.length === 0 ? (
-                      <p className="text-[12px] text-fg-3 py-2">Nothing new from your sources yet — fresh headlines will appear here.</p>
-                    ) : (
-                      <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
-                        {topItems.map(it => <NewsCard key={it.id} it={it} onOpen={setSelectedItem} matched={matchOf(it)} />)}
+          {loading && items.length === 0 && topItems.length === 0 ? (
+            <div className="mk-grid">{Array.from({ length: 6 }).map((_, i) => <div key={i} className="skel d-sk" style={{ height: 200, borderRadius: 20 }} />)}</div>
+          ) : error ? (
+            <div className="v3-card d-empty"><b>News unavailable</b>{error}</div>
+          ) : items.length === 0 && topItems.length === 0 ? (
+            <div className="v3-card d-empty"><b>No news yet</b>The feed fills in as headlines are ingested.</div>
+          ) : symbolFilter ? (
+            <>
+              <div className="mk-grid" data-testid="news-symbol-view">
+                {symbolMatched.map(it => <NewsCard key={it.id} it={it} onOpen={setSelectedItem} matched={matchOf(it)} />)}
+              </div>
+              {symbolMatched.length === 0 && <div className="v3-card d-empty">No loaded headlines mention {symbolFilter} yet — they’ll appear as the feed updates.</div>}
+            </>
+          ) : (
+            <>
+              {lead && (() => {
+                const high = lead.impact === 'HIGH' || lead.marketMoving;
+                return (
+                  <button type="button" onClick={() => setSelectedItem(lead)} data-testid="news-lead" className="mk-lead">
+                    <div className="mk-lead-m">
+                      <div className="mk-meta">
+                        <span className="v3-pill v">Top story</span>
+                        <span className="src">{lead.source} · {timeAgo(lead.publishedAt)}</span>
+                        {lead.sentiment && <span className={`v3-pill ${SENT_PILL[lead.sentiment]}`}>{SENT_LABEL[lead.sentiment]}</span>}
+                        {high && <span className="v3-pill r">High</span>}
+                        {lead.category && <span className="cat">{CAT_LABEL[lead.category]}</span>}
                       </div>
-                    )}
-                  </section>
-                )}
-
-                {/* ── Featured lead (plain feed only) ── */}
-                {lead && (() => {
-                  const high = lead.impact === 'HIGH' || lead.marketMoving;
-                  return (
-                    <button
-                      type="button"
-                      onClick={() => setSelectedItem(lead)}
-                      data-testid="news-lead"
-                      className={`group w-full text-left rounded-[var(--radius-card)] border bg-surface/50 p-5 mb-3 transition-colors hover:bg-surface flex gap-5 ${
-                        high ? 'border-loss/40 border-l-2 border-l-loss' : 'border-border-soft hover:border-border-strong'
-                      }`}
-                    >
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap text-[10px] mb-2">
-                          <span className="text-[9px] tracking-[0.2em] uppercase text-profit font-semibold">Top story</span>
-                          <span className="text-fg-3">·</span>
-                          <span className="font-semibold tracking-wide text-fg-2">{lead.source}</span>
-                          <span className="text-fg-3">· {timeAgo(lead.publishedAt)}</span>
-                          {lead.category && <span className="px-1.5 py-0.5 rounded border border-border-soft text-fg-3 tracking-wider uppercase">{lead.category}</span>}
-                          {lead.sentiment && <span className={`px-1.5 py-0.5 rounded border tracking-wider uppercase ${sentimentChip[lead.sentiment]}`}>{lead.sentiment}</span>}
-                          {high && <span className="px-1.5 py-0.5 rounded border border-loss/40 text-loss bg-loss/10 tracking-wider uppercase">High impact</span>}
-                        </div>
-                        <h2 className="font-display font-bold text-[20px] sm:text-[22px] leading-tight tracking-tight text-fg">{lead.title}</h2>
-                        {lead.summary && <p className="text-[13.5px] text-fg-2 mt-2 leading-relaxed line-clamp-2">{lead.summary}</p>}
-                        <span className="inline-flex items-center gap-1 text-[10px] tracking-[0.14em] uppercase text-fg-3 mt-3 group-hover:text-fg transition-colors">Read more <ArrowUpRight size={11} weight="bold" /></span>
+                      <h2>{lead.title}</h2>
+                      {lead.summary && <p>{lead.summary}</p>}
+                      <div className="mk-lead-ft">
+                        {matchSymbols(itemText(lead)).slice(0, 3).map(s => <span key={s} className="t-tag">{s}</span>)}
+                        <span className="v3-link">Read more <ArrowNE /></span>
                       </div>
-                      <NewsThumb src={lead.imageUrl} className="hidden sm:block shrink-0 w-44 lg:w-56 aspect-video rounded-lg object-cover border border-border-soft" />
-                    </button>
-                  );
-                })()}
+                    </div>
+                    <div className={`mk-lead-art ${lead.sentiment === 'BEARISH' ? 'down' : ''}`} aria-hidden>
+                      {lead.imageUrl ? <NewsThumb src={lead.imageUrl} className="mk-img" /> : (
+                        <svg viewBox="0 0 400 300" preserveAspectRatio="none"><path className="ln" d={lead.sentiment === 'BEARISH' ? 'M0 90 L60 110 L100 95 L160 150 L200 140 L260 200 L300 185 L360 240 L400 250' : 'M0 220 L60 205 L100 215 L160 150 L200 162 L260 100 L300 115 L360 55 L400 45'} /></svg>
+                      )}
+                    </div>
+                  </button>
+                );
+              })()}
 
-                {/* ── MORE HEADLINES / the main feed ── */}
-                {personalized && (
-                  <div className="flex items-center gap-2 mb-3" data-testid="news-more">
-                    <span className="text-[10px] tracking-[0.2em] uppercase text-fg-3 font-semibold">More headlines</span>
-                    <span className="h-px flex-1 bg-border-soft" />
-                  </div>
-                )}
-                <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
-                  {gridItems.map(it => <NewsCard key={it.id} it={it} onOpen={setSelectedItem} matched={matchOf(it)} />)}
-                </div>
-                {cursor && <div className="h-12 flex items-center justify-center">{loadingMore && <Loader size={20} />}</div>}
-                <p className="text-center text-[9px] tracking-[0.2em] text-fg-3 mt-4">
-                  AGGREGATED HEADLINES · AI TAGS ARE INFORMATIONAL · NOT INVESTMENT ADVICE
-                </p>
-              </>
-            )}
-          </div>
+              {radarShown.length > 0 && (
+                <section data-testid="news-radar">
+                  <div className="mk-sec"><span>On your radar</span></div>
+                  <div className="mk-grid">{radarShown.map(it => <NewsCard key={it.id} it={it} onOpen={setSelectedItem} matched={matchOf(it)} />)}</div>
+                </section>
+              )}
+              {personalized && (
+                <section data-testid="news-your-sources">
+                  <div className="mk-sec"><span>From your sources</span><button className="v3-link" onClick={() => setPickerOpen(true)}>Edit</button></div>
+                  {topLoading ? <div className="mk-grid">{Array.from({ length: 2 }).map((_, i) => <div key={i} className="skel d-sk" style={{ height: 200, borderRadius: 20 }} />)}</div>
+                    : topItems.length === 0 ? <p className="mute" style={{ fontSize: 14 }}>Nothing new from your sources yet.</p>
+                    : <div className="mk-grid">{topItems.map(it => <NewsCard key={it.id} it={it} onOpen={setSelectedItem} matched={matchOf(it)} />)}</div>}
+                </section>
+              )}
+              {(radarShown.length > 0 || personalized) && <div className="mk-sec" data-testid="news-more"><span>More headlines</span></div>}
+              <div className="mk-grid">{gridItems.map(it => <NewsCard key={it.id} it={it} onOpen={setSelectedItem} matched={matchOf(it)} />)}</div>
+              {cursor && <div className="mk-more">{loadingMore && <Loader size={20} />}</div>}
+              <p className="mk-foot">Aggregated headlines · AI tags are informational · not investment advice</p>
+            </>
+          )}
         </div>
       </div>
 

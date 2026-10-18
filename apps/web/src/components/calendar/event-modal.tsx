@@ -5,13 +5,13 @@
 // Previous → Forecast → Actual progression with a plain-English surprise read,
 // and keep actions understated. Provenance is fetched from the detail endpoint.
 import { useEffect, useMemo, useState } from 'react';
-import { X, Star, Clock, TrendUp, TrendDown, Minus } from '@phosphor-icons/react';
+import { IClose } from '@/components/v3/icons';
 import { api, type CalendarEvent, type CalendarEventDetail, type EventImpact } from '@/lib/api';
 
-const impactMeta: Record<EventImpact, { pill: string; dot: string; note: string }> = {
-  HIGH: { pill: 'bg-loss/15 text-loss', dot: 'bg-loss', note: 'High-impact — often moves the market on release.' },
-  MEDIUM: { pill: 'bg-warning/15 text-warning', dot: 'bg-warning', note: 'Medium-impact — can move the market.' },
-  LOW: { pill: 'bg-surface text-fg-3', dot: 'bg-border-strong', note: 'Low-impact — usually a limited reaction.' },
+const impactMeta: Record<EventImpact, { pill: string; label: string; note: string }> = {
+  HIGH: { pill: 'r', label: 'High impact', note: 'Often moves the market on release.' },
+  MEDIUM: { pill: 'a', label: 'Medium impact', note: 'Can move the market.' },
+  LOW: { pill: 'n', label: 'Low impact', note: 'Usually a limited reaction.' },
 };
 
 // Plain-English descriptions for common events (à la Investing.com's event blurbs).
@@ -103,101 +103,56 @@ export default function EventModal({
   const read = (() => {
     const a = num(event.actual), f = num(event.forecast), p = num(event.previous);
     if (event.actual && a != null && f != null) {
-      if (a > f) return { icon: TrendUp, cls: 'text-profit', text: 'Actual came in above forecast' };
-      if (a < f) return { icon: TrendDown, cls: 'text-loss', text: 'Actual came in below forecast' };
-      return { icon: Minus, cls: 'text-fg-3', text: 'Actual in line with forecast' };
+      if (a > f) return { arrow: '↑', cls: 'lg', text: 'Actual came in above forecast' };
+      if (a < f) return { arrow: '↓', cls: 'sh', text: 'Actual came in below forecast' };
+      return { arrow: '→', cls: 'mute', text: 'Actual in line with forecast' };
     }
     if (!released && f != null && p != null) {
-      if (f > p) return { icon: TrendUp, cls: 'text-profit', text: 'Forecast points higher than previous' };
-      if (f < p) return { icon: TrendDown, cls: 'text-loss', text: 'Forecast points lower than previous' };
-      return { icon: Minus, cls: 'text-fg-3', text: 'Forecast unchanged from previous' };
+      if (f > p) return { arrow: '↑', cls: 'mute', text: 'Forecast points higher than previous' };
+      if (f < p) return { arrow: '↓', cls: 'mute', text: 'Forecast points lower than previous' };
+      return { arrow: '→', cls: 'mute', text: 'Forecast unchanged from previous' };
     }
     return null;
   })();
 
   const heroCol = released ? 'actual' : 'forecast';
-  const dir = read?.cls === 'text-profit' ? 'up' : read?.cls === 'text-loss' ? 'down' : null;
+  const dir = event.actual && read?.cls === 'lg' ? 'up' : event.actual && read?.cls === 'sh' ? 'down' : null;
 
   const col = (key: string, label: string, value: string | null) => {
     const hero = key === heroCol;
-    const colored = key === 'actual' && event.actual ? (dir === 'up' ? 'text-profit' : dir === 'down' ? 'text-loss' : 'text-fg') : 'text-fg';
-    return (
-      <div className={`flex-1 px-3 py-3 text-center ${hero ? 'bg-surface/60' : ''}`}>
-        <div className="text-[9px] tracking-[0.16em] uppercase text-fg-3">{label}</div>
-        <div className={`text-[18px] font-semibold numeric mt-1 ${hero ? colored : 'text-fg-2'}`}>{value ?? '–'}</div>
-      </div>
-    );
+    const tone = key === 'actual' && event.actual ? (dir === 'up' ? 'lg' : dir === 'down' ? 'sh' : '') : '';
+    return <div className={`em-col ${hero ? 'hero' : ''}`}><span>{label}</span><b className={`num ${tone}`}>{value ?? '–'}</b></div>;
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" data-testid="event-modal">
-      <button className="absolute inset-0 bg-black/65 backdrop-blur-sm" aria-label="Close" onClick={onClose} />
-      <div className="relative w-full max-w-[440px] max-h-[90dvh] flex flex-col overflow-hidden rounded-[var(--radius-card)] border border-border-strong bg-app shadow-2xl fade-up">
-        <div className={`h-1 w-full shrink-0 ${impact.dot}`} />
-        <div className="p-5 sm:p-6 overflow-y-auto">
-          {/* Header */}
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <span className="text-xl leading-none">{flag(event.country)}</span>
-              <span className="text-[13px] font-semibold text-fg-2">{event.currency}</span>
-              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide uppercase ${impact.pill}`}>
-                <span className={`w-1.5 h-1.5 rounded-full ${impact.dot}`} /> {event.impact}
-              </span>
-            </div>
-            <button onClick={onClose} aria-label="Close" className="shrink-0 w-7 h-7 -mt-0.5 -mr-1 rounded-md flex items-center justify-center text-fg-3 hover:text-fg hover:bg-surface transition-colors">
-              <X size={15} weight="bold" />
-            </button>
+    <div className="v3 v3-modal" role="dialog" aria-modal="true" aria-labelledby="em-t" data-testid="event-modal">
+      <div className="v3-modal-bg" onClick={onClose} />
+      <div className="v3-modal-card em-card">
+        <div className="em-bd">
+          <div className="em-top">
+            <span className="em-cc"><span className="fl">{flag(event.country)}</span>{event.currency}</span>
+            <span className={`v3-pill ${impact.pill}`}>{impact.label}</span>
+            <button onClick={onClose} aria-label="Close" className="v3-modal-x" style={{ marginLeft: 'auto' }}><IClose size={16} /></button>
           </div>
-
-          <h2 className="font-display font-bold text-[19px] leading-snug tracking-tight text-fg mt-3">{event.title}</h2>
-          {description && <p className="text-[12.5px] text-fg-3 leading-relaxed mt-1.5">{description}</p>}
-
-          {/* Time + countdown */}
-          <div className="flex items-center gap-2 mt-3 text-[11.5px]">
-            <span className="flex items-center gap-1.5 text-fg-3"><Clock size={12} /> {new Date(event.eventTime).toLocaleString(undefined, { weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
-            {countdown ? (
-              <span className="px-2 py-0.5 rounded-full bg-profit/10 text-profit text-[10px] font-semibold tracking-wide numeric">{countdown}</span>
-            ) : (
-              <span className="px-2 py-0.5 rounded-full bg-surface text-fg-3 text-[10px] font-semibold tracking-wide uppercase">Released</span>
-            )}
+          <h2 id="em-t">{event.title}</h2>
+          {description && <p className="em-desc">{description}</p>}
+          <div className="em-when">
+            <span className="num">{new Date(event.eventTime).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+            {countdown ? <span className="v3-pill v num">{countdown}</span> : <span className="v3-pill n">Released</span>}
           </div>
-
-          {/* Previous → Forecast → Actual */}
-          <div className="mt-4 rounded-[var(--radius-btn)] border border-border-soft overflow-hidden flex divide-x divide-border-soft">
+          <div className="em-cols">
             {col('previous', 'Previous', event.previous)}
             {col('forecast', 'Forecast', event.forecast)}
             {col('actual', 'Actual', event.actual)}
           </div>
-
-          {/* Plain-English read */}
-          {read && (
-            <div className={`flex items-center gap-2 mt-3 text-[12px] ${read.cls}`}>
-              <read.icon size={14} weight="bold" /> <span>{read.text}</span>
-            </div>
-          )}
-
-          {/* Meta */}
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-4 pt-3 border-t border-border-soft text-[10.5px] text-fg-3">
-            <span>{impact.note}</span>
-            {prov.names.length > 0 && <span className="ml-auto">Source: <span className="text-fg-2">{prov.names.join(' + ')}</span></span>}
-            {prov.conflict && <span className="w-full text-warning">Sources disagreed on the impact level.</span>}
-          </div>
-
-          {/* Watch toggle — only for upcoming events (can't remind about a past one) */}
+          {read && <p className={`em-read ${read.cls}`}><b>{read.arrow}</b> {read.text}</p>}
+          <p className="em-meta">{impact.note}{prov.names.length > 0 && <> · Source: {prov.names.join(' + ')}</>}{prov.conflict && <span className="am"> · Sources disagreed on impact</span>}</p>
           {released ? (
-            <div className="w-full flex items-center justify-center gap-2 mt-4 py-2.5 rounded-[var(--radius-btn)] text-[11px] tracking-wide border border-border-soft text-fg-3" data-testid="event-modal-released">
-              <Clock size={13} /> Event already released
-            </div>
+            <div className="em-released" data-testid="event-modal-released">Already released</div>
           ) : (
-            <button
-              onClick={() => { setWatched(w => !w); onToggleWatch(event); }}
-              data-testid="event-modal-watch"
-              className={`w-full flex items-center justify-center gap-2 mt-4 py-2.5 rounded-[var(--radius-btn)] text-[12px] font-semibold tracking-wide border transition-colors ${
-                watched ? 'bg-warning/15 text-warning border-warning/40' : 'border-border-strong text-fg hover:border-profit/50 hover:text-profit'
-              }`}
-            >
-              <Star size={14} weight={watched ? 'fill' : 'regular'} />
-              {watched ? 'Watching — you’ll be reminded' : 'Watch & remind me'}
+            <button onClick={() => { setWatched(w => !w); onToggleWatch(event); }} data-testid="event-modal-watch" className={`em-watch ${watched ? 'on' : ''}`} aria-pressed={watched}>
+              <svg width="17" height="17" viewBox="0 0 24 24" fill={watched ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9 6.8 19.6l1-5.8L3.5 9.7l5.9-.9z" /></svg>
+              {watched ? 'Watching — you’ll get a reminder' : 'Watch & remind me'}
             </button>
           )}
         </div>

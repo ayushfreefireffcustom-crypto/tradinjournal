@@ -8,7 +8,6 @@
 // available coverage explicit (the free ForexFactory feed only carries the
 // current week; add an FMP/Finnhub key for history + forecasts).
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { CalendarDots, Star, ArrowClockwise } from '@phosphor-icons/react';
 import EventModal from '@/components/calendar/event-modal';
 import { Loader } from '@/components/loader';
 import {
@@ -18,9 +17,6 @@ import {
   flag,
   timeLabel,
   dayKey,
-  impactAccent,
-  impactPill,
-  impactDot,
 } from '@/lib/calendar-format';
 import { api, type CalendarEvent, type EventImpact } from '@/lib/api';
 
@@ -44,11 +40,11 @@ function fetchWindow(): { from: string; to: string } {
 }
 
 function shortDate(d: Date): string {
-  return d.toLocaleDateString(undefined, { day: '2-digit', month: 'short' });
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 }
 
 export default function CalendarRail() {
-  const [filter, setFilter] = useState<CalFilter>('week');
+  const [filter, setFilter] = useState<CalFilter>('upcoming');
   // Default to HIGH+MEDIUM — the real economic releases. LOW (which includes bank
   // holidays from the TradingView feed) is a toggle so it doesn't flood the list.
   const [impacts, setImpacts] = useState<Set<EventImpact>>(() => new Set<EventImpact>(['HIGH', 'MEDIUM']));
@@ -140,149 +136,86 @@ export default function CalendarRail() {
     const past = new Date(ev.eventTime).getTime() <= now;
     const hasData = !!(ev.previous || ev.forecast || ev.actual);
     return (
-      <button
-        key={ev.id}
-        type="button"
-        onClick={() => setSelected(ev)}
-        data-testid="cal-rail-event"
-        className={`w-full text-left border-l-2 ${impactAccent[ev.impact]} pl-2.5 pr-1 py-2 rounded-r-md hover:bg-surface transition-colors ${past ? 'opacity-55 hover:opacity-100' : ''}`}
-      >
-        <div className="flex items-center gap-1.5">
-          <span className="numeric text-[10.5px] text-fg-3 shrink-0 w-9">{timeLabel(ev.eventTime)}</span>
-          <span className={`shrink-0 w-1.5 h-1.5 rounded-full ${impactDot[ev.impact]}`} />
-          <span className="text-[11px] shrink-0" title={ev.country}>{flag(ev.country)}</span>
-          <span className="text-[10px] font-semibold text-fg-2 shrink-0">{ev.currency}</span>
-          <span className="text-[11.5px] text-fg leading-tight truncate flex-1 min-w-0">{ev.title}</span>
-          {/* Watch only for upcoming events — no point reminding about a past one. */}
-          {!past && (
-            <span
-              role="button"
-              tabIndex={0}
-              onClick={e => { e.stopPropagation(); void onWatch(ev); }}
-              onKeyDown={e => { if (e.key === 'Enter') { e.stopPropagation(); void onWatch(ev); } }}
-              aria-label={ev.watched ? 'Unwatch' : 'Watch'}
-              data-testid="cal-rail-watch"
-              className="shrink-0 p-0.5 cursor-pointer"
-            >
-              <Star size={12} weight={ev.watched ? 'fill' : 'regular'} className={ev.watched ? 'text-warning' : 'text-fg-3 hover:text-fg'} />
-            </span>
-          )}
-        </div>
-        {hasData && (
-          <div className="flex items-center gap-2.5 text-[10px] numeric mt-1 pl-[3.375rem]">
-            <span className="text-fg-3">A{' '}
-              <span className={`font-semibold ${fresh && dir ? (dir === 'up' ? 'flash-profit' : 'flash-loss') : ''} ${dir === 'up' ? 'text-profit' : dir === 'down' ? 'text-loss' : 'text-fg-2'}`}>
-                {ev.actual ?? '–'}{dir === 'up' ? '▲' : dir === 'down' ? '▼' : ''}
+      <div key={ev.id} className={`cr-ev ${past ? 'past' : ''}`} data-testid="cal-rail-event">
+        <button type="button" className="cr-main" onClick={() => setSelected(ev)}>
+          <span className="t num">{timeLabel(ev.eventTime)}</span>
+          <i className={`dot ${ev.impact.toLowerCase()}`} title={`${ev.impact.toLowerCase()} impact`} />
+          <span className="b">
+            <span className="n"><span className="fl" title={ev.country}>{flag(ev.country)}</span> {ev.currency} · {ev.title}</span>
+            {hasData && (
+              <span className="v num">
+                {ev.actual != null && <span className={`a ${fresh ? 'fresh' : ''} ${dir === 'up' ? 'lg' : dir === 'down' ? 'sh' : ''}`}>A {ev.actual}{dir === 'up' ? '▲' : dir === 'down' ? '▼' : ''}</span>}
+                <span>F {ev.forecast ?? '–'}</span><span>P {ev.previous ?? '–'}</span>
               </span>
-            </span>
-            <span className="text-fg-3">F <span className="text-fg-2">{ev.forecast ?? '–'}</span></span>
-            <span className="text-fg-3">P <span className="text-fg-2">{ev.previous ?? '–'}</span></span>
-          </div>
+            )}
+          </span>
+        </button>
+        {!past && (
+          <button type="button" className={`cr-star ${ev.watched ? 'on' : ''}`} onClick={() => void onWatch(ev)} aria-pressed={ev.watched} aria-label={ev.watched ? `Stop watching ${ev.title}` : `Watch ${ev.title}`} data-testid="cal-rail-watch">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill={ev.watched ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9 6.8 19.6l1-5.8L3.5 9.7l5.9-.9z" /></svg>
+          </button>
         )}
-      </button>
+      </div>
     );
   };
 
   // Render a day group; the "today" group is split at the now-line.
   const renderDay = (day: string, rows: CalendarEvent[]) => {
-    if (day !== todayKey) return <div className="space-y-0.5">{rows.map(row)}</div>;
+    if (day !== todayKey) return <>{rows.map(row)}</>;
     const past = rows.filter(e => new Date(e.eventTime).getTime() <= now);
     const future = rows.filter(e => new Date(e.eventTime).getTime() > now);
     return (
-      <div className="space-y-0.5">
+      <>
         {past.map(row)}
         {past.length > 0 && future.length > 0 && (
-          <div className="flex items-center gap-1.5 py-1" data-testid="cal-rail-now">
-            <span className="flex items-center gap-1 text-[8.5px] font-bold tracking-[0.18em] uppercase text-profit whitespace-nowrap">
-              <span className="w-1.5 h-1.5 rounded-full bg-profit pulse-dot" /> Now · {nowLabel}
-            </span>
-            <span className="flex-1 h-px bg-profit/30" />
-          </div>
+          <div className="cr-now" data-testid="cal-rail-now"><span><i />Now · {nowLabel}</span></div>
         )}
         {future.map(row)}
-      </div>
+      </>
     );
+  };
+  const dayTitle = (k: string) => {
+    const first = groups.find(([d]) => d === k)?.[1][0];
+    if (!first) return k;
+    const d = new Date(first.eventTime);
+    const lbl = d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+    return k === todayKey ? `Today · ${lbl}` : lbl;
   };
 
   return (
-    <div className="flex flex-col h-full min-h-0" data-testid="calendar-rail">
-      {/* Header */}
-      <div className="shrink-0 px-3 py-2.5 border-b border-border-soft space-y-2">
-        <div className="flex items-center gap-2">
-          <CalendarDots size={14} className="text-fg-3" />
-          <span className="text-[10px] tracking-[0.2em] uppercase text-fg-2 font-semibold">Economic Calendar</span>
-          <button onClick={() => void load(true)} aria-label="Refresh" className="ml-auto p-1 text-fg-3 hover:text-fg transition-colors">
-            <ArrowClockwise size={12} className={loading ? 'animate-spin' : undefined} />
-          </button>
+    <section className="v3-card cr" data-testid="calendar-rail" aria-labelledby="cr-t">
+      <div className="cr-hd">
+        <div className="cr-top">
+          <h3 id="cr-t">Economic calendar</h3>
+          <button onClick={() => void load(true)} aria-label="Refresh calendar" className="cr-ref"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" className={loading ? 'spin' : undefined}><path d="M20 11a8 8 0 10-2.3 5.7M20 4v7h-7" /></svg></button>
         </div>
-
-        {/* Time filter + impact filter */}
-        <div className="flex items-center gap-1.5">
-          <div className="inline-flex rounded-[var(--radius-btn)] border border-border-soft overflow-hidden">
-            {FILTERS.map(f => (
-              <button
-                key={f}
-                onClick={() => setFilter(f)}
-                data-testid={`cal-rail-filter-${f}`}
-                className={`px-2 py-1 text-[9px] tracking-[0.08em] uppercase transition-colors ${filter === f ? 'bg-profit/15 text-fg' : 'text-fg-3 hover:text-fg'}`}
-              >
-                {FILTER_LABEL[f]}
-              </button>
-            ))}
+        <div className="cr-ctl">
+          <div className="v3-seg sm" role="group" aria-label="Range">
+            {FILTERS.map(f => <button key={f} aria-pressed={filter === f} onClick={() => setFilter(f)} data-testid={`cal-rail-filter-${f}`}>{FILTER_LABEL[f]}</button>)}
           </div>
-          <div className="flex items-center gap-1 ml-auto">
-            {IMPACTS.map(i => (
-              <button
-                key={i}
-                onClick={() => toggleImpact(i)}
-                aria-pressed={impacts.has(i)}
-                data-testid={`cal-rail-impact-${i}`}
-                className={`px-1.5 py-1 text-[8.5px] font-bold tracking-wider uppercase rounded ${impacts.has(i) ? impactPill[i] : 'text-fg-3 opacity-40 hover:opacity-100'}`}
-              >
-                {i[0]}
-              </button>
-            ))}
+          <div className="cr-imp" role="group" aria-label="Impact">
+            {IMPACTS.map(i => <button key={i} aria-pressed={impacts.has(i)} className={i.toLowerCase()} onClick={() => toggleImpact(i)} data-testid={`cal-rail-impact-${i}`} title={`${i.toLowerCase()} impact`}>{i[0]}</button>)}
           </div>
         </div>
-
-        {/* Coverage line — what data is actually available */}
-        {coverage && (
-          <p className="text-[9px] tracking-wide text-fg-3/70 numeric">
-            {coverage.count} events · {shortDate(coverage.min)} – {shortDate(coverage.max)}
-          </p>
-        )}
+        {coverage && <p className="cr-cov num">{coverage.count} events · {shortDate(coverage.min)} — {shortDate(coverage.max)}</p>}
       </div>
 
-      {/* List */}
-      <div className="flex-1 overflow-y-auto px-2 py-2" data-testid="cal-rail-list">
-        {loading ? (
-          <div className="h-full flex items-center justify-center py-16"><Loader label="Loading events" /></div>
-        ) : error ? (
-          <p className="text-[11px] text-fg-3 px-2 py-6 text-center">{error}</p>
-        ) : events.length === 0 ? (
-          <div className="px-3 py-8 text-center">
-            <p className="text-[12px] text-fg-2">No calendar data yet.</p>
-            <p className="text-[10.5px] text-fg-3 mt-1.5 leading-relaxed">Events are ingested from the economic-calendar feed. If this stays empty, the feed may be unconfigured.</p>
-          </div>
-        ) : totalShown === 0 ? (
-          <div className="px-3 py-8 text-center">
-            <p className="text-[12px] text-fg-2">No {FILTER_LABEL[filter].toLowerCase()} events{impacts.size < IMPACTS.length ? ' at these impact levels' : ''}.</p>
-            <button onClick={() => setFilter('all')} className="text-[10.5px] text-profit hover:underline mt-1.5">Show all {coverage?.count ?? ''} available →</button>
-          </div>
-        ) : (
-          groups.map(([day, rows]) => (
-            <div key={day} className="mb-2">
-              <div className="sticky top-0 z-10 bg-app/95 backdrop-blur px-1.5 py-1 text-[9px] tracking-[0.18em] uppercase text-fg-3 flex items-center justify-between">
-                <span>{day}</span>
-                <span className="text-fg-3/60 numeric">{rows.length}</span>
-              </div>
+      <div className="cr-list" data-testid="cal-rail-list">
+        {loading ? <div className="cr-empty"><Loader label="Loading events" /></div>
+          : error ? <p className="cr-empty">{error}</p>
+          : events.length === 0 ? <div className="cr-empty"><b>No calendar data yet</b>Events appear once the economic-calendar feed is connected.</div>
+          : totalShown === 0 ? (
+            <div className="cr-empty"><b>No {FILTER_LABEL[filter].toLowerCase()} events{impacts.size < IMPACTS.length ? ' at these impact levels' : ''}</b>
+              <button onClick={() => setFilter('all')} className="v3-link">Show all {coverage?.count ?? ''} events</button></div>
+          ) : groups.map(([day, rows]) => (
+            <div key={day} className="cr-day">
+              <div className="cr-dh"><span>{dayTitle(day)}</span><span className="num">{rows.length}</span></div>
               {renderDay(day, rows)}
             </div>
-          ))
-        )}
+          ))}
       </div>
 
       {selected && <EventModal event={selected} onClose={() => setSelected(null)} onToggleWatch={onWatch} />}
-    </div>
+    </section>
   );
 }
