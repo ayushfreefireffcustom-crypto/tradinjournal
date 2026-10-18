@@ -1,37 +1,32 @@
 'use client';
 
 import { Suspense, useEffect, useMemo, useState, useCallback } from 'react';
-import { useParams, useSearchParams } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import AppShell from '@/components/app-shell';
-import DealsTable from '@/components/deals-table';
 import { LoadingScreen } from '@/components/loader';
 import { api, type BrokerAccount, type Deal, type Trade, type JournalEntry } from '@/lib/api';
 import { persistSelectedAccountId } from '@/lib/use-accounts';
+import { IArrowLeft, IArrowRight } from '@/components/v3/icons';
+import { TradeCandles, useTradeCandles } from '@/components/v3/trade-candles';
+import { money, price, dur, tone } from '@/components/v3/format';
 
 const NEGATIVE_EMOTIONS = ['FOMO', 'Revenge', 'Hesitant'];
+const ENTRY: Record<Deal['entry'], string> = { IN: 'In', OUT: 'Out', INOUT: 'In/out', OUT_BY: 'Out by' };
 
-function fmtDur(s: number | null) {
-  if (s == null) return '—';
-  if (s < 60) return `${s}s`;
-  if (s < 3600) return `${Math.floor(s / 60)}m`;
-  if (s < 86400) return `${Math.floor(s / 3600)}h ${Math.floor((s % 3600) / 60)}m`;
-  return `${Math.floor(s / 86400)}d`;
-}
-
-function fmtTime(iso: string | null) {
-  return iso ? new Date(iso).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }) : '—';
-}
-
-function price(v: number | null | undefined, symbol: string) {
-  if (v == null) return '—';
-  const dp = symbol === 'USDJPY' ? 3 : symbol === 'BTCUSD' || symbol.includes('100') || symbol.includes('30') ? 1 : 5;
-  return v.toFixed(dp);
+function when(t: Trade) {
+  const o = new Date(t.openTime);
+  const date = o.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const tm = (d: Date) => d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  if (!t.closeTime) return `${date}, ${tm(o)} → open`;
+  const c = new Date(t.closeTime);
+  const sameDay = o.toDateString() === c.toDateString();
+  return `${date}, ${tm(o)} → ${sameDay ? '' : `${c.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}, `}${tm(c)}`;
 }
 
 export default function TradeDetailPage() {
   return (
-    <Suspense fallback={<div className="h-dvh bg-app"><LoadingScreen label="Loading trade" /></div>}>
+    <Suspense fallback={<div className="h-dvh"><LoadingScreen label="Loading trade" /></div>}>
       <TradeDetail />
     </Suspense>
   );
@@ -40,12 +35,13 @@ export default function TradeDetailPage() {
 function TradeDetail() {
   const params = useParams<{ positionId: string }>();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const positionId = params.positionId;
   const accountId = searchParams.get('account');
 
   const [accounts, setAccounts] = useState<BrokerAccount[]>([]);
   const [selected, setSelected] = useState<BrokerAccount | null>(null);
-  const [trade, setTrade] = useState<Trade | null>(null);
+  const [trades, setTrades] = useState<Trade[]>([]);
   const [deals, setDeals] = useState<Deal[]>([]);
   const [entry, setEntry] = useState<JournalEntry | null>(null);
   const [loading, setLoading] = useState(true);
@@ -62,14 +58,9 @@ function TradeDetail() {
       // Remember this account so navigating back to the main sections keeps it.
       persistSelectedAccountId(acc?.id ?? null);
       if (!acc) { setLoading(false); return; }
-
-      const [trades, allDeals, journal] = await Promise.all([
-        api.trades.list(acc.id),
-        api.trades.deals(acc.id),
-        api.journal.list(acc.id),
-      ]);
-      setTrade(trades.find(t => t.positionId === positionId) ?? null);
-      setDeals(allDeals.filter(d => d.positionId === positionId));
+      const [t, allDeals, journal] = await Promise.all([api.trades.list(acc.id), api.trades.deals(acc.id), api.journal.list(acc.id)]);
+      setTrades(t);
+      setDeals(allDeals.filter(d => d.positionId === positionId).sort((a, b) => +new Date(a.dealTime) - +new Date(b.dealTime)));
       setEntry(journal.find(e => e.tradeId === positionId) ?? null);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to load trade');
@@ -79,111 +70,150 @@ function TradeDetail() {
   }, [accountId, positionId]);
   useEffect(() => { load(); }, [load]);
 
-  const metrics = useMemo(() => {
-    if (!trade) return [];
-    const sym = trade.symbol;
-    const pos = trade.netPnl >= 0;
-    return [
-      { l: 'Net P&L', v: `${pos ? '+' : ''}$${trade.netPnl.toFixed(2)}`, c: pos ? 'text-profit' : 'text-loss' },
-      { l: 'Gross P&L', v: `${trade.grossPnl >= 0 ? '+' : ''}$${trade.grossPnl.toFixed(2)}`, c: trade.grossPnl >= 0 ? 'text-profit' : 'text-loss' },
-      { l: 'Volume', v: `${trade.volume.toFixed(2)} lots`, c: 'text-fg' },
-      { l: 'Held', v: fmtDur(trade.durationSecs), c: 'text-fg' },
-      { l: 'Entry', v: price(trade.entryPrice, sym), c: 'text-fg' },
-      { l: 'Exit', v: price(trade.exitPrice, sym), c: 'text-fg' },
-      { l: 'Commission', v: `$${trade.commission.toFixed(2)}`, c: 'text-fg-2' },
-      { l: 'Swap', v: `$${trade.swap.toFixed(2)}`, c: 'text-fg-2' },
-    ];
-  }, [trade]);
+  const trade = useMemo(() => trades.find(t => t.positionId === positionId) ?? null, [trades, positionId]);
+  // Neighbours in trade-log order (newest first): ← newer, → older.
+  const { newer, older } = useMemo(() => {
+    const list = [...trades].sort((a, b) => +new Date(b.openTime) - +new Date(a.openTime));
+    const i = list.findIndex(t => t.positionId === positionId);
+    return { newer: i > 0 ? list[i - 1] : undefined, older: i >= 0 ? list[i + 1] : undefined };
+  }, [trades, positionId]);
+  const href = (t: Trade) => `/trades/${t.positionId}${selected ? `?account=${encodeURIComponent(selected.id)}` : ''}`;
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement;
+      if (el.closest('input,textarea,select,[contenteditable=true]') || e.metaKey || e.ctrlKey) return;
+      if (e.key === 'ArrowLeft' && newer) router.push(href(newer));
+      if (e.key === 'ArrowRight' && older) router.push(href(older));
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const candles = useTradeCandles(trade, selected?.id);
+
+  const actions = trade ? (
+    <div className="v3-seg sm td-nav" role="group" aria-label="Browse trades">
+      <button disabled={!newer} onClick={() => newer && router.push(href(newer))} aria-label="Newer trade" title="Newer trade (←)"><IArrowLeft size={14} /></button>
+      <button disabled={!older} onClick={() => older && router.push(href(older))} aria-label="Older trade" title="Older trade (→)"><IArrowRight size={14} /></button>
+    </div>
+  ) : null;
 
   return (
-    <AppShell
-      accounts={accounts}
-      selectedAccount={selected}
-      pageTitle="Trade"
-      pageSubtitle="// POSITION DETAIL"
-    >
-      <div className="p-4 sm:p-6 lg:p-8 max-w-[1100px] mx-auto fade-up" data-testid="trade-detail-page">
-        <Link href="/trades" className="text-[10px] tracking-[0.22em] text-fg-3 hover:text-fg" data-testid="back-to-trades">← TRADE LOG</Link>
+    <AppShell accounts={accounts} selectedAccount={selected} crumbParent="Trade log" pageTitle={`Position #${positionId}`} actions={actions}>
+      <div className="v3-page" data-testid="trade-detail-page">
+        <Link href="/trades" className="v3-link td-back" data-testid="back-to-trades"><IArrowLeft size={15} /> Trade log</Link>
 
         {error && (
-          <div className="border border-loss/30 bg-loss/10 px-4 py-3 my-4 flex items-center justify-between gap-3 text-[12px]" data-testid="trade-detail-error">
-            <span className="text-loss">{error}</span>
-            <button onClick={load} className="btn btn-ghost py-1.5 text-[10px] shrink-0">RETRY</button>
+          <div className="d-err" role="alert" data-testid="trade-detail-error" style={{ marginTop: 18 }}>
+            <span>{error}</span><button className="v3-btn v3-btn--o" onClick={load}>Retry</button>
           </div>
         )}
 
         {loading ? (
-          <div className="tcard p-6 h-40 mt-4 animate-pulse bg-surface" />
-        ) : !trade ? (
-          <div className="tcard p-10 text-center text-fg-3 text-[12px] mt-4" data-testid="trade-not-found">
-            Trade #{positionId} was not found on this account.
+          <div className="d-grid" style={{ marginTop: 20 }}>
+            <div className="skel d-sk" style={{ height: 70, width: 360 }} />
+            <div className="skel d-sk" style={{ height: 420, borderRadius: 20 }} />
+            <div className="skel d-sk" style={{ height: 230, borderRadius: 20 }} />
           </div>
+        ) : !trade ? (
+          <section className="v3-card d-empty d-empty--lg" data-testid="trade-not-found" style={{ marginTop: 20 }}>
+            <b>Position #{positionId} isn’t on this account</b>
+            It may belong to another broker account, or it hasn’t synced yet.
+            <Link href="/trades" className="v3-link" style={{ marginTop: 10 }}>Back to trade log</Link>
+          </section>
         ) : (
           <>
-            {/* Header */}
-            <div className="flex items-end justify-between gap-4 flex-wrap mt-3 mb-6">
-              <div>
-                <div className="text-[10px] tracking-[0.25em] text-fg-3">POSITION #{trade.positionId}</div>
-                <h1 className="font-display font-black text-3xl sm:text-4xl tracking-tighter mt-2 flex items-center gap-3 flex-wrap">
+            <header className="td-head">
+              <div style={{ minWidth: 0 }}>
+                <div className="td-pos num">Position #{trade.positionId}</div>
+                <h1 className="td-sym">
                   {trade.symbol}
-                  <span className={`text-sm tracking-[0.15em] ${trade.direction === 'LONG' ? 'text-profit' : 'text-loss'}`}>
-                    {trade.direction === 'LONG' ? '↗ LONG' : '↘ SHORT'}
+                  <span className={`d-side ${trade.direction === 'LONG' ? 'L' : 'S'}`}>
+                    <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden>{trade.direction === 'LONG' ? <path d="M2 8L8 2M3.5 2H8v4.5" /> : <path d="M2 2l6 6M8 3.5V8H3.5" />}</svg>
+                    {trade.direction === 'LONG' ? 'Long' : 'Short'}
                   </span>
-                  <span className={`text-xs px-2 py-0.5 border tracking-widest ${trade.status === 'OPEN' ? 'border-warning/40 text-warning' : 'border-border-soft text-fg-3'}`}>
-                    {trade.status}
-                  </span>
+                  <span className={`td-status ${trade.status === 'OPEN' ? 'open' : ''}`}>{trade.status === 'OPEN' ? 'Open' : 'Closed'}</span>
                 </h1>
-                <div className="text-[10px] sm:text-[11px] text-fg-3 tracking-widest mt-2 numeric">
-                  {fmtTime(trade.openTime)} → {fmtTime(trade.closeTime)}
-                </div>
+                <p className="v3-sub num">{when(trade)} · held {dur(trade.durationSecs)}</p>
               </div>
-              <div className={`font-display font-black text-4xl sm:text-5xl tracking-tighter numeric ${trade.netPnl >= 0 ? 'text-profit' : 'text-loss'}`}>
-                {trade.netPnl >= 0 ? '+' : ''}${trade.netPnl.toFixed(2)}
+              <div className="td-net">
+                <span>Net P&amp;L</span>
+                <b className={`num ${tone(trade.netPnl)}`}>{money(trade.netPnl)}</b>
               </div>
-            </div>
+            </header>
 
-            {/* Metrics */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3" data-testid="trade-metrics">
-              {metrics.map(m => (
-                <div key={m.l} className="tcard p-4">
-                  <div className="text-[10px] tracking-[0.22em] text-fg-3 uppercase">{m.l}</div>
-                  <div className={`font-display font-bold text-xl tracking-tight mt-2 numeric ${m.c}`}>{m.v}</div>
-                </div>
+            <section className="v3-card td-chart">
+              <TradeCandles trade={trade} real={candles.candles} height={400} />
+              <span className={`td-src ${candles.candles ? 'live' : ''}`} title={candles.candles ? 'Market candles for the trade window' : 'Price path reconstructed from your entry and exit fills — not tick data'}>
+                {candles.loading ? 'Loading candles…' : candles.candles ? 'Market data' : 'Illustrative path · not tick data'}
+              </span>
+            </section>
+
+            <section className="v3-card td-metrics" data-testid="trade-metrics">
+              {[
+                { l: 'Net P&L', v: money(trade.netPnl), c: tone(trade.netPnl) },
+                { l: 'Gross P&L', v: money(trade.grossPnl), c: '' },
+                { l: 'Volume', v: `${trade.volume.toFixed(2)} lots`, c: '' },
+                { l: 'Held', v: dur(trade.durationSecs), c: '' },
+                { l: 'Entry', v: price(trade.entryPrice), c: '' },
+                { l: 'Exit', v: price(trade.exitPrice), c: '' },
+                { l: 'Commission', v: trade.commission ? money(trade.commission) : '$0.00', c: trade.commission < 0 ? 'sh' : '' },
+                { l: 'Swap', v: trade.swap ? money(trade.swap) : '$0.00', c: trade.swap < 0 ? 'sh' : '' },
+              ].map(m => (
+                <div key={m.l}><span>{m.l}</span><b className={`num ${m.c}`}>{m.v}</b></div>
               ))}
-            </div>
+            </section>
 
-            {/* Journal entry */}
-            <div className="tcard p-5 mb-3" data-testid="trade-journal">
-              <div className="flex items-center justify-between mb-3">
-                <div>
-                  <div className="text-[10px] tracking-[0.25em] text-fg-3">JOURNAL_ENTRY</div>
-                  <div className="font-display font-bold text-[16px] tracking-tight mt-1">Notes for this trade</div>
+            <div className="d-grid td-row">
+              <section className="v3-card" data-testid="trade-journal" aria-labelledby="td-j">
+                <div className="v3-ch"><h3 id="td-j">Journal entry <span className="d-opt">· notes for this trade</span></h3>
+                  <Link href={`/journal?trade=${encodeURIComponent(trade.positionId)}`}>{entry ? 'Edit' : 'Write'}<span className="d-opt">&nbsp;in chart replay</span> <IArrowRight size={14} /></Link></div>
+                <div className="td-jbd">
+                  {entry ? (
+                    <>
+                      {(entry.emotion || entry.tags?.length) ? (
+                        <div className="td-tags">
+                          {entry.emotion && <span className={`td-emo ${NEGATIVE_EMOTIONS.includes(entry.emotion) ? 'bad' : ''}`}>{entry.emotion}</span>}
+                          {(entry.tags ?? []).map(t => <span key={t} className="t-tag">#{t.trim().toLowerCase().replace(/\s+/g, '-')}</span>)}
+                        </div>
+                      ) : null}
+                      {entry.body ? <p className="td-note">{entry.body}</p> : <p className="td-note mute">No written notes.</p>}
+                    </>
+                  ) : (
+                    <div className="td-none">
+                      <p>No notes yet. A line on why you took it — and whether you followed the plan — is what makes this trade useful later.</p>
+                    </div>
+                  )}
                 </div>
-                <Link href="/journal" className="text-[10px] tracking-[0.22em] text-fg-3 hover:text-fg shrink-0">EDIT IN CHART REPLAY →</Link>
-              </div>
-              {entry ? (
-                <div className="space-y-3">
-                  <div className="flex flex-wrap gap-1.5">
-                    {entry.emotion && (
-                      <span className={`px-2 py-1 text-[10px] tracking-widest border ${NEGATIVE_EMOTIONS.includes(entry.emotion) ? 'border-loss/50 text-loss' : 'border-profit/50 text-profit'}`}>
-                        {entry.emotion.toUpperCase()}
-                      </span>
-                    )}
-                    {(entry.tags ?? []).map(t => (
-                      <span key={t} className="px-2 py-1 text-[10px] tracking-widest border border-border-soft text-fg-3">{t.toUpperCase()}</span>
-                    ))}
+              </section>
+
+              <section className="v3-card" aria-labelledby="td-x" data-testid="trade-deals">
+                <div className="v3-ch"><h3 id="td-x">Executions <span>· {deals.length} deal{deals.length === 1 ? '' : 's'}</span></h3></div>
+                {deals.length === 0 ? <div className="d-empty">No fills on file for this position.</div> : (
+                  <div className="v3-tbl-wrap">
+                    <table className="v3-table td-x">
+                      <thead><tr><th>Deal</th><th>Type</th><th>Entry</th><th className="r">Volume</th><th className="r">Price</th><th className="r">Profit</th><th className="r">Comm.</th></tr></thead>
+                      <tbody>
+                        {deals.map(d => {
+                          const p = parseFloat(d.profit), c = parseFloat(d.commission);
+                          return (
+                            <tr key={d.dealTicket} className="static">
+                              <td className="num">#{d.dealTicket}</td>
+                              <td>{d.type === 'BUY' ? 'Buy' : d.type === 'SELL' ? 'Sell' : 'Balance'}</td>
+                              <td>{ENTRY[d.entry]}</td>
+                              <td className="r num">{parseFloat(d.volume).toFixed(2)}</td>
+                              <td className="r num">{price(parseFloat(d.price))}</td>
+                              <td className={`r num ${d.entry === 'IN' && !p ? 'mute' : tone(p)}`}>{d.entry === 'IN' && !p ? '—' : money(p)}</td>
+                              <td className={`r num ${c < 0 ? 'sh' : 'mute'}`}>{c ? money(c) : '—'}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
                   </div>
-                  {entry.body && <p className="text-[13px] text-fg-2 leading-relaxed whitespace-pre-wrap break-words">{entry.body}</p>}
-                </div>
-              ) : (
-                <div className="text-fg-3 text-[12px] py-4">No journal entry for this trade yet.</div>
-              )}
-            </div>
-
-            {/* Deals */}
-            <div>
-              <div className="text-[10px] tracking-[0.25em] text-fg-3 mb-2">EXECUTIONS · {deals.length} DEALS</div>
-              <DealsTable deals={deals} loading={false} />
+                )}
+              </section>
             </div>
           </>
         )}

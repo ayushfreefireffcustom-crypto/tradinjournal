@@ -41,7 +41,7 @@ export function pipMove(trade: Trade): number {
   return signed / pipSize(trade.symbol, trade.entryPrice);
 }
 
-function buildCandles(trade: Trade | null, n = 72) {
+export function buildCandles(trade: Trade | null, n = 72) {
   if (!trade) return { candles: [] as { o: number; h: number; l: number; c: number }[], entryIdx: 0, exitIdx: 0, min: 0, max: 1 };
   const seed = parseInt(trade.positionId, 10) || 1;
   let s = seed;
@@ -81,7 +81,7 @@ function buildCandles(trade: Trade | null, n = 72) {
 
 // Map real OHLC bars into the renderer's shape, aligning entry/exit to the bars
 // nearest the trade's open/close times.
-function candlesFromReal(trade: Trade, real: Candle[]) {
+export function candlesFromReal(trade: Trade, real: Candle[]) {
   const candles = real.map(c => ({ o: c.open, h: c.high, l: c.low, c: c.close }));
   const openMs = new Date(trade.openTime).getTime();
   const closeMs = trade.closeTime ? new Date(trade.closeTime).getTime() : openMs;
