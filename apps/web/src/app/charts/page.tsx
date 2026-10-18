@@ -4,7 +4,6 @@
 // via Twelve Data) rendered with klinecharts, with indicators, drawing tools,
 // live updates, symbol search, a persisted watchlist, and 1 / 2×1 / 2×2 layouts.
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { SquaresFour, Square, Columns, BellRinging } from '@phosphor-icons/react';
 import AppShell from '@/components/app-shell';
 import { useAccounts } from '@/lib/use-accounts';
 import type { BrokerAccount } from '@/lib/api';
@@ -20,18 +19,19 @@ import Watchlist from '@/components/charts/watchlist';
 import AlertsPanel from '@/components/charts/alerts-panel';
 import AlertDialog from '@/components/charts/alert-dialog';
 
-const DEFAULT_SYMBOLS = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT'];
+const DEFAULT_SYMBOLS = ['BTCUSDT', 'ETHUSDT', 'XAUUSD', 'EURUSD'];
+const LAYOUT_KEY = 'tradelogs.charts.layout';
 const newId = () => (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `p${Math.random()}`);
 
-const LAYOUTS: { n: number; icon: typeof Square; label: string }[] = [
-  { n: 1, icon: Square, label: 'Single' },
-  { n: 2, icon: Columns, label: 'Two' },
-  { n: 4, icon: SquaresFour, label: 'Grid' },
+const LAYOUTS: { n: number; label: string; icon: React.ReactNode }[] = [
+  { n: 1, label: 'Single chart', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><rect x="4" y="4" width="16" height="16" rx="3" /></svg> },
+  { n: 2, label: 'Two charts', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><rect x="4" y="4" width="16" height="16" rx="3" /><path d="M12 4v16" /></svg> },
+  { n: 4, label: 'Four charts', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><rect x="4" y="4" width="16" height="16" rx="3" /><path d="M12 4v16M4 12h16" /></svg> },
 ];
 
 export default function ChartsPage() {
   const { accounts, selected, select } = useAccounts();
-  const [panes, setPanes] = useState<Pane[]>([{ id: newId(), symbol: 'BTCUSDT', tf: '1h' }]);
+  const [panes, setPanes] = useState<Pane[]>(() => DEFAULT_SYMBOLS.map((symbol, i) => ({ id: `p${i}`, symbol, tf: '1h' as MarketTimeframe })));
   const [activeId, setActiveId] = useState<string>(() => panes[0]!.id);
   const chartRefs = useRef<Map<string, KlineChartHandle>>(new Map());
 
@@ -77,6 +77,18 @@ export default function ChartsPage() {
     }
   }, []);
 
+  // Restore / persist the pane layout (symbols + timeframes) across visits.
+  const restored = useRef(false);
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(LAYOUT_KEY);
+      const saved = raw ? (JSON.parse(raw) as Pane[]) : null;
+      if (saved?.length && !new URLSearchParams(window.location.search).get('symbol')) { setPanes(saved); setActiveId(saved[0]!.id); }
+    } catch { /* ignore */ }
+    restored.current = true;
+  }, []);
+  useEffect(() => { if (restored.current) { try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(panes)); } catch { /* ignore */ } } }, [panes]);
+
   const patchActive = (patch: Partial<Pane>) =>
     setPanes(prev => prev.map(p => (p.id === activeId ? { ...p, ...patch } : p)));
 
@@ -104,82 +116,37 @@ export default function ChartsPage() {
     });
   };
 
-  return (
-    <AppShell
-      accounts={accounts}
-      selectedAccount={selected}
-      onSelectAccount={(a: BrokerAccount) => select(a)}
-      pageTitle="Charts"
-      pageSubtitle="// LIVE MARKETS"
-    >
-      <div className="lg:h-[calc(100dvh-104px)] lg:flex lg:flex-col p-2 sm:p-3 lg:p-4 gap-2 sm:gap-3" data-testid="charts-page">
-        {/* Toolbar */}
-        <div className="tcard p-2 sm:p-2.5 flex flex-wrap items-center gap-2 sm:gap-3 shrink-0">
-          <SymbolSearch onSelect={symbol => patchActive({ symbol })} />
-          <div className="h-5 w-px bg-border-soft hidden sm:block" />
-          <TimeframeBar value={active.tf} onChange={tf => patchActive({ tf })} />
-          <div className="h-5 w-px bg-border-soft hidden sm:block" />
-          <IndicatorMenu onAdd={name => activeChart()?.createIndicator(name)} onClear={() => activeChart()?.removeIndicators()} />
-          <DrawingToolbar onDraw={name => activeChart()?.createOverlay(name)} onClear={() => activeChart()?.removeOverlays()} />
-          <button
-            onClick={openAlert}
-            data-testid="add-alert"
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded text-[10px] tracking-wide uppercase text-fg-2 border border-border-soft hover:text-profit hover:border-profit/30 transition-colors"
-          >
-            <BellRinging size={13} weight="bold" /> Alert
-          </button>
-          <div className="ml-auto flex items-center gap-1">
-            {LAYOUTS.map(l => {
-              const I = l.icon;
-              return (
-                <button
-                  key={l.n}
-                  onClick={() => setLayout(l.n)}
-                  title={l.label}
-                  data-testid={`layout-${l.n}`}
-                  className={`p-1.5 rounded border transition-colors ${
-                    panes.length === l.n ? 'text-profit border-profit/30 bg-profit/10' : 'text-fg-3 border-border-soft hover:text-fg'
-                  }`}
-                >
-                  <I size={15} weight="bold" />
-                </button>
-              );
-            })}
-          </div>
-        </div>
+  const layoutSeg = (
+    <>
+      <div className="v3-seg ch-layout" role="group" aria-label="Layout">
+        {LAYOUTS.map(l => <button key={l.n} aria-pressed={panes.length === l.n} onClick={() => setLayout(l.n)} title={l.label} aria-label={l.label} data-testid={`layout-${l.n}`}>{l.icon}</button>)}
+      </div>
+      <button onClick={openAlert} data-testid="add-alert" className="v3-btn v3-btn--o ch-alert" aria-label={`New price alert for ${active.symbol}`}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M6 16V11a6 6 0 0112 0v5l2 2H4z" /><path d="M10 20a2 2 0 004 0" /></svg><span>Alert</span>
+      </button>
+    </>
+  );
 
-        {/* Chart grid + watchlist */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_220px] gap-2 sm:gap-3 lg:flex-1 lg:min-h-0">
-          <div className="min-h-[420px] h-[min(70vh,640px)] lg:h-full lg:min-h-0 order-2 lg:order-1">
-            <LayoutGrid
-              panes={panes}
-              activeId={activeId}
-              onActivate={setActiveId}
-              onClose={closePane}
-              registerRef={registerRef}
-            />
+  return (
+    <AppShell accounts={accounts} selectedAccount={selected} onSelectAccount={(a: BrokerAccount) => select(a)} pageTitle="Charts" actions={layoutSeg}>
+      <div className="v3-page ch-page" data-testid="charts-page">
+        <div className="ch-main">
+          <div className="v3-card ch-bar">
+            <SymbolSearch value={active.symbol} onSelect={symbol => patchActive({ symbol })} />
+            <TimeframeBar value={active.tf} onChange={tf => patchActive({ tf })} />
+            <IndicatorMenu onAdd={name => activeChart()?.createIndicator(name)} onClear={() => activeChart()?.removeIndicators()} />
+            <DrawingToolbar onDraw={name => activeChart()?.createOverlay(name)} onClear={() => activeChart()?.removeOverlays()} />
           </div>
-          {/* Right rail: both panels size to their content (scrolling internally
-              past a cap) and stack at the top — never a forced 50/50 split, so an
-              empty watchlist can't strand the alerts panel at the bottom. */}
-          <div className="order-1 lg:order-2 flex flex-col gap-2 sm:gap-3 min-h-0">
-            <div className="flex flex-col min-h-0 max-h-[220px] lg:max-h-[calc(50%-6px)] [&>*]:flex-1 [&>*]:min-h-0">
-              <Watchlist activeSymbol={active.symbol} onPick={symbol => patchActive({ symbol })} />
-            </div>
-            <div className="flex flex-col min-h-0 max-h-[220px] lg:max-h-[calc(50%-6px)] [&>*]:flex-1 [&>*]:min-h-0">
-              <AlertsPanel activeSymbol={active.symbol} reloadToken={alertsReload} />
-            </div>
-          </div>
+          <LayoutGrid panes={panes} activeId={activeId} onActivate={setActiveId} onClose={closePane} registerRef={registerRef} />
+        </div>
+        <div className="ch-rail">
+          <Watchlist activeSymbol={active.symbol} onPick={symbol => patchActive({ symbol })} />
+          <AlertsPanel activeSymbol={active.symbol} reloadToken={alertsReload} onNew={openAlert} />
         </div>
       </div>
 
       {alertOpen && (
-        <AlertDialog
-          symbol={active.symbol}
-          currentPrice={alertPrice}
-          onCreate={createAlert}
-          onClose={() => setAlertOpen(false)}
-        />
+        <AlertDialog symbol={active.symbol} currentPrice={alertPrice} onCreate={createAlert} onClose={() => setAlertOpen(false)} />
       )}
     </AppShell>
   );

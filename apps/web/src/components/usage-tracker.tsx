@@ -21,6 +21,7 @@ function featureFromPath(path: string): string {
 }
 
 async function sendHeartbeat(path: string, ended = false) {
+  if (process.env.NEXT_PUBLIC_USE_MOCKS === 'true') return; // no usage API in mock mode
   try {
     await fetch(`${API}/api/usage/heartbeat`, {
       method: 'POST',

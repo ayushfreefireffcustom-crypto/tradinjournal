@@ -22,6 +22,8 @@ interface Props {
   symbol: string;
   tf: MarketTimeframe;
   accountId?: string;
+  /** Latest close + reference close ~24h earlier, after each history load. */
+  onQuote?: (q: { last: number; ref: number | null }) => void;
 }
 
 const TF_PERIOD: Record<MarketTimeframe, Period> = {
@@ -60,23 +62,37 @@ function derivePrecision(price: number): number {
   return 8;
 }
 
-// Obsidian dark theme (partial Styles — every field is optional).
-const OBSIDIAN_STYLES: DeepPartial<Styles> = {
-  grid: { horizontal: { color: '#181818' }, vertical: { color: '#181818' } },
+// Ink & Violet light theme (partial Styles — every field is optional).
+const V3_STYLES: DeepPartial<Styles> = {
+  grid: { horizontal: { color: '#EDECF0' }, vertical: { show: false } },
   candle: {
     bar: {
-      upColor: '#08C465', downColor: '#FE3A31',
-      upBorderColor: '#08C465', downBorderColor: '#FE3A31',
-      upWickColor: '#08C465', downWickColor: '#FE3A31',
+      upColor: '#19C37D', downColor: '#F4435E',
+      upBorderColor: '#19C37D', downBorderColor: '#F4435E',
+      upWickColor: '#19C37D', downWickColor: '#F4435E',
     },
+    priceMark: {
+      high: { color: '#6C6C70' }, low: { color: '#6C6C70' },
+      last: { upColor: '#19C37D', downColor: '#F4435E', line: { style: 'dashed', dashedValue: [4, 4] } },
+    },
+    // OHLC legend only while the crosshair is active — the pane header shows price.
+    tooltip: { showRule: 'follow_cross', showType: 'standard', title: { show: false } },
   },
-  xAxis: { tickText: { color: '#71717A' } },
-  yAxis: { tickText: { color: '#71717A' } },
+  indicator: { tooltip: { showRule: 'follow_cross' } },
+  xAxis: { axisLine: { color: '#E4E2E6' }, tickLine: { color: '#E4E2E6' }, tickText: { color: '#9B9BA0', size: 11 } },
+  yAxis: { axisLine: { color: '#E4E2E6' }, tickLine: { color: '#E4E2E6' }, tickText: { color: '#9B9BA0', size: 11 } },
+  separator: { color: '#E4E2E6' },
+  crosshair: {
+    horizontal: { line: { color: '#C9C7D2' }, text: { backgroundColor: '#100F17', borderColor: '#100F17' } },
+    vertical: { line: { color: '#C9C7D2' }, text: { backgroundColor: '#100F17', borderColor: '#100F17' } },
+  },
 };
 
 const BAR_LIMIT = 500;
 
-const KlineChart = forwardRef<KlineChartHandle, Props>(function KlineChart({ symbol, tf, accountId }, ref) {
+const KlineChart = forwardRef<KlineChartHandle, Props>(function KlineChart({ symbol, tf, accountId, onQuote }, ref) {
+  const onQuoteRef = useRef(onQuote);
+  onQuoteRef.current = onQuote;
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<Chart | null>(null);
   const accountIdRef = useRef<string | undefined>(accountId);
@@ -110,7 +126,9 @@ const KlineChart = forwardRef<KlineChartHandle, Props>(function KlineChart({ sym
       if (!chart) return;
       localChart = chart;
       chartRef.current = chart;
-      chart.setStyles(OBSIDIAN_STYLES);
+      chart.setStyles(V3_STYLES);
+      chart.setOffsetRightDistance(24);
+      chart.setBarSpace(8);
 
       const dataLoader: DataLoader = {
         getBars: async ({ type, timestamp, symbol: sym, period, callback }) => {
@@ -137,7 +155,14 @@ const KlineChart = forwardRef<KlineChartHandle, Props>(function KlineChart({ sym
                   ? { forward: false, backward: hasMore }
                   : { forward: hasMore, backward: false };
             callback(candles.map(toKLine), more);
-            if (type === 'init') setReady(true);
+            if (type === 'init') {
+              setReady(true);
+              if (last) {
+                const dayAgo = last.openTime - 86_400_000;
+                const refBar = [...candles].reverse().find(c => c.openTime <= dayAgo) ?? (candles.length > 1 ? candles[candles.length - 2] : undefined);
+                onQuoteRef.current?.({ last: last.close, ref: refBar ? refBar.close : null });
+              }
+            }
           } catch {
             callback([], false);
             if (type === 'init') setReady(true);
@@ -194,7 +219,7 @@ const KlineChart = forwardRef<KlineChartHandle, Props>(function KlineChart({ sym
   return (
     <div className="relative w-full h-full" data-testid="kline-chart-wrap">
       {!ready && (
-        <div className="absolute inset-0 z-10 flex items-center justify-center bg-app/60 pointer-events-none">
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/70 pointer-events-none">
           <Loader size={24} label="Loading chart" />
         </div>
       )}

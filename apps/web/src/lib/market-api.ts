@@ -6,6 +6,14 @@
 export const MARKET_TIMEFRAMES = ['1m', '5m', '15m', '30m', '1h', '4h', '1d', '1w', '1M'] as const;
 export type MarketTimeframe = (typeof MARKET_TIMEFRAMES)[number];
 
+/** Friendly names for common symbols (watchlist subtitles). Unknown → none. */
+export const MARKET_SYMBOL_NAMES: Record<string, string> = {
+  BTCUSDT: 'Bitcoin', ETHUSDT: 'Ethereum', SOLUSDT: 'Solana', BNBUSDT: 'BNB', XRPUSDT: 'XRP', DOGEUSDT: 'Dogecoin',
+  XAUUSD: 'Gold', XAGUSD: 'Silver', EURUSD: 'Euro / Dollar', GBPUSD: 'Pound / Dollar', USDJPY: 'Dollar / Yen',
+  AUDUSD: 'Aussie / Dollar', USDCAD: 'Dollar / Loonie', US100: 'Nasdaq 100', NAS100: 'Nasdaq 100', US30: 'Dow 30',
+  US500: 'S&P 500', SPX: 'S&P 500', AAPL: 'Apple', MSFT: 'Microsoft', NVDA: 'Nvidia', TSLA: 'Tesla',
+};
+
 const USE_MOCKS = process.env.NEXT_PUBLIC_USE_MOCKS === 'true';
 const PREFIX = USE_MOCKS ? '/data' : '/api';
 const API = USE_MOCKS ? '' : process.env.NEXT_PUBLIC_API_URL || '';

@@ -1,87 +1,62 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { MagnifyingGlass } from '@phosphor-icons/react';
+import { ISearch } from '@/components/v3/icons';
 import { marketApi, type MarketSymbol } from '@/lib/market-api';
 
-const ASSET_COLOR: Record<string, string> = {
-  crypto: 'text-warning',
-  forex: 'text-profit',
-  stock: 'text-fg-2',
-  commodity: 'text-warning',
-  broker: 'text-profit',
-};
+const CLASS_LABEL: Record<string, string> = { crypto: 'Crypto', forex: 'Forex', stock: 'Stock', commodity: 'Commodity', broker: 'Broker' };
+const sourceFor = (s: string) => (/USDT$|BUSD$|USDC$/.test(s) ? 'Binance' : 'Market');
 
-export default function SymbolSearch({ onSelect }: { onSelect: (symbol: string) => void }) {
+// Combobox: shows the active symbol at rest; typing searches, ↑/↓/Enter picks.
+export default function SymbolSearch({ value, onSelect }: { value: string; onSelect: (symbol: string) => void }) {
   const [q, setQ] = useState('');
+  const [focus, setFocus] = useState(false);
   const [results, setResults] = useState<MarketSymbol[]>([]);
-  const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [hi, setHi] = useState(0);
   const reqId = useRef(0);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const needle = q.trim();
-    if (needle.length < 1) {
-      setResults([]);
-      return;
-    }
+    if (!needle) { setResults([]); return; }
     const id = ++reqId.current;
     setLoading(true);
     const t = setTimeout(() => {
-      marketApi
-        .search(needle)
-        .then(r => { if (id === reqId.current) setResults(r.symbols); })
+      marketApi.search(needle)
+        .then(r => { if (id === reqId.current) { setResults(r.symbols); setHi(0); } })
         .catch(() => { if (id === reqId.current) setResults([]); })
         .finally(() => { if (id === reqId.current) setLoading(false); });
-    }, 250);
+    }, 220);
     return () => clearTimeout(t);
   }, [q]);
 
-  const pick = (symbol: string) => {
-    onSelect(symbol);
-    setQ('');
-    setResults([]);
-    setOpen(false);
-  };
+  const pick = (symbol: string) => { onSelect(symbol); setQ(''); setResults([]); inputRef.current?.blur(); };
+  const open = focus && q.trim().length > 0;
 
   return (
-    <div className="relative w-full max-w-xs" data-testid="symbol-search">
-      <MagnifyingGlass size={13} weight="bold" className="absolute left-2.5 top-1/2 -translate-y-1/2 text-fg-3" />
-      <input
-        value={q}
-        onChange={e => { setQ(e.target.value); setOpen(true); }}
-        onFocus={() => setOpen(true)}
-        placeholder="Search symbol… (BTCUSDT, AAPL, EURUSD)"
-        data-testid="symbol-search-input"
-        className="w-full pl-7 pr-2 py-1.5 text-[11px] rounded bg-surface border border-border-soft text-fg placeholder:text-fg-3 focus:outline-none focus:border-border-strong"
-      />
-      {open && (q.trim().length > 0) && (
-        <>
-          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute z-20 mt-1 w-full max-h-72 overflow-y-auto rounded-[var(--radius-card)] border border-border-strong bg-surface shadow-xl">
-            {loading && results.length === 0 ? (
-              <div className="px-3 py-3 text-[11px] text-fg-3">Searching…</div>
-            ) : results.length === 0 ? (
-              <div className="px-3 py-3 text-[11px] text-fg-3">No matches</div>
-            ) : (
-              results.map(r => (
-                <button
-                  key={`${r.provider}:${r.symbol}`}
-                  onClick={() => pick(r.symbol)}
-                  className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left hover:bg-surface-hover transition-colors"
-                >
-                  <div className="min-w-0">
-                    <div className="text-[12px] font-semibold text-fg truncate">{r.symbol}</div>
-                    <div className="text-[10px] text-fg-3 truncate">{r.name}</div>
-                  </div>
-                  <span className={`shrink-0 text-[9px] tracking-[0.12em] uppercase ${ASSET_COLOR[r.assetClass] ?? 'text-fg-3'}`}>
-                    {r.assetClass}
-                  </span>
-                </button>
-              ))
-            )}
-          </div>
-        </>
+    <div className={`ch-search ${focus ? 'on' : ''}`} data-testid="symbol-search">
+      <ISearch size={17} />
+      <input ref={inputRef} value={q} onChange={e => setQ(e.target.value)} onFocus={() => setFocus(true)} onBlur={() => setTimeout(() => setFocus(false), 120)}
+        placeholder={focus ? 'Search BTCUSDT, AAPL, EURUSD…' : ''} data-testid="symbol-search-input" aria-label={`Symbol: ${value}. Type to search`}
+        role="combobox" aria-expanded={open} aria-controls="ch-results"
+        onKeyDown={e => {
+          if (e.key === 'ArrowDown') { e.preventDefault(); setHi(h => Math.min(results.length - 1, h + 1)); }
+          if (e.key === 'ArrowUp') { e.preventDefault(); setHi(h => Math.max(0, h - 1)); }
+          if (e.key === 'Enter') { const r = results[hi]; if (r) pick(r.symbol); else if (q.trim()) pick(q.trim().toUpperCase()); }
+          if (e.key === 'Escape') { setQ(''); inputRef.current?.blur(); }
+        }} />
+      {!focus && !q && <span className="ch-cur" aria-hidden><b>{value}</b><small>{sourceFor(value)}</small></span>}
+      {open && (
+        <div className="ch-pop ch-results" id="ch-results" role="listbox">
+          {loading && !results.length ? <div className="ch-none">Searching…</div>
+            : !results.length ? <div className="ch-none">No matches — press Enter to try “{q.trim().toUpperCase()}”</div>
+            : results.map((r, i) => (
+              <button key={`${r.provider}:${r.symbol}`} role="option" aria-selected={i === hi} className={i === hi ? 'hi' : ''} onMouseEnter={() => setHi(i)} onMouseDown={e => e.preventDefault()} onClick={() => pick(r.symbol)}>
+                <span>{r.symbol}<small>{r.name}</small></span><em>{CLASS_LABEL[r.assetClass] ?? r.assetClass}</em>
+              </button>
+            ))}
+        </div>
       )}
     </div>
   );
