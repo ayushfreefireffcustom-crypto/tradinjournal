@@ -16,14 +16,14 @@ export default function MarkdownMessage({ content }: { content: string }) {
           p: ({ children }) => <p className="my-2 first:mt-0 last:mb-0">{children}</p>,
           strong: ({ children }) => <strong className="font-semibold text-fg">{children}</strong>,
           em: ({ children }) => <em className="italic">{children}</em>,
-          ul: ({ children }) => <ul className="my-2 pl-4 flex flex-col gap-1 list-disc marker:text-profit/70">{children}</ul>,
+          ul: ({ children }) => <ul className="my-2 pl-4 flex flex-col gap-1 list-disc marker:text-[#9479FF]">{children}</ul>,
           ol: ({ children }) => <ol className="my-2 pl-4 flex flex-col gap-1 list-decimal marker:text-fg-3">{children}</ol>,
           li: ({ children }) => <li className="pl-1">{children}</li>,
           h1: ({ children }) => <h3 className="mt-3 mb-1.5 font-display font-bold text-[15px] text-fg tracking-tight">{children}</h3>,
           h2: ({ children }) => <h3 className="mt-3 mb-1.5 font-display font-bold text-[14.5px] text-fg tracking-tight">{children}</h3>,
           h3: ({ children }) => <h4 className="mt-2.5 mb-1 font-semibold text-[13.5px] text-fg">{children}</h4>,
           a: ({ href, children }) => (
-            <a href={href} target="_blank" rel="noopener noreferrer" className="text-profit underline underline-offset-2 hover:text-profit/80">
+            <a href={href} target="_blank" rel="noopener noreferrer" className="text-[#5733EE] underline underline-offset-2 hover:text-[#6E4BFF]">
               {children}
             </a>
           ),

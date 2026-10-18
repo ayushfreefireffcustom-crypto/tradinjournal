@@ -7,7 +7,7 @@
 // The dashboard must render with or without this, so every failure path ends in
 // the card hiding itself rather than surfacing an error.
 import { useCallback, useEffect, useState } from 'react';
-import { Robot, ArrowsClockwise } from '@phosphor-icons/react';
+import { ICoach, ISync } from '@/components/v3/icons';
 import MarkdownMessage from '@/components/coach/markdown-message';
 import { api, type AiReport } from '@/lib/api';
 
@@ -18,7 +18,10 @@ interface Props {
 function writtenLabel(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';
-  return d.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
+  const h = (Date.now() - d.getTime()) / 3600_000;
+  if (h < 1) return 'just now';
+  if (h < 24) return `${Math.floor(h)}h ago`;
+  return `on ${d.toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}`;
 }
 
 export default function AiReportCard({ accountId }: Props) {
@@ -62,47 +65,25 @@ export default function AiReportCard({ accountId }: Props) {
   if (!accountId || failed) return null;
 
   return (
-    <div className="tcard p-5 mb-3" data-testid="ai-report-card">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-2.5">
-          <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-profit/12 ring-1 ring-profit/20 shrink-0">
-            <Robot size={16} weight="fill" className="text-profit" />
-          </span>
-          <div>
-            <div className="text-[10px] tracking-[0.2em] text-fg-3 uppercase">Coach review</div>
-            <div className="font-display font-bold text-[16px] tracking-tight mt-0.5">Where this account stands</div>
-          </div>
-        </div>
-        <button
-          onClick={refresh}
-          disabled={loading || refreshing}
-          data-testid="ai-report-refresh"
-          aria-label="Rewrite review"
-          title="Rewrite review"
-          className="shrink-0 rounded-[var(--radius-btn)] border border-border-soft p-2 text-fg-3 hover:text-fg hover:border-profit/40 transition-colors disabled:opacity-40"
-        >
-          <ArrowsClockwise size={13} weight="bold" className={refreshing ? 'animate-spin' : undefined} />
+    <section className="v3-card d-ai" data-testid="ai-report-card" aria-labelledby="d-ai-t">
+      <div className="v3-ch">
+        <h3 id="d-ai-t"><span className="d-ai-ic" aria-hidden><ICoach size={15} /></span>Coach review <span className="d-opt">· {report ? (report.generated ? `written ${writtenLabel(report.updatedAt)}` : 'rule-based') : 'writing'}</span></h3>
+        <button onClick={refresh} disabled={loading || refreshing} data-testid="ai-report-refresh" className="v3-btn v3-btn--o d-ai-btn" aria-label="Rewrite review">
+          <ISync size={14} className={refreshing ? 'spin' : undefined} /><span>{refreshing ? 'Rewriting' : 'Rewrite'}</span>
         </button>
       </div>
-
-      <div className="mt-4">
+      <div className="d-ai-bd">
         {loading ? (
-          <div className="flex flex-col gap-2" data-testid="ai-report-loading">
-            {[0, 1, 2].map(i => (
-              <div key={i} className="shimmer h-3" style={{ width: `${92 - i * 18}%` }} />
-            ))}
+          <div style={{ display: 'grid', gap: 10 }} data-testid="ai-report-loading">
+            {[0, 1, 2].map(i => <div key={i} className="skel d-sk" style={{ height: 12, width: `${92 - i * 18}%` }} />)}
           </div>
         ) : report ? (
           <>
             <MarkdownMessage content={report.content} />
-            <p className="mt-3.5 text-[9px] tracking-[0.18em] uppercase text-fg-3">
-              {report.generated ? `Written ${writtenLabel(report.updatedAt)}` : 'Rule-based summary'}
-              {report.stale && ' · could not refresh — showing the last review'}
-              {' · not financial advice'}
-            </p>
+            <p className="d-ai-note">{report.stale ? 'Couldn’t refresh — showing the last review · ' : ''}Not financial advice</p>
           </>
         ) : null}
       </div>
-    </div>
+    </section>
   );
 }

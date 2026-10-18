@@ -1,0 +1,290 @@
+'use client';
+// Legacy dark shell — kept only for /admin while the product app moves to the v3 shell.
+
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { Gauge, Table, ChartLineUp, CalendarBlank, Newspaper, FilmSlate, NotePencil, Bank, Robot, GearSix, ChartBar, Globe, Crosshair, type Icon } from '@phosphor-icons/react';
+import type { BrokerAccount } from '@/lib/api';
+import { authClient } from '@/lib/auth-client';
+import Logo from '@/components/logo';
+import NotificationBell from '@/components/notification-bell';
+import { LoadingScreen } from '@/components/loader';
+import { usePlatformAccess } from '@/lib/use-platform-access';
+import { UsageTracker } from '@/components/usage-tracker';
+import LocationGate from '@/components/location-gate';
+
+interface Props {
+  children: React.ReactNode;
+  accounts?: BrokerAccount[];
+  selectedAccount?: BrokerAccount | null;
+  onSelectAccount?: (a: BrokerAccount) => void;
+  onConnectClick?: () => void;
+  pageTitle?: string;
+  pageSubtitle?: string;
+}
+
+const NAV: { href: string; label: string; icon: Icon }[] = [
+  { href: '/dashboard', label: 'DASHBOARD',    icon: Gauge },
+  { href: '/trades',    label: 'TRADE LOG',    icon: Table },
+  { href: '/analytics', label: 'ANALYTICS',    icon: ChartLineUp },
+  { href: '/calendar',  label: 'CALENDAR',     icon: CalendarBlank },
+  { href: '/charts',    label: 'CHARTS',       icon: ChartBar },
+  { href: '/journal',   label: 'CHART REPLAY', icon: FilmSlate },
+  { href: '/notebook',  label: 'JOURNAL',      icon: NotePencil },
+  { href: '/markets',   label: 'MARKETS',      icon: Newspaper },
+  { href: '/macro',     label: 'MACRO',        icon: Globe },
+  { href: '/trader',    label: 'SIGNALX',       icon: Crosshair },
+  { href: '/coach',     label: 'AI COACH',     icon: Robot },
+  { href: '/brokers',   label: 'BROKERS',      icon: Bank },
+  { href: '/settings',  label: 'SETTINGS',     icon: GearSix },
+];
+
+const ADMIN_NAV = { href: '/admin', label: 'ADMIN', icon: GearSix };
+
+export default function AppShellLegacy({
+  children, accounts = [], selectedAccount, onSelectAccount, pageTitle, pageSubtitle,
+}: Props) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const { data: session, isPending } = authClient.useSession();
+  const { status: accessStatus, loading: accessLoading, blocked: accessBlocked } = usePlatformAccess();
+  const [clock, setClock] = useState('');
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  useEffect(() => {
+    if (!isPending && !session?.session) router.replace('/login');
+  }, [isPending, session, router]);
+
+  useEffect(() => {
+    const tick = () => setClock(new Date().toUTCString().split(' ').slice(1, 5).join(' '));
+    tick();
+    const t = setInterval(tick, 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  // Close drawer on route change
+  useEffect(() => { setDrawerOpen(false); }, [pathname]);
+
+  // Lock body scroll when drawer is open
+  useEffect(() => {
+    if (drawerOpen) document.body.style.overflow = 'hidden';
+    else document.body.style.overflow = '';
+    return () => { document.body.style.overflow = ''; };
+  }, [drawerOpen]);
+
+  // Only show the full-screen gate on the very first load (session pending or
+  // first-ever access fetch). Once resolved, navigating never blanks the shell.
+  const gatePending = isPending || (!session?.session && !isPending) || (accessLoading && !accessStatus);
+
+  if (gatePending) {
+    return (
+      <div className="h-dvh w-full bg-app flex items-center justify-center" data-testid="app-shell-loading">
+        <LoadingScreen />
+      </div>
+    );
+  }
+
+  if (accessBlocked) {
+    return (
+      <div className="min-h-dvh flex items-center justify-center bg-app p-6">
+        <div className="tcard p-8 max-w-sm text-center space-y-4">
+          <div className="font-display font-black text-[17px] tracking-tight select-none">
+            TRADE<span className="text-profit">logs</span>
+          </div>
+          <div className="text-[10px] tracking-[0.2em] text-warning">// ACCESS CHECK FAILED</div>
+          <p className="text-sm text-fg-2">Could not verify platform access. Check your connection and retry.</p>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="btn btn-primary w-full py-2.5 text-[11px]"
+          >
+            RETRY
+          </button>
+          <a href="/" className="block text-[10px] text-fg-3 hover:text-fg transition-colors tracking-widest">
+            ← GO HOME
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  const SidebarBody = (
+    <>
+      <div className="px-5 h-16 flex items-center border-b border-border">
+        <Logo height={32} />
+        <button
+          onClick={() => setDrawerOpen(false)}
+          aria-label="Close menu"
+          data-testid="drawer-close"
+          className="lg:hidden ml-auto w-7 h-7 rounded-md border border-border text-fg-3 hover:text-fg hover:border-border-strong flex items-center justify-center press focus-ring"
+        >
+          ×
+        </button>
+      </div>
+
+      <nav className="px-2 py-4 flex flex-col gap-0.5">
+        {[...(accessStatus?.isAdmin ? [ADMIN_NAV] : []), ...NAV].map(({ href, label, icon: Icon }) => {
+          const active = pathname === href;
+          return (
+            <Link
+              key={href}
+              href={href}
+              data-testid={`nav-${label.toLowerCase().replace(/\s+/g, '-')}`}
+              className={`group flex items-center justify-between px-3 py-2.5 rounded-md text-[11px] tracking-[0.22em] transition-colors duration-[var(--dur-hover)] focus-ring ${
+                active ? 'bg-surface text-fg border-l-2 border-profit pl-[10px]' : 'text-fg-3 hover:text-fg hover:bg-surface'
+              }`}
+            >
+              <span className="flex items-center gap-3">
+                <Icon size={16} weight={active ? 'fill' : 'regular'} className={active ? 'text-profit' : 'text-fg-3 group-hover:text-fg'} />
+                {label}
+              </span>
+              {active && <span className="w-1 h-1 rounded-full bg-profit" />}
+            </Link>
+          );
+        })}
+      </nav>
+
+      <div className="mt-auto p-4 border-t border-border space-y-3">
+        <div className="flex items-center gap-2 px-1">
+          <div className="flex items-center gap-2 min-w-0 flex-1" data-testid="user-profile">
+            <div className="w-7 h-7 rounded-sm bg-surface-hover border border-border flex items-center justify-center font-bold text-[11px]">
+              {session?.user?.name?.charAt(0) ?? 'A'}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-[11px] truncate">{session?.user?.name}</div>
+              <div className="text-[10px] text-fg-3 truncate">{session?.user?.email}</div>
+            </div>
+          </div>
+          <button
+            onClick={() => authClient.signOut()}
+            data-testid="signout-btn"
+            title="Sign out"
+            className="text-[10px] text-fg-3 hover:text-loss tracking-widest transition-colors duration-[var(--dur-hover)] focus-ring rounded shrink-0"
+          >
+            SIGN OUT
+          </button>
+        </div>
+      </div>
+    </>
+  );
+
+  return (
+    <div className="flex h-dvh overflow-hidden bg-app text-fg" data-testid="app-shell">
+      <UsageTracker />
+      <LocationGate />
+      {/* Desktop sidebar — full viewport height, its footer pinned to the bottom */}
+      <aside className="hidden lg:flex w-60 shrink-0 border-r border-border bg-app flex-col overflow-y-auto no-scrollbar" data-testid="sidebar">
+        {SidebarBody}
+      </aside>
+
+      {/* Mobile drawer */}
+      {drawerOpen && (
+        <>
+          <div
+            className="lg:hidden fixed inset-0 z-40 bg-app/80 backdrop-blur-sm"
+            onClick={() => setDrawerOpen(false)}
+            aria-hidden
+          />
+          <aside
+            className="lg:hidden fixed inset-y-0 left-0 z-50 w-[78%] max-w-[280px] border-r border-border bg-app flex flex-col fade-up"
+            data-testid="mobile-drawer"
+          >
+            {SidebarBody}
+          </aside>
+        </>
+      )}
+
+      {/* Main */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Topbar */}
+        <header className="h-14 border-b border-border bg-app/80 backdrop-blur-xl flex items-center gap-3 px-3 sm:px-5 lg:px-6 sticky top-0 z-30">
+          {/* Mobile hamburger */}
+          <button
+            onClick={() => setDrawerOpen(true)}
+            aria-label="Open menu"
+            data-testid="drawer-open"
+            className="lg:hidden w-9 h-9 rounded-md border border-border flex flex-col items-center justify-center gap-1 text-fg-3 hover:text-fg hover:border-border-strong shrink-0 press focus-ring"
+          >
+            <span className="block w-3.5 h-px bg-current" />
+            <span className="block w-3.5 h-px bg-current" />
+            <span className="block w-3.5 h-px bg-current" />
+          </button>
+
+          {/* Mobile logo */}
+          <Link href="/dashboard" className="lg:hidden flex items-center shrink-0">
+            <Logo height={30} />
+          </Link>
+
+          {/* Page title — desktop only (on mobile the logo stands alone; the
+              drawer already indicates the current page) */}
+          <div className="hidden lg:flex flex-col min-w-0">
+            {pageTitle && <span className="font-display font-bold text-[13px] tracking-tight truncate">{pageTitle}</span>}
+            {pageSubtitle && <span className="hidden xl:inline text-[10px] text-fg-3 tracking-[0.22em] uppercase truncate">{pageSubtitle}</span>}
+          </div>
+
+          {/* Account switcher — desktop inline, tablet/mobile use the dedicated row below */}
+          {accounts.length > 0 && (
+            <div
+              className="hidden lg:flex ml-4 items-center gap-1.5 overflow-x-auto no-scrollbar"
+              data-testid="account-switcher"
+            >
+              {accounts.map(acc => {
+                const active = selectedAccount?.id === acc.id;
+                return (
+                  <button
+                    key={acc.id}
+                    onClick={() => onSelectAccount?.(acc)}
+                    data-testid={`account-tab-${acc.mt5Login}`}
+                    className={`shrink-0 px-3 py-1.5 rounded-md text-[11px] tracking-[0.15em] border transition-colors duration-[var(--dur-hover)] press focus-ring ${
+                      active ? 'border-fg text-fg bg-surface' : 'border-border-soft text-fg-3 hover:text-fg hover:border-border-strong'
+                    }`}
+                  >
+                    <span className={`inline-block w-1.5 h-1.5 mr-2 align-middle ${active ? 'bg-profit' : 'bg-border-strong'}`} />
+                    {acc.broker.toUpperCase()} · #{acc.mt5Login}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          <div className="ml-auto flex items-center gap-3 lg:gap-4 text-[10px] tracking-[0.22em] text-fg-3 shrink-0">
+            <span className="hidden xl:inline">SESSION · LONDON</span>
+            <span className="hidden lg:inline numeric">{clock} UTC</span>
+            <span className="hidden sm:flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-profit pulse-dot" /> LIVE</span>
+            <NotificationBell />
+          </div>
+        </header>
+
+        {/* Mobile account switcher row (only when present) */}
+        {accounts.length > 0 && (
+          <div
+            className="lg:hidden border-b border-border bg-app overflow-x-auto no-scrollbar"
+            data-testid="account-switcher-mobile"
+          >
+            <div className="flex items-center gap-1.5 px-3 py-2 w-max">
+              {accounts.map(acc => {
+                const active = selectedAccount?.id === acc.id;
+                return (
+                  <button
+                    key={acc.id}
+                    onClick={() => onSelectAccount?.(acc)}
+                    data-testid={`account-tab-mobile-${acc.mt5Login}`}
+                    className={`shrink-0 px-3 py-1.5 rounded-md text-[10px] tracking-[0.15em] border transition-colors duration-[var(--dur-hover)] press focus-ring whitespace-nowrap ${
+                      active ? 'border-fg text-fg bg-surface' : 'border-border-soft text-fg-3'
+                    }`}
+                  >
+                    <span className={`inline-block w-1.5 h-1.5 mr-2 align-middle ${active ? 'bg-profit' : 'bg-border-strong'}`} />
+                    {acc.broker.toUpperCase()} · #{acc.mt5Login}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        <main className="flex-1 min-h-0 overflow-y-auto bg-app flex flex-col">{children}</main>
+      </div>
+    </div>
+  );
+}

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import AppShell from '@/components/app-shell';
+import AppShell from '@/components/app-shell-legacy';
 import { LoadingScreen } from '@/components/loader';
 import {
   adminApi,

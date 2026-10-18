@@ -11,6 +11,12 @@ export interface Insight {
   tone: Tone;
   icon: InsightIcon;
   text: string;
+  /** Short bold lead for list layouts (v3). Falls back to `text`. */
+  lead?: string;
+  /** Muted supporting detail shown after the lead. */
+  detail?: string;
+  /** Signed dollar impact shown on the right, when the insight has one. */
+  amount?: number;
 }
 
 const NEGATIVE_EMOTIONS = ['FOMO', 'Revenge', 'Hesitant'];
@@ -26,8 +32,8 @@ export function buildInsights(stats: AccountStats, trades: Trade[], journal: Jou
   if (stats.byDay.length >= 2) {
     const best = [...stats.byDay].sort((a, b) => b.netPnl - a.netPnl)[0]!;
     const worst = [...stats.byDay].sort((a, b) => a.netPnl - b.netPnl)[0]!;
-    if (best.netPnl > 0) out.push({ id: 'best-day', tone: 'profit', icon: 'calendar', text: `${best.day} is your strongest day at ${money(best.netPnl)} across ${best.trades} trades.` });
-    if (worst.netPnl < 0 && worst.day !== best.day) out.push({ id: 'worst-day', tone: 'loss', icon: 'calendar', text: `${worst.day} bleeds the most — ${money(worst.netPnl)}. Consider sizing down.` });
+    if (best.netPnl > 0) out.push({ id: 'best-day', tone: 'profit', icon: 'calendar', text: `${best.day} is your strongest day at ${money(best.netPnl)} across ${best.trades} trades.`, lead: `${best.day} is your strongest day`, detail: `${best.trades} trade${best.trades === 1 ? '' : 's'}`, amount: best.netPnl });
+    if (worst.netPnl < 0 && worst.day !== best.day) out.push({ id: 'worst-day', tone: 'loss', icon: 'calendar', text: `${worst.day} bleeds the most — ${money(worst.netPnl)}. Consider sizing down.`, lead: `${worst.day}s bleed the most`, detail: 'Consider sizing down or sitting out', amount: worst.netPnl });
   }
 
   // Long vs short edge
@@ -36,7 +42,7 @@ export function buildInsights(stats: AccountStats, trades: Trade[], journal: Jou
     const diff = long.netPnl - short.netPnl;
     if (Math.abs(diff) > 1) {
       const strong = diff >= 0 ? 'Longs' : 'Shorts';
-      out.push({ id: 'dir-edge', tone: 'neutral', icon: 'direction', text: `${strong} carry your edge: longs ${money(long.netPnl)} vs shorts ${money(short.netPnl)}.` });
+      out.push({ id: 'dir-edge', tone: 'neutral', icon: 'direction', text: `${strong} carry your edge: longs ${money(long.netPnl)} vs shorts ${money(short.netPnl)}.`, lead: `${strong} carry your edge`, detail: `longs ${money(long.netPnl)} vs shorts ${money(short.netPnl)}`, amount: diff >= 0 ? long.netPnl : short.netPnl });
     }
   }
 
@@ -49,14 +55,14 @@ export function buildInsights(stats: AccountStats, trades: Trade[], journal: Jou
   const lHold = avgHold(closed.filter(t => t.netPnl <= 0));
   if (wHold != null && lHold != null && wHold > 0) {
     const ratio = lHold / wHold;
-    if (ratio >= 1.3) out.push({ id: 'hold-asym', tone: 'warning', icon: 'clock', text: `You hold losers ${ratio.toFixed(1)}× longer than winners (${dur(lHold)} vs ${dur(wHold)}) — cut them sooner.` });
-    else if (ratio <= 0.77) out.push({ id: 'hold-asym', tone: 'profit', icon: 'clock', text: `You let winners run — held ${dur(wHold)} vs ${dur(lHold)} on losers. Keep it up.` });
+    if (ratio >= 1.3) out.push({ id: 'hold-asym', tone: 'warning', icon: 'clock', text: `You hold losers ${ratio.toFixed(1)}× longer than winners (${dur(lHold)} vs ${dur(wHold)}) — cut them sooner.`, lead: `You hold losers ${ratio >= 10 ? Math.round(ratio) : ratio.toFixed(1)}× longer than winners`, detail: `${dur(lHold)} vs ${dur(wHold)} — cut them sooner` });
+    else if (ratio <= 0.77) out.push({ id: 'hold-asym', tone: 'profit', icon: 'clock', text: `You let winners run — held ${dur(wHold)} vs ${dur(lHold)} on losers. Keep it up.`, lead: 'You let winners run', detail: `${dur(wHold)} vs ${dur(lHold)} on losers — keep it up` });
   }
 
   // Top symbol
   if (stats.bySymbol.length > 0) {
     const top = [...stats.bySymbol].sort((a, b) => b.netPnl - a.netPnl)[0]!;
-    if (top.netPnl > 0) out.push({ id: 'top-symbol', tone: 'profit', icon: 'coin', text: `${top.symbol} is your best instrument at ${money(top.netPnl)} (${(top.winRate * 100).toFixed(0)}% win).` });
+    if (top.netPnl > 0) out.push({ id: 'top-symbol', tone: 'profit', icon: 'coin', text: `${top.symbol} is your best instrument at ${money(top.netPnl)} (${(top.winRate * 100).toFixed(0)}% win).`, lead: `${top.symbol} is your best instrument`, detail: `${(top.winRate * 100).toFixed(0)}% win rate`, amount: top.netPnl });
   }
 
   // Best trading session (UTC open hour buckets)
@@ -69,12 +75,12 @@ export function buildInsights(stats: AccountStats, trades: Trade[], journal: Jou
     else sess.Asia += t.netPnl;
   }
   const bestSess = (Object.entries(sess) as [string, number][]).sort((a, b) => b[1] - a[1])[0]!;
-  if (bestSess[1] > 0) out.push({ id: 'session', tone: 'neutral', icon: 'session', text: `Your ${bestSess[0] === 'NewYork' ? 'New York' : bestSess[0]} session is most profitable (${money(bestSess[1])}).` });
+  if (bestSess[1] > 0) out.push({ id: 'session', tone: 'neutral', icon: 'session', text: `Your ${bestSess[0] === 'NewYork' ? 'New York' : bestSess[0]} session is most profitable (${money(bestSess[1])}).`, lead: `The ${bestSess[0] === 'NewYork' ? 'New York' : bestSess[0]} session pays`, detail: 'Your most profitable session', amount: bestSess[1] });
 
   // Profit factor summary
   if (stats.profitFactor > 0 && stats.totalTrades >= 5) {
     const pf = stats.profitFactor >= 999 ? '∞' : stats.profitFactor.toFixed(2);
-    out.push({ id: 'pf', tone: stats.profitFactor >= 1 ? 'profit' : 'loss', icon: 'target', text: `Profit factor ${pf} — you make $${stats.profitFactor >= 999 ? '∞' : stats.profitFactor.toFixed(2)} for every $1 lost.` });
+    out.push({ id: 'pf', tone: stats.profitFactor >= 1 ? 'profit' : 'loss', icon: 'target', text: `Profit factor ${pf} — you make $${stats.profitFactor >= 999 ? '∞' : stats.profitFactor.toFixed(2)} for every $1 lost.`, lead: `Profit factor ${pf}`, detail: `$${stats.profitFactor >= 999 ? '∞' : stats.profitFactor.toFixed(2)} made for every $1 lost` });
   }
 
   // Tilt flag from journal emotions tied to losing trades
@@ -86,7 +92,7 @@ export function buildInsights(stats: AccountStats, trades: Trade[], journal: Jou
     if (t) { tiltPnl += t.netPnl; tiltCount++; }
   }
   if (tiltCount >= 2 && tiltPnl < 0) {
-    out.push({ id: 'tilt', tone: 'warning', icon: 'warning', text: `Trades you tagged FOMO/Revenge/Hesitant netted ${money(tiltPnl)} across ${tiltCount} — your psychology is costing you.` });
+    out.push({ id: 'tilt', tone: 'warning', icon: 'warning', text: `Trades you tagged FOMO/Revenge/Hesitant netted ${money(tiltPnl)} across ${tiltCount} — your psychology is costing you.`, lead: 'Emotional trades are costing you', detail: `FOMO / Revenge / Hesitant · ${tiltCount} trades`, amount: tiltPnl });
   }
 
   return out;

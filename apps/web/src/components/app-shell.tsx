@@ -2,287 +2,264 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import { Gauge, Table, ChartLineUp, CalendarBlank, Newspaper, FilmSlate, NotePencil, Bank, Robot, GearSix, ChartBar, Globe, Crosshair, type Icon } from '@phosphor-icons/react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { BrokerAccount } from '@/lib/api';
 import { authClient } from '@/lib/auth-client';
-import Logo from '@/components/logo';
 import NotificationBell from '@/components/notification-bell';
 import { LoadingScreen } from '@/components/loader';
 import { usePlatformAccess } from '@/lib/use-platform-access';
 import { UsageTracker } from '@/components/usage-tracker';
 import LocationGate from '@/components/location-gate';
+import {
+  IAdmin, IAnalytics, IBrokers, ICalendar, ICharts, IChevrons, IClose, ICoach, IDashboard, IJournal, IMacro, IMarkets, IMenu,
+  IPlus, IReplay, ISearch, ISettings, ISignalX, ITradeLog,
+} from '@/components/v3/icons';
+import '@/styles/app-v3.css';
 
 interface Props {
-  children: React.ReactNode;
+  children: ReactNode;
   accounts?: BrokerAccount[];
   selectedAccount?: BrokerAccount | null;
   onSelectAccount?: (a: BrokerAccount) => void;
   onConnectClick?: () => void;
+  /** Breadcrumb leaf (defaults to the nav label for the current route). */
   pageTitle?: string;
+  /** Kept for API compatibility with older call sites; the v3 top bar doesn't render it. */
   pageSubtitle?: string;
+  /** Breadcrumb parent (defaults to the nav group of the current route). */
+  crumbParent?: string;
+  /** Right-aligned top-bar actions (range selector, sync, primary CTA…). */
+  actions?: ReactNode;
 }
 
-const NAV: { href: string; label: string; icon: Icon }[] = [
-  { href: '/dashboard', label: 'DASHBOARD',    icon: Gauge },
-  { href: '/trades',    label: 'TRADE LOG',    icon: Table },
-  { href: '/analytics', label: 'ANALYTICS',    icon: ChartLineUp },
-  { href: '/calendar',  label: 'CALENDAR',     icon: CalendarBlank },
-  { href: '/charts',    label: 'CHARTS',       icon: ChartBar },
-  { href: '/journal',   label: 'CHART REPLAY', icon: FilmSlate },
-  { href: '/notebook',  label: 'JOURNAL',      icon: NotePencil },
-  { href: '/markets',   label: 'MARKETS',      icon: Newspaper },
-  { href: '/macro',     label: 'MACRO',        icon: Globe },
-  { href: '/trader',    label: 'SIGNALX',       icon: Crosshair },
-  { href: '/coach',     label: 'AI COACH',     icon: Robot },
-  { href: '/brokers',   label: 'BROKERS',      icon: Bank },
-  { href: '/settings',  label: 'SETTINGS',     icon: GearSix },
+type NavItem = { href: string; label: string; icon: (p: { size?: number }) => ReactNode; badge?: string };
+const GROUPS: { title: string; items: NavItem[] }[] = [
+  { title: 'Journal', items: [
+    { href: '/dashboard', label: 'Dashboard', icon: IDashboard },
+    { href: '/trades', label: 'Trade log', icon: ITradeLog },
+    { href: '/analytics', label: 'Analytics', icon: IAnalytics },
+    { href: '/calendar', label: 'Calendar', icon: ICalendar },
+    { href: '/journal', label: 'Chart replay', icon: IReplay },
+    { href: '/notebook', label: 'Journal', icon: IJournal },
+  ] },
+  { title: 'Markets', items: [
+    { href: '/charts', label: 'Charts', icon: ICharts },
+    { href: '/markets', label: 'Markets', icon: IMarkets },
+    { href: '/macro', label: 'Macro', icon: IMacro },
+  ] },
+  { title: 'AI', items: [
+    { href: '/trader', label: 'SignalX', icon: ISignalX, badge: 'New' },
+    { href: '/coach', label: 'AI coach', icon: ICoach },
+  ] },
+];
+const FOOT: NavItem[] = [
+  { href: '/brokers', label: 'Brokers', icon: IBrokers },
+  { href: '/settings', label: 'Settings', icon: ISettings },
+];
+const ALL: (NavItem & { group: string })[] = [
+  ...GROUPS.flatMap(g => g.items.map(i => ({ ...i, group: g.title }))),
+  ...FOOT.map(i => ({ ...i, group: 'Account' })),
 ];
 
-const ADMIN_NAV = { href: '/admin', label: 'ADMIN', icon: GearSix };
+/** "2 min ago" style relative time for sync stamps. */
+export function timeAgo(iso?: string | null): string {
+  if (!iso) return 'never';
+  const s = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 1000));
+  if (s < 45) return 'just now';
+  if (s < 3600) return `${Math.max(1, Math.round(s / 60))} min ago`;
+  if (s < 86400) return `${Math.round(s / 3600)} h ago`;
+  return `${Math.round(s / 86400)} d ago`;
+}
+
+const initials = (broker: string) => broker.replace(/[^A-Za-z ]/g, '').split(/\s+/).filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase() || 'MT';
 
 export default function AppShell({
-  children, accounts = [], selectedAccount, onSelectAccount, pageTitle, pageSubtitle,
+  children, accounts = [], selectedAccount, onSelectAccount, onConnectClick, pageTitle, crumbParent, actions,
 }: Props) {
   const pathname = usePathname();
   const router = useRouter();
   const { data: session, isPending } = authClient.useSession();
   const { status: accessStatus, loading: accessLoading, blocked: accessBlocked } = usePlatformAccess();
-  const [clock, setClock] = useState('');
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawer, setDrawer] = useState(false);
+  const [acctOpen, setAcctOpen] = useState(false);
+  const [cmdk, setCmdk] = useState(false);
+  const acctRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (!isPending && !session?.session) router.replace('/login');
-  }, [isPending, session, router]);
+  useEffect(() => { if (!isPending && !session?.session) router.replace('/login'); }, [isPending, session, router]);
+  useEffect(() => { setDrawer(false); setAcctOpen(false); }, [pathname]);
 
+  // ⌘K / Ctrl-K opens the page switcher anywhere in the app.
   useEffect(() => {
-    const tick = () => setClock(new Date().toUTCString().split(' ').slice(1, 5).join(' '));
-    tick();
-    const t = setInterval(tick, 1000);
-    return () => clearInterval(t);
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setCmdk(v => !v); }
+      if (e.key === 'Escape') { setCmdk(false); setAcctOpen(false); setDrawer(false); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  // Close drawer on route change
-  useEffect(() => { setDrawerOpen(false); }, [pathname]);
-
-  // Lock body scroll when drawer is open
   useEffect(() => {
-    if (drawerOpen) document.body.style.overflow = 'hidden';
-    else document.body.style.overflow = '';
-    return () => { document.body.style.overflow = ''; };
-  }, [drawerOpen]);
+    if (!acctOpen) return;
+    const onDown = (e: MouseEvent) => { if (!acctRef.current?.contains(e.target as Node)) setAcctOpen(false); };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [acctOpen]);
 
-  // Only show the full-screen gate on the very first load (session pending or
-  // first-ever access fetch). Once resolved, navigating never blanks the shell.
+  const current = useMemo(() => ALL.find(i => pathname === i.href || pathname.startsWith(i.href + '/')), [pathname]);
+
   const gatePending = isPending || (!session?.session && !isPending) || (accessLoading && !accessStatus);
-
   if (gatePending) {
-    return (
-      <div className="h-dvh w-full bg-app flex items-center justify-center" data-testid="app-shell-loading">
-        <LoadingScreen />
-      </div>
-    );
+    return <div className="v3 h-dvh w-full" data-testid="app-shell-loading"><LoadingScreen /></div>;
   }
-
   if (accessBlocked) {
     return (
-      <div className="min-h-dvh flex items-center justify-center bg-app p-6">
-        <div className="tcard p-8 max-w-sm text-center space-y-4">
-          <div className="font-display font-black text-[17px] tracking-tight select-none">
-            TRADE<span className="text-profit">logs</span>
-          </div>
-          <div className="text-[10px] tracking-[0.2em] text-warning">// ACCESS CHECK FAILED</div>
-          <p className="text-sm text-fg-2">Could not verify platform access. Check your connection and retry.</p>
-          <button
-            type="button"
-            onClick={() => window.location.reload()}
-            className="btn btn-primary w-full py-2.5 text-[11px]"
-          >
-            RETRY
-          </button>
-          <a href="/" className="block text-[10px] text-fg-3 hover:text-fg transition-colors tracking-widest">
-            ← GO HOME
-          </a>
+      <div className="v3 min-h-dvh flex items-center justify-center p-6">
+        <div className="v3-card" style={{ padding: 32, maxWidth: 400, textAlign: 'center' }}>
+          <div style={{ fontWeight: 700, fontSize: 20, letterSpacing: '-.035em' }}>TRADE<span style={{ color: 'var(--acc)' }}>logs</span></div>
+          <h1 className="v3-h1" style={{ fontSize: 24, marginTop: 16 }}>We couldn&rsquo;t verify your access.</h1>
+          <p className="v3-sub" style={{ marginTop: 8 }}>Check your connection and try again.</p>
+          <button type="button" onClick={() => window.location.reload()} className="v3-btn v3-btn--acc" style={{ marginTop: 20, width: '100%', justifyContent: 'center' }}>Retry</button>
+          <a href="/" className="v3-link" style={{ marginTop: 14 }}>Go home</a>
         </div>
       </div>
     );
   }
 
-  const SidebarBody = (
-    <>
-      <div className="px-5 h-16 flex items-center border-b border-border">
-        <Logo height={32} />
-        <button
-          onClick={() => setDrawerOpen(false)}
-          aria-label="Close menu"
-          data-testid="drawer-close"
-          className="lg:hidden ml-auto w-7 h-7 rounded-md border border-border text-fg-3 hover:text-fg hover:border-border-strong flex items-center justify-center press focus-ring"
-        >
-          ×
-        </button>
-      </div>
-
-      <nav className="px-2 py-4 flex flex-col gap-0.5">
-        {[...(accessStatus?.isAdmin ? [ADMIN_NAV] : []), ...NAV].map(({ href, label, icon: Icon }) => {
-          const active = pathname === href;
-          return (
-            <Link
-              key={href}
-              href={href}
-              data-testid={`nav-${label.toLowerCase().replace(/\s+/g, '-')}`}
-              className={`group flex items-center justify-between px-3 py-2.5 rounded-md text-[11px] tracking-[0.22em] transition-colors duration-[var(--dur-hover)] focus-ring ${
-                active ? 'bg-surface text-fg border-l-2 border-profit pl-[10px]' : 'text-fg-3 hover:text-fg hover:bg-surface'
-              }`}
-            >
-              <span className="flex items-center gap-3">
-                <Icon size={16} weight={active ? 'fill' : 'regular'} className={active ? 'text-profit' : 'text-fg-3 group-hover:text-fg'} />
-                {label}
-              </span>
-              {active && <span className="w-1 h-1 rounded-full bg-profit" />}
-            </Link>
-          );
-        })}
-      </nav>
-
-      <div className="mt-auto p-4 border-t border-border space-y-3">
-        <div className="flex items-center gap-2 px-1">
-          <div className="flex items-center gap-2 min-w-0 flex-1" data-testid="user-profile">
-            <div className="w-7 h-7 rounded-sm bg-surface-hover border border-border flex items-center justify-center font-bold text-[11px]">
-              {session?.user?.name?.charAt(0) ?? 'A'}
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="text-[11px] truncate">{session?.user?.name}</div>
-              <div className="text-[10px] text-fg-3 truncate">{session?.user?.email}</div>
-            </div>
-          </div>
-          <button
-            onClick={() => authClient.signOut()}
-            data-testid="signout-btn"
-            title="Sign out"
-            className="text-[10px] text-fg-3 hover:text-loss tracking-widest transition-colors duration-[var(--dur-hover)] focus-ring rounded shrink-0"
-          >
-            SIGN OUT
-          </button>
-        </div>
-      </div>
-    </>
-  );
+  const user = session?.user;
+  const sel = selectedAccount ?? accounts[0] ?? null;
+  const connected = sel ? /CONNECT|ACTIVE|OK/i.test(sel.status) : false;
 
   return (
-    <div className="flex h-dvh overflow-hidden bg-app text-fg" data-testid="app-shell">
+    <div className="v3 v3-shell" data-testid="app-shell">
       <UsageTracker />
       <LocationGate />
-      {/* Desktop sidebar — full viewport height, its footer pinned to the bottom */}
-      <aside className="hidden lg:flex w-60 shrink-0 border-r border-border bg-app flex-col overflow-y-auto no-scrollbar" data-testid="sidebar">
-        {SidebarBody}
-      </aside>
+      {drawer && <div className="v3-drawer-scrim" onClick={() => setDrawer(false)} aria-hidden />}
 
-      {/* Mobile drawer */}
-      {drawerOpen && (
-        <>
-          <div
-            className="lg:hidden fixed inset-0 z-40 bg-app/80 backdrop-blur-sm"
-            onClick={() => setDrawerOpen(false)}
-            aria-hidden
-          />
-          <aside
-            className="lg:hidden fixed inset-y-0 left-0 z-50 w-[78%] max-w-[280px] border-r border-border bg-app flex flex-col fade-up"
-            data-testid="mobile-drawer"
-          >
-            {SidebarBody}
-          </aside>
-        </>
-      )}
+      <aside className={`v3-sb ${drawer ? 'is-open' : ''}`} data-testid="sidebar" aria-label="Sidebar">
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <Link href="/dashboard" className="v3-wm" aria-label="TRADElogs dashboard">TRADE<span>logs</span></Link>
+          <button className="v3-burger" style={{ marginLeft: 'auto', background: 'transparent', color: '#fff', borderColor: '#2A2932', display: drawer ? 'grid' : 'none' }} onClick={() => setDrawer(false)} aria-label="Close menu"><IClose size={16} /></button>
+        </div>
 
-      {/* Main */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Topbar */}
-        <header className="h-14 border-b border-border bg-app/80 backdrop-blur-xl flex items-center gap-3 px-3 sm:px-5 lg:px-6 sticky top-0 z-30">
-          {/* Mobile hamburger */}
-          <button
-            onClick={() => setDrawerOpen(true)}
-            aria-label="Open menu"
-            data-testid="drawer-open"
-            className="lg:hidden w-9 h-9 rounded-md border border-border flex flex-col items-center justify-center gap-1 text-fg-3 hover:text-fg hover:border-border-strong shrink-0 press focus-ring"
-          >
-            <span className="block w-3.5 h-px bg-current" />
-            <span className="block w-3.5 h-px bg-current" />
-            <span className="block w-3.5 h-px bg-current" />
-          </button>
-
-          {/* Mobile logo */}
-          <Link href="/dashboard" className="lg:hidden flex items-center shrink-0">
-            <Logo height={30} />
-          </Link>
-
-          {/* Page title — desktop only (on mobile the logo stands alone; the
-              drawer already indicates the current page) */}
-          <div className="hidden lg:flex flex-col min-w-0">
-            {pageTitle && <span className="font-display font-bold text-[13px] tracking-tight truncate">{pageTitle}</span>}
-            {pageSubtitle && <span className="hidden xl:inline text-[10px] text-fg-3 tracking-[0.22em] uppercase truncate">{pageSubtitle}</span>}
-          </div>
-
-          {/* Account switcher — desktop inline, tablet/mobile use the dedicated row below */}
-          {accounts.length > 0 && (
-            <div
-              className="hidden lg:flex ml-4 items-center gap-1.5 overflow-x-auto no-scrollbar"
-              data-testid="account-switcher"
-            >
-              {accounts.map(acc => {
-                const active = selectedAccount?.id === acc.id;
-                return (
-                  <button
-                    key={acc.id}
-                    onClick={() => onSelectAccount?.(acc)}
-                    data-testid={`account-tab-${acc.mt5Login}`}
-                    className={`shrink-0 px-3 py-1.5 rounded-md text-[11px] tracking-[0.15em] border transition-colors duration-[var(--dur-hover)] press focus-ring ${
-                      active ? 'border-fg text-fg bg-surface' : 'border-border-soft text-fg-3 hover:text-fg hover:border-border-strong'
-                    }`}
-                  >
-                    <span className={`inline-block w-1.5 h-1.5 mr-2 align-middle ${active ? 'bg-profit' : 'bg-border-strong'}`} />
-                    {acc.broker.toUpperCase()} · #{acc.mt5Login}
+        {sel ? (
+          <div className="v3-acct" ref={acctRef}>
+            <button className="v3-acct-btn" onClick={() => setAcctOpen(o => !o)} aria-haspopup="menu" aria-expanded={acctOpen} data-testid="account-switcher">
+              <span className="v3-acct-mono">{initials(sel.broker)}</span>
+              <span style={{ minWidth: 0 }}><b>{sel.broker}</b><small>…{sel.mt5Login.slice(-4)} · {connected ? 'synced' : sel.status.toLowerCase()}</small></span>
+              <IChevrons size={16} />
+            </button>
+            {acctOpen && (
+              <div className="v3-acct-menu" role="menu">
+                {accounts.map(a => (
+                  <button key={a.id} role="menuitemradio" aria-checked={a.id === sel.id} className={a.id === sel.id ? 'on' : ''} data-testid={`account-tab-${a.mt5Login}`}
+                    onClick={() => { onSelectAccount?.(a); setAcctOpen(false); }}>
+                    <span className="v3-acct-mono" style={{ background: 'var(--paper)', color: 'var(--ink)' }}>{initials(a.broker)}</span>
+                    <span><b style={{ fontWeight: 500 }}>{a.broker}</b><small>#{a.mt5Login} · {a.server}</small></span>
                   </button>
-                );
-              })}
+                ))}
+                <hr />
+                {onConnectClick
+                  ? <button onClick={() => { setAcctOpen(false); onConnectClick(); }}><IPlus size={16} /> Add broker</button>
+                  : <Link href="/brokers"><IPlus size={16} /> Manage brokers</Link>}
+              </div>
+            )}
+          </div>
+        ) : (
+          <button className="v3-acct-btn" onClick={() => (onConnectClick ? onConnectClick() : router.push('/brokers'))} data-testid="account-connect">
+            <span className="v3-acct-mono"><IPlus size={16} /></span>
+            <span><b>Connect MT5</b><small>Read-only · 90 seconds</small></span>
+          </button>
+        )}
+
+        <nav aria-label="Primary" style={{ display: 'grid', gap: 18 }}>
+          {GROUPS.map(g => (
+            <div key={g.title} className="v3-grp">
+              <small>{g.title}</small>
+              {g.items.map(i => <NavLink key={i.href} item={i} active={current?.href === i.href} />)}
+            </div>
+          ))}
+        </nav>
+
+        <div className="v3-sb-foot">
+          {sel && (
+            <div className="v3-sync" data-testid="sync-status">
+              <b><span className={`v3-dot ${connected ? '' : 'warn'}`} />{connected ? 'MT5 sync online' : 'MT5 needs attention'}</b>
+              Last sync {timeAgo(sel.lastSyncAt)}
             </div>
           )}
+          {accessStatus?.isAdmin && <NavLink item={{ href: '/admin', label: 'Admin', icon: IAdmin }} active={false} />}
+          {FOOT.map(i => <NavLink key={i.href} item={i} active={current?.href === i.href} />)}
+          <div className="v3-me" data-testid="user-profile">
+            <span className="a">{(user?.name ?? 'T').charAt(0).toUpperCase()}</span>
+            <span style={{ minWidth: 0 }}><b>{user?.name ?? 'Trader'}</b><small>Free plan</small></span>
+            <button onClick={() => authClient.signOut()} data-testid="signout-btn">Sign out</button>
+          </div>
+        </div>
+      </aside>
 
-          <div className="ml-auto flex items-center gap-3 lg:gap-4 text-[10px] tracking-[0.22em] text-fg-3 shrink-0">
-            <span className="hidden xl:inline">SESSION · LONDON</span>
-            <span className="hidden lg:inline numeric">{clock} UTC</span>
-            <span className="hidden sm:flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-profit pulse-dot" /> LIVE</span>
+      <div className="v3-main">
+        <header className="v3-top">
+          <button className="v3-burger" onClick={() => setDrawer(true)} aria-label="Open menu" data-testid="drawer-open"><IMenu size={18} /></button>
+          <div className="v3-crumb" data-testid="crumb">
+            <span className="grp">{crumbParent ?? current?.group ?? 'TRADElogs'} / </span><b>{pageTitle ?? current?.label ?? ''}</b>
+          </div>
+          <button className="v3-search" onClick={() => setCmdk(true)} aria-label="Search pages (⌘K)">
+            <ISearch size={16} /><span>Jump to a page…</span><kbd>⌘K</kbd>
+          </button>
+          <div className="v3-top-r">
+            {actions}
             <NotificationBell />
           </div>
         </header>
+        <main className="v3-scroll">{children}</main>
+      </div>
 
-        {/* Mobile account switcher row (only when present) */}
-        {accounts.length > 0 && (
-          <div
-            className="lg:hidden border-b border-border bg-app overflow-x-auto no-scrollbar"
-            data-testid="account-switcher-mobile"
-          >
-            <div className="flex items-center gap-1.5 px-3 py-2 w-max">
-              {accounts.map(acc => {
-                const active = selectedAccount?.id === acc.id;
-                return (
-                  <button
-                    key={acc.id}
-                    onClick={() => onSelectAccount?.(acc)}
-                    data-testid={`account-tab-mobile-${acc.mt5Login}`}
-                    className={`shrink-0 px-3 py-1.5 rounded-md text-[10px] tracking-[0.15em] border transition-colors duration-[var(--dur-hover)] press focus-ring whitespace-nowrap ${
-                      active ? 'border-fg text-fg bg-surface' : 'border-border-soft text-fg-3'
-                    }`}
-                  >
-                    <span className={`inline-block w-1.5 h-1.5 mr-2 align-middle ${active ? 'bg-profit' : 'bg-border-strong'}`} />
-                    {acc.broker.toUpperCase()} · #{acc.mt5Login}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+      {cmdk && <CommandPalette onClose={() => setCmdk(false)} onGo={href => { setCmdk(false); router.push(href); }} isAdmin={!!accessStatus?.isAdmin} />}
+    </div>
+  );
+}
+
+function NavLink({ item, active }: { item: NavItem; active: boolean }) {
+  const Icon = item.icon;
+  return (
+    <Link href={item.href} className="v3-nv" aria-current={active ? 'page' : undefined} data-testid={`nav-${item.label.toLowerCase().replace(/\s+/g, '-')}`}>
+      <Icon size={17} />{item.label}{item.badge && <em>{item.badge}</em>}
+    </Link>
+  );
+}
+
+function CommandPalette({ onClose, onGo, isAdmin }: { onClose: () => void; onGo: (href: string) => void; isAdmin: boolean }) {
+  const [q, setQ] = useState('');
+  const [i, setI] = useState(0);
+  const items = useMemo(() => {
+    const list = [...ALL, ...(isAdmin ? [{ href: '/admin', label: 'Admin', icon: IAdmin, group: 'Account' }] : [])];
+    const n = q.trim().toLowerCase();
+    return n ? list.filter(x => x.label.toLowerCase().includes(n) || x.group.toLowerCase().includes(n)) : list;
+  }, [q, isAdmin]);
+  useEffect(() => { setI(0); }, [q]);
+  return (
+    <div className="v3 v3-cmdk-scrim" onMouseDown={onClose}>
+      <div className="v3-cmdk" role="dialog" aria-label="Jump to a page" onMouseDown={e => e.stopPropagation()}>
+        <input autoFocus placeholder="Jump to a page…" value={q} onChange={e => setQ(e.target.value)}
+          onKeyDown={e => {
+            if (e.key === 'ArrowDown') { e.preventDefault(); setI(v => Math.min(items.length - 1, v + 1)); }
+            if (e.key === 'ArrowUp') { e.preventDefault(); setI(v => Math.max(0, v - 1)); }
+            if (e.key === 'Enter' && items[i]) onGo(items[i].href);
+          }} />
+        {items.length === 0 ? <div className="empty">No pages match &ldquo;{q}&rdquo;.</div> : (
+          <ul>
+            {items.map((x, k) => {
+              const Icon = x.icon;
+              return (
+                <li key={x.href}>
+                  <a href={x.href} data-on={k === i} onMouseEnter={() => setI(k)} onClick={e => { e.preventDefault(); onGo(x.href); }}>
+                    <Icon size={17} />{x.label}<small>{x.group}</small>
+                  </a>
+                </li>
+              );
+            })}
+          </ul>
         )}
-
-        <main className="flex-1 min-h-0 overflow-y-auto bg-app flex flex-col">{children}</main>
       </div>
     </div>
   );

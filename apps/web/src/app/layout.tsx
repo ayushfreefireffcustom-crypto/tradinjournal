@@ -23,6 +23,12 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={`dark ${inter.variable}`}>
+      <head>
+        {/* Satoshi — the v3 product typeface (Fontshare, free for commercial use). */}
+        <link rel="preconnect" href="https://api.fontshare.com" />
+        <link rel="preconnect" href="https://cdn.fontshare.com" crossOrigin="" />
+        <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700,400i,500i&display=swap" />
+      </head>
       <body className="min-h-screen bg-app text-fg antialiased">
         <ClickBurstEffect />
         <CursorGlow />

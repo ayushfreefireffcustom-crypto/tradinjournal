@@ -82,24 +82,24 @@ export default function NotificationBell() {
         onClick={toggle}
         aria-label="Notifications"
         data-testid="notif-bell"
-        className="relative w-8 h-8 rounded-md border border-border flex items-center justify-center text-fg-3 hover:text-fg hover:border-border-strong transition-colors"
+        className="relative w-[38px] h-[38px] rounded-full border border-border bg-surface flex items-center justify-center text-fg-3 hover:text-fg hover:border-border-strong transition-colors focus-ring"
       >
-        <Bell size={15} weight={unread > 0 ? 'fill' : 'regular'} className={unread > 0 ? 'text-fg' : ''} />
+        <Bell size={17} weight={unread > 0 ? 'fill' : 'regular'} className={unread > 0 ? 'text-fg' : ''} />
         {unread > 0 && (
-          <span className="absolute -top-1 -right-1 min-w-[15px] h-[15px] px-1 rounded-full bg-loss text-white text-[9px] font-bold flex items-center justify-center">
+          <span className="absolute -top-0.5 -right-0.5 min-w-[17px] h-[17px] px-1 rounded-full bg-[#6E4BFF] text-white text-[10px] font-bold flex items-center justify-center ring-2 ring-[var(--color-app)]">
             {unread > 9 ? '9+' : unread}
           </span>
         )}
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-80 max-w-[86vw] rounded-[var(--radius-card)] border border-border-strong bg-app shadow-xl z-50 overflow-hidden" data-testid="notif-center">
-          <div className="px-3.5 py-2.5 border-b border-border-soft flex items-center justify-between">
-            <span className="text-[10px] tracking-[0.2em] uppercase text-fg-3">Notifications</span>
+        <div className="absolute right-0 mt-2 w-[340px] max-w-[86vw] rounded-[18px] border border-border bg-surface shadow-[0_30px_70px_-25px_rgba(16,15,23,.45)] z-50 overflow-hidden fade-up" data-testid="notif-center">
+          <div className="px-4 py-3 border-b border-border-soft flex items-center justify-between">
+            <span className="text-[14px] font-semibold text-fg">Notifications</span>{unread > 0 && <span className="text-[12px] text-fg-3">{unread} new</span>}
           </div>
           <div className="max-h-96 overflow-y-auto">
             {items.length === 0 ? (
-              <div className="px-3.5 py-8 text-center text-[12px] text-fg-3">
+              <div className="px-4 py-10 text-center text-[13.5px] text-fg-3">
                 <Check size={18} className="mx-auto mb-2 text-fg-3" />
                 You&apos;re all caught up.
               </div>
@@ -111,18 +111,18 @@ export default function NotificationBell() {
                     <div className="flex gap-2.5">
                       <span className={`shrink-0 w-8 h-8 rounded-full border ${v.ring} bg-surface flex items-center justify-center text-[15px] leading-none`} aria-hidden>{v.glyph}</span>
                       <div className="min-w-0 flex-1">
-                        <div className="text-[12.5px] text-fg leading-snug">{n.title}</div>
-                        {n.body && <div className="text-[11.5px] text-fg-3 mt-0.5 leading-snug">{n.body}</div>}
-                        <div className="text-[9.5px] tracking-widest uppercase text-fg-3 mt-1">{ago(n.createdAt)} ago</div>
+                        <div className="text-[13.5px] text-fg leading-snug font-medium">{n.title}</div>
+                        {n.body && <div className="text-[12.5px] text-fg-3 mt-0.5 leading-snug">{n.body}</div>}
+                        <div className="text-[11.5px] text-fg-3 mt-1">{ago(n.createdAt) === 'now' ? 'Just now' : `${ago(n.createdAt)} ago`}</div>
                       </div>
                     </div>
                   );
                   return (
-                    <li key={n.id} className={n.read ? '' : 'bg-profit/[0.04]'}>
+                    <li key={n.id} className={n.read ? '' : 'bg-[#6E4BFF]/[0.05]'}>
                       {n.href ? (
-                        <Link href={n.href} onClick={() => setOpen(false)} className="block px-3.5 py-2.5 hover:bg-surface transition-colors">{body}</Link>
+                        <Link href={n.href} onClick={() => setOpen(false)} className="block px-4 py-3 hover:bg-surface-hover transition-colors">{body}</Link>
                       ) : (
-                        <div className="px-3.5 py-2.5">{body}</div>
+                        <div className="px-4 py-3">{body}</div>
                       )}
                     </li>
                   );

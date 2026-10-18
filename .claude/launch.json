@@ -4,14 +4,42 @@
     {
       "name": "api",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "api", "dev"],
+      "runtimeArgs": [
+        "--filter",
+        "api",
+        "dev"
+      ],
       "port": 4000
     },
     {
       "name": "web",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "web", "exec", "next", "dev", "--port", "3009"],
+      "runtimeArgs": [
+        "--filter",
+        "web",
+        "exec",
+        "next",
+        "dev",
+        "--port",
+        "3009"
+      ],
       "port": 3009
+    },
+    {
+      "name": "web-mock",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "NEXT_PUBLIC_USE_MOCKS=true",
+        "pnpm",
+        "--filter",
+        "web",
+        "exec",
+        "next",
+        "dev",
+        "--port",
+        "3010"
+      ],
+      "port": 3010
     }
   ]
 }
