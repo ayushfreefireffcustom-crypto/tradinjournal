@@ -3,10 +3,13 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import AppShell from '@/components/app-shell';
 import ConnectBrokerModal from '@/components/connect-broker-modal';
+import DayTradesModal from '@/components/day-trades-modal';
 import { api, type BrokerAccount, type Trade } from '@/lib/api';
 import { useAccounts } from '@/lib/use-accounts';
-import { CaretLeft, CaretRight } from '@phosphor-icons/react';
-import { aggregateByCloseDate, buildMonthView, calMoney as money, cellBg, WEEKDAYS, MONTHS } from '@/lib/calendar';
+import { aggregateByCloseDate, buildMonthView, dayKey, MONTHS } from '@/lib/calendar';
+import { money, moneyShort, compact, tone } from '@/components/v3/format';
+
+const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 export default function CalendarPage() {
   const { accounts, selected, select, setAccounts, loading: accountsLoading } = useAccounts();
@@ -14,6 +17,8 @@ export default function CalendarPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showConnect, setShowConnect] = useState(false);
+  const [openDay, setOpenDay] = useState<Date | null>(null);
+  const [dir, setDir] = useState<1 | -1>(1);
 
   const now = new Date();
   const [view, setView] = useState({ year: now.getFullYear(), month: now.getMonth() });
@@ -37,18 +42,38 @@ export default function CalendarPage() {
   // Aggregate closed trades by local close-date, then build the month grid
   // (with per-week totals) via the shared calendar helpers.
   const byDay = useMemo(() => aggregateByCloseDate(trades), [trades]);
-  const { weeks, weekTotals, monthStats, maxAbs } = useMemo(
-    () => buildMonthView(view.year, view.month, byDay),
-    [byDay, view],
-  );
+  const { weeks, weekTotals, monthStats, maxAbs } = useMemo(() => buildMonthView(view.year, view.month, byDay), [byDay, view]);
 
-  function shiftMonth(delta: number) {
-    setView(v => {
-      const m = v.month + delta;
-      return { year: v.year + Math.floor(m / 12), month: ((m % 12) + 12) % 12 };
-    });
-  }
-  function goToday() { setView({ year: now.getFullYear(), month: now.getMonth() }); }
+  const facts = useMemo(() => {
+    let green = 0, red = 0, bestD = 0, worstD = 0;
+    const dim = new Date(view.year, view.month + 1, 0).getDate();
+    for (let d = 1; d <= dim; d++) {
+      const a = byDay.get(dayKey(view.year, view.month, d));
+      if (!a) continue;
+      if (a.netPnl >= 0) green++; else red++;
+      if (a.netPnl === monthStats.best && !bestD) bestD = d;
+      if (a.netPnl === monthStats.worst && !worstD) worstD = d;
+    }
+    const lbl = (d: number) => new Date(view.year, view.month, d).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    return { green, red, best: bestD ? lbl(bestD) : '', worst: worstD ? lbl(worstD) : '' };
+  }, [byDay, view, monthStats]);
+
+  const shiftMonth = useCallback((delta: 1 | -1) => {
+    setDir(delta);
+    setView(v => { const m = v.month + delta; return { year: v.year + Math.floor(m / 12), month: ((m % 12) + 12) % 12 }; });
+  }, []);
+  const goToday = () => { const n = new Date(); setDir(n.getFullYear() * 12 + n.getMonth() >= view.year * 12 + view.month ? 1 : -1); setView({ year: n.getFullYear(), month: n.getMonth() }); };
+  const onThisMonth = view.year === now.getFullYear() && view.month === now.getMonth();
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (openDay || (e.target as HTMLElement).closest('input,textarea,select,[contenteditable=true]') || e.metaKey || e.ctrlKey) return;
+      if (e.key === 'ArrowLeft') shiftMonth(-1);
+      if (e.key === 'ArrowRight') shiftMonth(1);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [shiftMonth, openDay]);
 
   function onConnected(a: BrokerAccount) {
     setAccounts(prev => (prev.find(x => x.id === a.id) ? prev.map(x => (x.id === a.id ? a : x)) : [a, ...prev]));
@@ -56,118 +81,92 @@ export default function CalendarPage() {
     setShowConnect(false);
   }
 
-  const isToday = (d: number) => now.getFullYear() === view.year && now.getMonth() === view.month && now.getDate() === d;
+  const dayTrades = useMemo(() => {
+    if (!openDay) return [];
+    const k = dayKey(openDay.getFullYear(), openDay.getMonth(), openDay.getDate());
+    return trades.filter(t => t.status === 'CLOSED' && t.closeTime && (() => { const d = new Date(t.closeTime!); return dayKey(d.getFullYear(), d.getMonth(), d.getDate()) === k; })());
+  }, [openDay, trades]);
+
+  // Day numbers for the leading/trailing cells from neighbouring months.
+  const firstDow = new Date(view.year, view.month, 1).getDay();
+  const prevLen = new Date(view.year, view.month, 0).getDate();
+  const isToday = (d: number) => onThisMonth && now.getDate() === d;
+  const intensity = (v: number) => Math.min(1, Math.abs(v) / maxAbs);
+  const has = monthStats.tradingDays > 0;
+
+  const nav = (
+    <div className="v3-seg c-nav" role="group" aria-label="Change month">
+      <button onClick={() => shiftMonth(-1)} aria-label="Previous month" data-testid="cal-prev">‹</button>
+      <button onClick={goToday} aria-pressed={onThisMonth} data-testid="cal-today">Today</button>
+      <button onClick={() => shiftMonth(1)} aria-label="Next month" data-testid="cal-next">›</button>
+    </div>
+  );
 
   return (
-    <AppShell
-      accounts={accounts}
-      selectedAccount={selected}
-      onSelectAccount={select}
-      onConnectClick={() => setShowConnect(true)}
-      pageTitle="Calendar"
-      pageSubtitle="// DAILY P&L"
-    >
-      <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto fade-up" data-testid="calendar-page">
-        <div className="flex items-end justify-between gap-4 flex-wrap mb-6">
-          <div className="min-w-0">
-            <div className="text-[10px] tracking-[0.25em] text-fg-3">[ CALENDAR // DAILY P&L ]</div>
-            <h1 className="font-display font-black text-3xl sm:text-4xl tracking-tighter mt-2 numeric">
-              {MONTHS[view.month]!.toUpperCase()} {view.year}
-            </h1>
+    <AppShell accounts={accounts} selectedAccount={selected} onSelectAccount={select} onConnectClick={() => setShowConnect(true)} pageTitle="Calendar">
+      <div className="v3-page" data-testid="calendar-page">
+        <header className="t-head">
+          <div>
+            <p className="v3-sub" style={{ marginTop: 0 }}>Daily P&amp;L</p>
+            <h1 className="v3-h1 c-h1" key={`${view.year}-${view.month}`} data-dir={dir}><b>{MONTHS[view.month]}</b> <em className="num">{view.year}</em></h1>
           </div>
-          <div className="flex items-center gap-1">
-            <button onClick={() => shiftMonth(-1)} data-testid="cal-prev" className="w-9 h-9 rounded-md border border-border-soft text-fg-3 hover:text-fg hover:border-border-strong flex items-center justify-center press focus-ring"><CaretLeft size={14} weight="bold" /></button>
-            <button onClick={goToday} data-testid="cal-today" className="px-3 h-9 rounded-md border border-border-soft text-[10px] tracking-[0.22em] text-fg-2 hover:text-fg hover:border-border-strong press focus-ring">TODAY</button>
-            <button onClick={() => shiftMonth(1)} data-testid="cal-next" className="w-9 h-9 rounded-md border border-border-soft text-fg-3 hover:text-fg hover:border-border-strong flex items-center justify-center press focus-ring"><CaretRight size={14} weight="bold" /></button>
-          </div>
-        </div>
+          {nav}
+        </header>
 
         {error && (
-          <div className="border border-loss/30 bg-loss/10 px-4 py-3 mb-4 flex items-center justify-between gap-3 text-[12px]" data-testid="calendar-error">
-            <span className="text-loss">{error}</span>
-            <button onClick={() => selected && loadTrades(selected)} className="btn btn-ghost py-1.5 text-[10px] shrink-0">RETRY</button>
+          <div className="d-err" role="alert" data-testid="calendar-error" style={{ marginBottom: 18 }}>
+            <span>{error}</span><button className="v3-btn v3-btn--o" onClick={() => selected && loadTrades(selected)}>Retry</button>
           </div>
         )}
 
-        {/* Month summary */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3" data-testid="calendar-summary">
-          {[
-            { l: 'Month net P&L', v: monthStats.tradingDays ? money(monthStats.net) : '—', c: monthStats.net >= 0 ? 'text-profit' : 'text-loss' },
-            { l: 'Trading days', v: String(monthStats.tradingDays), c: 'text-fg' },
-            { l: 'Best day', v: monthStats.tradingDays ? money(monthStats.best) : '—', c: 'text-profit' },
-            { l: 'Worst day', v: monthStats.tradingDays ? money(monthStats.worst) : '—', c: 'text-loss' },
-          ].map(k => (
-            <div key={k.l} className="tcard p-4">
-              <div className="text-[10px] tracking-[0.22em] text-fg-3 uppercase">{k.l}</div>
-              <div className={`font-display font-black text-2xl tracking-tighter mt-2 numeric ${k.c}`}>{k.v}</div>
-            </div>
-          ))}
-        </div>
+        <section className="v3-card a-kpis c-kpis" data-testid="calendar-summary" aria-label="Month summary">
+          <div><span>Month net P&amp;L</span><b className={`num ${has ? tone(monthStats.net) : ''}`}>{has ? money(monthStats.net) : '—'}</b><small>{monthStats.tradeCount} trade{monthStats.tradeCount === 1 ? '' : 's'}</small></div>
+          <div><span>Trading days</span><b className="num">{monthStats.tradingDays}</b><small>{has ? `${facts.green} green · ${facts.red} red` : 'No trades this month'}</small></div>
+          <div><span>Best day</span><b className={`num ${has && monthStats.best > 0 ? 'lg' : ''}`}>{has && monthStats.best > 0 ? money(monthStats.best) : '—'}</b><small>{has && monthStats.best > 0 ? facts.best : '—'}</small></div>
+          <div><span>Worst day</span><b className={`num ${has && monthStats.worst < 0 ? 'sh' : ''}`}>{has && monthStats.worst < 0 ? money(monthStats.worst) : '—'}</b><small>{has && monthStats.worst < 0 ? facts.worst : 'No red days'}</small></div>
+        </section>
 
-        {/* Grid */}
-        <div className="tcard p-3 sm:p-4">
-          <div className="grid grid-cols-7 md:grid-cols-8 gap-1 sm:gap-2 mb-2">
-            {WEEKDAYS.map(w => (
-              <div key={w} className="text-center text-[9px] sm:text-[10px] tracking-widest text-fg-3 py-1">{w}</div>
-            ))}
-            <div className="hidden md:block text-center text-[9px] sm:text-[10px] tracking-widest text-fg-3 py-1">WEEKLY</div>
-          </div>
-
-          {loading ? (
-            <div className="grid grid-cols-7 md:grid-cols-8 gap-1 sm:gap-2">
-              {Array.from({ length: 40 }).map((_, i) => <div key={i} className="aspect-square sm:aspect-[4/3] shimmer" />)}
-            </div>
+        <section className="v3-card c-card">
+          <div className="c-grid c-dow">{DOW.map(d => <span key={d}>{d}</span>)}<span className="wk">Weekly</span></div>
+          {loading && !trades.length ? (
+            <div className="c-grid">{Array.from({ length: 40 }).map((_, i) => <div key={i} className="skel d-sk c-sk" />)}</div>
           ) : (
-            <div className="flex flex-col gap-1 sm:gap-2">
-              {weeks.map((week, wi) => (
-                <div key={wi} className="grid grid-cols-7 md:grid-cols-8 gap-1 sm:gap-2">
-                  {week.map((cell, di) => {
-                    if (cell.day === null) return <div key={di} className="aspect-square sm:aspect-[4/3]" />;
-                    const agg = cell.agg;
-                    const pos = agg ? agg.netPnl >= 0 : false;
-                    return (
-                      <div
-                        key={di}
-                        data-testid={`cal-day-${cell.day}`}
-                        className={`aspect-square sm:aspect-[4/3] rounded-md border p-1.5 sm:p-2 flex flex-col overflow-hidden transition-[filter] duration-[var(--dur-hover)] hover:brightness-125 ${agg ? '' : 'bg-surface/40'} ${isToday(cell.day) ? 'border-fg' : 'border-border-soft'}`}
-                        style={agg ? { background: cellBg(agg.netPnl, maxAbs) } : undefined}
-                      >
-                        <span className={`text-[10px] sm:text-[11px] numeric ${isToday(cell.day) ? 'text-fg font-bold' : 'text-fg-3'}`}>{cell.day}</span>
-                        {agg && (
-                          <div className="mt-auto text-right">
-                            <div className={`text-[10px] sm:text-[13px] font-display font-bold tracking-tight numeric ${pos ? 'text-profit' : 'text-loss'}`}>
-                              {money(agg.netPnl)}
-                            </div>
-                            <div className="text-[8px] sm:text-[9px] tracking-widest text-fg-3 numeric">{agg.trades} {agg.trades === 1 ? 'TRADE' : 'TRADES'}</div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                  {/* Weekly total */}
-                  <div className="hidden md:flex aspect-[4/3] rounded-md border border-border bg-surface-hover flex-col items-center justify-center">
-                    {weekTotals[wi]!.days > 0 ? (
-                      <>
-                        <span className={`text-[11px] sm:text-[13px] font-semibold numeric ${weekTotals[wi]!.netPnl >= 0 ? 'text-profit' : 'text-loss'}`}>{money(weekTotals[wi]!.netPnl)}</span>
-                        <span className="text-[8px] sm:text-[9px] tracking-widest text-fg-3 numeric">{weekTotals[wi]!.trades}T</span>
-                      </>
-                    ) : (
-                      <span className="text-[10px] text-fg-3">—</span>
-                    )}
+            <div className="c-weeks" key={`${view.year}-${view.month}`} data-dir={dir}>
+              {weeks.map((week, wi) => {
+                const wt = weekTotals[wi]!;
+                return (
+                  <div key={wi} className="c-grid">
+                    {week.map((cell, di) => {
+                      if (cell.day === null) {
+                        const n = wi === 0 ? prevLen - firstDow + 1 + di : di - (week.findIndex(c => c.day === null)) + 1;
+                        return <div key={di} className="c-day x" aria-hidden><span>{n}</span></div>;
+                      }
+                      const a = cell.agg;
+                      const day = cell.day;
+                      const cls = `c-day ${a ? (a.netPnl >= 0 ? 'w' : 'l') : ''} ${isToday(day) ? 't' : ''}`;
+                      const style = a ? { ['--k' as string]: intensity(a.netPnl).toFixed(2) } : undefined;
+                      const body = <><span className="num">{day}</span>{a && <><b className="num"><span className="f">{moneyShort(a.netPnl)}</span><span className="c">{compact(a.netPnl)}</span></b><small>{a.trades} trade{a.trades === 1 ? '' : 's'}</small></>}</>;
+                      return a ? (
+                        <button key={di} className={cls} style={style} data-testid={`cal-day-${day}`} onClick={() => setOpenDay(new Date(view.year, view.month, day))}
+                          aria-label={`${MONTHS[view.month]} ${day}: ${money(a.netPnl)}, ${a.trades} trade${a.trades === 1 ? '' : 's'}`}>{body}</button>
+                      ) : <div key={di} className={cls} data-testid={`cal-day-${day}`}>{body}</div>;
+                    })}
+                    <div className="c-day wk">
+                      <span>Week</span>
+                      {wt.days > 0 ? <><b className={`num ${tone(wt.netPnl)}`}>{moneyShort(wt.netPnl)}</b><small className="num">{wt.trades} trade{wt.trades === 1 ? '' : 's'}</small></> : <><b className="mute">—</b><small>0 trades</small></>}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
-        </div>
-
-        {!loading && monthStats.tradingDays === 0 && (
-          <div className="text-center text-fg-3 text-[12px] mt-4" data-testid="calendar-empty">
-            No closed trades in {MONTHS[view.month]} {view.year}.
-          </div>
-        )}
+          {!loading && !has && (
+            <p className="c-empty" data-testid="calendar-empty">No closed trades in {MONTHS[view.month]} {view.year}. Use ‹ › or your arrow keys to browse other months.</p>
+          )}
+        </section>
       </div>
 
+      {openDay && <DayTradesModal date={openDay} trades={dayTrades} accountId={selected?.id} onClose={() => setOpenDay(null)} />}
       {showConnect && <ConnectBrokerModal onClose={() => setShowConnect(false)} onConnected={onConnected} />}
     </AppShell>
   );
