@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import Logo from '@/components/logo';
+import StatusCard, { SC_ICONS } from '@/components/v3/status-card';
 import { accessApi } from '@/lib/access-api';
 
 export default function MaintenancePage() {
@@ -16,22 +16,11 @@ export default function MaintenancePage() {
   }, []);
 
   return (
-    <div className="min-h-dvh flex flex-col items-center justify-center p-4 bg-app" data-testid="maintenance-page">
-      <div className="w-full max-w-lg text-center">
-        <div className="flex justify-center mb-8">
-          <Logo height={40} />
-        </div>
-        <div className="tcard p-8">
-          <div className="text-[10px] tracking-[0.24em] text-warning">// MAINTENANCE</div>
-          <h1 className="font-display font-black text-2xl mt-3 text-fg">We&apos;ll be right back</h1>
-          <p className="text-sm text-fg-3 mt-3 leading-relaxed">
-            {message ?? 'The platform is temporarily unavailable while we perform upgrades.'}
-          </p>
-          <Link href="/" className="btn btn-ghost mt-6 inline-flex text-[11px]">
-            BACK TO HOME
-          </Link>
-        </div>
-      </div>
-    </div>
+    <StatusCard testId="maintenance-page" icon={SC_ICONS.tool} tone="v" kicker="Scheduled maintenance"
+      title={<><b>We’ll be right</b> <em>back.</em></>}
+      body={message ?? 'The platform is temporarily unavailable while we perform upgrades.'}>
+      <p className="sc-body" style={{ fontSize: 15 }}>Your journal, trades and broker connections are safe — syncing resumes automatically.</p>
+      <div className="sc-actions"><Link href="/" className="sc-ghost">Back to home</Link></div>
+    </StatusCard>
   );
 }

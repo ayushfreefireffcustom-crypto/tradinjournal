@@ -6,9 +6,9 @@ import Link from 'next/link';
 import { authClient } from '@/lib/auth-client';
 import { accessApi, type AccessStatusDto } from '@/lib/access-api';
 import { invalidateAccessCache, primeAccessCache } from '@/lib/use-platform-access';
-import Logo from '@/components/logo';
-import { Warning, ArrowsClockwise } from '@phosphor-icons/react';
 import { LoadingScreen } from '@/components/loader';
+import StatusCard, { SC_ICONS } from '@/components/v3/status-card';
+import { AuthSubmit } from '@/components/v3/auth-shell';
 
 export default function InactiveAccessPage() {
   const router = useRouter();
@@ -58,9 +58,7 @@ export default function InactiveAccessPage() {
 
   if (isPending || !session?.session) {
     return (
-      <div className="h-dvh bg-app">
-        <LoadingScreen />
-      </div>
+      <div className="h-dvh"><LoadingScreen /></div>
     );
   }
 
@@ -69,71 +67,19 @@ export default function InactiveAccessPage() {
   const tradeCount = status?.tradeCount7d ?? 0;
 
   return (
-    <div className="min-h-dvh flex flex-col items-center justify-center p-4 bg-app" data-testid="access-inactive-page">
-      <div className="w-full max-w-md">
-        <div className="flex justify-center mb-8">
-          <Logo height={36} />
-        </div>
-        <div className="tcard p-6 sm:p-8 border-l-4 border-l-warning">
-          <div className="flex items-center gap-2 text-[10px] tracking-[0.2em] text-warning">
-            <Warning size={14} weight="fill" />
-            // ACTIVITY REQUIRED
-          </div>
-          <h1 className="font-display font-black text-xl mt-2 text-fg">Keep trading to stay in</h1>
-          <p className="text-sm text-fg-3 mt-2 leading-relaxed">
-            Your Elefin account is verified. After your first{' '}
-            <span className="text-fg numeric">{windowDays}</span> days from signup, platform access
-            requires at least{' '}
-            <span className="text-fg numeric">{minTrades}</span> closed Elefin trades in the last{' '}
-            <span className="text-fg numeric">{windowDays}</span> days to stay active.
-          </p>
-
-          <div className="mt-5 grid grid-cols-2 gap-2">
-            <div className="border border-border-soft rounded p-3 bg-surface/50">
-              <div className="text-[9px] tracking-widest text-fg-3">YOUR TRADES</div>
-              <div className="font-display font-black text-2xl numeric mt-1 text-warning">{tradeCount}</div>
-              <div className="text-[10px] text-fg-3">last {windowDays}d</div>
-            </div>
-            <div className="border border-border-soft rounded p-3 bg-surface/50">
-              <div className="text-[9px] tracking-widest text-fg-3">REQUIRED</div>
-              <div className="font-display font-black text-2xl numeric mt-1 text-profit">{minTrades}</div>
-              <div className="text-[10px] text-fg-3">closed Elefin</div>
-            </div>
-          </div>
-
-          {error && (
-            <p className="mt-4 text-sm text-loss" role="alert">{error}</p>
-          )}
-
-          <div className="mt-6 flex flex-col gap-2">
-            <button
-              type="button"
-              onClick={() => void recheck()}
-              disabled={busy}
-              className="btn btn-primary w-full py-2.5 text-[11px] tracking-widest flex items-center justify-center gap-2"
-            >
-              <ArrowsClockwise size={14} className={busy ? 'animate-spin' : ''} />
-              {busy ? 'CHECKING…' : 'RECHECK ACTIVITY'}
-            </button>
-            <Link
-              href="/brokers"
-              className="btn btn-ghost border border-border-soft w-full py-2.5 text-[11px] tracking-widest text-center"
-            >
-              CONNECT / SYNC BROKER
-            </Link>
-          </div>
-
-          <p className="text-[11px] text-fg-3 mt-4 text-center">
-            <button
-              type="button"
-              onClick={() => void authClient.signOut().then(() => router.replace('/login'))}
-              className="hover:text-fg underline-offset-2 hover:underline"
-            >
-              Sign out
-            </button>
-          </p>
-        </div>
+    <StatusCard testId="access-inactive-page" icon={SC_ICONS.warn} tone="a" bar kicker="Activity required"
+      title={<><b>Keep trading to</b> <em>stay in.</em></>}
+      body={<>Full access needs at least <b>{minTrades}</b> closed trades on your Elefin account in the last <b>{windowDays}</b> days. Trade, then recheck — it updates instantly.</>}
+      onSignOut={() => void authClient.signOut().then(() => router.replace('/login'))}>
+      <div className="sc-tiles">
+        <div className="a"><span>Your trades</span><b className="num">{tradeCount}</b><small>last {windowDays} days</small></div>
+        <div className="g"><span>Required</span><b className="num">{minTrades}</b><small>closed on Elefin</small></div>
       </div>
-    </div>
+      {error && <div className="au-err" role="alert" style={{ marginTop: 16 }}>{error}</div>}
+      <form className="sc-actions" onSubmit={e => { e.preventDefault(); void recheck(); }}>
+        <AuthSubmit loading={busy}>{busy ? 'Checking…' : 'Recheck activity'}</AuthSubmit>
+        <Link href="/brokers" className="sc-ghost">Connect / sync broker</Link>
+      </form>
+    </StatusCard>
   );
 }

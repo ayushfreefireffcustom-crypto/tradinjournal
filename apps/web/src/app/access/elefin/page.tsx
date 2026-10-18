@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation';
 import { authClient } from '@/lib/auth-client';
 import { accessApi } from '@/lib/access-api';
 import { invalidateAccessCache, primeAccessCache } from '@/lib/use-platform-access';
-import Logo from '@/components/logo';
-import { Loader, LoadingScreen } from '@/components/loader';
+import { LoadingScreen } from '@/components/loader';
+import StatusCard, { SC_ICONS } from '@/components/v3/status-card';
+import { AuthSubmit } from '@/components/v3/auth-shell';
 
 export default function ElefinAccessPage() {
   const router = useRouter();
@@ -57,62 +58,26 @@ export default function ElefinAccessPage() {
 
   if (isPending || !session?.session) {
     return (
-      <div className="h-dvh bg-app">
-        <LoadingScreen />
-      </div>
+      <div className="h-dvh"><LoadingScreen /></div>
     );
   }
 
   return (
-    <div className="min-h-dvh flex flex-col items-center justify-center p-4 bg-app" data-testid="access-elefin-page">
-      <div className="w-full max-w-md">
-        <div className="flex justify-center mb-8">
-          <Logo height={36} />
-        </div>
-        <div className="tcard p-6 sm:p-8">
-          <div className="text-[10px] tracking-[0.2em] text-fg-3">// ACCESS REQUIRED</div>
-          <h1 className="font-display font-black text-xl mt-2 text-fg">Verify your Elefin account</h1>
-          <p className="text-sm text-fg-3 mt-2 leading-relaxed">
-            TradeLogs is available to traders with an Elefin account opened under our referral.
-            We&apos;ll verify your account before you can connect MT5.
-          </p>
-
-          <form onSubmit={submit} className="mt-6 space-y-4">
-            <div>
-              <label className="text-[10px] tracking-[0.14em] text-fg-3">YOUR EMAIL</label>
-              <input
-                readOnly
-                value={session.user.email}
-                className="mt-1 w-full bg-surface border border-border-soft rounded px-3 py-2 text-sm text-fg-3"
-              />
-            </div>
-            <div>
-              <label className="text-[10px] tracking-[0.14em] text-fg-3">ELEFIN MT5 LOGIN (optional)</label>
-              <input
-                type="number"
-                value={mt5Login}
-                onChange={e => setMt5Login(e.target.value)}
-                placeholder="12345678"
-                className="mt-1 w-full bg-app border border-border-soft rounded px-3 py-2 text-sm"
-              />
-            </div>
-            {error && <p className="text-sm text-loss" role="alert">{error}</p>}
-            <button type="submit" disabled={busy} className="btn btn-primary w-full py-2.5">
-              {busy ? <Loader size={16} className="!gap-0 mx-auto" /> : 'VERIFY ACCOUNT'}
-            </button>
-          </form>
-
-          <p className="text-[11px] text-fg-3 mt-4 text-center">
-            <button
-              type="button"
-              onClick={() => void authClient.signOut().then(() => router.replace('/login'))}
-              className="hover:text-fg underline-offset-2 hover:underline"
-            >
-              Sign out
-            </button>
-          </p>
-        </div>
-      </div>
-    </div>
+    <StatusCard testId="access-elefin-page" icon={SC_ICONS.shield} tone="v" kicker="Access required"
+      title={<><b>Verify your</b> <em>Elefin</em> <b>account.</b></>}
+      body="TRADElogs is available to traders with an Elefin account opened under our referral. We’ll match your email — add your MT5 login to speed it up."
+      onSignOut={() => void authClient.signOut().then(() => router.replace('/login'))}>
+      <form onSubmit={submit} className="au-fields" style={{ marginTop: 24 }}>
+        <label><span className="au-lbl">Your email</span>
+          <span className="au-in sc-in-ro"><input readOnly value={session.user.email} aria-readonly />
+            <svg className="chev" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V8a4 4 0 018 0v3" /></svg></span>
+        </label>
+        <label><span className="au-lbl"><span>Elefin MT5 login <span style={{ color: 'var(--muted)', fontWeight: 400 }}>· optional</span></span></span>
+          <span className="au-in"><input type="number" inputMode="numeric" value={mt5Login} onChange={e => setMt5Login(e.target.value)} placeholder="12345678" /></span>
+        </label>
+        {error && <div className="au-err" role="alert">{error}</div>}
+        <AuthSubmit loading={busy}>{busy ? 'Verifying…' : 'Verify account'}</AuthSubmit>
+      </form>
+    </StatusCard>
   );
 }
