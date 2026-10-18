@@ -3,8 +3,7 @@
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useRef, useState } from 'react';
-import AuthAside from '@/components/auth-aside';
-import Logo from '@/components/logo';
+import AuthShell, { AuthSubmit } from '@/components/v3/auth-shell';
 import { LoadingScreen } from '@/components/loader';
 import { authClient } from '@/lib/auth-client';
 
@@ -102,107 +101,38 @@ function VerifyInner() {
   }
 
   return (
-    <div className="min-h-screen bg-app flex flex-col lg:grid lg:grid-cols-2" data-testid="verify-page">
-      <AuthAside variant="signup" />
-
-      <main className="relative flex flex-col min-h-screen min-w-0 overflow-x-hidden">
-        <div className="hidden lg:flex border-b border-border h-12 items-center justify-between px-8 xl:px-12 text-[10px] tracking-[0.22em] text-fg-3">
-          <span>SECURE CONNECTION</span>
-          <span className="flex items-center gap-2"><span className="w-2 h-2 bg-profit pulse-dot" /> AWAITING CODE</span>
+    <AuthShell variant="verify" testId="verify-page">
+      <form onSubmit={e => { e.preventDefault(); if (code.length === OTP_LEN) verify(code); }}>
+        <Link href="/signup" className="au-back"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M19 12H5M11 6l-6 6 6 6" /></svg> Back to sign up</Link>
+        <div className="au-ic"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><rect x="3" y="5" width="18" height="14" rx="2.5" /><path d="M3.5 7l8.5 6 8.5-6" /></svg></div>
+        <h1 className="au-h"><b>Check your</b> <em>inbox.</em></h1>
+        <p className="au-sub">We sent a 6-digit code to <b>{email || 'your email'}</b>.</p>
+        <div className={`au-otp ${error ? 'err' : ''}`} data-testid="otp-inputs" role="group" aria-label="6-digit code">
+          {digits.map((d, i) => (
+            <span key={i} style={{ display: 'contents' }}>
+              {i === 3 && <span className="dash" aria-hidden />}
+              <input ref={el => { inputs.current[i] = el; }} type="text" inputMode="numeric" autoComplete={i === 0 ? 'one-time-code' : 'off'} maxLength={OTP_LEN}
+                value={d} onChange={e => setDigit(i, e.target.value)} onKeyDown={e => onKeyDown(i, e)} disabled={loading} className={d ? 'f' : ''}
+                aria-label={`Digit ${i + 1}`} data-testid={`otp-${i}`} />
+            </span>
+          ))}
         </div>
-        <div className="lg:hidden border-b border-border h-11 flex items-center justify-between px-4 text-[10px] tracking-[0.22em] text-fg-3">
-          <Logo height={20} />
-          <span>ONLINE</span>
+        <div className="au-meta">
+          <span>Codes expire after <b>10 minutes</b></span>
+          <button type="button" onClick={resend} disabled={cooldown > 0} data-testid="verify-resend">{cooldown > 0 ? `Resend in ${cooldown}s` : 'Resend code'}</button>
         </div>
-
-        <div className="flex-1 flex items-center justify-center px-5 py-8 sm:px-8 sm:py-12 lg:px-12">
-          <div className="w-full max-w-[420px]">
-            <div className="text-[10px] tracking-[0.3em] text-fg-3">[ VERIFY EMAIL ]</div>
-            <h1 className="font-display font-black text-3xl sm:text-4xl xl:text-5xl tracking-tighter mt-3">
-              CHECK YOUR <span className="text-profit">INBOX.</span>
-            </h1>
-            <p className="text-fg-2 text-[12px] sm:text-[13px] mt-3 max-w-sm">
-              We sent a 6-digit code to{' '}
-              <span className="text-fg font-semibold break-all">{email || 'your email'}</span>. Enter it below to activate your account.
-            </p>
-
-            <div className="mt-8 flex gap-2 sm:gap-3" data-testid="otp-inputs">
-              {digits.map((d, i) => (
-                <input
-                  key={i}
-                  ref={el => { inputs.current[i] = el; }}
-                  type="text"
-                  inputMode="numeric"
-                  autoComplete={i === 0 ? 'one-time-code' : 'off'}
-                  maxLength={OTP_LEN}
-                  value={d}
-                  onChange={e => setDigit(i, e.target.value)}
-                  onKeyDown={e => onKeyDown(i, e)}
-                  disabled={loading}
-                  className="tinput flex-1 min-w-0 text-center text-xl sm:text-2xl font-bold py-3 px-0"
-                  data-testid={`otp-${i}`}
-                />
-              ))}
-            </div>
-
-            {error && (
-              <div data-testid="verify-error" className="mt-5 border border-loss/40 bg-loss/10 text-loss px-3 py-2 text-[11px] tracking-widest">
-                {error.toUpperCase()}
-              </div>
-            )}
-            {resent && !error && (
-              <div className="mt-5 border border-profit/40 bg-profit/10 text-profit px-3 py-2 text-[11px] tracking-widest">
-                NEW CODE SENT
-              </div>
-            )}
-
-            <button
-              type="button"
-              onClick={() => code.length === OTP_LEN && verify(code)}
-              disabled={code.length !== OTP_LEN || loading}
-              data-testid="verify-submit"
-              className={`btn btn-primary justify-center py-3 text-[12px] tracking-[0.22em] mt-6 w-full ${code.length !== OTP_LEN || loading ? 'opacity-60 cursor-not-allowed' : ''}`}
-            >
-              {loading ? (
-                <><span className="w-2 h-2 bg-app rounded-full pulse-dot" /> VERIFYING…</>
-              ) : (
-                <>VERIFY &amp; CONTINUE <span>→</span></>
-              )}
-            </button>
-
-            <div className="mt-5 flex items-center justify-between text-[11px]">
-              <span className="text-fg-3 tracking-widest text-[10px]">DIDN&apos;T GET IT?</span>
-              <button
-                type="button"
-                onClick={resend}
-                disabled={cooldown > 0}
-                data-testid="verify-resend"
-                className={`tracking-widest text-[11px] ${cooldown > 0 ? 'text-fg-3 cursor-not-allowed' : 'text-fg hover:text-profit'}`}
-              >
-                {cooldown > 0 ? `RESEND IN ${cooldown}S` : 'RESEND CODE →'}
-              </button>
-            </div>
-
-            <div className="mt-6 pt-4 border-t border-border-soft text-[11px]">
-              <Link href="/login" className="text-fg-3 hover:text-fg tracking-widest text-[10px]" data-testid="verify-to-login">
-                ← WRONG EMAIL? SIGN IN AGAIN
-              </Link>
-            </div>
-          </div>
-        </div>
-
-        <div className="hidden lg:flex border-t border-border h-11 items-center justify-between px-8 xl:px-12 text-[10px] tracking-[0.22em] text-fg-3">
-          <span>CODE EXPIRES IN 10 MIN</span>
-          <span>NEED HELP? <a href="#" className="text-fg hover:text-profit ml-2">SUPPORT →</a></span>
-        </div>
-      </main>
-    </div>
+        {error && <div className="au-err" data-testid="verify-error" role="alert" style={{ marginBottom: 14 }}>{error}</div>}
+        {resent && !error && <div className="au-err" style={{ marginBottom: 14, background: 'var(--long-soft)', borderColor: '#BFEBD5', color: 'var(--long)' }}>New code sent — check your inbox.</div>}
+        <AuthSubmit loading={loading} disabled={code.length !== OTP_LEN} testId="verify-submit">{loading ? 'Verifying…' : 'Verify email'}</AuthSubmit>
+        <p className="au-note">Wrong address? <Link href="/signup" data-testid="verify-to-login">Change email</Link></p>
+      </form>
+    </AuthShell>
   );
 }
 
 export default function VerifyPage() {
   return (
-    <Suspense fallback={<div className="h-dvh bg-app"><LoadingScreen label="Loading" /></div>}>
+    <Suspense fallback={<div className="h-dvh"><LoadingScreen label="Loading" /></div>}>
       <VerifyInner />
     </Suspense>
   );

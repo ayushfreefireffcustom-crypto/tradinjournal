@@ -15,6 +15,8 @@ export function useRedirectIfAuthed(to = '/dashboard') {
   const { data: session, isPending } = authClient.useSession();
 
   useEffect(() => {
+    // Mock mode is always signed in; `?stay` lets designers preview auth pages.
+    if (process.env.NEXT_PUBLIC_USE_MOCKS === 'true' && window.location.search.includes('stay')) return;
     if (!isPending && session?.session) router.replace(to);
   }, [isPending, session, router, to]);
 
