@@ -1,93 +1,58 @@
 'use client';
 
+// Raw MT5 deal ledger (v3). Every fill as the broker reported it — the
+// position view is reconstructed from these.
 import type { Deal } from '@/lib/api';
+import { price, stamp, tone } from '@/components/v3/format';
 
 interface Props {
   deals: Deal[];
   loading: boolean;
   error?: string;
+  /** Cap rendered rows (the ledger can be long). */
+  limit?: number;
 }
 
-const TYPE_COLORS: Record<string, string> = {
-  BUY: 'text-profit',
-  SELL: 'text-loss',
-  BALANCE: 'text-fg-2',
-};
+const ENTRY: Record<Deal['entry'], string> = { IN: 'Open', OUT: 'Close', INOUT: 'Reverse', OUT_BY: 'Close by' };
 
-const COLS = ['Ticket', 'Time', 'Type', 'Symbol', 'Volume', 'Price', 'P&L', 'Comm'];
-
-export default function DealsTable({ deals, loading, error }: Props) {
-  if (error) {
-    return (
-      <div className="tcard p-8 text-center text-loss text-[13px]" data-testid="deals-table-error">{error}</div>
-    );
-  }
-
+export default function DealsTable({ deals, loading, error, limit = 200 }: Props) {
+  if (error) return <div className="v3-card d-empty" data-testid="deals-table-error" style={{ color: 'var(--short)' }}>{error}</div>;
+  const rows = deals.slice(0, limit);
   return (
-    <div className="tcard overflow-hidden" data-testid="deals-table">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border-soft">
-        <div className="flex items-center gap-3">
-          <span className="text-[10px] tracking-[0.25em] text-fg-3">DEAL_LOG</span>
-          <span className="font-display font-bold text-[13px] tracking-tight">Recent fills</span>
-        </div>
-        <span className="text-[10px] tracking-[0.22em] text-fg-3 border border-border-soft px-2 py-1">
-          {loading ? '...' : `${deals.length} DEALS`}
-        </span>
-      </div>
-
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[760px] text-[12px]">
-          <thead>
-            <tr className="border-b border-border">
-              {COLS.map(c => (
-                <th key={c} className="px-3 py-2.5 text-left text-[10px] tracking-[0.22em] text-fg-3 uppercase font-medium">
-                  {c}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              Array.from({ length: 8 }).map((_, i) => (
-                <tr key={i} className="border-b border-border-soft">
-                  {COLS.map((c, j) => (
-                    <td key={j} className="px-3 py-3">
-                      <div className="h-2.5 bg-surface-hover" style={{ width: 40 + j * 10 }} />
-                    </td>
-                  ))}
+    <div className="v3-tbl-wrap" data-testid="deals-table">
+      <table className="v3-table">
+        <thead>
+          <tr><th>Ticket</th><th>Time</th><th>Type</th><th>Entry</th><th>Symbol</th><th className="r">Volume</th><th className="r">Price</th><th className="r">Commission</th><th className="r">Profit</th></tr>
+        </thead>
+        <tbody>
+          {loading ? (
+            Array.from({ length: 8 }).map((_, i) => (
+              <tr key={i} className="sk">{Array.from({ length: 9 }).map((_, j) => <td key={j}><div className="skel d-sk" style={{ height: 12, width: 36 + ((i + j) % 4) * 14 }} /></td>)}</tr>
+            ))
+          ) : rows.length === 0 ? (
+            <tr className="sk"><td colSpan={9}><div className="d-empty"><b>No deals on file</b>Fills appear here as soon as MT5 reports them.</div></td></tr>
+          ) : (
+            rows.map(d => {
+              const p = parseFloat(d.profit);
+              const showPnl = d.entry !== 'IN' || p !== 0;
+              return (
+                <tr key={d.dealTicket} className="static">
+                  <td className="num mute">#{d.dealTicket}</td>
+                  <td className="num mute">{stamp(d.dealTime)}</td>
+                  <td>{d.type === 'BALANCE' ? <span className="v3-pill n">Balance</span> : <span className={`d-side ${d.type === 'BUY' ? 'L' : 'S'}`}>{d.type === 'BUY' ? 'Buy' : 'Sell'}</span>}</td>
+                  <td className="mute">{d.type === 'BALANCE' ? '—' : ENTRY[d.entry]}</td>
+                  <td style={{ fontWeight: 500 }}>{d.symbol || '—'}</td>
+                  <td className="r num mute">{parseFloat(d.volume) ? parseFloat(d.volume).toFixed(2) : '—'}</td>
+                  <td className="r num">{price(parseFloat(d.price))}</td>
+                  <td className="r num mute">{parseFloat(d.commission) ? parseFloat(d.commission).toFixed(2) : '—'}</td>
+                  <td className={`r num ${showPnl ? tone(p) : 'mute'}`} style={{ fontWeight: 700 }}>{showPnl ? `${p >= 0 ? '+' : '−'}$${Math.abs(p).toFixed(2)}` : '—'}</td>
                 </tr>
-              ))
-            ) : deals.length === 0 ? (
-              <tr><td colSpan={COLS.length} className="px-4 py-10 text-center text-fg-3 text-[12px]">No deals on file for this account.</td></tr>
-            ) : (
-              deals.slice(0, 25).map(d => {
-                const profit = parseFloat(d.profit);
-                const pos = profit >= 0;
-                return (
-                  <tr key={d.dealTicket} className="border-b border-border-soft hover:bg-surface-hover transition-colors">
-                    <td className="px-3 py-3 text-fg-3 numeric">#{d.dealTicket}</td>
-                    <td className="px-3 py-3 text-fg-2 numeric whitespace-nowrap">
-                      {new Date(d.dealTime).toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' })}
-                    </td>
-                    <td className="px-3 py-3">
-                      <span className={`text-[10px] tracking-[0.22em] font-medium ${TYPE_COLORS[d.type] ?? ''}`}>{d.type}</span>
-                    </td>
-                    <td className="px-3 py-3 font-display font-bold tracking-tight">{d.symbol}</td>
-                    <td className="px-3 py-3 numeric text-fg-2">{parseFloat(d.volume).toFixed(2)}</td>
-                    <td className="px-3 py-3 numeric text-fg-2">{parseFloat(d.price) > 0 ? parseFloat(d.price).toFixed(5) : '—'}</td>
-                    <td className="px-3 py-3">
-                      <span className={`numeric font-medium ${pos ? 'text-profit' : 'text-loss'}`}>
-                        {pos ? '+' : ''}{profit.toFixed(2)}
-                      </span>
-                    </td>
-                    <td className="px-3 py-3 numeric text-fg-3">{parseFloat(d.commission).toFixed(2)}</td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
+              );
+            })
+          )}
+        </tbody>
+      </table>
+      {deals.length > limit && <div className="v3-tbl-foot">Showing the latest {limit} of {deals.length} deals · export CSV for the full ledger</div>}
     </div>
   );
 }

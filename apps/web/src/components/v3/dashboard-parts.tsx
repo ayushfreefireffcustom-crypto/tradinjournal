@@ -7,25 +7,8 @@ import type { AccountStats, Trade } from '@/lib/api';
 import type { Insight } from '@/lib/insights';
 import { IAlert, IArrowRight, ICalendar, ITrendUp, ISun, IWarn } from './icons';
 
-// ── formatting ──────────────────────────────────────────────────────────────
-export const money = (v: number, d = 2) =>
-  `${v >= 0 ? '+' : '−'}$${Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d })}`;
-export const moneyShort = (v: number) => {
-  const a = Math.abs(v);
-  const s = a >= 1e6 ? `${(a / 1e6).toFixed(2)}M` : a >= 1e4 ? `${(a / 1e3).toFixed(1)}k` : a.toLocaleString('en-US', { maximumFractionDigits: 0 });
-  return `${v >= 0 ? '+' : '−'}$${s}`;
-};
-export const plain = (v: number, d = 2) => `$${v.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d })}`;
-export function dur(s: number | null | undefined) {
-  if (s == null) return '—';
-  if (s < 60) return `${Math.round(s)}s`;
-  if (s < 3600) return `${Math.floor(s / 60)}m`;
-  if (s < 86400) return `${Math.floor(s / 3600)}h ${String(Math.floor((s % 3600) / 60)).padStart(2, '0')}m`;
-  return `${(s / 86400).toFixed(1)}d`;
-}
-/** Very short signed amount for tight cells: +538, −1.2k. */
-export const compact = (v: number) => { const a = Math.abs(v); return `${v >= 0 ? '+' : '−'}${a >= 1000 ? `${(a / 1000).toFixed(1)}k` : Math.round(a)}`; };
-const tone = (v: number) => (v > 0 ? 'lg' : v < 0 ? 'sh' : '');
+import { money, moneyShort, plain, dur, compact, tone } from './format';
+export { money, moneyShort, plain, dur, compact };
 
 /** Net P&L per local calendar day (YYYY-MM-DD) from closed trades. */
 export function dailyPnl(trades: Trade[]) {

@@ -8,7 +8,9 @@ import { usePathname } from 'next/navigation';
 export default function CursorGlow() {
   const ref = useRef<HTMLDivElement>(null);
   // The marketing landing has its own calmer motion language — no cursor glow there.
-  const off = usePathname() === '/';
+  // Only the legacy dark admin keeps this; the v3 light app and landing use
+  // their own, quieter micro-interactions.
+  const off = !(usePathname() ?? '').startsWith('/admin');
 
   useEffect(() => {
     if (off || typeof window === 'undefined') return;

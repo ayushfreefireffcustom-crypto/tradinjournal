@@ -12,8 +12,9 @@ const startGap = 14;
 const travelDistance = 36;
 
 export default function ClickBurstEffect() {
-  // Disabled on the marketing landing ('/'), which uses its own micro-interactions.
-  const off = usePathname() === '/';
+  // Only the legacy dark admin keeps this; the v3 light app and landing use
+  // their own, quieter micro-interactions.
+  const off = !(usePathname() ?? '').startsWith('/admin');
 
   useEffect(() => {
     if (off) return;
