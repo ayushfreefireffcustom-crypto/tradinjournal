@@ -22,14 +22,14 @@ export default function SortableCard({ id, className = '', children }: { id: str
       ref={setNodeRef}
       style={style}
       data-testid={`sortable-${id}`}
-      className={`relative group h-full ${className} ${isDragging ? 'ring-1 ring-border-strong rounded-[var(--radius-card)]' : ''}`}
+      className={`v3-sortable relative group h-full ${className} ${isDragging ? 'dragging' : ''}`}
     >
       <button
         {...attributes}
         {...listeners}
         aria-label="Drag to reorder"
         data-testid={`drag-${id}`}
-        className="absolute top-2.5 right-2.5 z-10 w-7 h-7 flex items-center justify-center rounded-md border border-border-soft bg-surface/90 backdrop-blur text-fg-3 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:text-fg hover:border-border-strong cursor-grab active:cursor-grabbing transition-opacity touch-none focus-ring"
+        className="v3-handle"
       >
         <svg width="10" height="14" viewBox="0 0 10 14" fill="currentColor" aria-hidden>
           <circle cx="2" cy="2" r="1.3" /><circle cx="8" cy="2" r="1.3" />

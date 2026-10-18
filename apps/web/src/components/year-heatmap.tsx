@@ -60,24 +60,18 @@ export default function YearHeatmap({ trades, accountId }: { trades: Trade[]; ac
     d.getFullYear() === today.getFullYear() && d.getMonth() === today.getMonth() && d.getDate() === today.getDate();
 
   return (
-    <div className="tcard p-4 sm:p-5" data-testid="year-heatmap">
-      <div className="flex items-end justify-between gap-3 flex-wrap mb-4">
-        <div>
-          <div className="text-[10px] tracking-[0.2em] text-fg-3 uppercase">Consistency</div>
-          <div className="font-display font-bold text-[16px] tracking-tight mt-0.5">Trailing 12 months</div>
-        </div>
-        <div className="text-right">
-          <div className={`font-display font-bold text-[15px] numeric ${totalNet >= 0 ? 'text-profit' : 'text-loss'}`}>{calMoney(totalNet)}</div>
-          <div className="text-[9px] tracking-widest text-fg-3 uppercase numeric">{tradingDays} trading days</div>
-        </div>
+    <section className="v3-card a-card a-year" data-testid="year-heatmap">
+      <div className="v3-ch">
+        <h3>Consistency <span>· trailing 12 months</span></h3>
+        <span className="a-readout num"><b className={totalNet >= 0 ? 'lg' : 'sh'}>{calMoney(totalNet).replace('-', '−')}</b> · {tradingDays} trading days</span>
       </div>
 
-      <div ref={wrapRef} className="relative overflow-x-auto no-scrollbar">
+      <div ref={wrapRef} className="relative overflow-x-auto no-scrollbar a-year-bd">
         <div className="mx-auto" style={{ width: RAIL + gridW }}>
           {/* Month labels (aligned to the grid, offset past the rail) */}
           <div className="relative h-4" style={{ marginLeft: RAIL, width: gridW }}>
-            {monthLabels.map(m => (
-              <span key={`${m.col}-${m.label}`} className="absolute text-[9px] tracking-widest text-fg-3 uppercase" style={{ left: m.col * step }}>{m.label}</span>
+            {monthLabels.filter((m, i) => !monthLabels[i + 1] || monthLabels[i + 1]!.col - m.col >= 3).map(m => (
+              <span key={`${m.col}-${m.label}`} className="absolute text-[11px] text-fg-3" style={{ left: m.col * step }}>{m.label}</span>
             ))}
           </div>
 
@@ -85,7 +79,7 @@ export default function YearHeatmap({ trades, accountId }: { trades: Trade[]; ac
             {/* Weekday rail */}
             <div className="flex flex-col justify-between shrink-0" style={{ height: gridH, width: RAIL - GAP - 3 }}>
               {WD.map((d, i) => (
-                <span key={i} className="text-[8px] tracking-widest text-fg-3 uppercase leading-none flex items-center" style={{ height: cell }}>{d}</span>
+                <span key={i} className="text-[10px] text-fg-3 leading-none flex items-center" style={{ height: cell }}>{d}</span>
               ))}
             </div>
 
@@ -96,7 +90,7 @@ export default function YearHeatmap({ trades, accountId }: { trades: Trade[]; ac
                   if (!c) return null;
                   const x = wi * step, y = di * step;
                   const agg = c.agg;
-                  const fill = agg ? cellBg(agg.netPnl, maxAbs) : 'var(--color-surface)';
+                  const fill = agg ? cellBg(agg.netPnl, maxAbs) : '#F4F3F8';
                   const text = agg
                     ? `${c.date.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: '2-digit' })} · ${calMoney(agg.netPnl)} · ${agg.trades}T`
                     : `${c.date.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: '2-digit' })} · no trades`;
@@ -105,9 +99,9 @@ export default function YearHeatmap({ trades, accountId }: { trades: Trade[]; ac
                       key={`${wi}-${di}`}
                       x={x} y={y} width={cell} height={cell} rx={Math.min(3, cell / 4)}
                       fill={fill}
-                      stroke={isToday(c.date) ? 'var(--color-fg)' : agg ? 'transparent' : 'var(--color-border-soft)'}
+                      stroke={isToday(c.date) ? '#6E4BFF' : 'transparent'}
                       strokeWidth={isToday(c.date) ? 1.5 : 1}
-                      className={`transition-[filter] duration-150 ${agg ? 'cursor-pointer hover:brightness-150' : ''}`}
+                      className={`transition-[filter] duration-150 ${agg ? 'cursor-pointer hover:brightness-110' : ''}`}
                       onPointerEnter={() => setHover({ x: RAIL + x + cell, y, text })}
                       onClick={agg ? () => setSelectedDay(c.date) : undefined}
                       data-testid={agg ? `heat-${c.key}` : undefined}
@@ -121,7 +115,7 @@ export default function YearHeatmap({ trades, accountId }: { trades: Trade[]; ac
 
         {hover && (
           <div
-            className="pointer-events-none absolute z-10 rounded-md border border-border-soft bg-surface/95 backdrop-blur px-2 py-1 text-[10px] numeric tracking-wide shadow-[var(--shadow-card)] whitespace-nowrap"
+            className="pointer-events-none absolute z-10 rounded-full bg-[#100F17] text-white px-2.5 py-1 text-[12px] numeric whitespace-nowrap shadow-lg"
             style={{ left: Math.min(hover.x + 8, Math.max(0, cw - 150)), top: hover.y + 22 }}
             data-testid="heat-tooltip"
           >
@@ -131,17 +125,17 @@ export default function YearHeatmap({ trades, accountId }: { trades: Trade[]; ac
       </div>
 
       {/* Legend */}
-      <div className="flex items-center justify-end gap-1.5 mt-3 text-[9px] tracking-widest text-fg-3 uppercase">
+      <div className="flex items-center justify-end gap-1.5 text-[12px] text-fg-3 a-year-lg">
         <span>Loss</span>
-        <span className="w-3 h-3 rounded-[2px]" style={{ background: cellBg(-maxAbs, maxAbs) }} />
-        <span className="w-3 h-3 rounded-[2px]" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border-soft)' }} />
-        <span className="w-3 h-3 rounded-[2px]" style={{ background: cellBg(maxAbs, maxAbs) }} />
+        <span className="w-3 h-3 rounded-[3px]" style={{ background: cellBg(-maxAbs, maxAbs) }} />
+        <span className="w-3 h-3 rounded-[3px]" style={{ background: '#F4F3F8' }} />
+        <span className="w-3 h-3 rounded-[3px]" style={{ background: cellBg(maxAbs, maxAbs) }} />
         <span>Profit</span>
       </div>
 
       {selectedDay && (
         <DayTradesModal date={selectedDay} trades={dayTrades} accountId={accountId} onClose={() => setSelectedDay(null)} />
       )}
-    </div>
+    </section>
   );
 }

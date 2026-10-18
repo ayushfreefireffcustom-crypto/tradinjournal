@@ -140,6 +140,6 @@ export function buildYearView(byDay: Map<string, DayAgg>, end = new Date()): Yea
 export function cellBg(netPnl: number, maxAbs: number): string {
   const intensity = Math.min(1, Math.abs(netPnl) / maxAbs);
   return netPnl >= 0
-    ? `rgba(0, 197, 102, ${0.08 + intensity * 0.5})`
-    : `rgba(255, 59, 48, ${0.08 + intensity * 0.5})`;
+    ? `rgba(25, 195, 125, ${0.14 + intensity * 0.66})`
+    : `rgba(244, 67, 94, ${0.12 + intensity * 0.6})`;
 }
