@@ -3,7 +3,7 @@
 // Settings. Currently one section — the weekly AI review email, which is opt-in:
 // nothing is sent until the trader turns it on here.
 import { useCallback, useEffect, useState } from 'react';
-import { EnvelopeSimple, Check } from '@phosphor-icons/react';
+import Toggle from '@/components/v3/toggle';
 import AppShell from '@/components/app-shell';
 import NotificationSettings from '@/components/settings/notification-settings';
 import ProfileCard from '@/components/settings/profile-card';
@@ -15,7 +15,7 @@ function sentLabel(iso: string | null): string {
   if (!iso) return 'Never sent';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return 'Never sent';
-  return `Last sent ${d.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' })}`;
+  return `Last sent ${d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`;
 }
 
 export default function SettingsPage() {
@@ -71,74 +71,25 @@ export default function SettingsPage() {
   }, [enabled, saving, loading]);
 
   return (
-    <AppShell
-      accounts={accounts}
-      selectedAccount={selected}
-      onSelectAccount={(a: BrokerAccount) => select(a)}
-      pageTitle="Settings"
-      pageSubtitle="// PREFERENCES"
-    >
-      <div className="p-3 sm:p-4 lg:p-6 w-full max-w-5xl mx-auto" data-testid="settings-page">
+    <AppShell accounts={accounts} selectedAccount={selected} onSelectAccount={(a: BrokerAccount) => select(a)} crumbParent="Account" pageTitle="Settings">
+      <div className="v3-page" data-testid="settings-page">
         <ProfileCard accountCount={accounts.length} />
-        <div className="grid lg:grid-cols-[1.65fr_1fr] gap-4 mt-4 items-start">
-          <div className="flex flex-col gap-4 min-w-0">
+        <div className="st-grid">
+          <div className="st-main">
             <NotificationSettings />
-            <div className="tcard p-5">
-          <div className="flex items-start gap-3">
-            <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-profit/12 ring-1 ring-profit/20 shrink-0">
-              <EnvelopeSimple size={16} weight="fill" className="text-profit" />
-            </span>
-            <div className="min-w-0">
-              <div className="text-[10px] tracking-[0.2em] text-fg-3 uppercase">Email</div>
-              <div className="font-display font-bold text-[16px] tracking-tight mt-0.5">Weekly review</div>
-            </div>
-          </div>
-
-          <p className="text-fg-2 text-[13px] leading-relaxed mt-4">
-            Every Saturday morning, the coach writes a short review of each account you&apos;ve
-            connected — what worked, what leaked, and what to focus on — and emails it to you.
-            It&apos;s built from your own closed trades. Off by default; you can turn it off again
-            any time, and every email carries an unsubscribe link.
-          </p>
-
-          <div className="flex items-center justify-between gap-4 mt-5 pt-5 border-t border-border-soft">
-            <div className="min-w-0">
-              <div className="text-[13px] text-fg">{enabled ? 'Sending weekly' : 'Not subscribed'}</div>
-              <div className="text-[10px] tracking-[0.14em] uppercase text-fg-3 mt-1">
-                {loading ? 'Loading…' : sentLabel(lastSentAt)}
+            <section className="v3-card st-card st-wr" aria-labelledby="st-wr">
+              <div className="st-wr-top">
+                <span className="ic"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><rect x="3" y="5" width="18" height="14" rx="2.5" /><path d="M3.5 7l8.5 6 8.5-6" /></svg></span>
+                <div><h3 id="st-wr">Weekly review</h3><p>A short note every Saturday morning: what worked, what leaked, one thing to fix — written from your own closed trades. Every email carries an unsubscribe link.</p></div>
+                <Toggle on={enabled} onClick={toggle} disabled={loading || saving} label="Weekly review email" testId="weekly-review-toggle" />
               </div>
-            </div>
-
-            <button
-              role="switch"
-              aria-checked={enabled}
-              aria-label="Weekly review email"
-              onClick={toggle}
-              disabled={loading || saving}
-              data-testid="weekly-review-toggle"
-              className={`relative shrink-0 h-6 w-11 rounded-full border transition-colors disabled:opacity-50 ${
-                enabled ? 'bg-profit/30 border-profit/50' : 'bg-surface border-border-strong'
-              }`}
-            >
-              <span
-                className={`absolute top-1/2 -translate-y-1/2 h-4 w-4 rounded-full transition-all ${
-                  enabled ? 'left-[calc(100%-1.25rem)] bg-profit' : 'left-1 bg-fg-3'
-                }`}
-              />
-            </button>
-          </div>
-
-          {saved && (
-            <p className="flex items-center gap-1.5 text-[11px] text-profit mt-3" data-testid="settings-saved">
-              <Check size={12} weight="bold" /> Saved
-            </p>
-          )}
-          {error && (
-            <p className="text-[11px] text-loss mt-3" data-testid="settings-error">
-              {error}
-            </p>
-          )}
-            </div>
+              <div className="st-wr-ft">
+                <span className={enabled ? 'on' : ''}><i />{enabled ? 'Sending weekly' : 'Not subscribed'}</span>
+                <span className="mute">{loading ? 'Loading…' : sentLabel(lastSentAt)}</span>
+                {saved && <span className="st-saved" data-testid="settings-saved">Saved ✓</span>}
+              </div>
+              {error && <p className="r-err" data-testid="settings-error" role="alert">{error}</p>}
+            </section>
           </div>
           <SettingsAside />
         </div>

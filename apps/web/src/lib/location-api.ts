@@ -26,6 +26,7 @@ export interface PlaceSuggestion {
 
 const USE_MOCKS = process.env.NEXT_PUBLIC_USE_MOCKS === 'true';
 const API = USE_MOCKS ? '' : (process.env.NEXT_PUBLIC_API_URL || '');
+const P = USE_MOCKS ? '/data' : '/api';
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API}${path}`, {
@@ -41,12 +42,12 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const locationApi = {
-  get: () => req<UserLocationDto>('/api/me/location'),
+  get: () => req<UserLocationDto>(`${P}/me/location`),
   update: (body: UpdateLocationInput) =>
-    req<UserLocationDto>('/api/me/location', { method: 'PATCH', body: JSON.stringify(body) }),
+    req<UserLocationDto>(`${P}/me/location`, { method: 'PATCH', body: JSON.stringify(body) }),
   suggest: (kind: 'city' | 'postal', q: string, country: string) => {
     const params = new URLSearchParams({ kind, q, country });
-    return req<PlaceSuggestion[]>(`/api/me/location/suggest?${params}`);
+    return req<PlaceSuggestion[]>(`${P}/me/location/suggest?${params}`);
   },
 };
 

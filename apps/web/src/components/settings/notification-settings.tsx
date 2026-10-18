@@ -5,36 +5,16 @@
 // browser-push opt-in is added in the push phase and only shows when the server
 // reports push is configured.
 import { useCallback, useEffect, useState } from 'react';
-import { BellRinging, Check } from '@phosphor-icons/react';
+import Toggle from '@/components/v3/toggle';
 import { api, type NotificationPrefs, type EventImpact } from '@/lib/api';
 import { enablePush, disablePush } from '@/lib/push-client';
 
 const IMPACTS: EventImpact[] = ['LOW', 'MEDIUM', 'HIGH'];
 
-function Toggle({ on, onClick, disabled, label }: { on: boolean; onClick: () => void; disabled?: boolean; label: string }) {
-  return (
-    <button
-      role="switch"
-      aria-checked={on}
-      aria-label={label}
-      onClick={onClick}
-      disabled={disabled}
-      className={`relative shrink-0 h-6 w-11 rounded-full border transition-colors disabled:opacity-50 ${
-        on ? 'bg-profit/30 border-profit/50' : 'bg-surface border-border-strong'
-      }`}
-    >
-      <span className={`absolute top-1/2 -translate-y-1/2 h-4 w-4 rounded-full transition-all ${on ? 'left-[calc(100%-1.25rem)] bg-profit' : 'left-1 bg-fg-3'}`} />
-    </button>
-  );
-}
-
 function Row({ title, desc, children }: { title: string; desc?: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between gap-4 py-3 border-t border-border-soft first:border-t-0">
-      <div className="min-w-0">
-        <div className="text-[13px] text-fg">{title}</div>
-        {desc && <div className="text-[11px] text-fg-3 mt-0.5 leading-snug">{desc}</div>}
-      </div>
+    <div className="st-row">
+      <div><b>{title}</b>{desc && <span>{desc}</span>}</div>
       {children}
     </div>
   );
@@ -86,102 +66,54 @@ export default function NotificationSettings() {
     }
   }, []);
 
+  const IMP_LABEL: Record<EventImpact, string> = { LOW: 'Low', MEDIUM: 'Medium', HIGH: 'High' };
   return (
-    <div className="tcard p-5" data-testid="notification-settings">
-      <div className="flex items-start gap-3">
-        <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-profit/12 ring-1 ring-profit/20 shrink-0">
-          <BellRinging size={16} weight="fill" className="text-profit" />
-        </span>
-        <div>
-          <div className="text-[10px] tracking-[0.2em] text-fg-3 uppercase">Alerts</div>
-          <div className="font-display font-bold text-[16px] tracking-tight mt-0.5">Event & news notifications</div>
-        </div>
-      </div>
-
-      <p className="text-fg-2 text-[13px] leading-relaxed mt-4">
-        Get reminded before high-impact economic events and (optionally) when market-moving news breaks.
-        In-app alerts show in the bell; email uses your account address.
-      </p>
-
+    <section className="v3-card st-card" data-testid="notification-settings" aria-labelledby="st-al">
+      <div className="st-hd"><h3 id="st-al">Alerts <span>· event &amp; news notifications</span></h3>{saved && <span className="st-saved">Saved ✓</span>}</div>
       {loading ? (
-        <div className="mt-4 flex flex-col gap-2">{[0, 1, 2].map(i => <div key={i} className="shimmer h-8" />)}</div>
+        <div style={{ display: 'grid', gap: 10, padding: '6px 0 4px' }}>{[0, 1, 2, 3].map(i => <div key={i} className="skel d-sk" style={{ height: 44 }} />)}</div>
       ) : prefs ? (
-        <div className="mt-4">
-          <Row title="In-app" desc="Show alerts in the notification bell.">
-            <Toggle on={prefs.inApp} onClick={() => patch({ inApp: !prefs.inApp })} label="In-app alerts" />
-          </Row>
-          <Row title="Email digest" desc="One daily email compiling your upcoming events, to your account address.">
-            <Toggle on={prefs.email} onClick={() => patch({ email: !prefs.email })} label="Email digest" />
-          </Row>
+        <>
+          <Row title="In-app" desc="Bell notifications inside TRADElogs"><Toggle on={prefs.inApp} onClick={() => patch({ inApp: !prefs.inApp })} label="In-app alerts" /></Row>
+          <Row title="Email digest" desc="One email a day with what’s coming up"><Toggle on={prefs.email} onClick={() => patch({ email: !prefs.email })} label="Email digest" /></Row>
           {prefs.pushAvailable && (
-            <Row title="Browser push" desc="Real-time alerts even when the tab is closed.">
-              <Toggle
-                on={prefs.push}
-                onClick={async () => {
-                  if (!prefs.push) {
-                    // If the browser has already blocked notifications, requestPermission()
-                    // resolves to 'denied' with no prompt — guide the user to unblock.
-                    if (typeof Notification !== 'undefined' && Notification.permission === 'denied') {
-                      setError('Notifications are blocked for this site. Click the site icon at the left of the address bar → Notifications → Allow, then toggle again. (In Brave, also turn on brave://settings/privacy → “Use Google services for push messaging”.)');
-                      return;
-                    }
-                    const res = prefs.vapidPublicKey ? await enablePush(prefs.vapidPublicKey) : { ok: false, reason: 'unavailable' };
-                    if (!res.ok) {
-                      setError(
-                        res.reason === 'denied'
-                          ? 'Notifications are blocked for this site. Allow them via the site icon in the address bar → Notifications → Allow, then try again.'
-                          : res.reason === 'unsupported'
-                            ? 'This browser doesn’t support web push.'
-                            : 'Could not enable push on this device.',
-                      );
-                      return;
-                    }
-                    void patch({ push: true });
-                  } else {
-                    await disablePush().catch(() => {});
-                    void patch({ push: false });
+            <Row title="Browser push" desc="Real-time alerts, even when the tab is closed">
+              <Toggle on={prefs.push} label="Push alerts" onClick={async () => {
+                if (!prefs.push) {
+                  if (typeof Notification !== 'undefined' && Notification.permission === 'denied') {
+                    setError('Notifications are blocked for this site. Click the site icon at the left of the address bar → Notifications → Allow, then toggle again. (In Brave, also turn on brave://settings/privacy → “Use Google services for push messaging”.)');
+                    return;
                   }
-                }}
-                label="Push alerts"
-              />
+                  const res = prefs.vapidPublicKey ? await enablePush(prefs.vapidPublicKey) : { ok: false, reason: 'unavailable' };
+                  if (!res.ok) {
+                    setError(res.reason === 'denied' ? 'Notifications are blocked for this site. Allow them via the site icon in the address bar → Notifications → Allow, then try again.'
+                      : res.reason === 'unsupported' ? 'This browser doesn’t support web push.' : 'Could not enable push on this device.');
+                    return;
+                  }
+                  void patch({ push: true });
+                } else {
+                  await disablePush().catch(() => {});
+                  void patch({ push: false });
+                }
+              }} />
             </Row>
           )}
-          <Row title="Minimum impact" desc="Only remind me for events at or above this level.">
-            <div className="inline-flex rounded-[var(--radius-btn)] border border-border-soft overflow-hidden">
-              {IMPACTS.map(i => (
-                <button
-                  key={i}
-                  onClick={() => patch({ minImpact: i })}
-                  className={`px-2.5 py-1.5 text-[10px] tracking-[0.12em] uppercase transition-colors ${
-                    prefs.minImpact === i ? 'bg-profit/15 text-fg' : 'text-fg-3 hover:text-fg'
-                  }`}
-                >
-                  {i}
-                </button>
-              ))}
+          <Row title="Minimum impact" desc="Only alert for events at or above">
+            <div className="v3-seg" role="group" aria-label="Minimum impact">{IMPACTS.map(i => <button key={i} aria-pressed={prefs.minImpact === i} onClick={() => patch({ minImpact: i })}>{IMP_LABEL[i]}</button>)}</div>
+          </Row>
+          <Row title="Lead time" desc="How early to warn before an event">
+            <div className="st-step">
+              <button onClick={() => patch({ leadMinutes: Math.max(0, prefs.leadMinutes - 5) })} aria-label="Less lead time" disabled={prefs.leadMinutes <= 0}>−</button>
+              <b className="num">{prefs.leadMinutes} min</b>
+              <button onClick={() => patch({ leadMinutes: Math.min(1440, prefs.leadMinutes + 5) })} aria-label="More lead time">+</button>
             </div>
           </Row>
-          <Row title="Lead time" desc="How long before an event to remind you.">
-            <div className="inline-flex items-center gap-2">
-              <button onClick={() => patch({ leadMinutes: Math.max(0, prefs.leadMinutes - 5) })} className="w-7 h-7 rounded-[var(--radius-btn)] border border-border-soft text-fg-2 hover:text-fg">−</button>
-              <span className="text-[12px] text-fg w-14 text-center numeric">{prefs.leadMinutes} min</span>
-              <button onClick={() => patch({ leadMinutes: Math.min(1440, prefs.leadMinutes + 5) })} className="w-7 h-7 rounded-[var(--radius-btn)] border border-border-soft text-fg-2 hover:text-fg">+</button>
-            </div>
-          </Row>
-          <Row title="High-impact news alerts" desc="Notify me when market-moving news breaks.">
-            <Toggle on={prefs.newsAlerts} onClick={() => patch({ newsAlerts: !prefs.newsAlerts })} label="News alerts" />
-          </Row>
-          <Row title="Price alerts" desc="Notify me when a symbol crosses a price I set on the chart.">
-            <Toggle on={prefs.priceAlerts} onClick={() => patch({ priceAlerts: !prefs.priceAlerts })} label="Price alerts" />
-          </Row>
-
-          <p className="text-[10px] tracking-[0.14em] uppercase text-fg-3 mt-3">Timezone · {prefs.timezone}</p>
-          {saved && <p className="flex items-center gap-1.5 text-[11px] text-profit mt-2"><Check size={12} weight="bold" /> Saved</p>}
-          {error && <p className="text-[11px] text-loss mt-2">{error}</p>}
-        </div>
-      ) : (
-        <p className="text-[12px] text-loss mt-4">{error}</p>
-      )}
-    </div>
+          <Row title="High-impact news alerts" desc="Breaking headlines for your markets"><Toggle on={prefs.newsAlerts} onClick={() => patch({ newsAlerts: !prefs.newsAlerts })} label="News alerts" /></Row>
+          <Row title="Price alerts" desc="From your chart alerts"><Toggle on={prefs.priceAlerts} onClick={() => patch({ priceAlerts: !prefs.priceAlerts })} label="Price alerts" /></Row>
+          <p className="st-foot">Times shown in {prefs.timezone.replace(/_/g, ' ')}</p>
+          {error && <p className="r-err" role="alert">{error}</p>}
+        </>
+      ) : <p className="r-err">{error}</p>}
+    </section>
   );
 }
