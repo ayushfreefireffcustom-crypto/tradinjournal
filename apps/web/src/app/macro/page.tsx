@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import AppShell from '@/components/app-shell';
-import { LoadingScreen, Loader } from '@/components/loader';
+import { useAccounts } from '@/lib/use-accounts';
+import type { BrokerAccount } from '@/lib/api';
+import { Loader } from '@/components/loader';
 import MacroTicker from '@/components/macro/macro-ticker';
 import MacroDashboard from '@/components/macro/macro-dashboard';
 import BullBearScanner from '@/components/macro/bull-bear-scanner';
@@ -24,10 +26,10 @@ import RegimeQuadrant from '@/components/macro/regime-quadrant';
 import RegimeNarrative from '@/components/macro/regime-narrative';
 import YieldCurve from '@/components/macro/yield-curve';
 import PolicyRates from '@/components/macro/policy-rates';
-import { formatAsOf } from '@/lib/macro-format';
 import { macroApi, type MacroSignal, type MacroState } from '@/lib/macro-api';
 
 export default function MacroPage() {
+  const { accounts, selected, select } = useAccounts();
   const [panel, setPanel] = useState<MacroPanel>('dashboard');
   const [state, setState] = useState<MacroState | null>(null);
   const [error, setError] = useState('');
@@ -70,63 +72,29 @@ export default function MacroPage() {
   }
 
   return (
-    <AppShell pageTitle="Macro" pageSubtitle="// GLOBAL MACRO COMMAND CENTRE">
+    <AppShell accounts={accounts} selectedAccount={selected} onSelectAccount={(a: BrokerAccount) => select(a)} pageTitle="Macro">
       {loading && !state ? (
-        <div className="h-full min-h-[60vh]" data-testid="macro-loading">
-          <LoadingScreen label="Loading macro" />
-        </div>
+        <div className="mc-load" data-testid="macro-loading"><Loader label="Loading macro" /></div>
       ) : (
-        <div className="flex flex-col h-full min-h-0" data-testid="macro-page">
+        <div className="mc" data-testid="macro-page">
           <MacroTicker markets={state?.markets ?? []} />
 
-          <div className="shrink-0 border-b border-border-soft bg-surface/30 px-3 sm:px-4 py-2 sm:py-2.5">
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                className="md:hidden shrink-0 btn btn-ghost py-1.5 px-2.5 text-[10px]"
-                onClick={() => setNavOpen(true)}
-                data-testid="macro-nav-open"
-              >
-                MENU
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setSearchOpen(true)}
-                className="group flex-1 min-w-0 flex items-center gap-2 text-left text-[12px] text-fg-3 bg-app/60 border border-border-soft hover:border-border-strong rounded-full px-3 py-2 transition-colors focus-ring"
-                data-testid="macro-search-trigger"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0 text-fg-3 opacity-70" aria-hidden>
-                  <circle cx="11" cy="11" r="7" />
-                  <path d="M20 20l-3.5-3.5" strokeLinecap="round" />
-                </svg>
-                <span className="truncate">Search…</span>
-                <kbd className="ml-auto hidden sm:inline-flex items-center gap-0.5 shrink-0 rounded border border-border-soft bg-surface px-1.5 py-0.5 text-[10px] tracking-wide text-fg-3 group-hover:text-fg-2">
-                  ⌘K
-                </kbd>
-              </button>
-
-              <div className="hidden sm:flex items-center gap-3 text-[11px] text-fg-3 numeric shrink-0">
+          <div className="mc-bar">
+            <button type="button" className="v3-btn v3-btn--o mc-menu" onClick={() => setNavOpen(true)} data-testid="macro-nav-open">Menu</button>
+            <button type="button" onClick={() => setSearchOpen(true)} className="v3-field mc-search" data-testid="macro-search-trigger">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" strokeLinecap="round" /></svg>
+              <span>Search indicators, assets…</span><kbd>⌘K</kbd>
+            </button>
+            {state && (
+              <span className="mc-meta num" data-testid="macro-state-line">
                 {refreshing && <Loader size={14} className="!gap-0" />}
-                {state && (
-                  <span className="truncate max-w-[220px]" data-testid="macro-state-line">
-                    {state.engineVer} · {state.macro.length} ind · {formatAsOf(state.asOf)}
-                  </span>
-                )}
-                <button
-                  type="button"
-                  onClick={() => void load({ soft: true })}
-                  disabled={refreshing}
-                  className="shrink-0 text-fg-3 hover:text-fg underline-offset-2 hover:underline disabled:opacity-50"
-                  data-testid="macro-refresh"
-                >
-                  Refresh
-                </button>
-              </div>
-            </div>
+                {state.engineVer} · {state.macro.length} indicators · as of {new Date(state.asOf).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' })} UTC ·{' '}
+                <button type="button" onClick={() => void load({ soft: true })} disabled={refreshing} className="v3-link" data-testid="macro-refresh">Refresh</button>
+              </span>
+            )}
           </div>
 
-          <div className="flex-1 min-h-0 flex">
+          <div className="mc-body">
             <MacroSideNav
               active={panel}
               onSelect={setPanel}
@@ -134,21 +102,16 @@ export default function MacroPage() {
               onMobileClose={() => setNavOpen(false)}
             />
 
-            <div className="flex-1 min-w-0 min-h-0 overflow-y-auto p-3 sm:p-4 space-y-3">
+            <div className="mc-main">
               {error && (
-                <div className="tcard p-3 text-loss text-sm flex items-center justify-between gap-3" data-testid="macro-error" role="alert">
+                <div className="d-err" data-testid="macro-error" role="alert">
                   <span>{error}</span>
-                  <button type="button" onClick={() => void load()} className="btn btn-ghost py-1.5 text-[10px] shrink-0">
-                    RETRY
-                  </button>
+                  <button type="button" onClick={() => void load()} className="v3-btn v3-btn--o">Retry</button>
                 </div>
               )}
 
               {!error && state && state.macro.length === 0 && panel === 'dashboard' && (
-                <div className="tcard p-4 text-sm text-fg-3" data-testid="macro-empty">
-                  No macro snapshots yet. Add <code className="text-fg">FRED_API_KEY</code>, apply the
-                  macro migration, and let the worker ingest.
-                </div>
+                <div className="v3-card d-empty" data-testid="macro-empty"><b>No macro data yet</b>Indicators appear after the first data ingest.</div>
               )}
 
               {panel === 'dashboard' && state && <MacroDashboard state={state} />}
@@ -161,7 +124,7 @@ export default function MacroPage() {
               )}
               {panel === 'scanner' && <BullBearScanner bias={state?.bias ?? []} />}
               {panel === 'regime' && state && (
-                <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 items-stretch">
+                <div className="mc-2">
                   <RegimeNarrative regime={state.regime} macro={state.macro} />
                   <RegimeQuadrant regime={state.regime} />
                 </div>
@@ -169,7 +132,7 @@ export default function MacroPage() {
               {panel === 'fed' && state && <FedDesk macro={state.macro} />}
               {panel === 'liquidity' && state && <LiquidityConsole macro={state.macro} />}
               {panel === 'yields' && state && (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-stretch">
+                <div className="mc-2">
                   <YieldCurve macro={state.macro} />
                   <PolicyRates macro={state.macro} />
                 </div>

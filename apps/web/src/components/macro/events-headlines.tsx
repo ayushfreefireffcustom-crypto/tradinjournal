@@ -22,7 +22,7 @@ export default function MacroEventsHeadlines({
     <div className="grid lg:grid-cols-2 gap-3 items-stretch" data-testid="macro-events-headlines">
       <section className="tcard p-4 min-h-[280px] h-full flex flex-col">
         <div className="flex items-center justify-between border-b border-border-soft pb-2 shrink-0">
-          <div className="text-[10px] tracking-[0.2em] text-fg-3">// ECONOMIC CALENDAR</div>
+          <div className="text-[10px] tracking-[0.2em] text-fg-3">Economic calendar</div>
           <div className="text-[10px] text-fg-3 numeric">{events.length}</div>
         </div>
         {!events.length ? (
@@ -65,7 +65,7 @@ export default function MacroEventsHeadlines({
 
       <section className="tcard p-4 min-h-[280px] h-full flex flex-col">
         <div className="flex items-center justify-between border-b border-border-soft pb-2 shrink-0">
-          <div className="text-[10px] tracking-[0.2em] text-fg-3">// MARKET HEADLINES</div>
+          <div className="text-[10px] tracking-[0.2em] text-fg-3">Market headlines</div>
           <div className="text-[10px] text-fg-3 numeric">{headlines.length}</div>
         </div>
         {!headlines.length ? (

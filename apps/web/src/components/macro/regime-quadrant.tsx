@@ -36,7 +36,7 @@ export default function RegimeQuadrant({ regime }: { regime: MacroState['regime'
   if (!regime) {
     return (
       <div className="tcard p-4 flex flex-col h-full" data-testid="macro-regime-quadrant-empty">
-        <div className="text-[10px] tracking-[0.2em] text-fg-3">// REGIME</div>
+        <div className="text-[10px] tracking-[0.2em] text-fg-3">Regime</div>
         <p className="text-sm text-fg-3 mt-3 flex-1 flex items-center">No regime classified yet.</p>
       </div>
     );
@@ -48,7 +48,7 @@ export default function RegimeQuadrant({ regime }: { regime: MacroState['regime'
   return (
     <div className="tcard p-4 sm:p-5 flex flex-col h-full rise" style={{ ['--i' as string]: 0 }} data-testid="macro-regime-quadrant">
       <div className="flex items-center justify-between shrink-0 gap-2">
-        <div className="text-[10px] tracking-[0.2em] text-fg-3">// REGIME</div>
+        <div className="text-[10px] tracking-[0.2em] text-fg-3">Regime</div>
         <div className="text-[10px] tracking-[0.14em] text-fg-3">GROWTH × INFLATION</div>
       </div>
 
@@ -108,7 +108,7 @@ export default function RegimeQuadrant({ regime }: { regime: MacroState['regime'
             {odds != null && (
               <div className="max-w-sm mx-auto sm:mx-0 w-full">
                 <div className="flex items-center justify-between text-[10px] tracking-[0.14em] text-fg-3">
-                  <span>RECESSION ODDS</span>
+                  <span>Recession odds</span>
                   <CountUp value={odds} suffix="%" className="numeric text-fg" duration={1000} />
                 </div>
                 <div className="mt-1.5 h-1.5 rounded-full bg-border-soft overflow-hidden">

@@ -43,7 +43,7 @@ export default function ForexMatrix({ fx }: { fx: MacroState['fx'] }) {
   return (
     <div className="space-y-3" data-testid="macro-forex-matrix">
       <div>
-        <div className="text-[10px] tracking-[0.2em] text-fg-3">// FOREX STRENGTH MATRIX</div>
+        <div className="text-[10px] tracking-[0.2em] text-fg-3">Forex strength matrix</div>
         <h2 className="font-display font-black text-xl tracking-tight mt-1">Currency Strength</h2>
         <p className="text-[12px] text-fg-3 mt-1 max-w-2xl leading-relaxed">
           Relative strength vs the USD cross-section from free official FX refs (ER-API). Not a tick feed —

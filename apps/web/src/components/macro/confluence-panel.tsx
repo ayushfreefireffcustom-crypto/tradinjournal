@@ -38,7 +38,7 @@ export default function ConfluencePanel({ bias }: { bias: MacroState['bias'] }) 
   return (
     <div className="tcard p-4 flex flex-col h-full min-h-[260px] rise" style={{ ['--i' as string]: 1 }} data-testid="macro-confluence">
       <div className="flex items-center justify-between shrink-0">
-        <div className="text-[10px] tracking-[0.2em] text-fg-3">// CONFLUENCE ENGINE</div>
+        <div className="text-[10px] tracking-[0.2em] text-fg-3">Confluence engine</div>
         <div className="text-[10px] tracking-[0.14em] text-fg-3">{bias.length} ASSETS</div>
       </div>
 
@@ -60,7 +60,7 @@ export default function ConfluencePanel({ bias }: { bias: MacroState['bias'] }) 
           <div className={`numeric text-2xl font-display font-black -mt-1 ${toneText(gTone)}`} data-testid="confluence-avg">
             {avg == null ? '—' : <CountUp value={target} duration={1000} />}
           </div>
-          <div className="text-[9px] tracking-[0.2em] text-fg-3">NET BIAS</div>
+          <div className="text-[9px] tracking-[0.2em] text-fg-3">Net bias</div>
         </div>
 
         <div className="flex-1 min-w-0 space-y-2.5">

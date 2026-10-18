@@ -64,7 +64,7 @@ export default function PaperBlotter({
   return (
     <div className="tcard p-4" data-testid="macro-paper-blotter">
       <div className="flex items-center justify-between gap-2 border-b border-border-soft pb-2">
-        <div className="text-[10px] tracking-[0.2em] text-fg-3">// PAPER BLOTTER</div>
+        <div className="text-[10px] tracking-[0.2em] text-fg-3">Paper blotter</div>
         <div className="flex items-center gap-3">
           <span className="text-[10px] tracking-[0.14em] text-fg-3">
             NET P&amp;L{' '}

@@ -42,7 +42,7 @@ export default function FedDesk({ macro }: { macro: MacroState['macro'] }) {
     <div className="space-y-3" data-testid="macro-fed-desk">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
-          <div className="text-[10px] tracking-[0.2em] text-fg-3">// FEDERAL RESERVE</div>
+          <div className="text-[10px] tracking-[0.2em] text-fg-3">Federal Reserve</div>
           <h2 className="font-display font-black text-xl tracking-tight mt-1">Policy Desk</h2>
         </div>
         <span className={`text-[10px] tracking-[0.14em] px-2.5 py-1 rounded border ${stanceCls}`}>
@@ -52,7 +52,7 @@ export default function FedDesk({ macro }: { macro: MacroState['macro'] }) {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-stretch">
         <div className="tcard p-4 flex flex-col h-full min-h-[220px]">
-          <div className="text-[10px] tracking-[0.16em] text-fg-3">// PATH METER</div>
+          <div className="text-[10px] tracking-[0.16em] text-fg-3">Path meter</div>
           <p className="text-[12px] text-fg-3 mt-2 leading-relaxed">
             Simple stance from funds vs the median FOMC dot — not speech NLP. Cuts projected when
             dots sit below the current effective rate.
@@ -72,13 +72,13 @@ export default function FedDesk({ macro }: { macro: MacroState['macro'] }) {
           </div>
           <div className="mt-auto pt-4 grid grid-cols-2 gap-3 text-[12px]">
             <div>
-              <div className="text-[9px] tracking-[0.14em] text-fg-3">EFFECTIVE FUNDS</div>
+              <div className="text-[9px] tracking-[0.14em] text-fg-3">Effective funds</div>
               <div className="numeric text-lg text-fg mt-0.5">
                 {fed ? formatIndicatorValue(fed.value, fed.unit) : '—'}
               </div>
             </div>
             <div>
-              <div className="text-[9px] tracking-[0.14em] text-fg-3">MEDIAN DOT</div>
+              <div className="text-[9px] tracking-[0.14em] text-fg-3">Median dot</div>
               <div className="numeric text-lg text-fg mt-0.5">
                 {dot ? formatIndicatorValue(dot.value, dot.unit) : '—'}
               </div>

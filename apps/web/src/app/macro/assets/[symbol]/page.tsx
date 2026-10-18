@@ -3,13 +3,13 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { CaretLeft } from '@phosphor-icons/react';
 import AppShell from '@/components/app-shell';
-import { LoadingScreen } from '@/components/loader';
+import { Loader } from '@/components/loader';
+import { useAccounts } from '@/lib/use-accounts';
+import type { BrokerAccount } from '@/lib/api';
 import CountUp from '@/components/macro/count-up';
-import RefBadge from '@/components/macro/ref-badge';
 import { macroApi, type MacroState } from '@/lib/macro-api';
-import { biasTone, formatBiasLabel, formatMacroNumber, formatSignedPct } from '@/lib/macro-format';
+import { biasTone, formatSignedPct } from '@/lib/macro-format';
 
 const NAMES: Record<string, string> = {
   BTC: 'Bitcoin',
@@ -19,8 +19,8 @@ const NAMES: Record<string, string> = {
   XAG: 'Silver',
   SPX: 'S&P 500',
   NDX: 'Nasdaq 100',
-  OIL: 'Crude Oil',
-  DXY: 'US Dollar Index',
+  OIL: 'Crude oil',
+  DXY: 'US dollar',
   UST: 'US Treasuries',
 };
 
@@ -37,9 +37,21 @@ const TV_SYMBOL: Record<string, string> = {
   UST: 'AMEX:TLT',
 };
 
-const REF = new Set(['SPX', 'NDX', 'OIL', 'UST', 'DXY']);
+const TICK: Record<string, string> = { XAU: 'XAUUSD', XAG: 'XAGUSD', BTC: 'BTCUSD', ETH: 'ETHUSD', SOL: 'SOLUSD', SPX: 'SPX', NDX: 'NDX', OIL: 'WTI', DXY: 'DXY', UST: 'US10Y' };
+// Reference instruments are proxies (ETFs/indices) rather than the exact asset.
+const REF_NOTE: Record<string, string> = { SPX: 'Ref · SPY', NDX: 'Ref · QQQ', OIL: 'Ref · USO', UST: 'Ref · TLT', DXY: 'Ref · ICE' };
+function strength(score: number): string {
+  if (score >= 70) return 'Strongly bullish';
+  if (score >= 60) return 'Moderately bullish';
+  if (score >= 55) return 'Mildly bullish';
+  if (score > 45) return 'Neutral';
+  if (score > 40) return 'Mildly bearish';
+  if (score > 30) return 'Moderately bearish';
+  return 'Strongly bearish';
+}
 
 export default function MacroAssetPage() {
+  const { accounts, selected, select } = useAccounts();
   const params = useParams<{ symbol: string }>();
   const symbol = (params?.symbol ?? '').toUpperCase();
   const [state, setState] = useState<MacroState | null>(null);
@@ -57,124 +69,60 @@ export default function MacroAssetPage() {
   const bias = state?.bias.find(b => b.asset === symbol);
   const quote = state?.markets.find(m => m.symbol.toUpperCase() === symbol);
   const tone = bias ? biasTone(bias.label) : 'neutral';
-  const toneCls = tone === 'bull' ? 'text-profit' : tone === 'bear' ? 'text-loss' : 'text-fg-3';
   const tv = TV_SYMBOL[symbol];
-  const changeTone =
-    quote?.changePct == null ? 'text-fg-3' : quote.changePct >= 0 ? 'text-profit' : 'text-loss';
+  const name = NAMES[symbol] ?? symbol;
+  const fmtPrice = (n: number) => (symbol === 'UST' ? `${n.toFixed(2)}%` : n.toLocaleString('en-US', { minimumFractionDigits: n >= 1000 ? 1 : 2, maximumFractionDigits: n >= 1000 ? 1 : 2 }));
 
   return (
-    <AppShell pageTitle={NAMES[symbol] ?? symbol} pageSubtitle="// ASSET DEEP DIVE">
+    <AppShell accounts={accounts} selectedAccount={selected} onSelectAccount={(a: BrokerAccount) => select(a)} crumbParent="Macro" pageTitle={name}>
       {loading ? (
-        <LoadingScreen label="Loading asset" />
+        <div className="mc-load"><Loader label="Loading asset" /></div>
       ) : (
-        <div
-          className="px-3 py-3 sm:px-4 sm:py-4 lg:px-6 lg:py-5 max-w-[1200px] mx-auto space-y-2.5 sm:space-y-3"
-          data-testid="macro-asset-page"
-        >
-          {/* Compact header */}
-          <div className="flex items-center gap-2.5 min-w-0">
-            <Link
-              href="/macro"
-              className="shrink-0 inline-flex items-center gap-0.5 text-[11px] text-fg-3 hover:text-fg tracking-[0.12em] focus-ring rounded px-1 py-1 -ml-1"
-            >
-              <CaretLeft size={14} weight="bold" />
-              <span className="hidden xs:inline sm:inline">MACRO</span>
-            </Link>
-            <div className="h-3 w-px bg-border-soft shrink-0" />
-            <h1 className="font-display font-black text-lg sm:text-2xl tracking-tight truncate flex items-center gap-2 min-w-0">
-              <span className="truncate">{NAMES[symbol] ?? symbol}</span>
-              <span className="text-[11px] sm:text-[12px] font-medium text-fg-3 tracking-wide shrink-0">
-                {symbol}
-              </span>
-              {REF.has(symbol) && <RefBadge />}
-            </h1>
-          </div>
+        <div className="v3-page ma" data-testid="macro-asset-page">
+          <header className="ma-head">
+            <Link href="/macro" className="v3-link">‹ Macro</Link><span className="sl">/</span>
+            <h1>{name} <span>{TICK[symbol] ?? symbol}</span></h1>
+            {REF_NOTE[symbol] && <span className="v3-pill v" title="Charted via a reference instrument">{REF_NOTE[symbol]}</span>}
+          </header>
 
-          {error && <div className="tcard p-3 text-loss text-sm">{error}</div>}
-
-          {!bias && !error && (
-            <div className="tcard p-4 text-sm text-fg-3">
-              Unknown asset “{symbol}”. Open an asset from the macro bias grid.
-            </div>
-          )}
+          {error && <div className="d-err" role="alert"><span>{error}</span></div>}
+          {!bias && !error && <div className="v3-card d-empty"><b>Unknown asset “{symbol}”</b>Open an asset from the macro bias grid.</div>}
 
           {bias && (
             <>
-              {/* Hero: bias + price side-by-side on every width */}
-              <div className="tcard p-3 sm:p-4">
-                <div className="grid grid-cols-2 gap-3 sm:gap-6">
-                  <div className="min-w-0 border-r border-border-soft pr-3 sm:pr-6">
-                    <div className="text-[9px] sm:text-[10px] tracking-[0.16em] text-fg-3">BIAS SCORE</div>
-                    <div className={`numeric text-2xl sm:text-4xl font-display font-black mt-1 leading-none ${toneCls}`}>
-                      <CountUp value={bias.score} suffix="%" duration={1000} />
-                    </div>
-                    <div className={`text-[11px] sm:text-[13px] font-medium mt-1.5 ${toneCls}`}>
-                      {formatBiasLabel(bias.label)}
-                    </div>
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-[9px] sm:text-[10px] tracking-[0.16em] text-fg-3">LAST PRICE</div>
-                    {quote ? (
-                      <>
-                        <div className="numeric text-2xl sm:text-4xl font-display font-black mt-1 leading-none text-fg">
-                          {formatMacroNumber(quote.price)}
-                        </div>
-                        <div className={`text-[11px] sm:text-[13px] font-medium mt-1.5 numeric ${changeTone}`}>
-                          {quote.changePct == null ? '—' : formatSignedPct(quote.changePct)}
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <div className="numeric text-2xl sm:text-4xl font-display font-black mt-1 leading-none text-fg-3">
-                          —
-                        </div>
-                        <div className="text-[11px] text-fg-3 mt-1.5">Quote pending</div>
-                      </>
-                    )}
-                  </div>
+              <section className="v3-card ma-hero">
+                <div>
+                  <span className="mc-lbl">Bias score</span>
+                  <div className="ma-big"><b className={`num ${tone === 'bull' ? 'lg' : tone === 'bear' ? 'sh' : ''}`}><CountUp value={Math.round(bias.score)} suffix="%" duration={1000} /></b><span>{strength(bias.score)}</span></div>
+                  <div className="ma-bar"><i className={tone} style={{ width: `${Math.max(0, Math.min(100, bias.score))}%` }} /></div>
                 </div>
-              </div>
+                <div>
+                  <span className="mc-lbl">Last price</span>
+                  {quote ? (
+                    <>
+                      <div className="ma-big"><b className="num">{fmtPrice(quote.price)}</b>
+                        {quote.changePct != null && <span className={`num ${quote.changePct >= 0 ? 'lg' : 'sh'}`}>{quote.changePct >= 0 ? '▲' : '▼'} {formatSignedPct(quote.changePct)}</span>}</div>
+                      <p className="ma-sub num">Updated {new Date(quote.asOf).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' })} UTC</p>
+                    </>
+                  ) : <div className="ma-big"><b className="mute">—</b><span className="mute">Quote pending</span></div>}
+                </div>
+              </section>
 
-              {/* Evidence as chips — wraps cleanly on narrow screens */}
-              <div className="tcard p-3 sm:p-4">
-                <div className="text-[9px] sm:text-[10px] tracking-[0.16em] text-fg-3 mb-2">
-                  // EVIDENCE
+              <section className="v3-card ma-ev" aria-labelledby="ma-ev-t">
+                <h3 id="ma-ev-t" className="mc-lbl">Evidence</h3>
+                <div className="ma-chips">
+                  {bias.supporting.length === 0 && bias.opposing.length === 0 && <span className="mute">No factor breakdown yet.</span>}
+                  {bias.supporting.map(x => <span key={`+${x}`} className="v3-pill g">+ {x}</span>)}
+                  {bias.opposing.map(x => <span key={`-${x}`} className="v3-pill r">− {x}</span>)}
                 </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {bias.supporting.length === 0 && bias.opposing.length === 0 && (
-                    <span className="text-[12px] text-fg-3">No factor breakdown yet.</span>
-                  )}
-                  {bias.supporting.map(s => (
-                    <span
-                      key={`+${s}`}
-                      className="text-[10px] sm:text-[11px] px-2 py-1 rounded border border-profit/25 bg-profit/10 text-profit"
-                    >
-                      + {s}
-                    </span>
-                  ))}
-                  {bias.opposing.map(s => (
-                    <span
-                      key={`-${s}`}
-                      className="text-[10px] sm:text-[11px] px-2 py-1 rounded border border-loss/25 bg-loss/10 text-loss"
-                    >
-                      − {s}
-                    </span>
-                  ))}
-                </div>
-              </div>
+              </section>
 
               {tv && (
-                <div className="tcard p-0 overflow-hidden" data-testid="macro-asset-tv">
-                  <div className="px-3 py-1.5 sm:py-2 border-b border-border-soft text-[10px] tracking-[0.16em] text-fg-3 flex items-center justify-between">
-                    <span>// TRADINGVIEW</span>
-                    <span className="hidden sm:inline">free embed</span>
-                  </div>
-                  <iframe
-                    title={`${symbol} chart`}
-                    src={`https://s.tradingview.com/widgetembed/?symbol=${encodeURIComponent(tv)}&interval=60&theme=dark&style=1&locale=en&hideideas=1&hidetoptoolbar=0&hidesidetoolbar=1`}
-                    className="w-full border-0 h-[min(58vh,420px)] sm:h-[min(62vh,520px)] lg:h-[min(68vh,640px)] min-h-[320px]"
-                  />
-                </div>
+                <section className="v3-card ma-chart" data-testid="macro-asset-tv">
+                  <div className="v3-ch"><h3>Chart <span>· {TICK[symbol] ?? symbol} · 1h</span></h3><span className="mute" style={{ fontSize: 13.5 }}>TradingView · free embed</span></div>
+                  <iframe title={`${name} chart`} loading="lazy"
+                    src={`https://s.tradingview.com/widgetembed/?symbol=${encodeURIComponent(tv)}&interval=60&theme=light&style=1&locale=en&hideideas=1&hidetoptoolbar=1&hidesidetoolbar=1&toolbarbg=ffffff`} />
+                </section>
               )}
             </>
           )}

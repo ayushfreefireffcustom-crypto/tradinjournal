@@ -22,41 +22,41 @@ export const MACRO_NAV: {
   items: { id: MacroPanel; label: string }[];
 }[] = [
   {
-    section: 'CORE',
+    section: 'Overview',
     items: [
-      { id: 'dashboard', label: 'Macro Dashboard' },
-      { id: 'confluence', label: 'Confluence Engine' },
-      { id: 'scanner', label: 'Bull / Bear Scanner' },
-      { id: 'regime', label: 'Market-Regime Matrix' },
+      { id: 'dashboard', label: 'Macro dashboard' },
+      { id: 'confluence', label: 'Confluence engine' },
+      { id: 'scanner', label: 'Bull / bear scanner' },
+      { id: 'regime', label: 'Market-regime matrix' },
     ],
   },
   {
-    section: 'ECONOMY',
+    section: 'Rates & data',
     items: [
-      { id: 'calendar', label: 'Economic Calendar' },
-      { id: 'yields', label: 'Yield Curve & Bonds' },
+      { id: 'calendar', label: 'Economic calendar' },
+      { id: 'yields', label: 'Yield curve & bonds' },
     ],
   },
   {
-    section: 'POLICY & MONEY',
+    section: 'Policy & money',
     items: [
       { id: 'fed', label: 'Federal Reserve' },
-      { id: 'liquidity', label: 'Banking & Liquidity' },
+      { id: 'liquidity', label: 'Banking & liquidity' },
     ],
   },
   {
-    section: 'WORLD',
+    section: 'Global',
     items: [
-      { id: 'fx', label: 'Forex Strength' },
-      { id: 'geo', label: 'Geopolitical Risk' },
+      { id: 'fx', label: 'Forex strength' },
+      { id: 'geo', label: 'Geopolitical risk' },
       { id: 'education', label: 'Education' },
     ],
   },
   {
-    section: 'TRADEAI',
+    section: 'Members',
     items: [
-      { id: 'signals', label: 'TradeAI Signals' },
-      { id: 'paper', label: 'Paper Blotter' },
+      { id: 'signals', label: 'TradeAI signals' },
+      { id: 'paper', label: 'Paper blotter' },
       { id: 'assistant', label: 'Macro AI' },
       { id: 'access', label: 'Access' },
     ],
@@ -72,31 +72,16 @@ interface Props {
 
 export default function MacroSideNav({ active, onSelect, mobileOpen, onMobileClose }: Props) {
   const NavBody = (
-    <nav className="flex flex-col gap-4 p-3" data-testid="macro-side-nav">
+    <nav className="mn" data-testid="macro-side-nav" aria-label="Macro sections">
       {MACRO_NAV.map(sec => (
-        <div key={sec.section}>
-          <div className="text-[9px] tracking-[0.2em] text-fg-3 px-2 mb-1.5">{sec.section}</div>
-          <div className="flex flex-col gap-0.5">
-            {sec.items.map(item => {
-              const on = active === item.id;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => { onSelect(item.id); onMobileClose(); }}
-                  data-testid={`macro-nav-${item.id}`}
-                  data-active={on}
-                  className={`text-left px-2.5 py-2 rounded-md text-[11px] tracking-[0.06em] transition-colors ${
-                    on
-                      ? 'bg-surface text-fg border-l-2 border-profit pl-2'
-                      : 'text-fg-3 hover:text-fg hover:bg-surface/60'
-                  }`}
-                >
-                  {item.label}
-                </button>
-              );
-            })}
-          </div>
+        <div key={sec.section} className="mn-sec">
+          <div className="mn-h">{sec.section}</div>
+          {sec.items.map(item => (
+            <button key={item.id} type="button" aria-current={active === item.id ? 'page' : undefined}
+              onClick={() => { onSelect(item.id); onMobileClose(); }} data-testid={`macro-nav-${item.id}`} data-active={active === item.id}>
+              {item.label}
+            </button>
+          ))}
         </div>
       ))}
     </nav>
@@ -104,23 +89,15 @@ export default function MacroSideNav({ active, onSelect, mobileOpen, onMobileClo
 
   return (
     <>
-      {/* Desktop rail */}
-      <aside className="hidden md:flex w-52 shrink-0 border-r border-border-soft overflow-y-auto no-scrollbar bg-surface/20">
-        {NavBody}
-      </aside>
-
-      {/* Mobile drawer */}
+      <aside className="v3-card mn-rail">{NavBody}</aside>
       {mobileOpen && (
-        <>
-          <div className="md:hidden fixed inset-0 z-40 bg-app/80 backdrop-blur-sm" onClick={onMobileClose} aria-hidden />
-          <aside className="md:hidden fixed inset-y-0 left-0 z-50 w-[78%] max-w-[280px] border-r border-border bg-app overflow-y-auto fade-up">
-            <div className="h-12 flex items-center justify-between px-3 border-b border-border">
-              <span className="text-[11px] tracking-[0.16em] text-fg-3">MACRO MENU</span>
-              <button type="button" onClick={onMobileClose} className="text-fg-3 hover:text-fg text-lg px-2" aria-label="Close">×</button>
-            </div>
-            {NavBody}
-          </aside>
-        </>
+        <div className="v3-modal mn-drawer" role="dialog" aria-modal="true" aria-label="Macro menu">
+          <div className="v3-modal-bg" onClick={onMobileClose} />
+          <div className="v3-modal-card">
+            <header className="v3-modal-hd"><h2>Macro menu</h2><button type="button" onClick={onMobileClose} className="v3-modal-x" style={{ marginLeft: 'auto' }} aria-label="Close">×</button></header>
+            <div className="v3-modal-bd">{NavBody}</div>
+          </div>
+        </div>
       )}
     </>
   );

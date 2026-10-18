@@ -2,7 +2,7 @@
 
 import { useCountUp } from '@/hooks/use-count-up';
 import type { MacroState } from '@/lib/macro-api';
-import { formatIndicatorValue, formatSignedPct, deltaPct } from '@/lib/macro-format';
+import { formatIndicatorValue, deltaPct } from '@/lib/macro-format';
 
 type CardKey = 'inflation' | 'rates' | 'gdp' | 'labour';
 
@@ -19,7 +19,7 @@ interface CardDef {
 const CARDS: CardDef[] = [
   {
     key: 'inflation',
-    title: 'INFLATION TREND',
+    title: 'Inflation trend',
     series: ['CPILFESL', 'CPIAUCSL', 'PCEPILFE'],
     bullWhen: 'down',
     noteBull: 'Cooling prices open room for policy easing.',
@@ -27,7 +27,7 @@ const CARDS: CardDef[] = [
   },
   {
     key: 'rates',
-    title: 'INTEREST-RATE TREND',
+    title: 'Interest-rate trend',
     series: ['DFF', 'FEDFUNDS'],
     fallbackSeries: ['FEDTARMD'],
     bullWhen: 'down',
@@ -36,7 +36,7 @@ const CARDS: CardDef[] = [
   },
   {
     key: 'gdp',
-    title: 'GDP GROWTH',
+    title: 'GDP growth',
     series: ['GDPNOW', 'GDPC1'],
     bullWhen: 'up',
     noteBull: 'Growth holding — soft-landing narrative intact.',
@@ -44,8 +44,8 @@ const CARDS: CardDef[] = [
   },
   {
     key: 'labour',
-    title: 'LABOUR MARKET',
-    series: ['PAYEMS', 'UNRATE', 'ICSA'],
+    title: 'Labour market',
+    series: ['UNRATE', 'PAYEMS', 'ICSA'],
     bullWhen: 'up',
     noteBull: 'Hiring resilient — demand still firm.',
     noteBear: 'Hiring slowdown — labour cooling into the Fed.',
@@ -83,42 +83,48 @@ function AnimatedValue({ value, unit }: { value: number; unit: string | null | u
   return <>{formatIndicatorValue(n ?? value, unit)}</>;
 }
 
-/** Four hero summary cards — Inflation / Rates / GDP / Labour. */
+const WORD: Record<CardKey, [string, string, string]> = {
+  // [rising, falling, flat]
+  inflation: ['heating', 'cooling', 'flat'], rates: ['hiking', 'easing', 'on hold'],
+  gdp: ['accelerating', 'slowing', 'steady'], labour: ['softening', 'tightening', 'steady'],
+};
+
+function Spark({ values, tone }: { values: number[]; tone: string }) {
+  if (values.length < 2) return <div className="ms-spark" />;
+  const mn = Math.min(...values), mx = Math.max(...values), sp = mx - mn || 1;
+  const pts = values.map((v, i) => [(i / (values.length - 1)) * 100, 6 + (1 - (v - mn) / sp) * 40] as const);
+  const d = 'M' + pts.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' L');
+  const col = tone === 'bull' ? '#19C37D' : tone === 'bear' ? '#F4435E' : '#6E4BFF';
+  const id = `ms${Math.round(values[values.length - 1]! * 1000)}${values.length}${tone}`;
+  return (
+    <svg className="ms-spark" viewBox="0 0 100 50" preserveAspectRatio="none" aria-hidden>
+      <defs><linearGradient id={id} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor={col} stopOpacity=".22" /><stop offset="1" stopColor={col} stopOpacity="0" /></linearGradient></defs>
+      <path d={`${d} L100,50 L0,50Z`} fill={`url(#${id})`} />
+      <path d={d} fill="none" stroke={col} strokeWidth="2" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+    </svg>
+  );
+}
+
+/** Four trend cards — Inflation / Rates / GDP / Labour, with direction words and history. */
 export default function SummaryCards({ macro }: { macro: MacroState['macro'] }) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2 items-stretch" data-testid="macro-summary-cards">
+    <div className="ms" data-testid="macro-summary-cards">
       {CARDS.map((def, i) => {
         const row = pick(macro, def.series) ?? (def.fallbackSeries ? pick(macro, def.fallbackSeries) : null);
         const tone = row ? cardTone(def, row) : 'neutral';
         const d = row ? deltaPct(row.value, row.prev) : null;
-        const toneCls = tone === 'bull' ? 'text-profit border-profit/30 bg-profit/10' : tone === 'bear' ? 'text-loss border-loss/30 bg-loss/10' : 'text-fg-3 border-border bg-surface-hover';
+        // Payrolls rising is strength; unemployment/claims rising is softening.
+        const w = row?.key === 'PAYEMS' ? (['strengthening', 'softening', 'steady'] as [string, string, string]) : WORD[def.key];
+        const dirWord = d == null || Math.abs(d) < 0.05 ? w[2] : d > 0 ? w[0] : w[1];
+        const arrow = d == null || Math.abs(d) < 0.05 ? '–' : d > 0 ? '▲' : '▼';
+        const cls = tone === 'bull' ? 'lg' : tone === 'bear' ? 'sh' : 'v';
         const note = tone === 'bull' ? def.noteBull : tone === 'bear' ? def.noteBear : 'Awaiting a clear trend print.';
-
         return (
-          <article
-            key={def.key}
-            className="tcard p-4 flex flex-col h-full min-h-[140px] rise"
-            style={{ ['--i' as string]: i }}
-            data-testid={`macro-summary-${def.key}`}
-          >
-            <div className="flex items-center justify-between gap-2">
-              <div className="text-[10px] tracking-[0.18em] text-fg-3">{def.title}</div>
-              <span className={`text-[9px] tracking-[0.12em] px-1.5 py-0.5 rounded border ${toneCls}`}>
-                {tone === 'bull' ? 'BULLISH' : tone === 'bear' ? 'BEARISH' : 'NEUTRAL'}
-              </span>
-            </div>
-            <div className="mt-3 numeric text-2xl font-display font-black text-fg">
-              {row ? <AnimatedValue value={row.value} unit={row.unit} /> : '—'}
-            </div>
-            <div className="text-[11px] text-fg-3 mt-1">
-              {row?.label ?? 'No print'}
-              {d != null && (
-                <span className={`numeric ml-2 ${d > 0 ? 'text-profit' : d < 0 ? 'text-loss' : ''}`}>
-                  {formatSignedPct(d, 1)} vs prior
-                </span>
-              )}
-            </div>
-            <p className="text-[11px] text-fg-3 mt-auto pt-3 leading-relaxed">{note}</p>
+          <article key={def.key} className="v3-card ms-card" style={{ animationDelay: `${i * 60}ms` }} data-testid={`macro-summary-${def.key}`} title={note}>
+            <span className="mc-lbl">{def.title}</span>
+            <div className="ms-v"><b className="num">{row ? <AnimatedValue value={row.value} unit={row.unit} /> : '—'}</b>
+              {row && <span className={cls}>{arrow} {dirWord}</span>}</div>
+            <Spark values={row?.history ?? []} tone={tone} />
           </article>
         );
       })}

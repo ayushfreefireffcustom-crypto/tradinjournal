@@ -114,7 +114,7 @@ export default function MembershipPanel() {
 
         <div className="tcard p-4 h-full flex flex-col">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] tracking-[0.16em] text-fg">TRADEAI MEMBER</span>
+            <span className="text-[11px] tracking-[0.16em] text-fg">TradeAI member</span>
             <span className="text-[9px] px-1.5 py-0.5 rounded border border-border text-fg-3">VERIFIED</span>
           </div>
           <ul className="mt-3 space-y-1.5 flex-1">
@@ -129,7 +129,7 @@ export default function MembershipPanel() {
 
       {/* Access / status */}
       <div className="tcard p-4">
-        <div className="text-[10px] tracking-[0.2em] text-fg-3">// TRADEAI ACCESS</div>
+        <div className="text-[10px] tracking-[0.2em] text-fg-3">TradeAI access</div>
         <p className="text-[12px] text-fg-3 mt-2 leading-relaxed">
           Free dashboards are open to every signed-in user. Signal levels stay <span className="text-fg-2">server-gated</span>{' '}
           until your exchange mapping is approved (24–48h verification).
@@ -211,7 +211,7 @@ export default function MembershipPanel() {
       {isAdmin && (
         <div className="tcard p-4" data-testid="macro-admin-queue">
           <div className="flex items-center justify-between border-b border-border-soft pb-2">
-            <div className="text-[10px] tracking-[0.2em] text-fg-3">// ADMIN · PENDING APPLICATIONS</div>
+            <div className="text-[10px] tracking-[0.2em] text-fg-3">Admin · pending applications</div>
             <span className="text-[10px] text-fg-3 numeric">{pending.length}</span>
           </div>
 

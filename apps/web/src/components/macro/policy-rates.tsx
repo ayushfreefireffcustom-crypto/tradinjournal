@@ -31,7 +31,7 @@ export default function PolicyRates({ macro }: { macro: MacroState['macro'] }) {
   return (
     <div className="tcard p-4 flex flex-col h-full min-h-[260px]" data-testid="macro-policy-rates">
       <div className="flex items-center justify-between border-b border-border-soft pb-2 shrink-0">
-        <div className="text-[10px] tracking-[0.2em] text-fg-3">// POLICY RATES</div>
+        <div className="text-[10px] tracking-[0.2em] text-fg-3">Policy rates</div>
         <div className="text-[10px] tracking-[0.14em] text-fg-3">FED · ECB</div>
       </div>
 
@@ -55,7 +55,7 @@ export default function PolicyRates({ macro }: { macro: MacroState['macro'] }) {
 
       {divergence != null && (
         <div className="mt-auto pt-2 border-t border-border-soft flex items-center justify-between text-[10px] shrink-0">
-          <span className="text-fg-3 tracking-[0.12em]">FED − ECB DIVERGENCE</span>
+          <span className="text-fg-3 tracking-[0.12em]">Fed − ECB divergence</span>
           <span className={`numeric ${divergence > 0 ? 'text-profit' : divergence < 0 ? 'text-loss' : 'text-fg-3'}`}>
             {bp(divergence)}
           </span>

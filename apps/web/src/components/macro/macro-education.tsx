@@ -35,7 +35,7 @@ export default function MacroEducation() {
   return (
     <div className="space-y-4" data-testid="macro-education">
       <div>
-        <div className="text-[10px] tracking-[0.2em] text-fg-3">// EDUCATION LAYER</div>
+        <div className="text-[10px] tracking-[0.2em] text-fg-3">Education</div>
         <h2 className="font-display font-black text-xl tracking-tight mt-1">Macro Glossary</h2>
         <p className="text-[12px] text-fg-3 mt-1 max-w-2xl leading-relaxed">
           Plain-English primers for every dashboard concept — beginner to desk-ready.

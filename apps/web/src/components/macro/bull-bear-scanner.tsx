@@ -51,7 +51,7 @@ export default function BullBearScanner({ bias }: { bias: MacroState['bias'] }) 
   return (
     <section className="tcard p-3 sm:p-4" data-testid="macro-scanner">
       <div className="flex items-center justify-between border-b border-border-soft pb-2">
-        <div className="text-[10px] tracking-[0.2em] text-fg-3">// BULL / BEAR SCANNER</div>
+        <div className="text-[10px] tracking-[0.2em] text-fg-3">Bull / bear scanner</div>
         <div className="flex items-center gap-3 text-[9px] tracking-[0.14em] text-fg-3">
           <span className="text-loss">BEARISH</span>
           <span>50</span>

@@ -45,7 +45,7 @@ export default function GeoRisk({ headlines }: { headlines: MacroState['headline
     <div className="space-y-3" data-testid="macro-geo-risk">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
-          <div className="text-[10px] tracking-[0.2em] text-fg-3">// GEOPOLITICAL RISK</div>
+          <div className="text-[10px] tracking-[0.2em] text-fg-3">Geopolitical risk</div>
           <h2 className="font-display font-black text-xl tracking-tight mt-1">Event Heat</h2>
         </div>
         <span className={`text-[10px] tracking-[0.14em] px-2.5 py-1 rounded border ${heatCls}`}>

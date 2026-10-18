@@ -52,7 +52,7 @@ export default function YieldCurve({ macro }: { macro: MacroState['macro'] }) {
   return (
     <div className="tcard p-4 flex flex-col h-full min-h-[260px]" data-testid="macro-yield-curve">
       <div className="flex items-center justify-between border-b border-border-soft pb-2 shrink-0">
-        <div className="text-[10px] tracking-[0.2em] text-fg-3">// YIELD CURVE</div>
+        <div className="text-[10px] tracking-[0.2em] text-fg-3">Yield curve</div>
         <span
           className={`text-[9px] px-1.5 py-0.5 rounded border ${
             inverted ? 'text-loss border-loss/30 bg-loss/10' : 'text-profit border-profit/30 bg-profit/10'

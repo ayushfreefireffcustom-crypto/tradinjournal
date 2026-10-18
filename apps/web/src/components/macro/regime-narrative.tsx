@@ -7,41 +7,31 @@ type Regime = NonNullable<MacroState['regime']>;
 
 const NARRATIVE: Record<string, { title: string; body: string; tension: string }> = {
   Goldilocks: {
-    title: 'Disinflationary Growth',
+    title: 'Disinflationary growth',
     body: 'Output is expanding while inflation cools — historically the friendliest tape for risk assets, though late-cycle fragility can reverse quickly.',
     tension: 'Markets are pricing a soft landing. Watch labour prints and core inflation for confirmation that the Fed can ease without a hard stop.',
   },
   Reflation: {
-    title: 'Reflationary Expansion',
+    title: 'Reflationary expansion',
     body: 'Growth and inflation are both rising — commodities and cyclicals typically lead while duration stays under pressure.',
     tension: 'The Fed may stay restrictive longer. Risk assets need earnings growth to outrun higher discount rates.',
   },
   Stagflation: {
-    title: 'Stagflation Pressure',
+    title: 'Stagflation pressure',
     body: 'Weak growth with sticky inflation — the hardest regime for policy and for most risk assets outside real assets.',
     tension: 'Policy is trapped between growth support and inflation control. Expect higher vol and choppy risk appetite.',
   },
   Deflation: {
-    title: 'Disinflationary Slowdown',
+    title: 'Disinflationary slowdown',
     body: 'Growth and inflation both falling — duration and quality usually outperform as the market prices easier policy.',
     tension: 'Recession odds matter more than inflation here. Credit stress and labour deterioration are the key tells.',
   },
   Unclear: {
-    title: 'Regime Unclear',
+    title: 'Regime unclear',
     body: 'Growth and inflation signals are mixed or incomplete — confluence leans on other factors until the quadrant resolves.',
     tension: 'Wait for the next labour and inflation prints before sizing directional macro bets aggressively.',
   },
 };
-
-function pill(active: boolean, tone: 'blue' | 'purple' | 'green' | 'orange' | 'red'): string {
-  const base = 'text-[9px] tracking-[0.12em] uppercase px-2 py-1 rounded border';
-  if (!active) return `${base} text-fg-3 border-border-soft`;
-  if (tone === 'blue') return `${base} text-sky-300 border-sky-400/40 bg-sky-400/10`;
-  if (tone === 'purple') return `${base} text-violet-300 border-violet-400/40 bg-violet-400/10`;
-  if (tone === 'green') return `${base} text-profit border-profit/40 bg-profit/10`;
-  if (tone === 'orange') return `${base} text-warning border-warning/40 bg-warning/10`;
-  return `${base} text-loss border-loss/40 bg-loss/10`;
-}
 
 function derivePills(regime: Regime, macro: MacroState['macro']) {
   const by = new Map(macro.map(m => [m.key, m]));
@@ -53,20 +43,20 @@ function derivePills(regime: Regime, macro: MacroState['macro']) {
 
   return {
     risk: riskOn
-      ? { label: fragile ? 'RISK-ON (FRAGILE)' : 'RISK-ON', tone: 'blue' as const, on: true }
-      : { label: 'RISK-OFF BIAS', tone: 'red' as const, on: true },
+      ? { label: fragile ? 'Risk-on (fragile)' : 'Risk-on', tone: 'blue' as const, on: true }
+      : { label: 'Risk-off bias', tone: 'red' as const, on: true },
     liquidity: {
-      label: liqExpanding ? 'LIQUIDITY: EXPANDING' : 'LIQUIDITY: TIGHTENING',
+      label: liqExpanding ? 'Liquidity expanding' : 'Liquidity tightening',
       tone: 'purple' as const,
       on: true,
     },
     inflation: {
-      label: regime.inflation === 'down' ? 'INFLATION: FALLING' : 'INFLATION: RISING',
+      label: regime.inflation === 'down' ? 'Inflation falling' : 'Inflation rising',
       tone: regime.inflation === 'down' ? ('green' as const) : ('orange' as const),
       on: true,
     },
     growth: {
-      label: regime.growth === 'up' ? 'GROWTH: FIRMING' : 'GROWTH: SLOWING',
+      label: regime.growth === 'up' ? 'Growth firming' : 'Growth slowing',
       tone: regime.growth === 'up' ? ('green' as const) : ('orange' as const),
       on: true,
     },
@@ -83,10 +73,10 @@ export default function RegimeNarrative({
 }) {
   if (!regime) {
     return (
-      <div className="tcard p-4 sm:p-5 h-full min-h-[280px] flex flex-col" data-testid="macro-regime-narrative-empty">
-        <div className="text-[10px] tracking-[0.2em] text-fg-3">// CURRENT MACRO REGIME</div>
-        <p className="text-sm text-fg-3 mt-4 flex-1 flex items-center">No regime classified yet — waiting on FRED ingest.</p>
-      </div>
+      <section className="mr" data-testid="macro-regime-narrative-empty">
+        <span className="mc-lbl">Current macro regime</span>
+        <p className="mr-body">No regime classified yet — waiting on the first data ingest.</p>
+      </section>
     );
   }
 
@@ -95,45 +85,16 @@ export default function RegimeNarrative({
   const odds = regime.recessionOdds;
   const pillList = [pills.risk, pills.liquidity, pills.inflation, pills.growth] as const;
 
+  const words = copy.title.split(' ');
+  const last = words.pop();
   return (
-    <div
-      className="tcard p-3 sm:p-5 flex flex-col h-full min-h-[220px] sm:min-h-[280px] rise"
-      style={{ ['--i' as string]: 1 }}
-      data-testid="macro-regime-narrative"
-    >
-      <div className="flex items-center justify-between shrink-0 gap-2">
-        <div className="text-[10px] tracking-[0.2em] text-fg-3">// CURRENT MACRO REGIME</div>
-        {odds != null && (
-          <span className="text-[9px] tracking-[0.12em] px-2 py-1 rounded border border-border-soft text-fg-2">
-            RECESSION RISK:{' '}
-            <CountUp value={odds} suffix="%" className="numeric text-fg" duration={1000} />
-          </span>
-        )}
-      </div>
-
-      <h2 className="font-display font-black text-xl sm:text-2xl tracking-tight text-fg mt-3 fade-up" data-testid="regime-narrative-title">
-        {copy.title}
-      </h2>
-      <p className="text-[12px] text-fg-3 leading-relaxed mt-2">{copy.body}</p>
-
-      <div className="flex flex-wrap gap-1.5 mt-4">
-        {pillList.map((p, i) => (
-          <span
-            key={p.label}
-            className={`${pill(p.on, p.tone)} pill-in`}
-            style={{ ['--i' as string]: i }}
-          >
-            {p.label}
-          </span>
-        ))}
-      </div>
-
-      <div className="mt-auto pt-4">
-        <div className="rounded-[var(--radius-btn)] border border-sky-400/30 bg-sky-400/5 p-3 fade-up">
-          <div className="text-[9px] tracking-[0.16em] text-sky-300 mb-1">KEY TENSION</div>
-          <p className="text-[12px] text-fg-2 leading-relaxed">{copy.tension}</p>
-        </div>
-      </div>
-    </div>
+    <section className="mr" data-testid="macro-regime-narrative" aria-labelledby="mr-t">
+      <div className="mr-top"><span className="mc-lbl">Current macro regime</span>
+        {odds != null && <span className="mr-odds num">Recession risk <CountUp value={odds} suffix="%" duration={1000} /></span>}</div>
+      <h2 id="mr-t" data-testid="regime-narrative-title">{words.join(' ')} <em>{last}.</em></h2>
+      <p className="mr-body">{copy.body}</p>
+      <div className="mr-pills">{pillList.map((p, i) => <span key={p.label} className={`t-${p.tone}`} style={{ animationDelay: `${i * 70}ms` }}>{p.label}</span>)}</div>
+      <div className="mr-key"><b>Key tension:</b> {copy.tension}</div>
+    </section>
   );
 }

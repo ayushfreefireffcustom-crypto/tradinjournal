@@ -38,7 +38,7 @@ export default function MacroCalendarPanel({ events }: { events: MacroState['eve
     <div className="space-y-3" data-testid="macro-calendar-panel">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
-          <div className="text-[10px] tracking-[0.2em] text-fg-3">// ECONOMIC CALENDAR</div>
+          <div className="text-[10px] tracking-[0.2em] text-fg-3">Economic calendar</div>
           <h2 className="font-display font-black text-xl tracking-tight mt-1">Event Window</h2>
         </div>
         <div className="text-[11px] text-fg-3 numeric">{filtered.length} events</div>
@@ -47,7 +47,7 @@ export default function MacroCalendarPanel({ events }: { events: MacroState['eve
       {nextHigh && (
         <div className="tcard p-3 border-loss/25 flex items-center justify-between gap-3" data-testid="macro-calendar-next-high">
           <div className="min-w-0">
-            <div className="text-[9px] tracking-[0.16em] text-loss">NEXT HIGH IMPACT</div>
+            <div className="text-[9px] tracking-[0.16em] text-loss">Next high impact</div>
             <div className="text-[13px] text-fg truncate mt-0.5">{nextHigh.title}</div>
           </div>
           <div className="text-right shrink-0">

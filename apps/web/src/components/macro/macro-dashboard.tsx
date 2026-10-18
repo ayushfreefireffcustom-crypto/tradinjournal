@@ -16,8 +16,8 @@ import RegimeQuadrant from './regime-quadrant';
 /** Command-centre dashboard — IITian density: hero → bias grid → summaries → deep data. */
 export default function MacroDashboard({ state }: { state: MacroState }) {
   return (
-    <div className="space-y-3" data-testid="macro-dashboard">
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 items-stretch">
+    <div className="mc-stack" data-testid="macro-dashboard">
+      <div className="mc-hero">
         <GlobalBiasGauge bias={state.bias} />
         <RegimeNarrative regime={state.regime} macro={state.macro} />
       </div>
@@ -25,14 +25,14 @@ export default function MacroDashboard({ state }: { state: MacroState }) {
       <AssetBiasGrid bias={state.bias} />
       <SummaryCards macro={state.macro} />
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 items-stretch">
+      <div className="mc-2">
         <RegimeQuadrant regime={state.regime} />
         <ConfluencePanel bias={state.bias} />
       </div>
 
       <MarketTiles markets={state.markets} bias={state.bias} />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-stretch">
+      <div className="mc-2">
         <YieldCurve macro={state.macro} />
         <PolicyRates macro={state.macro} />
       </div>

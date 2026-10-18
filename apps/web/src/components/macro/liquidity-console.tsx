@@ -68,7 +68,7 @@ export default function LiquidityConsole({ macro }: { macro: MacroState['macro']
     <div className="space-y-3" data-testid="macro-liquidity-console">
       <div className="flex items-center justify-between">
         <div>
-          <div className="text-[10px] tracking-[0.2em] text-fg-3">// BANKING & LIQUIDITY</div>
+          <div className="text-[10px] tracking-[0.2em] text-fg-3">Banking & liquidity</div>
           <h2 className="font-display font-black text-xl tracking-tight mt-1">Net Liquidity Console</h2>
         </div>
         <span className={`text-[10px] tracking-[0.14em] px-2 py-1 rounded border ${stressTone}`}>
