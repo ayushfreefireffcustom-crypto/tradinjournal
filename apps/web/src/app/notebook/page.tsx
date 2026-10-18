@@ -1,46 +1,40 @@
 'use client';
 
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import Link from 'next/link';
 import AppShell from '@/components/app-shell';
 import ConnectBrokerModal from '@/components/connect-broker-modal';
 import { api, type BrokerAccount, type JournalEntry } from '@/lib/api';
 import { useAccounts } from '@/lib/use-accounts';
 import { toCsv, downloadCsv, dateStamp } from '@/lib/csv';
 import { useToast } from '@/components/toast';
-import JournalEmpty from '@/components/journal/journal-empty';
-import JournalStats from '@/components/journal/journal-stats';
+import { IDownload, IClose, IPlus, ISearch, IJournal } from '@/components/v3/icons';
 
-const EMOTIONS = ['Disciplined', 'Confident', 'Patient', 'FOMO', 'Revenge', 'Hesitant'];
-const NEGATIVE = ['FOMO', 'Revenge', 'Hesitant'];
+const EMOTIONS = ['Disciplined', 'Patient', 'Confident', 'FOMO', 'Revenge', 'Hesitant'];
+const POSITIVE = ['Disciplined', 'Confident', 'Patient'];
+// One hue per mindset; green family = calm, amber = hesitant, red family = reactive.
+const EMO: Record<string, { c: string; tone: 'g' | 'v' | 'a' | 'r' }> = {
+  Disciplined: { c: '#19C37D', tone: 'g' }, Patient: { c: '#7ED9AE', tone: 'g' }, Confident: { c: '#9479FF', tone: 'v' },
+  Hesitant: { c: '#F2B53A', tone: 'a' }, FOMO: { c: '#F77A8D', tone: 'r' }, Revenge: { c: '#F4435E', tone: 'r' },
+};
+const BAD_TAG = /revenge|fomo|tilt|hold.?loser|mistake|overtrad|chase/i;
+const tagLabel = (t: string) => `#${t.trim().toLowerCase().replace(/^#/, '').replace(/\s+/g, '-')}`;
 
-function emotionClass(e: string, active: boolean): string {
-  const base = 'transition-colors duration-[var(--dur-hover)] press focus-ring';
-  if (!active) return `${base} border-border-soft text-fg-3 hover:text-fg hover:border-border-strong`;
-  return `${base} ${NEGATIVE.includes(e) ? 'bg-loss/15 border-loss text-loss' : 'bg-profit/15 border-profit text-profit'}`;
-}
+const localDay = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+function toDateInput(iso: string) { return localDay(new Date(iso)); }
+function fromDateInput(v: string) { const [y, m, d] = v.split('-').map(Number); return new Date(y!, m! - 1, d!, 12).toISOString(); }
+const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 
-function fmtDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
-}
+interface Draft { id: string | null; title: string; body: string; emotion: string; tags: string[]; entryDate: string }
+const emptyDraft = (): Draft => ({ id: null, title: '', body: '', emotion: '', tags: [], entryDate: localDay(new Date()) });
 
-// yyyy-mm-dd for <input type="date">, in local time
-function toDateInput(iso: string): string {
-  const d = new Date(iso);
-  const off = d.getTimezoneOffset();
-  return new Date(d.getTime() - off * 60000).toISOString().slice(0, 10);
-}
-
-interface Draft {
-  id: string | null;
-  title: string;
-  body: string;
-  emotion: string;
-  tags: string[];
-  entryDate: string; // yyyy-mm-dd
-}
-
-function emptyDraft(): Draft {
-  return { id: null, title: '', body: '', emotion: '', tags: [], entryDate: toDateInput(new Date().toISOString()) };
+function streak(entries: JournalEntry[]) {
+  const days = new Set(entries.map(e => localDay(new Date(e.entryDate))));
+  const cur = new Date(); cur.setHours(0, 0, 0, 0);
+  if (!days.has(localDay(cur))) cur.setDate(cur.getDate() - 1); // still counts if you logged yesterday
+  let n = 0;
+  while (days.has(localDay(cur))) { n++; cur.setDate(cur.getDate() - 1); }
+  return n;
 }
 
 export default function NotebookPage() {
@@ -50,94 +44,80 @@ export default function NotebookPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showConnect, setShowConnect] = useState(false);
-
   const [draft, setDraft] = useState<Draft>(emptyDraft());
   const [tagDraft, setTagDraft] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [confirmDel, setConfirmDel] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [q, setQ] = useState('');
+  const [emoFilter, setEmoFilter] = useState<string | null>(null);
+  const [flash, setFlash] = useState<string | null>(null);
+  const formRef = useRef<HTMLElement>(null);
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
 
-  // The notebook is a global logbook: load every entry for the user, not just
-  // the selected account's, so standalone notes are never hidden.
+  // The notebook is a global logbook: every entry for the user, not just the
+  // selected account's, so standalone notes are never hidden.
   const loadEntries = useCallback(async () => {
     setLoading(true);
     setError('');
-    try {
-      setEntries(await api.journal.list());
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to load journal entries');
-    } finally {
-      setLoading(false);
-    }
+    try { setEntries(await api.journal.list()); }
+    catch (err: unknown) { setError(err instanceof Error ? err.message : 'Failed to load journal entries'); }
+    finally { setLoading(false); }
   }, []);
   useEffect(() => { loadEntries(); }, [loadEntries]);
 
-  const sorted = useMemo(
-    () => [...entries].sort((a, b) => +new Date(b.entryDate) - +new Date(a.entryDate)),
-    [entries],
-  );
+  const sorted = useMemo(() => [...entries].sort((a, b) => +new Date(b.entryDate) - +new Date(a.entryDate)), [entries]);
+  const shown = useMemo(() => {
+    const s = q.trim().toLowerCase();
+    return sorted.filter(e => (!emoFilter || e.emotion === emoFilter) && (!s || `${e.title ?? ''} ${e.body} ${(e.tags ?? []).join(' ')}`.toLowerCase().includes(s)));
+  }, [sorted, q, emoFilter]);
+  const accountName = useCallback((id: string | null) => (id ? accounts.find(a => a.id === id)?.broker ?? null : null), [accounts]);
 
-  const accountName = useCallback(
-    (id: string | null) => (id ? accounts.find(a => a.id === id)?.broker ?? null : null),
-    [accounts],
-  );
+  const stats = useMemo(() => {
+    const now = new Date();
+    const thisMonth = entries.filter(e => { const d = new Date(e.entryDate); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); }).length;
+    const counts = new Map<string, number>();
+    for (const e of entries) if (e.emotion) counts.set(e.emotion, (counts.get(e.emotion) ?? 0) + 1);
+    const total = [...counts.values()].reduce((a, b) => a + b, 0);
+    const mix = EMOTIONS.filter(e => counts.has(e)).map(e => ({ e, n: counts.get(e)!, pct: (counts.get(e)! / total) * 100 }));
+    const top = [...counts.entries()].sort((a, b) => b[1] - a[1])[0];
+    const calm = [...counts.entries()].filter(([e]) => POSITIVE.includes(e)).reduce((a, [, c]) => a + c, 0);
+    return { thisMonth, streak: streak(entries), mix, top: top?.[0] ?? null, topPct: top && total ? Math.round((top[1] / total) * 100) : 0, discipline: total ? Math.round((calm / total) * 100) : null };
+  }, [entries]);
 
   const isEditing = draft.id !== null;
-
-  function startNew() {
-    setDraft(emptyDraft());
-    setTagDraft(null);
-  }
-
+  const startNew = () => { setDraft(emptyDraft()); setTagDraft(null); };
   function startEdit(e: JournalEntry) {
-    setDraft({
-      id: e.id,
-      title: e.title ?? '',
-      body: e.body,
-      emotion: e.emotion ?? '',
-      tags: e.tags ?? [],
-      entryDate: toDateInput(e.entryDate),
-    });
+    setDraft({ id: e.id, title: e.title ?? '', body: e.body, emotion: e.emotion ?? '', tags: e.tags ?? [], entryDate: toDateInput(e.entryDate) });
     setTagDraft(null);
-    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
+    formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setTimeout(() => bodyRef.current?.focus({ preventScroll: true }), 350);
   }
-
   function commitTagDraft() {
-    const t = tagDraft?.trim();
-    if (t && !draft.tags.includes(t)) setDraft(d => ({ ...d, tags: [...d.tags, t] }));
+    const t = tagDraft?.trim().replace(/^#/, '');
+    if (t && !draft.tags.some(x => x.toLowerCase() === t.toLowerCase())) setDraft(d => ({ ...d, tags: [...d.tags, t] }));
     setTagDraft(null);
   }
 
   async function handleSave() {
-    if (!draft.body.trim()) return;
+    if (!draft.body.trim() || saving) return;
     setSaving(true);
     setError('');
     try {
-      const payload = {
-        title: draft.title.trim() || undefined,
-        body: draft.body,
-        emotion: draft.emotion || undefined,
-        tags: draft.tags,
-        entryDate: new Date(draft.entryDate).toISOString(),
-      };
-      const saved = draft.id
-        ? await api.journal.update(draft.id, payload)
-        : await api.journal.create({ ...payload, brokerAccountId: selected?.id });
-      setEntries(prev => {
-        const rest = prev.filter(e => e.id !== saved.id);
-        return [saved, ...rest];
-      });
+      const payload = { title: draft.title.trim() || undefined, body: draft.body, emotion: draft.emotion || undefined, tags: draft.tags, entryDate: fromDateInput(draft.entryDate) };
+      const saved = draft.id ? await api.journal.update(draft.id, payload) : await api.journal.create({ ...payload, brokerAccountId: selected?.id });
+      setEntries(prev => [saved, ...prev.filter(e => e.id !== saved.id)]);
+      setFlash(saved.id);
       toast.success(draft.id ? 'Entry updated' : 'Entry saved');
       startNew();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to save entry');
       toast.error('Failed to save entry');
-    } finally {
-      setSaving(false);
-    }
+    } finally { setSaving(false); }
   }
+  useEffect(() => { if (!flash) return; const t = setTimeout(() => setFlash(null), 1600); return () => clearTimeout(t); }, [flash]);
 
   async function handleDelete(id: string) {
-    if (typeof window !== 'undefined' && !window.confirm('Delete this journal entry? This cannot be undone.')) return;
     setDeletingId(id);
     setError('');
     try {
@@ -148,9 +128,7 @@ export default function NotebookPage() {
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to delete entry');
       toast.error('Failed to delete entry');
-    } finally {
-      setDeletingId(null);
-    }
+    } finally { setDeletingId(null); setConfirmDel(null); }
   }
 
   function onConnected(a: BrokerAccount) {
@@ -161,227 +139,146 @@ export default function NotebookPage() {
 
   function exportCsv() {
     const headers = ['Date', 'Title', 'Emotion', 'Tags', 'Trade ID', 'Account', 'Body'];
-    const rows = sorted.map(e => [
-      e.entryDate, e.title ?? '', e.emotion ?? '', (e.tags ?? []).join('; '),
-      e.tradeId ?? '', accountName(e.brokerAccountId) ?? '', e.body,
-    ]);
+    const rows = sorted.map(e => [e.entryDate, e.title ?? '', e.emotion ?? '', (e.tags ?? []).join('; '), e.tradeId ?? '', accountName(e.brokerAccountId) ?? '', e.body]);
     downloadCsv(`tradelogs-journal-${dateStamp()}.csv`, toCsv(headers, rows));
     toast.success(`Exported ${sorted.length} entries to CSV`);
   }
 
+  const actions = (
+    <button className="v3-btn v3-btn--o t-export" onClick={exportCsv} disabled={entries.length === 0} data-testid="export-csv">
+      <IDownload size={16} /><span>Export CSV</span>
+    </button>
+  );
+
   return (
-    <AppShell
-      accounts={accounts}
-      selectedAccount={selected}
-      onSelectAccount={select}
-      onConnectClick={() => setShowConnect(true)}
-      pageTitle="Journal"
-      pageSubtitle="// TRADING LOGBOOK"
-    >
-      <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto fade-up" data-testid="notebook-page">
-        {/* Header card — title + live journaling stats + mindset mix */}
-        <div className="tcard p-5 sm:p-6 mb-4">
-          <div className="flex items-start justify-between gap-4 flex-wrap mb-5">
-            <div className="min-w-0">
-              <div className="text-[10px] tracking-[0.25em] text-fg-3">[ JOURNAL // LOGBOOK ]</div>
-              <h1 className="font-display font-black text-3xl sm:text-4xl tracking-tighter mt-2 flex items-baseline gap-2">
-                {entries.length}
-                <span className="text-fg-3 text-xl sm:text-2xl font-bold tracking-tight">{entries.length === 1 ? 'entry' : 'entries'}</span>
-              </h1>
-              <div className="text-[11px] sm:text-[12px] text-fg-3 mt-1.5">Your trading psychology, one note at a time.</div>
-            </div>
-            <button
-              onClick={exportCsv}
-              disabled={entries.length === 0}
-              data-testid="export-csv"
-              className="btn btn-ghost py-2 text-[10px] tracking-[0.22em] shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              ↓ EXPORT CSV
-            </button>
-          </div>
-          <JournalStats entries={entries} />
-        </div>
+    <AppShell accounts={accounts} selectedAccount={selected} onSelectAccount={select} onConnectClick={() => setShowConnect(true)} pageTitle="Journal" actions={actions}>
+      <div className="v3-page" data-testid="notebook-page">
+        <header className="n-head">
+          <p className="v3-sub" style={{ marginTop: 0 }}>Trading logbook</p>
+          <h1 className="v3-h1 t-h1"><span className="num">{loading ? '—' : entries.length}</span> <em>{entries.length === 1 ? 'entry.' : 'entries.'}</em></h1>
+          <p className="v3-sub" style={{ fontSize: 15 }}>Your trading psychology, one note at a time.</p>
+        </header>
 
         {error && (
-          <div className="border border-loss/30 bg-loss/10 px-4 py-3 mb-4 flex items-center justify-between gap-3 text-[12px]" data-testid="notebook-error">
-            <span className="text-loss">{error}</span>
-            <button onClick={loadEntries} className="btn btn-ghost py-1.5 text-[10px] shrink-0">RETRY</button>
+          <div className="d-err" role="alert" data-testid="notebook-error" style={{ marginBottom: 18 }}>
+            <span>{error}</span><button className="v3-btn v3-btn--o" onClick={loadEntries}>Retry</button>
           </div>
         )}
 
-        <div className="grid grid-cols-12 gap-3 items-start">
-          {/* Composer */}
-          <section className="col-span-12 lg:col-span-5 xl:col-span-4">
-            <div className="tcard p-0 lg:sticky lg:top-4" data-testid="notebook-composer">
-              <div className="px-4 py-3 border-b border-border-soft flex items-center justify-between">
-                <div className="text-[10px] tracking-[0.25em] text-fg-3">{isEditing ? 'EDIT_ENTRY' : 'NEW_ENTRY'}</div>
-                {isEditing && (
-                  <button onClick={startNew} data-testid="composer-cancel" className="text-[10px] tracking-widest text-fg-3 hover:text-fg">
-                    + NEW
-                  </button>
-                )}
-              </div>
+        <section className="v3-card a-kpis n-kpis" aria-label="Journal stats">
+          <div><span>This month</span><b className="num">{stats.thisMonth}</b><small>entr{stats.thisMonth === 1 ? 'y' : 'ies'}</small></div>
+          <div><span>Day streak</span><b className="num">{stats.streak}</b><small>{stats.streak ? `day${stats.streak === 1 ? '' : 's'} in a row` : 'Write today to start one'}</small></div>
+          <div><span>Top mindset</span><b>{stats.top ?? '—'}</b><small>{stats.top ? `${stats.topPct}% of tagged entries` : 'Tag an emotion to see this'}</small></div>
+          <div><span>Discipline</span><b className={`num ${stats.discipline != null && stats.discipline >= 50 ? 'lg' : stats.discipline != null ? 'sh' : ''}`}>{stats.discipline == null ? '—' : `${stats.discipline}%`}</b><small>calm vs reactive</small></div>
+          <div className="n-mix">
+            <span>Mindset mix</span>
+            <div className="n-bar" role="img" aria-label={stats.mix.map(m => `${m.e} ${m.n}`).join(', ') || 'No emotions logged'}>
+              {stats.mix.length ? stats.mix.map(m => (
+                <button key={m.e} style={{ width: `${m.pct}%`, background: EMO[m.e]!.c }} title={`${m.e} · ${m.n}`} aria-pressed={emoFilter === m.e}
+                  className={emoFilter && emoFilter !== m.e ? 'dim' : ''} onClick={() => setEmoFilter(f => (f === m.e ? null : m.e))} />
+              )) : <i />}
+            </div>
+            <small>{stats.mix.length ? stats.mix.map(m => m.e).join(' · ') : 'No emotions logged yet'}</small>
+          </div>
+        </section>
 
-              <div className="p-4 flex flex-col gap-4">
-                <label className="flex flex-col gap-1.5">
-                  <span className="text-[10px] tracking-widest text-fg-3">DATE</span>
-                  <input
-                    type="date"
-                    value={draft.entryDate}
-                    onChange={e => setDraft(d => ({ ...d, entryDate: e.target.value }))}
-                    data-testid="composer-date"
-                    className="tinput"
-                  />
-                </label>
-
-                <label className="flex flex-col gap-1.5">
-                  <span className="text-[10px] tracking-widest text-fg-3">TITLE · OPTIONAL</span>
-                  <input
-                    type="text"
-                    value={draft.title}
-                    onChange={e => setDraft(d => ({ ...d, title: e.target.value }))}
-                    placeholder="e.g. London session review"
-                    data-testid="composer-title"
-                    className="tinput"
-                  />
-                </label>
-
-                <div>
-                  <div className="text-[10px] tracking-widest text-fg-3 mb-2">EMOTION · OPTIONAL</div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {EMOTIONS.map(e => (
-                      <button
-                        key={e}
-                        onClick={() => setDraft(d => ({ ...d, emotion: d.emotion === e ? '' : e }))}
-                        data-testid={`composer-emotion-${e.toLowerCase()}`}
-                        className={`px-2.5 py-1 text-[10px] tracking-widest border transition-colors ${emotionClass(e, draft.emotion === e)}`}
-                      >
-                        {e.toUpperCase()}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <div className="text-[10px] tracking-widest text-fg-3 mb-2">TAGS · OPTIONAL</div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {draft.tags.map(t => (
-                      <button
-                        key={t}
-                        onClick={() => setDraft(d => ({ ...d, tags: d.tags.filter(x => x !== t) }))}
-                        title="Remove tag"
-                        data-testid={`composer-tag-${t.toLowerCase()}`}
-                        className="px-2 py-1 text-[10px] tracking-widest border border-border-soft text-fg-2 hover:border-loss hover:text-loss"
-                      >
-                        {t.toUpperCase()}
-                      </button>
-                    ))}
-                    {tagDraft !== null ? (
-                      <input
-                        autoFocus
-                        value={tagDraft}
-                        onChange={e => setTagDraft(e.target.value)}
-                        onKeyDown={e => {
-                          if (e.key === 'Enter') { e.preventDefault(); commitTagDraft(); }
-                          if (e.key === 'Escape') setTagDraft(null);
-                        }}
-                        onBlur={commitTagDraft}
-                        placeholder="Tag name…"
-                        data-testid="composer-tag-input"
-                        className="px-2 py-1 text-[10px] tracking-widest border border-border-strong bg-transparent text-fg w-24 focus:outline-none"
-                      />
-                    ) : (
-                      <button onClick={() => setTagDraft('')} data-testid="composer-add-tag" className="px-2 py-1 text-[10px] tracking-widest border border-dashed border-border-strong text-fg-3 hover:text-fg">
-                        + ADD
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                <label className="flex flex-col gap-1.5">
-                  <span className="text-[10px] tracking-widest text-fg-3">NOTES</span>
-                  <textarea
-                    value={draft.body}
-                    onChange={e => setDraft(d => ({ ...d, body: e.target.value }))}
-                    placeholder="What happened, what you saw, what you'll do differently…"
-                    data-testid="composer-body"
-                    className="tinput min-h-[120px] resize-y leading-relaxed"
-                  />
-                </label>
-
-                <button
-                  onClick={handleSave}
-                  disabled={saving || !draft.body.trim()}
-                  data-testid="composer-save"
-                  className={`btn btn-primary justify-center py-2.5 text-[11px] tracking-[0.22em] ${saving || !draft.body.trim() ? 'opacity-60 cursor-not-allowed' : ''}`}
-                >
-                  {saving ? 'SAVING…' : isEditing ? 'UPDATE ENTRY' : 'SAVE ENTRY'}
-                </button>
+        <div className="n-grid">
+          {/* ── Composer ── */}
+          <section ref={formRef} className={`v3-card n-form ${isEditing ? 'editing' : ''}`} data-testid="journal-form" aria-labelledby="n-form-t">
+            <div className="n-form-hd">
+              <h3 id="n-form-t">{isEditing ? 'Edit entry' : 'New entry'}</h3>
+              {isEditing && <button className="v3-link" onClick={startNew} style={{ margin: 0 }}>Cancel</button>}
+            </div>
+            <div className="n-row2">
+              <label className="n-fld"><span>Date</span>
+                <input type="date" className="n-in" value={draft.entryDate} max={localDay(new Date())} onChange={e => setDraft(d => ({ ...d, entryDate: e.target.value }))} data-testid="entry-date" />
+              </label>
+              <label className="n-fld"><span>Title <em>· optional</em></span>
+                <input className="n-in" value={draft.title} onChange={e => setDraft(d => ({ ...d, title: e.target.value }))} placeholder="London session review" maxLength={120} data-testid="entry-title" />
+              </label>
+            </div>
+            <div className="n-fld"><span>Emotion <em>· optional</em></span>
+              <div className="r-emo">
+                {EMOTIONS.map(e => (
+                  <button key={e} aria-pressed={draft.emotion === e} className={EMO[e]!.tone === 'r' ? 'neg' : ''} onClick={() => setDraft(d => ({ ...d, emotion: d.emotion === e ? '' : e }))} data-testid={`emotion-${e.toLowerCase()}`}>{e}</button>
+                ))}
               </div>
             </div>
+            <div className="n-fld"><span>Tags <em>· optional</em></span>
+              <div className="r-tags">
+                {draft.tags.map(t => <button key={t} className="r-tag" onClick={() => setDraft(d => ({ ...d, tags: d.tags.filter(x => x !== t) }))} aria-label={`Remove ${tagLabel(t)}`}>{tagLabel(t)} <IClose size={13} /></button>)}
+                {tagDraft !== null ? (
+                  <input autoFocus className="r-tag-in" value={tagDraft} onChange={e => setTagDraft(e.target.value)} placeholder="plan" data-testid="tag-draft-input"
+                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); commitTagDraft(); } if (e.key === 'Escape') setTagDraft(null); }} onBlur={commitTagDraft} />
+                ) : <button className="r-tag add" onClick={() => setTagDraft('')} data-testid="add-tag"><IPlus size={13} /> Add</button>}
+              </div>
+            </div>
+            <label className="n-fld r-notes"><span>Notes</span>
+              <textarea ref={bodyRef} value={draft.body} onChange={e => setDraft(d => ({ ...d, body: e.target.value }))} data-testid="entry-body"
+                onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleSave(); }}
+                placeholder="What happened, how you felt, and what you’ll do next time." />
+            </label>
+            <button className="r-save" onClick={handleSave} disabled={saving || !draft.body.trim()} data-testid="save-entry">
+              {saving ? 'Saving…' : isEditing ? 'Update entry' : 'Save entry'}
+            </button>
+            <small className="r-hint">⌘ Enter to save</small>
           </section>
 
-          {/* Entries list */}
-          <section className="col-span-12 lg:col-span-7 xl:col-span-8 flex flex-col gap-3" data-testid="notebook-list">
-            {loading ? (
-              Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="tcard p-5 h-28 animate-pulse bg-surface" />
-              ))
-            ) : sorted.length === 0 ? (
-              <JournalEmpty />
-            ) : (
-              sorted.map(e => {
-                const acc = accountName(e.brokerAccountId);
+          {/* ── Entries ── */}
+          <section className="n-list" aria-label="Entries">
+            {entries.length > 0 && (
+              <div className="n-tools">
+                <label className="v3-field n-search"><ISearch size={16} /><input value={q} onChange={e => setQ(e.target.value)} placeholder="Search notes and tags…" onKeyDown={e => { if (e.key === 'Escape') setQ(''); }} />
+                  {q && <button aria-label="Clear" onClick={() => setQ('')}><IClose size={14} /></button>}</label>
+                {emoFilter && <button className="v3-pill v n-filter" onClick={() => setEmoFilter(null)}>{emoFilter} <IClose size={12} /></button>}
+                <span className="t-count">{shown.length} of {entries.length}</span>
+              </div>
+            )}
+            {loading ? Array.from({ length: 3 }).map((_, i) => <div key={i} className="skel d-sk" style={{ height: 170, borderRadius: 20 }} />)
+              : entries.length === 0 ? (
+                <div className="v3-card n-empty" data-testid="journal-empty">
+                  <span className="r-empty-ic"><IJournal size={22} /></span>
+                  <h3>Your logbook is empty</h3>
+                  <p>Write one honest line after each session. Patterns show up faster than you’d think.</p>
+                  <ul>
+                    <li>What was my plan before entering?</li>
+                    <li>What emotion drove the exit?</li>
+                    <li>What will I do differently next time?</li>
+                  </ul>
+                  <button className="v3-btn v3-btn--o" onClick={() => bodyRef.current?.focus()}>Start writing</button>
+                </div>
+              ) : shown.length === 0 ? (
+                <div className="v3-card d-empty"><b>No entries match</b><button className="v3-link" onClick={() => { setQ(''); setEmoFilter(null); }}>Clear filters</button></div>
+              ) : shown.map(e => {
+                const meta = e.emotion ? EMO[e.emotion] : null;
+                const acct = accountName(e.brokerAccountId);
+                const confirming = confirmDel === e.id;
                 return (
-                  <article key={e.id} className={`tcard tcard-hover p-4 sm:p-5 border-l-2 ${e.emotion ? (NEGATIVE.includes(e.emotion) ? 'border-l-loss/60' : 'border-l-profit/60') : 'border-l-border-strong'}`} data-testid={`entry-${e.id}`}>
-                    <div className="flex items-start justify-between gap-3 flex-wrap">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap text-[10px] tracking-widest text-fg-3">
-                          <span className="numeric">{fmtDate(e.entryDate)}</span>
-                          {e.tradeId && <span className="text-fg-2">· TRADE #{e.tradeId}</span>}
-                          {acc && <span className="text-fg-2">· {acc.toUpperCase()}</span>}
-                        </div>
-                        {e.title && <h3 className="font-display font-bold text-[16px] tracking-tight mt-1.5">{e.title}</h3>}
-                      </div>
-                      <div className="flex items-center gap-1 shrink-0">
-                        {e.emotion && (
-                          <span className={`px-2 py-1 rounded-full text-[9px] tracking-widest border flex items-center gap-1.5 ${NEGATIVE.includes(e.emotion) ? 'border-loss/50 text-loss bg-loss/5' : 'border-profit/50 text-profit bg-profit/5'}`}>
-                            <span className="w-1.5 h-1.5 rounded-full bg-current" /> {e.emotion.toUpperCase()}
-                          </span>
+                  <article key={e.id} className={`v3-card n-entry ${flash === e.id ? 'flash' : ''} ${draft.id === e.id ? 'editing' : ''}`} style={{ ['--edge' as string]: meta?.c ?? '#E4E2E6' }} data-testid={`entry-${e.id}`}>
+                    <div className="n-meta">
+                      <span className="num">{fmtDate(e.entryDate)}</span>
+                      {e.tradeId && <> · <Link href={`/trades/${e.tradeId}${e.brokerAccountId ? `?account=${encodeURIComponent(e.brokerAccountId)}` : ''}`} className="n-trade">Trade #{e.tradeId}</Link></>}
+                      {acct && <> · {acct}</>}
+                      {e.emotion && meta && <span className={`v3-pill ${meta.tone}`}>{e.emotion}</span>}
+                      <span className="n-acts">
+                        {confirming ? (
+                          <><span className="mute">Delete?</span>
+                            <button className="n-del" onClick={() => handleDelete(e.id)} disabled={deletingId === e.id} data-testid={`confirm-delete-${e.id}`}>{deletingId === e.id ? 'Deleting…' : 'Delete'}</button>
+                            <button onClick={() => setConfirmDel(null)}>Keep</button></>
+                        ) : (
+                          <><button className="ed" onClick={() => startEdit(e)} data-testid={`edit-${e.id}`}>Edit</button>
+                            <button onClick={() => setConfirmDel(e.id)} data-testid={`delete-${e.id}`}>Del</button></>
                         )}
-                        <button
-                          onClick={() => startEdit(e)}
-                          data-testid={`entry-edit-${e.id}`}
-                          className="px-2 py-1 rounded text-[9px] tracking-widest border border-border-soft text-fg-3 hover:text-fg hover:border-border-strong transition-colors duration-[var(--dur-hover)] press focus-ring"
-                        >
-                          EDIT
-                        </button>
-                        <button
-                          onClick={() => handleDelete(e.id)}
-                          disabled={deletingId === e.id}
-                          data-testid={`entry-delete-${e.id}`}
-                          className="px-2 py-1 rounded text-[9px] tracking-widest border border-border-soft text-fg-3 hover:text-loss hover:border-loss transition-colors duration-[var(--dur-hover)] press focus-ring disabled:opacity-50"
-                        >
-                          {deletingId === e.id ? '…' : 'DEL'}
-                        </button>
-                      </div>
+                      </span>
                     </div>
-
-                    {e.body && (
-                      <p className="text-[13px] text-fg-2 leading-relaxed mt-3 whitespace-pre-wrap break-words">{e.body}</p>
-                    )}
-
-                    {e.tags.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 mt-3">
-                        {e.tags.map(t => (
-                          <span key={t} className="px-2 py-0.5 rounded-full text-[9px] tracking-widest border border-border-soft text-fg-3">#{t.toUpperCase()}</span>
-                        ))}
-                      </div>
+                    {e.title && <h3 className="n-title">{e.title}</h3>}
+                    <p className="n-body">{e.body}</p>
+                    {(e.tags ?? []).length > 0 && (
+                      <div className="n-tags">{e.tags.map(t => <span key={t} className={`t-tag ${BAD_TAG.test(t) ? 'bad' : ''}`}>{tagLabel(t)}</span>)}</div>
                     )}
                   </article>
                 );
-              })
-            )}
+              })}
           </section>
         </div>
       </div>
