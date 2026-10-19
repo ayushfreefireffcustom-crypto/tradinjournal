@@ -478,6 +478,8 @@ export const api = {
     list:  (accountId: string) => apiFetch<Trade[]>(`${PREFIX}/trades?accountId=${encodeURIComponent(accountId)}`),
     deals: (accountId: string) => apiFetch<Deal[]>(`${PREFIX}/trades/deals?accountId=${encodeURIComponent(accountId)}`),
     stats: (accountId: string) => apiFetch<AccountStats>(`${PREFIX}/trades/stats?accountId=${encodeURIComponent(accountId)}`),
+    /** Stats + trades + journal in one round trip (the dashboard). */
+    dashboard: (accountId: string) => apiFetch<{ stats: AccountStats; trades: Trade[]; journal: JournalEntry[]; syncedAt: string | null; lastSyncError: string | null }>(`${PREFIX}/trades/dashboard?accountId=${encodeURIComponent(accountId)}`),
   },
   journal: {
     list: (accountId?: string) => apiFetch<JournalEntry[]>(`${PREFIX}/journal${accountId ? `?accountId=${encodeURIComponent(accountId)}` : ''}`),

@@ -85,3 +85,31 @@ export async function cacheDel(...keys: string[]): Promise<void> {
     /* ignore */
   }
 }
+
+// ── Counters (fixed-window rate limits) ──────────────────────────────────────
+const counters = new Map<string, { n: number; resetAt: number }>();
+
+/**
+ * Increment a counter that expires `windowSeconds` after its first hit; returns
+ * the new count. Redis when available (shared across instances), else in-process.
+ */
+export async function cacheIncr(key: string, windowSeconds: number): Promise<number> {
+  const c = client();
+  if (c && !down) {
+    try {
+      const n = await c.incr(key);
+      if (n === 1) await c.expire(key, windowSeconds);
+      return n;
+    } catch {
+      /* fall through to memory */
+    }
+  }
+  const now = Date.now();
+  const e = counters.get(key);
+  if (!e || e.resetAt <= now) {
+    counters.set(key, { n: 1, resetAt: now + windowSeconds * 1000 });
+    if (counters.size > 10_000) for (const [k, v] of counters) if (v.resetAt <= now) counters.delete(k);
+    return 1;
+  }
+  return ++e.n;
+}

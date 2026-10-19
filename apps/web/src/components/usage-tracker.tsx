@@ -20,7 +20,11 @@ function featureFromPath(path: string): string {
   return 'other';
 }
 
-async function sendHeartbeat(path: string, ended = false) {
+/** view = navigated, beat = still here (timer), end = tab hidden/closed. */
+type Kind = 'view' | 'beat' | 'end';
+
+async function sendHeartbeat(path: string, kind: Kind) {
+  const ended = kind === 'end';
   if (process.env.NEXT_PUBLIC_USE_MOCKS === 'true') return; // no usage API in mock mode
   try {
     await fetch(`${API}/api/usage/heartbeat`, {
@@ -31,6 +35,7 @@ async function sendHeartbeat(path: string, ended = false) {
         path,
         feature: featureFromPath(path),
         ended,
+        kind,
       }),
       keepalive: ended,
     });
@@ -47,27 +52,27 @@ export function UsageTracker() {
   useEffect(() => {
     pathRef.current = pathname;
     if (document.visibilityState === 'visible') {
-      void sendHeartbeat(pathname, false);
+      void sendHeartbeat(pathname, 'view');
     }
   }, [pathname]);
 
   useEffect(() => {
     const tick = () => {
       if (document.visibilityState === 'visible') {
-        void sendHeartbeat(pathRef.current, false);
+        void sendHeartbeat(pathRef.current, 'beat');
       }
     };
     const id = window.setInterval(tick, INTERVAL_MS);
 
     const onVis = () => {
       if (document.visibilityState === 'hidden') {
-        void sendHeartbeat(pathRef.current, true);
+        void sendHeartbeat(pathRef.current, 'end');
       } else {
-        void sendHeartbeat(pathRef.current, false);
+        void sendHeartbeat(pathRef.current, 'beat');
       }
     };
     const onUnload = () => {
-      void sendHeartbeat(pathRef.current, true);
+      void sendHeartbeat(pathRef.current, 'end');
     };
 
     document.addEventListener('visibilitychange', onVis);

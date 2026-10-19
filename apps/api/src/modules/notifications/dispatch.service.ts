@@ -7,6 +7,7 @@
 // Email is deliberately NOT a real-time channel here — a per-event email would
 // blow the Resend free tier. Users who opt into email get ONE daily digest
 // instead (see digest.service.ts).
+import { mapLimit } from '../../lib/map-limit.js';
 import { prisma } from '@tradinjournal/db';
 import type { EventImpact } from '@tradinjournal/contracts';
 import { sendPush } from '../../lib/push.js';
@@ -31,6 +32,8 @@ function whenLabel(eventTime: Date, now: Date): string {
   const hhmm = eventTime.toISOString().slice(11, 16);
   return mins <= 1 ? `now (${hhmm} UTC)` : `in ${mins} minutes (${hhmm} UTC)`;
 }
+
+const DELIVERY_CONCURRENCY = 10;
 
 export async function dispatchReminders(): Promise<{ events: number; delivered: number }> {
   const now = new Date();
@@ -86,7 +89,9 @@ export async function dispatchReminders(): Promise<{ events: number; delivered: 
 
   let delivered = 0;
 
-  for (const { userId, event, prefs } of work) {
+  // Independent (user, event) pairs, each deduped by a unique ledger row — run a
+  // few at a time instead of thousands of sequential round trips per tick.
+  await mapLimit(work, DELIVERY_CONCURRENCY, async ({ userId, event, prefs }) => {
     const dedupKey = `reminder:${event.id}:${userId}`;
     const label = whenLabel(event.eventTime, now);
 
@@ -114,7 +119,7 @@ export async function dispatchReminders(): Promise<{ events: number; delivered: 
         delivered += 1;
       }
     }
-  }
+  });
 
   return { events: events.length, delivered };
 }

@@ -60,9 +60,9 @@ export default function DashboardPage() {
         syncedAccount = r.account;
         still = r.result === 'running';
       }
-      const [s, t, j] = await Promise.all([api.trades.stats(acc.id), api.trades.list(acc.id), api.journal.list(acc.id)]);
+      const { stats: s, trades: t, journal: j, syncedAt: at } = await api.trades.dashboard(acc.id);
       setStats(s); setTrades(t); setJournal(j);
-      setSyncedAt(syncedAccount.lastSyncAt ?? new Date().toISOString());
+      setSyncedAt(at ?? syncedAccount.lastSyncAt ?? new Date().toISOString());
       if (notify && still) toast.success('Still importing your history — this can take a minute on large accounts');
       else if (notify) toast.success(`Synced · ${t.filter(x => x.status === 'CLOSED').length} positions loaded`);
     } catch (err: unknown) {

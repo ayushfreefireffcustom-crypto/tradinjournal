@@ -940,6 +940,7 @@ model UsageSession {
   userAgent   String?
 
   @@index([userId, startedAt])
+  @@index([userId, endedAt, lastSeenAt])
   @@index([lastSeenAt])
   @@map("usage_session")
 }

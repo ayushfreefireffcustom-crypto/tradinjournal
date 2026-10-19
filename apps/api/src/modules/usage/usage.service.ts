@@ -8,6 +8,12 @@ export interface HeartbeatInput {
   feature?: string;
   userAgent?: string;
   ended?: boolean;
+  /**
+   * What this ping is. `view` = navigated to a page, `beat` = still here (30s
+   * timer), `end` = tab hidden/closed. Only views and ends are stored as events —
+   * beats just extend the session. Absent (older clients) = previous behaviour.
+   */
+  kind?: 'view' | 'beat' | 'end';
 }
 
 function featureFromPath(path?: string): string | undefined {
@@ -72,11 +78,16 @@ export async function recordHeartbeat(userId: string, input: HeartbeatInput) {
     sessionId = created.id;
   }
 
+  const type = input.ended || input.kind === 'end' ? 'session_end'
+    : input.kind === 'beat' ? null
+    : input.kind === 'view' || input.path ? 'page_view' : 'heartbeat';
+  if (!type) return { sessionId, ok: true as const };
+
   await prisma.usageEvent.create({
     data: {
       userId,
       sessionId,
-      type: input.ended ? 'session_end' : input.path ? 'page_view' : 'heartbeat',
+      type,
       path: input.path,
       feature,
     },

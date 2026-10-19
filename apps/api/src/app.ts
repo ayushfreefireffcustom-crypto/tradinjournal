@@ -1,5 +1,6 @@
 import express, { type Express, type Request, type Response } from 'express';
 import cors from 'cors';
+import compression from 'compression';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import { toNodeHandler } from 'better-auth/node';
@@ -36,6 +37,21 @@ export function createApp(): Express {
       credentials: true,
     }),
   );
+
+  // gzip compression for JSON (a 1.5k-trade history is ~1.2 MB raw,
+  // ~10x smaller compressed). Never for SSE — it would buffer the stream.
+  app.use(compression({
+    threshold: 1024,
+    filter: (req, res) => !String(res.getHeader('Content-Type') ?? '').includes('text/event-stream') && compression.filter(req, res),
+  }));
+
+  // API JSON is per-user: browsers may keep it but must revalidate (Express sends a
+  // weak ETag, so an unchanged response comes back as a bodyless 304); shared
+  // caches must never store it. Handlers can override (e.g. public market data).
+  app.use('/api', (_req, res, next) => {
+    res.setHeader('Cache-Control', 'private, no-cache');
+    next();
+  });
 
   app.use(
     morgan('tiny', {

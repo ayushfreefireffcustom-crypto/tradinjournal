@@ -15,6 +15,7 @@ import { logger } from '@tradinjournal/logger';
 import type { MarketTimeframe } from '@tradinjournal/contracts';
 import type { BridgeCreds, NormalizedCandle } from './types.js';
 import { resolveProvider } from './providers/index.js';
+import { sharedSubscriber } from '../pubsub.js';
 
 /**
  * Feeds are keyed by data source as well as (symbol, tf): `public` for exchange /
@@ -82,26 +83,20 @@ export function subscribeCandle(
   const localHandler = (candle: NormalizedCandle) => onCandle(candle);
   localBus.on(ch, localHandler);
 
-  // Cross-instance delivery via Redis, when configured. Drop our own echo so a
-  // same-process subscriber isn't delivered twice.
-  let sub: Redis | null = null;
-  if (env.REDIS_URL) {
-    sub = new Redis(env.REDIS_URL, { maxRetriesPerRequest: null });
-    sub.on('error', () => {}); // no cross-instance updates just means fewer sources
-    void sub.subscribe(ch).catch(() => {});
-    sub.on('message', (_channel, message) => {
-      try {
-        const parsed = JSON.parse(message) as { candle: NormalizedCandle; origin?: string };
-        if (parsed.origin !== INSTANCE_ID) onCandle(parsed.candle);
-      } catch {
-        /* ignore malformed */
-      }
-    });
-  }
+  // Cross-instance delivery via the shared Redis subscriber, when configured.
+  // Drop our own echo so a same-process subscriber isn't delivered twice.
+  const unsubRedis = sharedSubscriber()?.subscribe(ch, message => {
+    try {
+      const parsed = JSON.parse(message) as { candle: NormalizedCandle; origin?: string };
+      if (parsed.origin !== INSTANCE_ID) onCandle(parsed.candle);
+    } catch {
+      /* ignore malformed */
+    }
+  });
 
   return () => {
     localBus.off(ch, localHandler);
-    if (sub) void sub.quit().catch(() => {});
+    unsubRedis?.();
   };
 }
 

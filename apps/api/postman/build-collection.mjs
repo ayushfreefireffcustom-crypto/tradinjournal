@@ -245,6 +245,21 @@ const folders = [
     req('The new trade is served', 'GET', `${B}/trades`, { as: 'nina', query: 'accountId={{ninaAccId}}', tests: [status(200), t('1501 trades', 'pm.expect(pm.response.json().data).to.have.length(1501);')] }),
     req('Wrong password on update is rejected by the bridge', 'PATCH', `${B}/accounts/{{ninaAccId}}/credentials`, { as: 'nina', body: { password: 'nope' }, tests: [status(409), code('BROKER_AUTH_FAILED')] }),
     req('Stored data still served after a failed update', 'GET', `${B}/trades/stats`, { as: 'nina', query: 'accountId={{ninaAccId}}', tests: [status(200), t('1501', 'pm.expect(pm.response.json().data.totalTrades).to.eql(1501);')] }),
+    // ── Phase 3: one-call dashboard, compression, caching headers, rate limit
+    req('Dashboard in one request', 'GET', `${B}/trades/dashboard`, { as: 'nina', query: 'accountId={{ninaAccId}}', headers: [{ key: 'Accept-Encoding', value: 'gzip' }],
+      tests: [status(200), json,
+        t('stats + trades + journal + sync info', "pm.expect(d.stats.totalTrades).to.eql(1501); pm.expect(d.trades).to.have.length(1501); pm.expect(d.journal).to.be.an('array'); pm.expect(d.syncedAt).to.be.a('string'); pm.expect(d.lastSyncError).to.eql(null);"),
+        t('gzipped', "pm.expect(pm.response.headers.get('Content-Encoding')).to.eql('gzip');"),
+        t('private, revalidated by browsers', "pm.expect(pm.response.headers.get('Cache-Control')).to.eql('private, no-cache'); pm.expect(pm.response.headers.get('ETag')).to.match(/^W\\//); pm.collectionVariables.set('dashEtag', pm.response.headers.get('ETag'));"),
+        t('fast', 'pm.expect(pm.response.responseTime).to.be.below(400);')] }),
+    req('Unchanged dashboard revalidates as 304 (no body)', 'GET', `${B}/trades/dashboard`, { as: 'nina', query: 'accountId={{ninaAccId}}', // Postman sends Cache-Control: no-cache by default, which (correctly) disables 304s;
+      // send what a browser sends when revalidating.
+      headers: [{ key: 'If-None-Match', value: '{{dashEtag}}' }, { key: 'Cache-Control', value: 'max-age=0' }],
+      tests: [status(304), t('empty body', 'pm.expect(pm.response.text()).to.eql("");')] }),
+    req('Sync now ×5 within the limit', 'POST', `${B}/accounts/{{ninaAccId}}/sync`, { as: 'nina', body: {},
+      pre: ["const done = []; const fire = i => pm.sendRequest({ url: pm.collectionVariables.get('baseUrl') + '/api/accounts/' + pm.collectionVariables.get('ninaAccId') + '/sync', method: 'POST', header: { Cookie: pm.collectionVariables.get('ninaCookie'), 'Content-Type': 'application/json' }, body: { mode: 'raw', raw: '{}' } }, (e, r) => { done.push(r.code); if (i < 4) fire(i + 1); else pm.collectionVariables.set('syncCodes', JSON.stringify(done)); }); fire(0);"],
+      tests: ["pm.test('the 7th sync in a minute is rate limited', () => { pm.expect(pm.response.code).to.eql(429); pm.expect(pm.response.json().error.code).to.eql('RATE_LIMITED'); pm.expect(pm.response.headers.get('Retry-After')).to.eql('60'); });",
+        "pm.test('the earlier ones went through', () => pm.expect(JSON.parse(pm.collectionVariables.get('syncCodes'))).to.eql([200,200,200,200,200]));"] }),
   ] },
 ];
 

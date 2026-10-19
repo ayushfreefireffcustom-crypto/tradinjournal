@@ -4,11 +4,12 @@
 //
 // Fully optional: with no REDIS_URL, publish is a no-op and subscribe returns an
 // immediate no-op cleanup — the SSE endpoint then just heartbeats and the client
-// falls back to polling. A subscribed Redis connection can't run other commands,
-// so each subscriber gets its own duplicated connection.
+// falls back to polling. All streams share one subscriber connection per process
+// (lib/pubsub.ts).
 import { Redis } from 'ioredis';
 import { env } from '@tradinjournal/config';
 import { logger } from '@tradinjournal/logger';
+import { sharedSubscriber } from '../pubsub.js';
 
 const CHANNEL = 'news:new';
 
@@ -45,11 +46,9 @@ export async function publishNews(items: unknown[]): Promise<void> {
  * Returns a no-op cleanup when Redis isn't configured.
  */
 export function subscribeNews(onItems: (items: unknown[]) => void): () => void {
-  if (!env.REDIS_URL) return () => {};
-  const sub = new Redis(env.REDIS_URL, { maxRetriesPerRequest: null });
-  sub.on('error', () => {}); // errors just mean no live updates; client still polls
-  void sub.subscribe(CHANNEL).catch(() => {});
-  sub.on('message', (_channel, message) => {
+  const shared = sharedSubscriber();
+  if (!shared) return () => {};
+  return shared.subscribe(CHANNEL, message => {
     try {
       const parsed = JSON.parse(message);
       if (Array.isArray(parsed)) onItems(parsed);
@@ -57,7 +56,4 @@ export function subscribeNews(onItems: (items: unknown[]) => void): () => void {
       /* ignore malformed */
     }
   });
-  return () => {
-    void sub.quit().catch(() => {});
-  };
 }

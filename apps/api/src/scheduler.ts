@@ -20,13 +20,24 @@ import { trainLgbmChallenger } from './modules/trader/trader.lgbm.service.js';
 import { tickPaperBook } from './modules/trader/trader.paper.service.js';
 import { refreshReferralStats } from './modules/partners/stats.service.js';
 import { queueDueSyncs } from './modules/sync/sync.jobs.js';
+import { createElector } from './lib/leader.js';
 
 const MIN = 60_000;
 const timers: NodeJS.Timeout[] = [];
+// With several API replicas only the lease holder runs jobs (see lib/leader.ts).
+const elector = createElector();
 
 function every(ms: number, label: string, fn: () => Promise<unknown>): void {
-  const run = () => void fn().catch(e => logger.warn(`[scheduler] ${label} failed: ${(e as Error).message}`));
+  const run = () => {
+    if (!elector.isLeader()) return;
+    void fn().catch(e => logger.warn(`[scheduler] ${label} failed: ${(e as Error).message}`));
+  };
   timers.push(setInterval(run, ms));
+}
+
+/** One-off boot warm-up, skipped on non-leaders. */
+function soon(ms: number, fn: () => Promise<unknown>): void {
+  timers.push(setTimeout(() => { if (elector.isLeader()) void fn().catch(() => {}); }, ms));
 }
 
 /** Recent-past → month-ahead window for calendar ingestion. */
@@ -37,7 +48,8 @@ function calWindow(): { from: Date; to: Date } {
 
 export function startInProcessScheduler(): void {
   if (!env.IN_PROCESS_SCHEDULER) return;
-  logger.info('[scheduler] in-process scheduler ON — running background jobs here (no external worker)');
+  logger.info('[scheduler] in-process scheduler ON — the lease holder runs background jobs');
+  elector.start();
 
   // Event reminders — every minute (in-app + push; the ledger dedups).
   every(1 * MIN, 'reminders', dispatchReminders);
@@ -72,15 +84,16 @@ export function startInProcessScheduler(): void {
   every(15 * MIN, 'partner-stats', () => refreshReferralStats({ limit: 25 }));
 
   // Warm the data shortly after boot so it's fresh without waiting a full interval.
-  setTimeout(() => void dispatchReminders().catch(() => {}), 4_000);
-  if (env.CALENDAR_ENABLED) setTimeout(() => { const w = calWindow(); void ingestWindow(w.from, w.to).catch(() => {}); }, 6_000);
-  if (env.NEWS_ENABLED) setTimeout(() => void ingestNews().catch(() => {}), 9_000);
-  setTimeout(() => void gradePendingAnalyses(env.TRADER_GRADE_BATCH).catch(() => {}), 12_000);
-  setTimeout(() => void trainMetaModelFromDb().catch(() => {}), 20_000);
-  setTimeout(() => void tickPaperBook().catch(() => {}), 16_000);
+  soon(4_000, dispatchReminders);
+  if (env.CALENDAR_ENABLED) soon(6_000, () => { const w = calWindow(); return ingestWindow(w.from, w.to); });
+  if (env.NEWS_ENABLED) soon(9_000, ingestNews);
+  soon(12_000, () => gradePendingAnalyses(env.TRADER_GRADE_BATCH));
+  soon(20_000, () => trainMetaModelFromDb());
+  soon(16_000, () => tickPaperBook());
 }
 
 export function stopInProcessScheduler(): void {
   timers.forEach(clearInterval);
   timers.length = 0;
+  void elector.stop();
 }
