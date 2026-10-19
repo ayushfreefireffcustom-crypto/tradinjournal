@@ -52,7 +52,7 @@ const GROUPS: { title: string; items: NavItem[] }[] = [
     { href: '/coach', label: 'AI coach', icon: ICoach },
   ] },
 ];
-// Shown only to approved partners (access status `isPartner`).
+// Shown only to active partners (access status `partnerStatus === "ACTIVE"`).
 const PARTNER: NavItem[] = [
   { href: '/partner', label: 'Overview', icon: IPartner },
   { href: '/partner/link', label: 'My link', icon: ILink },
@@ -191,7 +191,7 @@ export default function AppShell({
               {g.items.map(i => <NavLink key={i.href} item={i} active={current?.href === i.href} />)}
             </div>
           ))}
-          {accessStatus?.isPartner && (
+          {accessStatus?.partnerStatus === 'ACTIVE' && (
             <div className="v3-grp">
               <small>Partner</small>
               {PARTNER.map(i => <NavLink key={i.href} item={i} active={current?.href === i.href} />)}
@@ -233,7 +233,7 @@ export default function AppShell({
         <main className="v3-scroll">{children}</main>
       </div>
 
-      {cmdk && <CommandPalette onClose={() => setCmdk(false)} onGo={href => { setCmdk(false); router.push(href); }} isAdmin={!!accessStatus?.isAdmin} isPartner={!!accessStatus?.isPartner} />}
+      {cmdk && <CommandPalette onClose={() => setCmdk(false)} onGo={href => { setCmdk(false); router.push(href); }} isAdmin={!!accessStatus?.isAdmin} isPartner={accessStatus?.partnerStatus === 'ACTIVE'} />}
     </div>
   );
 }

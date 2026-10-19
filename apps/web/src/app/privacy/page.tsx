@@ -14,6 +14,7 @@ const S: LegalSection[] = [
     <p><b>Trading data.</b> The positions, deals, balances and statistics we import from MT5, and anything you add — journal entries, emotions, tags, notes, price alerts, watchlists, strategies and AI coach conversations.</p>
     <p><b>Usage and device data.</b> When you use the app we record your IP address and browser user-agent with your login session, and first-party usage events such as which pages you visit and how long you stay. We use these to secure accounts, fix problems and understand which features are used.</p>
     <p><b>Approximate location.</b> We convert the city and postal code you give us into approximate coordinates using OpenStreetMap’s Nominatim service. We don’t use your device’s GPS.</p>
+    <p><b>Referrals.</b> If you arrive through a partner&rsquo;s link we record the visit — which link, the time, your device type, country, and a one-way hash of your IP address (never the address itself) — and remember it in a first-party cookie for up to 30 days. If you then sign up, or type a partner&rsquo;s code at signup, we record which partner referred you.</p>
     <p><b>Preferences.</b> Notification settings, time zone, and — if you turn on browser push — a push subscription from your browser.</p>
   </> },
   { id: 'use', title: 'How we use it', body: <>
@@ -35,6 +36,7 @@ const S: LegalSection[] = [
       <li><b>Email</b> — Resend delivers verification codes, digests and weekly reviews.</li>
       <li><b>Google</b> — if you choose “Continue with Google”.</li>
       <li><b>Browser push services</b> — your browser vendor’s push service delivers notifications if you enable them.</li>
+      <li><b>The partner who referred you</b> — if you signed up through a partner&rsquo;s link or code, that partner can see your name, city, country, when you signed up, whether you&rsquo;ve connected a broker, and how actively you trade (your number of trades and lots in the last 30 days). They never see your email, balances, P&amp;L or individual trades. If you&rsquo;d rather not be linked to a partner, email us and we&rsquo;ll remove the link.</li>
       <li><b>Elefin</b> — to verify that your Elefin account was opened under our referral, we may share your email address and, if you provide it, your Elefin MT5 login.</li>
       <li><b>OpenStreetMap Nominatim</b> — receives the city and postal code you enter, to look up approximate coordinates.</li>
     </ul>
@@ -48,7 +50,7 @@ const S: LegalSection[] = [
     <p>We keep your data while your account is open. Removing a broker account deletes the trades and deals synced from it. If you ask us to delete your account, we delete your personal data and trading data, except where we must keep limited records for legal, security or fraud-prevention reasons.</p>
   </> },
   { id: 'cookies', title: 'Cookies and local storage', body: <>
-    <p>We use a first-party session cookie to keep you signed in, and your browser’s local storage for preferences such as chart layouts and the selected account. We don’t use third-party advertising or tracking cookies.</p>
+    <p>We use a first-party session cookie to keep you signed in, a first-party referral cookie (<code>tl_ref</code>, up to 30 days) when you arrive through a partner link, and your browser’s local storage for preferences such as chart layouts and the selected account. We don’t use third-party advertising or tracking cookies.</p>
   </> },
   { id: 'rights', title: 'Your choices and rights', body: <>
     <ul>

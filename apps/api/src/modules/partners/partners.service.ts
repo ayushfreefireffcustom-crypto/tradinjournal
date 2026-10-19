@@ -159,7 +159,7 @@ export async function createChannel(p: PartnerWithUser, label: string): Promise<
         : await prisma.partnerChannel.create({ data: { partnerId: p.id, label, slug } });
       return {
         id: ch.id, label: ch.label, slug: ch.slug, url: referralUrl(appUrl(), primaryCode(p) ?? '', ch.slug),
-        clicks: 0, signups: 0, connected: 0, active: 0, createdAt: ch.createdAt.toISOString(),
+        clicks: 0, converted: 0, signups: 0, connected: 0, active: 0, createdAt: ch.createdAt.toISOString(),
       };
     } catch (err) {
       if (!isUniqueViolation(err)) throw err;
@@ -247,9 +247,10 @@ export async function listClients(partnerId: string, q: PartnerClientsQuery) {
 }
 
 export async function channelStats(p: { id: string; codes: { code: string; isPrimary: boolean }[] }, includeArchived = false): Promise<PartnerChannelDto[]> {
-  const [channels, clicks, refs] = await Promise.all([
+  const [channels, clicks, convs, refs] = await Promise.all([
     prisma.partnerChannel.findMany({ where: { partnerId: p.id, ...(includeArchived ? {} : { archivedAt: null }) }, orderBy: { createdAt: 'asc' } }),
     prisma.referralClick.groupBy({ by: ['channelId'], where: { partnerId: p.id }, _count: { _all: true } }),
+    prisma.referralClick.groupBy({ by: ['channelId'], where: { partnerId: p.id, convertedUserId: { not: null } }, _count: { _all: true } }),
     prisma.$queryRaw<{ channelId: string | null; signups: number; connected: number; active: number }[]>`
       SELECT "channelId", COUNT(*)::int AS signups,
              COUNT("connectedAt")::int AS connected,
@@ -260,8 +261,9 @@ export async function channelStats(p: { id: string; codes: { code: string; isPri
   const def = channels.find(c => c.slug === '');
   // Clicks/referrals whose channel was deleted fold into the default link.
   const key = (id: string | null) => (id && channels.some(c => c.id === id) ? id : def?.id ?? null);
-  const clickBy = new Map<string | null, number>(), refBy = new Map<string | null, { signups: number; connected: number; active: number }>();
+  const clickBy = new Map<string | null, number>(), convBy = new Map<string | null, number>(), refBy = new Map<string | null, { signups: number; connected: number; active: number }>();
   for (const c of clicks) clickBy.set(key(c.channelId), (clickBy.get(key(c.channelId)) ?? 0) + c._count._all);
+  for (const c of convs) convBy.set(key(c.channelId), (convBy.get(key(c.channelId)) ?? 0) + c._count._all);
   for (const r of refs) {
     const k = key(r.channelId), cur = refBy.get(k) ?? { signups: 0, connected: 0, active: 0 };
     refBy.set(k, { signups: cur.signups + r.signups, connected: cur.connected + r.connected, active: cur.active + r.active });
@@ -269,7 +271,7 @@ export async function channelStats(p: { id: string; codes: { code: string; isPri
   return channels
     .map(c => ({
       id: c.id, label: c.label, slug: c.slug || null, url: referralUrl(appUrl(), code, c.slug || null),
-      clicks: clickBy.get(c.id) ?? 0, ...(refBy.get(c.id) ?? { signups: 0, connected: 0, active: 0 }),
+      clicks: clickBy.get(c.id) ?? 0, converted: convBy.get(c.id) ?? 0, ...(refBy.get(c.id) ?? { signups: 0, connected: 0, active: 0 }),
       createdAt: c.createdAt.toISOString(),
     }))
     .sort((a, b) => b.signups - a.signups || b.clicks - a.clicks);
@@ -278,13 +280,14 @@ export async function channelStats(p: { id: string; codes: { code: string; isPri
 export async function funnel(partnerId: string, range: PartnerRange, since: Date): Promise<PartnerFunnelDto> {
   const from = rangeStart(range, since);
   const at = from ? { gte: from } : undefined;
-  const [clicks, signups, connected, active] = await Promise.all([
+  const [clicks, converted, signups, connected, active] = await Promise.all([
     prisma.referralClick.count({ where: { partnerId, ...(at ? { createdAt: at } : {}) } }),
+    prisma.referralClick.count({ where: { partnerId, convertedUserId: { not: null }, ...(at ? { createdAt: at } : {}) } }),
     prisma.referral.count({ where: { partnerId, ...(at ? { attributedAt: at } : {}) } }),
     prisma.referral.count({ where: { partnerId, connectedAt: { not: null }, ...(at ? { attributedAt: at } : {}) } }),
     prisma.referral.count({ where: { partnerId, connectedAt: { not: null }, isActive: true, ...(at ? { attributedAt: at } : {}) } }),
   ]);
-  return { range, from: from?.toISOString() ?? null, clicks, signups, connected, active };
+  return { range, from: from?.toISOString() ?? null, clicks, converted, signups, connected, active };
 }
 
 export async function daily(partnerId: string, range: PartnerRange, since: Date): Promise<PartnerDailyPointDto[]> {
@@ -357,9 +360,12 @@ export async function codeStats(p: PartnerWithUser): Promise<PartnerCodeDto[]> {
 }
 
 export async function links(p: PartnerWithUser): Promise<PartnerLinksDto> {
-  const [codes, channels, clicks] = await Promise.all([
+  const [codes, channels, clicks, totalClicks, totalConverted, totalSignups] = await Promise.all([
     codeStats(p), channelStats(p),
     prisma.referralClick.findMany({ where: { partnerId: p.id }, orderBy: { createdAt: 'desc' }, take: 15, include: { channel: { select: { label: true } } } }),
+    prisma.referralClick.count({ where: { partnerId: p.id } }),
+    prisma.referralClick.count({ where: { partnerId: p.id, convertedUserId: { not: null } } }),
+    prisma.referral.count({ where: { partnerId: p.id } }),
   ]);
   const recentClicks: PartnerClickDto[] = clicks.map(c => ({
     id: c.id, at: c.createdAt.toISOString(), channel: c.channel?.label ?? DEFAULT_CHANNEL_LABEL,
@@ -368,16 +374,18 @@ export async function links(p: PartnerWithUser): Promise<PartnerLinksDto> {
   }));
   return {
     partner: toProfile(p), baseUrl: referralUrl(appUrl(), primaryCode(p) ?? ''), codes, channels, recentClicks,
+    totals: { clicks: totalClicks, converted: totalConverted, signups: totalSignups },
     limits: { maxChannels: env.PARTNER_MAX_CHANNELS, maxCodes: env.PARTNER_MAX_CODES },
   };
 }
 
 /** Rolling 30-day counters for admin rows, for many partners in three queries. */
 export async function rowCounters(partnerIds: string[]) {
-  if (!partnerIds.length) return new Map<string, { clicks30d: number; signups30d: number; clients: number; connected: number; active: number }>();
+  if (!partnerIds.length) return new Map<string, { clicks30d: number; converted30d: number; signups30d: number; clients: number; connected: number; active: number }>();
   const since = new Date(Date.now() - 30 * DAY_MS);
-  const [clicks, refs] = await Promise.all([
+  const [clicks, conv, refs] = await Promise.all([
     prisma.referralClick.groupBy({ by: ['partnerId'], where: { partnerId: { in: partnerIds }, createdAt: { gte: since } }, _count: { _all: true } }),
+    prisma.referralClick.groupBy({ by: ['partnerId'], where: { partnerId: { in: partnerIds }, createdAt: { gte: since }, convertedUserId: { not: null } }, _count: { _all: true } }),
     prisma.$queryRaw<{ partnerId: string; clients: number; signups30d: number; connected: number; active: number }[]>`
       SELECT "partnerId", COUNT(*)::int AS clients,
              COUNT(*) FILTER (WHERE "attributedAt" >= ${since})::int AS signups30d,
@@ -385,8 +393,9 @@ export async function rowCounters(partnerIds: string[]) {
              COUNT(*) FILTER (WHERE "isActive" AND "connectedAt" IS NOT NULL)::int AS active
       FROM "referral" WHERE "partnerId" IN (${Prisma.join(partnerIds)}) GROUP BY "partnerId"`,
   ]);
-  const out = new Map(partnerIds.map(id => [id, { clicks30d: 0, signups30d: 0, clients: 0, connected: 0, active: 0 }]));
+  const out = new Map(partnerIds.map(id => [id, { clicks30d: 0, converted30d: 0, signups30d: 0, clients: 0, connected: 0, active: 0 }]));
   for (const c of clicks) out.get(c.partnerId)!.clicks30d = c._count._all;
+  for (const c of conv) out.get(c.partnerId)!.converted30d = c._count._all;
   for (const r of refs) Object.assign(out.get(r.partnerId)!, { clients: r.clients, signups30d: r.signups30d, connected: r.connected, active: r.active });
   return out;
 }

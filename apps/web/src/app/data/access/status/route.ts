@@ -13,7 +13,7 @@ export async function GET() {
     minTradesRequired: 3,
     activityWindowDays: 7,
     isAdmin: true,
-    isPartner: true,
+    partnerStatus: 'ACTIVE',
     maintenance: { enabled: false, message: null },
   });
 }

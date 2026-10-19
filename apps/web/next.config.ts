@@ -19,8 +19,15 @@ const config: NextConfig = {
   // makes the session cookie first-party instead.
   async rewrites() {
     const apiOrigin = process.env.API_ORIGIN;
-    if (!apiOrigin) return [];
-    return [{ source: '/api/:path*', destination: `${apiOrigin}/api/:path*` }];
+    if (!apiOrigin) return { beforeFiles: [], afterFiles: [], fallback: [] };
+    return {
+      // Partner referral links (tradelogs.com/r/CODE) are answered by the API, which
+      // records the click and sets the first-party tl_ref cookie on this origin.
+      // beforeFiles so it wins over the mock-mode fallback page at app/r/[code].
+      beforeFiles: [{ source: '/r/:code', destination: `${apiOrigin}/api/r/:code` }],
+      afterFiles: [{ source: '/api/:path*', destination: `${apiOrigin}/api/:path*` }],
+      fallback: [],
+    };
   },
 };
 

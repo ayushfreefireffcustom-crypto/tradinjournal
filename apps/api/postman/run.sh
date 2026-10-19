@@ -2,14 +2,17 @@
 # Partner programme contract tests — runs the Postman collection against a
 # DISPOSABLE database. Never point TEST_DB_URL at a real database: step 1 wipes it.
 #
-#   1. Start the API against the test DB (Claude launch config "api-partner-test",
-#      or the env block printed by `run.sh --env`).
-#   2. ./run.sh
+#   1. Start the API against the test DB with the env overrides in the Claude launch
+#      config "api-partner-test" (local DB, no email, scheduler off, ADMIN_EMAILS=
+#      admin@partners.test, INTERNAL_API_TOKEN=partner-test-internal-token,
+#      APP_URL=http://localhost:3020).
+#   2. ./run.sh            (extra args are passed to `postman collection run`)
 set -euo pipefail
 cd "$(dirname "$0")"
 
 TEST_DB_URL="${TEST_DB_URL:-postgresql://tj@localhost:5444/tradinjournal_test}"
 BASE_URL="${BASE_URL:-http://localhost:4100}"
+APP_URL="${APP_URL:-http://localhost:3020}"  # must match the API's APP_URL
 PSQL="${PSQL:-$(command -v psql || echo /opt/homebrew/opt/postgresql@18/bin/psql)}"
 
 case "$TEST_DB_URL" in
@@ -42,7 +45,7 @@ node build-collection.mjs >/dev/null
 COLLECTION=partners.postman_collection.json
 
 echo "▸ 01 Bootstrap users"
-postman collection run "$COLLECTION" -i "01 Bootstrap users" --env-var "baseUrl=$BASE_URL" --bail
+postman collection run "$COLLECTION" -i "01 Bootstrap users" --env-var "baseUrl=$BASE_URL" --env-var "appUrl=$APP_URL" --bail
 
 echo "▸ Marking test emails verified"
 sql "UPDATE \"user\" SET \"emailVerified\" = true WHERE email LIKE '%@partners.test';"
@@ -50,4 +53,4 @@ sql "UPDATE \"user\" SET \"emailVerified\" = true WHERE email LIKE '%@partners.t
 echo "▸ 02–05 Contract tests"
 postman collection run "$COLLECTION" \
   -i "02 Partner setup" -i "03 Attribution" -i "04 Portal reads" -i "05 Admin operations" \
-  --env-var "baseUrl=$BASE_URL" "$@"
+  --env-var "baseUrl=$BASE_URL" --env-var "appUrl=$APP_URL" "$@"

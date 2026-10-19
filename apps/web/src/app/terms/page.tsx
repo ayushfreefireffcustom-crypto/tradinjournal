@@ -29,6 +29,10 @@ const S: LegalSection[] = [
     <p>Full access to TRADElogs may require a verified Elefin account opened under our referral and a minimum level of recent trading activity. The current requirement is shown on the access screen in the app. If you stop meeting it, some or all of the app may be unavailable until you do.</p>
     <p>We may change these requirements, and we may grant or remove access manually, for example for testing or support.</p>
   </> },
+  { id: 'partners', title: 'Partner programme', body: <>
+    <p>Approved partners get referral links and codes and can see, for the people they referred, the name, location, signup date, whether a broker is connected and how actively they trade. Partners never see referred users&rsquo; emails, balances, P&amp;L or trades. The programme is currently tracking only — it pays no commission.</p>
+    <p>Partners must promote TRADElogs honestly: no fake results, no promises of profit, no spam, and no suggestion that TRADElogs gives investment advice. We may suspend or end partner status, and move or remove referrals, at any time.</p>
+  </> },
   { id: 'pricing', title: 'Price', body: <>
     <p>TRADElogs is currently free. If we introduce paid plans, we’ll tell you before anything is charged, and paid features will only apply if you choose to subscribe.</p>
   </> },

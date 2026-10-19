@@ -40,10 +40,12 @@ export function useAccounts(initialIdOverride?: string | null) {
   const router = useRouter();
   const pathname = usePathname();
 
-  // The app requires at least one connected broker: zero-broker users are kept
-  // on /brokers (the only place they can fix that) until they connect one.
+  // The journal requires at least one connected broker: zero-broker users are kept
+  // on /brokers (the only place they can fix that) until they connect one. The
+  // partner portal and admin pages work without a broker — many partners don't trade.
   useEffect(() => {
-    if (!loading && accounts.length === 0 && pathname !== '/brokers') {
+    const brokerFree = pathname === '/brokers' || pathname.startsWith('/partner') || pathname.startsWith('/admin');
+    if (!loading && accounts.length === 0 && !brokerFree) {
       router.replace('/brokers');
     }
   }, [loading, accounts.length, pathname, router]);

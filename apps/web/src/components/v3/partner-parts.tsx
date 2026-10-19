@@ -9,31 +9,17 @@ import { AreaLine } from '@/components/v3/analytics-parts';
 import { ICheck, ICopy, IDownload } from '@/components/v3/icons';
 import { timeAgo } from '@/components/app-shell';
 import {
-  STATUS_LABEL, type PartnerChannel, type PartnerClient, type PartnerEvent, type PartnerOverview, type ReferralStatus,
+  PARTNER_STATUS_LABEL, STATUS_LABEL, type PartnerChannel, type PartnerClient, type PartnerDailyPoint, type PartnerEvent,
+  type PartnerFunnel, type PartnerRange, type PartnerStatus, type ReferralStatus,
 } from '@/lib/partner-api';
 
-const DAY = 86_400_000;
-export const RANGES = [['7D', 7], ['30D', 30], ['90D', 90], ['ALL', 0]] as const;
-export type PRange = (typeof RANGES)[number][0];
+export const RANGES: PartnerRange[] = ['7D', '30D', '90D', 'ALL'];
+export type PRange = PartnerRange;
+export const RANGE_LABEL: Record<PartnerRange, string> = { '7D': 'last 7 days', '30D': 'last 30 days', '90D': 'last 90 days', ALL: 'all time' };
 
 export const n = (v: number) => v.toLocaleString('en-US');
 export const pct = (a: number, b: number) => (b ? `${((a / b) * 100).toFixed(a / b < 0.1 ? 1 : 0)}%` : '—');
 export const day = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-
-/** Funnel numbers for a range: clicks in range, and the clients who signed up in it. */
-export function funnelFor(o: Pick<PartnerOverview, 'daily' | 'clients'>, range: PRange) {
-  const days = RANGES.find(r => r[0] === range)![1];
-  const from = days ? Date.now() - days * DAY : 0;
-  const clients = o.clients.filter(c => new Date(c.signedUpAt).getTime() >= from);
-  return {
-    clicks: o.daily.filter(d => new Date(d.date).getTime() >= from - DAY / 2).reduce((a, b) => a + b.clicks, 0),
-    signups: clients.length,
-    connected: clients.filter(c => c.status !== 'SIGNED_UP').length,
-    active: clients.filter(c => c.status === 'ACTIVE').length,
-    clients,
-    from,
-  };
-}
 
 // ── Avatar + status ───────────────────────────────────────────────────────
 const HUES = ['#6E4BFF', '#19C37D', '#F59E0B', '#0EA5E9', '#EC4899', '#14B8A6', '#8B5CF6', '#F97316'];
@@ -49,6 +35,19 @@ export function StatusPill({ s }: { s: ReferralStatus }) {
   return <span className={`v3-pill ${TONE[s]} pt-st`}><i />{STATUS_LABEL[s]}</span>;
 }
 
+const PTONE: Record<PartnerStatus, string> = { ACTIVE: 'g', PENDING: 'a', SUSPENDED: 'r', REVOKED: 'n' };
+export function PartnerStatusPill({ s }: { s: PartnerStatus }) {
+  return <span className={`v3-pill ${PTONE[s]} pt-st`}><i />{PARTNER_STATUS_LABEL[s]}</span>;
+}
+
+export function RangeSeg({ value, onChange, small = false }: { value: PartnerRange; onChange: (r: PartnerRange) => void; small?: boolean }) {
+  return (
+    <div className={`v3-seg ${small ? 'sm' : ''}`} role="group" aria-label="Date range">
+      {RANGES.map(k => <button key={k} aria-pressed={value === k} onClick={() => onChange(k)}>{k === 'ALL' ? 'All' : k}</button>)}
+    </div>
+  );
+}
+
 export function CopyButton({ text, label = 'Copy', className = 'v3-btn v3-btn--o', testId }: { text: string; label?: string; className?: string; testId?: string }) {
   const [done, setDone] = useState(false);
   return (
@@ -60,10 +59,12 @@ export function CopyButton({ text, label = 'Copy', className = 'v3-btn v3-btn--o
 }
 
 // ── Funnel ────────────────────────────────────────────────────────────────
-export function Funnel({ f, rule, rangeLabel, title = 'Your funnel' }: { f: { clicks: number; signups: number; connected: number; active: number }; rule: { minTrades: number; windowDays: number }; rangeLabel: string; title?: string }) {
+export function Funnel({ f, rule, title = 'Your funnel' }: { f: PartnerFunnel; rule: { minTrades: number; windowDays: number }; title?: string }) {
+  const rangeLabel = RANGE_LABEL[f.range];
   const steps: { l: string; v: number; sub: ReactNode; conv: number | null; hint?: string }[] = [
     { l: 'Link clicks', v: f.clicks, sub: <>Times the link was opened</>, conv: null },
-    { l: 'Signed up', v: f.signups, sub: <>{pct(f.signups, f.clicks)} of clicks</>, conv: f.clicks ? f.signups / f.clicks : 0 },
+    { l: 'Signed up', v: f.signups, sub: <>{pct(f.converted, f.clicks)} of clicks convert</>, conv: f.clicks ? f.converted / f.clicks : 0,
+      hint: 'Signups include people who typed your code. The % counts only clicks that led to a signup.' },
     { l: 'MT5 connected', v: f.connected, sub: <>{pct(f.connected, f.signups)} of signups</>, conv: f.signups ? f.connected / f.signups : 0 },
     { l: 'Active traders', v: f.active, sub: <>{pct(f.active, f.connected)} of connected</>, conv: f.connected ? f.active / f.connected : 0,
       hint: `Active = ${rule.minTrades}+ closed trades in the last ${rule.windowDays} days, counted from their synced MT5 history.` },
@@ -87,23 +88,10 @@ export function Funnel({ f, rule, rangeLabel, title = 'Your funnel' }: { f: { cl
 
 // ── Trend chart ───────────────────────────────────────────────────────────
 type Metric = 'clicks' | 'signups' | 'active';
-export function TrendCard({ o, from }: { o: Pick<PartnerOverview, 'daily' | 'clients'>; from: number }) {
+export function TrendCard({ daily }: { daily: PartnerDailyPoint[] }) {
   const [m, setM] = useState<Metric>('signups');
-  const days = useMemo(() => o.daily.filter(d => new Date(d.date).getTime() >= from - DAY / 2), [o.daily, from]);
-  const pts = useMemo(() => {
-    if (m === 'clicks') return days.map(d => d.clicks);
-    const key = (iso: string) => iso.slice(0, 10);
-    const per = new Map<string, number>();
-    for (const c of o.clients) {
-      if (m === 'active' && c.status !== 'ACTIVE') continue;
-      const k = key(m === 'active' ? (c.connectedAt ?? c.signedUpAt) : c.signedUpAt);
-      per.set(k, (per.get(k) ?? 0) + 1);
-    }
-    // Running total of clients, so the line reads as "how big my base is".
-    let run = o.clients.filter(c => (m !== 'active' || c.status === 'ACTIVE') && new Date(m === 'active' ? (c.connectedAt ?? c.signedUpAt) : c.signedUpAt).getTime() < new Date(days[0]?.date ?? 0).getTime()).length;
-    return days.map(d => (run += per.get(key(d.date)) ?? 0));
-  }, [m, days, o.clients]);
-  const label = (i: number) => new Date(days[i]!.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  const pts = useMemo(() => daily.map(d => (m === 'clicks' ? d.clicks : m === 'signups' ? d.clients : d.active)), [m, daily]);
+  const label = (i: number) => new Date(`${daily[i]!.date}T00:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
   const fmt = (v: number) => (m === 'clicks' ? `${n(v)} clicks` : m === 'signups' ? `${n(v)} clients` : `${n(v)} active`);
   return (
     <section className="v3-card pt-trend" data-testid="partner-trend">
@@ -116,7 +104,7 @@ export function TrendCard({ o, from }: { o: Pick<PartnerOverview, 'daily' | 'cli
         </div>
       </div>
       <div className="pt-trend-body"><AreaLine pts={pts} fmt={fmt} height={236} labelFor={label} /></div>
-      {days.length > 1 && <div className="pt-axis"><span>{label(0)}</span><span>{label(Math.floor((days.length - 1) / 2))}</span><span>{label(days.length - 1)}</span></div>}
+      {daily.length > 1 && <div className="pt-axis"><span>{label(0)}</span><span>{label(Math.floor((daily.length - 1) / 2))}</span><span>{label(daily.length - 1)}</span></div>}
     </section>
   );
 }
@@ -165,23 +153,24 @@ export function LinkBox({ url, testId }: { url: string; testId?: string }) {
 }
 
 // ── Channels ──────────────────────────────────────────────────────────────
-export function ChannelTable({ channels, right, withLinks = false }: { channels: PartnerChannel[]; right?: ReactNode; withLinks?: boolean }) {
+export function ChannelTable({ channels, right, withLinks = false, onArchive }: { channels: PartnerChannel[]; right?: ReactNode; withLinks?: boolean; onArchive?: (c: PartnerChannel) => void }) {
   const best = Math.max(...channels.map(c => c.signups), 1);
   return (
     <section className="v3-card a-flush pt-ch" data-testid="partner-channels">
       <div className="v3-ch"><h3>By channel<span> · all time</span></h3>{right}</div>
       <div className="v3-tbl-wrap">
         <table className="v3-table">
-          <thead><tr><th>Channel</th>{withLinks && <th>Link</th>}<th className="r">Clicks</th><th className="r">Signups</th><th className="r">Click → signup</th><th className="r">MT5 connected</th><th className="r">Active</th></tr></thead>
+          <thead><tr><th>Channel</th>{withLinks && <th>Link</th>}<th className="r">Clicks</th><th className="r">Signups</th><th className="r">Click → signup</th><th className="r">MT5 connected</th><th className="r">Active</th>{onArchive && <th className="r"><span className="sr-only">Actions</span></th>}</tr></thead>
           <tbody>{channels.map(c => (
             <tr key={c.id} className="static">
               <td><div className="pt-chn"><b>{c.label}</b><span className="bar"><i style={{ width: `${(c.signups / best) * 100}%` }} /></span></div></td>
               {withLinks && <td><div className="pt-chlink"><code>{c.url.replace(/^https:\/\//, '')}</code><CopyButton text={c.url} label="Copy" className="v3-btn v3-btn--o pt-copy-sm" /></div></td>}
               <td className="r num">{n(c.clicks)}</td>
               <td className="r num" style={{ fontWeight: 700 }}>{n(c.signups)}</td>
-              <td className="r"><span className="v3-pill v num">{pct(c.signups, c.clicks)}</span></td>
+              <td className="r"><span className="v3-pill v num">{pct(c.converted, c.clicks)}</span></td>
               <td className="r num">{n(c.connected)}</td>
               <td className="r num lg">{n(c.active)}</td>
+              {onArchive && <td className="r">{c.slug ? <button type="button" className="pt-rowbtn" onClick={() => onArchive(c)}>Archive</button> : <span className="mute pt-default">Default</span>}</td>}
             </tr>
           ))}</tbody>
         </table>
@@ -214,20 +203,29 @@ export function ActivityFeed({ events, limit = 8 }: { events: PartnerEvent[]; li
 }
 
 // ── Clients table ─────────────────────────────────────────────────────────
-export function ClientRows({ clients }: { clients: PartnerClient[] }) {
+const regionNames = typeof Intl !== 'undefined' && 'DisplayNames' in Intl ? new Intl.DisplayNames(['en'], { type: 'region' }) : null;
+/** "Mumbai, India" from a city and an ISO-2 country, tolerating either missing. */
+export function place(city: string | null, country: string | null): string {
+  let c = country;
+  if (country && /^[A-Z]{2}$/i.test(country)) { try { c = regionNames?.of(country.toUpperCase()) ?? country; } catch { c = country; } }
+  return [city, c].filter(Boolean).join(', ') || 'Location not set';
+}
+
+export function ClientRows({ clients, onUnlink }: { clients: PartnerClient[]; onUnlink?: (c: PartnerClient) => void }) {
   return (
     <div className="v3-tbl-wrap">
       <table className="v3-table pt-clients">
-        <thead><tr><th>Client</th><th>Joined via</th><th>Signed up</th><th>Status</th><th className="r">Trades · 30d</th><th className="r">Lots · 30d</th><th className="r">Last active</th></tr></thead>
+        <thead><tr><th>Client</th><th>Joined via</th><th>Signed up</th><th>Status</th><th className="r">Trades · 30d</th><th className="r">Lots · 30d</th><th className="r">Last active</th>{onUnlink && <th className="r"><span className="sr-only">Actions</span></th>}</tr></thead>
         <tbody>{clients.map(c => (
           <tr key={c.id} className="static">
-            <td><div className="pt-who"><Avatar name={c.name} /><span><b>{c.name}</b><small>{c.city}, {c.country}</small></span></div></td>
-            <td><span className="pt-via">{c.channel}{c.via === 'code' && <em>code</em>}</span></td>
+            <td><div className="pt-who"><Avatar name={c.name} /><span><b>{c.name}</b><small>{place(c.city, c.country)}</small></span></div></td>
+            <td><span className="pt-via">{c.channel}{c.via !== 'link' && <em>{c.via}</em>}</span></td>
             <td className="mute">{day(c.signedUpAt)}</td>
             <td><StatusPill s={c.status} /></td>
             <td className="r num">{c.status === 'SIGNED_UP' ? <span className="mute">—</span> : n(c.trades30d)}</td>
             <td className="r num">{c.status === 'SIGNED_UP' ? <span className="mute">—</span> : c.lots30d.toFixed(2)}</td>
             <td className="r mute">{c.lastActiveAt ? timeAgo(c.lastActiveAt) : '—'}</td>
+            {onUnlink && <td className="r"><button type="button" className="pt-rowbtn" onClick={() => onUnlink(c)}>Unlink</button></td>}
           </tr>
         ))}</tbody>
       </table>

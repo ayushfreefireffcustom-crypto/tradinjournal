@@ -2085,7 +2085,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('status 302', () => pm.response.to.have.status(302));",
-                  "pm.test(\"redirects home\", () => { pm.expect(pm.response.headers.get('Location')).to.eql(pm.collectionVariables.get('appUrl') + '/'); });",
+                  "pm.test(\"redirects home\", () => { pm.expect(pm.response.headers.get('Location')).to.eql(pm.variables.get('appUrl') + '/'); });",
                   "const c = (pm.response.headers.all().filter(h => h.key.toLowerCase() === 'set-cookie').map(h => h.value).find(v => v.startsWith('tl_ref=')) || '').split(';')[0];",
                   "pm.test(\"does not set tl_ref\", () => { pm.expect(c).to.eql(\"\"); });"
                 ]
@@ -2157,6 +2157,55 @@
                 {
                   "key": "ch",
                   "value": "does-not-exist"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Click ROHANFX via telegram (for pre-filled code)",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 302', () => pm.response.to.have.status(302));",
+                  "pm.test(\"redirects to signup with the code\", () => { pm.expect(pm.response.headers.get('Location')).to.match(/\\/signup\\?ref=[A-Z0-9_-]+$/); });",
+                  "const c = (pm.response.headers.all().filter(h => h.key.toLowerCase() === 'set-cookie').map(h => h.value).find(v => v.startsWith('tl_ref=')) || '').split(';')[0];",
+                  "pm.test(\"sets a signed tl_ref cookie\", () => { pm.expect(c).to.match(/^tl_ref=[^.]+\\.[^.]+\\.\\d+\\.[A-Za-z0-9_-]+$/); });",
+                  "pm.collectionVariables.set('refE', c);",
+                  "pm.test(\"cookie is HttpOnly + Lax\", () => { const raw = pm.response.headers.all().find(h => h.key.toLowerCase()==='set-cookie' && h.value.startsWith('tl_ref=')).value; pm.expect(raw).to.include('HttpOnly'); pm.expect(raw).to.match(/SameSite=Lax/i); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{altUrl}}/api/r/ROHANFX?ch=telegram-group",
+              "host": [
+                "{{altUrl}}"
+              ],
+              "path": [
+                "api",
+                "r",
+                "ROHANFX"
+              ],
+              "query": [
+                {
+                  "key": "ch",
+                  "value": "telegram-group"
                 }
               ]
             }
@@ -2439,6 +2488,62 @@
           }
         },
         {
+          "name": "Sign up c7",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{refE}}"
+              },
+              {
+                "key": "Origin",
+                "value": "{{appUrl}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/sign-up/email",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "sign-up",
+                "email"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{c7Email}}\",\n  \"password\": \"{{password}}\",\n  \"name\": \"{{c7Name}}\",\n  \"country\": \"IN\",\n  \"city\": \"Mumbai\",\n  \"postalCode\": \"400001\",\n  \"referralCode\": \"rohanfx\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
           "name": "Sign up c6 (tampered cookie)",
           "protocolProfileBehavior": {
             "disableCookies": true,
@@ -2522,13 +2627,14 @@
                 "exec": [
                   "pm.test('status 200', () => pm.response.to.have.status(200));",
                   "const d = pm.response.json().data;",
-                  "pm.test(\"funnel\", () => { pm.expect(d.funnel).to.include({ range: \"ALL\", from: null, clicks: 4, signups: 2, connected: 1, active: 0 }); });",
-                  "pm.test(\"two clients, newest first\", () => { pm.expect(d.totalClients).to.eql(2); pm.expect(d.recentClients.map(c => c.name)).to.eql([pm.collectionVariables.get('c3Name'), pm.collectionVariables.get('c1Name')]); });",
+                  "pm.test(\"funnel\", () => { pm.expect(d.funnel).to.include({ range: \"ALL\", from: null, clicks: 5, converted: 3, signups: 3, connected: 1, active: 0 }); });",
+                  "pm.test(\"three clients, newest first\", () => { pm.expect(d.totalClients).to.eql(3); pm.expect(d.recentClients.map(c => c.name)).to.eql([pm.collectionVariables.get('c7Name'), pm.collectionVariables.get('c3Name'), pm.collectionVariables.get('c1Name')]); });",
+                  "pm.test(\"pre-filled code for the same partner keeps the link + channel\", () => { const c7 = d.recentClients.find(c => c.name === pm.collectionVariables.get('c7Name')); pm.expect(c7).to.include({ via: 'link', channel: 'Telegram group' }); });",
                   "pm.test(\"c1 came through the telegram link and connected\", () => { const c1 = d.recentClients.find(c => c.name === pm.collectionVariables.get('c1Name')); pm.expect(c1).to.include({ channel: 'Telegram group', via: 'link', status: 'CONNECTED', city: 'Mumbai', country: 'IN' }); pm.expect(c1.connectedAt).to.be.a('string'); });",
                   "pm.test(\"c3 fell back to the cookie (ROHAN-VIP) despite a bad typed code\", () => { const c3 = d.recentClients.find(c => c.name === pm.collectionVariables.get('c3Name')); pm.expect(c3).to.include({ via: 'link', status: 'SIGNED_UP', channel: 'Direct link' }); });",
                   "pm.test(\"no emails leak to partners\", () => { pm.expect(JSON.stringify(d.recentClients)).to.not.include('@'); });",
-                  "pm.test(\"channels\", () => { const tg = d.channels.find(c => c.slug === 'telegram-group'); pm.expect(tg).to.include({ clicks: 1, signups: 1, connected: 1 }); const def = d.channels.find(c => c.slug === null); pm.expect(def).to.include({ clicks: 3, signups: 1 }); });",
-                  "pm.test(\"daily series ends today with running totals\", () => { const last = d.daily[d.daily.length - 1]; pm.expect(last.date).to.eql(new Date().toISOString().slice(0,10)); pm.expect(last.clients).to.eql(2); pm.expect(d.daily.reduce((s,p) => s + p.clicks, 0)).to.eql(4); });",
+                  "pm.test(\"channels\", () => { const tg = d.channels.find(c => c.slug === 'telegram-group'); pm.expect(tg).to.include({ clicks: 2, converted: 2, signups: 2, connected: 1 }); const def = d.channels.find(c => c.slug === null); pm.expect(def).to.include({ clicks: 3, signups: 1 }); });",
+                  "pm.test(\"daily series ends today with running totals\", () => { const last = d.daily[d.daily.length - 1]; pm.expect(last.date).to.eql(new Date().toISOString().slice(0,10)); pm.expect(last.clients).to.eql(3); pm.expect(d.daily.reduce((s,p) => s + p.clicks, 0)).to.eql(5); });",
                   "pm.test(\"activity feed has signup + connected events\", () => { const kinds = d.activity.map(e => e.kind); pm.expect(kinds).to.include('signup'); pm.expect(kinds).to.include('connected'); });"
                 ]
               }
@@ -2626,7 +2732,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('status 200', () => pm.response.to.have.status(200));",
-                  "pm.test(\"items + counts + meta\", () => { const b = pm.response.json(); pm.expect(b.data.items).to.have.length(2); pm.expect(b.data.counts).to.eql({ all: 2, SIGNED_UP: 1, CONNECTED: 1, ACTIVE: 0, INACTIVE: 0 }); pm.expect(b.meta).to.eql({ page: 1, pageSize: 12, total: 2, totalPages: 1 }); });",
+                  "pm.test(\"items + counts + meta\", () => { const b = pm.response.json(); pm.expect(b.data.items).to.have.length(3); pm.expect(b.data.counts).to.eql({ all: 3, SIGNED_UP: 2, CONNECTED: 1, ACTIVE: 0, INACTIVE: 0 }); pm.expect(b.meta).to.eql({ page: 1, pageSize: 12, total: 3, totalPages: 1 }); });",
                   "pm.collectionVariables.set('c1RefId', pm.response.json().data.items.find(c => c.name === pm.collectionVariables.get('c1Name')).id);"
                 ]
               }
@@ -2768,7 +2874,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('status 200', () => pm.response.to.have.status(200));",
-                  "pm.test(\"only c1\", () => { pm.expect(pm.response.json().meta.total).to.eql(1); });"
+                  "pm.test(\"c1 + c7\", () => { pm.expect(pm.response.json().meta.total).to.eql(2); });"
                 ]
               }
             }
@@ -2817,7 +2923,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('status 200', () => pm.response.to.have.status(200));",
-                  "pm.test(\"page 2 of 2\", () => { const b = pm.response.json(); pm.expect(b.meta).to.include({ page: 2, totalPages: 2 }); pm.expect(b.data.items).to.have.length(1); });"
+                  "pm.test(\"page 2 of 2\", () => { const b = pm.response.json(); pm.expect(b.meta).to.include({ page: 2, totalPages: 2, total: 3 }); pm.expect(b.data.items).to.have.length(1); });"
                 ]
               }
             }
@@ -2835,7 +2941,7 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/partner/clients?pageSize=1&page=2&sort=name",
+              "raw": "{{baseUrl}}/api/partner/clients?pageSize=2&page=2&sort=name",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -2847,7 +2953,7 @@
               "query": [
                 {
                   "key": "pageSize",
-                  "value": "1"
+                  "value": "2"
                 },
                 {
                   "key": "page",
@@ -2923,8 +3029,9 @@
                 "exec": [
                   "pm.test('status 200', () => pm.response.to.have.status(200));",
                   "const d = pm.response.json().data;",
-                  "pm.test(\"per-code stats\", () => { const m = Object.fromEntries(d.codes.map(c => [c.code, c])); pm.expect(m.ROHANFX).to.include({ clicks: 3, signups: 1 }); pm.expect(m['ROHAN-VIP']).to.include({ clicks: 1, signups: 1 }); });",
-                  "pm.test(\"recent clicks: 4, two converted, desktop device\", () => { pm.expect(d.recentClicks).to.have.length(4); pm.expect(d.recentClicks.filter(c => c.converted)).to.have.length(2); pm.expect(d.recentClicks[0].device).to.be.oneOf([\"Desktop\",\"Mobile\",\"Tablet\"]); });"
+                  "pm.test(\"per-code stats\", () => { const m = Object.fromEntries(d.codes.map(c => [c.code, c])); pm.expect(m.ROHANFX).to.include({ clicks: 4, signups: 2 }); pm.expect(m['ROHAN-VIP']).to.include({ clicks: 1, signups: 1 }); });",
+                  "pm.test(\"totals cover every code\", () => { pm.expect(d.totals).to.eql({ clicks: 5, converted: 3, signups: 3 }); });",
+                  "pm.test(\"recent clicks: 5, three converted\", () => { pm.expect(d.recentClicks).to.have.length(5); pm.expect(d.recentClicks.filter(c => c.converted)).to.have.length(3); pm.expect(d.recentClicks[0].device).to.be.oneOf([\"Desktop\",\"Mobile\",\"Tablet\"]); });"
                 ]
               }
             }
@@ -2968,6 +3075,7 @@
                 "exec": [
                   "pm.test('status 200', () => pm.response.to.have.status(200));",
                   "const d = pm.response.json().data;",
+                  "pm.test(\"code signup counts as a client but not a click conversion\", () => { pm.expect(d.funnel.converted).to.eql(0); pm.expect(d.funnel.signups).to.eql(1); });",
                   "pm.test(\"one client via code\", () => { pm.expect(d.totalClients).to.eql(1); pm.expect(d.recentClients[0]).to.include({ name: pm.collectionVariables.get('c2Name'), via: 'code', channel: 'Direct link' }); });",
                   "pm.test(\"one click recorded even though cookie was kept\", () => { pm.expect(d.funnel.clicks).to.eql(1); });"
                 ]
@@ -3275,7 +3383,7 @@
                 "exec": [
                   "pm.test('status 200', () => pm.response.to.have.status(200));",
                   "const d = pm.response.json().data;",
-                  "pm.test(\"row + codes + notes\", () => { pm.expect(d.admin).to.include({ code: 'ROHANFX', clients: 2, connected: 1, clicks30d: 4 }); pm.expect(d.codes).to.have.length(2); pm.expect(d.notes.map(n => n.body)).to.include('Partner created by admin.'); });"
+                  "pm.test(\"row + codes + notes\", () => { pm.expect(d.admin).to.include({ code: 'ROHANFX', clients: 3, connected: 1, clicks30d: 5, converted30d: 3 }); pm.expect(d.codes).to.have.length(2); pm.expect(d.notes.map(n => n.body)).to.include('Partner created by admin.'); });"
                 ]
               }
             }
@@ -3571,7 +3679,7 @@
           }
         },
         {
-          "name": "Rohan now has 1 client",
+          "name": "Rohan now has 2 clients",
           "protocolProfileBehavior": {
             "disableCookies": true,
             "followRedirects": false
@@ -3583,7 +3691,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('status 200', () => pm.response.to.have.status(200));",
-                  "pm.test(\"1\", () => { pm.expect(pm.response.json().meta.total).to.eql(1); });"
+                  "pm.test(\"2\", () => { pm.expect(pm.response.json().meta.total).to.eql(2); });"
                 ]
               }
             }
@@ -3722,7 +3830,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('status 200', () => pm.response.to.have.status(200));",
-                  "pm.test(\"moved 1\", () => { pm.expect(pm.response.json().data.moved).to.eql(1); });"
+                  "pm.test(\"moved 2\", () => { pm.expect(pm.response.json().data.moved).to.eql(2); });"
                 ]
               }
             }
@@ -3817,6 +3925,49 @@
           }
         },
         {
+          "name": "Conversion never exceeds 100% after moves",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"converted ≤ clicks for every partner\", () => { pm.response.json().data.forEach(r => pm.expect(r.converted30d).to.be.at.most(r.clicks30d)); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/partners",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "partners"
+              ]
+            }
+          }
+        },
+        {
           "name": "Sana admin clients endpoint",
           "protocolProfileBehavior": {
             "disableCookies": true,
@@ -3829,7 +3980,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('status 200', () => pm.response.to.have.status(200));",
-                  "pm.test(\"3 clients\", () => { pm.expect(pm.response.json().data.counts.all).to.eql(3); });"
+                  "pm.test(\"4 clients\", () => { pm.expect(pm.response.json().data.counts.all).to.eql(4); });"
                 ]
               }
             }
@@ -3971,7 +4122,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('status 302', () => pm.response.to.have.status(302));",
-                  "pm.test(\"redirects home\", () => { pm.expect(pm.response.headers.get('Location')).to.eql(pm.collectionVariables.get('appUrl') + '/'); });",
+                  "pm.test(\"redirects home\", () => { pm.expect(pm.response.headers.get('Location')).to.eql(pm.variables.get('appUrl') + '/'); });",
                   "const c = (pm.response.headers.all().filter(h => h.key.toLowerCase() === 'set-cookie').map(h => h.value).find(v => v.startsWith('tl_ref=')) || '').split(';')[0];",
                   "pm.test(\"does not set tl_ref\", () => { pm.expect(c).to.eql(\"\"); });"
                 ]
@@ -5059,6 +5210,18 @@
     {
       "key": "c6First",
       "value": "Zoya"
+    },
+    {
+      "key": "c7Email",
+      "value": "c7@partners.test"
+    },
+    {
+      "key": "c7Name",
+      "value": "Ishaan Rao"
+    },
+    {
+      "key": "c7First",
+      "value": "Ishaan"
     }
   ]
 }

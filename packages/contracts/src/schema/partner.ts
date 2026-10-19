@@ -106,6 +106,8 @@ export interface PartnerFunnelDto {
   range: PartnerRange;
   from: string | null;
   clicks: number;
+  /** Clicks in the range that led to a signup — the basis for click → signup %. */
+  converted: number;
   signups: number;
   connected: number;
   active: number;
@@ -125,6 +127,8 @@ export interface PartnerChannelDto {
   slug: string | null;
   url: string;
   clicks: number;
+  /** Clicks on this channel that led to a signup. */
+  converted: number;
   signups: number;
   connected: number;
   active: number;
@@ -197,6 +201,8 @@ export interface PartnerLinksDto {
   codes: PartnerCodeDto[];
   channels: PartnerChannelDto[];
   recentClicks: PartnerClickDto[];
+  /** All-time totals across every code and channel, including released/archived ones. */
+  totals: { clicks: number; converted: number; signups: number };
   limits: { maxChannels: number; maxCodes: number };
 }
 
@@ -211,6 +217,8 @@ export interface AdminPartnerRowDto {
   approvedAt: string | null;
   audience: string | null;
   clicks30d: number;
+  /** Clicks in the last 30 days that led to a signup. */
+  converted30d: number;
   signups30d: number;
   clients: number;
   connected: number;

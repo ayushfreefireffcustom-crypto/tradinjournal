@@ -98,7 +98,11 @@ export async function attributeNewUser(
 
     if (choice.kind === 'code') {
       const hit = await resolveActiveCode(choice.code);
-      if (hit) {
+      // Same partner as the link they clicked (the form pre-fills ?ref=): keep the
+      // click so the channel and conversion are recorded.
+      if (hit && cookie?.partnerId === hit.partner.id) {
+        // fall through to the cookie branch below
+      } else if (hit) {
         const def = await prisma.partnerChannel.findFirst({ where: { partnerId: hit.partner.id, slug: '' } });
         target = { partnerId: hit.partner.id, code: hit.code, channelId: def?.id ?? null, clickId: null, source: 'CODE' };
       }

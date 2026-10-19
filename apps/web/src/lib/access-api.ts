@@ -13,8 +13,8 @@ export interface AccessStatusDto {
   minTradesRequired: number;
   activityWindowDays: number;
   isAdmin: boolean;
-  /** Has an approved partner profile (shows the Partner section). */
-  isPartner?: boolean;
+  /** The caller's partner record status, or null when they aren't a partner. */
+  partnerStatus: 'PENDING' | 'ACTIVE' | 'SUSPENDED' | 'REVOKED' | null;
   maintenance: { enabled: boolean; message: string | null };
 }
 

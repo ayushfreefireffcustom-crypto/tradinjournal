@@ -383,7 +383,7 @@ export function Footer() {
           </nav>
           <nav aria-label="Account">
             <h3>Account</h3>
-            <ul><li><a href="/signup">Create account</a></li><li><a href="/login">Sign in</a></li><li><a href="#faq">FAQ</a></li><li><a href="/terms">Terms</a></li><li><a href="/privacy">Privacy</a></li></ul>
+            <ul><li><a href="/signup">Create account</a></li><li><a href="/login">Sign in</a></li><li><a href="#faq">FAQ</a></li><li><a href="/partner">Become a partner</a></li><li><a href="/terms">Terms</a></li><li><a href="/privacy">Privacy</a></li></ul>
           </nav>
         </div>
         <div className="lp-huge" aria-hidden>TRADE<span>logs</span></div>

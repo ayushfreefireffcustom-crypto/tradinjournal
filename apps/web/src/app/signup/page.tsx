@@ -2,12 +2,13 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import AuthShell, { AuthSubmit, EyeButton, PasswordStrength } from '@/components/v3/auth-shell';
 import GoogleButton from '@/components/google-button';
 import { authClient } from '@/lib/auth-client';
 import { useRedirectIfAuthed } from '@/lib/use-redirect-if-authed';
 import { COUNTRIES } from '@/lib/countries';
+import { partnerApi } from '@/lib/partner-api';
 
 function passwordStrength(pw: string): { score: number; label: string; color: string } {
   let score = 0;
@@ -35,6 +36,25 @@ export default function SignupPage() {
   const [agree, setAgree] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  // Referral: pre-filled from /signup?ref=CODE (the partner link redirect) or typed.
+  const [refOpen, setRefOpen] = useState(false);
+  const [refCode, setRefCode] = useState('');
+  const [refCheck, setRefCheck] = useState<{ code: string; valid: boolean; partnerName: string | null } | null>(null);
+
+  useEffect(() => {
+    const ref = new URLSearchParams(window.location.search).get('ref');
+    if (ref && /^[A-Za-z0-9_-]{3,20}$/.test(ref)) { setRefCode(ref.toUpperCase()); setRefOpen(true); }
+  }, []);
+  useEffect(() => {
+    const code = refCode.trim();
+    if (code.length < 3) { setRefCheck(null); return; }
+    let alive = true;
+    const t = setTimeout(() => {
+      partnerApi.checkCode(code).then(r => { if (alive) setRefCheck({ code, ...r }); }).catch(() => { if (alive) setRefCheck(null); });
+    }, 300);
+    return () => { alive = false; clearTimeout(t); };
+  }, [refCode]);
+  const refValid = !!refCheck && refCheck.code === refCode.trim() && refCheck.valid;
 
   const strength = useMemo(() => passwordStrength(password), [password]);
   const canSubmit =
@@ -59,6 +79,8 @@ export default function SignupPage() {
         country: country.toUpperCase(),
         city: city.trim(),
         postalCode: postalCode.trim(),
+        // Only a recognised code is sent; an unknown one is simply ignored.
+        ...(refValid ? { referralCode: refCode.trim() } : {}),
       });
       if (res?.error) throw new Error(res.error.message ?? 'Could not create account');
       router.push(`/verify?email=${encodeURIComponent(email)}`);
@@ -108,6 +130,22 @@ export default function SignupPage() {
           <div className="au-row2">
             <label><span className="au-lbl">City</span><span className="au-in"><input type="text" required value={city} onChange={e => setCity(e.target.value)} data-testid="signup-city" placeholder="e.g. Raipur" autoComplete="address-level2" /></span></label>
             <label><span className="au-lbl">Postal / ZIP / PIN</span><span className="au-in"><input type="text" required value={postalCode} onChange={e => setPostalCode(e.target.value)} data-testid="signup-postal" placeholder="e.g. 492001" autoComplete="postal-code" /></span></label>
+          </div>
+          <div className="au-ref" data-testid="signup-referral">
+            {!refOpen ? (
+              <button type="button" className="au-ref-toggle" onClick={() => setRefOpen(true)}>Have a referral code?</button>
+            ) : <>
+              <label className="au-lbl" htmlFor="su-ref">Referral code <span className="au-lbl-opt">optional</span></label>
+              <span className={`au-in ${refValid ? 'ok' : ''}`}>
+                <input id="su-ref" type="text" value={refCode} maxLength={20} onChange={e => setRefCode(e.target.value.replace(/[^A-Za-z0-9_-]/g, '').toUpperCase())} placeholder="e.g. ROHANFX" autoComplete="off" data-testid="signup-ref" />{ok(refValid)}
+              </span>
+              {refValid && refCheck?.partnerName && (
+                <p className="au-ref-note" data-testid="signup-ref-ok"><b>Referred by {refCheck.partnerName}.</b> They&rsquo;ll see your name, city and how actively you trade — never your email, balance or trades.</p>
+              )}
+              {refCheck && refCheck.code === refCode.trim() && !refCheck.valid && (
+                <p className="au-ref-note bad" data-testid="signup-ref-bad">We don&rsquo;t recognise that code. You can still sign up — it just won&rsquo;t be linked to anyone.</p>
+              )}
+            </>}
           </div>
           <label className="au-check">
             <input type="checkbox" checked={agree} onChange={e => setAgree(e.target.checked)} data-testid="agree-toggle" />

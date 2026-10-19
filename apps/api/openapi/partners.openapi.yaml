@@ -96,11 +96,12 @@ components:
         cookieDays: { type: integer }
     Funnel:
       type: object
-      required: [range, from, clicks, signups, connected, active]
+      required: [range, from, clicks, converted, signups, connected, active]
       properties:
         range: { type: string, enum: ['7D', '30D', '90D', 'ALL'] }
         from: { type: string, format: date-time, nullable: true }
         clicks: { type: integer }
+        converted: { type: integer, description: Clicks in the range that led to a signup (click → signup % = converted / clicks) }
         signups: { type: integer }
         connected: { type: integer, description: Of those signups, how many connected a broker }
         active: { type: integer, description: Of those signups, how many are ACTIVE now }
@@ -115,14 +116,15 @@ components:
         active: { type: integer, description: Running total of currently-active clients by activation day }
     Channel:
       type: object
-      required: [id, label, slug, url, clicks, signups, connected, active, createdAt]
+      required: [id, label, slug, url, clicks, converted, signups, connected, active, createdAt]
       properties:
         id: { type: string }
         label: { type: string }
         slug: { type: string, nullable: true, description: null for the default link }
         url: { type: string }
         clicks: { type: integer }
-        signups: { type: integer }
+        converted: { type: integer, description: Clicks on this channel that led to a signup }
+        signups: { type: integer, description: All clients on this channel, including typed codes and admin assignments }
         connected: { type: integer }
         active: { type: integer }
         createdAt: { type: string, format: date-time }
@@ -194,13 +196,21 @@ components:
         totalClients: { type: integer }
     Links:
       type: object
-      required: [partner, baseUrl, codes, channels, recentClicks, limits]
+      required: [partner, baseUrl, codes, channels, recentClicks, totals, limits]
       properties:
         partner: { $ref: '#/components/schemas/PartnerProfile' }
         baseUrl: { type: string }
         codes: { type: array, items: { $ref: '#/components/schemas/Code' } }
         channels: { type: array, items: { $ref: '#/components/schemas/Channel' } }
         recentClicks: { type: array, items: { $ref: '#/components/schemas/Click' } }
+        totals:
+          type: object
+          description: All-time totals across every code and channel, including released/archived ones.
+          required: [clicks, converted, signups]
+          properties:
+            clicks: { type: integer }
+            converted: { type: integer }
+            signups: { type: integer }
         limits:
           type: object
           required: [maxChannels, maxCodes]
@@ -209,7 +219,7 @@ components:
             maxCodes: { type: integer }
     AdminPartnerRow:
       type: object
-      required: [id, userId, name, email, code, status, joinedAt, approvedAt, audience, clicks30d, signups30d, clients, connected, active]
+      required: [id, userId, name, email, code, status, joinedAt, approvedAt, audience, clicks30d, converted30d, signups30d, clients, connected, active]
       properties:
         id: { type: string }
         userId: { type: string }
@@ -221,6 +231,7 @@ components:
         approvedAt: { type: string, format: date-time, nullable: true }
         audience: { type: string, nullable: true }
         clicks30d: { type: integer }
+        converted30d: { type: integer, description: Clicks in the last 30 days that led to a signup }
         signups30d: { type: integer }
         clients: { type: integer }
         connected: { type: integer }

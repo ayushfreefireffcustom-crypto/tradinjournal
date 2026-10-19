@@ -16,7 +16,7 @@ import {
 
 export interface Actor { id: string; email: string }
 
-function toRow(p: PartnerWithUser, c: { clicks30d: number; signups30d: number; clients: number; connected: number; active: number }): AdminPartnerRowDto {
+function toRow(p: PartnerWithUser, c: { clicks30d: number; converted30d: number; signups30d: number; clients: number; connected: number; active: number }): AdminPartnerRowDto {
   return {
     id: p.id, userId: p.userId, name: p.user.name, email: p.user.email, code: primaryCode(p), status: p.status,
     joinedAt: p.createdAt.toISOString(), approvedAt: p.approvedAt?.toISOString() ?? null, audience: p.audience, ...c,
