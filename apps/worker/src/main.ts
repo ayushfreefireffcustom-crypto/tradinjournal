@@ -30,6 +30,8 @@ import {
   MARKET_WARM_SCHEDULER_ID,
   QUEUE_PRICE_ALERTS,
   PRICE_ALERTS_SCHEDULER_ID,
+  QUEUE_TRADE_SYNC,
+  TRADE_SYNC_SCHEDULER_ID,
   QUEUE_MACRO_INGEST,
   MACRO_INGEST_SCHEDULER_ID,
   QUEUE_TRADER_GRADE,
@@ -53,6 +55,7 @@ import {
   type NotificationsDigestJob,
   type MarketWarmJob,
   type PriceAlertsJob,
+  type TradeSyncJob,
   type MacroIngestJob,
   type TraderGradeJob,
   type TraderMetaTrainJob,
@@ -67,6 +70,7 @@ import { createNotificationsWorker, isUnrecoverable as notifUnrecoverable } from
 import { createDigestWorker, isUnrecoverable as digestUnrecoverable } from './processors/notifications-digest.js';
 import { createMarketWarmWorker, isUnrecoverable as marketWarmUnrecoverable } from './processors/market-warm.js';
 import { createPriceAlertsWorker, isUnrecoverable as priceAlertsUnrecoverable } from './processors/price-alerts.js';
+import { createTradeSyncWorker, isUnrecoverable as tradeSyncUnrecoverable } from './processors/trade-sync.js';
 import { createMacroWorker, isUnrecoverable as macroUnrecoverable } from './processors/macro-ingest.js';
 import { createTraderGradeWorker, isUnrecoverable as traderGradeUnrecoverable } from './processors/trader-grade.js';
 import { createTraderMetaWorker, isUnrecoverable as traderMetaUnrecoverable } from './processors/trader-meta.js';
@@ -212,6 +216,19 @@ async function start(): Promise<void> {
     );
     attach(createPriceAlertsWorker(connection, alertsQueue) as unknown as Worker, 'Price alerts', priceAlertsUnrecoverable);
     logger.info(`Price alerts scheduled: "${env.PRICE_ALERT_CRON}" UTC`);
+  }
+
+  // ── Trade sync ──────────────────────────────────────────────────────────────
+  // Keeps every account's stored MT5 deals fresh; the API queues + leases.
+  const tradeSyncQueue = getQueue<TradeSyncJob>(QUEUE_TRADE_SYNC);
+  if (tradeSyncQueue) {
+    await tradeSyncQueue.upsertJobScheduler(
+      TRADE_SYNC_SCHEDULER_ID,
+      { pattern: env.TRADE_SYNC_CRON, tz: 'UTC' },
+      { name: 'sync', data: { kind: 'trade-sync', bucket: timeBucket(new Date(), 'minute') } },
+    );
+    attach(createTradeSyncWorker(connection, tradeSyncQueue) as unknown as Worker, 'Trade sync', tradeSyncUnrecoverable);
+    logger.info(`Trade sync scheduled: "${env.TRADE_SYNC_CRON}" UTC`);
   }
 
   // ── Macro data spine ────────────────────────────────────────────────────────

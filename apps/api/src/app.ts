@@ -22,6 +22,7 @@ import { adminRouter } from './modules/admin/admin.routes.js';
 import { accessRouter } from './modules/admin/access.routes.js';
 import { usageRouter } from './modules/usage/usage.routes.js';
 import { meRouter } from './modules/me/me.routes.js';
+import { syncInternalRouter } from './modules/sync/sync.jobs.js';
 import { adminPartnersRouter, partnerRouter, partnersInternalRouter, referralPublicRouter } from './modules/partners/partners.routes.js';
 
 export function createApp(): Express {
@@ -102,6 +103,7 @@ export function createApp(): Express {
   app.use('/internal/macro', macroInternalRouter);
   app.use('/internal/trader', traderInternalRouter);
   app.use('/internal/partners', partnersInternalRouter);
+  app.use('/internal/sync', syncInternalRouter);
 
   app.use((_req: Request, res: Response) => {
     res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Route not found' } });

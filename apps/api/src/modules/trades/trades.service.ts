@@ -1,22 +1,5 @@
 import type { Deal, Trade, AccountStats, EquityPoint, SymbolStat, DayStat, DirectionStat } from '@tradinjournal/types';
-import { getDeals } from '../../lib/broker-connector.js';
-import { findAccountById } from '../accounts/accounts.repository.js';
-
-async function getCredsAndDeals(userId: string, accountId: string): Promise<{ deals: Deal[]; balance: number }> {
-  const account = await findAccountById(accountId, userId);
-  if (!account) throw Object.assign(new Error('Broker account not found'), { statusCode: 404 });
-  const pass = account.password;
-  if (!pass) throw Object.assign(new Error('No password stored for this account'), { statusCode: 400 });
-
-  const deals = await getDeals({ login: Number(account.mt5Login), password: pass, server: account.server });
-
-  // extract starting balance from BALANCE deals
-  const balance = deals
-    .filter(d => d.type === 'BALANCE')
-    .reduce((s, d) => s + parseFloat(d.profit), 0);
-
-  return { deals, balance };
-}
+import { loadAccountData, type ReadMode } from '../sync/account-data.js';
 
 // ─── Trade reconstruction ────────────────────────────────────────────────────
 
@@ -192,32 +175,27 @@ export function computeStats(trades: Trade[], startingBalance: number): AccountS
 }
 
 // ─── Public service functions ─────────────────────────────────────────────────
+// All reads come from stored deals (see modules/sync). `mode` decides whether a
+// read may wait for / trigger a sync — user pages use the default.
 
-export async function fetchDeals(userId: string, accountId: string): Promise<Deal[]> {
-  const { deals } = await getCredsAndDeals(userId, accountId);
-  return deals;
+export async function fetchDeals(userId: string, accountId: string, mode?: ReadMode): Promise<Deal[]> {
+  return (await loadAccountData(userId, accountId, mode)).deals;
 }
 
-export async function fetchTrades(userId: string, accountId: string): Promise<Trade[]> {
-  const { deals } = await getCredsAndDeals(userId, accountId);
-  return reconstructTrades(deals);
+export async function fetchTrades(userId: string, accountId: string, mode?: ReadMode): Promise<Trade[]> {
+  return (await loadAccountData(userId, accountId, mode)).trades();
 }
 
-export async function fetchStats(userId: string, accountId: string): Promise<AccountStats> {
-  const { deals, balance } = await getCredsAndDeals(userId, accountId);
-  const trades = reconstructTrades(deals);
-  return computeStats(trades, balance);
+export async function fetchStats(userId: string, accountId: string, mode?: ReadMode): Promise<AccountStats> {
+  return (await loadAccountData(userId, accountId, mode)).stats();
 }
 
-// Trades + stats from a SINGLE bridge fetch. The MT5 bridge serialises on one
-// terminal, so callers that need both (e.g. the AI coach grounding) must not run
-// fetchTrades + fetchStats concurrently — that double-hits the terminal and can
-// fail. This does one login and derives both.
+/** Trades + stats from one read (the AI coach grounding needs both). */
 export async function fetchStatsAndTrades(
   userId: string,
   accountId: string,
+  mode?: ReadMode,
 ): Promise<{ stats: AccountStats; trades: Trade[] }> {
-  const { deals, balance } = await getCredsAndDeals(userId, accountId);
-  const trades = reconstructTrades(deals);
-  return { trades, stats: computeStats(trades, balance) };
+  const d = await loadAccountData(userId, accountId, mode);
+  return { trades: d.trades(), stats: d.stats() };
 }

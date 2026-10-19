@@ -96,6 +96,11 @@ export function dispatchPriceAlerts(params: { bucket: string }): Promise<{ check
   return request('/internal/alerts/dispatch', { method: 'POST', body: JSON.stringify(params) });
 }
 
+/** Queue due trade syncs; the API runs them in-process behind its sync queue. */
+export function runTradeSync(): Promise<{ queued: number; waiting: number; active: number }> {
+  return request('/internal/sync/run', { method: 'POST', body: JSON.stringify({}) });
+}
+
 export function ingestMacro(params: { reason: string }): Promise<{ ingested: number }> {
   return request('/internal/macro/ingest', { method: 'POST', body: JSON.stringify(params) });
 }

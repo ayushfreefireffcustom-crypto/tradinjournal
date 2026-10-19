@@ -104,16 +104,26 @@ model BrokerAccount {
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  broker       String
-  mt5Login     BigInt
-  server       String
-  password     String?
-  baseCurrency String        @default("USD")
-  marginMode   MarginMode
-  status       AccountStatus @default(ACTIVE)
-  lastSyncAt   DateTime?
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  broker          String
+  mt5Login        BigInt
+  server          String
+  password        String?
+  baseCurrency    String        @default("USD")
+  marginMode      MarginMode
+  status          AccountStatus @default(ACTIVE)
+  lastSyncAt      DateTime?
+  /// Why the last sync failed (cleared on success / new credentials).
+  lastSyncError   String?
+  /// Cross-instance sync lock: a sync owns the account until this time.
+  syncLockedUntil DateTime?
+  /// Back-off after a failed sync: background syncs skip the account until then.
+  syncRetryAt     DateTime?
+  /// Bumped whenever a sync stores new deals — the cache key for derived trades/stats.
+  dataVersion     Int           @default(0)
+  /// Newest stored deal time; incremental syncs start a little before it.
+  lastDealAt      DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 
   syncRuns   SyncRun[]
   executions Execution[]
@@ -121,6 +131,7 @@ model BrokerAccount {
 
   @@unique([mt5Login, server])
   @@index([userId])
+  @@index([lastSyncAt])
   @@map("broker_account")
 }
 
@@ -142,7 +153,8 @@ model Execution {
   brokerAccountId String
   brokerAccount   BrokerAccount @relation(fields: [brokerAccountId], references: [id], onDelete: Cascade)
 
-  dealTicket  BigInt    @unique
+  /// MT5 tickets are only unique per broker server, so uniqueness is per account.
+  dealTicket  BigInt
   orderTicket BigInt
   positionId  BigInt
   symbol      String
@@ -165,7 +177,8 @@ model Execution {
 
   createdAt DateTime @default(now())
 
-  @@index([brokerAccountId])
+  @@unique([brokerAccountId, dealTicket])
+  @@index([brokerAccountId, dealTime])
   @@index([positionId])
   @@index([symbol])
   @@index([dealTime])

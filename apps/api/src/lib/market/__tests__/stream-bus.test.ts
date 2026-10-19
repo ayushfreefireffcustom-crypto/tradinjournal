@@ -31,4 +31,16 @@ describe('candle pub/sub — same-process delivery (works without Redis)', () =>
 
     unsub();
   });
+
+  it('keeps broker-scoped bars off the public channel and off other brokers', async () => {
+    const pub: number[] = [], xm: number[] = [];
+    const u1 = subscribeCandle('EURUSD', '1m', c => pub.push(c.close));
+    const u2 = subscribeCandle('EURUSD', '1m', c => xm.push(c.close), 'mt5:XM');
+    await publishCandle('EURUSD', '1m', bar(1.1), 'mt5:XM');
+    await publishCandle('EURUSD', '1m', bar(1.2), 'mt5:Exness');
+    await publishCandle('EURUSD', '1m', bar(1.3));
+    u1(); u2();
+    expect(xm).toEqual([1.1]);
+    expect(pub).toEqual([1.3]);
+  });
 });

@@ -1,5 +1,6 @@
 import { prisma } from '@tradinjournal/db';
 import type { BrokerAccount, MarginMode } from '@tradinjournal/db';
+import { encryptSecret } from '../../lib/secrets.js';
 
 export async function findAccountsByUser(userId: string): Promise<BrokerAccount[]> {
   return prisma.brokerAccount.findMany({
@@ -32,6 +33,7 @@ export async function upsertAccount(data: {
   baseCurrency: string;
   marginMode: MarginMode;
 }): Promise<BrokerAccount> {
+  const password = encryptSecret(data.password);
   return prisma.brokerAccount.upsert({
     where: { mt5Login_server: { mt5Login: data.mt5Login, server: data.server } },
     // Re-connecting an existing account must refresh the stored password (and
@@ -40,13 +42,14 @@ export async function upsertAccount(data: {
     update: {
       userId: data.userId,
       broker: data.broker,
-      password: data.password,
+      password,
+      lastSyncError: null, syncRetryAt: null,
       baseCurrency: data.baseCurrency,
       marginMode: data.marginMode,
       status: 'ACTIVE',
       updatedAt: new Date(),
     },
-    create: data,
+    create: { ...data, password },
   });
 }
 
@@ -59,7 +62,7 @@ export async function updateAccountCredentials(
 ): Promise<BrokerAccount | null> {
   const result = await prisma.brokerAccount.updateMany({
     where: { id, userId },
-    data: { ...data, status: 'ACTIVE', updatedAt: new Date() },
+    data: { ...data, password: encryptSecret(data.password), status: 'ACTIVE', lastSyncError: null, syncRetryAt: null, updatedAt: new Date() },
   });
   if (result.count === 0) return null;
   return prisma.brokerAccount.findFirst({ where: { id, userId } });

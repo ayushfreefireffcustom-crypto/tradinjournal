@@ -51,10 +51,20 @@ export default function DashboardPage() {
     setLoading(true);
     setError('');
     try {
+      // Manual "Sync" pulls new deals from MT5 first; normal loads read stored data
+      // (the server refreshes it in the background when it's a few minutes old).
+      let syncedAccount = acc;
+      let still = false;
+      if (notify) {
+        const r = await api.accounts.sync(acc.id);
+        syncedAccount = r.account;
+        still = r.result === 'running';
+      }
       const [s, t, j] = await Promise.all([api.trades.stats(acc.id), api.trades.list(acc.id), api.journal.list(acc.id)]);
       setStats(s); setTrades(t); setJournal(j);
-      setSyncedAt(new Date().toISOString());
-      if (notify) toast.success(`Synced · ${t.filter(x => x.status === 'CLOSED').length} positions loaded`);
+      setSyncedAt(syncedAccount.lastSyncAt ?? new Date().toISOString());
+      if (notify && still) toast.success('Still importing your history — this can take a minute on large accounts');
+      else if (notify) toast.success(`Synced · ${t.filter(x => x.status === 'CLOSED').length} positions loaded`);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to load account data';
       setError(msg);

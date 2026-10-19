@@ -5068,6 +5068,1279 @@
           }
         }
       ]
+    },
+    {
+      "name": "06 Trade sync (bridge offline)",
+      "item": [
+        {
+          "name": "Sign in c1",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const c = (pm.response.headers.all().filter(h => h.key.toLowerCase() === 'set-cookie').map(h => h.value).find(v => v.startsWith('better-auth.session_token=')) || '').split(';')[0];",
+                  "pm.test(\"session cookie issued\", () => { pm.expect(c).to.match(/^better-auth\\.session_token=/); });",
+                  "pm.collectionVariables.set('c1Cookie', c);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{appUrl}}"
+              }
+            ],
+            "url": {
+              "raw": "{{altUrl}}/api/auth/sign-in/email",
+              "host": [
+                "{{altUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "sign-in",
+                "email"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{c1Email}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Sign in rohan",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const c = (pm.response.headers.all().filter(h => h.key.toLowerCase() === 'set-cookie').map(h => h.value).find(v => v.startsWith('better-auth.session_token=')) || '').split(';')[0];",
+                  "pm.test(\"session cookie issued\", () => { pm.expect(c).to.match(/^better-auth\\.session_token=/); });",
+                  "pm.collectionVariables.set('rohanCookie', c);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{appUrl}}"
+              }
+            ],
+            "url": {
+              "raw": "{{altUrl}}/api/auth/sign-in/email",
+              "host": [
+                "{{altUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "sign-in",
+                "email"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{rohanEmail}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Accounts list shows sync fields",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"one account, never synced\", () => { pm.expect(d).to.have.length(1); pm.expect(d[0]).to.include({ lastSyncAt: null, lastSyncError: null, lastDealAt: null }); pm.collectionVariables.set('c1AccId', d[0].id); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{c1Cookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts"
+              ]
+            }
+          }
+        },
+        {
+          "name": "First load tries the backfill → clear 502",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 502', () => pm.response.to.have.status(502));",
+                  "pm.test('error code BROKER_CONNECTION_ERROR', () => pm.expect(pm.response.json().error.code).to.eql('BROKER_CONNECTION_ERROR'));",
+                  "pm.test(\"fails fast (bridge refused, no hang)\", () => { pm.expect(pm.response.responseTime).to.be.below(5000); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{c1Cookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/trades?accountId={{c1AccId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "trades"
+              ],
+              "query": [
+                {
+                  "key": "accountId",
+                  "value": "{{c1AccId}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Failure recorded on the account",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"lastSyncError set\", () => { pm.expect(pm.response.json().data[0].lastSyncError).to.be.a(\"string\").and.not.empty; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{c1Cookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts"
+              ]
+            }
+          }
+        },
+        {
+          "name": "During back-off reads fail fast without the bridge",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 502', () => pm.response.to.have.status(502));",
+                  "pm.test(\"under 500ms\", () => { pm.expect(pm.response.responseTime).to.be.below(500); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{c1Cookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/trades/stats?accountId={{c1AccId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "trades",
+                "stats"
+              ],
+              "query": [
+                {
+                  "key": "accountId",
+                  "value": "{{c1AccId}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Sync now overrides the back-off and reports the bridge error",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 502', () => pm.response.to.have.status(502));",
+                  "pm.test('error code BROKER_CONNECTION_ERROR', () => pm.expect(pm.response.json().error.code).to.eql('BROKER_CONNECTION_ERROR'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{c1Cookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{c1AccId}}/sync",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts",
+                "{{c1AccId}}",
+                "sync"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Another user gets 404, not 500",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 404', () => pm.response.to.have.status(404));",
+                  "pm.test('error code NOT_FOUND', () => pm.expect(pm.response.json().error.code).to.eql('NOT_FOUND'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{rohanCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/trades?accountId={{c1AccId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "trades"
+              ],
+              "query": [
+                {
+                  "key": "accountId",
+                  "value": "{{c1AccId}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Sync now on someone else’s account → 404",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{rohanCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{c1AccId}}/sync",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts",
+                "{{c1AccId}}",
+                "sync"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Internal sync run without token → rejected",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('rejected', () => pm.expect(pm.response.code).to.be.oneOf([401, 403]));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/internal/sync/run",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "internal",
+                "sync",
+                "run"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Internal sync run queues due accounts",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"queue stats\", () => { pm.expect(d.queued).to.be.a('number'); pm.expect(d).to.have.keys(['queued','waiting','active']); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-internal-token",
+                "value": "{{internalToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/internal/sync/run",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "internal",
+                "sync",
+                "run"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"limit\": 5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "07 Trade sync (fake bridge)",
+      "item": [
+        {
+          "name": "Reset fake bridge",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "http://127.0.0.1:8999/__reset",
+              "host": [
+                "http:"
+              ],
+              "path": [
+                "",
+                "127.0.0.1:8999",
+                "__reset"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Sign in nina",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const c = (pm.response.headers.all().filter(h => h.key.toLowerCase() === 'set-cookie').map(h => h.value).find(v => v.startsWith('better-auth.session_token=')) || '').split(';')[0];",
+                  "pm.test(\"session cookie issued\", () => { pm.expect(c).to.match(/^better-auth\\.session_token=/); });",
+                  "pm.collectionVariables.set('ninaCookie', c);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{appUrl}}"
+              }
+            ],
+            "url": {
+              "raw": "{{altUrl}}/api/auth/sign-in/email",
+              "host": [
+                "{{altUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "sign-in",
+                "email"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{ninaEmail}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Connect MT5 (verified by the bridge)",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', () => pm.response.to.have.status(201));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"account created\", () => { pm.expect(d.server).to.eql('Fake-Server'); pm.collectionVariables.set('ninaAccId', d.id); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{ninaCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mt5Login\": 5550001,\n  \"password\": \"demo-pass\",\n  \"server\": \"Fake-Server\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "First trades load returns the full history",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"1500 trades rebuilt from 3001 deals\", () => { pm.expect(pm.response.json().data).to.have.length(1500); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{ninaCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/trades?accountId={{ninaAccId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "trades"
+              ],
+              "query": [
+                {
+                  "key": "accountId",
+                  "value": "{{ninaAccId}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Bridge saw exactly one verify + one full-history deals call",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"one backfill from 2020\", () => { const s = pm.response.json(); pm.expect(s.verify).to.eql(1); pm.expect(s.deals).to.eql(1); pm.expect(s.last.from_time).to.eql('2020-01-01T00:00:00'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "http://127.0.0.1:8999/__stats",
+              "host": [
+                "http:"
+              ],
+              "path": [
+                "",
+                "127.0.0.1:8999",
+                "__stats"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Stats from the database (fast)",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"1500 trades, $10k start\", () => { const d = pm.response.json().data; pm.expect(d.totalTrades).to.eql(1500); pm.expect(d.startingBalance).to.eql(10000); });",
+                  "pm.test(\"answered from Postgres in < 400ms\", () => { pm.expect(pm.response.responseTime).to.be.below(400); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{ninaCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/trades/stats?accountId={{ninaAccId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "trades",
+                "stats"
+              ],
+              "query": [
+                {
+                  "key": "accountId",
+                  "value": "{{ninaAccId}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Trades again (memoised)",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"< 400ms\", () => { pm.expect(pm.response.responseTime).to.be.below(400); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{ninaCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/trades?accountId={{ninaAccId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "trades"
+              ],
+              "query": [
+                {
+                  "key": "accountId",
+                  "value": "{{ninaAccId}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Deals from the database",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"3001 deals\", () => { pm.expect(pm.response.json().data).to.have.length(3001); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{ninaCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/trades/deals?accountId={{ninaAccId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "trades",
+                "deals"
+              ],
+              "query": [
+                {
+                  "key": "accountId",
+                  "value": "{{ninaAccId}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Page reads never touched the bridge again",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"still one deals call\", () => { pm.expect(pm.response.json().deals).to.eql(1); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "http://127.0.0.1:8999/__stats",
+              "host": [
+                "http:"
+              ],
+              "path": [
+                "",
+                "127.0.0.1:8999",
+                "__stats"
+              ]
+            }
+          }
+        },
+        {
+          "name": "New trade appears at the broker",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "http://127.0.0.1:8999/__add",
+              "host": [
+                "http:"
+              ],
+              "path": [
+                "",
+                "127.0.0.1:8999",
+                "__add"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Sync now pulls only recent deals",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"synced, lastSyncAt set\", () => { pm.expect(d.result).to.eql('synced'); pm.expect(d.account.lastSyncAt).to.be.a('string'); pm.expect(d.account.lastSyncError).to.eql(null); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{ninaCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{ninaAccId}}/sync",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts",
+                "{{ninaAccId}}",
+                "sync"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "That sync was incremental (newest − 7 days)",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"from ≈ newest − 7d\", () => { const s = pm.response.json(); pm.expect(s.deals).to.eql(2); const from = Date.parse(s.last.from_time + 'Z') / 1000; const gap = (s.newest - 600 - 3600 - from); pm.expect(s.newest - from).to.be.above(7 * 86400 - 1); pm.expect(s.newest - from).to.be.below(7 * 86400 + 7200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "http://127.0.0.1:8999/__stats",
+              "host": [
+                "http:"
+              ],
+              "path": [
+                "",
+                "127.0.0.1:8999",
+                "__stats"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The new trade is served",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"1501 trades\", () => { pm.expect(pm.response.json().data).to.have.length(1501); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{ninaCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/trades?accountId={{ninaAccId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "trades"
+              ],
+              "query": [
+                {
+                  "key": "accountId",
+                  "value": "{{ninaAccId}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Wrong password on update is rejected by the bridge",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 409', () => pm.response.to.have.status(409));",
+                  "pm.test('error code BROKER_AUTH_FAILED', () => pm.expect(pm.response.json().error.code).to.eql('BROKER_AUTH_FAILED'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{ninaCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{ninaAccId}}/credentials",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts",
+                "{{ninaAccId}}",
+                "credentials"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"password\": \"nope\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Stored data still served after a failed update",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"1501\", () => { pm.expect(pm.response.json().data.totalTrades).to.eql(1501); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{ninaCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/trades/stats?accountId={{ninaAccId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "trades",
+                "stats"
+              ],
+              "query": [
+                {
+                  "key": "accountId",
+                  "value": "{{ninaAccId}}"
+                }
+              ]
+            }
+          }
+        }
+      ]
     }
   ],
   "variable": [

@@ -3,6 +3,7 @@
 // (for public symbols) persisted to the durable Candle table for backfill.
 // Broker candles are cache-only — they're broker-specific and must not collide
 // with another broker's series in the shared table.
+import { credsOf } from '../accounts/accounts.credentials.js';
 import { prisma } from '@tradinjournal/db';
 import { env } from '@tradinjournal/config';
 import { logger } from '@tradinjournal/logger';
@@ -61,11 +62,9 @@ async function loadCandles(symbol: string, tf: MarketTimeframe, opts: GetCandles
 export async function brokerCredsFor(accountId: string | undefined, userId: string): Promise<{ creds?: BridgeCreds; scope: string }> {
   if (!accountId) return { scope: 'public' };
   const acc = await findAccountById(accountId, userId);
-  if (!acc?.password) return { scope: 'public' };
-  return {
-    creds: { login: Number(acc.mt5Login), password: acc.password, server: acc.server },
-    scope: `mt5:${acc.server}`,
-  };
+  const creds = acc ? credsOf(acc) : null;
+  if (!acc || !creds) return { scope: 'public' };
+  return { creds, scope: `mt5:${acc.server}` };
 }
 
 export async function getCandles(q: CandlesQuery, userId: string): Promise<{ candles: NormalizedCandle[] }> {

@@ -151,6 +151,8 @@ const envSchema = z.object({
   // Price alerts — checked every minute; each tick fetches the latest price per
   // distinct alerted symbol (cached) and fires on a threshold cross.
   PRICE_ALERT_CRON: z.string().default('* * * * *'),
+  /** Worker cron that asks the API to queue due trade syncs. */
+  TRADE_SYNC_CRON: z.string().default('*/5 * * * *'),
 
   // ── Macro segment (global-macro intelligence dashboard) ───────────────────
   // FRED (free, official Fed data) drives the automated macro indicators — the
@@ -195,6 +197,20 @@ const envSchema = z.object({
   ELEFIN_API_KEY: z.string().optional(),
   ACCESS_MIN_TRADES_7D: z.coerce.number().int().positive().default(2),
   ACCESS_ACTIVITY_WINDOW_DAYS: z.coerce.number().int().positive().default(7),
+
+  // ── Trade sync (MT5 deals stored in Postgres) ─────────────────────────────
+  /** A user-facing read older than this triggers a background refresh. */
+  SYNC_STALE_MIN: z.coerce.number().int().min(1).default(5),
+  /** The scheduler refreshes every account at least this often (minutes). */
+  SYNC_BACKGROUND_MIN: z.coerce.number().int().min(5).default(360),
+  /** Incremental syncs re-read this many days before the newest stored deal. */
+  SYNC_OVERLAP_DAYS: z.coerce.number().int().min(0).max(90).default(7),
+  /** Concurrent syncs per API process (the bridge serialises anyway). */
+  SYNC_CONCURRENCY: z.coerce.number().int().min(1).max(16).default(1),
+  /** Accounts queued per scheduler tick. */
+  SYNC_BATCH: z.coerce.number().int().min(1).max(500).default(20),
+  /** How long a first-ever page load waits for the initial backfill (ms). */
+  SYNC_FIRST_WAIT_MS: z.coerce.number().int().min(1000).default(90_000),
 
   // ── Partner programme (referral tracking) ─────────────────────────────────
   /** How long a referral-link click is remembered in the visitor's browser. */

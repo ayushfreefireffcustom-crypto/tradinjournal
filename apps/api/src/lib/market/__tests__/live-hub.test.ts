@@ -52,4 +52,19 @@ describe('LiveHub ref-counting', () => {
     expect(() => releaseLive('NOPE', '1h')).not.toThrow();
     expect(liveFeedCount()).toBe(0);
   });
+
+  it('never shares a feed between data sources (public vs each broker server)', async () => {
+    const before = liveFeedCount();
+    await acquireLive('EURUSD', '1m');
+    await acquireLive('EURUSD', '1m', { scope: 'mt5:XMGlobal-MT5 10' });
+    await acquireLive('EURUSD', '1m', { scope: 'mt5:Exness-Real' });
+    await acquireLive('EURUSD', '1m', { scope: 'mt5:Exness-Real' }); // same broker → shared
+    expect(liveFeedCount()).toBe(before + 3);
+    releaseLive('EURUSD', '1m', 'mt5:Exness-Real');
+    expect(liveFeedCount()).toBe(before + 3);
+    releaseLive('EURUSD', '1m', 'mt5:Exness-Real');
+    releaseLive('EURUSD', '1m', 'mt5:XMGlobal-MT5 10');
+    releaseLive('EURUSD', '1m');
+    expect(liveFeedCount()).toBe(before);
+  });
 });

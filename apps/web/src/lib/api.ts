@@ -38,6 +38,10 @@ export interface BrokerAccount {
   marginMode: string;
   status: string;
   lastSyncAt: string | null;
+  /** Why the last background sync failed, if it did. */
+  lastSyncError?: string | null;
+  /** Newest deal stored for this account. */
+  lastDealAt?: string | null;
   createdAt: string;
 }
 
@@ -467,6 +471,8 @@ export const api = {
     updateCredentials: (id: string, password: string) =>
       apiFetch<BrokerAccount>(`${PREFIX}/accounts/${id}/credentials`, { method: 'PATCH', body: JSON.stringify({ password }) }),
     delete: (id: string) => apiFetch<{ ok: boolean }>(`${PREFIX}/accounts/${id}`, { method: 'DELETE' }),
+    /** "Sync now": pulls new deals from MT5 (waits up to ~25s; 'running' = still importing). */
+    sync: (id: string) => apiFetch<{ account: BrokerAccount; result: 'synced' | 'running' }>(`${PREFIX}/accounts/${id}/sync`, { method: 'POST' }),
   },
   trades: {
     list:  (accountId: string) => apiFetch<Trade[]>(`${PREFIX}/trades?accountId=${encodeURIComponent(accountId)}`),

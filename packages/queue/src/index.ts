@@ -66,6 +66,7 @@ export const QUEUE_NOTIFICATIONS = 'notifications' as const;
 export const QUEUE_NOTIFICATIONS_DIGEST = 'notifications-digest' as const;
 export const QUEUE_MARKET_WARM = 'market-warm' as const;
 export const QUEUE_PRICE_ALERTS = 'price-alerts' as const;
+export const QUEUE_TRADE_SYNC = 'trade-sync' as const;
 export const QUEUE_MACRO_INGEST = 'macro-ingest' as const;
 export const QUEUE_TRADER_GRADE = 'trader-grade' as const;
 export const QUEUE_TRADER_META = 'trader-meta' as const;
@@ -79,6 +80,7 @@ export const NOTIFICATIONS_SCHEDULER_ID = 'notifications-cron';
 export const NOTIFICATIONS_DIGEST_SCHEDULER_ID = 'notifications-digest-cron';
 export const MARKET_WARM_SCHEDULER_ID = 'market-warm-cron';
 export const PRICE_ALERTS_SCHEDULER_ID = 'price-alerts-cron';
+export const TRADE_SYNC_SCHEDULER_ID = 'trade-sync-cron';
 export const MACRO_INGEST_SCHEDULER_ID = 'macro-ingest-cron';
 export const TRADER_GRADE_SCHEDULER_ID = 'trader-grade-cron';
 export const TRADER_META_SCHEDULER_ID = 'trader-meta-cron';
@@ -125,6 +127,12 @@ export interface MarketWarmJob {
 /** Trigger a price-alert dispatch sweep (bucketed to the minute). */
 export interface PriceAlertsJob {
   kind: 'price-alerts';
+  bucket: string;
+}
+
+/** Ask the API to queue trade syncs for accounts that are due. */
+export interface TradeSyncJob {
+  kind: 'trade-sync';
   bucket: string;
 }
 

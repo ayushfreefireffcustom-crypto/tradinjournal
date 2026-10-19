@@ -48,15 +48,15 @@ export async function handleSymbolSearch(req: Request, res: Response, next: Next
 // Degrades to heartbeat-only (client re-fetches) when Redis isn't configured.
 export async function handleCandleStream(req: Request, res: Response): Promise<void> {
   const q = req.query as unknown as CandlesQuery;
-  const { creds } = await brokerCredsFor(q.accountId, res.locals.user.id as string);
+  const { creds, scope } = await brokerCredsFor(q.accountId, res.locals.user.id as string);
 
   sseHeaders(res);
   res.write(': connected\n\n');
 
-  await acquireLive(q.symbol, q.tf, { broker: creds });
+  await acquireLive(q.symbol, q.tf, { broker: creds, scope });
   const unsubscribe = subscribeCandle(q.symbol, q.tf, candle => {
     if (!res.writableEnded) sseWrite(res, { candle });
-  });
+  }, scope);
   const heartbeat = setInterval(() => {
     if (!res.writableEnded) res.write(': ping\n\n');
   }, 25_000);
@@ -64,7 +64,7 @@ export async function handleCandleStream(req: Request, res: Response): Promise<v
   req.on('close', () => {
     clearInterval(heartbeat);
     unsubscribe();
-    releaseLive(q.symbol, q.tf);
+    releaseLive(q.symbol, q.tf, scope);
     if (!res.writableEnded) res.end();
   });
 }

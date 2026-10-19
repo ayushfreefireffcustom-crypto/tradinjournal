@@ -54,3 +54,20 @@ echo "▸ 02–05 Contract tests"
 postman collection run "$COLLECTION" \
   -i "02 Partner setup" -i "03 Attribution" -i "04 Portal reads" -i "05 Admin operations" \
   --env-var "baseUrl=$BASE_URL" --env-var "appUrl=$APP_URL" "$@"
+
+echo "▸ Marking clients created during the run verified"
+sql "UPDATE \"user\" SET \"emailVerified\" = true WHERE email LIKE '%@partners.test';"
+
+echo "▸ 06 Trade sync"
+postman collection run "$COLLECTION" -i "06 Trade sync (bridge offline)" \
+  --env-var "baseUrl=$BASE_URL" --env-var "appUrl=$APP_URL" "$@"
+
+echo "▸ 07 Trade sync against the fake bridge"
+node fake-bridge.mjs 8999 >/dev/null 2>&1 &
+FAKE_PID=$!
+trap 'kill $FAKE_PID 2>/dev/null' EXIT
+for _ in $(seq 1 20); do curl -fs -o /dev/null http://127.0.0.1:8999/__stats && break; sleep 0.2; done
+postman collection run "$COLLECTION" -i "07 Trade sync (fake bridge)" \
+  --env-var "baseUrl=$BASE_URL" --env-var "appUrl=$APP_URL" "$@"
+echo "▸ Stored password is encrypted"
+sql "SELECT CASE WHEN password LIKE 'enc:v1:%' THEN 'encrypted' ELSE 'PLAINTEXT' END AS stored_password FROM broker_account WHERE server = 'Fake-Server';"

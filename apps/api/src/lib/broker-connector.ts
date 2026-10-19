@@ -42,16 +42,43 @@ interface BridgeDealsResponse {
 const DEAL_TYPE_MAP: Record<number, Deal['type']> = { 0: 'BUY', 1: 'SELL', 2: 'BALANCE' };
 const DEAL_ENTRY_MAP: Record<number, Deal['entry']> = { 0: 'IN', 1: 'OUT', 2: 'INOUT', 3: 'OUT_BY' };
 
-async function bridgePost<T>(path: string, body: object): Promise<T> {
+/** Per-call ceilings. The bridge serialises on one terminal, so a hung call would
+ *  otherwise hold the request (and the caller's socket) for minutes. */
+export const BRIDGE_TIMEOUT_MS = { verify: 45_000, deals: 120_000 } as const;
+
+// Identical calls already in flight share one bridge request (e.g. two tabs opening
+// the dashboard at once). Keyed by path + full body, so different credentials or
+// ranges never share.
+const inflight = new Map<string, Promise<unknown>>();
+
+async function bridgePost<T>(path: string, body: object, timeoutMs: number): Promise<T> {
+  const key = `${path}:${JSON.stringify(body)}`;
+  const pending = inflight.get(key);
+  if (pending) return pending as Promise<T>;
+  const p = bridgePostOnce<T>(path, body, timeoutMs).finally(() => inflight.delete(key));
+  inflight.set(key, p);
+  return p;
+}
+
+async function bridgePostOnce<T>(path: string, body: object, timeoutMs: number): Promise<T> {
   const url = `${env.MT5_BRIDGE_URL}${path}`;
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Bridge-Secret': env.MT5_BRIDGE_SHARED_SECRET,
-    },
-    body: JSON.stringify(body),
-  });
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Bridge-Secret': env.MT5_BRIDGE_SHARED_SECRET,
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+  } catch (err) {
+    const timedOut = (err as Error)?.name === 'TimeoutError' || (err as Error)?.name === 'AbortError';
+    throw new BrokerConnectionError(timedOut
+      ? 'The broker bridge took too long to answer. Please try again in a moment.'
+      : 'Broker bridge is unavailable right now. Please try again in a moment.');
+  }
 
   if (!res.ok) {
     const text = await res.text().catch(() => res.statusText);
@@ -72,7 +99,7 @@ async function bridgePost<T>(path: string, body: object): Promise<T> {
 }
 
 export async function verifyAccount(creds: BridgeCreds): Promise<VerifyResult> {
-  const data = await bridgePost<BridgeVerifyResponse>('/verify', creds);
+  const data = await bridgePost<BridgeVerifyResponse>('/verify', creds, BRIDGE_TIMEOUT_MS.verify);
   return {
     login: data.login,
     name: data.name,
@@ -83,12 +110,20 @@ export async function verifyAccount(creds: BridgeCreds): Promise<VerifyResult> {
   };
 }
 
-export async function getDeals(creds: BridgeCreds): Promise<Deal[]> {
+/** MT5 wants naive "YYYY-MM-DDTHH:MM:SS" (UTC). */
+const bridgeTime = (d: Date) => d.toISOString().slice(0, 19);
+export const HISTORY_START = new Date('2020-01-01T00:00:00Z');
+
+/**
+ * Deals in [from, to]. Defaults to the whole history; incremental syncs pass a
+ * `from` shortly before the newest stored deal.
+ */
+export async function getDeals(creds: BridgeCreds, range: { from?: Date; to?: Date } = {}): Promise<Deal[]> {
   const data = await bridgePost<BridgeDealsResponse>('/deals', {
     ...creds,
-    from_time: '2020-01-01T00:00:00',
-    to_time: '2035-01-01T00:00:00',
-  });
+    from_time: bridgeTime(range.from ?? HISTORY_START),
+    to_time: bridgeTime(range.to ?? new Date('2035-01-01T00:00:00Z')),
+  }, BRIDGE_TIMEOUT_MS.deals);
 
   return data.deals.map((d) => ({
     dealTicket: String(d.deal_ticket),

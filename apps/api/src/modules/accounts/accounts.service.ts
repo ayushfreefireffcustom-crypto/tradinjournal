@@ -9,6 +9,8 @@ import {
   updateAccountCredentials as updateCredentialsRepo,
 } from './accounts.repository.js';
 import { ConflictError, NotFoundError } from '../../http/errors.js';
+import { syncQueue, requestSyncWithin } from '../sync/sync.queue.js';
+import { prisma } from '@tradinjournal/db';
 
 // Each user may connect at most this many broker accounts.
 const MAX_ACCOUNTS_PER_USER = 2;
@@ -46,7 +48,7 @@ export async function connectAccount(userId: string, input: ConnectAccountInput)
     server: input.server,
   });
 
-  return upsertAccount({
+  const account = await upsertAccount({
     userId,
     broker: input.broker?.trim() || brokerNameFromServer(info.server),
     mt5Login: BigInt(info.login),
@@ -55,6 +57,9 @@ export async function connectAccount(userId: string, input: ConnectAccountInput)
     baseCurrency: info.currency,
     marginMode: info.marginMode === 'HEDGING' ? 'HEDGING' : 'NETTING',
   });
+  // Start importing history now so the first dashboard visit finds it ready.
+  void syncQueue().request(account.id, 'high');
+  return account;
 }
 
 export async function listAccounts(userId: string): Promise<BrokerAccount[]> {
@@ -84,6 +89,7 @@ export async function updateAccountCredentials(
     marginMode: info.marginMode === 'HEDGING' ? 'HEDGING' : 'NETTING',
   });
   if (!updated) throw new NotFoundError('Broker account not found');
+  void syncQueue().request(updated.id, 'high');
   return updated;
 }
 
@@ -91,4 +97,21 @@ export async function deleteAccount(userId: string, id: string): Promise<void> {
   const account = await findAccountById(id, userId);
   if (!account) throw new NotFoundError('Broker account not found');
   await deleteAccountById(id, userId);
+}
+
+/** Status of a manual sync as the client sees it. */
+export type SyncNowResult = 'synced' | 'running' | 'failed';
+
+/**
+ * "Sync now": clears any back-off (the user is asking explicitly), jumps the queue
+ * and waits up to 25s. Bad credentials come back as the usual BrokerAuthError.
+ */
+export async function syncNow(userId: string, id: string): Promise<{ account: BrokerAccount; result: SyncNowResult }> {
+  const account = await findAccountById(id, userId);
+  if (!account) throw new NotFoundError('Broker account not found');
+  await prisma.brokerAccount.update({ where: { id }, data: { syncRetryAt: null } });
+  const r = await requestSyncWithin(id, 'high', 25_000);
+  if (r !== 'timeout' && r.status === 'failed') throw r.error;
+  const fresh = (await findAccountById(id, userId)) ?? account;
+  return { account: fresh, result: r === 'timeout' || r.status === 'locked' ? 'running' : 'synced' };
 }

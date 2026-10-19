@@ -6,7 +6,8 @@ import { fileURLToPath } from 'url';
 import path from 'path';
 
 const dir = path.dirname(fileURLToPath(import.meta.url));
-const AUTH = { admin: 'adminCookie', rohan: 'rohanCookie', sana: 'sanaCookie', nina: 'ninaCookie' };
+const AUTH = { admin: 'adminCookie', rohan: 'rohanCookie', sana: 'sanaCookie', nina: 'ninaCookie', c1: 'c1Cookie' };
+const FB = 'http://127.0.0.1:8999';
 
 function req(name, method, url, { body, as, cookie, tests = [], pre = [], origin = false, query, headers: extra = [] } = {}) {
   const headers = [{ key: 'Content-Type', value: 'application/json' }];
@@ -204,6 +205,46 @@ const folders = [
     req('Revoked partners drop off the default list', 'GET', `${B}/admin/partners`, { as: 'admin', tests: [status(200), t('Sana hidden', "pm.expect(pm.response.json().data.some(p => p.id === pm.collectionVariables.get('sanaPid'))).to.be.false;")] }),
     req('…but show with status=REVOKED', 'GET', `${B}/admin/partners`, { as: 'admin', query: 'status=REVOKED', tests: [status(200), t('Sana listed', "pm.expect(pm.response.json().data.some(p => p.id === pm.collectionVariables.get('sanaPid'))).to.be.true;")] }),
     req('Revoked partner can re-apply', 'POST', `${B}/partner/apply`, { as: 'sana', body: { audience: 'YouTube · 45k' }, tests: [status(201), t('pending again', "pm.expect(pm.response.json().data.status).to.eql('PENDING');")] }),
+  ] },
+
+  { name: '06 Trade sync (bridge offline)', item: [
+    signin('c1'), signin('rohan'),
+    req('Accounts list shows sync fields', 'GET', `${B}/accounts`, { as: 'c1', tests: [status(200), json,
+      t('one account, never synced', "pm.expect(d).to.have.length(1); pm.expect(d[0]).to.include({ lastSyncAt: null, lastSyncError: null, lastDealAt: null }); pm.collectionVariables.set('c1AccId', d[0].id);")] }),
+    req('First load tries the backfill → clear 502', 'GET', `${B}/trades`, { as: 'c1', query: 'accountId={{c1AccId}}', tests: [status(502), code('BROKER_CONNECTION_ERROR'),
+      t('fails fast (bridge refused, no hang)', 'pm.expect(pm.response.responseTime).to.be.below(5000);')] }),
+    req('Failure recorded on the account', 'GET', `${B}/accounts`, { as: 'c1', tests: [status(200), t('lastSyncError set', 'pm.expect(pm.response.json().data[0].lastSyncError).to.be.a("string").and.not.empty;')] }),
+    req('During back-off reads fail fast without the bridge', 'GET', `${B}/trades/stats`, { as: 'c1', query: 'accountId={{c1AccId}}', tests: [status(502), t('under 500ms', 'pm.expect(pm.response.responseTime).to.be.below(500);')] }),
+    req('Sync now overrides the back-off and reports the bridge error', 'POST', `${B}/accounts/{{c1AccId}}/sync`, { as: 'c1', body: {}, tests: [status(502), code('BROKER_CONNECTION_ERROR')] }),
+    req('Another user gets 404, not 500', 'GET', `${B}/trades`, { as: 'rohan', query: 'accountId={{c1AccId}}', tests: [status(404), code('NOT_FOUND')] }),
+    req('Sync now on someone else’s account → 404', 'POST', `${B}/accounts/{{c1AccId}}/sync`, { as: 'rohan', body: {}, tests: [status(404)] }),
+    req('Internal sync run without token → rejected', 'POST', '{{baseUrl}}/internal/sync/run', { body: {}, tests: ["pm.test('rejected', () => pm.expect(pm.response.code).to.be.oneOf([401, 403]));"] }),
+    req('Internal sync run queues due accounts', 'POST', '{{baseUrl}}/internal/sync/run', { body: { limit: 5 }, headers: [{ key: 'x-internal-token', value: '{{internalToken}}' }],
+      tests: [status(200), json, t('queue stats', "pm.expect(d.queued).to.be.a('number'); pm.expect(d).to.have.keys(['queued','waiting','active']);")] }),
+  ] },
+
+  { name: '07 Trade sync (fake bridge)', item: [
+    req('Reset fake bridge', 'POST', `${FB}/__reset`, { body: {}, tests: [status(200)] }),
+    signin('nina'),
+    req('Connect MT5 (verified by the bridge)', 'POST', `${B}/accounts`, { as: 'nina', body: { mt5Login: 5550001, password: 'demo-pass', server: 'Fake-Server' },
+      tests: [status(201), json, t('account created', "pm.expect(d.server).to.eql('Fake-Server'); pm.collectionVariables.set('ninaAccId', d.id);")] }),
+    req('First trades load returns the full history', 'GET', `${B}/trades`, { as: 'nina', query: 'accountId={{ninaAccId}}',
+      tests: [status(200), t('1500 trades rebuilt from 3001 deals', 'pm.expect(pm.response.json().data).to.have.length(1500);')] }),
+    req('Bridge saw exactly one verify + one full-history deals call', 'GET', `${FB}/__stats`, {
+      tests: [status(200), t('one backfill from 2020', "const s = pm.response.json(); pm.expect(s.verify).to.eql(1); pm.expect(s.deals).to.eql(1); pm.expect(s.last.from_time).to.eql('2020-01-01T00:00:00');")] }),
+    req('Stats from the database (fast)', 'GET', `${B}/trades/stats`, { as: 'nina', query: 'accountId={{ninaAccId}}',
+      tests: [status(200), t('1500 trades, $10k start', 'const d = pm.response.json().data; pm.expect(d.totalTrades).to.eql(1500); pm.expect(d.startingBalance).to.eql(10000);'),
+        t('answered from Postgres in < 400ms', 'pm.expect(pm.response.responseTime).to.be.below(400);')] }),
+    req('Trades again (memoised)', 'GET', `${B}/trades`, { as: 'nina', query: 'accountId={{ninaAccId}}', tests: [status(200), t('< 400ms', 'pm.expect(pm.response.responseTime).to.be.below(400);')] }),
+    req('Deals from the database', 'GET', `${B}/trades/deals`, { as: 'nina', query: 'accountId={{ninaAccId}}', tests: [status(200), t('3001 deals', 'pm.expect(pm.response.json().data).to.have.length(3001);')] }),
+    req('Page reads never touched the bridge again', 'GET', `${FB}/__stats`, { tests: [status(200), t('still one deals call', 'pm.expect(pm.response.json().deals).to.eql(1);')] }),
+    req('New trade appears at the broker', 'POST', `${FB}/__add`, { body: {}, tests: [status(200)] }),
+    req('Sync now pulls only recent deals', 'POST', `${B}/accounts/{{ninaAccId}}/sync`, { as: 'nina', body: {},
+      tests: [status(200), json, t('synced, lastSyncAt set', "pm.expect(d.result).to.eql('synced'); pm.expect(d.account.lastSyncAt).to.be.a('string'); pm.expect(d.account.lastSyncError).to.eql(null);")] }),
+    req('That sync was incremental (newest − 7 days)', 'GET', `${FB}/__stats`, { tests: [status(200), t('from ≈ newest − 7d', "const s = pm.response.json(); pm.expect(s.deals).to.eql(2); const from = Date.parse(s.last.from_time + 'Z') / 1000; const gap = (s.newest - 600 - 3600 - from); pm.expect(s.newest - from).to.be.above(7 * 86400 - 1); pm.expect(s.newest - from).to.be.below(7 * 86400 + 7200);")] }),
+    req('The new trade is served', 'GET', `${B}/trades`, { as: 'nina', query: 'accountId={{ninaAccId}}', tests: [status(200), t('1501 trades', 'pm.expect(pm.response.json().data).to.have.length(1501);')] }),
+    req('Wrong password on update is rejected by the bridge', 'PATCH', `${B}/accounts/{{ninaAccId}}/credentials`, { as: 'nina', body: { password: 'nope' }, tests: [status(409), code('BROKER_AUTH_FAILED')] }),
+    req('Stored data still served after a failed update', 'GET', `${B}/trades/stats`, { as: 'nina', query: 'accountId={{ninaAccId}}', tests: [status(200), t('1501', 'pm.expect(pm.response.json().data.totalTrades).to.eql(1501);')] }),
   ] },
 ];
 

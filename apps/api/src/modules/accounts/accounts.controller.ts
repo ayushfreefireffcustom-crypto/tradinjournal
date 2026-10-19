@@ -1,8 +1,8 @@
 import type { Request, Response, NextFunction } from 'express';
 import type { ConnectAccountInput, UpdateCredentialsInput } from '@tradinjournal/contracts';
-import { connectAccount, listAccounts, deleteAccount, updateAccountCredentials } from './accounts.service.js';
+import { connectAccount, listAccounts, deleteAccount, updateAccountCredentials, syncNow } from './accounts.service.js';
 
-function serializeAccount(account: { id: string; broker: string; mt5Login: bigint; server: string; baseCurrency: string; marginMode: string; status: string; lastSyncAt: Date | null; createdAt: Date }) {
+function serializeAccount(account: { id: string; broker: string; mt5Login: bigint; server: string; baseCurrency: string; marginMode: string; status: string; lastSyncAt: Date | null; lastSyncError?: string | null; lastDealAt?: Date | null; createdAt: Date }) {
   return {
     id: account.id,
     broker: account.broker,
@@ -12,6 +12,8 @@ function serializeAccount(account: { id: string; broker: string; mt5Login: bigin
     marginMode: account.marginMode,
     status: account.status,
     lastSyncAt: account.lastSyncAt?.toISOString() ?? null,
+    lastSyncError: account.lastSyncError ?? null,
+    lastDealAt: account.lastDealAt?.toISOString() ?? null,
     createdAt: account.createdAt.toISOString(),
   };
 }
@@ -52,6 +54,18 @@ export async function handleDelete(req: Request, res: Response, next: NextFuncti
     const userId = res.locals.user.id as string;
     await deleteAccount(userId, req.params.id as string);
     res.json({ data: { ok: true } });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// POST /api/accounts/:id/sync — "Sync now". Jumps the queue and waits briefly so
+// the client can refetch straight away; long imports keep running server-side.
+export async function handleSyncNow(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const userId = res.locals.user.id as string;
+    const { account, result } = await syncNow(userId, String(req.params.id));
+    res.json({ data: { account: serializeAccount(account), result } });
   } catch (err) {
     next(err);
   }

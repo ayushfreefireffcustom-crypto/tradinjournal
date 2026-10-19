@@ -16,8 +16,15 @@ import type { MarketTimeframe } from '@tradinjournal/contracts';
 import type { BridgeCreds, NormalizedCandle } from './types.js';
 import { resolveProvider } from './providers/index.js';
 
-function channel(symbol: string, tf: MarketTimeframe): string {
-  return `market:candle:${symbol}:${tf}`;
+/**
+ * Feeds are keyed by data source as well as (symbol, tf): `public` for exchange /
+ * vendor data, `mt5:<server>` for a broker's own prices. Without the scope, the
+ * first subscriber's source (and broker credentials) drove the feed for everyone
+ * watching the same symbol — one user's broker data reaching another user's chart.
+ */
+export type FeedScope = string;
+function channel(symbol: string, tf: MarketTimeframe, scope: FeedScope = 'public'): string {
+  return `market:candle:${scope}:${symbol}:${tf}`;
 }
 
 // Same-process delivery bus. It ALWAYS delivers (no Redis needed), so a single
@@ -45,8 +52,8 @@ function pub(): Redis | null {
 }
 
 /** Publish one forming/closed bar to every connected stream. Best-effort. */
-export async function publishCandle(symbol: string, tf: MarketTimeframe, candle: NormalizedCandle): Promise<void> {
-  const ch = channel(symbol, tf);
+export async function publishCandle(symbol: string, tf: MarketTimeframe, candle: NormalizedCandle, scope: FeedScope = 'public'): Promise<void> {
+  const ch = channel(symbol, tf, scope);
   // Same-process subscribers, always (works without Redis).
   localBus.emit(ch, candle);
   // Cross-instance fan-out via Redis (tagged so we drop our own echo on receive).
@@ -68,8 +75,9 @@ export function subscribeCandle(
   symbol: string,
   tf: MarketTimeframe,
   onCandle: (c: NormalizedCandle) => void,
+  scope: FeedScope = 'public',
 ): () => void {
-  const ch = channel(symbol, tf);
+  const ch = channel(symbol, tf, scope);
   // Same-process delivery — always on, no Redis required.
   const localHandler = (candle: NormalizedCandle) => onCandle(candle);
   localBus.on(ch, localHandler);
@@ -114,9 +122,10 @@ const POLL_MS = 5_000; // poll cadence for providers without a push feed (Twelve
 export async function acquireLive(
   symbol: string,
   tf: MarketTimeframe,
-  opts: { broker?: BridgeCreds } = {},
+  opts: { broker?: BridgeCreds; scope?: FeedScope } = {},
 ): Promise<void> {
-  const key = channel(symbol, tf);
+  const scope = opts.scope ?? 'public';
+  const key = channel(symbol, tf, scope);
   const existing = hub.get(key);
   if (existing) {
     existing.refs += 1;
@@ -130,14 +139,14 @@ export async function acquireLive(
   if (!provider) return; // nothing to stream; the reserved entry just heartbeats
 
   if (provider.subscribe) {
-    entry.stop = provider.subscribe(symbol, tf, c => { void publishCandle(symbol, tf, c); });
+    entry.stop = provider.subscribe(symbol, tf, c => { void publishCandle(symbol, tf, c, scope); });
   } else {
     const timer = setInterval(() => {
       void provider
         .getCandles(symbol, tf, { limit: 2, broker: opts.broker })
         .then(bars => {
           const last = bars[bars.length - 1];
-          if (last) void publishCandle(symbol, tf, last);
+          if (last) void publishCandle(symbol, tf, last, scope);
         })
         .catch(() => {});
     }, POLL_MS);
@@ -146,8 +155,8 @@ export async function acquireLive(
 }
 
 /** Drop this subscriber; close the upstream feed when the last one leaves. */
-export function releaseLive(symbol: string, tf: MarketTimeframe): void {
-  const key = channel(symbol, tf);
+export function releaseLive(symbol: string, tf: MarketTimeframe, scope: FeedScope = 'public'): void {
+  const key = channel(symbol, tf, scope);
   const entry = hub.get(key);
   if (!entry) return;
   entry.refs -= 1;

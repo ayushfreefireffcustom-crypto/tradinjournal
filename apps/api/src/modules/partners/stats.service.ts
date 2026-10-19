@@ -19,7 +19,8 @@ let running = false;
 export async function refreshReferralStats(opts: { limit?: number; fetch?: FetchTrades; now?: Date } = {}): Promise<{ processed: number; failed: number; skipped: boolean }> {
   if (running) return { processed: 0, failed: 0, skipped: true };
   running = true;
-  const fetch = opts.fetch ?? fetchTrades;
+  // Reads stored deals only; the trade-sync scheduler keeps them fresh.
+  const fetch = opts.fetch ?? ((userId: string, accountId: string) => fetchTrades(userId, accountId, 'readonly'));
   const now = opts.now ?? new Date();
   let processed = 0, failed = 0;
   try {

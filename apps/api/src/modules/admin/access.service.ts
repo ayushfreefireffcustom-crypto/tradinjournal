@@ -219,7 +219,8 @@ async function countElefinTrades7d(userId: string): Promise<number> {
 
   for (const account of elefinAccounts) {
     try {
-      const trades = await fetchTrades(userId, account.id);
+      // Stored data — never blocks a gated request on the bridge.
+      const trades = await fetchTrades(userId, account.id, 'background');
       count += trades.filter(
         t =>
           t.status === 'CLOSED' &&
