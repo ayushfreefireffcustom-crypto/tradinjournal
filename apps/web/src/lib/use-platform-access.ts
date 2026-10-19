@@ -80,7 +80,12 @@ export function usePlatformAccess() {
     if (skip) {
       setLoading(false);
       setBlocked(false);
-      return;
+      // Never gate or redirect here, but still learn the role flags quietly so
+      // the sidebar can show the Admin / Partner sections on these pages too.
+      if (peekAccessCache()) { setStatus(peekAccessCache()); return; }
+      let cancelled = false;
+      accessApi.status().then(s => { if (!cancelled) { writeCache(s); setStatus(s); } }).catch(() => {});
+      return () => { cancelled = true; };
     }
 
     const fresh = peekAccessCache();

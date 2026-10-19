@@ -12,7 +12,7 @@ import { UsageTracker } from '@/components/usage-tracker';
 import LocationGate from '@/components/location-gate';
 import {
   IAdmin, IAnalytics, IBrokers, ICalendar, ICharts, IChevrons, IClose, ICoach, IDashboard, IJournal, IMacro, IMarkets, IMenu,
-  IPlus, IReplay, ISearch, ISettings, ISignalX, ITradeLog,
+  IPartner, IPlus, IReplay, ISearch, ISettings, ISignalX, ITradeLog, ILink, IUsers,
 } from '@/components/v3/icons';
 import '@/styles/app-v3.css';
 
@@ -52,12 +52,24 @@ const GROUPS: { title: string; items: NavItem[] }[] = [
     { href: '/coach', label: 'AI coach', icon: ICoach },
   ] },
 ];
+// Shown only to approved partners (access status `isPartner`).
+const PARTNER: NavItem[] = [
+  { href: '/partner', label: 'Overview', icon: IPartner },
+  { href: '/partner/link', label: 'My link', icon: ILink },
+  { href: '/partner/clients', label: 'Clients', icon: IUsers },
+];
+const ADMIN: NavItem[] = [
+  { href: '/admin', label: 'Admin', icon: IAdmin },
+  { href: '/admin/partners', label: 'Partners', icon: IPartner },
+];
 const FOOT: NavItem[] = [
   { href: '/brokers', label: 'Brokers', icon: IBrokers },
   { href: '/settings', label: 'Settings', icon: ISettings },
 ];
 const ALL: (NavItem & { group: string })[] = [
   ...GROUPS.flatMap(g => g.items.map(i => ({ ...i, group: g.title }))),
+  ...PARTNER.map(i => ({ ...i, group: 'Partner' })),
+  ...ADMIN.map(i => ({ ...i, group: 'Admin' })),
   ...FOOT.map(i => ({ ...i, group: 'Account' })),
 ];
 
@@ -105,7 +117,8 @@ export default function AppShell({
     return () => document.removeEventListener('mousedown', onDown);
   }, [acctOpen]);
 
-  const current = useMemo(() => ALL.find(i => pathname === i.href || pathname.startsWith(i.href + '/')), [pathname]);
+  const current = useMemo(() => ALL.find(i => pathname === i.href)
+    ?? [...ALL].sort((a, b) => b.href.length - a.href.length).find(i => pathname.startsWith(i.href + '/')), [pathname]);
 
   const gatePending = isPending || (!session?.session && !isPending) || (accessLoading && !accessStatus);
   if (gatePending) {
@@ -178,6 +191,12 @@ export default function AppShell({
               {g.items.map(i => <NavLink key={i.href} item={i} active={current?.href === i.href} />)}
             </div>
           ))}
+          {accessStatus?.isPartner && (
+            <div className="v3-grp">
+              <small>Partner</small>
+              {PARTNER.map(i => <NavLink key={i.href} item={i} active={current?.href === i.href} />)}
+            </div>
+          )}
         </nav>
 
         <div className="v3-sb-foot">
@@ -187,7 +206,7 @@ export default function AppShell({
               Last sync {timeAgo(sel.lastSyncAt)}
             </div>
           )}
-          {accessStatus?.isAdmin && <NavLink item={{ href: '/admin', label: 'Admin', icon: IAdmin }} active={false} />}
+          {accessStatus?.isAdmin && ADMIN.map(i => <NavLink key={i.href} item={i} active={current?.href === i.href} />)}
           {FOOT.map(i => <NavLink key={i.href} item={i} active={current?.href === i.href} />)}
           <div className="v3-me" data-testid="user-profile">
             <span className="a">{(user?.name ?? 'T').charAt(0).toUpperCase()}</span>
@@ -214,7 +233,7 @@ export default function AppShell({
         <main className="v3-scroll">{children}</main>
       </div>
 
-      {cmdk && <CommandPalette onClose={() => setCmdk(false)} onGo={href => { setCmdk(false); router.push(href); }} isAdmin={!!accessStatus?.isAdmin} />}
+      {cmdk && <CommandPalette onClose={() => setCmdk(false)} onGo={href => { setCmdk(false); router.push(href); }} isAdmin={!!accessStatus?.isAdmin} isPartner={!!accessStatus?.isPartner} />}
     </div>
   );
 }
@@ -228,14 +247,14 @@ function NavLink({ item, active }: { item: NavItem; active: boolean }) {
   );
 }
 
-function CommandPalette({ onClose, onGo, isAdmin }: { onClose: () => void; onGo: (href: string) => void; isAdmin: boolean }) {
+function CommandPalette({ onClose, onGo, isAdmin, isPartner }: { onClose: () => void; onGo: (href: string) => void; isAdmin: boolean; isPartner: boolean }) {
   const [q, setQ] = useState('');
   const [i, setI] = useState(0);
   const items = useMemo(() => {
-    const list = [...ALL, ...(isAdmin ? [{ href: '/admin', label: 'Admin', icon: IAdmin, group: 'Account' }] : [])];
+    const list = ALL.filter(x => (x.group !== 'Partner' || isPartner) && (x.group !== 'Admin' || isAdmin));
     const n = q.trim().toLowerCase();
     return n ? list.filter(x => x.label.toLowerCase().includes(n) || x.group.toLowerCase().includes(n)) : list;
-  }, [q, isAdmin]);
+  }, [q, isAdmin, isPartner]);
   useEffect(() => { setI(0); }, [q]);
   return (
     <div className="v3 v3-cmdk-scrim" onMouseDown={onClose}>

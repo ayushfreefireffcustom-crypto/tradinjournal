@@ -22,6 +22,7 @@
     "klinecharts": "^10.0.0",
     "leaflet": "^1.9.4",
     "next": "^15.3.3",
+    "qrcode.react": "4.2.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-markdown": "^10.1.0",

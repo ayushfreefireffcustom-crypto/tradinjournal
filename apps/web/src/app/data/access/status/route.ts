@@ -12,7 +12,8 @@ export async function GET() {
     tradeCount7d: 12,
     minTradesRequired: 3,
     activityWindowDays: 7,
-    isAdmin: false,
+    isAdmin: true,
+    isPartner: true,
     maintenance: { enabled: false, message: null },
   });
 }

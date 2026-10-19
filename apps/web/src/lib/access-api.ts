@@ -13,6 +13,8 @@ export interface AccessStatusDto {
   minTradesRequired: number;
   activityWindowDays: number;
   isAdmin: boolean;
+  /** Has an approved partner profile (shows the Partner section). */
+  isPartner?: boolean;
   maintenance: { enabled: boolean; message: string | null };
 }
 
