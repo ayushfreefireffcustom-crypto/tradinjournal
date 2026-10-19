@@ -6,12 +6,15 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import AppShell from '@/components/app-shell';
+import AdminOnly from '@/components/v3/admin-only';
+import { usePlatformAccess } from '@/lib/use-platform-access';
 import { useAccounts } from '@/lib/use-accounts';
 import {
   partnerApi, type AdminPartnerRow, type PartnerStatus, type ReferrerLookup, type ReservedCode,
 } from '@/lib/partner-api';
 import { IClose, IPlus, ISearch } from '@/components/v3/icons';
 import { Avatar, PartnerStatusPill, day, n, pct } from '@/components/v3/partner-parts';
+import { useConfirm } from '@/components/v3/confirm-dialog';
 
 type Sort = 'active' | 'signups30d' | 'clicks30d' | 'conv' | 'clients';
 type View = 'live' | 'SUSPENDED' | 'REVOKED';
@@ -27,6 +30,8 @@ export default function AdminPartnersPage() {
   const [adding, setAdding] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [toast, setToast] = useState('');
+  const [dialog, ask] = useConfirm();
+  const isAdmin = !!usePlatformAccess().status?.isAdmin;
 
   const load = useCallback(async () => {
     try { setRows(await partnerApi.adminList(view === 'live' ? undefined : view)); setError(''); }
@@ -44,9 +49,9 @@ export default function AdminPartnersPage() {
   async function decide(p: AdminPartnerRow, action: 'approve' | 'decline') {
     let reason: string | undefined;
     if (action === 'decline') {
-      const r = prompt(`Decline ${p.name}? Add a reason for their note trail (optional).`);
-      if (r === null) return; // cancelled
-      reason = r.trim() || undefined;
+      const r = await ask({ title: `Decline ${p.name}?`, body: 'They can apply again later.', confirmLabel: 'Decline', tone: 'danger', reason: true });
+      if (!r) return;
+      reason = r.reason;
     }
     setBusy(p.id);
     try { await partnerApi.adminStatus(p.id, action, reason || undefined); setToast(action === 'approve' ? `${p.name} approved — their link is live.` : `${p.name} declined.`); await load(); }
@@ -56,8 +61,8 @@ export default function AdminPartnersPage() {
 
   return (
     <AppShell accounts={accounts} selectedAccount={selected} onSelectAccount={select} crumbParent="Admin" pageTitle="Partners"
-      actions={<button className="v3-btn v3-btn--acc" onClick={() => setAdding(true)} data-testid="partner-add"><IPlus size={15} />Add partner</button>}>
-      <div className="v3-page" data-testid="admin-partners">
+      actions={isAdmin && <button className="v3-btn v3-btn--acc" onClick={() => setAdding(true)} data-testid="partner-add"><IPlus size={15} />Add partner</button>}>
+      <div className="v3-page" data-testid="admin-partners"><AdminOnly>
         <div className="pt-head">
           <div>
             <h1 className="v3-h1"><b>Partners.</b></h1>
@@ -133,10 +138,11 @@ export default function AdminPartnersPage() {
             <ReservedCard />
           </div>
         </>}
-      </div>
+      </AdminOnly></div>
 
       {adding && <AddPartner onClose={() => setAdding(false)} onAdded={p => { setAdding(false); setToast(`${p.name} is now a partner (${p.code}).`); void load(); }} />}
       {toast && <div className="pt-toast" role="status">{toast}</div>}
+      {dialog}
     </AppShell>
   );
 }

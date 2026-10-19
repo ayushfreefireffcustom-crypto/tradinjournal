@@ -25,6 +25,10 @@ sql() { "$PSQL" "$TEST_DB_URL" -v ON_ERROR_STOP=1 -q -c "$1"; }
 echo "▸ API health"
 curl -fsS "$BASE_URL/health" >/dev/null || { echo "API not reachable at $BASE_URL" >&2; exit 1; }
 
+if curl -fs -o /dev/null --max-time 1 http://127.0.0.1:8999/__stats; then
+  echo "Something is already listening on :8999 (a fake bridge?). Stop it — folder 06 needs the bridge offline." >&2; exit 1
+fi
+
 echo "▸ Resetting test data"
 sql 'TRUNCATE "user", "verification", "reserved_partner_code", "admin_audit_log" CASCADE;'
 

@@ -6,6 +6,7 @@
 import Link from 'next/link';
 import { use, useCallback, useEffect, useState } from 'react';
 import AppShell from '@/components/app-shell';
+import AdminOnly from '@/components/v3/admin-only';
 import { useAccounts } from '@/lib/use-accounts';
 import {
   partnerApi, type AdminPartnerDetail, type AdminPartnerRow, type ClientsPage, type PartnerClient, type PartnerRange, type StatusAction,
@@ -15,14 +16,15 @@ import {
   ActivityFeed, Avatar, ChannelTable, ClientRows, Funnel, PartnerStatusPill, RangeSeg, TrendCard, day, n,
 } from '@/components/v3/partner-parts';
 import { timeAgo } from '@/components/app-shell';
+import { useConfirm, type ConfirmOptions, type ConfirmResult } from '@/components/v3/confirm-dialog';
 
 const PAGE = 10;
 const msg = (e: unknown, f: string) => (e instanceof Error ? e.message : f);
 const ACTIONS: Record<string, { a: StatusAction; l: string; ink?: boolean; ask: string }[]> = {
   PENDING: [{ a: 'decline', l: 'Decline', ask: 'Decline this application?' }, { a: 'approve', l: 'Approve', ink: true, ask: '' }],
-  ACTIVE: [{ a: 'suspend', l: 'Suspend', ask: 'Suspend this partner? Their links stop attributing new signups until you reinstate them.' }, { a: 'revoke', l: 'Revoke', ask: 'Revoke partner status? Their portal closes and links stop attributing. Existing clients stay on record.' }],
-  SUSPENDED: [{ a: 'revoke', l: 'Revoke', ask: 'Revoke partner status?' }, { a: 'reinstate', l: 'Reinstate', ink: true, ask: '' }],
-  REVOKED: [{ a: 'reinstate', l: 'Reinstate', ink: true, ask: 'Reinstate this partner? Their links start attributing again.' }],
+  ACTIVE: [{ a: 'suspend', l: 'Suspend', ask: 'Their links stop crediting new signups and their partner pages close until you reinstate them.' }, { a: 'revoke', l: 'Revoke', ask: 'Their partner pages close and links stop crediting signups. Existing clients stay on record.' }],
+  SUSPENDED: [{ a: 'revoke', l: 'Revoke', ask: 'Their partner pages stay closed for good unless reinstated. Existing clients stay on record.' }, { a: 'reinstate', l: 'Reinstate', ink: true, ask: '' }],
+  REVOKED: [{ a: 'reinstate', l: 'Reinstate', ink: true, ask: 'Their links start crediting signups again and their partner pages reopen.' }],
 };
 
 export default function AdminPartnerPage({ params }: { params: Promise<{ id: string }> }) {
@@ -35,6 +37,7 @@ export default function AdminPartnerPage({ params }: { params: Promise<{ id: str
   const [page, setPage] = useState(1);
   const [busy, setBusy] = useState<string | null>(null);
   const [toast, setToast] = useState('');
+  const [dialog, ask] = useConfirm();
 
   const load = useCallback(async () => {
     try { setD(await partnerApi.adminDetail(id, range)); setError(''); } catch (e) { setError(msg(e, 'Could not load this partner.')); }
@@ -53,22 +56,26 @@ export default function AdminPartnerPage({ params }: { params: Promise<{ id: str
     finally { setBusy(null); }
   }
 
-  async function status(a: StatusAction, ask: string) {
-    if (ask && !confirm(ask)) return;
-    const reason = a === 'approve' || a === 'reinstate' ? null : prompt('Reason (optional — kept on the note trail):');
-    if (reason === null && a !== 'approve' && a !== 'reinstate') return;
-    await act(`st:${a}`, () => partnerApi.adminStatus(id, a, reason?.trim() || undefined), `Partner ${({ approve: 'approved', decline: 'declined', suspend: 'suspended', reinstate: 'reinstated', revoke: 'revoked' } as const)[a]}.`);
+  async function status(a: StatusAction, label: string, body: string) {
+    const destructive = a === 'decline' || a === 'suspend' || a === 'revoke';
+    let reason: string | undefined;
+    if (body || destructive) {
+      const r = await ask({ title: `${label} ${d?.admin.name ?? 'this partner'}?`, body: body || undefined, confirmLabel: label, tone: destructive ? 'danger' : 'default', reason: destructive });
+      if (!r) return;
+      reason = r.reason;
+    }
+    await act(`st:${a}`, () => partnerApi.adminStatus(id, a, reason), `Partner ${({ approve: 'approved', decline: 'declined', suspend: 'suspended', reinstate: 'reinstated', revoke: 'revoked' } as const)[a]}.`);
   }
-  function unlink(c: PartnerClient) {
-    const reason = prompt(`Unlink ${c.name} from this partner? Reason (optional):`);
-    if (reason === null) return;
-    void act(`ul:${c.id}`, () => partnerApi.adminUnlink(id, c.id, reason.trim() || undefined), `${c.name} unlinked.`);
+  async function unlink(c: PartnerClient) {
+    const r = await ask({ title: `Unlink ${c.name}?`, body: 'They stop counting as this partner’s client. Their account and trades are untouched.', confirmLabel: 'Unlink', tone: 'danger', reason: true });
+    if (!r) return;
+    void act(`ul:${c.id}`, () => partnerApi.adminUnlink(id, c.id, r.reason), `${c.name} unlinked.`);
   }
 
   const p = d?.admin;
   return (
     <AppShell accounts={accounts} selectedAccount={selected} onSelectAccount={select} crumbParent="Admin / Partners" pageTitle={p?.name ?? 'Partner'}>
-      <div className="v3-page" data-testid="admin-partner">
+      <div className="v3-page" data-testid="admin-partner"><AdminOnly>
         <Link href="/admin/partners" className="v3-link pt-back"><IArrowLeft size={14} /> All partners</Link>
         {error && <div className="v3-card d-empty" role="alert"><b>Couldn&rsquo;t load partner</b>{error}</div>}
         {!d && !error && <div className="skel d-sk" style={{ height: 420 }} />}
@@ -82,12 +89,12 @@ export default function AdminPartnerPage({ params }: { params: Promise<{ id: str
             </div>
             <dl>
               <div><dt>Code</dt><dd>{p.code ? <code className="pt-c">{p.code}</code> : '—'}</dd></div>
-              <div><dt>Link</dt><dd>tradelogs.com/r/{p.code}</dd></div>
+              <div><dt>Link</dt><dd>{(d.channels.find(c => c.slug === null)?.url ?? `tradelogs.com/r/${p.code}`).replace(/^https?:\/\//, '')}</dd></div>
               <div><dt>{p.status === 'PENDING' || !p.approvedAt ? 'Applied' : 'Partner since'}</dt><dd>{day(p.status === 'PENDING' || !p.approvedAt ? p.joinedAt : p.approvedAt)}</dd></div>
             </dl>
             <div className="btns">
               {ACTIONS[p.status]!.map(x => (
-                <button key={x.a} className={`v3-btn ${x.ink ? 'v3-btn--ink' : 'v3-btn--o'}`} disabled={!!busy} onClick={() => status(x.a, x.ask)} data-testid={`status-${x.a}`}>{x.l}</button>
+                <button key={x.a} className={`v3-btn ${x.ink ? 'v3-btn--ink' : 'v3-btn--o'}`} disabled={!!busy} onClick={() => status(x.a, x.l, x.ask)} data-testid={`status-${x.a}`}>{x.l}</button>
               ))}
             </div>
           </section>
@@ -112,12 +119,12 @@ export default function AdminPartnerPage({ params }: { params: Promise<{ id: str
                   <span>{(clients.meta.page - 1) * PAGE + 1}–{Math.min(clients.meta.total, clients.meta.page * PAGE)} of {n(clients.meta.total)}</span>
                   <div><button className="v3-btn v3-btn--o" disabled={page <= 1} onClick={() => setPage(x => x - 1)}>Previous</button><button className="v3-btn v3-btn--o" disabled={page >= clients.meta.totalPages} onClick={() => setPage(x => x + 1)}>Next</button></div>
                 </div>
-              </> : <div className="d-empty"><b>No clients yet</b>Nobody has signed up with this partner&rsquo;s link or code.</div>}
+              </> : <div className="d-empty"><b>No clients right now</b>New signups through their link or code will appear here.</div>}
           </section>
 
           <div className="pt-g2 pt-tools">
             <AssignCard partnerId={id} busy={busy} act={act} />
-            <MoveCard from={p} busy={busy} act={act} />
+            <MoveCard from={p} busy={busy} act={act} ask={ask} />
           </div>
 
           <div className="pt-g2 pt-tools">
@@ -126,7 +133,7 @@ export default function AdminPartnerPage({ params }: { params: Promise<{ id: str
               <ul className="pt-codes">
                 {d.codes.map(c => (
                   <li key={c.id}><b>{c.code}</b><span className="mute">{c.isPrimary ? 'Primary · ' : ''}{n(c.clicks)} clicks · {n(c.signups)} signups</span>
-                    {!c.isPrimary && <button type="button" className="pt-rowbtn" disabled={!!busy} onClick={() => confirm(`Revoke ${c.code}? It stops working and becomes bookable again.`) && act(`rc:${c.id}`, () => partnerApi.adminRevokeCode(id, c.id), `${c.code} revoked.`)}>Revoke</button>}
+                    {!c.isPrimary && <button type="button" className="pt-rowbtn" disabled={!!busy} onClick={async () => { if (await ask({ title: `Revoke ${c.code}?`, body: 'The code stops working straight away and becomes bookable by anyone again. Clients who already joined with it stay.', confirmLabel: 'Revoke code', tone: 'danger' })) void act(`rc:${c.id}`, () => partnerApi.adminRevokeCode(id, c.id), `${c.code} revoked.`); }} data-testid={`revoke-${c.code}`}>Revoke</button>}
                   </li>
                 ))}
               </ul>
@@ -134,8 +141,9 @@ export default function AdminPartnerPage({ params }: { params: Promise<{ id: str
             <NotesCard partnerId={id} notes={d.notes} onAdded={load} />
           </div>
         </>}
-      </div>
+      </AdminOnly></div>
       {toast && <div className="pt-toast" role="status">{toast}</div>}
+      {dialog}
     </AppShell>
   );
 }
@@ -160,7 +168,7 @@ function AssignCard({ partnerId, busy, act }: { partnerId: string; busy: string 
   );
 }
 
-function MoveCard({ from, busy, act }: { from: AdminPartnerRow; busy: string | null; act: Act }) {
+function MoveCard({ from, busy, act, ask }: { from: AdminPartnerRow; busy: string | null; act: Act; ask: (o: ConfirmOptions) => Promise<ConfirmResult> }) {
   const [targets, setTargets] = useState<AdminPartnerRow[]>([]);
   const [to, setTo] = useState('');
   useEffect(() => { partnerApi.adminList('ACTIVE').then(r => setTargets(r.filter(x => x.id !== from.id))).catch(() => {}); }, [from.id]);
@@ -171,10 +179,10 @@ function MoveCard({ from, busy, act }: { from: AdminPartnerRow; busy: string | n
       <p className="pt-tool-sub">Hands every client of {from.name.split(' ')[0]} to another active partner. Use when a partner merges accounts or leaves.</p>
       <form className="pt-tool-form" onSubmit={async e => {
         e.preventDefault();
-        if (!target || !confirm(`Move all ${from.clients} clients from ${from.name} to ${target.name}?`)) return;
-        const reason = prompt('Reason (optional):');
-        if (reason === null) return;
-        await act('move', () => partnerApi.adminMove(from.id, target.id, reason.trim() || undefined), `Clients moved to ${target.name}.`);
+        if (!target) return;
+        const r = await ask({ title: `Move ${from.clients} client${from.clients === 1 ? '' : 's'} to ${target.name}?`, body: `Every client of ${from.name} will count for ${target.name} from now on.`, confirmLabel: 'Move clients', reason: true });
+        if (!r) return;
+        await act('move', () => partnerApi.adminMove(from.id, target.id, r.reason), `Clients moved to ${target.name}.`);
       }}>
         <select className="pt-select" value={to} onChange={e => setTo(e.target.value)} aria-label="Move to partner">
           <option value="">Pick a partner…</option>

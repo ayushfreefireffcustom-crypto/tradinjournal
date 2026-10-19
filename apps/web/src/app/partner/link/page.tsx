@@ -9,6 +9,7 @@ import { partnerApi, PartnerApiError, type PartnerChannel, type PartnerCode, typ
 import { IPlus } from '@/components/v3/icons';
 import PartnerGate, { GATE_CODES, type GateReason } from '@/components/v3/partner-gate';
 import { ChannelTable, CopyButton, LinkBox, Qr, ShareRow, n, pct, place } from '@/components/v3/partner-parts';
+import { useConfirm } from '@/components/v3/confirm-dialog';
 
 const msg = (e: unknown, fallback: string) => (e instanceof Error ? e.message : fallback);
 
@@ -21,6 +22,7 @@ export default function PartnerLinkPage() {
   const [label, setLabel] = useState('');
   const [newCode, setNewCode] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
+  const [dialog, ask] = useConfirm();
   const [formError, setFormError] = useState<{ form: 'channel' | 'code' | 'table'; text: string } | null>(null);
 
   const load = useCallback(async () => {
@@ -47,8 +49,14 @@ export default function PartnerLinkPage() {
     e.preventDefault();
     if (await run('code', 'code', () => partnerApi.reserveCode(newCode.trim()))) setNewCode('');
   };
-  const release = (c: PartnerCode) => { if (confirm(`Release ${c.code}? Anyone can book it afterwards, and old links using it stop working.`)) void run(`rel:${c.id}`, 'code', () => partnerApi.releaseCode(c.id)); };
-  const archive = (c: PartnerChannel) => { if (confirm(`Archive “${c.label}”? Its link keeps counting for your default link, and its history stays.`)) void run(`arc:${c.id}`, 'table', () => partnerApi.archiveChannel(c.id)); };
+  const release = async (c: PartnerCode) => {
+    if (await ask({ title: `Release ${c.code}?`, body: 'Anyone can book it afterwards, and links using it stop working. People who already joined with it stay your clients.', confirmLabel: 'Release code', tone: 'danger' }))
+      void run(`rel:${c.id}`, 'code', () => partnerApi.releaseCode(c.id));
+  };
+  const archive = async (c: PartnerChannel) => {
+    if (await ask({ title: `Archive “${c.label}”?`, body: 'New clicks on it count for your default link instead. Its history stays.', confirmLabel: 'Archive', tone: 'danger' }))
+      void run(`arc:${c.id}`, 'table', () => partnerApi.archiveChannel(c.id));
+  };
 
   const clicks = d?.totals.clicks ?? 0;
   const signups = d?.totals.signups ?? 0;
@@ -156,6 +164,7 @@ export default function PartnerLinkPage() {
           </>}
         </>}
       </div>
+      {dialog}
     </AppShell>
   );
 }

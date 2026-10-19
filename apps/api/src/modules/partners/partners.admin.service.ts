@@ -112,7 +112,7 @@ export async function assignClient(partnerId: string, input: AdminAssignClientIn
   if (user.id === p.userId) throw new ConflictError('A partner can’t be their own client.');
   const existing = await prisma.referral.findUnique({ where: { userId: user.id }, include: { partner: { include: { user: { select: { name: true } } } } } });
   if (existing?.partnerId === partnerId) throw new ConflictError('This user is already this partner’s client.');
-  if (existing && !input.force) throw new ConflictError(`This user is already referred by ${existing.partner.user.name}. Send force: true to move them.`);
+  if (existing && !input.force) throw new ConflictError(`This user is already referred by ${existing.partner.user.name}. Tick “Move them” to reassign them.`);
   const def = await prisma.partnerChannel.findFirst({ where: { partnerId, slug: '' } });
   const code = primaryCode(p) ?? 'ADMIN';
   const r = existing

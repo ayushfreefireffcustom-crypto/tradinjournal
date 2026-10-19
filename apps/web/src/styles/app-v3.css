@@ -2341,3 +2341,10 @@ button.c-day:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px;
 .pt-reserve .pt-search input { border: 0; height: auto; padding: 0; background: none; box-shadow: none; letter-spacing: 0; }
 .pt-reserve .pt-search { height: 42px; border-radius: 12px; }
 .pt-apply-form label .pt-lbl { color: var(--ink); font-weight: 500; }
+.pt-confirm textarea { padding: 10px 14px; border-radius: 12px; border: 1px solid var(--line); font: inherit; font-size: 14.5px; resize: vertical; outline: 0; min-height: 64px; transition: border-color 160ms, box-shadow 160ms; }
+.pt-confirm textarea:focus { border-color: var(--acc); box-shadow: 0 0 0 3px rgba(var(--acc-rgb), .14); }
+.pt-btn-danger { background: var(--short); color: #fff; }
+.pt-btn-danger:hover { background: #E02F4B; }
+
+/* errors stay red inside modals / the apply gate (their generic <p> colour is muted) */
+.pt-modal > p.pt-err, .pt-gate p.pt-err, .pt-apply-form .pt-err { color: var(--short); margin-top: 0; }

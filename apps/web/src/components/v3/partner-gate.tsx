@@ -49,7 +49,7 @@ export default function PartnerGate({ reason, onApplied }: { reason: GateReason;
     <section className="v3-card pt-gate pt-apply" data-testid="partner-apply">
       <div>
         <p className="pt-gate-k">Partner programme</p>
-        <h2>{reason === 'PARTNER_REVOKED' ? 'Apply to rejoin the partner programme.' : 'Bring traders to TRADElogs.'}</h2>
+        <h2>{reason === 'PARTNER_REVOKED' ? 'Apply to the partner programme again.' : 'Bring traders to TRADElogs.'}</h2>
         <p>Get your own link and code, and see who signed up through you, who connected MT5 and who&rsquo;s actively trading. Applications are reviewed by hand.</p>
         <ul className="pt-rules">
           <li>You see your clients&rsquo; names, location and activity level — never their email, balance or trades.</li>

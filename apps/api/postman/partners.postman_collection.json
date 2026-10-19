@@ -1531,7 +1531,58 @@
           }
         },
         {
-          "name": "Same label again gets a unique slug",
+          "name": "Same name again → 409 (names must be unique)",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{rohanCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/channels",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "channels"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"label\": \"telegram GROUP\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "A second channel",
           "protocolProfileBehavior": {
             "disableCookies": true,
             "followRedirects": false
@@ -1543,7 +1594,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('status 201', () => pm.response.to.have.status(201));",
-                  "pm.test(\"slug -2\", () => { pm.expect(pm.response.json().data.slug).to.eql('telegram-group-2'); });",
+                  "pm.test(\"own slug\", () => { pm.expect(pm.response.json().data.slug).to.eql('telegram-broadcast'); });",
                   "pm.collectionVariables.set('tg2ChannelId', pm.response.json().data.id);"
                 ]
               }
@@ -1574,7 +1625,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"label\": \"Telegram group\"\n}",
+              "raw": "{\n  \"label\": \"Telegram broadcast\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -3868,6 +3919,57 @@
                   "language": "json"
                 }
               }
+            }
+          }
+        },
+        {
+          "name": "After the move, Rohan no longer claims those conversions",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"0 signups and 0 converted (was \\\"0 signups · 86% convert\\\")\", () => { pm.expect(d.funnel.signups).to.eql(0); pm.expect(d.funnel.converted).to.eql(0); pm.expect(d.admin.converted30d).to.eql(0); d.channels.forEach(c => pm.expect(c.converted).to.be.at.most(c.signups)); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/partners/{{rohanPid}}?range=ALL",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "partners",
+                "{{rohanPid}}"
+              ],
+              "query": [
+                {
+                  "key": "range",
+                  "value": "ALL"
+                }
+              ]
             }
           }
         },

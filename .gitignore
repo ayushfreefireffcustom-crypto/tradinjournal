@@ -42,3 +42,6 @@ credentials.json
 *.pem
 *.key
 .credentials
+
+# second dev server build dir (mock mode)
+.next-mock/

@@ -284,6 +284,8 @@ export function handlePartnerMock(method: string, seg: string[], q: URLSearchPar
       if (b === 'channels' && method === 'POST') {
         const label = String(body.label ?? '').trim().slice(0, 40);
         if (!label) throw invalid('Give the link a name.');
+        const dup = p.channels.find(x => !x.archived && x.label.toLowerCase() === label.toLowerCase());
+        if (dup) throw conflict(`You already have a link called “${dup.label}”. Pick another name.`);
         if (p.channels.filter(x => !x.archived && x.slug).length >= MAX_CHANNELS) throw conflict(`You can have up to ${MAX_CHANNELS} channel links. Archive one first.`);
         let slug = slugify(label);
         for (let i = 2; p.channels.some(x => x.slug === slug && !x.archived); i++) slug = `${slugify(label).slice(0, 28)}-${i}`;

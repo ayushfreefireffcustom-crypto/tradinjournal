@@ -40,7 +40,8 @@ export default function PartnerOverviewPage() {
   }, []);
   useEffect(() => { void load(range); }, [load, range]);
 
-  const url = o ? `https://tradelogs.com/r/${o.partner.code}` : '';
+  // The server builds links from APP_URL, so staging/preview links point at themselves.
+  const url = o ? (o.channels.find(c => c.slug === null)?.url ?? `https://tradelogs.com/r/${o.partner.code}`) : '';
   const first = o?.partner.name.split(' ')[0] ?? '';
 
   return (

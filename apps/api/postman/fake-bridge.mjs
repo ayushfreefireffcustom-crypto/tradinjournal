@@ -1,6 +1,8 @@
 // Fake MT5 bridge for the Postman suite: same /verify and /deals contract as
 // apps/mt5-bridge, a deterministic ~3k-deal history, and a call log so tests can
-// prove reads stop hitting the bridge and syncs are incremental.
+// prove reads stop hitting the bridge and syncs are incremental. History is
+// anchored to *now* (so clients trade "recently"); logins ending in 0 stopped
+// trading 40 days ago (useful for connected-but-not-active cases).
 //   node fake-bridge.mjs [port]      (default 8999)
 // Test-only endpoints: GET /__stats, POST /__add (append one closed trade), POST /__reset
 import { createServer } from 'http';
@@ -16,7 +18,8 @@ let ticket = 50_000_000;
 function seed() {
   deals = [];
   ticket = 50_000_000;
-  const start = Math.floor(Date.parse('2026-01-05T08:00:00Z') / 1000);
+  // 1500 trades every 4h; the newest closes a few hours ago.
+  const start = Math.floor(Date.now() / 1000) - 1500 * 4 * 3600;
   deals.push({ deal_ticket: ++ticket, order_ticket: 0, position_id: 0, symbol: '', type: 2, entry: 0, volume: '0', price: '0', profit: '10000.00', commission: '0', swap: '0', fee: '0', deal_time: start - DAY, comment: 'Deposit' });
   let r = 7;
   const rand = () => ((r = (r * 1103515245 + 12345) % 2147483648) / 2147483648);
@@ -58,7 +61,8 @@ createServer((req, res) => {
       calls.deals++;
       calls.last = { from_time: body.from_time, to_time: body.to_time };
       const from = toEpoch(body.from_time), to = toEpoch(body.to_time);
-      const out = deals.filter(d => d.deal_time >= from && d.deal_time <= to);
+      const quietSince = Number(body.login) % 10 === 0 ? Math.floor(Date.now() / 1000) - 40 * DAY : Infinity;
+      const out = deals.filter(d => d.deal_time >= from && d.deal_time <= to && d.deal_time < quietSince);
       return json(res, 200, { deals: out, total: out.length });
     }
     json(res, 404, { detail: 'not found' });

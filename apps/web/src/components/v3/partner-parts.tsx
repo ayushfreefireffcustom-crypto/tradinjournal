@@ -63,7 +63,7 @@ export function Funnel({ f, rule, title = 'Your funnel' }: { f: PartnerFunnel; r
   const rangeLabel = RANGE_LABEL[f.range];
   const steps: { l: string; v: number; sub: ReactNode; conv: number | null; hint?: string }[] = [
     { l: 'Link clicks', v: f.clicks, sub: <>Times the link was opened</>, conv: null },
-    { l: 'Signed up', v: f.signups, sub: <>{pct(f.converted, f.clicks)} of clicks convert</>, conv: f.clicks ? f.converted / f.clicks : 0,
+    { l: 'Signed up', v: f.signups, sub: f.clicks ? <>{pct(f.converted, f.clicks)} of clicks convert</> : <>No link clicks yet</>, conv: f.clicks ? f.converted / f.clicks : 0,
       hint: 'Signups include people who typed your code. The % counts only clicks that led to a signup.' },
     { l: 'MT5 connected', v: f.connected, sub: <>{pct(f.connected, f.signups)} of signups</>, conv: f.signups ? f.connected / f.signups : 0 },
     { l: 'Active traders', v: f.active, sub: <>{pct(f.active, f.connected)} of connected</>, conv: f.connected ? f.active / f.connected : 0,

@@ -3,6 +3,9 @@ import path from 'path';
 
 const config: NextConfig = {
   reactStrictMode: true,
+  // Lets a second dev server (e.g. mock mode) build into its own folder — two
+  // `next dev` processes sharing .next serve each other's compiled pages.
+  distDir: process.env.NEXT_DIST_DIR || '.next',
   outputFileTracingRoot: path.join(__dirname, '../../'),
   eslint: {
     ignoreDuringBuilds: true,
