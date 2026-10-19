@@ -40,6 +40,34 @@
         "3010"
       ],
       "port": 3010
+    },
+    {
+      "name": "api-partner-test",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "NODE_ENV=test",
+        "API_PORT=4100",
+        "DATABASE_URL=postgresql://tj@localhost:5444/tradinjournal_test",
+        "DIRECT_URL=postgresql://tj@localhost:5444/tradinjournal_test",
+        "REDIS_URL=redis://127.0.0.1:6399",
+        "RESEND_API_KEY=",
+        "IN_PROCESS_SCHEDULER=false",
+        "AUTH_URL=http://localhost:4100",
+        "APP_URL=http://localhost:3000",
+        "CORS_ORIGIN=http://localhost:3000",
+        "ADMIN_EMAILS=admin@partners.test",
+        "MACRO_ADMIN_EMAILS=",
+        "INTERNAL_API_TOKEN=partner-test-internal-token",
+        "MT5_BRIDGE_URL=http://127.0.0.1:8999",
+        "PARTNER_CLICK_LIMIT=1000",
+        "GROQ_API_KEY=",
+        "TAVILY_API_KEY=",
+        "pnpm",
+        "--filter",
+        "api",
+        "start"
+      ],
+      "port": 4100
     }
   ]
 }

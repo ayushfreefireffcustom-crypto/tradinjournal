@@ -18,6 +18,7 @@ import { gradePendingAnalyses } from './modules/trader/trader.grade.service.js';
 import { trainMetaModelFromDb } from './modules/trader/trader.meta.service.js';
 import { trainLgbmChallenger } from './modules/trader/trader.lgbm.service.js';
 import { tickPaperBook } from './modules/trader/trader.paper.service.js';
+import { refreshReferralStats } from './modules/partners/stats.service.js';
 
 const MIN = 60_000;
 const timers: NodeJS.Timeout[] = [];
@@ -64,6 +65,8 @@ export function startInProcessScheduler(): void {
   every(6 * 60 * MIN, 'trader-meta', () => trainMetaModelFromDb());
   every(6 * 60 * MIN, 'trader-lgbm', () => trainLgbmChallenger());
   every(5 * MIN, 'trader-paper', () => tickPaperBook());
+  // Partner dashboards: refresh referred clients' activity snapshots in small batches.
+  every(15 * MIN, 'partner-stats', () => refreshReferralStats({ limit: 25 }));
 
   // Warm the data shortly after boot so it's fresh without waiting a full interval.
   setTimeout(() => void dispatchReminders().catch(() => {}), 4_000);

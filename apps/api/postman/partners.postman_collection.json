@@ -1,0 +1,5064 @@
+{
+  "info": {
+    "name": "TRADElogs — Partner programme",
+    "description": "Contract tests for apps/api/openapi/partners.openapi.yaml. Run with apps/api/postman/run.sh against a disposable database.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "01 Bootstrap users",
+      "item": [
+        {
+          "name": "Sign up admin",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{appUrl}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/sign-up/email",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "sign-up",
+                "email"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{password}}\",\n  \"name\": \"{{adminName}}\",\n  \"country\": \"IN\",\n  \"city\": \"Mumbai\",\n  \"postalCode\": \"400001\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Sign up rohan",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{appUrl}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/sign-up/email",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "sign-up",
+                "email"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{rohanEmail}}\",\n  \"password\": \"{{password}}\",\n  \"name\": \"{{rohanName}}\",\n  \"country\": \"IN\",\n  \"city\": \"Mumbai\",\n  \"postalCode\": \"400001\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Sign up sana",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{appUrl}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/sign-up/email",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "sign-up",
+                "email"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{sanaEmail}}\",\n  \"password\": \"{{password}}\",\n  \"name\": \"{{sanaName}}\",\n  \"country\": \"IN\",\n  \"city\": \"Mumbai\",\n  \"postalCode\": \"400001\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Sign up nina",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{appUrl}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/sign-up/email",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "sign-up",
+                "email"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{ninaEmail}}\",\n  \"password\": \"{{password}}\",\n  \"name\": \"{{ninaName}}\",\n  \"country\": \"IN\",\n  \"city\": \"Mumbai\",\n  \"postalCode\": \"400001\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 Partner setup",
+      "item": [
+        {
+          "name": "Sign in admin",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const c = (pm.response.headers.all().filter(h => h.key.toLowerCase() === 'set-cookie').map(h => h.value).find(v => v.startsWith('better-auth.session_token=')) || '').split(';')[0];",
+                  "pm.test(\"session cookie issued\", () => { pm.expect(c).to.match(/^better-auth\\.session_token=/); });",
+                  "pm.collectionVariables.set('adminCookie', c);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{appUrl}}"
+              }
+            ],
+            "url": {
+              "raw": "{{altUrl}}/api/auth/sign-in/email",
+              "host": [
+                "{{altUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "sign-in",
+                "email"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Sign in rohan",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const c = (pm.response.headers.all().filter(h => h.key.toLowerCase() === 'set-cookie').map(h => h.value).find(v => v.startsWith('better-auth.session_token=')) || '').split(';')[0];",
+                  "pm.test(\"session cookie issued\", () => { pm.expect(c).to.match(/^better-auth\\.session_token=/); });",
+                  "pm.collectionVariables.set('rohanCookie', c);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{appUrl}}"
+              }
+            ],
+            "url": {
+              "raw": "{{altUrl}}/api/auth/sign-in/email",
+              "host": [
+                "{{altUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "sign-in",
+                "email"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{rohanEmail}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Sign in sana",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const c = (pm.response.headers.all().filter(h => h.key.toLowerCase() === 'set-cookie').map(h => h.value).find(v => v.startsWith('better-auth.session_token=')) || '').split(';')[0];",
+                  "pm.test(\"session cookie issued\", () => { pm.expect(c).to.match(/^better-auth\\.session_token=/); });",
+                  "pm.collectionVariables.set('sanaCookie', c);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{appUrl}}"
+              }
+            ],
+            "url": {
+              "raw": "{{altUrl}}/api/auth/sign-in/email",
+              "host": [
+                "{{altUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "sign-in",
+                "email"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{sanaEmail}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Sign in nina",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const c = (pm.response.headers.all().filter(h => h.key.toLowerCase() === 'set-cookie').map(h => h.value).find(v => v.startsWith('better-auth.session_token=')) || '').split(';')[0];",
+                  "pm.test(\"session cookie issued\", () => { pm.expect(c).to.match(/^better-auth\\.session_token=/); });",
+                  "pm.collectionVariables.set('ninaCookie', c);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{appUrl}}"
+              }
+            ],
+            "url": {
+              "raw": "{{altUrl}}/api/auth/sign-in/email",
+              "host": [
+                "{{altUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "sign-in",
+                "email"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{ninaEmail}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Unauthenticated portal → 401",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/overview",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "overview"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Non-partner /me → null",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"data is null\", () => { pm.expect(pm.response.json().data).to.eql(null); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{rohanCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "me"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Non-partner overview → 403 NOT_A_PARTNER",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 403', () => pm.response.to.have.status(403));",
+                  "pm.test('error code NOT_A_PARTNER', () => pm.expect(pm.response.json().error.code).to.eql('NOT_A_PARTNER'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{rohanCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/overview",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "overview"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Non-admin admin list → 403",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{rohanCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/partners",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "partners"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin creates Rohan (ROHANFX)",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', () => pm.response.to.have.status(201));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"active with requested code\", () => { pm.expect(d.status).to.eql('ACTIVE'); pm.expect(d.code).to.eql('ROHANFX'); pm.expect(d.approvedAt).to.be.a('string'); });",
+                  "pm.test(\"zero counters\", () => { pm.expect([d.clicks30d,d.signups30d,d.clients,d.connected,d.active]).to.eql([0,0,0,0,0]); });",
+                  "pm.collectionVariables.set('rohanPid', d.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/partners",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "partners"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{rohanEmail}}\",\n  \"code\": \"rohanfx\",\n  \"audience\": \"Telegram · 18k members\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Admin creates Rohan again → 409",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/partners",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "partners"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{rohanEmail}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Admin creates unknown email → 404",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/partners",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "partners"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"ghost@partners.test\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Admin creates with reserved code → 409",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/partners",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "partners"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{ninaEmail}}\",\n  \"code\": \"TRADELOGSVIP\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Admin creates with bad code → 422",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 422', () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/partners",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "partners"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{ninaEmail}}\",\n  \"code\": \"ab\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Sana applies (SANA)",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', () => pm.response.to.have.status(201));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"pending with code\", () => { pm.expect(d.status).to.eql('PENDING'); pm.expect(d.code).to.eql('SANA'); });",
+                  "pm.collectionVariables.set('sanaPid', d.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{sanaCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/apply",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "apply"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"audience\": \"YouTube · 42k\",\n  \"code\": \"sana\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Sana applies again → 409",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{sanaCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/apply",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "apply"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"audience\": \"YouTube\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Pending partner overview → 403 PARTNER_PENDING",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 403', () => pm.response.to.have.status(403));",
+                  "pm.test('error code PARTNER_PENDING', () => pm.expect(pm.response.json().error.code).to.eql('PARTNER_PENDING'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{sanaCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/overview",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "overview"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Pending code does not attribute",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"invalid while pending\", () => { pm.expect(pm.response.json().data).to.eql({ valid: false, partnerName: null }); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/referrals/check?code=SANA",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "referrals",
+                "check"
+              ],
+              "query": [
+                {
+                  "key": "code",
+                  "value": "SANA"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Code check (case-insensitive) shows first name only",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"valid, first name\", () => { pm.expect(pm.response.json().data).to.eql({ valid: true, partnerName: pm.collectionVariables.get('rohanName').split(' ')[0] }); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/referrals/check?code=rohanfx",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "referrals",
+                "check"
+              ],
+              "query": [
+                {
+                  "key": "code",
+                  "value": "rohanfx"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Code check without code → 422",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 422', () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/referrals/check",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "referrals",
+                "check"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin list shows pending Sana",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"both listed\", () => { const s = d.find(p => p.id === pm.collectionVariables.get('sanaPid')); pm.expect(s.status).to.eql('PENDING'); pm.expect(d.some(p => p.code === 'ROHANFX')).to.be.true; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/partners",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "partners"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin approves Sana",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"active\", () => { pm.expect(pm.response.json().data.status).to.eql('ACTIVE'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/partners/{{sanaPid}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "partners",
+                "{{sanaPid}}",
+                "status"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"approve\",\n  \"reason\": \"Verified channel\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Approve twice → 409",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/partners/{{sanaPid}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "partners",
+                "{{sanaPid}}",
+                "status"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"approve\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Bad status action → 422",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 422', () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/partners/{{sanaPid}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "partners",
+                "{{sanaPid}}",
+                "status"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"delete\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Rohan /me → ACTIVE profile",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"profile\", () => { pm.expect(d.code).to.eql('ROHANFX'); pm.expect(d.status).to.eql('ACTIVE'); pm.expect(d.cookieDays).to.be.above(0); pm.expect(d.activeRule.minTrades).to.be.above(0); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{rohanCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "me"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Access status carries partnerStatus",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"ACTIVE\", () => { pm.expect(pm.response.json().data.partnerStatus).to.eql('ACTIVE'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{rohanCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/access/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "access",
+                "status"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Access status null for non-partner",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"null\", () => { pm.expect(pm.response.json().data.partnerStatus).to.eql(null); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{ninaCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/access/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "access",
+                "status"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Rohan adds channel \"Telegram group\"",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', () => pm.response.to.have.status(201));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"slugged link\", () => { pm.expect(d.slug).to.eql('telegram-group'); pm.expect(d.url).to.match(/\\/r\\/ROHANFX\\?ch=telegram-group$/); });",
+                  "pm.collectionVariables.set('tgChannelId', d.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{rohanCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/channels",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "channels"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"label\": \"Telegram group\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Same label again gets a unique slug",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', () => pm.response.to.have.status(201));",
+                  "pm.test(\"slug -2\", () => { pm.expect(pm.response.json().data.slug).to.eql('telegram-group-2'); });",
+                  "pm.collectionVariables.set('tg2ChannelId', pm.response.json().data.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{rohanCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/channels",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "channels"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"label\": \"Telegram group\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Empty channel label → 422",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 422', () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{rohanCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/channels",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "channels"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"label\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Rohan reserves custom code rohan-vip",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', () => pm.response.to.have.status(201));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"upper-cased, not primary\", () => { pm.expect(d.code).to.eql('ROHAN-VIP'); pm.expect(d.isPrimary).to.be.false; });",
+                  "pm.collectionVariables.set('vipCodeId', d.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{rohanCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/codes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "codes"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"rohan-vip\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Taken code → 409",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{rohanCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/codes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "codes"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"SANA\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Reserved word → 409",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{rohanCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/codes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "codes"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"admin\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Illegal code → 422",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 422', () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{rohanCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/codes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "codes"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"has space\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Rohan links",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"base url + codes\", () => { pm.expect(d.baseUrl).to.match(/\\/r\\/ROHANFX$/); pm.expect(d.codes.map(c => c.code)).to.eql(['ROHANFX','ROHAN-VIP']); pm.expect(d.codes[0].isPrimary).to.be.true; });",
+                  "pm.test(\"default + two channels\", () => { pm.expect(d.channels).to.have.length(3); const def = d.channels.find(c => c.slug === null); pm.expect(def.label).to.eql('Direct link'); pm.collectionVariables.set('defaultChannelId', def.id); });",
+                  "pm.test(\"limits\", () => { pm.expect(d.limits.maxChannels).to.be.above(0); pm.expect(d.limits.maxCodes).to.be.above(1); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{rohanCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/links",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "links"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 Attribution",
+      "item": [
+        {
+          "name": "Click ROHANFX via telegram channel",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 302', () => pm.response.to.have.status(302));",
+                  "pm.test(\"redirects to signup with the code\", () => { pm.expect(pm.response.headers.get('Location')).to.match(/\\/signup\\?ref=[A-Z0-9_-]+$/); });",
+                  "const c = (pm.response.headers.all().filter(h => h.key.toLowerCase() === 'set-cookie').map(h => h.value).find(v => v.startsWith('tl_ref=')) || '').split(';')[0];",
+                  "pm.test(\"sets a signed tl_ref cookie\", () => { pm.expect(c).to.match(/^tl_ref=[^.]+\\.[^.]+\\.\\d+\\.[A-Za-z0-9_-]+$/); });",
+                  "pm.collectionVariables.set('refA', c);",
+                  "pm.test(\"cookie is HttpOnly + Lax\", () => { const raw = pm.response.headers.all().find(h => h.key.toLowerCase()==='set-cookie' && h.value.startsWith('tl_ref=')).value; pm.expect(raw).to.include('HttpOnly'); pm.expect(raw).to.match(/SameSite=Lax/i); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{altUrl}}/api/r/ROHANFX?ch=telegram-group",
+              "host": [
+                "{{altUrl}}"
+              ],
+              "path": [
+                "api",
+                "r",
+                "ROHANFX"
+              ],
+              "query": [
+                {
+                  "key": "ch",
+                  "value": "telegram-group"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Second link while cookie valid → first click wins",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 302', () => pm.response.to.have.status(302));",
+                  "pm.test(\"redirects to signup with the code\", () => { pm.expect(pm.response.headers.get('Location')).to.match(/\\/signup\\?ref=[A-Z0-9_-]+$/); });",
+                  "const c = (pm.response.headers.all().filter(h => h.key.toLowerCase() === 'set-cookie').map(h => h.value).find(v => v.startsWith('tl_ref=')) || '').split(';')[0];",
+                  "pm.test(\"does not set tl_ref\", () => { pm.expect(c).to.eql(\"\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{refA}}"
+              }
+            ],
+            "url": {
+              "raw": "{{altUrl}}/api/r/SANA",
+              "host": [
+                "{{altUrl}}"
+              ],
+              "path": [
+                "api",
+                "r",
+                "SANA"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Click custom code (lower-case)",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 302', () => pm.response.to.have.status(302));",
+                  "pm.test(\"redirects to signup with the code\", () => { pm.expect(pm.response.headers.get('Location')).to.match(/\\/signup\\?ref=[A-Z0-9_-]+$/); });",
+                  "const c = (pm.response.headers.all().filter(h => h.key.toLowerCase() === 'set-cookie').map(h => h.value).find(v => v.startsWith('tl_ref=')) || '').split(';')[0];",
+                  "pm.test(\"sets a signed tl_ref cookie\", () => { pm.expect(c).to.match(/^tl_ref=[^.]+\\.[^.]+\\.\\d+\\.[A-Za-z0-9_-]+$/); });",
+                  "pm.collectionVariables.set('refB', c);",
+                  "pm.test(\"cookie is HttpOnly + Lax\", () => { const raw = pm.response.headers.all().find(h => h.key.toLowerCase()==='set-cookie' && h.value.startsWith('tl_ref=')).value; pm.expect(raw).to.include('HttpOnly'); pm.expect(raw).to.match(/SameSite=Lax/i); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{altUrl}}/api/r/rohan-vip",
+              "host": [
+                "{{altUrl}}"
+              ],
+              "path": [
+                "api",
+                "r",
+                "rohan-vip"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Click ROHANFX again (fresh visitor)",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 302', () => pm.response.to.have.status(302));",
+                  "pm.test(\"redirects to signup with the code\", () => { pm.expect(pm.response.headers.get('Location')).to.match(/\\/signup\\?ref=[A-Z0-9_-]+$/); });",
+                  "const c = (pm.response.headers.all().filter(h => h.key.toLowerCase() === 'set-cookie').map(h => h.value).find(v => v.startsWith('tl_ref=')) || '').split(';')[0];",
+                  "pm.test(\"sets a signed tl_ref cookie\", () => { pm.expect(c).to.match(/^tl_ref=[^.]+\\.[^.]+\\.\\d+\\.[A-Za-z0-9_-]+$/); });",
+                  "pm.collectionVariables.set('refC', c);",
+                  "pm.test(\"cookie is HttpOnly + Lax\", () => { const raw = pm.response.headers.all().find(h => h.key.toLowerCase()==='set-cookie' && h.value.startsWith('tl_ref=')).value; pm.expect(raw).to.include('HttpOnly'); pm.expect(raw).to.match(/SameSite=Lax/i); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{altUrl}}/api/r/ROHANFX",
+              "host": [
+                "{{altUrl}}"
+              ],
+              "path": [
+                "api",
+                "r",
+                "ROHANFX"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Unknown code → home, no cookie",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 302', () => pm.response.to.have.status(302));",
+                  "pm.test(\"redirects home\", () => { pm.expect(pm.response.headers.get('Location')).to.eql(pm.collectionVariables.get('appUrl') + '/'); });",
+                  "const c = (pm.response.headers.all().filter(h => h.key.toLowerCase() === 'set-cookie').map(h => h.value).find(v => v.startsWith('tl_ref=')) || '').split(';')[0];",
+                  "pm.test(\"does not set tl_ref\", () => { pm.expect(c).to.eql(\"\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{altUrl}}/api/r/NOPE123",
+              "host": [
+                "{{altUrl}}"
+              ],
+              "path": [
+                "api",
+                "r",
+                "NOPE123"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Unknown channel falls back to default link",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 302', () => pm.response.to.have.status(302));",
+                  "pm.test(\"redirects to signup with the code\", () => { pm.expect(pm.response.headers.get('Location')).to.match(/\\/signup\\?ref=[A-Z0-9_-]+$/); });",
+                  "const c = (pm.response.headers.all().filter(h => h.key.toLowerCase() === 'set-cookie').map(h => h.value).find(v => v.startsWith('tl_ref=')) || '').split(';')[0];",
+                  "pm.test(\"sets a signed tl_ref cookie\", () => { pm.expect(c).to.match(/^tl_ref=[^.]+\\.[^.]+\\.\\d+\\.[A-Za-z0-9_-]+$/); });",
+                  "pm.collectionVariables.set('refD', c);",
+                  "pm.test(\"cookie is HttpOnly + Lax\", () => { const raw = pm.response.headers.all().find(h => h.key.toLowerCase()==='set-cookie' && h.value.startsWith('tl_ref=')).value; pm.expect(raw).to.include('HttpOnly'); pm.expect(raw).to.match(/SameSite=Lax/i); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{altUrl}}/api/r/ROHANFX?ch=does-not-exist",
+              "host": [
+                "{{altUrl}}"
+              ],
+              "path": [
+                "api",
+                "r",
+                "ROHANFX"
+              ],
+              "query": [
+                {
+                  "key": "ch",
+                  "value": "does-not-exist"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Sign up c1",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{refA}}"
+              },
+              {
+                "key": "Origin",
+                "value": "{{appUrl}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/sign-up/email",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "sign-up",
+                "email"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{c1Email}}\",\n  \"password\": \"{{password}}\",\n  \"name\": \"{{c1Name}}\",\n  \"country\": \"IN\",\n  \"city\": \"Mumbai\",\n  \"postalCode\": \"400001\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Sign up c2",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{refB}}"
+              },
+              {
+                "key": "Origin",
+                "value": "{{appUrl}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/sign-up/email",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "sign-up",
+                "email"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{c2Email}}\",\n  \"password\": \"{{password}}\",\n  \"name\": \"{{c2Name}}\",\n  \"country\": \"IN\",\n  \"city\": \"Mumbai\",\n  \"postalCode\": \"400001\",\n  \"referralCode\": \"sana\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Sign up c3",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{refB}}"
+              },
+              {
+                "key": "Origin",
+                "value": "{{appUrl}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/sign-up/email",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "sign-up",
+                "email"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{c3Email}}\",\n  \"password\": \"{{password}}\",\n  \"name\": \"{{c3Name}}\",\n  \"country\": \"IN\",\n  \"city\": \"Mumbai\",\n  \"postalCode\": \"400001\",\n  \"referralCode\": \"ZZZNOPE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Sign up c4",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{refA}}"
+              },
+              {
+                "key": "Origin",
+                "value": "{{appUrl}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/sign-up/email",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "sign-up",
+                "email"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{c4Email}}\",\n  \"password\": \"{{password}}\",\n  \"name\": \"{{c4Name}}\",\n  \"country\": \"IN\",\n  \"city\": \"Mumbai\",\n  \"postalCode\": \"400001\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Sign up c5",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{appUrl}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/sign-up/email",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "sign-up",
+                "email"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{c5Email}}\",\n  \"password\": \"{{password}}\",\n  \"name\": \"{{c5Name}}\",\n  \"country\": \"IN\",\n  \"city\": \"Mumbai\",\n  \"postalCode\": \"400001\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Sign up c6 (tampered cookie)",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const c = pm.collectionVariables.get('refC'); pm.collectionVariables.set('refCBad', c.slice(0, -2) + (c.endsWith('AA') ? 'BB' : 'AA'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{refCBad}}"
+              },
+              {
+                "key": "Origin",
+                "value": "{{appUrl}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/sign-up/email",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "sign-up",
+                "email"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{c6Email}}\",\n  \"password\": \"{{password}}\",\n  \"name\": \"{{c6Name}}\",\n  \"country\": \"IN\",\n  \"city\": \"Pune\",\n  \"postalCode\": \"411001\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 Portal reads",
+      "item": [
+        {
+          "name": "Rohan overview (ALL)",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"funnel\", () => { pm.expect(d.funnel).to.include({ range: \"ALL\", from: null, clicks: 4, signups: 2, connected: 1, active: 0 }); });",
+                  "pm.test(\"two clients, newest first\", () => { pm.expect(d.totalClients).to.eql(2); pm.expect(d.recentClients.map(c => c.name)).to.eql([pm.collectionVariables.get('c3Name'), pm.collectionVariables.get('c1Name')]); });",
+                  "pm.test(\"c1 came through the telegram link and connected\", () => { const c1 = d.recentClients.find(c => c.name === pm.collectionVariables.get('c1Name')); pm.expect(c1).to.include({ channel: 'Telegram group', via: 'link', status: 'CONNECTED', city: 'Mumbai', country: 'IN' }); pm.expect(c1.connectedAt).to.be.a('string'); });",
+                  "pm.test(\"c3 fell back to the cookie (ROHAN-VIP) despite a bad typed code\", () => { const c3 = d.recentClients.find(c => c.name === pm.collectionVariables.get('c3Name')); pm.expect(c3).to.include({ via: 'link', status: 'SIGNED_UP', channel: 'Direct link' }); });",
+                  "pm.test(\"no emails leak to partners\", () => { pm.expect(JSON.stringify(d.recentClients)).to.not.include('@'); });",
+                  "pm.test(\"channels\", () => { const tg = d.channels.find(c => c.slug === 'telegram-group'); pm.expect(tg).to.include({ clicks: 1, signups: 1, connected: 1 }); const def = d.channels.find(c => c.slug === null); pm.expect(def).to.include({ clicks: 3, signups: 1 }); });",
+                  "pm.test(\"daily series ends today with running totals\", () => { const last = d.daily[d.daily.length - 1]; pm.expect(last.date).to.eql(new Date().toISOString().slice(0,10)); pm.expect(last.clients).to.eql(2); pm.expect(d.daily.reduce((s,p) => s + p.clicks, 0)).to.eql(4); });",
+                  "pm.test(\"activity feed has signup + connected events\", () => { const kinds = d.activity.map(e => e.kind); pm.expect(kinds).to.include('signup'); pm.expect(kinds).to.include('connected'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{rohanCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/overview?range=ALL",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "overview"
+              ],
+              "query": [
+                {
+                  "key": "range",
+                  "value": "ALL"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Rohan overview bad range → 422",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 422', () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{rohanCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/overview?range=1Y",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "overview"
+              ],
+              "query": [
+                {
+                  "key": "range",
+                  "value": "1Y"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Rohan clients",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"items + counts + meta\", () => { const b = pm.response.json(); pm.expect(b.data.items).to.have.length(2); pm.expect(b.data.counts).to.eql({ all: 2, SIGNED_UP: 1, CONNECTED: 1, ACTIVE: 0, INACTIVE: 0 }); pm.expect(b.meta).to.eql({ page: 1, pageSize: 12, total: 2, totalPages: 1 }); });",
+                  "pm.collectionVariables.set('c1RefId', pm.response.json().data.items.find(c => c.name === pm.collectionVariables.get('c1Name')).id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{rohanCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/clients",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "clients"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Clients filtered CONNECTED",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"only c1\", () => { pm.expect(pm.response.json().data.items.map(c => c.name)).to.eql([pm.collectionVariables.get('c1Name')]); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{rohanCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/clients?status=CONNECTED",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "clients"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "CONNECTED"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Clients search by name",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"only c3\", () => { pm.expect(pm.response.json().meta.total).to.eql(1); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{rohanCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/clients?q={{c3First}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "clients"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "{{c3First}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Clients by channel",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"only c1\", () => { pm.expect(pm.response.json().meta.total).to.eql(1); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{rohanCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/clients?channel={{tgChannelId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "clients"
+              ],
+              "query": [
+                {
+                  "key": "channel",
+                  "value": "{{tgChannelId}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Clients paging",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"page 2 of 2\", () => { const b = pm.response.json(); pm.expect(b.meta).to.include({ page: 2, totalPages: 2 }); pm.expect(b.data.items).to.have.length(1); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{rohanCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/clients?pageSize=1&page=2&sort=name",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "clients"
+              ],
+              "query": [
+                {
+                  "key": "pageSize",
+                  "value": "1"
+                },
+                {
+                  "key": "page",
+                  "value": "2"
+                },
+                {
+                  "key": "sort",
+                  "value": "name"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Clients bad status → 422",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 422', () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{rohanCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/clients?status=VIP",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "clients"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "VIP"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Rohan links after clicks",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"per-code stats\", () => { const m = Object.fromEntries(d.codes.map(c => [c.code, c])); pm.expect(m.ROHANFX).to.include({ clicks: 3, signups: 1 }); pm.expect(m['ROHAN-VIP']).to.include({ clicks: 1, signups: 1 }); });",
+                  "pm.test(\"recent clicks: 4, two converted, desktop device\", () => { pm.expect(d.recentClicks).to.have.length(4); pm.expect(d.recentClicks.filter(c => c.converted)).to.have.length(2); pm.expect(d.recentClicks[0].device).to.be.oneOf([\"Desktop\",\"Mobile\",\"Tablet\"]); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{rohanCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/links",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "links"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Sana overview — typed code beat the cookie",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"one client via code\", () => { pm.expect(d.totalClients).to.eql(1); pm.expect(d.recentClients[0]).to.include({ name: pm.collectionVariables.get('c2Name'), via: 'code', channel: 'Direct link' }); });",
+                  "pm.test(\"one click recorded even though cookie was kept\", () => { pm.expect(d.funnel.clicks).to.eql(1); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{sanaCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/overview?range=30D",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "overview"
+              ],
+              "query": [
+                {
+                  "key": "range",
+                  "value": "30D"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Refresh stats without token → 401",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('rejected', () => pm.expect(pm.response.code).to.be.oneOf([401, 403]));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/internal/partners/refresh-stats",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "internal",
+                "partners",
+                "refresh-stats"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Refresh stats (bridge offline → recorded as failure)",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"one connected client attempted\", () => { pm.expect(d.processed + d.failed).to.eql(1); pm.expect(d.skipped).to.be.false; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-internal-token",
+                "value": "{{internalToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/internal/partners/refresh-stats",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "internal",
+                "partners",
+                "refresh-stats"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"limit\": 10\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 Admin operations",
+      "item": [
+        {
+          "name": "Lookup by client email",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"referred by Rohan\", () => { pm.expect(d.user.email).to.eql(pm.collectionVariables.get('c1Email')); pm.expect(d.referredBy.partner.code).to.eql('ROHANFX'); pm.expect(d.referredBy.client.via).to.eql('link'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/partners/lookup?q={{c1Email}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "partners",
+                "lookup"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "{{c1Email}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Lookup by code",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"owner\", () => { pm.expect(pm.response.json().data.codeOwner.code).to.eql('ROHANFX'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/partners/lookup?q=rohan-vip",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "partners",
+                "lookup"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "rohan-vip"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Lookup unreferred user",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"no referrer\", () => { const d = pm.response.json().data; pm.expect(d.user).to.not.eql(null); pm.expect(d.referredBy).to.eql(null); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/partners/lookup?q={{c5Email}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "partners",
+                "lookup"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "{{c5Email}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin detail Rohan",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"row + codes + notes\", () => { pm.expect(d.admin).to.include({ code: 'ROHANFX', clients: 2, connected: 1, clicks30d: 4 }); pm.expect(d.codes).to.have.length(2); pm.expect(d.notes.map(n => n.body)).to.include('Partner created by admin.'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/partners/{{rohanPid}}?range=ALL",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "partners",
+                "{{rohanPid}}"
+              ],
+              "query": [
+                {
+                  "key": "range",
+                  "value": "ALL"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin detail unknown → 404",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/partners/nope",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "partners",
+                "nope"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Assign c5 to Sana",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', () => pm.response.to.have.status(201));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"via admin\", () => { pm.expect(d.via).to.eql('admin'); });",
+                  "pm.collectionVariables.set('c5RefId', d.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/partners/{{sanaPid}}/clients",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "partners",
+                "{{sanaPid}}",
+                "clients"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{c5Email}}\",\n  \"reason\": \"Signed up at a webinar\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Assign c1 to Sana without force → 409",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/partners/{{sanaPid}}/clients",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "partners",
+                "{{sanaPid}}",
+                "clients"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{c1Email}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Assign c1 to Sana with force",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/partners/{{sanaPid}}/clients",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "partners",
+                "{{sanaPid}}",
+                "clients"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{c1Email}}\",\n  \"force\": true,\n  \"reason\": \"Client asked\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Partner can’t be own client",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/partners/{{sanaPid}}/clients",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "partners",
+                "{{sanaPid}}",
+                "clients"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{sanaEmail}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Rohan now has 1 client",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"1\", () => { pm.expect(pm.response.json().meta.total).to.eql(1); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{rohanCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/clients",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "clients"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Unlink c5 from Sana",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/partners/{{sanaPid}}/clients/{{c5RefId}}?reason=Duplicate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "partners",
+                "{{sanaPid}}",
+                "clients",
+                "{{c5RefId}}"
+              ],
+              "query": [
+                {
+                  "key": "reason",
+                  "value": "Duplicate"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Unlink again → 404",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/partners/{{sanaPid}}/clients/{{c5RefId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "partners",
+                "{{sanaPid}}",
+                "clients",
+                "{{c5RefId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Move all Rohan clients to Sana",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"moved 1\", () => { pm.expect(pm.response.json().data.moved).to.eql(1); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/partners/{{rohanPid}}/move-clients",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "partners",
+                "{{rohanPid}}",
+                "move-clients"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"toPartnerId\": \"{{sanaPid}}\",\n  \"reason\": \"Account merge\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Move to self → 409",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/partners/{{rohanPid}}/move-clients",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "partners",
+                "{{rohanPid}}",
+                "move-clients"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"toPartnerId\": \"{{rohanPid}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Sana admin clients endpoint",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"3 clients\", () => { pm.expect(pm.response.json().data.counts.all).to.eql(3); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/partners/{{sanaPid}}/clients",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "partners",
+                "{{sanaPid}}",
+                "clients"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Suspend Rohan",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"suspended\", () => { pm.expect(pm.response.json().data.status).to.eql('SUSPENDED'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/partners/{{rohanPid}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "partners",
+                "{{rohanPid}}",
+                "status"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"suspend\",\n  \"reason\": \"Spam reports\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Suspended portal → 403 PARTNER_SUSPENDED",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 403', () => pm.response.to.have.status(403));",
+                  "pm.test('error code PARTNER_SUSPENDED', () => pm.expect(pm.response.json().error.code).to.eql('PARTNER_SUSPENDED'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{rohanCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/links",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "links"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Suspended partner link → home, no cookie",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 302', () => pm.response.to.have.status(302));",
+                  "pm.test(\"redirects home\", () => { pm.expect(pm.response.headers.get('Location')).to.eql(pm.collectionVariables.get('appUrl') + '/'); });",
+                  "const c = (pm.response.headers.all().filter(h => h.key.toLowerCase() === 'set-cookie').map(h => h.value).find(v => v.startsWith('tl_ref=')) || '').split(';')[0];",
+                  "pm.test(\"does not set tl_ref\", () => { pm.expect(c).to.eql(\"\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{altUrl}}/api/r/ROHANFX",
+              "host": [
+                "{{altUrl}}"
+              ],
+              "path": [
+                "api",
+                "r",
+                "ROHANFX"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Reinstate Rohan",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"active\", () => { pm.expect(pm.response.json().data.status).to.eql('ACTIVE'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/partners/{{rohanPid}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "partners",
+                "{{rohanPid}}",
+                "status"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"reinstate\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Admin revokes ROHAN-VIP",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/partners/{{rohanPid}}/codes/{{vipCodeId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "partners",
+                "{{rohanPid}}",
+                "codes",
+                "{{vipCodeId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Revoked code no longer resolves",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"invalid\", () => { pm.expect(pm.response.json().data.valid).to.be.false; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/referrals/check?code=ROHAN-VIP",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "referrals",
+                "check"
+              ],
+              "query": [
+                {
+                  "key": "code",
+                  "value": "ROHAN-VIP"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Primary code can’t be released",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.sendRequest({ url: pm.collectionVariables.get('baseUrl') + '/api/partner/links', header: { Cookie: pm.collectionVariables.get('rohanCookie') } }, (e, r) => pm.collectionVariables.set('rohanPrimaryCodeId', r.json().data.codes[0].id));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{rohanCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/codes/{{rohanPrimaryCodeId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "codes",
+                "{{rohanPrimaryCodeId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin reserves BIGBANK",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('reservedId', pm.response.json().data.id);",
+                  "pm.test(\"normalized\", () => { pm.expect(pm.response.json().data.code).to.eql('BIGBANK'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/partner-codes/reserved",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "partner-codes",
+                "reserved"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"bigbank\",\n  \"reason\": \"Trademark\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Reserve again → 409",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/partner-codes/reserved",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "partner-codes",
+                "reserved"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"BIGBANK\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Reserve a held code → 409",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/partner-codes/reserved",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "partner-codes",
+                "reserved"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"ROHANFX\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Partner can’t take a reserved name",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{rohanCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/codes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "codes"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"BigBank\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Reserved list",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"has BIGBANK\", () => { pm.expect(pm.response.json().data.map(r => r.code)).to.include('BIGBANK'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/partner-codes/reserved",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "partner-codes",
+                "reserved"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Release reserved name",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/partner-codes/reserved/{{reservedId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "partner-codes",
+                "reserved",
+                "{{reservedId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin adds a note",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/partners/{{rohanPid}}/notes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "partners",
+                "{{rohanPid}}",
+                "notes"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"Called him about the spam reports.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Note trail records every action",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"suspend/reinstate/revoke/note present\", () => { const b = pm.response.json().data.notes.map(n => n.body).join(' | '); ['Suspended. Reason: Spam reports','Reinstated.','Custom code ROHAN-VIP revoked.','Called him about the spam reports.','moved to'].forEach(s => pm.expect(b).to.include(s)); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/partners/{{rohanPid}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "partners",
+                "{{rohanPid}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Archive a channel",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{rohanCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/channels/{{tg2ChannelId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "channels",
+                "{{tg2ChannelId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Archive it again → 404",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{rohanCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/channels/{{tg2ChannelId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "channels",
+                "{{tg2ChannelId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Default link can’t be archived",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{rohanCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/channels/{{defaultChannelId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "channels",
+                "{{defaultChannelId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Revoke Sana",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"revoked\", () => { pm.expect(pm.response.json().data.status).to.eql('REVOKED'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/partners/{{sanaPid}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "partners",
+                "{{sanaPid}}",
+                "status"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"revoke\",\n  \"reason\": \"Left programme\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Revoked partners drop off the default list",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"Sana hidden\", () => { pm.expect(pm.response.json().data.some(p => p.id === pm.collectionVariables.get('sanaPid'))).to.be.false; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/partners",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "partners"
+              ]
+            }
+          }
+        },
+        {
+          "name": "…but show with status=REVOKED",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"Sana listed\", () => { pm.expect(pm.response.json().data.some(p => p.id === pm.collectionVariables.get('sanaPid'))).to.be.true; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/partners?status=REVOKED",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "partners"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "REVOKED"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Revoked partner can re-apply",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', () => pm.response.to.have.status(201));",
+                  "pm.test(\"pending again\", () => { pm.expect(pm.response.json().data.status).to.eql('PENDING'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{sanaCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/apply",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "apply"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"audience\": \"YouTube · 45k\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:4100"
+    },
+    {
+      "key": "altUrl",
+      "value": "http://127.0.0.1:4100"
+    },
+    {
+      "key": "appUrl",
+      "value": "http://localhost:3000"
+    },
+    {
+      "key": "password",
+      "value": "Partner-test-Passw0rd!"
+    },
+    {
+      "key": "internalToken",
+      "value": "partner-test-internal-token"
+    },
+    {
+      "key": "adminEmail",
+      "value": "admin@partners.test"
+    },
+    {
+      "key": "adminName",
+      "value": "Ada Admin"
+    },
+    {
+      "key": "adminFirst",
+      "value": "Ada"
+    },
+    {
+      "key": "rohanEmail",
+      "value": "rohan@partners.test"
+    },
+    {
+      "key": "rohanName",
+      "value": "Rohan Mehta"
+    },
+    {
+      "key": "rohanFirst",
+      "value": "Rohan"
+    },
+    {
+      "key": "sanaEmail",
+      "value": "sana@partners.test"
+    },
+    {
+      "key": "sanaName",
+      "value": "Sana Qureshi"
+    },
+    {
+      "key": "sanaFirst",
+      "value": "Sana"
+    },
+    {
+      "key": "ninaEmail",
+      "value": "nina@partners.test"
+    },
+    {
+      "key": "ninaName",
+      "value": "Nina Bose"
+    },
+    {
+      "key": "ninaFirst",
+      "value": "Nina"
+    },
+    {
+      "key": "c1Email",
+      "value": "c1@partners.test"
+    },
+    {
+      "key": "c1Name",
+      "value": "Aarav Sharma"
+    },
+    {
+      "key": "c1First",
+      "value": "Aarav"
+    },
+    {
+      "key": "c2Email",
+      "value": "c2@partners.test"
+    },
+    {
+      "key": "c2Name",
+      "value": "Priya Iyer"
+    },
+    {
+      "key": "c2First",
+      "value": "Priya"
+    },
+    {
+      "key": "c3Email",
+      "value": "c3@partners.test"
+    },
+    {
+      "key": "c3Name",
+      "value": "Kabir Singh"
+    },
+    {
+      "key": "c3First",
+      "value": "Kabir"
+    },
+    {
+      "key": "c4Email",
+      "value": "c4@partners.test"
+    },
+    {
+      "key": "c4Name",
+      "value": "Meera Nair"
+    },
+    {
+      "key": "c4First",
+      "value": "Meera"
+    },
+    {
+      "key": "c5Email",
+      "value": "c5@partners.test"
+    },
+    {
+      "key": "c5Name",
+      "value": "Dev Patel"
+    },
+    {
+      "key": "c5First",
+      "value": "Dev"
+    },
+    {
+      "key": "c6Email",
+      "value": "c6@partners.test"
+    },
+    {
+      "key": "c6Name",
+      "value": "Zoya Khan"
+    },
+    {
+      "key": "c6First",
+      "value": "Zoya"
+    }
+  ]
+}

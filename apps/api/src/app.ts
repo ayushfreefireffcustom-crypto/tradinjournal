@@ -22,6 +22,7 @@ import { adminRouter } from './modules/admin/admin.routes.js';
 import { accessRouter } from './modules/admin/access.routes.js';
 import { usageRouter } from './modules/usage/usage.routes.js';
 import { meRouter } from './modules/me/me.routes.js';
+import { adminPartnersRouter, partnerRouter, partnersInternalRouter, referralPublicRouter } from './modules/partners/partners.routes.js';
 
 export function createApp(): Express {
   const app = express();
@@ -69,6 +70,10 @@ export function createApp(): Express {
     });
   });
 
+  // Partner programme: public referral link + code check, partner portal, admin.
+  app.use('/api', referralPublicRouter);
+  app.use('/api/partner', partnerRouter);
+  app.use('/api/admin', adminPartnersRouter);
   app.use('/api/access', accessRouter);
   app.use('/api/admin', adminRouter);
   app.use('/api/usage', usageRouter);
@@ -96,6 +101,7 @@ export function createApp(): Express {
   app.use('/internal/alerts', alertsInternalRouter);
   app.use('/internal/macro', macroInternalRouter);
   app.use('/internal/trader', traderInternalRouter);
+  app.use('/internal/partners', partnersInternalRouter);
 
   app.use((_req: Request, res: Response) => {
     res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Route not found' } });

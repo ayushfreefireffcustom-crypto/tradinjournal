@@ -34,9 +34,15 @@ model User {
   lng               Float?
   locationUpdatedAt DateTime?
 
+  /// Partner code typed into the signup form (raw, as entered). Attribution itself
+  /// lives on Referral; this is kept for audit.
+  referralCode String?
+
   sessions       Session[]
   accounts       Account[]
   brokerAccounts BrokerAccount[]
+  partner        Partner?
+  referral       Referral?
 
   @@map("user")
 }
@@ -739,46 +745,46 @@ model MacroSignal {
 // always engine-validated; `aiUsed` records whether an LLM wrote the narrative.
 // Outcome fields are filled by the grading cron (triple-barrier vs later candles).
 model TraderAnalysis {
-  id           String   @id @default(cuid())
-  userId       String? // null = anonymous / unauthenticated free use
-  symbol       String
-  assetClass   String
-  timeframes   String[] // e.g. ["1h","4h"]
-  direction    String // LONG | SHORT | WAIT
-  entryLow     Decimal  @db.Decimal(24, 8)
-  entryHigh    Decimal  @db.Decimal(24, 8)
-  stop         Decimal  @db.Decimal(24, 8)
-  t1           Decimal  @db.Decimal(24, 8)
-  t2           Decimal  @db.Decimal(24, 8)
-  t3           Decimal  @db.Decimal(24, 8)
-  support      Json // [{ price, label }]
-  resistance   Json // [{ price, label }]
-  confidence   Int
-  rationale    String   @db.Text
-  invalidation String   @db.Text
-  detail       String   @db.Text
-  perTimeframe Json // [{ tf, trend, rsi, atr, note }]
+  id               String   @id @default(cuid())
+  userId           String? // null = anonymous / unauthenticated free use
+  symbol           String
+  assetClass       String
+  timeframes       String[] // e.g. ["1h","4h"]
+  direction        String // LONG | SHORT | WAIT
+  entryLow         Decimal  @db.Decimal(24, 8)
+  entryHigh        Decimal  @db.Decimal(24, 8)
+  stop             Decimal  @db.Decimal(24, 8)
+  t1               Decimal  @db.Decimal(24, 8)
+  t2               Decimal  @db.Decimal(24, 8)
+  t3               Decimal  @db.Decimal(24, 8)
+  support          Json // [{ price, label }]
+  resistance       Json // [{ price, label }]
+  confidence       Int
+  rationale        String   @db.Text
+  invalidation     String   @db.Text
+  detail           String   @db.Text
+  perTimeframe     Json // [{ tf, trend, rsi, atr, note }]
   // Multi-lane breakdown once reconciler ships: [{ id, score, weight, rationale }]
-  laneBreakdown Json?
+  laneBreakdown    Json?
   // Meta-label feature snapshot at analyze time (for training / audit).
-  featureSnapshot Json?
+  featureSnapshot  Json?
   // heuristic | meta_v1 — how `confidence` was produced.
   confidenceSource String?
   rawConfidence    Int? // pre-calibration heuristic when meta overrides
-  aiUsed       Boolean  @default(false)
-  asOf         DateTime
-  engineVer    String
-  createdAt    DateTime @default(now())
+  aiUsed           Boolean  @default(false)
+  asOf             DateTime
+  engineVer        String
+  createdAt        DateTime @default(now())
 
   // Triple-barrier grading — null until the grader resolves a terminal outcome.
   // TARGET_HIT | STOP_HIT | EXPIRED | SKIPPED (WAIT never graded as a trade).
-  outcome      String?
-  hitLevel     String? // T1 | T2 | T3 when TARGET_HIT
-  gradedAt     DateTime?
-  horizonBars  Int?
-  horizonTf    String?
-  mfePct       Float? // max favorable excursion % from entry mid
-  maePct       Float? // max adverse excursion % from entry mid
+  outcome     String?
+  hitLevel    String? // T1 | T2 | T3 when TARGET_HIT
+  gradedAt    DateTime?
+  horizonBars Int?
+  horizonTf   String?
+  mfePct      Float? // max favorable excursion % from entry mid
+  maePct      Float? // max adverse excursion % from entry mid
 
   @@index([symbol, asOf(sort: Desc)])
   @@index([userId, createdAt(sort: Desc)])
@@ -788,15 +794,15 @@ model TraderAnalysis {
 
 // Plain-English → compiled rules → backtest (Phase 4 strategy builder).
 model TraderStrategy {
-  id          String   @id @default(cuid())
-  userId      String
-  name        String
-  prompt      String   @db.Text
-  rules       Json // typed rule object from LLM parse
-  status      String   @default("draft") // draft | paper | archived
+  id           String   @id @default(cuid())
+  userId       String
+  name         String
+  prompt       String   @db.Text
+  rules        Json // typed rule object from LLM parse
+  status       String   @default("draft") // draft | paper | archived
   lastBacktest Json?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   @@index([userId, createdAt(sort: Desc)])
   @@index([status])
@@ -895,14 +901,14 @@ model SystemSetting {
 
 /// Admin action audit trail.
 model AdminAuditLog {
-  id          String   @id @default(cuid())
-  action      String
-  actorId     String
-  actorEmail  String
-  targetType  String?
-  targetId    String?
-  details     Json?
-  createdAt   DateTime @default(now())
+  id         String   @id @default(cuid())
+  action     String
+  actorId    String
+  actorEmail String
+  targetType String?
+  targetId   String?
+  details    Json?
+  createdAt  DateTime @default(now())
 
   @@index([createdAt(sort: Desc)])
   @@index([actorId])
@@ -940,4 +946,155 @@ model UsageEvent {
   @@index([type, createdAt])
   @@index([feature, createdAt])
   @@map("usage_event")
+}
+
+// ─── Partner programme (referral tracking only — no money) ─────────────────────
+
+enum PartnerStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  REVOKED
+}
+
+enum ReferralSource {
+  LINK
+  CODE
+  ADMIN
+}
+
+/// A TRADElogs user who refers others. One per user.
+model Partner {
+  id          String        @id @default(cuid())
+  userId      String        @unique
+  status      PartnerStatus @default(PENDING)
+  audience    String?
+  approvedAt  DateTime?
+  suspendedAt DateTime?
+  revokedAt   DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  codes     PartnerCode[]
+  channels  PartnerChannel[]
+  clicks    ReferralClick[]
+  referrals Referral[]
+  notes     PartnerNote[]
+
+  @@index([status])
+  @@map("partner")
+}
+
+/// Codes a partner holds. Every code attributes the same way. Exactly one primary,
+/// generated on creation; custom codes can be released (row deleted).
+model PartnerCode {
+  id        String   @id @default(cuid())
+  partnerId String
+  /// Normalised upper-case, 3–20 of A-Z 0-9 _ -.
+  code      String   @unique
+  isPrimary Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  partner Partner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  @@index([partnerId])
+  @@map("partner_code")
+}
+
+/// A tracked link variant (?ch=slug) so partners can see which post or group works.
+model PartnerChannel {
+  id         String    @id @default(cuid())
+  partnerId  String
+  label      String
+  slug       String
+  archivedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  partner   Partner         @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  clicks    ReferralClick[]
+  referrals Referral[]
+
+  @@unique([partnerId, slug])
+  @@map("partner_channel")
+}
+
+/// One visit through a referral link. IPs are stored only as a salted hash.
+model ReferralClick {
+  id              String   @id @default(cuid())
+  partnerId       String
+  channelId       String?
+  code            String
+  ipHash          String
+  device          String
+  country         String?
+  referrer        String?
+  convertedUserId String?  @unique
+  createdAt       DateTime @default(now())
+
+  partner Partner         @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  channel PartnerChannel? @relation(fields: [channelId], references: [id], onDelete: SetNull)
+
+  @@index([partnerId, createdAt])
+  @@index([ipHash, createdAt])
+  @@map("referral_click")
+}
+
+/// The partner a user belongs to. Set once at account creation (or by an admin) and
+/// carries a refreshed activity snapshot so partner dashboards never hit the MT5 bridge.
+model Referral {
+  id           String         @id @default(cuid())
+  userId       String         @unique
+  partnerId    String
+  channelId    String?
+  code         String
+  source       ReferralSource
+  clickId      String?
+  attributedAt DateTime       @default(now())
+
+  connectedAt    DateTime?
+  firstActiveAt  DateTime?
+  inactiveAt     DateTime?
+  isActive       Boolean   @default(false)
+  tradeCount7d   Int       @default(0)
+  trades30d      Int       @default(0)
+  lots30d        Float     @default(0)
+  lastTradeAt    DateTime?
+  statsCheckedAt DateTime?
+  statsError     String?
+
+  user    User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  partner Partner         @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  channel PartnerChannel? @relation(fields: [channelId], references: [id], onDelete: SetNull)
+
+  @@index([partnerId, attributedAt])
+  @@index([statsCheckedAt])
+  @@map("referral")
+}
+
+/// Admin note trail on a partner ("context for whoever picks this up next").
+model PartnerNote {
+  id          String   @id @default(cuid())
+  partnerId   String
+  authorId    String
+  authorEmail String
+  body        String   @db.Text
+  createdAt   DateTime @default(now())
+
+  partner Partner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  @@index([partnerId, createdAt])
+  @@map("partner_note")
+}
+
+/// Names no partner may take as a code (beyond the built-in list in the API).
+model ReservedPartnerCode {
+  id             String   @id @default(cuid())
+  code           String   @unique
+  reason         String?
+  createdById    String
+  createdByEmail String
+  createdAt      DateTime @default(now())
+
+  @@map("reserved_partner_code")
 }

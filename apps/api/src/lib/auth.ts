@@ -7,6 +7,7 @@ import { logger } from '@tradinjournal/logger';
 import { sendEmail } from './email/client.js';
 import { verificationOtpEmail, welcomeEmail, resetPasswordEmail } from './email/templates.js';
 import { geocodeUserIfNeeded } from '../modules/me/location.service.js';
+import { attributeNewUser } from '../modules/partners/attribution.service.js';
 
 export const auth = betterAuth({
   database: prismaAdapter(prisma, {
@@ -25,13 +26,21 @@ export const auth = betterAuth({
       lat: { type: 'number', required: false, input: false },
       lng: { type: 'number', required: false, input: false },
       locationUpdatedAt: { type: 'date', required: false, input: false },
+      // Partner code typed at signup; attribution happens in the create hook below.
+      referralCode: { type: 'string', required: false, input: true },
     },
   },
 
   databaseHooks: {
     user: {
       create: {
-        after: async (user) => {
+        after: async (user, ctx) => {
+          // Lock the referral now — a typed code beats an earlier link click
+          // (tl_ref cookie, sent along on both email signup and the OAuth callback).
+          await attributeNewUser(
+            { id: user.id, referralCode: (user as { referralCode?: string | null }).referralCode ?? null },
+            ctx?.headers?.get('cookie') ?? ctx?.request?.headers.get('cookie') ?? null,
+          );
           // Best-effort geocode when signup included location fields.
           void geocodeUserIfNeeded(user.id).catch(err => {
             logger.warn('[auth] post-signup geocode failed', { userId: user.id, err });

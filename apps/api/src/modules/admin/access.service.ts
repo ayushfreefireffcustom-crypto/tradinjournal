@@ -90,6 +90,7 @@ export async function syncManualGrant(userId: string, email: string): Promise<vo
 export async function getAccessStatus(userId: string, email: string): Promise<AccessStatusDto> {
   const maintenance = await getMaintenanceMode();
   const adminUser = isAdmin(email);
+  const partnerStatus = (await prisma.partner.findUnique({ where: { userId }, select: { status: true } }))?.status ?? null;
 
   // Open launch: skip Elefin / activity gates but still surface maintenance + admin.
   if (!env.PLATFORM_ACCESS_ENABLED) {
@@ -102,6 +103,7 @@ export async function getAccessStatus(userId: string, email: string): Promise<Ac
       minTradesRequired: env.ACCESS_MIN_TRADES_7D,
       activityWindowDays: env.ACCESS_ACTIVITY_WINDOW_DAYS,
       isAdmin: adminUser,
+      partnerStatus,
       maintenance: { enabled: maintenance.enabled, message: maintenance.message },
     };
   }
@@ -142,6 +144,7 @@ export async function getAccessStatus(userId: string, email: string): Promise<Ac
     minTradesRequired: env.ACCESS_MIN_TRADES_7D,
     activityWindowDays: env.ACCESS_ACTIVITY_WINDOW_DAYS,
     isAdmin: adminUser,
+    partnerStatus,
     maintenance: { enabled: maintenance.enabled, message: maintenance.message },
   };
 }

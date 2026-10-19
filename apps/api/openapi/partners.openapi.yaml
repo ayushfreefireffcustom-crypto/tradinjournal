@@ -1,0 +1,568 @@
+openapi: 3.0.3
+info:
+  title: TRADElogs Partner Programme API
+  version: 1.0.0
+  description: |
+    Referral tracking for TRADElogs partners — tracking only, no commissions or payouts.
+
+    A partner holds one generated primary code plus optional custom codes and per-channel
+    links. A visitor is attributed **once, at account creation**, either by a referral link
+    (signed `tl_ref` cookie set by `GET /api/r/{code}`) or by a code typed into the signup
+    form. A typed code beats the cookie. Only ACTIVE partners attribute. Admins can assign,
+    unlink and move clients afterwards; every admin action is written to the audit log.
+
+    Referral status of a client (derived, refreshed by a background job):
+    - SIGNED_UP — account created, no broker connected
+    - CONNECTED — broker connected, never met the activity rule
+    - ACTIVE    — meets the activity rule (≥ ACCESS_MIN_TRADES_7D closed trades in the
+                  last ACCESS_ACTIVITY_WINDOW_DAYS days)
+    - INACTIVE  — was active before, currently below the rule
+
+    Partners see each client's name, city, country, status and activity counts — never
+    email, balances, P&L or individual trades.
+
+    All JSON responses use the envelope `{ data, meta? }`; errors use
+    `{ error: { code, message, details? } }`.
+servers:
+  - url: http://localhost:4000
+tags:
+  - name: Public
+  - name: Partner
+  - name: Admin
+  - name: Internal
+
+components:
+  securitySchemes:
+    session:
+      type: apiKey
+      in: cookie
+      name: better-auth.session_token
+    internalToken:
+      type: apiKey
+      in: header
+      name: x-internal-token
+  parameters:
+    Range:
+      name: range
+      in: query
+      schema: { type: string, enum: ['7D', '30D', '90D', 'ALL'], default: '30D' }
+    PartnerId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string }
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: { type: string, example: NOT_FOUND }
+            message: { type: string }
+            details: { type: object, additionalProperties: true }
+    PaginationMeta:
+      type: object
+      required: [page, pageSize, total, totalPages]
+      properties:
+        page: { type: integer }
+        pageSize: { type: integer }
+        total: { type: integer }
+        totalPages: { type: integer }
+    PartnerStatus:
+      type: string
+      enum: [PENDING, ACTIVE, SUSPENDED, REVOKED]
+    ReferralStatus:
+      type: string
+      enum: [SIGNED_UP, CONNECTED, ACTIVE, INACTIVE]
+    ActiveRule:
+      type: object
+      required: [minTrades, windowDays]
+      properties:
+        minTrades: { type: integer }
+        windowDays: { type: integer }
+    PartnerProfile:
+      type: object
+      required: [id, name, status, code, since, activeRule, cookieDays]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        status: { $ref: '#/components/schemas/PartnerStatus' }
+        code: { type: string, description: Primary code }
+        since: { type: string, format: date-time }
+        activeRule: { $ref: '#/components/schemas/ActiveRule' }
+        cookieDays: { type: integer }
+    Funnel:
+      type: object
+      required: [range, from, clicks, signups, connected, active]
+      properties:
+        range: { type: string, enum: ['7D', '30D', '90D', 'ALL'] }
+        from: { type: string, format: date-time, nullable: true }
+        clicks: { type: integer }
+        signups: { type: integer }
+        connected: { type: integer, description: Of those signups, how many connected a broker }
+        active: { type: integer, description: Of those signups, how many are ACTIVE now }
+    DailyPoint:
+      type: object
+      required: [date, clicks, signups, clients, active]
+      properties:
+        date: { type: string, example: '2026-10-19' }
+        clicks: { type: integer }
+        signups: { type: integer }
+        clients: { type: integer, description: Running total of clients at end of day }
+        active: { type: integer, description: Running total of currently-active clients by activation day }
+    Channel:
+      type: object
+      required: [id, label, slug, url, clicks, signups, connected, active, createdAt]
+      properties:
+        id: { type: string }
+        label: { type: string }
+        slug: { type: string, nullable: true, description: null for the default link }
+        url: { type: string }
+        clicks: { type: integer }
+        signups: { type: integer }
+        connected: { type: integer }
+        active: { type: integer }
+        createdAt: { type: string, format: date-time }
+    Code:
+      type: object
+      required: [id, code, isPrimary, url, clicks, signups, createdAt]
+      properties:
+        id: { type: string }
+        code: { type: string }
+        isPrimary: { type: boolean }
+        url: { type: string }
+        clicks: { type: integer }
+        signups: { type: integer }
+        createdAt: { type: string, format: date-time }
+    Client:
+      type: object
+      required: [id, name, city, country, channel, via, signedUpAt, connectedAt, status, trades30d, lots30d, lastActiveAt]
+      properties:
+        id: { type: string, description: Attribution id }
+        name: { type: string }
+        city: { type: string, nullable: true }
+        country: { type: string, nullable: true }
+        channel: { type: string }
+        via: { type: string, enum: [link, code, admin] }
+        signedUpAt: { type: string, format: date-time }
+        connectedAt: { type: string, format: date-time, nullable: true }
+        status: { $ref: '#/components/schemas/ReferralStatus' }
+        trades30d: { type: integer }
+        lots30d: { type: number }
+        lastActiveAt: { type: string, format: date-time, nullable: true }
+    ClientCounts:
+      type: object
+      required: [all, SIGNED_UP, CONNECTED, ACTIVE, INACTIVE]
+      properties:
+        all: { type: integer }
+        SIGNED_UP: { type: integer }
+        CONNECTED: { type: integer }
+        ACTIVE: { type: integer }
+        INACTIVE: { type: integer }
+    Event:
+      type: object
+      required: [id, at, kind, client, channel]
+      properties:
+        id: { type: string }
+        at: { type: string, format: date-time }
+        kind: { type: string, enum: [signup, connected, active, inactive] }
+        client: { type: string }
+        channel: { type: string }
+    Click:
+      type: object
+      required: [id, at, channel, device, country, converted]
+      properties:
+        id: { type: string }
+        at: { type: string, format: date-time }
+        channel: { type: string }
+        device: { type: string, enum: [Mobile, Desktop, Tablet] }
+        country: { type: string, nullable: true }
+        converted: { type: boolean }
+    Overview:
+      type: object
+      required: [partner, funnel, daily, channels, activity, recentClients, totalClients]
+      properties:
+        partner: { $ref: '#/components/schemas/PartnerProfile' }
+        funnel: { $ref: '#/components/schemas/Funnel' }
+        daily: { type: array, items: { $ref: '#/components/schemas/DailyPoint' } }
+        channels: { type: array, items: { $ref: '#/components/schemas/Channel' } }
+        activity: { type: array, items: { $ref: '#/components/schemas/Event' } }
+        recentClients: { type: array, items: { $ref: '#/components/schemas/Client' } }
+        totalClients: { type: integer }
+    Links:
+      type: object
+      required: [partner, baseUrl, codes, channels, recentClicks, limits]
+      properties:
+        partner: { $ref: '#/components/schemas/PartnerProfile' }
+        baseUrl: { type: string }
+        codes: { type: array, items: { $ref: '#/components/schemas/Code' } }
+        channels: { type: array, items: { $ref: '#/components/schemas/Channel' } }
+        recentClicks: { type: array, items: { $ref: '#/components/schemas/Click' } }
+        limits:
+          type: object
+          required: [maxChannels, maxCodes]
+          properties:
+            maxChannels: { type: integer }
+            maxCodes: { type: integer }
+    AdminPartnerRow:
+      type: object
+      required: [id, userId, name, email, code, status, joinedAt, approvedAt, audience, clicks30d, signups30d, clients, connected, active]
+      properties:
+        id: { type: string }
+        userId: { type: string }
+        name: { type: string }
+        email: { type: string }
+        code: { type: string, nullable: true }
+        status: { $ref: '#/components/schemas/PartnerStatus' }
+        joinedAt: { type: string, format: date-time }
+        approvedAt: { type: string, format: date-time, nullable: true }
+        audience: { type: string, nullable: true }
+        clicks30d: { type: integer }
+        signups30d: { type: integer }
+        clients: { type: integer }
+        connected: { type: integer }
+        active: { type: integer }
+    Note:
+      type: object
+      required: [id, body, authorEmail, createdAt]
+      properties:
+        id: { type: string }
+        body: { type: string }
+        authorEmail: { type: string }
+        createdAt: { type: string, format: date-time }
+    AdminPartnerDetail:
+      allOf:
+        - $ref: '#/components/schemas/Overview'
+        - type: object
+          required: [admin, codes, notes]
+          properties:
+            admin: { $ref: '#/components/schemas/AdminPartnerRow' }
+            codes: { type: array, items: { $ref: '#/components/schemas/Code' } }
+            notes: { type: array, items: { $ref: '#/components/schemas/Note' } }
+    ReservedCode:
+      type: object
+      required: [id, code, reason, createdByEmail, createdAt]
+      properties:
+        id: { type: string }
+        code: { type: string }
+        reason: { type: string, nullable: true }
+        createdByEmail: { type: string }
+        createdAt: { type: string, format: date-time }
+  responses:
+    Unauthorized: { description: Not signed in, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+    Forbidden: { description: Not a partner / not an admin, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+    NotFound: { description: Not found, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+    Conflict: { description: Conflict, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+    Invalid: { description: Validation failed, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+
+paths:
+  /api/r/{code}:
+    get:
+      tags: [Public]
+      summary: Referral link — records a click, sets the tl_ref cookie, redirects to signup
+      description: |
+        Unknown codes or non-active partners redirect to the home page without a cookie.
+        An existing valid tl_ref cookie for another partner is kept (first click wins).
+        Clicks are rate-limited per IP; the redirect always happens.
+      parameters:
+        - { name: code, in: path, required: true, schema: { type: string } }
+        - { name: ch, in: query, schema: { type: string }, description: Channel slug }
+      responses:
+        '302': { description: Redirect to APP_URL/signup?ref=CODE (or APP_URL/ when invalid) }
+  /api/referrals/check:
+    get:
+      tags: [Public]
+      summary: Check a referral code typed at signup
+      parameters:
+        - { name: code, in: query, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    required: [valid, partnerName]
+                    properties:
+                      valid: { type: boolean }
+                      partnerName: { type: string, nullable: true, description: First name only }
+        '422': { $ref: '#/components/responses/Invalid' }
+
+  /api/partner/apply:
+    post:
+      tags: [Partner]
+      security: [{ session: [] }]
+      summary: Apply to become a partner (creates a PENDING partner)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [audience]
+              properties:
+                audience: { type: string, minLength: 2, maxLength: 120 }
+                code: { type: string, description: Requested custom code (3–20 of A-Z 0-9 _ -) }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { type: object, properties: { data: { $ref: '#/components/schemas/PartnerProfile' } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Invalid' }
+  /api/partner/me:
+    get:
+      tags: [Partner]
+      security: [{ session: [] }]
+      summary: The caller's partner profile, or null when not a partner
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object, properties: { data: { nullable: true, allOf: [{ $ref: '#/components/schemas/PartnerProfile' }] } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /api/partner/overview:
+    get:
+      tags: [Partner]
+      security: [{ session: [] }]
+      parameters: [{ $ref: '#/components/parameters/Range' }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object, properties: { data: { $ref: '#/components/schemas/Overview' } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /api/partner/clients:
+    get:
+      tags: [Partner]
+      security: [{ session: [] }]
+      parameters:
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/ReferralStatus' } }
+        - { name: channel, in: query, schema: { type: string }, description: Channel id }
+        - { name: q, in: query, schema: { type: string, maxLength: 80 } }
+        - { name: sort, in: query, schema: { type: string, enum: [recent, trades, name], default: recent } }
+        - { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+        - { name: pageSize, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 12 } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      items: { type: array, items: { $ref: '#/components/schemas/Client' } }
+                      counts: { $ref: '#/components/schemas/ClientCounts' }
+                  meta: { $ref: '#/components/schemas/PaginationMeta' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /api/partner/links:
+    get:
+      tags: [Partner]
+      security: [{ session: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object, properties: { data: { $ref: '#/components/schemas/Links' } } } } } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /api/partner/channels:
+    post:
+      tags: [Partner]
+      security: [{ session: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [label], properties: { label: { type: string, minLength: 1, maxLength: 40 } } } } }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { type: object, properties: { data: { $ref: '#/components/schemas/Channel' } } } } } }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Invalid' }
+  /api/partner/channels/{channelId}:
+    delete:
+      tags: [Partner]
+      security: [{ session: [] }]
+      summary: Archive a channel link (its history stays; the link stops attributing to the channel)
+      parameters: [{ name: channelId, in: path, required: true, schema: { type: string } }]
+      responses:
+        '204': { description: Archived }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /api/partner/codes:
+    post:
+      tags: [Partner]
+      security: [{ session: [] }]
+      summary: Reserve a custom code
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [code], properties: { code: { type: string } } } } }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { type: object, properties: { data: { $ref: '#/components/schemas/Code' } } } } } }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Invalid' }
+  /api/partner/codes/{codeId}:
+    delete:
+      tags: [Partner]
+      security: [{ session: [] }]
+      summary: Release a custom code (primary codes cannot be released)
+      parameters: [{ name: codeId, in: path, required: true, schema: { type: string } }]
+      responses:
+        '204': { description: Released }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /api/admin/partners:
+    get:
+      tags: [Admin]
+      security: [{ session: [] }]
+      parameters: [{ name: status, in: query, schema: { $ref: '#/components/schemas/PartnerStatus' } }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object, properties: { data: { type: array, items: { $ref: '#/components/schemas/AdminPartnerRow' } } } } } } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Admin]
+      security: [{ session: [] }]
+      summary: Make an existing TRADElogs user a partner (ACTIVE immediately)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+                code: { type: string }
+                audience: { type: string, maxLength: 120 }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { type: object, properties: { data: { $ref: '#/components/schemas/AdminPartnerRow' } } } } } }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Invalid' }
+  /api/admin/partners/lookup:
+    get:
+      tags: [Admin]
+      security: [{ session: [] }]
+      summary: Find who referred a user (by email) or who owns a code
+      parameters: [{ name: q, in: query, required: true, schema: { type: string } }]
+      responses:
+        '200': { description: OK }
+  /api/admin/partners/{id}:
+    get:
+      tags: [Admin]
+      security: [{ session: [] }]
+      parameters: [{ $ref: '#/components/parameters/PartnerId' }, { $ref: '#/components/parameters/Range' }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object, properties: { data: { $ref: '#/components/schemas/AdminPartnerDetail' } } } } } }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /api/admin/partners/{id}/clients:
+    get:
+      tags: [Admin]
+      security: [{ session: [] }]
+      summary: Same query and response as GET /api/partner/clients
+      parameters: [{ $ref: '#/components/parameters/PartnerId' }]
+      responses:
+        '200': { description: OK }
+    post:
+      tags: [Admin]
+      security: [{ session: [] }]
+      summary: Assign an existing user to this partner
+      parameters: [{ $ref: '#/components/parameters/PartnerId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+                reason: { type: string, maxLength: 300 }
+                force: { type: boolean, description: Move the user even if another partner already has them }
+      responses:
+        '201': { description: Assigned, content: { application/json: { schema: { type: object, properties: { data: { $ref: '#/components/schemas/Client' } } } } } }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /api/admin/partners/{id}/clients/{clientId}:
+    delete:
+      tags: [Admin]
+      security: [{ session: [] }]
+      summary: Unlink a client from this partner
+      parameters:
+        - { $ref: '#/components/parameters/PartnerId' }
+        - { name: clientId, in: path, required: true, schema: { type: string } }
+        - { name: reason, in: query, schema: { type: string } }
+      responses:
+        '204': { description: Unlinked }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /api/admin/partners/{id}/move-clients:
+    post:
+      tags: [Admin]
+      security: [{ session: [] }]
+      parameters: [{ $ref: '#/components/parameters/PartnerId' }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [toPartnerId], properties: { toPartnerId: { type: string }, reason: { type: string } } } } }
+      responses:
+        '200': { description: Moved, content: { application/json: { schema: { type: object, properties: { data: { type: object, properties: { moved: { type: integer } } } } } } } }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /api/admin/partners/{id}/status:
+    post:
+      tags: [Admin]
+      security: [{ session: [] }]
+      summary: Approve, suspend, reinstate or revoke
+      parameters: [{ $ref: '#/components/parameters/PartnerId' }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [action], properties: { action: { type: string, enum: [approve, decline, suspend, reinstate, revoke] }, reason: { type: string } } } } }
+      responses:
+        '200': { description: Updated row, content: { application/json: { schema: { type: object, properties: { data: { $ref: '#/components/schemas/AdminPartnerRow' } } } } } }
+        '409': { description: Action not allowed from the current status }
+  /api/admin/partners/{id}/notes:
+    post:
+      tags: [Admin]
+      security: [{ session: [] }]
+      parameters: [{ $ref: '#/components/parameters/PartnerId' }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [body], properties: { body: { type: string, minLength: 1, maxLength: 2000 } } } } }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { type: object, properties: { data: { $ref: '#/components/schemas/Note' } } } } } }
+  /api/admin/partners/{id}/codes/{codeId}:
+    delete:
+      tags: [Admin]
+      security: [{ session: [] }]
+      summary: Revoke a partner's custom code
+      parameters: [{ $ref: '#/components/parameters/PartnerId' }, { name: codeId, in: path, required: true, schema: { type: string } }]
+      responses:
+        '204': { description: Revoked }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /api/admin/partner-codes/reserved:
+    get:
+      tags: [Admin]
+      security: [{ session: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object, properties: { data: { type: array, items: { $ref: '#/components/schemas/ReservedCode' } } } } } } }
+    post:
+      tags: [Admin]
+      security: [{ session: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [code], properties: { code: { type: string }, reason: { type: string } } } } }
+      responses:
+        '201': { description: Created }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /api/admin/partner-codes/reserved/{reservedId}:
+    delete:
+      tags: [Admin]
+      security: [{ session: [] }]
+      parameters: [{ name: reservedId, in: path, required: true, schema: { type: string } }]
+      responses:
+        '204': { description: Released }
+
+  /internal/partners/refresh-stats:
+    post:
+      tags: [Internal]
+      security: [{ internalToken: [] }]
+      summary: Refresh referral activity snapshots (also runs on the in-process scheduler)
+      requestBody:
+        content: { application/json: { schema: { type: object, properties: { limit: { type: integer, minimum: 1, maximum: 500 } } } } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object, properties: { data: { type: object, properties: { processed: { type: integer }, failed: { type: integer } } } } } } } }

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { partnerStatusSchema } from './partner.js';
 
 export const accessSourceSchema = z.enum(['MANUAL_GRANT', 'ELEFIN_VERIFIED']);
 export type AccessSourceDto = z.infer<typeof accessSourceSchema>;
@@ -26,6 +27,8 @@ export const accessStatusDtoSchema = z.object({
   minTradesRequired: z.number().int(),
   activityWindowDays: z.number().int(),
   isAdmin: z.boolean(),
+  /** The caller's partner record status, or null when they aren't a partner. */
+  partnerStatus: partnerStatusSchema.nullable(),
   maintenance: z.object({
     enabled: z.boolean(),
     message: z.string().nullable(),

@@ -195,6 +195,23 @@ const envSchema = z.object({
   ELEFIN_API_KEY: z.string().optional(),
   ACCESS_MIN_TRADES_7D: z.coerce.number().int().positive().default(2),
   ACCESS_ACTIVITY_WINDOW_DAYS: z.coerce.number().int().positive().default(7),
+
+  // ── Partner programme (referral tracking) ─────────────────────────────────
+  /** How long a referral-link click is remembered in the visitor's browser. */
+  PARTNER_COOKIE_DAYS: z.coerce.number().int().min(1).max(365).default(30),
+  /** Active tracked channel links per partner. */
+  PARTNER_MAX_CHANNELS: z.coerce.number().int().min(1).max(100).default(10),
+  /** Codes per partner, including the generated primary one. */
+  PARTNER_MAX_CODES: z.coerce.number().int().min(1).max(20).default(3),
+  /** Lets any signed-in user apply to become a partner (admin still approves). */
+  PARTNER_SELF_SIGNUP: z
+    .string()
+    .default('true')
+    .transform(v => v.toLowerCase() === 'true' || v === '1'),
+  /** Referral activity snapshots older than this are refreshed by the scheduler. */
+  PARTNER_STATS_STALE_MIN: z.coerce.number().int().min(5).default(360),
+  /** Clicks recorded per IP per 10 minutes; extra clicks still redirect. */
+  PARTNER_CLICK_LIMIT: z.coerce.number().int().min(1).default(20),
 });
 
 export type Env = z.infer<typeof envSchema> & {
