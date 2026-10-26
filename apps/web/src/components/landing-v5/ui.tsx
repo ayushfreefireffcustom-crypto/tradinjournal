@@ -29,7 +29,12 @@ export const ChatIcon = () => (
 
 // ── Wordmark ───────────────────────────────────────────────────────────────
 export function Wordmark({ className = '' }: { className?: string }) {
-  return <span className={`lp-wm ${className}`}>TRADE<span>logs</span></span>;
+  return (
+    <span className={`l5-wm ${className}`}>
+      <i aria-hidden><svg viewBox="0 0 14 14" width="14" height="14"><path d="M2 10l3.2-3.4 2.6 2.2L12 3.6" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" /></svg></i>
+      <b>TRADE<span>logs</span></b>
+    </span>
+  );
 }
 
 // ── Reveal: fades/rises children in once when they enter the viewport ─────
@@ -38,7 +43,7 @@ export function Reveal({
 }: { as?: ElementType; className?: string; delay?: number; children: ReactNode } & Record<string, unknown>) {
   const ref = useInViewOnce<HTMLElement>();
   return (
-    <Tag ref={ref.ref} className={`lp-rv ${ref.inView ? 'is-in' : ''} ${className}`} style={{ '--d': `${delay}ms` } as CSSProperties} {...rest}>
+    <Tag ref={ref.ref} className={`l5-rv ${ref.inView ? 'is-in' : ''} ${className}`} style={{ '--d': `${delay}ms` } as CSSProperties} {...rest}>
       {children}
     </Tag>
   );
@@ -80,20 +85,30 @@ export function useCountUp(value: number, run: boolean, duration = 1100) {
   return n;
 }
 
+/** Session state that is safe to render: false on the server and first client
+ *  paint (matching the static HTML), real once mounted. Prevents hydration
+ *  mismatches when the session is already cached in the browser. */
+export function useSignedIn() {
+  const { data: session } = authClient.useSession();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+  return mounted && !!session?.session;
+}
+
 // ── Primary CTA: signed-out → /signup, signed-in → app (with access gate) ─
 export function StartButton({
   variant = 'acc', children = 'Start free', className = '', testId,
 }: { variant?: 'acc' | 'white'; children?: ReactNode; className?: string; testId?: string }) {
-  const { data: session } = authClient.useSession();
+  const signedIn = useSignedIn();
   const { enterTerminal, checking, InactiveModal } = useTerminalEntry();
-  const cls = `lp-btn lp-btn--${variant} ${className}`;
+  const cls = `l5-btn l5-btn--${variant} ${className}`;
   const inner = (
     <>
-      <span>{checking ? 'Opening…' : session?.session ? 'Open dashboard' : children}</span>
-      <span className="lp-ar"><ArrowRight /></span>
+      <span>{checking ? 'Opening…' : signedIn ? 'Open dashboard' : children}</span>
+      <span className="l5-ar"><ArrowRight /></span>
     </>
   );
-  if (!session?.session) {
+  if (!signedIn) {
     return <a href="/signup" className={cls} data-testid={testId}>{inner}</a>;
   }
   return (

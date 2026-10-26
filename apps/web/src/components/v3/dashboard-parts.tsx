@@ -32,17 +32,19 @@ export function HeroPnl({ view, trades }: { view: AccountStats; trades: Trade[] 
   const pct = view.startingBalance ? (view.netPnl / view.startingBalance) * 100 : 0;
   const days = useMemo(() => [...dailyPnl(trades).entries()].sort(([a], [b]) => (a < b ? -1 : 1)), [trades]);
   const bestDay = days.reduce((m, [, v]) => Math.max(m, v.pnl), -Infinity);
+  const worstDay = days.reduce((m, [, v]) => Math.min(m, v.pnl), Infinity);
   const [whole, cents] = money(view.netPnl).split('.');
   return (
     <section className="d-hero" aria-label="Net P&L" data-testid="hero-pnl">
       <div className="d-hero-top">
         <div>
           <div className="d-hero-lbl">Net P&amp;L <span className="d-hero-chip num">{pct >= 0 ? '▲' : '▼'} {Math.abs(pct).toFixed(2)}%</span></div>
-          <div className="d-big num">{whole}<small>.{cents}</small></div>
+          <div className={`d-big num ${view.netPnl < 0 ? 'neg' : view.netPnl === 0 ? 'zero' : ''}`}>{whole}<small>.{cents}</small></div>
           <div className="d-deltas">
             <span>Balance <b className="num">{plain(view.currentEquity)}</b></span>
             <span>Started <b className="num">{plain(view.startingBalance, 0)}</b></span>
-            {Number.isFinite(bestDay) && bestDay > 0 && <span>Best day <b className="num">{moneyShort(bestDay)}</b></span>}
+            {Number.isFinite(bestDay) && bestDay > 0 && <span>Best day <b className="num d-up">{moneyShort(bestDay)}</b></span>}
+            {Number.isFinite(worstDay) && worstDay < 0 && <span className="d-worst">Worst day <b className="num d-dn">{moneyShort(worstDay)}</b></span>}
           </div>
         </div>
         <div className="d-tabs" role="group" aria-label="Chart">
@@ -95,15 +97,16 @@ function HeroChart({ view, days, mode }: { view: AccountStats; days: [string, { 
     const bw = Math.min(28, (W / Math.max(series.length, 1)) * 0.6);
     body = series.map((s, i) => {
       const top = Math.min(y(s.v), by), h = Math.max(2, Math.abs(y(s.v) - by));
-      return <rect key={i} x={x(i) - bw / 2 + (series.length === 1 ? W / 2 : 0)} y={top} width={bw} height={h} rx={3} fill={s.v >= 0 ? '#fff' : 'rgba(255,255,255,.45)'} opacity={hover == null || hover === i ? 1 : 0.55} />;
+      return <rect key={i} x={x(i) - bw / 2 + (series.length === 1 ? W / 2 : 0)} y={top} width={bw} height={h} rx={3} style={{ fill: s.v >= 0 ? 'var(--d-hero-up, #fff)' : 'var(--d-hero-dn, rgba(255,255,255,.45))' }} opacity={hover == null || hover === i ? 1 : 0.55} />;
     });
   } else {
     const d = 'M' + series.map((s, i) => `${x(i).toFixed(1)},${y(s.v).toFixed(1)}`).join(' L');
     body = (
       <>
-        <defs><linearGradient id="d-hero-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#fff" stopOpacity=".32" /><stop offset="1" stopColor="#fff" stopOpacity="0" /></linearGradient></defs>
+        <defs><linearGradient id="d-hero-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style={{ stopColor: 'var(--d-hero-line, #fff)', stopOpacity: 'var(--d-hero-fill-a, .32)' }} /><stop offset="1" style={{ stopColor: 'var(--d-hero-line, #fff)' }} stopOpacity="0" /></linearGradient></defs>
         <path d={`${d} L${W},${H} L0,${H}Z`} fill="url(#d-hero-fill)" />
-        <path d={d} fill="none" stroke="#fff" strokeWidth={2.4} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+        <path className="d-glow" d={d} fill="none" strokeWidth={7} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+        <path d={d} fill="none" style={{ stroke: 'var(--d-hero-line, #fff)' }} strokeWidth={2.4} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
       </>
     );
   }
@@ -113,7 +116,7 @@ function HeroChart({ view, days, mode }: { view: AccountStats; days: [string, { 
     <div ref={ref} className="d-chart" onPointerMove={onMove} onPointerLeave={() => setHover(null)} role="img"
       aria-label={`${mode === 'equity' ? 'Equity curve' : mode === 'drawdown' ? 'Drawdown' : 'Daily P&L'}; latest ${last ? fmt(last.v) : 'n/a'}`}>
       <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
-        <line x1={0} x2={W} y1={by} y2={by} stroke="rgba(255,255,255,.5)" strokeDasharray="4 5" vectorEffect="non-scaling-stroke" />
+        <line x1={0} x2={W} y1={by} y2={by} style={{ stroke: 'var(--d-hero-base, rgba(255,255,255,.5))' }} strokeDasharray="4 5" vectorEffect="non-scaling-stroke" />
         {body}
       </svg>
       {mode === 'equity' && <span className="d-start" style={{ top: `${(by / H) * 100}%` }}>Start {plain(view.startingBalance, 0)}</span>}
@@ -145,6 +148,8 @@ export function ReviewCard({ view, insights, rangeLabel }: { view: AccountStats;
       <div className="d-review-bd">
         {edge ? (
           <p className="d-review-q">{edge.lead}: <span className={tone(view.byDirection.long.netPnl)}>longs {moneyShort(view.byDirection.long.netPnl)}</span> vs <span className={tone(view.byDirection.short.netPnl)}>shorts {moneyShort(view.byDirection.short.netPnl)}</span>.{hold ? <span className="m"> {hold.lead} — {hold.detail?.split(' — ')[0]}.</span> : <span className="m"> {(view.winRate * 100).toFixed(0)}% win rate across {view.totalTrades} trades, profit factor {view.profitFactor >= 999 ? '∞' : view.profitFactor.toFixed(2)}.</span>}</p>
+        ) : view.totalTrades === 0 ? (
+          <p className="d-review-q">No closed trades in this range yet. <span className="m">Pick a longer range, or check back once trades close.</span></p>
         ) : (
           <p className="d-review-q">{view.totalTrades} closed trades · win rate {(view.winRate * 100).toFixed(1)}% <span className="m">· profit factor {view.profitFactor >= 999 ? '∞' : view.profitFactor.toFixed(2)}</span></p>
         )}
@@ -165,20 +170,21 @@ export function KpiStrip({ view }: { view: AccountStats }) {
   const pf = view.profitFactor;
   const awl = Math.max(view.avgWin, Math.abs(view.avgLoss), 1);
   const rr = view.avgLoss ? view.avgWin / Math.abs(view.avgLoss) : 0;
-  const streakMax = Math.max(view.maxWinStreak, view.maxLossStreak, 1);
+  const exp = view.totalTrades ? view.netPnl / view.totalTrades : 0;
+  const none = view.totalTrades === 0;
   const peakLoss = view.maxDrawdownPct * Math.max(...view.equityCurve.map(p => p.equity), view.startingBalance);
   const g = (w: number, c: string, i = 0): CSSProperties => ({ width: `${Math.max(0, Math.min(100, w))}%`, background: c, animationDelay: `${i * 70}ms` });
   return (
     <section className="v3-card d-kpis" aria-label="Key metrics" data-testid="kpi-strip">
-      <div className="d-kpi" data-testid="kpi-winrate"><div className="l">Win rate</div><b className="num">{win.toFixed(1)}%</b><div className="s">{view.totalWins} wins · {view.totalLosses} losses</div>
-        <div className="d-meter"><i style={g(win, 'var(--long-fill)')} /><i style={g(100 - win, '#F7A9B5', 1)} /></div></div>
-      <div className="d-kpi" data-testid="kpi-pf"><div className="l">Profit factor</div><b className="num">{pf >= 999 ? '∞' : pf.toFixed(2)}</b><div className="s">{pf >= 999 ? 'No losing trades yet' : `$${pf.toFixed(2)} made per $1 lost`}</div>
+      <div className="d-kpi" data-testid="kpi-winrate"><div className="l">Win rate</div><b className="num">{none ? '—' : `${win.toFixed(1)}%`}</b><div className="s">{none ? 'No closed trades in range' : `${view.totalWins} wins · ${view.totalLosses} losses`}</div>
+        <div className="d-meter">{!none && <><i style={g(win, 'var(--long-fill)')} /><i style={g(100 - win, 'var(--d-meter-loss, #F7A9B5)', 1)} /></>}</div></div>
+      <div className="d-kpi" data-testid="kpi-pf"><div className="l">Profit factor</div><b className="num">{none ? '—' : pf >= 999 ? '∞' : pf.toFixed(2)}</b><div className="s">{none ? 'No closed trades in range' : pf >= 999 ? 'No losing trades yet' : `$${pf.toFixed(2)} made per $1 lost`}</div>
         <div className="d-meter"><i style={g(Math.min(pf / 3, 1) * 100, 'var(--acc)')} /></div></div>
-      <div className="d-kpi" data-testid="kpi-avgwl"><div className="l">Avg win / loss</div><b className="num"><span className="lg">${Math.round(view.avgWin).toLocaleString()}</span> <span style={{ color: 'var(--muted)', fontWeight: 400 }}>/</span> <span className="sh">${Math.round(Math.abs(view.avgLoss)).toLocaleString()}</span></b><div className="s">Reward : risk {rr ? rr.toFixed(1) : '—'}</div>
-        <div className="d-meter"><i style={g((view.avgWin / awl) * 50, 'var(--long-fill)')} /><i style={g((Math.abs(view.avgLoss) / awl) * 50, '#F7A9B5', 1)} /></div></div>
-      <div className="d-kpi" data-testid="kpi-streaks"><div className="l">Streaks</div><b className="num">{view.maxWinStreak} <span style={{ color: 'var(--muted)', fontWeight: 400 }}>/</span> {view.maxLossStreak}</b><div className="s">Best win · worst loss run</div>
-        <div className="d-meter"><i style={g((view.maxWinStreak / (streakMax * 2)) * 100, 'var(--long-fill)')} /><i style={g((view.maxLossStreak / (streakMax * 2)) * 100, '#F7A9B5', 1)} /></div></div>
-      <div className="d-kpi" data-testid="kpi-dd"><div className="l">Max drawdown</div><b className="num sh">{(view.maxDrawdownPct * 100).toFixed(1)}%</b><div className="s">{peakLoss > 0 ? `${money(-peakLoss, 0)} from peak` : 'No drawdown yet'}</div>
+      <div className="d-kpi" data-testid="kpi-avgwl"><div className="l">Avg win / loss</div><b className="num">{none ? '—' : <><span className="lg">${Math.round(view.avgWin).toLocaleString()}</span> <span style={{ color: 'var(--muted)', fontWeight: 400 }}>/</span> <span className="sh">${Math.round(Math.abs(view.avgLoss)).toLocaleString()}</span></>}</b><div className="s">Reward : risk {rr ? rr.toFixed(1) : '—'}</div>
+        <div className="d-meter"><i style={g((view.avgWin / awl) * 50, 'var(--long-fill)')} /><i style={g((Math.abs(view.avgLoss) / awl) * 50, 'var(--d-meter-loss, #F7A9B5)', 1)} /></div></div>
+      <div className="d-kpi" data-testid="kpi-expectancy"><div className="l">Expectancy</div><b className={`num ${tone(exp)}`}>{view.totalTrades ? money(exp) : '—'}</b><div className="s">per trade, after fees</div>
+        <div className="d-meter"><i style={g(view.totalTrades ? Math.min(Math.abs(exp) / Math.max(view.avgWin, Math.abs(view.avgLoss), 1), 1) * 100 : 0, exp >= 0 ? 'var(--long-fill)' : 'var(--short-fill)')} /></div></div>
+      <div className="d-kpi" data-testid="kpi-dd"><div className="l">Max drawdown</div><b className={`num ${view.maxDrawdownPct > 0 ? 'sh' : ''}`}>{(view.maxDrawdownPct * 100).toFixed(1)}%</b><div className="s">{peakLoss > 0 ? `${money(-peakLoss, 0)} from peak` : 'No drawdown yet'}</div>
         <div className="d-meter"><i style={g(Math.min(view.maxDrawdownPct * 100 * 4, 100), 'var(--short-fill)')} /></div></div>
     </section>
   );
@@ -291,7 +297,7 @@ export function RecentTrades({ trades, total, loading }: { trades: Trade[]; tota
 }
 
 // ── Behaviour ──────────────────────────────────────────────────────────────
-export function BehaviourCard({ b }: { b: { winnersHold: number | null; losersHold: number | null; streak: number; streakWin: boolean | null; tilt: number; loggedCount: number } }) {
+export function BehaviourCard({ b, runs }: { b: { winnersHold: number | null; losersHold: number | null; streak: number; streakWin: boolean | null; tilt: number; loggedCount: number }; runs?: { win: number; loss: number } }) {
   const ratio = b.winnersHold && b.losersHold ? b.losersHold / b.winnersHold : null;
   const bad = ratio != null && ratio > 1;
   // Ring shows the share of hold time spent in winners (50% = balanced).
@@ -303,8 +309,8 @@ export function BehaviourCard({ b }: { b: { winnersHold: number | null; losersHo
       <div className="d-beh">
         <div className="d-beh-head">
           <div className="d-ring" aria-hidden>
-            <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="42" stroke="#EFEEE9" strokeWidth="9" fill="none" />
-              <circle className="v" cx="50" cy="50" r="42" stroke={bad ? '#F4435E' : '#6E4BFF'} strokeWidth="9" fill="none" strokeLinecap="round" strokeDasharray={C} strokeDashoffset={C * (1 - (share ?? 0))} /></svg>
+            <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="42" style={{ stroke: 'var(--d-ring-track, #EFEEE9)' }} strokeWidth="9" fill="none" />
+              {share != null && <circle className="v" cx="50" cy="50" r="42" style={{ stroke: bad ? 'var(--short-fill)' : 'var(--acc)' }} strokeWidth="9" fill="none" strokeLinecap="round" strokeDasharray={C} strokeDashoffset={C * (1 - (share ?? 0))} />}</svg>
             <b className="num">{share == null ? '—' : `${Math.round(share * 100)}%`}</b>
           </div>
           <div>
@@ -317,6 +323,7 @@ export function BehaviourCard({ b }: { b: { winnersHold: number | null; losersHo
           </div>
         </div>
         <div className="d-sig">
+          {runs && (runs.win > 0 || runs.loss > 0) && <div data-testid="beh-runs"><span>Longest runs<small>Best win · worst loss streak</small></span><b className="num"><span className="lg">{runs.win}W</span> <span style={{ color: 'var(--muted)', fontWeight: 400 }}>/</span> <span className="sh">{runs.loss}L</span></b></div>}
           <div><span>Current streak<small>Consecutive outcomes</small></span><b className={b.streakWin === null ? '' : b.streakWin ? 'lg' : 'sh'}>{b.streakWin === null ? '—' : `${b.streak}${b.streakWin ? 'W' : 'L'}`}</b></div>
           <div><span>Tilt flags<small>{b.loggedCount === 0 ? 'No emotions logged yet' : 'FOMO · revenge · hesitant'}</small></span><b className={b.loggedCount === 0 ? '' : b.tilt > 0 ? 'am' : 'lg'}>{b.loggedCount === 0 ? '—' : b.tilt}</b></div>
           <div><span>Avg hold · winners<small>Time in winning trades</small></span><b className="num">{dur(b.winnersHold)}</b></div>
@@ -385,6 +392,50 @@ export function Instruments({ data }: { data: AccountStats['bySymbol'] }) {
           );
         })}
       </div>
+    </section>
+  );
+}
+
+// ── P&L by hour of entry (viewer's local clock) ────────────────────────────
+export function HourBars({ trades }: { trades: Trade[] }) {
+  const hours = useMemo(() => {
+    const h = Array.from({ length: 24 }, () => ({ pnl: 0, n: 0 }));
+    for (const t of trades) {
+      const d = new Date(t.openTime);
+      if (Number.isNaN(+d)) continue;
+      const e = h[d.getHours()]!;
+      e.pnl += t.netPnl; e.n++;
+    }
+    return h;
+  }, [trades]);
+  const mx = Math.max(...hours.map(x => Math.abs(x.pnl)), 1);
+  const traded = hours.map((x, i) => ({ ...x, i })).filter(x => x.n > 0);
+  const best = traded.length ? traded.reduce((a, b) => (b.pnl > a.pnl ? b : a)) : null;
+  const worst = traded.length ? traded.reduce((a, b) => (b.pnl < a.pnl ? b : a)) : null;
+  const hh = (i: number) => `${String(i).padStart(2, '0')}:00`;
+  return (
+    <section className="v3-card" aria-labelledby="d-hr-t" data-testid="byhour-card">
+      <div className="v3-ch"><h3 id="d-hr-t">P&amp;L by hour <span className="d-opt">· entry time, your clock</span></h3><span style={{ fontSize: 13, color: 'var(--muted)' }}>{trades.length} trades</span></div>
+      {traded.length === 0 ? <div className="d-empty"><b>No closed trades in this range</b>Hourly results appear once trades close.</div> : (
+        <>
+          <div className="d-hours" role="img" aria-label={`P&L by hour. Best ${best ? hh(best.i) : '—'}, worst ${worst ? hh(worst.i) : '—'}`}>
+            {hours.map((x, i) => {
+              const h = x.pnl ? Math.max((Math.abs(x.pnl) / mx) * 100, 3) : 0;
+              return (
+                <div key={i} className="d-hcol" title={x.n ? `${hh(i)} · ${x.n} trade${x.n === 1 ? '' : 's'} · ${money(x.pnl)}` : `${hh(i)} · no trades`}>
+                  <span className="t">{x.pnl > 0 && <i style={{ height: `${h}%`, background: 'var(--long-fill)' }} />}</span>
+                  <span className="b">{x.pnl < 0 && <i style={{ height: `${h}%`, background: 'var(--short-fill)' }} />}</span>
+                </div>
+              );
+            })}
+          </div>
+          <div className="d-hx" aria-hidden><span>00</span><span>04</span><span>08</span><span>12</span><span>16</span><span>20</span><span>23</span></div>
+          <div className="d-hleg">
+            <div><small>Best hour</small><b className={`num ${best && best.pnl > 0 ? 'lg' : ''}`}>{best && best.pnl > 0 ? `${hh(best.i)} · ${moneyShort(best.pnl)}` : '—'}</b></div>
+            <div><small>Worst hour</small><b className={`num ${worst && worst.pnl < 0 ? 'sh' : ''}`}>{worst && worst.pnl < 0 ? `${hh(worst.i)} · ${moneyShort(worst.pnl)}` : '—'}</b></div>
+          </div>
+        </>
+      )}
     </section>
   );
 }

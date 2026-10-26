@@ -44,9 +44,9 @@ export const heat: number[][] = HEAT_DAYS.map((_, di) => {
 });
 
 export function heatColor(v: number): string {
-  if (v > 0) return `rgba(25,195,125,${(0.15 + v * 0.85).toFixed(2)})`;
-  if (v < 0) return `rgba(244,67,94,${(0.15 - v * 0.8).toFixed(2)})`;
-  return '#EFEEF3';
+  if (v > 0) return `rgba(8,196,101,${(0.15 + v * 0.85).toFixed(2)})`;
+  if (v < 0) return `rgba(254,58,49,${(0.15 - v * 0.8).toFixed(2)})`;
+  return '#141414';
 }
 
 /** Rough $ figure shown in the heatmap tooltip — illustrative, scaled from intensity. */

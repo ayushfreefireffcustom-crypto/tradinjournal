@@ -45,3 +45,5 @@ credentials.json
 
 # second dev server build dir (mock mode)
 .next-mock/
+.next-demo/
+.next-build/

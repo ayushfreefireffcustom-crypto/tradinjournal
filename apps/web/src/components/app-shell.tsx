@@ -15,6 +15,7 @@ import {
   IPartner, IPlus, IReplay, ISearch, ISettings, ISignalX, ITradeLog, ILink, IUsers,
 } from '@/components/v3/icons';
 import '@/styles/app-v3.css';
+import '@/styles/app-v5.css';
 
 interface Props {
   children: ReactNode;
@@ -30,6 +31,8 @@ interface Props {
   crumbParent?: string;
   /** Right-aligned top-bar actions (range selector, sync, primary CTA…). */
   actions?: ReactNode;
+  /** 'v5' = the black + signal-green premium theme (rolling out page by page). */
+  theme?: 'v5';
 }
 
 type NavItem = { href: string; label: string; icon: (p: { size?: number }) => ReactNode; badge?: string };
@@ -86,8 +89,9 @@ export function timeAgo(iso?: string | null): string {
 const initials = (broker: string) => broker.replace(/[^A-Za-z ]/g, '').split(/\s+/).filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase() || 'MT';
 
 export default function AppShell({
-  children, accounts = [], selectedAccount, onSelectAccount, onConnectClick, pageTitle, crumbParent, actions,
+  children, accounts = [], selectedAccount, onSelectAccount, onConnectClick, pageTitle, crumbParent, actions, theme,
 }: Props) {
+  const tv = theme === 'v5' ? ' v5' : '';
   const pathname = usePathname();
   const router = useRouter();
   const { data: session, isPending } = authClient.useSession();
@@ -122,11 +126,11 @@ export default function AppShell({
 
   const gatePending = isPending || (!session?.session && !isPending) || (accessLoading && !accessStatus);
   if (gatePending) {
-    return <div className="v3 h-dvh w-full" data-testid="app-shell-loading"><LoadingScreen /></div>;
+    return <div className={`v3${tv} h-dvh w-full`} data-testid="app-shell-loading"><LoadingScreen /></div>;
   }
   if (accessBlocked) {
     return (
-      <div className="v3 min-h-dvh flex items-center justify-center p-6">
+      <div className={`v3${tv} min-h-dvh flex items-center justify-center p-6`}>
         <div className="v3-card" style={{ padding: 32, maxWidth: 400, textAlign: 'center' }}>
           <div style={{ fontWeight: 700, fontSize: 20, letterSpacing: '-.035em' }}>TRADE<span style={{ color: 'var(--acc)' }}>logs</span></div>
           <h1 className="v3-h1" style={{ fontSize: 24, marginTop: 16 }}>We couldn&rsquo;t verify your access.</h1>
@@ -143,7 +147,7 @@ export default function AppShell({
   const connected = sel ? /CONNECT|ACTIVE|OK/i.test(sel.status) : false;
 
   return (
-    <div className="v3 v3-shell" data-testid="app-shell">
+    <div className={`v3${tv} v3-shell`} data-testid="app-shell">
       <UsageTracker />
       <LocationGate />
       {drawer && <div className="v3-drawer-scrim" onClick={() => setDrawer(false)} aria-hidden />}

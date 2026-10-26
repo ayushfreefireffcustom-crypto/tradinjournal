@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import { Inter, Instrument_Serif, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 import ClickBurstEffect from '@/components/click-burst-effect';
 import CursorGlow from '@/components/cursor-glow';
@@ -15,6 +15,11 @@ const inter = Inter({
   display: 'swap',
 });
 
+// v5 premium theme: a serif italic for the one accent word per heading, and a
+// mono for prices/tables. Self-hosted by next/font like Inter.
+const serif = Instrument_Serif({ subsets: ['latin'], weight: '400', style: ['normal', 'italic'], variable: '--font-v5-serif', display: 'swap' });
+const mono = JetBrains_Mono({ subsets: ['latin'], weight: ['400', '500'], variable: '--font-v5-mono', display: 'swap' });
+
 export const metadata: Metadata = {
   title: 'TRADElogs // Tactical Trade Journal',
   description: 'Behavioural analytics & trade journaling for MT5 forex traders. Read your edge in raw, technical clarity.',
@@ -22,7 +27,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`dark ${inter.variable}`}>
+    <html lang="en" className={`dark ${inter.variable} ${serif.variable} ${mono.variable}`}>
       <head>
         {/* Satoshi — the v3 product typeface (Fontshare, free for commercial use). */}
         <link rel="preconnect" href="https://api.fontshare.com" />

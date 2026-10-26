@@ -86,7 +86,7 @@ export default function NotificationBell() {
       >
         <Bell size={17} weight={unread > 0 ? 'fill' : 'regular'} className={unread > 0 ? 'text-fg' : ''} />
         {unread > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 min-w-[17px] h-[17px] px-1 rounded-full bg-[#6E4BFF] text-white text-[10px] font-bold flex items-center justify-center ring-2 ring-[var(--color-app)]">
+          <span className="absolute -top-0.5 -right-0.5 min-w-[17px] h-[17px] px-1 rounded-full bg-[var(--acc)] text-[var(--on-acc,#fff)] text-[10px] font-bold flex items-center justify-center ring-2 ring-[var(--color-app)]">
             {unread > 9 ? '9+' : unread}
           </span>
         )}
@@ -118,7 +118,7 @@ export default function NotificationBell() {
                     </div>
                   );
                   return (
-                    <li key={n.id} className={n.read ? '' : 'bg-[#6E4BFF]/[0.05]'}>
+                    <li key={n.id} className={n.read ? '' : 'bg-[rgba(var(--acc-rgb),.06)]'}>
                       {n.href ? (
                         <Link href={n.href} onClick={() => setOpen(false)} className="block px-4 py-3 hover:bg-surface-hover transition-colors">{body}</Link>
                       ) : (

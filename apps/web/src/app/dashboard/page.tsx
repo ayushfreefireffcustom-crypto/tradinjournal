@@ -12,7 +12,7 @@ import { useToast } from '@/components/toast';
 import AiReportCard from '@/components/ai-report-card';
 import { IPlus, ISync } from '@/components/v3/icons';
 import {
-  HeroPnl, ReviewCard, KpiStrip, InsightList, MonthCalendar, RecentTrades, BehaviourCard, DayBars, Instruments,
+  HeroPnl, ReviewCard, KpiStrip, InsightList, MonthCalendar, RecentTrades, BehaviourCard, DayBars, Instruments, HourBars,
 } from '@/components/v3/dashboard-parts';
 
 const NEGATIVE_EMOTIONS = ['FOMO', 'Revenge', 'Hesitant'];
@@ -129,7 +129,7 @@ export default function DashboardPage() {
   );
 
   return (
-    <AppShell accounts={accounts} selectedAccount={selected} onSelectAccount={select} onConnectClick={() => setShowConnect(true)} pageTitle="Dashboard" actions={actions}>
+    <AppShell accounts={accounts} selectedAccount={selected} onSelectAccount={select} onConnectClick={() => setShowConnect(true)} pageTitle="Dashboard" actions={actions} theme="v5">
       <div className="v3-page" data-testid="dashboard-page">
         <header className="d-head">
           <h1 className="v3-h1"><b>{greeting()}, {first}.</b> Here&rsquo;s how your trading is <em>really</em> going.</h1>
@@ -155,29 +155,30 @@ export default function DashboardPage() {
           </section>
         ) : !view ? (
           <div className="d-grid">
-            <div className="d-grid d-r1"><div className="skel d-sk" style={{ height: 400, borderRadius: 24 }} /><div className="skel d-sk" style={{ height: 400, borderRadius: 20 }} /></div>
             <div className="skel d-sk" style={{ height: 150, borderRadius: 20 }} />
+            <div className="d-grid d-r1"><div className="skel d-sk" style={{ height: 420, borderRadius: 22 }} /><div className="skel d-sk" style={{ height: 420, borderRadius: 22 }} /></div>
             <div className="d-grid d-r3"><div className="skel d-sk" style={{ height: 420, borderRadius: 20 }} /><div className="skel d-sk" style={{ height: 420, borderRadius: 20 }} /></div>
           </div>
         ) : (
           <div className="d-grid">
+            <KpiStrip view={view} />
             <div className="d-grid d-r1">
               <HeroPnl view={view} trades={rangedTrades} />
               <ReviewCard view={view} insights={insights} rangeLabel={RANGE_LABEL[range][0]!.toUpperCase() + RANGE_LABEL[range].slice(1)} />
             </div>
-            <KpiStrip view={view} />
             <div className="d-grid d-r3">
+              <BehaviourCard b={behaviour} runs={{ win: view.maxWinStreak, loss: view.maxLossStreak }} />
               <InsightList insights={insights} />
               <MonthCalendar trades={rangedTrades} />
             </div>
             <AiReportCard accountId={selected?.id ?? null} />
+            <div className="d-grid d-r5">
+              <Instruments data={view.bySymbol} />
+              <HourBars trades={rangedTrades} />
+            </div>
             <div className="d-grid d-r4">
               <RecentTrades trades={rangedTrades.slice(0, 6)} total={rangedTrades.length} loading={loading && !rangedTrades.length} />
-              <BehaviourCard b={behaviour} />
-            </div>
-            <div className="d-grid d-r5">
               <DayBars data={view.byDay} />
-              <Instruments data={view.bySymbol} />
             </div>
           </div>
         )}
