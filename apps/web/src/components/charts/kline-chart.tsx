@@ -62,29 +62,30 @@ function derivePrecision(price: number): number {
   return 8;
 }
 
-// Ink & Violet light theme (partial Styles — every field is optional).
+// v5 black + signal-green theme (partial Styles — every field is optional).
+// Canvas-drawn, so colours are literal here rather than CSS variables.
 const V3_STYLES: DeepPartial<Styles> = {
-  grid: { horizontal: { color: '#EDECF0' }, vertical: { show: false } },
+  grid: { horizontal: { color: '#161616', style: 'solid' }, vertical: { show: false } },
   candle: {
     bar: {
-      upColor: '#19C37D', downColor: '#F4435E',
-      upBorderColor: '#19C37D', downBorderColor: '#F4435E',
-      upWickColor: '#19C37D', downWickColor: '#F4435E',
+      upColor: '#08C465', downColor: '#FE3A31',
+      upBorderColor: '#08C465', downBorderColor: '#FE3A31',
+      upWickColor: '#08C465', downWickColor: '#FE3A31',
     },
     priceMark: {
-      high: { color: '#6C6C70' }, low: { color: '#6C6C70' },
-      last: { upColor: '#19C37D', downColor: '#F4435E', line: { style: 'dashed', dashedValue: [4, 4] } },
+      high: { color: '#6E6E76' }, low: { color: '#6E6E76' },
+      last: { upColor: '#08C465', downColor: '#FE3A31', line: { style: 'dashed', dashedValue: [4, 4] } },
     },
     // OHLC legend only while the crosshair is active — the pane header shows price.
-    tooltip: { showRule: 'follow_cross', showType: 'standard', title: { show: false } },
+    tooltip: { showRule: 'follow_cross', showType: 'standard', title: { show: false }, legend: { color: '#A1A1AA' } },
   },
-  indicator: { tooltip: { showRule: 'follow_cross' } },
-  xAxis: { axisLine: { color: '#E4E2E6' }, tickLine: { color: '#E4E2E6' }, tickText: { color: '#9B9BA0', size: 11 } },
-  yAxis: { axisLine: { color: '#E4E2E6' }, tickLine: { color: '#E4E2E6' }, tickText: { color: '#9B9BA0', size: 11 } },
-  separator: { color: '#E4E2E6' },
+  indicator: { tooltip: { showRule: 'follow_cross', legend: { color: '#A1A1AA' } } },
+  xAxis: { axisLine: { color: '#1E1E1E' }, tickLine: { color: '#1E1E1E' }, tickText: { color: '#6E6E76', size: 11 } },
+  yAxis: { axisLine: { color: '#1E1E1E' }, tickLine: { color: '#1E1E1E' }, tickText: { color: '#6E6E76', size: 11 } },
+  separator: { color: '#1E1E1E' },
   crosshair: {
-    horizontal: { line: { color: '#C9C7D2' }, text: { backgroundColor: '#100F17', borderColor: '#100F17' } },
-    vertical: { line: { color: '#C9C7D2' }, text: { backgroundColor: '#100F17', borderColor: '#100F17' } },
+    horizontal: { line: { color: '#3A3A3A' }, text: { backgroundColor: '#F4F4F5', borderColor: '#F4F4F5', color: '#030303' } },
+    vertical: { line: { color: '#3A3A3A' }, text: { backgroundColor: '#F4F4F5', borderColor: '#F4F4F5', color: '#030303' } },
   },
 };
 

@@ -106,18 +106,28 @@ function ChartReplay() {
     return list;
   }, [trades, filter, query, journalByTrade]);
 
-  // ↑/↓ steps through the visible list (outside text fields).
+  // If a filter hides the trade being reviewed, move to the first one still shown.
+  useEffect(() => {
+    if (visible.length && !visible.some(t => t.positionId === activeId)) setActiveId(visible[0]!.positionId);
+  }, [visible, activeId]);
+
+  // ↑/↓ (and the ‹ › buttons) step through the visible list.
+  const activeIdx = visible.findIndex(t => t.positionId === activeId);
+  const step = (d: 1 | -1) => {
+    const next = visible[Math.max(0, Math.min(visible.length - 1, activeIdx + d))];
+    if (next && next.positionId !== activeId) { setActiveId(next.positionId); return true; }
+    return false;
+  };
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.target as HTMLElement).closest('input,textarea,select,[contenteditable=true]') || e.metaKey || e.ctrlKey) return;
+      if ((e.target as HTMLElement | null)?.closest?.('input,textarea,select,[contenteditable=true]') || e.metaKey || e.ctrlKey) return;
       if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
-      const i = visible.findIndex(t => t.positionId === activeId);
-      const next = visible[Math.max(0, Math.min(visible.length - 1, i + (e.key === 'ArrowDown' ? 1 : -1)))];
-      if (next) { e.preventDefault(); setActiveId(next.positionId); }
+      e.preventDefault();
+      step(e.key === 'ArrowDown' ? 1 : -1);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [visible, activeId]);
+  }); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     listRef.current?.querySelector<HTMLElement>('[aria-current="true"]')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }, [activeId]);
@@ -233,6 +243,13 @@ function ChartReplay() {
                     <span className={`r-src ${candles.candles ? 'live' : ''}`} title={candles.candles ? 'Market candles for the trade window' : 'Price path reconstructed from your entry and exit fills — not tick data'}>
                       {candles.loading ? 'Loading…' : candles.candles ? 'Live data' : 'Illustrative'}
                     </span>
+                    {visible.length > 1 && activeIdx >= 0 && (
+                      <div className="v3-seg sm r-step" role="group" aria-label="Browse trades">
+                        <button onClick={() => step(-1)} disabled={activeIdx <= 0} aria-label="Previous trade" data-testid="replay-prev">‹</button>
+                        <span className="num">{activeIdx + 1}/{visible.length}</span>
+                        <button onClick={() => step(1)} disabled={activeIdx >= visible.length - 1} aria-label="Next trade" data-testid="replay-next">›</button>
+                      </div>
+                    )}
                   </div>
                   <div className="r-chart-bd"><TradeCandles key={active.positionId} trade={active} real={candles.candles} height={460} /></div>
                   <div className="r-stats">

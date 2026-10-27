@@ -56,9 +56,13 @@
   --shadow-focus: 0 0 0 2px #030303, 0 0 0 4px rgba(8, 196, 101, .6);
 
   color: var(--ink);
-  background: var(--paper);
   color-scheme: dark;
 }
+/* Only real page roots get the page background — nested .v3 roots (modals, ⌘K
+   scrim) must stay transparent or they hide the page behind them. */
+.v5.v3, body.v5, .v5 .v3-shell { background: var(--paper); }
+.v5 .v3-modal, .v5 .v3-cmdk-scrim { background: transparent; }
+.v5 .v3-cmdk-scrim { background: rgba(0, 0, 0, .45); }
 .v5 ::selection { background: var(--acc); color: var(--on-acc); }
 .v5 ::-webkit-scrollbar-thumb { background: #232323; border: 3px solid #030303; }
 .v5 ::-webkit-scrollbar-thumb:hover { background: #333; }
@@ -470,3 +474,59 @@
 .v5 .c-day.wk > span { color: #6E6E76; }
 .v5 .c-nav button:first-child, .v5 .c-nav button:last-child { color: #A1A1AA; }
 .v5 .c-kpis b.num { font-family: inherit; }
+
+/* ══ Chart replay ═════════════════════════════════════════════════════════ */
+.v5 .r-list-hd, .v5 .r-chart-hd, .v5 .r-stats, .v5 .r-stats > div, .v5 .r-row { border-color: #181818; }
+.v5 .r-list-hd h3, .v5 .r-review-hd h3 { font-weight: 500; }
+.v5 .r-sum b, .v5 .r-sum b.num { font-family: inherit; font-weight: 500; letter-spacing: -.03em; color: #fff; }
+.v5 .r-sum b.lg { color: var(--long); } .v5 .r-sum b.sh { color: var(--short); }
+.v5 .r-chips button { background: #0A0A0A; border-color: #222; color: #C4C4CC; }
+.v5 .r-chips button:hover { border-color: #3A3A3A; }
+.v5 .r-chips button[aria-pressed='true'] { background: #fff; border-color: #fff; color: #000; }
+.v5 .r-chips button[aria-pressed='true'] span { color: rgba(0, 0, 0, .5); }
+.v5 .r-row:hover { background: #111; }
+.v5 .r-row[aria-current='true'] { background: rgba(8, 196, 101, .08); border-left-color: var(--acc); }
+.v5 .r-row-m small, .v5 .r-row-m small.num { font-family: inherit; letter-spacing: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #6E6E76; }
+.v5 .r-row > b, .v5 .r-row > b.num { font-family: inherit; font-weight: 500; letter-spacing: -.02em; }
+.v5 .r-sym { font-weight: 500; }
+.v5 .r-pnl, .v5 .r-pnl.num { font-family: inherit; font-weight: 500; }
+.v5 .r-src { background: #0A0A0A; border-color: #222; color: #8B8B94; }
+.v5 .r-src.live { background: var(--long-soft); color: var(--long); border-color: rgba(8, 196, 101, .35); }
+.v5 .r-stats b, .v5 .r-stats b.num { font-family: inherit; font-weight: 500; color: #fff; }
+.v5 .r-stats b.lg { color: var(--long); } .v5 .r-stats b.sh { color: var(--short); }
+.v5 .r-result.w { background: rgba(8, 196, 101, .1); box-shadow: inset 0 0 0 1px rgba(8, 196, 101, .25); }
+.v5 .r-result.l { background: rgba(254, 58, 49, .1); box-shadow: inset 0 0 0 1px rgba(254, 58, 49, .25); }
+.v5 .r-result b, .v5 .r-result b.num { font-family: inherit; font-weight: 500; }
+.v5 .r-result span { color: #8B8B94; }
+.v5 .r-emo button, .v5 .r-tag { background: #0A0A0A; border-color: #222; color: #E4E4E7; }
+.v5 .r-emo button:hover, .v5 .r-tag.add:hover { border-color: #3A3A3A; color: #fff; }
+.v5 .r-emo button[aria-pressed='true'] { background: var(--acc-soft); border-color: var(--acc-border); color: var(--acc-2); }
+.v5 .r-emo button.neg[aria-pressed='true'] { background: var(--short-soft); border-color: rgba(254, 58, 49, .4); color: var(--short); }
+.v5 .r-tag:not(.add):hover { background: var(--short-soft); border-color: rgba(254, 58, 49, .4); color: var(--short); }
+.v5 .r-tag.add { color: #8B8B94; }
+.v5 .r-tag-in { background: #0A0A0A; color: var(--ink); }
+.v5 .r-notes textarea { background: #0A0A0A; border-color: #222; color: var(--ink); }
+.v5 .r-notes textarea::placeholder { color: #55555D; }
+.v5 .r-save { background: linear-gradient(180deg, #3BF09A, #08C465 55%, #06A253); color: var(--on-acc); font-weight: 600; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .4), 0 14px 30px -14px rgba(8, 196, 101, .8); }
+.v5 .r-save:hover:not(:disabled) { background: linear-gradient(180deg, #3BF09A, #08C465 55%, #06A253); filter: brightness(1.06); }
+.v5 .r-save:disabled { background: #161616; color: #55555D; box-shadow: none; }
+.v5 .r-save.ok { color: var(--on-acc) !important; }
+.v5 .r-hint { color: #55555D; }
+.v5 .r-empty p { color: #A1A1AA; }
+.v5 .r-empty em { color: var(--acc-2); }
+.v5 .r-empty-ic { background: var(--acc-soft); color: var(--acc-2); }
+.r-step { align-items: center; }
+.r-step button { font-size: 16px; min-width: 30px; }
+.r-step button:disabled { opacity: .3; cursor: default; }
+.r-step span { font-size: 12px; color: var(--muted); padding: 0 6px; white-space: nowrap; }
+@media (min-width: 641px) { .r-src + .r-step { margin-left: 8px; } }
+@media (max-width: 640px) { .r-step { margin-left: auto; } }
+
+/* ══ Charts ═══════════════════════════════════════════════════════════════ */
+/* keep the "Alert" label on phones so it can't be confused with notifications */
+@media (max-width: 640px) {
+  .v5 .ch-alert span { display: inline; }
+  .v5 .ch-alert { width: auto; padding: 0 12px; }
+}
+/* text fields style their own focus (border + glow on the wrapper) — no second ring */
+.v5 :is(input, textarea, select):focus-visible { box-shadow: none; }
