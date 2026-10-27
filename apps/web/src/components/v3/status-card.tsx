@@ -4,6 +4,8 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import '@/styles/app-v3.css';
+import '@/styles/app-v5-auto.css';
+import '@/styles/app-v5.css';
 
 type Tone = 'v' | 'a' | 'g' | 'r';
 export const SC_ICONS = {
@@ -19,7 +21,7 @@ export default function StatusCard({ icon, tone = 'v', kicker, title, body, chil
   onSignOut?: () => void; testId?: string; bar?: boolean;
 }) {
   return (
-    <div className="v3 sc" data-testid={testId}>
+    <div className="v3 v5 sc" data-testid={testId}>
       <header className="sc-top">
         <Link href="/" className="au-wm sm" style={{ display: 'block' }}>TRADE<span>logs</span></Link>
         {onSignOut && <button type="button" onClick={onSignOut} className="sc-out">Sign out</button>}

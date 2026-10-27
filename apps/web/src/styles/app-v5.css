@@ -729,3 +729,7 @@
 .v5 .au-submit[aria-busy="true"] { background: var(--acc); color: var(--on-acc, #000); opacity: .85; cursor: progress; }
 .v5 .au-submit[aria-busy="true"] i { background: #000; color: #fff; }
 .v5 .au-spin { border-color: rgba(255,255,255,.25); border-top-color: #fff; }
+.v5.lg-page, .v5.sc { min-height: 100dvh; }
+/* Status card accent word follows the card's tone (a red error shouldn't end in green). */
+.v5 .sc-card:has(.sc-k.r) h1 em { color: var(--short); }
+.v5 .sc-card:has(.sc-k.a) h1 em { color: var(--amber); }

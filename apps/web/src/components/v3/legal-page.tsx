@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import '@/styles/app-v3.css';
+import '@/styles/app-v5-auto.css';
+import '@/styles/app-v5.css';
 
 export interface LegalSection { id: string; title: string; body: ReactNode }
 
@@ -11,7 +13,7 @@ export default function LegalPage({ kicker, title, accent, updated, intro, secti
   sections: LegalSection[]; other: { href: string; label: string };
 }) {
   return (
-    <div className="v3 lg-page">
+    <div className="v3 v5 lg-page">
       <header className="lg-top">
         <Link href="/" className="au-wm sm" style={{ display: 'block' }}>TRADE<span>logs</span></Link>
         <nav><Link href={other.href}>{other.label}</Link><Link href="/login" className="lg-cta">Sign in</Link></nav>
