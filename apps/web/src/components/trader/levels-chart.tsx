@@ -36,19 +36,19 @@ export default function LevelsChart({ a }: { a: TraderAnalysis }) {
   return (
     <div className="lv" role="img" aria-label={`${a.symbol} ${tf} candles with entry, stop and targets`}>
       <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
-        {[0.25, 0.5, 0.75].map(f => <line key={f} x1={0} x2={W - PR} y1={H * f} y2={H * f} stroke="#EDECF0" vectorEffect="non-scaling-stroke" />)}
-        <rect x={0} y={y(Math.max(a.entryLow, a.entryHigh))} width={W - PR} height={Math.max(2, Math.abs(y(a.entryLow) - y(a.entryHigh)))} fill="#EEEAFF" opacity={0.8} />
+        {[0.25, 0.5, 0.75].map(f => <line key={f} x1={0} x2={W - PR} y1={H * f} y2={H * f} stroke="#1A1A1A" vectorEffect="non-scaling-stroke" />)}
+        <rect x={0} y={y(Math.max(a.entryLow, a.entryHigh))} width={W - PR} height={Math.max(2, Math.abs(y(a.entryLow) - y(a.entryHigh)))} fill="rgba(8,196,101,.12)" opacity={1} />
         {candles.map((c, i) => {
-          const up = c.close >= c.open, col = up ? '#19C37D' : '#F4435E', x = slot * i + slot / 2;
+          const up = c.close >= c.open, col = up ? '#08C465' : '#FE3A31', x = slot * i + slot / 2;
           const t = y(Math.max(c.open, c.close)), b = y(Math.min(c.open, c.close));
           return <g key={i} className="tc-c" style={{ animationDelay: `${Math.min(i * 5, 400)}ms` }}>
             <line x1={x} x2={x} y1={y(c.high)} y2={y(c.low)} stroke={col} strokeWidth={1.3} vectorEffect="non-scaling-stroke" />
             <rect x={x - cw / 2} y={t} width={cw} height={Math.max(b - t, 1.2)} rx={1} fill={col} />
           </g>;
         })}
-        {line(a.stop, '#F4435E')}
-        {line(a.t1, '#19C37D')}
-        {line(a.t2, '#19C37D', '2 5')}
+        {line(a.stop, '#FE3A31')}
+        {line(a.t1, '#08C465')}
+        {line(a.t2, '#08C465', '2 5')}
       </svg>
       {tag(a.stop, 'Stop', 'r')}
       {tag((a.entryLow + a.entryHigh) / 2, 'Entry', 'v')}

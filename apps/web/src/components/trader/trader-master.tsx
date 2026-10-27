@@ -87,6 +87,7 @@ export default function TraderMaster({
       setError('Enter a symbol first.');
       return;
     }
+    setShowResults(false);
     const order: TraderTimeframe[] = ['15m', '1h', '4h', '1d'];
     const tfs = order.filter((t) => timeframes.includes(t));
     setError('');
@@ -115,7 +116,7 @@ export default function TraderMaster({
             onKeyDown={e => { if (e.key === 'Enter') void runAnalyze(); if (e.key === 'Escape') setShowResults(false); }}
             placeholder="Search a symbol — XAUUSD, BTCUSDT, EURUSD…" data-testid="trader-symbol-input" autoComplete="off" spellCheck={false} aria-label="Symbol" />
           {picked && !focused && query === picked.symbol && <span className="sx-pick" aria-hidden><b>{picked.symbol}</b> {picked.name} · {CLASS[picked.assetClass] ?? picked.assetClass}</span>}
-          {showResults && results.length > 0 && (
+          {showResults && focused && results.length > 0 && (
             <div className="ch-pop ch-results" role="listbox" data-testid="trader-search-results" style={{ width: '100%' }}>
               {results.map(s => (
                 <button key={`${s.provider}:${s.symbol}`} type="button" role="option" aria-selected={false} onMouseDown={e => e.preventDefault()} onClick={() => pick(s)}>
@@ -130,7 +131,7 @@ export default function TraderMaster({
             <button key={tf} type="button" onClick={() => toggleTf(tf)} aria-pressed={timeframes.includes(tf)} data-testid={`trader-tf-${tf}`}>{tf}</button>
           ))}
         </div>
-        <button type="button" onClick={() => void runAnalyze()} disabled={analyzing} className="mk-brief-btn sx-go" data-testid="trader-analyze">
+        <button type="button" onClick={() => void runAnalyze()} disabled={analyzing || !(symbol || query).trim()} title={!(symbol || query).trim() ? 'Pick a symbol first' : undefined} className="mk-brief-btn sx-go" data-testid="trader-analyze">
           {analyzing ? <><Loader size={16} className="!gap-0" /> Analysing</> : <>⚡ Analyze</>}
         </button>
       </div>

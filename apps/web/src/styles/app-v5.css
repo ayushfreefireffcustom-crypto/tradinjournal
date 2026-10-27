@@ -594,3 +594,7 @@
 }
 .v5 .ma-price b.num, .v5 [data-testid='macro-asset-price'] .num { font-family: inherit; font-weight: 500; letter-spacing: -.045em; }
 .v5 .ma-big b.num { font-family: inherit; font-weight: 500; letter-spacing: -.045em; }
+
+/* ══ SignalX ══════════════════════════════════════════════════════════════ */
+.v5 .sx-kpis b.num, .v5 .sx-tr b.num, .v5 .sx-stats b.num { font-family: inherit; font-weight: 500; letter-spacing: -.035em; }
+.v5 .sx-split i { background: var(--long-fill); } .v5 .sx-split i.l { background: rgba(254, 58, 49, .7); }
