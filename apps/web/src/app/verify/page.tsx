@@ -122,7 +122,7 @@ function VerifyInner() {
           <button type="button" onClick={resend} disabled={cooldown > 0} data-testid="verify-resend">{cooldown > 0 ? `Resend in ${cooldown}s` : 'Resend code'}</button>
         </div>
         {error && <div className="au-err" data-testid="verify-error" role="alert" style={{ marginBottom: 14 }}>{error}</div>}
-        {resent && !error && <div className="au-err" style={{ marginBottom: 14, background: 'var(--long-soft)', borderColor: '#BFEBD5', color: 'var(--long)' }}>New code sent — check your inbox.</div>}
+        {resent && !error && <div className="au-err" style={{ marginBottom: 14, background: 'var(--long-soft)', borderColor: 'rgba(8,196,101,.3)', color: 'var(--long)' }}>New code sent — check your inbox.</div>}
         <AuthSubmit loading={loading} disabled={code.length !== OTP_LEN} testId="verify-submit">{loading ? 'Verifying…' : 'Verify email'}</AuthSubmit>
         <p className="au-note">Wrong address? <Link href="/signup" data-testid="verify-to-login">Change email</Link></p>
       </form>

@@ -4,8 +4,10 @@
 // the form on paper on the right, with a top-right switch link and a quiet
 // footer. Collapses to the form column alone on small screens.
 import Link from 'next/link';
-import { type ReactNode, useRef } from 'react';
+import { type ReactNode, useEffect, useRef } from 'react';
 import '@/styles/app-v3.css';
+import '@/styles/app-v5-auto.css';
+import '@/styles/app-v5.css';
 
 type Variant = 'signin' | 'signup' | 'verify' | 'forgot';
 
@@ -46,8 +48,10 @@ const STEPS = [
 export default function AuthShell({ variant, top, children, testId }: { variant: Variant; top?: ReactNode; children: ReactNode; testId?: string }) {
   const c = COPY[variant];
   const asideRef = useRef<HTMLElement>(null);
+  // Portals (toasts, dialogs) sit outside the shell, so the theme rides on <body> too.
+  useEffect(() => { document.body.classList.add('v5'); return () => document.body.classList.remove('v5'); }, []);
   return (
-    <div className="v3 au" data-testid={testId}>
+    <div className="v3 v5 au" data-testid={testId}>
       <aside className="au-side" ref={asideRef}
         onPointerMove={e => { const r = asideRef.current?.getBoundingClientRect(); if (r) asideRef.current!.style.setProperty('--mx', `${((e.clientX - r.left) / r.width) * 100}%`), asideRef.current!.style.setProperty('--my', `${((e.clientY - r.top) / r.height) * 100}%`); }}>
         <Link href="/" className="au-wm">TRADE<span>logs</span></Link>
@@ -74,7 +78,7 @@ export default function AuthShell({ variant, top, children, testId }: { variant:
   );
 }
 
-/** Pill submit: violet, label left, white circle arrow right. */
+/** Pill submit: label left, white circle arrow right. */
 export function AuthSubmit({ children, loading, disabled, testId }: { children: ReactNode; loading?: boolean; disabled?: boolean; testId?: string }) {
   return (
     <button type="submit" disabled={disabled || loading} className="au-submit" data-testid={testId} aria-busy={loading}>

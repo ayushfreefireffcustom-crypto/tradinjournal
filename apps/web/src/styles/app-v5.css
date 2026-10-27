@@ -704,3 +704,28 @@
 }
 .v5 .pt-funnel li b.zero, .v5 .pt-funnel li:last-child b.zero { color: var(--muted); }
 .v5 .pt-trend-empty { min-height: 236px; display: grid; place-content: center; }
+
+/* ===== Auth (login / signup / verify / forgot) ===== */
+.v5 .au-side::before { background-image: radial-gradient(rgba(255,255,255,.07) 1px, transparent 1.3px); }
+.v5 .au-side::after { background: radial-gradient(closest-side, rgba(8,196,101,.16), transparent); }
+/* Showcase card: a dark tile like the dashboard, not a slab of green. */
+.v5 .au-pnl { background: #0F0F0F; border: 1px solid #1E1E1E; box-shadow: 0 30px 60px -24px rgba(0,0,0,.9), inset 0 1px 0 rgba(255,255,255,.04); }
+.v5 .au-pnl span { color: var(--muted); }
+.v5 .au-pnl b { color: var(--long); }
+.v5 .au-pnl b small { color: var(--long); }
+.v5 .au-pnl svg path:not(.au-ln) { fill: rgba(8,196,101,.14); }
+.v5 .au-ln { stroke: var(--long); }
+.v5 .au-fix { background: #141414; border: 1px solid #262626; }
+.v5 .au-steps li.on { background: rgba(8,196,101,.07); border-color: rgba(8,196,101,.28); }
+/* Submit: green when ready; a quiet dark pill when it isn't. */
+.v5 .au-submit { background: var(--acc); color: var(--on-acc, #000); box-shadow: 0 18px 36px -18px rgba(8,196,101,.55); font-weight: 500; }
+.v5 .au-submit i { background: #000; color: #fff; }
+.v5 .au-submit:hover:not(:disabled) { background: #0BD873; }
+.v5 .au-submit:disabled { background: #1A1A1A; color: #6B6B6B; box-shadow: none; }
+.v5 .au-submit:disabled i { background: #262626; color: #6B6B6B; }
+.v5 .au-otp input { background: #0F0F0F; border-color: var(--line); color: var(--ink); }
+.v5 .au-otp.err input { border-color: rgba(254,58,49,.5); }
+.v5 .au-form { grid-template-columns: minmax(0, 1fr); }
+.v5 .au-submit[aria-busy="true"] { background: var(--acc); color: var(--on-acc, #000); opacity: .85; cursor: progress; }
+.v5 .au-submit[aria-busy="true"] i { background: #000; color: #fff; }
+.v5 .au-spin { border-color: rgba(255,255,255,.25); border-top-color: #fff; }
