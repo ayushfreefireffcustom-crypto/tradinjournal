@@ -347,10 +347,10 @@ function Vault() {
 }
 
 const SEC = [
-  { t: 'View-only access', s: 'We can’t open, modify or close a position.', i: <><circle cx="8" cy="8" r="2.4" stroke="currentColor" strokeWidth="1.5" /><path d="M1.5 8S4 3.5 8 3.5 14.5 8 14.5 8 12 12.5 8 12.5 1.5 8 1.5 8Z" stroke="currentColor" strokeWidth="1.5" /></> },
-  { t: 'Encrypted at rest', s: 'Broker passwords sealed with AES-256-GCM.', i: <><rect x="3" y="7" width="10" height="7" rx="2" stroke="currentColor" strokeWidth="1.5" /><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2" stroke="currentColor" strokeWidth="1.5" /></> },
-  { t: 'Disconnect anytime', s: 'Removing a broker deletes its synced data.', i: <path d="M3 4.5h10M6 4.5V3h4v1.5M4.5 4.5l.7 9h5.6l.7-9" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" /> },
-  { t: 'No withdrawals', s: 'The investor login has no access to funds.', i: <path d="M8 1.5v3M8 11.5v3M3.4 3.4l2.1 2.1M10.5 10.5l2.1 2.1M1.5 8h3M11.5 8h3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /> },
+  { t: 'View-only access', k: 'Investor login', s: 'We can’t open, modify or close a position.', i: <><circle cx="8" cy="8" r="2.4" stroke="currentColor" strokeWidth="1.5" /><path d="M1.5 8S4 3.5 8 3.5 14.5 8 14.5 8 12 12.5 8 12.5 1.5 8 1.5 8Z" stroke="currentColor" strokeWidth="1.5" /></> },
+  { t: 'Encrypted at rest', k: 'AES-256-GCM', s: 'Broker passwords sealed with AES-256-GCM.', i: <><rect x="3" y="7" width="10" height="7" rx="2" stroke="currentColor" strokeWidth="1.5" /><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2" stroke="currentColor" strokeWidth="1.5" /></> },
+  { t: 'Disconnect anytime', k: 'Data deleted', s: 'Removing a broker deletes its synced data.', i: <path d="M3 4.5h10M6 4.5V3h4v1.5M4.5 4.5l.7 9h5.6l.7-9" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" /> },
+  { t: 'No withdrawals', k: 'Zero fund access', s: 'The investor login has no access to funds.', i: <><rect x="1.75" y="4" width="12.5" height="9" rx="2" stroke="currentColor" strokeWidth="1.5" /><path d="M10.5 8.5h1.25" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /><path d="M2.5 14.5l11-13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></> },
 ];
 export function Security() {
   return (
@@ -362,7 +362,13 @@ export function Security() {
           <h2 className="l5-h2" id="sec-title">Read-only.<br /><span className="l5-s">By design.</span></h2>
           <p className="l5-lead">TRADElogs connects with MetaTrader’s investor password — the one that can look, but never touch.</p>
           <ul className="l5-sec-list">
-            {SEC.map(x => <li key={x.t}><i aria-hidden><svg viewBox="0 0 16 16" width="16" height="16" fill="none">{x.i}</svg></i><b>{x.t}</b><span>{x.s}</span></li>)}
+            {SEC.map((x, n) => (
+              <li key={x.t}>
+                <div className="l5-sec-top"><em className="l5-mono">0{n + 1}</em><small className="l5-mono">{x.k}</small></div>
+                <i aria-hidden><svg viewBox="0 0 16 16" width="18" height="18" fill="none">{x.i}</svg></i>
+                <b>{x.t}</b><span>{x.s}</span>
+              </li>
+            ))}
           </ul>
         </Reveal>
       </div>

@@ -14,22 +14,19 @@ type Variant = 'signin' | 'signup' | 'verify' | 'forgot';
 const LOCK = <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V8a4 4 0 018 0v3" /></svg>;
 const SHIELD = <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z" /></svg>;
 
+// The real dashboard (sample account), tilted and fading into the copy below.
 function Showcase({ variant }: { variant: Variant }) {
-  if (variant === 'signin') {
-    return (
-      <div className="au-demo" aria-hidden>
-        <div className="au-pnl">
-          <span>Net P&amp;L · sample account</span>
-          <b>+$265<small>.97</small></b>
-          <svg viewBox="0 0 400 120" preserveAspectRatio="none"><defs><linearGradient id="au-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#fff" stopOpacity=".35" /><stop offset="1" stopColor="#fff" stopOpacity="0" /></linearGradient></defs>
-            <path d="M0 96 L30 98 L60 104 L95 50 L125 36 L150 80 L175 88 L205 44 L235 56 L280 60 L330 61 L400 58 L400 120 L0 120Z" fill="url(#au-g)" />
-            <path className="au-ln" d="M0 96 L30 98 L60 104 L95 50 L125 36 L150 80 L175 88 L205 44 L235 56 L280 60 L330 61 L400 58" fill="none" stroke="#fff" strokeWidth="2.4" vectorEffect="non-scaling-stroke" /></svg>
-        </div>
-        <div className="au-fix"><span><i>!</i> One thing to fix this week</span><p>Close losing trades at your stop — don’t wait for them to come back.</p><small>From your weekly review</small></div>
+  return (
+    <div className={`au-shot ${variant === 'signup' ? 'is-short' : ''}`} aria-hidden>
+      <div className="au-frame">
+        <img src="/landing/dashboard-v5.jpg" alt="" width={2160} height={1350} decoding="async" fetchPriority="high" />
       </div>
-    );
-  }
-  return null;
+      <span className="au-tag">Sample account</span>
+      {variant === 'signin' && (
+        <div className="au-fix"><span><i>!</i> One thing to fix this week</span><p>Close losing trades at your stop — don’t wait for them to come back.</p><small>From your weekly review</small></div>
+      )}
+    </div>
+  );
 }
 
 const COPY: Record<Variant, { h: ReactNode; p?: string; foot: ReactNode }> = {
