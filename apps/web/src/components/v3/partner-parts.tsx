@@ -159,17 +159,17 @@ export function ChannelTable({ channels, right, withLinks = false, onArchive }: 
     <section className="v3-card a-flush pt-ch" data-testid="partner-channels">
       <div className="v3-ch"><h3>By channel<span> · all time</span></h3>{right}</div>
       <div className="v3-tbl-wrap">
-        <table className="v3-table">
+        <table className="v3-table pt-cht">
           <thead><tr><th>Channel</th>{withLinks && <th>Link</th>}<th className="r">Clicks</th><th className="r">Signups</th><th className="r">Click → signup</th><th className="r">MT5 connected</th><th className="r">Active</th>{onArchive && <th className="r"><span className="sr-only">Actions</span></th>}</tr></thead>
           <tbody>{channels.map(c => (
             <tr key={c.id} className="static">
               <td><div className="pt-chn"><b>{c.label}</b><span className="bar"><i style={{ width: `${(c.signups / best) * 100}%` }} /></span></div></td>
               {withLinks && <td><div className="pt-chlink"><code>{c.url.replace(/^https:\/\//, '')}</code><CopyButton text={c.url} label="Copy" className="v3-btn v3-btn--o pt-copy-sm" /></div></td>}
-              <td className="r num">{n(c.clicks)}</td>
-              <td className="r num" style={{ fontWeight: 700 }}>{n(c.signups)}</td>
-              <td className="r"><span className="v3-pill v num">{pct(c.converted, c.clicks)}</span></td>
-              <td className="r num">{n(c.connected)}</td>
-              <td className="r num lg">{n(c.active)}</td>
+              <td className="r num" data-l="Clicks">{n(c.clicks)}</td>
+              <td className="r num" data-l="Signups" style={{ fontWeight: 700 }}>{n(c.signups)}</td>
+              <td className="r" data-l="Convert"><span className="v3-pill v num">{pct(c.converted, c.clicks)}</span></td>
+              <td className="r num" data-l="MT5">{n(c.connected)}</td>
+              <td className={`r num ${c.active > 0 ? 'lg' : 'mute'}`} data-l="Active">{n(c.active)}</td>
               {onArchive && <td className="r">{c.slug ? <button type="button" className="pt-rowbtn" onClick={() => onArchive(c)}>Archive</button> : <span className="mute pt-default">Default</span>}</td>}
             </tr>
           ))}</tbody>

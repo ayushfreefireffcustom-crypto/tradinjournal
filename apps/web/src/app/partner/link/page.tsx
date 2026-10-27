@@ -87,7 +87,7 @@ export default function PartnerLinkPage() {
                     <div className="pt-lk-stats">
                       <div><span>Clicks</span><b className="num">{n(clicks)}</b></div>
                       <div><span>Signups</span><b className="num">{n(signups)}</b></div>
-                      <div><span>Click → signup</span><b className="num">{pct(converted, clicks)}</b></div>
+                      <div><span>Conversion</span><b className="num">{pct(converted, clicks)}</b></div>
                     </div>
                   </div>
                   <Qr url={d.baseUrl} id="pt-qr-main" size={148} />
@@ -149,7 +149,7 @@ export default function PartnerLinkPage() {
               <div className="v3-ch"><h3>Recent clicks</h3></div>
               {d.recentClicks.length === 0 ? <div className="d-empty"><b>No clicks yet</b>Share your link — each click shows up here.</div> : (
                 <div className="v3-tbl-wrap">
-                  <table className="v3-table">
+                  <table className="v3-table pt-clicks">
                     <thead><tr><th>When</th><th>Channel</th><th>Device</th><th>Country</th><th className="r">Result</th></tr></thead>
                     <tbody>{d.recentClicks.map(c => (
                       <tr key={c.id} className="static">
