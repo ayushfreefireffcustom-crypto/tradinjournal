@@ -218,6 +218,11 @@ const envSchema = z.object({
   SYNC_FIRST_WAIT_MS: z.coerce.number().int().min(1000).default(90_000),
 
   // ── Partner programme (referral tracking) ─────────────────────────────────
+  /** Master switch. Off: no partner/referral routes, no attribution, no stats job. */
+  PARTNER_PROGRAM_ENABLED: z
+    .string()
+    .default('false')
+    .transform(v => v.toLowerCase() === 'true' || v === '1'),
   /** How long a referral-link click is remembered in the visitor's browser. */
   PARTNER_COOKIE_DAYS: z.coerce.number().int().min(1).max(365).default(30),
   /** Active tracked channel links per partner. */

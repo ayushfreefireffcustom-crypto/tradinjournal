@@ -4,7 +4,7 @@
 #
 #   1. Start the API against the test DB with the env overrides in the Claude launch
 #      config "api-partner-test" (local DB, no email, scheduler off, ADMIN_EMAILS=
-#      admin@partners.test, INTERNAL_API_TOKEN=partner-test-internal-token,
+#      admin@partners.test, PARTNER_PROGRAM_ENABLED=true, INTERNAL_API_TOKEN=partner-test-internal-token,
 #      APP_URL=http://localhost:3020).
 #   2. ./run.sh            (extra args are passed to `postman collection run`)
 set -euo pipefail

@@ -81,7 +81,7 @@ export function startInProcessScheduler(): void {
   // Trade sync: keep every account's stored deals at most SYNC_BACKGROUND_MIN old.
   every(5 * MIN, 'trade-sync', () => queueDueSyncs());
   // Partner dashboards: refresh referred clients' activity snapshots in small batches.
-  every(15 * MIN, 'partner-stats', () => refreshReferralStats({ limit: 25 }));
+  if (env.PARTNER_PROGRAM_ENABLED) every(15 * MIN, 'partner-stats', () => refreshReferralStats({ limit: 25 }));
 
   // Warm the data shortly after boot so it's fresh without waiting a full interval.
   soon(4_000, dispatchReminders);

@@ -5,6 +5,7 @@ import { ArrowRight, CheckIcon, Reveal, StartButton, Wordmark, useCountUp, useIn
 import { CandleField, OrbCanvas } from './effects';
 import { candles, ENTRY_INDEX, EXIT_INDEX, HEAT_DAYS, heat, heatColor, heatDollars, REPLAY_H, REPLAY_W, tilt, traits } from './data';
 import Logo from '@/components/logo';
+import { PARTNERS_ENABLED } from '@/lib/features';
 
 const v = (i: number) => ({ '--i': i } as CSSProperties);
 const Tick = () => <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden><path d="m2.5 6.2 2.2 2.2 4.8-5" stroke="currentColor" strokeWidth="1.7" fill="none" strokeLinecap="round" /></svg>;
@@ -479,7 +480,7 @@ export function Footer() {
           <div><Wordmark /><p>The trading journal that reads your MT5 history and tells you what to fix.</p></div>
           <nav aria-label="Product"><h3>Product</h3><ul><li><a href="#product">Features</a></li><li><a href="#behaviour">Behaviour engine</a></li><li><a href="#review">Weekly review</a></li><li><a href="#how">How it works</a></li></ul></nav>
           <nav aria-label="App"><h3>App</h3><ul><li><a href="/dashboard">Dashboard</a></li><li><a href="/trader">SignalX</a></li><li><a href="/coach">AI coach</a></li><li><a href="/markets">Markets</a></li></ul></nav>
-          <nav aria-label="Account"><h3>Account</h3><ul><li><a href="/signup">Create account</a></li><li><a href="/login">Sign in</a></li><li><a href="/partner">Become a partner</a></li><li><a href="/terms">Terms</a></li><li><a href="/privacy">Privacy</a></li></ul></nav>
+          <nav aria-label="Account"><h3>Account</h3><ul><li><a href="/signup">Create account</a></li><li><a href="/login">Sign in</a></li>{PARTNERS_ENABLED && <li><a href="/partner">Become a partner</a></li>}<li><a href="/terms">Terms</a></li><li><a href="/privacy">Privacy</a></li></ul></nav>
         </div>
         <div className="l5-huge" aria-hidden><Logo height={400} title="" /></div>
         <div className="l5-legal">

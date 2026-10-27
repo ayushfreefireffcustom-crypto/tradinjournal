@@ -9,6 +9,7 @@ import { authClient } from '@/lib/auth-client';
 import { useRedirectIfAuthed } from '@/lib/use-redirect-if-authed';
 import { COUNTRIES } from '@/lib/countries';
 import { partnerApi } from '@/lib/partner-api';
+import { PARTNERS_ENABLED } from '@/lib/features';
 
 function passwordStrength(pw: string): { score: number; label: string; color: string } {
   let score = 0;
@@ -43,7 +44,7 @@ export default function SignupPage() {
 
   useEffect(() => {
     const ref = new URLSearchParams(window.location.search).get('ref');
-    if (ref && /^[A-Za-z0-9_-]{3,20}$/.test(ref)) { setRefCode(ref.toUpperCase()); setRefOpen(true); }
+    if (PARTNERS_ENABLED && ref && /^[A-Za-z0-9_-]{3,20}$/.test(ref)) { setRefCode(ref.toUpperCase()); setRefOpen(true); }
   }, []);
   useEffect(() => {
     const code = refCode.trim();
@@ -132,22 +133,24 @@ export default function SignupPage() {
             <label><span className="au-lbl">City</span><span className="au-in"><input type="text" required value={city} onChange={e => setCity(e.target.value)} data-testid="signup-city" placeholder="e.g. Raipur" autoComplete="address-level2" /></span></label>
             <label><span className="au-lbl">Postal / ZIP / PIN</span><span className="au-in"><input type="text" required value={postalCode} onChange={e => setPostalCode(e.target.value)} data-testid="signup-postal" placeholder="e.g. 492001" autoComplete="postal-code" /></span></label>
           </div>
-          <div className="au-ref" data-testid="signup-referral">
-            {!refOpen ? (
-              <button type="button" className="au-ref-toggle" onClick={() => setRefOpen(true)}>Have a referral code?</button>
-            ) : <>
-              <label className="au-lbl" htmlFor="su-ref">Referral code <span className="au-lbl-opt">optional</span></label>
-              <span className={`au-in ${refValid ? 'ok' : ''}`}>
-                <input id="su-ref" type="text" value={refCode} maxLength={20} onChange={e => setRefCode(e.target.value.replace(/[^A-Za-z0-9_-]/g, '').toUpperCase())} placeholder="e.g. ROHANFX" autoComplete="off" data-testid="signup-ref" />{ok(refValid)}
-              </span>
-              {refValid && refCheck?.partnerName && (
-                <p className="au-ref-note" data-testid="signup-ref-ok"><b>Referred by {refCheck.partnerName}.</b> They&rsquo;ll see your name, city and how actively you trade — never your email, balance or trades.</p>
-              )}
-              {refCheck && refCheck.code === refCode.trim() && !refCheck.valid && (
-                <p className="au-ref-note bad" data-testid="signup-ref-bad">We don&rsquo;t recognise that code. You can still sign up — it just won&rsquo;t be linked to anyone.</p>
-              )}
-            </>}
-          </div>
+          {PARTNERS_ENABLED && (
+            <div className="au-ref" data-testid="signup-referral">
+              {!refOpen ? (
+                <button type="button" className="au-ref-toggle" onClick={() => setRefOpen(true)}>Have a referral code?</button>
+              ) : <>
+                <label className="au-lbl" htmlFor="su-ref">Referral code <span className="au-lbl-opt">optional</span></label>
+                <span className={`au-in ${refValid ? 'ok' : ''}`}>
+                  <input id="su-ref" type="text" value={refCode} maxLength={20} onChange={e => setRefCode(e.target.value.replace(/[^A-Za-z0-9_-]/g, '').toUpperCase())} placeholder="e.g. ROHANFX" autoComplete="off" data-testid="signup-ref" />{ok(refValid)}
+                </span>
+                {refValid && refCheck?.partnerName && (
+                  <p className="au-ref-note" data-testid="signup-ref-ok"><b>Referred by {refCheck.partnerName}.</b> They&rsquo;ll see your name, city and how actively you trade — never your email, balance or trades.</p>
+                )}
+                {refCheck && refCheck.code === refCode.trim() && !refCheck.valid && (
+                  <p className="au-ref-note bad" data-testid="signup-ref-bad">We don&rsquo;t recognise that code. You can still sign up — it just won&rsquo;t be linked to anyone.</p>
+                )}
+              </>}
+            </div>
+          )}
           <label className="au-check">
             <input type="checkbox" checked={agree} onChange={e => setAgree(e.target.checked)} data-testid="agree-toggle" />
             <span className="box"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg></span>

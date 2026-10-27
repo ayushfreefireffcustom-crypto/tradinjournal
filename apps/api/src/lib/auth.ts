@@ -37,7 +37,7 @@ export const auth = betterAuth({
         after: async (user, ctx) => {
           // Lock the referral now — a typed code beats an earlier link click
           // (tl_ref cookie, sent along on both email signup and the OAuth callback).
-          await attributeNewUser(
+          if (env.PARTNER_PROGRAM_ENABLED) await attributeNewUser(
             { id: user.id, referralCode: (user as { referralCode?: string | null }).referralCode ?? null },
             ctx?.headers?.get('cookie') ?? ctx?.request?.headers.get('cookie') ?? null,
           );

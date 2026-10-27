@@ -29,7 +29,10 @@ const config: NextConfig = {
       // Partner referral links (tradelogs.com/r/CODE) are answered by the API, which
       // records the click and sets the first-party tl_ref cookie on this origin.
       // beforeFiles so it wins over the mock-mode fallback page at app/r/[code].
-      beforeFiles: [{ source: '/r/:code', destination: `${apiOrigin}/api/r/:code` }],
+      // Only while the partner programme is on; otherwise app/r/[code] sends them home.
+      beforeFiles: process.env.NEXT_PUBLIC_PARTNER_PROGRAM === 'true'
+        ? [{ source: '/r/:code', destination: `${apiOrigin}/api/r/:code` }]
+        : [],
       afterFiles: [{ source: '/api/:path*', destination: `${apiOrigin}/api/:path*` }],
       fallback: [],
     };

@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import '@/components/landing-v5/landing.css';
 import Nav, { Announcement } from '@/components/landing-v5/nav';
 import Hero from '@/components/landing-v5/hero';
+import { PARTNERS_ENABLED } from '@/lib/features';
 import { Ai, Behaviour, Core, Cta, Facts, Faq, Footer, Partners, Review, Security, Steps } from '@/components/landing-v5/sections';
 
 export const metadata: Metadata = {
@@ -36,7 +37,7 @@ export default function LandingPage() {
         <Review />
         <Security />
         <Steps />
-        <Partners />
+        {PARTNERS_ENABLED && <Partners />}
         <Faq />
         <Cta />
       </main>

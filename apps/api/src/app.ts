@@ -92,9 +92,12 @@ export function createApp(): Express {
   });
 
   // Partner programme: public referral link + code check, partner portal, admin.
-  app.use('/api', referralPublicRouter);
-  app.use('/api/partner', partnerRouter);
-  app.use('/api/admin', adminPartnersRouter);
+  // Switched off by PARTNER_PROGRAM_ENABLED — the routes then don't exist (404).
+  if (env.PARTNER_PROGRAM_ENABLED) {
+    app.use('/api', referralPublicRouter);
+    app.use('/api/partner', partnerRouter);
+    app.use('/api/admin', adminPartnersRouter);
+  }
   app.use('/api/access', accessRouter);
   app.use('/api/admin', adminRouter);
   app.use('/api/usage', usageRouter);
@@ -122,7 +125,7 @@ export function createApp(): Express {
   app.use('/internal/alerts', alertsInternalRouter);
   app.use('/internal/macro', macroInternalRouter);
   app.use('/internal/trader', traderInternalRouter);
-  app.use('/internal/partners', partnersInternalRouter);
+  if (env.PARTNER_PROGRAM_ENABLED) app.use('/internal/partners', partnersInternalRouter);
   app.use('/internal/sync', syncInternalRouter);
 
   app.use((_req: Request, res: Response) => {

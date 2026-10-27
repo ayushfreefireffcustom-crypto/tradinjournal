@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { ArrowRight, StartButton, Wordmark, useSignedIn } from './ui';
+import { PARTNERS_ENABLED } from '@/lib/features';
 
 export const NAV_LINKS = [
   { href: '#product', label: 'Product' },
@@ -100,7 +101,7 @@ export default function Nav() {
         {NAV_LINKS.map(l => (
           <a key={l.href} href={l.href} className="l5-sheet-link" onClick={() => setOpen(false)}>{l.label} <ArrowRight /></a>
         ))}
-        <a href="#partners" className="l5-sheet-link" onClick={() => setOpen(false)}>Partners <ArrowRight /></a>
+        {PARTNERS_ENABLED && <a href="#partners" className="l5-sheet-link" onClick={() => setOpen(false)}>Partners <ArrowRight /></a>}
         <div className="l5-sheet-ctas">
           <StartButton />
           {!signedIn && <a href="/login" className="l5-btn l5-btn--beam">Sign in</a>}

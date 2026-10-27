@@ -8,6 +8,7 @@ import { authClient } from '@/lib/auth-client';
 import NotificationBell from '@/components/notification-bell';
 import { LoadingScreen } from '@/components/loader';
 import { usePlatformAccess } from '@/lib/use-platform-access';
+import { PARTNERS_ENABLED } from '@/lib/features';
 import { UsageTracker } from '@/components/usage-tracker';
 import LocationGate from '@/components/location-gate';
 import {
@@ -65,7 +66,7 @@ const PARTNER: NavItem[] = [
 ];
 const ADMIN: NavItem[] = [
   { href: '/admin', label: 'Admin', icon: IAdmin },
-  { href: '/admin/partners', label: 'Partners', icon: IPartner },
+  ...(PARTNERS_ENABLED ? [{ href: '/admin/partners', label: 'Partners', icon: IPartner }] : []),
 ];
 const FOOT: NavItem[] = [
   { href: '/brokers', label: 'Brokers', icon: IBrokers },
@@ -73,7 +74,7 @@ const FOOT: NavItem[] = [
 ];
 const ALL: (NavItem & { group: string })[] = [
   ...GROUPS.flatMap(g => g.items.map(i => ({ ...i, group: g.title }))),
-  ...PARTNER.map(i => ({ ...i, group: 'Partner' })),
+  ...(PARTNERS_ENABLED ? PARTNER : []).map(i => ({ ...i, group: 'Partner' })),
   ...ADMIN.map(i => ({ ...i, group: 'Admin' })),
   ...FOOT.map(i => ({ ...i, group: 'Account' })),
 ];
@@ -207,7 +208,7 @@ export default function AppShell({
               {g.items.map(i => <NavLink key={i.href} item={i} active={current?.href === i.href} />)}
             </div>
           ))}
-          {accessStatus?.partnerStatus === 'ACTIVE' && (
+          {PARTNERS_ENABLED && accessStatus?.partnerStatus === 'ACTIVE' && (
             <div className="v3-grp">
               <small>Partner</small>
               {PARTNER.map(i => <NavLink key={i.href} item={i} active={current?.href === i.href} />)}
