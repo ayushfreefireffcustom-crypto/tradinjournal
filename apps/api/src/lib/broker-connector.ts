@@ -1,4 +1,5 @@
 import { env } from '@tradinjournal/config';
+import { logger } from '@tradinjournal/logger';
 import type { Deal, MarginMode, VerifyResult } from '@tradinjournal/types';
 import { BrokerAuthError, BrokerConnectionError } from '../http/errors.js';
 
@@ -92,6 +93,9 @@ async function bridgePostOnce<T>(path: string, body: object, timeoutMs: number):
     }
 
     // Any other bridge failure (offline, timeout, 5xx) is an upstream problem.
+    // Keep the bridge's own reason in the logs — the user-facing message hides it.
+    // (It can name the MT5 login, never the password.)
+    logger.warn('[bridge] request failed', { path, status: res.status, reason: text.slice(0, 300) });
     throw new BrokerConnectionError(`Broker bridge is unavailable right now. Please try again in a moment.`);
   }
 
