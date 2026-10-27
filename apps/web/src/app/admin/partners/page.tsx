@@ -120,12 +120,12 @@ export default function AdminPartnersPage() {
                       <td><div className="pt-who"><Avatar name={r.name} /><span><b>{r.name}</b><small>{r.audience ?? r.email}</small></span></div></td>
                       <td>{r.code ? <code className="pt-c">{r.code}</code> : <span className="mute">—</span>}</td>
                       <td><PartnerStatusPill s={r.status} /></td>
-                      <td className="r num">{n(r.clicks30d)}</td>
-                      <td className="r num">{n(r.signups30d)}</td>
-                      <td className="r"><span className="v3-pill v num">{pct(r.converted30d, r.clicks30d)}</span></td>
-                      <td className="r num">{n(r.clients)}</td>
-                      <td className="r num">{n(r.connected)}</td>
-                      <td className="r num lg" style={{ fontWeight: 700 }}>{n(r.active)}</td>
+                      <td className="r num" data-l="Clicks 30d">{n(r.clicks30d)}</td>
+                      <td className="r num" data-l="Signups 30d">{n(r.signups30d)}</td>
+                      <td className="r" data-l="Conv."><span className="v3-pill v num">{pct(r.converted30d, r.clicks30d)}</span></td>
+                      <td className="r num" data-l="Clients">{n(r.clients)}</td>
+                      <td className="r num" data-l="MT5">{n(r.connected)}</td>
+                      <td className={`r num ${r.active > 0 ? 'lg' : 'mute'}`} data-l="Active" style={{ fontWeight: 700 }}>{n(r.active)}</td>
                     </tr>
                   ))}</tbody>
                 </table>

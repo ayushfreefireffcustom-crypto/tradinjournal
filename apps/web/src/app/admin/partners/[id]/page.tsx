@@ -106,7 +106,7 @@ export default function AdminPartnerPage({ params }: { params: Promise<{ id: str
           <Funnel f={d.funnel} rule={d.partner.activeRule} title="Funnel" />
           <div className="pt-g3">
             <TrendCard daily={d.daily} />
-            <ActivityFeed events={d.activity} limit={7} />
+            <ActivityFeed events={d.activity} limit={7} empty="Signups and MT5 connections from this partner show up here." />
           </div>
           <ChannelTable channels={d.channels} withLinks />
 

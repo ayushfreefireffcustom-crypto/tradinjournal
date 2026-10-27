@@ -65,8 +65,8 @@ export function Funnel({ f, rule, title = 'Your funnel' }: { f: PartnerFunnel; r
     { l: 'Link clicks', v: f.clicks, sub: <>Times the link was opened</>, conv: null },
     { l: 'Signed up', v: f.signups, sub: f.clicks ? <>{pct(f.converted, f.clicks)} of clicks convert</> : <>No link clicks yet</>, conv: f.clicks ? f.converted / f.clicks : 0,
       hint: 'Signups include people who typed your code. The % counts only clicks that led to a signup.' },
-    { l: 'MT5 connected', v: f.connected, sub: <>{pct(f.connected, f.signups)} of signups</>, conv: f.signups ? f.connected / f.signups : 0 },
-    { l: 'Active traders', v: f.active, sub: <>{pct(f.active, f.connected)} of connected</>, conv: f.connected ? f.active / f.connected : 0,
+    { l: 'MT5 connected', v: f.connected, sub: f.signups ? <>{pct(f.connected, f.signups)} of signups</> : <>No signups yet</>, conv: f.signups ? f.connected / f.signups : 0 },
+    { l: 'Active traders', v: f.active, sub: f.connected ? <>{pct(f.active, f.connected)} of connected</> : <>None connected yet</>, conv: f.connected ? f.active / f.connected : 0,
       hint: `Active = ${rule.minTrades}+ closed trades in the last ${rule.windowDays} days, counted from their synced MT5 history.` },
   ];
   return (
@@ -76,7 +76,7 @@ export function Funnel({ f, rule, title = 'Your funnel' }: { f: PartnerFunnel; r
         {steps.map((s, i) => (
           <li key={s.l} style={{ animationDelay: `${i * 60}ms` }}>
             <span className="l">{s.l}{s.hint && <abbr title={s.hint} aria-label={s.hint}>?</abbr>}</span>
-            <b className="num">{n(s.v)}</b>
+            <b className={`num${s.v === 0 ? ' zero' : ''}`}>{n(s.v)}</b>
             <span className="s">{s.sub}</span>
             <span className="m"><i style={{ width: `${s.conv == null ? 100 : Math.max(s.conv * 100, s.v ? 2 : 0)}%`, animationDelay: `${120 + i * 80}ms` }} /></span>
           </li>
@@ -103,8 +103,10 @@ export function TrendCard({ daily }: { daily: PartnerDailyPoint[] }) {
           ))}
         </div>
       </div>
-      <div className="pt-trend-body"><AreaLine pts={pts} fmt={fmt} height={236} labelFor={label} /></div>
-      {daily.length > 1 && <div className="pt-axis"><span>{label(0)}</span><span>{label(Math.floor((daily.length - 1) / 2))}</span><span>{label(daily.length - 1)}</span></div>}
+      {pts.some(v => v > 0)
+        ? <div className="pt-trend-body"><AreaLine pts={pts} fmt={fmt} height={236} labelFor={label} /></div>
+        : <div className="d-empty pt-trend-empty"><b>No {m === 'clicks' ? 'clicks' : m === 'signups' ? 'clients' : 'active traders'} in this range</b>The line starts once the first one lands.</div>}
+      {daily.length > 1 && pts.some(v => v > 0) && <div className="pt-axis"><span>{label(0)}</span><span>{label(Math.floor((daily.length - 1) / 2))}</span><span>{label(daily.length - 1)}</span></div>}
     </section>
   );
 }
@@ -183,12 +185,12 @@ export function ChannelTable({ channels, right, withLinks = false, onArchive }: 
 const EV: Record<PartnerEvent['kind'], { t: string; c: string }> = {
   signup: { t: 'signed up', c: 'n' }, connected: { t: 'connected MT5', c: 'v' }, active: { t: 'became an active trader', c: 'g' }, inactive: { t: 'went inactive', c: 'a' },
 };
-export function ActivityFeed({ events, limit = 8 }: { events: PartnerEvent[]; limit?: number }) {
+export function ActivityFeed({ events, limit = 8, empty = 'Share your link — signups and MT5 connections show up here.' }: { events: PartnerEvent[]; limit?: number; empty?: string }) {
   const list = events.filter(e => new Date(e.at).getTime() <= Date.now()).slice(0, limit);
   return (
     <section className="v3-card pt-feed" data-testid="partner-activity">
       <div className="v3-ch"><h3>Recent activity</h3></div>
-      {list.length === 0 ? <div className="d-empty"><b>Nothing yet</b>Share your link — signups and MT5 connections show up here.</div> : (
+      {list.length === 0 ? <div className="d-empty"><b>Nothing yet</b>{empty}</div> : (
         <ul>
           {list.map((e, i) => (
             <li key={e.id} style={{ animationDelay: `${i * 40}ms` }}>
