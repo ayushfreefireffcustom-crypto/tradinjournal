@@ -78,7 +78,7 @@ export default function IndicatorGroups({ macro }: { macro: MacroState['macro'] 
   }
   const groups = groupIndicators(macro);
   return (
-    <div className="columns-1 md:columns-2 xl:columns-3 gap-3" data-testid="macro-indicator-groups">
+    <div className="gap-3" style={{ columns: "330px" }} data-testid="macro-indicator-groups">
       {groups.map(g => (
         <div key={g.group} className="break-inside-avoid mb-3"><Panel g={g} /></div>
       ))}
