@@ -52,7 +52,7 @@ export default function MarketTiles({
             <div className="flex items-center justify-between">
               <div className="min-w-0">
                 <div className="text-[11px] tracking-[0.16em] text-fg font-medium">{m.symbol}</div>
-                <div className="text-[10px] text-fg-3 truncate">{NAMES[m.symbol] ?? m.symbol}</div>
+                <div className="text-[10px] text-fg-3 leading-tight">{NAMES[m.symbol] ?? m.symbol}</div>
               </div>
               {b && (
                 <span className={`text-[9px] px-1.5 py-0.5 rounded border shrink-0 ${chip(tone)}`}>
