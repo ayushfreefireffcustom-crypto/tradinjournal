@@ -6,9 +6,9 @@ import 'leaflet/dist/leaflet.css';
 import { adminApi, type AdminGeoDto } from '@/lib/admin-api';
 import { countryName } from '@/lib/countries';
 
-/** Dark Carto basemap — matches app theme better than default OSM. */
-const TILE_URL = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
-const TILE_ATTR = '&copy; OpenStreetMap &copy; CARTO';
+/** Esri dark-gray canvas: keyless (Carto's dark_all now serves "API key required" tiles). */
+const TILE_URL = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}';
+const TILE_ATTR = 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ';
 
 export function AdminGeoMap() {
   const mapEl = useRef<HTMLDivElement>(null);
@@ -42,7 +42,7 @@ export function AdminGeoMap() {
     });
     mapRef.current = map;
 
-    L.tileLayer(TILE_URL, { attribution: TILE_ATTR, maxZoom: 18 }).addTo(map);
+    L.tileLayer(TILE_URL, { attribution: TILE_ATTR, maxZoom: 16 }).addTo(map);
 
     const maxCount = Math.max(...geo.points.map(p => p.userCount), 1);
     const bounds: L.LatLngTuple[] = [];

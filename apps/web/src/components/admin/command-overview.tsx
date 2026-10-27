@@ -67,13 +67,13 @@ function EngagementChart({ data }: { data: AdminEngagementDto | null }) {
         <div className="text-[10px] tracking-[0.2em] text-fg-3 uppercase">DAU · {data.range}</div>
         <div className="text-[10px] text-fg-3 numeric">avg min overlay</div>
       </div>
-      <div className="flex items-end gap-1 h-32">
+      <div className="flex items-end gap-1">
         {data.days.map(d => {
           const h = Math.max(4, (d.dau / maxDau) * 100);
           const day = new Date(d.date + 'T12:00:00').toLocaleDateString(undefined, { day: 'numeric' });
           return (
             <div key={d.date} className="flex-1 flex flex-col items-center gap-1 min-w-0 group relative">
-              <div className="w-full flex items-end flex-1 min-h-0">
+              <div className="w-full flex items-end h-28">
                 <div
                   className="w-full rounded-sm bg-profit/70 hover:bg-profit transition-colors"
                   style={{ height: `${h}%` }}

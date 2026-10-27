@@ -196,9 +196,10 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
     headers: { 'Content-Type': 'application/json', ...init?.headers },
     ...init,
   });
-  const json = await res.json();
-  if (!res.ok) {
-    const err = new Error(json?.error?.message ?? `Request failed: ${res.status}`) as Error & { code?: string };
+  // A proxy error page (502 HTML) isn't JSON — don't surface a parser message.
+  const json = await res.json().catch(() => null);
+  if (!res.ok || !json) {
+    const err = new Error(json?.error?.message ?? (res.status >= 500 ? 'The admin service is unavailable right now. Try Refresh in a moment.' : `Request failed (${res.status}).`)) as Error & { code?: string };
     err.code = json?.error?.code;
     throw err;
   }

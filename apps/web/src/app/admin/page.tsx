@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import AppShell from '@/components/app-shell-legacy';
+import AppShell from '@/components/app-shell';
+import { useAccounts } from '@/lib/use-accounts';
 import { LoadingScreen } from '@/components/loader';
 import {
   adminApi,
@@ -23,6 +24,7 @@ import { fmtRelative } from '@/components/admin/admin-utils';
 
 export default function AdminPage() {
   const router = useRouter();
+  const { accounts, selected, select } = useAccounts();
   const [tab, setTab] = useState<AdminTab>('overview');
   const [overview, setOverview] = useState<AdminOverviewDto | null>(null);
   const [engagement, setEngagement] = useState<AdminEngagementDto | null>(null);
@@ -163,7 +165,7 @@ export default function AdminPage() {
   const inactiveCount = overview?.inactiveTraders ?? 0;
 
   return (
-    <AppShell pageTitle="Admin" pageSubtitle="// COMMAND CENTER">
+    <AppShell accounts={accounts} selectedAccount={selected} onSelectAccount={select} crumbParent="Admin" pageTitle="Command center">
       {loading ? (
         <LoadingScreen label="Loading command center" />
       ) : (
