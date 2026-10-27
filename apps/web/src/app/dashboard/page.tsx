@@ -129,7 +129,7 @@ export default function DashboardPage() {
   );
 
   return (
-    <AppShell accounts={accounts} selectedAccount={selected} onSelectAccount={select} onConnectClick={() => setShowConnect(true)} pageTitle="Dashboard" actions={actions} theme="v5">
+    <AppShell accounts={accounts} selectedAccount={selected} onSelectAccount={select} onConnectClick={() => setShowConnect(true)} pageTitle="Dashboard" actions={actions}>
       <div className="v3-page" data-testid="dashboard-page">
         <header className="d-head">
           <h1 className="v3-h1"><b>{greeting()}, {first}.</b> Here&rsquo;s how your trading is <em>really</em> going.</h1>

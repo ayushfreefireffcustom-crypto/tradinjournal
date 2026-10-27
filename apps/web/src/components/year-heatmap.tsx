@@ -7,8 +7,7 @@ import DayTradesModal from './day-trades-modal';
 
 const WD = ['', 'Mon', '', 'Wed', '', 'Fri', ''];
 const RAIL = 30;   // weekday label rail width
-const GAP = 3;
-const MIN_CELL = 9;
+const MIN_CELL = 6;
 const MAX_CELL = 26;
 
 // GitHub-style trailing-year consistency grid: one cell per day, coloured by that
@@ -48,12 +47,19 @@ export default function YearHeatmap({ trades, accountId }: { trades: Trade[]; ac
   const cols = weeks.length;
   // Cell size that fills the available width, clamped to sane bounds.
   const avail = Math.max(0, cw - RAIL);
-  const cell = cw === 0
-    ? 13
-    : Math.max(MIN_CELL, Math.min(MAX_CELL, Math.floor((avail - (cols - 1) * GAP) / cols)));
+  // Tighter gaps on narrow cards so a full year still fits before we ever scroll.
+  const fit = (g: number) => Math.floor((avail - (cols - 1) * g) / cols);
+  const GAP = cw === 0 || fit(3) >= 9 ? 3 : 2;
+  const cell = cw === 0 ? 13 : Math.max(MIN_CELL, Math.min(MAX_CELL, fit(GAP)));
   const step = cell + GAP;
   const gridW = cols * step - GAP;
   const gridH = 7 * step - GAP;
+
+  // If the year still doesn't fit (phones), start scrolled to the latest weeks.
+  useLayoutEffect(() => {
+    const el = wrapRef.current;
+    if (el && el.scrollWidth > el.clientWidth) el.scrollLeft = el.scrollWidth;
+  }, [cell, cols]);
 
   const today = new Date();
   const isToday = (d: Date) =>
@@ -62,7 +68,7 @@ export default function YearHeatmap({ trades, accountId }: { trades: Trade[]; ac
   return (
     <section className="v3-card a-card a-year" data-testid="year-heatmap">
       <div className="v3-ch">
-        <h3>Consistency <span>· trailing 12 months</span></h3>
+        <h3>Consistency <span className="d-opt">· trailing 12 months</span></h3>
         <span className="a-readout num"><b className={totalNet >= 0 ? 'lg' : 'sh'}>{calMoney(totalNet).replace('-', '−')}</b> · {tradingDays} trading days</span>
       </div>
 
@@ -90,7 +96,7 @@ export default function YearHeatmap({ trades, accountId }: { trades: Trade[]; ac
                   if (!c) return null;
                   const x = wi * step, y = di * step;
                   const agg = c.agg;
-                  const fill = agg ? cellBg(agg.netPnl, maxAbs) : '#F4F3F8';
+                  const fill = agg ? cellBg(agg.netPnl, maxAbs) : 'var(--yh-empty, #F4F3F8)';
                   const text = agg
                     ? `${c.date.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: '2-digit' })} · ${calMoney(agg.netPnl)} · ${agg.trades}T`
                     : `${c.date.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: '2-digit' })} · no trades`;
@@ -98,8 +104,7 @@ export default function YearHeatmap({ trades, accountId }: { trades: Trade[]; ac
                     <rect
                       key={`${wi}-${di}`}
                       x={x} y={y} width={cell} height={cell} rx={Math.min(3, cell / 4)}
-                      fill={fill}
-                      stroke={isToday(c.date) ? '#6E4BFF' : 'transparent'}
+                      style={{ fill, stroke: isToday(c.date) ? 'var(--acc, #6E4BFF)' : 'transparent' }}
                       strokeWidth={isToday(c.date) ? 1.5 : 1}
                       className={`transition-[filter] duration-150 ${agg ? 'cursor-pointer hover:brightness-110' : ''}`}
                       onPointerEnter={() => setHover({ x: RAIL + x + cell, y, text })}
@@ -115,7 +120,7 @@ export default function YearHeatmap({ trades, accountId }: { trades: Trade[]; ac
 
         {hover && (
           <div
-            className="pointer-events-none absolute z-10 rounded-full bg-[#100F17] text-white px-2.5 py-1 text-[12px] numeric whitespace-nowrap shadow-lg"
+            className="pointer-events-none absolute z-10 rounded-full bg-[var(--yh-tip,#100F17)] text-[var(--yh-tip-fg,#fff)] px-2.5 py-1 text-[12px] numeric whitespace-nowrap shadow-lg"
             style={{ left: Math.min(hover.x + 8, Math.max(0, cw - 150)), top: hover.y + 22 }}
             data-testid="heat-tooltip"
           >
@@ -128,7 +133,7 @@ export default function YearHeatmap({ trades, accountId }: { trades: Trade[]; ac
       <div className="flex items-center justify-end gap-1.5 text-[12px] text-fg-3 a-year-lg">
         <span>Loss</span>
         <span className="w-3 h-3 rounded-[3px]" style={{ background: cellBg(-maxAbs, maxAbs) }} />
-        <span className="w-3 h-3 rounded-[3px]" style={{ background: '#F4F3F8' }} />
+        <span className="w-3 h-3 rounded-[3px]" style={{ background: 'var(--yh-empty, #F4F3F8)' }} />
         <span className="w-3 h-3 rounded-[3px]" style={{ background: cellBg(maxAbs, maxAbs) }} />
         <span>Profit</span>
       </div>

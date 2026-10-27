@@ -15,6 +15,7 @@ import {
   IPartner, IPlus, IReplay, ISearch, ISettings, ISignalX, ITradeLog, ILink, IUsers,
 } from '@/components/v3/icons';
 import '@/styles/app-v3.css';
+import '@/styles/app-v5-auto.css';
 import '@/styles/app-v5.css';
 
 interface Props {
@@ -31,8 +32,8 @@ interface Props {
   crumbParent?: string;
   /** Right-aligned top-bar actions (range selector, sync, primary CTA…). */
   actions?: ReactNode;
-  /** 'v5' = the black + signal-green premium theme (rolling out page by page). */
-  theme?: 'v5';
+  /** 'v5' (default) = the black + signal-green theme; 'v3' = legacy light theme. */
+  theme?: 'v5' | 'v3';
 }
 
 type NavItem = { href: string; label: string; icon: (p: { size?: number }) => ReactNode; badge?: string };
@@ -91,7 +92,7 @@ const initials = (broker: string) => broker.replace(/[^A-Za-z ]/g, '').split(/\s
 export default function AppShell({
   children, accounts = [], selectedAccount, onSelectAccount, onConnectClick, pageTitle, crumbParent, actions, theme,
 }: Props) {
-  const tv = theme === 'v5' ? ' v5' : '';
+  const tv = theme === 'v3' ? '' : ' v5';
   const pathname = usePathname();
   const router = useRouter();
   const { data: session, isPending } = authClient.useSession();
@@ -102,6 +103,13 @@ export default function AppShell({
   const acctRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { if (!isPending && !session?.session) router.replace('/login'); }, [isPending, session, router]);
+  // Portalled UI (modals, toasts, popovers) renders under <body>, outside the shell —
+  // put the theme class there too so it inherits the same tokens.
+  useEffect(() => {
+    if (!tv) return;
+    document.body.classList.add('v5');
+    return () => document.body.classList.remove('v5');
+  }, [tv]);
   useEffect(() => { setDrawer(false); setAcctOpen(false); }, [pathname]);
 
   // ⌘K / Ctrl-K opens the page switcher anywhere in the app.

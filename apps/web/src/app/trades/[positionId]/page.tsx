@@ -81,8 +81,8 @@ function TradeDetail() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const el = e.target as HTMLElement;
-      if (el.closest('input,textarea,select,[contenteditable=true]') || e.metaKey || e.ctrlKey) return;
+      const el = e.target as HTMLElement | null;
+      if (el?.closest?.('input,textarea,select,[contenteditable=true]') || e.metaKey || e.ctrlKey) return;
       if (e.key === 'ArrowLeft' && newer) router.push(href(newer));
       if (e.key === 'ArrowRight' && older) router.push(href(older));
     };

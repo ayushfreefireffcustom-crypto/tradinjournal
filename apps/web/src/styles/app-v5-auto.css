@@ -1,0 +1,240 @@
+/* AUTO-GENERATED from app-v3.css by mapping light colours to the v5 dark palette.
+   Regenerate rather than hand-edit; page polish lives in app-v5.css (loaded after). */
+.v5 ::selection { color: var(--on-acc); }
+.v5 .tcard-hover:hover { background: #0F0F0F; border-color: #2A2A2A; }
+.v5 .btn-primary { color: #000; }
+.v5 .btn-primary:hover { background: #E9E9EC; }
+.v5 .btn-ghost { background: #0F0F0F; }
+.v5 .btn-ghost:hover { background: #0F0F0F; border-color: #2E2E2E; }
+.v5 .btn-accent { color: var(--on-acc); }
+.v5 .btn-accent:hover { background: #2EE58A; }
+.v5 .tinput { background: #0F0F0F; }
+.v5 .tinput:hover { border-color: #2E2E2E; }
+.v5 .tinput option { background: #0F0F0F; }
+.v5 .seg { background: #0F0F0F; }
+.v5 .seg-item[data-active='true'] { color: #000; }
+.v5 .chip { background: #0F0F0F; }
+.v5 .chip:hover { border-color: #2E2E2E; }
+.v5 .chip[data-active='true'] { color: #000; }
+.v5 .shimmer, .v5 .skel { background: #0F0F0F; }
+.v5 .v3-acct-menu { background: #0F0F0F; box-shadow: 0 24px 60px -20px rgba(0, 0, 0, .7), 0 0 0 1px rgba(0,0,0,.6); }
+.v5 .v3-grp small { color: #71717A; }
+.v5 .v3-nv[aria-current='page'] { background: #141414; }
+.v5 .v3-nv em { color: var(--on-acc); }
+.v5 .v3-sync { border: 1px solid #1c1b25; }
+.v5 .v3-me { border-top: 1px solid #1a1922; }
+.v5 .v3-me .a { background: #1A1A1A; }
+.v5 .v3-me small { color: #71717A; }
+.v5 .v3-me button { color: #71717A; }
+.v5 .v3-search { background: #0F0F0F; }
+.v5 .v3-search:hover { border-color: #2E2E2E; }
+.v5 .v3-ib { background: #0F0F0F; }
+.v5 .v3-cmdk { background: #0F0F0F; }
+.v5 .v3-card { background: #0F0F0F; }
+.v5 .v3-btn--o { background: #0F0F0F; }
+.v5 .v3-btn--o:hover { border-color: #2E2E2E; }
+.v5 .v3-btn--ink { color: #000; }
+.v5 .v3-btn--ink:hover { background: #E9E9EC; }
+.v5 .v3-btn--ink .ar { background: #0F0F0F; }
+.v5 .v3-btn--acc { color: var(--on-acc); }
+.v5 .v3-btn--acc:hover { background: #2EE58A; }
+.v5 .v3-seg { background: #0F0F0F; }
+.v5 .v3-seg button[aria-pressed='true'] { color: #000; }
+@media (max-width: 1023px) {
+  .v5 .v3-burger { background: #0F0F0F; }
+}
+.v5 .d-tabs button[aria-pressed='true'] { background: #0F0F0F; }
+.v5 .d-chart .d-dot { background: #0F0F0F; }
+.v5 .d-tag { background: #0F0F0F; box-shadow: 0 8px 20px -8px rgba(0,0,0,.6); }
+.v5 .d-fix { border: 1px solid rgba(242,181,58,.4); }
+.v5 .d-in:hover { background: #0F0F0F; }
+.v5 .d-day.w { border-color: rgba(8,196,101,.4); }
+.v5 .d-day.l { border-color: rgba(254,58,49,.4); }
+.v5 .d-day.t { background: #0F0F0F; }
+.v5 .d-day[data-has='1']:hover { box-shadow: 0 10px 20px -12px rgba(0,0,0,.6); }
+.v5 .d-table th { background: #0C0C0C; }
+.v5 .d-table tbody tr:hover { background: #0C0C0C; }
+.v5 .d-err { border: 1px solid rgba(254,58,49,.4); }
+.v5 .d-ai-bd .coach-md li { color: #C4C4CC; }
+.v5 .v3-table th { background: #0C0C0C; }
+.v5 .v3-table tbody tr:not(.sk):hover { background: #0C0C0C; }
+.v5 .v3-select { background: #0F0F0F; }
+.v5 .v3-select:hover { border-color: var(--line-3, #333333); }
+.v5 .v3-field { background: #0F0F0F; }
+.v5 .t-tag { color: #C4C4CC; background: #0F0F0F; }
+.v5 .t-tag.bad { border-color: rgba(254,58,49,.4); }
+.v5 .td-status { background: #0F0F0F; }
+.v5 .td-emo { border: 1px solid rgba(8,196,101,.4); }
+.v5 .td-emo.bad { border-color: rgba(254,58,49,.4); }
+.v5 .td-note { color: #D4D4D8; }
+.v5 .tc-dot { border: 2px solid #1E1E1E; }
+.v5 .tc-dot.x { box-shadow: 0 0 0 4px rgba(0,0,0,.6); }
+.v5 .tc-pill { box-shadow: 0 10px 22px -12px rgba(0,0,0,.6); }
+.v5 .tc-pill.e { color: var(--on-acc); }
+.v5 .tc-pill.x { color: #000; }
+.v5 .a-dot { border: 2px solid #1E1E1E; }
+.v5 .a-tip { color: #000; }
+.v5 .a-sess .c:not(.tot):hover { box-shadow: 0 10px 20px -12px rgba(0,0,0,.6); }
+.v5 .a-chips .v3-pill.g { border: 1px solid rgba(8,196,101,.4); }
+.v5 .a-chips .v3-pill.r { border: 1px solid rgba(254,58,49,.4); }
+.v5 .a-scatter .zero { border-top: 1px dashed #333333; }
+.v5 .a-scatter i { border: 1.5px solid #1E1E1E; }
+.v5 .v3-sortable.dragging > .v3-card { box-shadow: 0 30px 60px -24px rgba(0,0,0,.6); }
+.v5 .v3-modal-card { background: #0F0F0F; box-shadow: 0 40px 80px -30px rgba(0,0,0,.6), 0 0 0 1px rgba(0,0,0,.6); }
+.v5 .v3-modal-x { background: #0F0F0F; }
+.v5 .c-day { background: #0F0F0F; }
+.v5 .c-day > span { color: #C4C4CC; }
+.v5 .c-day.w small, .v5 .c-day.l small { color: #8B8B94; }
+.v5 button.c-day:hover { box-shadow: 0 14px 26px -16px rgba(0,0,0,.6); }
+.v5 .c-day.wk > span { color: #C4C4CC; }
+.v5 .r-chips button { background: #0F0F0F; }
+.v5 .r-chips button:hover { border-color: #2E2E2E; }
+.v5 .r-chips button[aria-pressed='true'] { color: #000; }
+.v5 .r-row:hover { background: #0C0C0C; }
+.v5 .r-src.live { border-color: rgba(8,196,101,.4); }
+.v5 .r-done { border: 1px solid rgba(8,196,101,.4); }
+.v5 .r-result span { color: #8B8B94; }
+.v5 .r-emo button { background: #0F0F0F; }
+.v5 .r-emo button:hover { border-color: #2E2E2E; }
+.v5 .r-emo button.neg[aria-pressed='true'] { border-color: rgba(254,58,49,.4); }
+.v5 .r-tag { background: #0F0F0F; }
+.v5 .r-tag:not(.add):hover { border-color: rgba(254,58,49,.4); }
+.v5 .r-tag.add:hover { border-color: #2E2E2E; }
+.v5 .r-notes textarea { background: #0F0F0F; }
+.v5 .r-save { color: var(--on-acc); }
+.v5 .r-save:hover:not(:disabled) { background: #2EE58A; }
+.v5 .r-empty p { color: #C4C4CC; }
+.v5 .n-in { background: #0F0F0F; }
+.v5 .n-entry:hover { box-shadow: 0 16px 34px -24px rgba(0,0,0,.6); }
+.v5 .n-body { color: #C4C4CC; }
+.v5 .n-empty p { color: #C4C4CC; }
+.v5 .ch-search { background: #0F0F0F; }
+.v5 .ch-pop { background: #0F0F0F; box-shadow: 0 24px 50px -24px rgba(0,0,0,.6); }
+.v5 .ch-tf button[aria-pressed='true'] { color: #000; }
+.v5 .ch-pill { background: #0F0F0F; }
+.v5 .ch-pill:hover, .v5 .ch-pill[aria-expanded='true'] { border-color: #2E2E2E; background: #0C0C0C; }
+.v5 .ch-count { color: var(--on-acc); }
+.v5 .ch-pane { background: #0F0F0F; }
+.v5 .ch-wl:hover { background: #0C0C0C; }
+.v5 .ch-wl .x { background: #0F0F0F; }
+.v5 .ch-al .acts button:hover { background: #0F0F0F; }
+.v5 .ad-check .box { border: 1.5px solid #333333; }
+.v5 .ad-check input:checked + .box::after { border: 2px solid #1E1E1E; }
+.v5 .mk-chips button, .v5 .mk-syms button { background: #0F0F0F; }
+.v5 .mk-chips button:hover, .v5 .mk-syms button:hover { border-color: #2E2E2E; }
+.v5 .mk-chips button[aria-pressed='true'] { color: #000; }
+.v5 .mk-chips button.hi { border-color: rgba(254,58,49,.4); }
+.v5 .mk-live { border: 1px solid rgba(8,196,101,.4); }
+.v5 .mk-brief-btn { color: var(--on-acc); }
+.v5 .mk-brief-btn:hover { background: #2EE58A; }
+.v5 .mk-lead { background: #0F0F0F; }
+.v5 .mk-lead:hover { border-color: #2A2A2A; box-shadow: 0 24px 44px -30px rgba(0,0,0,.6); }
+.v5 .mk-card { background: #0F0F0F; }
+.v5 .mk-card:hover { border-color: #2A2A2A; box-shadow: 0 18px 36px -26px rgba(0,0,0,.6); }
+.v5 .cr-dh { background: #0C0C0C; }
+.v5 .cr-dh span:first-child { color: #C4C4CC; }
+.v5 .cr-ev:hover { background: #0C0C0C; }
+.v5 .cr-main .t { color: #C4C4CC; }
+.v5 .cr-main .v .a { color: #C4C4CC; }
+.v5 .nm-sum { color: #C4C4CC; }
+.v5 .sp-opt { background: #0F0F0F; }
+.v5 .sp-opt:hover { border-color: #2E2E2E; }
+.v5 .sp-opt .box { border: 1.5px solid #333333; }
+.v5 .em-when { color: #C4C4CC; }
+.v5 .em-col:not(.hero) b { color: #C4C4CC; }
+.v5 .em-watch { background: #0F0F0F; }
+.v5 .mt { color: #000; }
+.v5 .mc-search:hover { border-color: #2E2E2E; }
+.v5 .mn button { color: #D4D4D8; }
+.v5 .mn button:hover { background: #0C0C0C; }
+.v5 .mg-scale { background: #0F0F0F; }
+.v5 .mg-knob { background: #0F0F0F; box-shadow: 0 6px 14px -6px rgba(0,0,0,.6); }
+.v5 .mr { color: #000; }
+.v5 .mb-card { background: #0F0F0F; }
+.v5 .mb-card:hover { border-color: #d3cfdc; box-shadow: 0 16px 30px -22px rgba(0,0,0,.6); }
+.v5 .mb-card .trk i { border: 2px solid #1E1E1E; box-shadow: 0 2px 6px rgba(0,0,0,.6); }
+.v5 .ma-chips .v3-pill.g { border: 1px solid rgba(8,196,101,.4); }
+.v5 .ma-chips .v3-pill.r { border: 1px solid rgba(254,58,49,.4); }
+.v5 .sx-pick { background: #0F0F0F; }
+.v5 .sx-lane.g { border-color: rgba(8,196,101,.4); }
+.v5 .sx-lane.r { border-color: rgba(254,58,49,.4); }
+.v5 .lv-tag.v { color: var(--on-acc); }
+.v5 .sx-why { color: #D4D4D8; }
+.v5 .sx-hist li button:hover { background: #0C0C0C; }
+.v5 .sx-cal h4 { color: #C4C4CC; }
+.v5 .sx-ideas button { background: #0F0F0F; }
+.v5 .sx-ideas button:hover { border-color: #2E2E2E; }
+.v5 .sx-compose { background: #0F0F0F; }
+.v5 .sx-list .chips span { color: #C4C4CC; }
+.v5 .co-side { background: #0F0F0F; }
+.v5 .cs-t:hover { background: #0C0C0C; }
+.v5 .cs-del:hover { background: #0F0F0F; }
+.v5 .co-u p { color: var(--on-acc); }
+.v5 .co-av { color: #000; }
+.v5 .co-card { background: #0F0F0F; }
+.v5 .co-card .coach-md { color: #D4D4D8; }
+.v5 .ca button { background: #0F0F0F; color: #C4C4CC; }
+.v5 .ca button:hover { border-color: #2E2E2E; }
+.v5 .cf a { color: #C4C4CC; }
+.v5 .co-empty > p { color: #C4C4CC; }
+.v5 .co-starters button { background: #0F0F0F; }
+.v5 .co-comp { background: #0F0F0F; box-shadow: 0 18px 40px -30px rgba(0,0,0,.6); }
+.v5 .co-comp:focus-within { box-shadow: 0 0 0 4px var(--acc-soft), 0 18px 40px -30px rgba(0,0,0,.6); }
+.v5 .co-send { color: var(--on-acc); }
+.v5 .co-send:hover:not(:disabled) { background: #2EE58A; }
+.v5 .co-send.stop i { background: #0F0F0F; }
+.v5 .br-hero { color: #000; }
+.v5 .br-add { color: var(--on-acc); }
+.v5 .br-add .ar { background: #0F0F0F; }
+.v5 .br-add:hover:not(:disabled) { background: #2EE58A; }
+.v5 .br-row:hover { background: #0C0C0C; }
+.v5 .br-acts button { background: #0F0F0F; color: #C4C4CC; }
+.v5 .br-acts button.del:hover { border-color: rgba(254,58,49,.4); }
+.v5 .br-new:disabled { background: #0C0C0C; }
+.v5 .br-new .pl { background: #0F0F0F; }
+.v5 .cd p { color: #C4C4CC; }
+.v5 .v3-tg i { background: #0F0F0F; box-shadow: 0 2px 6px rgba(0,0,0,.6); }
+.v5 .pf-av { color: #000; border: 5px solid #1E1E1E; }
+.v5 .st-step button { background: #0F0F0F; color: #C4C4CC; }
+.v5 .st-priv { color: #000; }
+.v5 .au-fix { background: #0F0F0F; }
+.v5 .au-steps li.on i { color: var(--on-acc); }
+.v5 .au-in input, .v5 .au-in select { background: #0F0F0F; }
+.v5 .au-in.ok input { border-color: rgba(8,196,101,.4); }
+.v5 .au-check .box { border: 1.5px solid #333333; }
+.v5 .au-submit { color: var(--on-acc); }
+.v5 .au-submit i { background: #0F0F0F; }
+.v5 .au-submit:hover:not(:disabled) { background: #2EE58A; }
+.v5 .au-submit:disabled { background: #5CF0A6; }
+.v5 .au-err { border: 1px solid rgba(254,58,49,.4); }
+.v5 .au-otp input { background: #0F0F0F; }
+.v5 .au-otp.err input { border-color: rgba(254,58,49,.4); }
+.v5 .au-google { background: #0F0F0F; box-shadow: 0 1px 2px rgba(0,0,0,.6); }
+.v5 .au-google:hover:not(:disabled) { border-color: #2E2E2E; box-shadow: 0 10px 24px -18px rgba(0,0,0,.6); }
+.v5 .sc-card { background: #0F0F0F; box-shadow: 0 40px 80px -40px rgba(0,0,0,.6); }
+.v5 .sc-tiles .a { border-color: rgba(242,181,58,.4); }
+.v5 .sc-tiles .g { border-color: rgba(8,196,101,.4); }
+.v5 .sc-tiles span { color: #8B8B94; }
+.v5 .sc-ghost { background: #0F0F0F; }
+.v5 .sc-ghost:hover { border-color: #2E2E2E; }
+.v5 .lg-top .lg-cta { color: #000; }
+.v5 .lg-intro { background: #0F0F0F; color: #D4D4D8; }
+.v5 .lg-toc a { color: #C4C4CC; }
+.v5 .lg-toc a:hover { background: #0F0F0F; }
+.v5 .lg-doc p, .v5 .lg-doc li { color: #D4D4D8; }
+@media (max-width: 900px) {
+  .v5 .lg-toc { background: #0F0F0F; }
+}
+.v5 .pt-funnel li + li::before { background: #0F0F0F; }
+.v5 .pt-share .v3-btn:hover { border-color: #2E2E2E; background: #0C0C0C; }
+.v5 .pt-feed p { color: #C4C4CC; }
+.v5 .pt-tile:hover { border-color: #2E2E2E; }
+.v5 .pt-lk-code > p { color: #C4C4CC; }
+.v5 .pt-modal { background: #0F0F0F; }
+.v5 .pt-modal-h button { background: #0F0F0F; }
+.v5 .pt-rowbtn:hover { border-color: #f3b4bf; }
+.v5 .pt-gate p { color: #C4C4CC; }
+.v5 .pt-apply-form input, .v5 .pt-tool-form input, .v5 .pt-reserve input, .v5 .pt-note-form textarea { background: #0F0F0F; }
+.v5 .pt-check { color: #C4C4CC; }
+.v5 .pt-toast { color: #000; }
+.v5 .au-ref-note { color: #C4C4CC; }

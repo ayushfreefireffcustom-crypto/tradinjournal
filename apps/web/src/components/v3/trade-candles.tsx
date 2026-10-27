@@ -110,18 +110,18 @@ export function TradeCandles({ trade, real, height = 400 }: { trade: Trade; real
     <div ref={ref} className="tc" style={{ height }} onPointerMove={onMove} onPointerLeave={() => setHover(null)}
       role="img" aria-label={`${trade.symbol} ${trade.direction.toLowerCase()} from ${fmtPx(trade.entryPrice)} to ${fmtPx(exitPx)}`} data-testid="candle-chart">
       <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
-        {[0.2, 0.4, 0.6, 0.8].map(f => <line key={f} x1={0} x2={W} y1={H * f} y2={H * f} stroke="#EDECF0" vectorEffect="non-scaling-stroke" />)}
-        <rect className="tc-zone" x={zx} y={bandY} width={zw} height={bandH} fill="#EEEAFF" opacity={0.75} />
-        <line x1={zx} x2={W} y1={ey} y2={ey} stroke="#6E4BFF" strokeDasharray="5 5" opacity={0.75} vectorEffect="non-scaling-stroke" />
-        {!open && <line x1={cx(exitIdx)} x2={W} y1={xy} y2={xy} stroke="#100F17" strokeDasharray="5 5" opacity={0.8} vectorEffect="non-scaling-stroke" />}
+        {[0.2, 0.4, 0.6, 0.8].map(f => <line key={f} x1={0} x2={W} y1={H * f} y2={H * f} style={{ stroke: 'var(--tc-grid, #EDECF0)' }} vectorEffect="non-scaling-stroke" />)}
+        <rect className="tc-zone" x={zx} y={bandY} width={zw} height={bandH} style={{ fill: 'var(--tc-zone, #EEEAFF)', opacity: 'var(--tc-zone-a, .75)' }} />
+        <line x1={zx} x2={W} y1={ey} y2={ey} style={{ stroke: 'var(--acc, #6E4BFF)' }} strokeDasharray="5 5" opacity={0.75} vectorEffect="non-scaling-stroke" />
+        {!open && <line x1={cx(exitIdx)} x2={W} y1={xy} y2={xy} style={{ stroke: 'var(--tc-exit, #100F17)' }} strokeDasharray="5 5" opacity={0.8} vectorEffect="non-scaling-stroke" />}
         {candles.map((c, i) => {
-          const up = c.c >= c.o, col = up ? '#19C37D' : '#F4435E';
+          const up = c.c >= c.o, col = up ? 'var(--long-fill, #19C37D)' : 'var(--short-fill, #F4435E)';
           const top = y(Math.max(c.o, c.c)), bot = y(Math.min(c.o, c.c));
           const dim = hover != null && hover !== i;
           return (
             <g key={i} opacity={dim ? 0.55 : 1} className="tc-c" style={{ animationDelay: `${Math.min(i * 6, 500)}ms` }}>
-              <line x1={cx(i)} x2={cx(i)} y1={y(c.h)} y2={y(c.l)} stroke={col} strokeWidth={1.4} vectorEffect="non-scaling-stroke" />
-              <rect x={cx(i) - cw / 2} y={top} width={cw} height={Math.max(bot - top, 1.2)} rx={1} fill={col} />
+              <line x1={cx(i)} x2={cx(i)} y1={y(c.h)} y2={y(c.l)} style={{ stroke: col }} strokeWidth={1.4} vectorEffect="non-scaling-stroke" />
+              <rect x={cx(i) - cw / 2} y={top} width={cw} height={Math.max(bot - top, 1.2)} rx={1} style={{ fill: col }} />
             </g>
           );
         })}

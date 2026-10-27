@@ -57,9 +57,9 @@ export function Strike({ view }: { view: AccountStats }) {
     <ACard title="Strike rate" testId="strike-card">
       <div className="a-strike">
         <div className="a-ring" data-testid="winloss-donut">
-          <svg viewBox="0 0 170 170"><circle cx="85" cy="85" r={R} stroke="#FCE3E8" strokeWidth="18" fill="none" />
-            {total > 0 && <circle cx="85" cy="85" r={R} stroke="#F4435E" strokeWidth="18" fill="none" strokeDasharray={`${C * (1 - w)} ${C}`} strokeDashoffset={-C * w} className="a-arc" />}
-            {total > 0 && <circle cx="85" cy="85" r={R} stroke="#19C37D" strokeWidth="18" fill="none" strokeDasharray={`${C * w} ${C}`} className="a-arc" />}
+          <svg viewBox="0 0 170 170"><circle cx="85" cy="85" r={R} style={{ stroke: 'var(--a-ring-track, #FCE3E8)' }} strokeWidth="18" fill="none" />
+            {total > 0 && <circle cx="85" cy="85" r={R} style={{ stroke: 'var(--short-fill, #F4435E)' }} strokeWidth="18" fill="none" strokeDasharray={`${C * (1 - w)} ${C}`} strokeDashoffset={-C * w} className="a-arc" />}
+            {total > 0 && <circle cx="85" cy="85" r={R} style={{ stroke: 'var(--long-fill, #19C37D)' }} strokeWidth="18" fill="none" strokeDasharray={`${C * w} ${C}`} className="a-arc" />}
           </svg>
           <div><b className="num">{total ? `${Math.round(w * 100)}%` : '—'}</b><span>win rate</span></div>
         </div>
@@ -128,10 +128,10 @@ export function AreaLine({ pts, base, fmt, height = 260, labelFor }: { pts: numb
   return (
     <div ref={ref} className="a-area" style={{ height }} onPointerMove={onMove} onPointerLeave={() => setH(null)}>
       <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
-        <defs><linearGradient id={gid} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#6E4BFF" stopOpacity=".2" /><stop offset="1" stopColor="#6E4BFF" stopOpacity="0" /></linearGradient></defs>
-        {base != null && <line x1={0} x2={W} y1={y(base)} y2={y(base)} stroke="#C9C7D2" strokeDasharray="5 5" vectorEffect="non-scaling-stroke" />}
+        <defs><linearGradient id={gid} x1="0" y1="0" x2="0" y2="1"><stop offset="0" style={{ stopColor: 'var(--a-line, #6E4BFF)', stopOpacity: 'var(--a-fill-a, .2)' }} /><stop offset="1" style={{ stopColor: 'var(--a-line, #6E4BFF)' }} stopOpacity="0" /></linearGradient></defs>
+        {base != null && <line x1={0} x2={W} y1={y(base)} y2={y(base)} style={{ stroke: 'var(--a-base, #C9C7D2)' }} strokeDasharray="5 5" vectorEffect="non-scaling-stroke" />}
         <path d={`${d} L${W},${H} L0,${H}Z`} fill={`url(#${gid})`} />
-        <path d={d} fill="none" stroke="#6E4BFF" strokeWidth={2.2} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+        <path d={d} fill="none" style={{ stroke: 'var(--a-line, #6E4BFF)' }} strokeWidth={2.2} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
       </svg>
       {h != null && <>
         <span className="a-cross" style={{ left: `${(x(h) / W) * 100}%` }} />
@@ -238,8 +238,8 @@ export function SymbolTable({ rows }: { rows: AccountStats['bySymbol'] }) {
               <tr key={s.symbol} className="static">
                 <td><div className="d-sym"><i>{s.symbol.slice(0, 2)}</i>{s.symbol}</div></td>
                 <td className="r num">{s.trades}</td>
-                <td className="r"><span className={`v3-pill num ${s.winRate === 0 ? 'r' : 'v'}`}>{Math.round(s.winRate * 100)}%</span></td>
-                <td className={`r num ${tone(s.netPnl)}`} style={{ fontWeight: 700 }}>{money(s.netPnl)}</td>
+                <td className="r"><span className={`v3-pill num ${s.winRate >= 0.5 ? 'g' : s.winRate > 0 ? 'a' : 'r'}`}>{Math.round(s.winRate * 100)}%</span></td>
+                <td className={`r num a-net ${tone(s.netPnl)}`}>{money(s.netPnl)}</td>
                 <td className="r num">{money(s.avgPnl)}</td>
               </tr>
             ))}</tbody>

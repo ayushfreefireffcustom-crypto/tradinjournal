@@ -10,7 +10,7 @@ import { useAccounts } from '@/lib/use-accounts';
 import { toCsv, downloadCsv, dateStamp } from '@/lib/csv';
 import { useToast } from '@/components/toast';
 import { IDownload, ISearch, IChevronDown, IClose } from '@/components/v3/icons';
-import { money, price, stamp, dur, tone } from '@/components/v3/format';
+import { money, moneyShort, price, stamp, dur, tone } from '@/components/v3/format';
 
 type Filter = 'ALL' | 'LONG' | 'SHORT' | 'WIN' | 'LOSS';
 type SortKey = 'open' | 'net' | 'held' | 'symbol';
@@ -101,6 +101,14 @@ export default function TradesPage() {
     });
   }, [trades, filter, symbolFilter, search, sortKey, sortDir]);
   const filteredPnl = useMemo(() => sorted.reduce((s, t) => s + t.netPnl, 0), [sorted]);
+  // Live summary of whatever is currently filtered — answers "how did this slice do?"
+  const slice = useMemo(() => {
+    const closed = sorted.filter(t => t.status === 'CLOSED');
+    const wins = closed.filter(t => t.netPnl > 0).length;
+    const best = closed.reduce((m, t) => Math.max(m, t.netPnl), -Infinity);
+    const worst = closed.reduce((m, t) => Math.min(m, t.netPnl), Infinity);
+    return { n: closed.length, win: closed.length ? wins / closed.length : 0, avg: closed.length ? filteredPnl / closed.length : 0, best, worst };
+  }, [sorted, filteredPnl]);
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) setSortDir(d => (d === 'asc' ? 'desc' : 'asc'));
@@ -194,10 +202,20 @@ export default function TradesPage() {
             )}
             <span className="t-count" data-testid="showing-count">
               {tab === 'trades'
-                ? <>Showing <b className="num">{Math.min(shown, sorted.length)}</b> of <span className="num">{sorted.length}</span>{filtersOn && sorted.length > 0 && <> · <b className={`num ${tone(filteredPnl)}`}>{money(filteredPnl)}</b></>}</>
+                ? <>Showing <b className="num">{Math.min(shown, sorted.length)}</b> of <span className="num">{sorted.length}</span>{filtersOn && <> · <button className="t-clear" onClick={() => { setFilter('ALL'); setSymbolFilter('ALL'); setSearch(''); }} data-testid="clear-filters">Clear filters</button></>}</>
                 : <><b className="num">{deals.length}</b> deals</>}
             </span>
           </div>
+
+          {tab === 'trades' && slice.n > 0 && (
+            <dl className="t-sum" data-testid="trades-summary" aria-label="Summary of the trades shown">
+              <div><dt>Net P&amp;L</dt><dd className={`num ${tone(filteredPnl)}`}><span className="t-full">{money(filteredPnl)}</span><span className="t-short">{moneyShort(filteredPnl)}</span></dd></div>
+              <div><dt>Win rate</dt><dd className="num">{(slice.win * 100).toFixed(1)}%</dd></div>
+              <div><dt>Avg trade</dt><dd className={`num ${tone(slice.avg)}`}><span className="t-full">{money(slice.avg)}</span><span className="t-short">{moneyShort(slice.avg)}</span></dd></div>
+              <div><dt>Best</dt><dd className={`num ${Number.isFinite(slice.best) ? tone(slice.best) : ''}`}>{Number.isFinite(slice.best) ? money(slice.best) : '—'}</dd></div>
+              <div><dt>Worst</dt><dd className={`num ${Number.isFinite(slice.worst) ? tone(slice.worst) : ''}`}>{Number.isFinite(slice.worst) ? money(slice.worst) : '—'}</dd></div>
+            </dl>
+          )}
 
           {tab === 'trades' ? (
             <div className="v3-tbl-wrap" data-testid="trades-table">
@@ -243,7 +261,7 @@ export default function TradesPage() {
                           <td className="r num c-px">{price(t.entryPrice)}</td>
                           <td className="r num c-px">{price(t.exitPrice)}</td>
                           <td className="r num mute c-held">{dur(t.durationSecs)}</td>
-                          <td className={`r num ${tone(t.netPnl)}`} style={{ fontWeight: 700 }}>{money(t.netPnl)}</td>
+                          <td className={`r num t-pnl ${tone(t.netPnl)}`}>{money(t.netPnl)}</td>
                           <td className="c-tag">{tag ? <span className={`t-tag ${BAD_TAG.test(tag) ? 'bad' : ''}`}>{tagLabel(tag)}</span> : <span className="mute">—</span>}</td>
                         </tr>
                       );
