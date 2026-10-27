@@ -189,7 +189,7 @@ function ChartReplay() {
             <span className="r-empty-ic"><IReplay size={22} /></span>
             <h1 className="v3-h1" style={{ fontSize: 28 }}><b>Replay every trade.</b> <em>Learn</em> from each one.</h1>
             <p>Each closed position is redrawn with your entry and exit marked. Log how it felt, tag the setup, and write what you’d do next time.</p>
-            {selected ? <p className="mute" style={{ fontSize: 14 }}>No closed positions on {selected.broker} yet — they appear here after the next sync.</p>
+            {selected ? <p className="mute" style={{ fontSize: 14 }}>{error ? `Your ${selected.broker} positions will show here once the connection is back.` : `No closed positions on ${selected.broker} yet — they appear here after the next sync.`}</p>
               : <button className="v3-btn v3-btn--ink" onClick={() => setShowConnect(true)}><span>Connect MT5</span><span className="ar"><IPlus size={14} /></span></button>}
           </section>
         ) : (

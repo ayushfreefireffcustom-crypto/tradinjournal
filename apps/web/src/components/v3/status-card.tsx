@@ -6,6 +6,7 @@ import type { ReactNode } from 'react';
 import '@/styles/app-v3.css';
 import '@/styles/app-v5-auto.css';
 import '@/styles/app-v5.css';
+import Logo from '@/components/logo';
 
 type Tone = 'v' | 'a' | 'g' | 'r';
 export const SC_ICONS = {
@@ -23,7 +24,7 @@ export default function StatusCard({ icon, tone = 'v', kicker, title, body, chil
   return (
     <div className="v3 v5 sc" data-testid={testId}>
       <header className="sc-top">
-        <Link href="/" className="au-wm sm" style={{ display: 'block' }}>TRADE<span>logs</span></Link>
+        <Link href="/" className="au-wm sm" style={{ display: 'block' }} aria-label="TRADElogs home"><Logo height={26} /></Link>
         {onSignOut && <button type="button" onClick={onSignOut} className="sc-out">Sign out</button>}
       </header>
       <main className="sc-main">

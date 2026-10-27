@@ -120,10 +120,10 @@ export default function CalendarPage() {
         )}
 
         <section className="v3-card a-kpis c-kpis" data-testid="calendar-summary" aria-label="Month summary">
-          <div><span>Month net P&amp;L</span><b className={`num ${has ? tone(monthStats.net) : ''}`}>{has ? money(monthStats.net) : '—'}</b><small>{monthStats.tradeCount} trade{monthStats.tradeCount === 1 ? '' : 's'}</small></div>
-          <div><span>Trading days</span><b className="num">{monthStats.tradingDays}</b><small>{has ? `${facts.green} green · ${facts.red} red` : 'No trades this month'}</small></div>
+          <div><span>Month net P&amp;L</span><b className={`num ${has ? tone(monthStats.net) : ''}`}>{has ? money(monthStats.net) : '—'}</b><small>{error && !has ? '—' : `${monthStats.tradeCount} trade${monthStats.tradeCount === 1 ? '' : 's'}`}</small></div>
+          <div><span>Trading days</span><b className="num">{error && !has ? '—' : monthStats.tradingDays}</b><small>{has ? `${facts.green} green · ${facts.red} red` : error ? 'Couldn’t load trades' : 'No trades this month'}</small></div>
           <div><span>Best day</span><b className={`num ${has && monthStats.best > 0 ? 'lg' : ''}`}>{has && monthStats.best > 0 ? money(monthStats.best) : '—'}</b><small>{has && monthStats.best > 0 ? facts.best : '—'}</small></div>
-          <div><span>Worst day</span><b className={`num ${has && monthStats.worst < 0 ? 'sh' : ''}`}>{has && monthStats.worst < 0 ? money(monthStats.worst) : '—'}</b><small>{has && monthStats.worst < 0 ? facts.worst : 'No red days'}</small></div>
+          <div><span>Worst day</span><b className={`num ${has && monthStats.worst < 0 ? 'sh' : ''}`}>{has && monthStats.worst < 0 ? money(monthStats.worst) : '—'}</b><small>{has && monthStats.worst < 0 ? facts.worst : has ? 'No red days' : '—'}</small></div>
         </section>
 
         <section className="v3-card c-card">

@@ -9,6 +9,7 @@ import { type ReactNode, useEffect, useRef } from 'react';
 import '@/styles/app-v3.css';
 import '@/styles/app-v5-auto.css';
 import '@/styles/app-v5.css';
+import Logo from '@/components/logo';
 
 type Variant = 'signin' | 'signup' | 'verify' | 'forgot';
 
@@ -41,7 +42,7 @@ export default function AuthShell({ variant, top, children, testId }: { variant:
     <div className="v3 v5 au" data-testid={testId}>
       <aside className="au-side" ref={asideRef}
         onPointerMove={e => { const r = asideRef.current?.getBoundingClientRect(); if (r) asideRef.current!.style.setProperty('--mx', `${((e.clientX - r.left) / r.width) * 100}%`), asideRef.current!.style.setProperty('--my', `${((e.clientY - r.top) / r.height) * 100}%`); }}>
-        <Link href="/" className="au-wm">TRADE<span>logs</span></Link>
+        <Link href="/" className="au-wm" aria-label="TRADElogs home"><Logo height={32} /></Link>
         <Showcase />
         <div className="au-copy">
           <h2>{c.h}</h2>
@@ -57,7 +58,7 @@ export default function AuthShell({ variant, top, children, testId }: { variant:
         </div>
       </aside>
       <main className="au-main">
-        <div className="au-top"><Link href="/" className="au-wm sm">TRADE<span>logs</span></Link>{top}</div>
+        <div className="au-top"><Link href="/" className="au-wm sm" aria-label="TRADElogs home"><Logo height={26} /></Link>{top}</div>
         <div className="au-form">{children}</div>
         <div className="au-legal"><span>© {new Date().getFullYear()} TRADElogs</span><span>·</span><Link href="/terms">Terms</Link><span>·</span><Link href="/privacy">Privacy</Link></div>
       </main>

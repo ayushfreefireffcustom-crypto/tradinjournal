@@ -35,11 +35,11 @@ export default function MacroEventsHeadlines({
               return (
                 <li key={`${e.title}-${e.at}-${i}`} className="flex items-center justify-between gap-3 py-2">
                   <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className={`text-[9px] px-1.5 py-0.5 rounded border shrink-0 ${impactPill(tone)}`}>
+                    <div className="flex items-start gap-2">
+                      <span className={`text-[9px] px-1.5 py-0.5 rounded border shrink-0 mt-px ${impactPill(tone)}`}>
                         {(e.impact ?? '—').toUpperCase()}
                       </span>
-                      <span className="text-[12px] text-fg truncate">{e.title}</span>
+                      <span className="text-[12px] text-fg leading-snug min-w-0">{e.title}</span>
                     </div>
                     <div className="text-[10px] text-fg-3 mt-0.5 ml-0.5">
                       {e.country ?? '—'}

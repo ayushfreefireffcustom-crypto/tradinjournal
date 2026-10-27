@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type CSSProperties, type ElementType, type ReactNode } from 'react';
 import { authClient } from '@/lib/auth-client';
 import { useTerminalEntry } from '@/components/terminal-entry';
+import Logo from '@/components/logo';
 
 // ── Icons (1.7 stroke, round caps — one family across the page) ────────────
 type IconProps = { className?: string };
@@ -30,10 +31,7 @@ export const ChatIcon = () => (
 // ── Wordmark ───────────────────────────────────────────────────────────────
 export function Wordmark({ className = '' }: { className?: string }) {
   return (
-    <span className={`l5-wm ${className}`}>
-      <i aria-hidden><svg viewBox="0 0 14 14" width="14" height="14"><path d="M2 10l3.2-3.4 2.6 2.2L12 3.6" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" /></svg></i>
-      <b>TRADE<span>logs</span></b>
-    </span>
+    <span className={`l5-wm ${className}`}><Logo height={30} /></span>
   );
 }
 

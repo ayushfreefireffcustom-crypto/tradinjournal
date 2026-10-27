@@ -135,7 +135,7 @@ export default function DashboardPage() {
           <h1 className="v3-h1"><b>{greeting()}, {first}.</b> Here&rsquo;s how your trading is <em>really</em> going.</h1>
           <p className="v3-sub">
             {selected ? `${selected.broker} · ` : ''}
-            {view ? `${view.totalTrades} closed trade${view.totalTrades === 1 ? '' : 's'} · ${RANGE_LABEL[range]}` : loading ? 'Loading your account…' : 'No broker connected yet'}
+            {view ? `${view.totalTrades} closed trade${view.totalTrades === 1 ? '' : 's'} · ${RANGE_LABEL[range]}` : loading ? 'Loading your account…' : error ? 'Stats unavailable' : selected ? 'No closed trades yet' : 'No broker connected yet'}
           </p>
           {rangeSeg('page')}
         </header>
@@ -153,7 +153,7 @@ export default function DashboardPage() {
             Your trades sync automatically and your dashboard fills in within a minute.
             <button className="v3-btn v3-btn--ink" style={{ marginTop: 18 }} onClick={() => setShowConnect(true)}><span>Connect MT5</span><span className="ar"><IPlus size={14} /></span></button>
           </section>
-        ) : !view ? (
+        ) : !view && error ? null : !view ? (
           <div className="d-grid">
             <div className="skel d-sk" style={{ height: 150, borderRadius: 20 }} />
             <div className="d-grid d-r1"><div className="skel d-sk" style={{ height: 420, borderRadius: 22 }} /><div className="skel d-sk" style={{ height: 420, borderRadius: 22 }} /></div>

@@ -3,6 +3,8 @@ import path from 'path';
 
 const config: NextConfig = {
   reactStrictMode: true,
+  // Phosphor's entry re-exports ~1,500 icons; import only the ones we use.
+  experimental: { optimizePackageImports: ['@phosphor-icons/react'] },
   // Lets a second dev server (e.g. mock mode) build into its own folder — two
   // `next dev` processes sharing .next serve each other's compiled pages.
   distDir: process.env.NEXT_DIST_DIR || '.next',

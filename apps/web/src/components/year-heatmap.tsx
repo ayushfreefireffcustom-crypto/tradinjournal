@@ -44,6 +44,18 @@ export default function YearHeatmap({ trades, accountId }: { trades: Trade[]; ac
     return buildYearView(byDay);
   }, [trades]);
 
+  // Day-level consistency numbers from the same trailing-year cells.
+  const stats = useMemo(() => {
+    let green = 0, best = -Infinity, worst = Infinity, run = 0, longest = 0;
+    for (const week of weeks) for (const c of week) {
+      if (!c?.agg) continue;
+      const n = c.agg.netPnl;
+      if (n > 0) { green++; run++; longest = Math.max(longest, run); } else run = 0;
+      best = Math.max(best, n); worst = Math.min(worst, n);
+    }
+    return { green, best, worst, longest };
+  }, [weeks]);
+
   const cols = weeks.length;
   // Cell size that fills the available width, clamped to sane bounds.
   const avail = Math.max(0, cw - RAIL);
@@ -72,7 +84,7 @@ export default function YearHeatmap({ trades, accountId }: { trades: Trade[]; ac
         <span className="a-readout num"><b className={totalNet >= 0 ? 'lg' : 'sh'}>{calMoney(totalNet).replace('-', '−')}</b> · {tradingDays} trading days</span>
       </div>
 
-      <div ref={wrapRef} className="relative overflow-x-auto no-scrollbar a-year-bd">
+      <div ref={wrapRef} className={`relative overflow-x-auto no-scrollbar a-year-bd ${cw > 0 && RAIL + gridW > cw ? 'is-ovf' : ''}`}>
         <div className="mx-auto" style={{ width: RAIL + gridW }}>
           {/* Month labels (aligned to the grid, offset past the rail) */}
           <div className="relative h-4" style={{ marginLeft: RAIL, width: gridW }}>
@@ -104,7 +116,7 @@ export default function YearHeatmap({ trades, accountId }: { trades: Trade[]; ac
                     <rect
                       key={`${wi}-${di}`}
                       x={x} y={y} width={cell} height={cell} rx={Math.min(3, cell / 4)}
-                      style={{ fill, stroke: isToday(c.date) ? 'var(--acc, #6E4BFF)' : 'transparent' }}
+                      style={{ fill, stroke: isToday(c.date) ? 'var(--acc, #08C465)' : 'transparent' }}
                       strokeWidth={isToday(c.date) ? 1.5 : 1}
                       className={`transition-[filter] duration-150 ${agg ? 'cursor-pointer hover:brightness-110' : ''}`}
                       onPointerEnter={() => setHover({ x: RAIL + x + cell, y, text })}
@@ -129,13 +141,22 @@ export default function YearHeatmap({ trades, accountId }: { trades: Trade[]; ac
         )}
       </div>
 
-      {/* Legend */}
-      <div className="flex items-center justify-end gap-1.5 text-[12px] text-fg-3 a-year-lg">
-        <span>Loss</span>
-        <span className="w-3 h-3 rounded-[3px]" style={{ background: cellBg(-maxAbs, maxAbs) }} />
-        <span className="w-3 h-3 rounded-[3px]" style={{ background: 'var(--yh-empty, #F4F3F8)' }} />
-        <span className="w-3 h-3 rounded-[3px]" style={{ background: cellBg(maxAbs, maxAbs) }} />
-        <span>Profit</span>
+      <div className="a-year-ft">
+        {tradingDays > 0 && (
+          <dl className="a-year-st" data-testid="year-heatmap-stats">
+            <div><dt>Green days</dt><dd className="num">{stats.green}<small>/{tradingDays}</small></dd></div>
+            <div><dt>Best day</dt><dd className={`num ${stats.best >= 0 ? 'lg' : 'sh'}`}>{calMoney(stats.best).replace('-', '−')}</dd></div>
+            <div><dt>Worst day</dt><dd className={`num ${stats.worst >= 0 ? 'lg' : 'sh'}`}>{calMoney(stats.worst).replace('-', '−')}</dd></div>
+            <div><dt>Longest green run</dt><dd className="num">{stats.longest}<small> {stats.longest === 1 ? 'day' : 'days'}</small></dd></div>
+          </dl>
+        )}
+        <div className="a-year-lg" aria-hidden>
+          <span>Loss</span>
+          <i style={{ background: cellBg(-maxAbs, maxAbs) }} />
+          <i style={{ background: 'var(--yh-empty, #F4F3F8)' }} />
+          <i style={{ background: cellBg(maxAbs, maxAbs) }} />
+          <span>Profit</span>
+        </div>
       </div>
 
       {selectedDay && (

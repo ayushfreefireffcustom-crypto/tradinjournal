@@ -161,7 +161,7 @@ export function ChannelTable({ channels, right, withLinks = false, onArchive }: 
     <section className="v3-card a-flush pt-ch" data-testid="partner-channels">
       <div className="v3-ch"><h3>By channel<span> · all time</span></h3>{right}</div>
       <div className="v3-tbl-wrap">
-        <table className="v3-table pt-cht">
+        <table className={`v3-table pt-cht ${withLinks ? 'lk' : ''}`}>
           <thead><tr><th>Channel</th>{withLinks && <th>Link</th>}<th className="r">Clicks</th><th className="r">Signups</th><th className="r">Click → signup</th><th className="r">MT5 connected</th><th className="r">Active</th>{onArchive && <th className="r"><span className="sr-only">Actions</span></th>}</tr></thead>
           <tbody>{channels.map(c => (
             <tr key={c.id} className="static">

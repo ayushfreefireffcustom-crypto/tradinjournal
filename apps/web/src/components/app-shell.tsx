@@ -17,6 +17,7 @@ import {
 import '@/styles/app-v3.css';
 import '@/styles/app-v5-auto.css';
 import '@/styles/app-v5.css';
+import Logo from '@/components/logo';
 
 interface Props {
   children: ReactNode;
@@ -102,7 +103,10 @@ export default function AppShell({
   const [cmdk, setCmdk] = useState(false);
   const acctRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => { if (!isPending && !session?.session) router.replace('/login'); }, [isPending, session, router]);
+  // Send signed-out visitors to sign in, remembering where they were headed.
+  useEffect(() => {
+    if (!isPending && !session?.session) router.replace(`/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`);
+  }, [isPending, session, router]);
   // Portalled UI (modals, toasts, popovers) renders under <body>, outside the shell —
   // put the theme class there too so it inherits the same tokens.
   useEffect(() => {
@@ -140,7 +144,7 @@ export default function AppShell({
     return (
       <div className={`v3${tv} min-h-dvh flex items-center justify-center p-6`}>
         <div className="v3-card" style={{ padding: 32, maxWidth: 400, textAlign: 'center' }}>
-          <div style={{ fontWeight: 700, fontSize: 20, letterSpacing: '-.035em' }}>TRADE<span style={{ color: 'var(--acc)' }}>logs</span></div>
+          <Logo height={26} className="mx-auto" />
           <h1 className="v3-h1" style={{ fontSize: 24, marginTop: 16 }}>We couldn&rsquo;t verify your access.</h1>
           <p className="v3-sub" style={{ marginTop: 8 }}>Check your connection and try again.</p>
           <button type="button" onClick={() => window.location.reload()} className="v3-btn v3-btn--acc" style={{ marginTop: 20, width: '100%', justifyContent: 'center' }}>Retry</button>
@@ -162,7 +166,7 @@ export default function AppShell({
 
       <aside className={`v3-sb ${drawer ? 'is-open' : ''}`} data-testid="sidebar" aria-label="Sidebar">
         <div style={{ display: 'flex', alignItems: 'center' }}>
-          <Link href="/dashboard" className="v3-wm" aria-label="TRADElogs dashboard">TRADE<span>logs</span></Link>
+          <Link href="/dashboard" className="v3-wm" aria-label="TRADElogs dashboard"><Logo height={27} /></Link>
           <button className="v3-burger" style={{ marginLeft: 'auto', background: 'transparent', color: '#fff', borderColor: '#2A2932', display: drawer ? 'grid' : 'none' }} onClick={() => setDrawer(false)} aria-label="Close menu"><IClose size={16} /></button>
         </div>
 
@@ -170,7 +174,7 @@ export default function AppShell({
           <div className="v3-acct" ref={acctRef}>
             <button className="v3-acct-btn" onClick={() => setAcctOpen(o => !o)} aria-haspopup="menu" aria-expanded={acctOpen} data-testid="account-switcher">
               <span className="v3-acct-mono">{initials(sel.broker)}</span>
-              <span style={{ minWidth: 0 }}><b>{sel.broker}</b><small>…{sel.mt5Login.slice(-4)} · {connected ? 'synced' : sel.status.toLowerCase()}</small></span>
+              <span style={{ minWidth: 0 }}><b>{sel.broker}</b><small>…{sel.mt5Login.slice(-4)} · {!connected ? sel.status.toLowerCase() : sel.lastSyncAt ? 'synced' : 'not synced yet'}</small></span>
               <IChevrons size={16} />
             </button>
             {acctOpen && (
@@ -214,8 +218,8 @@ export default function AppShell({
         <div className="v3-sb-foot">
           {sel && (
             <div className="v3-sync" data-testid="sync-status">
-              <b><span className={`v3-dot ${connected ? '' : 'warn'}`} />{connected ? 'MT5 sync online' : 'MT5 needs attention'}</b>
-              Last sync {timeAgo(sel.lastSyncAt)}
+              <b><span className={`v3-dot ${connected ? '' : 'warn'}`} />{!connected ? 'MT5 needs attention' : sel.lastSyncAt ? 'MT5 sync online' : 'Waiting for first sync'}</b>
+              {sel.lastSyncAt ? `Last sync ${timeAgo(sel.lastSyncAt)}` : 'Your history imports on the first sync'}
             </div>
           )}
           {accessStatus?.isAdmin && ADMIN.map(i => <NavLink key={i.href} item={i} active={current?.href === i.href} />)}

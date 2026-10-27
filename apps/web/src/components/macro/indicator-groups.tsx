@@ -36,7 +36,7 @@ function Panel({ g }: { g: IndicatorGroup }) {
             <li key={m.key} className="flex items-center gap-3 py-2" data-testid={`macro-ind-${m.key}`}>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[12px] text-fg-2 truncate">{m.label}</span>
+                  <span className="text-[12px] text-fg-2 leading-snug min-w-0">{m.label}</span>
                   {blurb && <InfoTip text={blurb} label={m.label} />}
                 </div>
                 <div className="text-[9px] text-fg-3 tracking-wide mt-0.5">

@@ -89,6 +89,17 @@ function HeroChart({ view, days, mode }: { view: AccountStats; days: [string, { 
     const i = Math.round(((e.clientX - r.left) / r.width) * (series.length - 1));
     setHover(Math.max(0, Math.min(series.length - 1, i)));
   };
+  // "Start $X" rides the baseline at whichever end the curve is furthest from,
+  // on the opposite side of the line there, so the line never runs through it.
+  const startPos = useMemo(() => {
+    const n = series.length, k = Math.max(1, Math.ceil(n * 0.18));
+    const gap = (from: number, to: number) => { let g = Infinity, sum = 0, c = 0; for (let i = from; i < to; i++) { const d = y(series[i]!.v) - by; g = Math.min(g, Math.abs(d)); sum += d; c++; } return { g, above: c ? sum / c < 0 : true }; };
+    const L = gap(1, Math.min(n, k + 1)), R = gap(Math.max(0, n - k), n);
+    const right = R.g >= L.g;
+    return { right, below: (right ? R : L).above };
+    // y/by derive from series; recompute only when the data changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [series]);
   const hi = hover ?? series.length - 1;
   const hx = (x(hi) / W) * 100, hy = series[hi] ? (y(series[hi]!.v) / H) * 100 : 0;
 
@@ -119,11 +130,11 @@ function HeroChart({ view, days, mode }: { view: AccountStats; days: [string, { 
         <line x1={0} x2={W} y1={by} y2={by} style={{ stroke: 'var(--d-hero-base, rgba(255,255,255,.5))' }} strokeDasharray="4 5" vectorEffect="non-scaling-stroke" />
         {body}
       </svg>
-      {mode === 'equity' && <span className="d-start" style={{ top: `${(by / H) * 100}%` }}>Start {plain(view.startingBalance, 0)}</span>}
+      {mode === 'equity' && <span className={`d-start ${startPos.right ? 'r' : 'l'} ${startPos.below ? 'b' : ''}`} style={{ top: `${(by / H) * 100}%` }}>Start {plain(view.startingBalance, 0)}</span>}
       {series.length > 1 && hover != null && <span className="d-cross" style={{ left: `${hx}%` }} />}
       {series.length > 0 && mode !== 'daily' && <span className="d-dot" style={{ left: `${hx}%`, top: `${hy}%` }} />}
       {series[hi] && (
-        <span className="d-tag num" style={{ left: `calc(${Math.max(hx, 12)}% - ${hx > 96 ? 0 : -8}px)`, top: `${Math.max(hy, 18)}%` }}>
+        <span className="d-tag num" style={{ left: hx > 96 ? 'calc(100% - 14px)' : `calc(${Math.max(hx, 12)}% + 8px)`, top: `${Math.max(hy, 18)}%` }}>
           {fmt(series[hi]!.v)}{hover != null && <span>{dateLabel(series[hi]!.label)}</span>}
         </span>
       )}

@@ -157,8 +157,8 @@ export default function TradesPage() {
       <div className="v3-page" data-testid="trades-page">
         <header className="t-head">
           <div>
-            <h1 className="v3-h1 t-h1"><span className="num">{loading && !trades.length ? '—' : trades.length}</span> <em>position{trades.length === 1 ? '' : 's'}.</em></h1>
-            <p className="v3-sub">Reconstructed from {deals.length} deal{deals.length === 1 ? '' : 's'}{selected ? ` · ${selected.broker}` : ''}</p>
+            <h1 className="v3-h1 t-h1"><span className="num">{(loading || error) && !trades.length ? '—' : trades.length}</span> <em>position{trades.length === 1 ? '' : 's'}.</em></h1>
+            <p className="v3-sub">{error && !deals.length ? 'Couldn’t load deals' : <>Reconstructed from {deals.length} deal{deals.length === 1 ? '' : 's'}</>}{selected ? ` · ${selected.broker}` : ''}</p>
           </div>
           <div className="v3-seg t-filter" role="group" aria-label="Filter positions">
             {FILTERS.map(([f, l]) => (
@@ -242,7 +242,7 @@ export default function TradesPage() {
                   ) : sorted.length === 0 ? (
                     <tr className="sk"><td colSpan={10}>
                       <div className="d-empty">
-                        {trades.length === 0 ? <><b>No positions yet</b>Closed trades appear here after your next MT5 sync.</>
+                        {trades.length === 0 ? (error ? <><b>Positions couldn’t load</b>They’ll appear here once the broker connection is back.</> : <><b>No positions yet</b>Closed trades appear here after your next MT5 sync.</>)
                           : <><b>No trades match these filters</b><button className="v3-link" onClick={() => { setFilter('ALL'); setSymbolFilter('ALL'); setSearch(''); }}>Clear filters</button></>}
                       </div>
                     </td></tr>

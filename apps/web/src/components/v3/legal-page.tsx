@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import '@/styles/app-v3.css';
 import '@/styles/app-v5-auto.css';
 import '@/styles/app-v5.css';
+import Logo from '@/components/logo';
 
 export interface LegalSection { id: string; title: string; body: ReactNode }
 
@@ -15,7 +16,7 @@ export default function LegalPage({ kicker, title, accent, updated, intro, secti
   return (
     <div className="v3 v5 lg-page">
       <header className="lg-top">
-        <Link href="/" className="au-wm sm" style={{ display: 'block' }}>TRADE<span>logs</span></Link>
+        <Link href="/" className="au-wm sm" style={{ display: 'block' }} aria-label="TRADElogs home"><Logo height={26} /></Link>
         <nav><Link href={other.href}>{other.label}</Link><Link href="/login" className="lg-cta">Sign in</Link></nav>
       </header>
       <div className="lg-hero">

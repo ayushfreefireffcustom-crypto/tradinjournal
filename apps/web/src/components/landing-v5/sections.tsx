@@ -4,6 +4,7 @@ import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { ArrowRight, CheckIcon, Reveal, StartButton, Wordmark, useCountUp, useInViewOnce } from './ui';
 import { CandleField, OrbCanvas } from './effects';
 import { candles, ENTRY_INDEX, EXIT_INDEX, HEAT_DAYS, heat, heatColor, heatDollars, REPLAY_H, REPLAY_W, tilt, traits } from './data';
+import Logo from '@/components/logo';
 
 const v = (i: number) => ({ '--i': i } as CSSProperties);
 const Tick = () => <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden><path d="m2.5 6.2 2.2 2.2 4.8-5" stroke="currentColor" strokeWidth="1.7" fill="none" strokeLinecap="round" /></svg>;
@@ -480,7 +481,7 @@ export function Footer() {
           <nav aria-label="App"><h3>App</h3><ul><li><a href="/dashboard">Dashboard</a></li><li><a href="/trader">SignalX</a></li><li><a href="/coach">AI coach</a></li><li><a href="/markets">Markets</a></li></ul></nav>
           <nav aria-label="Account"><h3>Account</h3><ul><li><a href="/signup">Create account</a></li><li><a href="/login">Sign in</a></li><li><a href="/partner">Become a partner</a></li><li><a href="/terms">Terms</a></li><li><a href="/privacy">Privacy</a></li></ul></nav>
         </div>
-        <div className="l5-huge" aria-hidden>TRADE<span>logs</span></div>
+        <div className="l5-huge" aria-hidden><Logo height={400} title="" /></div>
         <div className="l5-legal">
           <span>&copy; {new Date().getFullYear()} TRADElogs</span>
           <span>Trading involves risk. Past performance does not guarantee future results. Figures shown are illustrative.</span>
