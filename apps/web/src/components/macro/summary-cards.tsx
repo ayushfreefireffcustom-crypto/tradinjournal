@@ -94,7 +94,7 @@ function Spark({ values, tone }: { values: number[]; tone: string }) {
   const mn = Math.min(...values), mx = Math.max(...values), sp = mx - mn || 1;
   const pts = values.map((v, i) => [(i / (values.length - 1)) * 100, 6 + (1 - (v - mn) / sp) * 40] as const);
   const d = 'M' + pts.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' L');
-  const col = tone === 'bull' ? '#19C37D' : tone === 'bear' ? '#F4435E' : '#6E4BFF';
+  const col = tone === 'bull' ? '#08C465' : tone === 'bear' ? '#FE3A31' : '#A1A1AA';
   const id = `ms${Math.round(values[values.length - 1]! * 1000)}${values.length}${tone}`;
   return (
     <svg className="ms-spark" viewBox="0 0 100 50" preserveAspectRatio="none" aria-hidden>

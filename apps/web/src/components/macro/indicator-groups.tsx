@@ -19,7 +19,7 @@ function arrow(dir: -1 | 0 | 1): string {
 
 function Panel({ g }: { g: IndicatorGroup }) {
   return (
-    <section className="tcard p-3 sm:p-4 h-full flex flex-col" data-testid={`macro-group-${g.group}`}>
+    <section className="tcard p-3 sm:p-4 flex flex-col" data-testid={`macro-group-${g.group}`}>
       <div className="flex items-center justify-between border-b border-border-soft pb-2 shrink-0">
         <div className="flex items-center gap-2">
           <span className="text-fg-3 text-sm w-4 text-center">{g.glyph}</span>
@@ -78,9 +78,9 @@ export default function IndicatorGroups({ macro }: { macro: MacroState['macro'] 
   }
   const groups = groupIndicators(macro);
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 items-stretch" data-testid="macro-indicator-groups">
+    <div className="columns-1 md:columns-2 xl:columns-3 gap-3" data-testid="macro-indicator-groups">
       {groups.map(g => (
-        <Panel key={g.group} g={g} />
+        <div key={g.group} className="break-inside-avoid mb-3"><Panel g={g} /></div>
       ))}
     </div>
   );

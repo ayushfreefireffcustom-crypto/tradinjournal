@@ -121,7 +121,7 @@ export default function MacroAssetPage() {
                 <section className="v3-card ma-chart" data-testid="macro-asset-tv">
                   <div className="v3-ch"><h3>Chart <span>· {TICK[symbol] ?? symbol} · 1h</span></h3><span className="mute" style={{ fontSize: 13.5 }}>TradingView · free embed</span></div>
                   <iframe title={`${name} chart`} loading="lazy"
-                    src={`https://s.tradingview.com/widgetembed/?symbol=${encodeURIComponent(tv)}&interval=60&theme=light&style=1&locale=en&hideideas=1&hidetoptoolbar=1&hidesidetoolbar=1&toolbarbg=ffffff`} />
+                    src={`https://s.tradingview.com/widgetembed/?symbol=${encodeURIComponent(tv)}&interval=60&theme=dark&style=1&locale=en&hideideas=1&hidetoptoolbar=1&hidesidetoolbar=1&toolbarbg=0F0F0F&backgroundColor=0F0F0F`} />
                 </section>
               )}
             </>
