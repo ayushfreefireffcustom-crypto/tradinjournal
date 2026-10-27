@@ -18,6 +18,31 @@ import { ENRICH_PROMPT, enrichUserContent, type EnrichInputItem } from './prompt
 
 const BATCH_SIZE = 10;
 
+const ENRICH_SCHEMA = {
+  type: 'object',
+  properties: {
+    items: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          i: { type: 'integer' },
+          sentiment: { type: 'string', enum: [...SENTIMENTS] },
+          relevance: { type: 'integer', description: '0-100' },
+          impact: { type: 'string', enum: [...EVENT_IMPACTS] },
+          category: { anyOf: [{ type: 'string', enum: [...NEWS_CATEGORIES] }, { type: 'null' }] },
+          marketMoving: { type: 'boolean' },
+          country: { anyOf: [{ type: 'string', description: 'ISO-3166 alpha-2' }, { type: 'null' }] },
+        },
+        required: ['i', 'sentiment', 'relevance', 'impact', 'category', 'marketMoving', 'country'],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ['items'],
+  additionalProperties: false,
+};
+
 export interface Enrichment {
   sentiment: Sentiment;
   relevance: number; // 0..100
@@ -85,11 +110,16 @@ export async function enrichNews(items: EnrichableItem[]): Promise<Map<string, E
     const batch = items.slice(start, start + BATCH_SIZE);
     const payload: EnrichInputItem[] = batch.map((it, idx) => ({ i: idx, title: it.title, summary: it.summary }));
     try {
-      const reply = await provider.complete([
-        { role: 'system', content: ENRICH_PROMPT },
-        { role: 'user', content: enrichUserContent(payload) },
-      ]);
-      const parsed = parseBatch(reply);
+      // Fast model, no reasoning: a labelling job run on every feed refresh.
+      const reply = (await provider.json(
+        [
+          { role: 'system', content: ENRICH_PROMPT },
+          { role: 'user', content: enrichUserContent(payload) },
+        ],
+        ENRICH_SCHEMA,
+        { tier: 'fast', effort: 'low', thinking: false, maxTokens: 3000 },
+      )) as { items?: unknown };
+      const parsed = parseBatch(JSON.stringify(reply.items ?? []));
       parsed.forEach((enr, idx) => {
         const item = batch[idx];
         if (item) result.set(item.id, enr);

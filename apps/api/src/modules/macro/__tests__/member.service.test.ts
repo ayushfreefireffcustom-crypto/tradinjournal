@@ -16,6 +16,7 @@ vi.mock('@tradinjournal/db', () => ({
 vi.mock('@tradinjournal/config', () => ({
   env: {
     MACRO_ADMIN_EMAILS_LIST: ['admin@desk.com'],
+    ADMIN_EMAILS_LIST: ['admin@desk.com'],
   },
 }));
 

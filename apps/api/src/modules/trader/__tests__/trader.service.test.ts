@@ -4,13 +4,13 @@ import type { AnalysisResult } from '@tradinjournal/core';
 
 // ── Mocks: market data, AI provider, and prisma persistence. ────────────────
 const { loadPublicCandles } = vi.hoisted(() => ({ loadPublicCandles: vi.fn() }));
-const { isAiEnabled, complete } = vi.hoisted(() => ({ isAiEnabled: vi.fn(() => false), complete: vi.fn() }));
+const { isAiEnabled, json } = vi.hoisted(() => ({ isAiEnabled: vi.fn(() => false), json: vi.fn() }));
 const { create } = vi.hoisted(() => ({ create: vi.fn(async () => ({})) }));
 
 vi.mock('../../market/market.service.js', () => ({ loadPublicCandles }));
 vi.mock('../../../lib/ai/provider.js', () => ({
   isAiEnabled,
-  getProvider: () => ({ model: 'test', complete, stream: async function* () {} }),
+  getProvider: () => ({ model: 'test', json, complete: vi.fn(), stream: async function* () {} }),
 }));
 vi.mock('@tradinjournal/db', () => ({ prisma: { traderAnalysis: { create } } }));
 vi.mock('../../../lib/market/flow/deribit-options.js', () => ({ fetchDeribitOptions: vi.fn(async () => null) }));
@@ -32,7 +32,7 @@ function upSeries(n = 120, start = 100, step = 0.6): NormalizedCandle[] {
 beforeEach(() => {
   loadPublicCandles.mockReset();
   isAiEnabled.mockReset().mockReturnValue(false);
-  complete.mockReset();
+  json.mockReset();
   create.mockClear();
 });
 
@@ -64,9 +64,7 @@ describe('analyze — data + AI paths', () => {
   it('AI on with a valid JSON narrative → aiUsed true, LLM text adopted', async () => {
     loadPublicCandles.mockResolvedValue(upSeries());
     isAiEnabled.mockReturnValue(true);
-    complete.mockResolvedValue(
-      JSON.stringify({ direction: 'LONG', confidence: 72, rationale: 'Momentum favours longs.', detail: 'Top-down bullish.' }),
-    );
+    json.mockResolvedValue({ direction: 'LONG', confidence: 72, rationale: 'Momentum favours longs.', detail: 'Top-down bullish.' });
     const dto = await analyze({ symbol: 'BTCUSDT', timeframes: ['1h'] }, 'u1');
     expect(dto.aiUsed).toBe(true);
     expect(dto.direction).toBe('LONG');
@@ -80,16 +78,16 @@ describe('analyze — data + AI paths', () => {
   it('AI throwing falls back to deterministic (aiUsed false)', async () => {
     loadPublicCandles.mockResolvedValue(upSeries());
     isAiEnabled.mockReturnValue(true);
-    complete.mockRejectedValue(new Error('groq down'));
+    json.mockRejectedValue(new Error('provider down'));
     const dto = await analyze({ symbol: 'BTCUSDT', timeframes: ['1h'] }, 'u1');
     expect(dto.aiUsed).toBe(false);
     expect(dto.direction).toBe('LONG');
   });
 
-  it('AI returning junk (unparseable) falls back to deterministic', async () => {
+  it('AI returning an invalid object falls back to deterministic', async () => {
     loadPublicCandles.mockResolvedValue(upSeries());
     isAiEnabled.mockReturnValue(true);
-    complete.mockResolvedValue('sorry, I cannot comply');
+    json.mockResolvedValue({ direction: 'UPWARD', confidence: 'high' });
     const dto = await analyze({ symbol: 'BTCUSDT', timeframes: ['1h'] }, 'u1');
     expect(dto.aiUsed).toBe(false);
   });

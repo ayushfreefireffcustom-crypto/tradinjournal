@@ -1,19 +1,23 @@
 import { describe, it, expect } from 'vitest';
 import { routeQuery } from '../router.js';
-import type { AiProvider, ChatMessage } from '../provider.js';
+import type { AiCallOptions, AiProvider } from '../provider.js';
 
-// A stub provider whose complete() returns a scripted string (or throws), so we
-// exercise routeQuery's parsing + fail-safe behaviour without hitting a model.
-function stubProvider(reply: string | Error): AiProvider {
+// A stub provider whose json() returns the scripted reply parsed (or throws), so
+// we exercise routeQuery's validation + fail-safe behaviour without a model.
+function stubProvider(reply: string | Error, seen: AiCallOptions[] = []): AiProvider {
   return {
     model: 'stub',
     // eslint-disable-next-line require-yield
     async *stream(): AsyncIterable<string> {
       throw new Error('not used');
     },
-    async complete(_messages: ChatMessage[]): Promise<string> {
+    async complete(): Promise<string> {
+      throw new Error('not used');
+    },
+    async json(_messages, _schema, opts): Promise<unknown> {
+      seen.push(opts ?? {});
       if (reply instanceof Error) throw reply;
-      return reply;
+      return JSON.parse(reply);
     },
   };
 }
@@ -43,10 +47,10 @@ describe('routeQuery', () => {
     expect(r.searchQuery).toContain('calendar');
   });
 
-  it('tolerates code fences / surrounding prose', async () => {
-    const r = await routeQuery('q', stubProvider('Sure!\n```json\n{"lane":"web","searchQuery":"gold price today"}\n```'));
-    expect(r.lane).toBe('web');
-    expect(r.searchQuery).toBe('gold price today');
+  it('routes on the fast tier with reasoning off', async () => {
+    const seen: AiCallOptions[] = [];
+    await routeQuery('q', stubProvider('{"lane":"personal","searchQuery":""}', seen));
+    expect(seen[0]).toMatchObject({ tier: 'fast', thinking: false });
   });
 
   it('falls back to the raw question when a web lane has no query', async () => {

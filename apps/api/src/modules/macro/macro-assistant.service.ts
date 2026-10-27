@@ -40,7 +40,7 @@ export async function answerMacroQuestion(question: string): Promise<{ answer: s
     return { answer: templateFallback(question, state), streamed: false };
   }
   try {
-    const answer = await getProvider().complete(buildMessages(question, buildSystemPrompt(state)));
+    const answer = await getProvider().complete(buildMessages(question, buildSystemPrompt(state)), { effort: 'low', maxTokens: 4000 });
     const withDisclaimer = answer.toLowerCase().includes('not financial advice')
       ? answer
       : `${answer.trim()}\n\n${NFA_DISCLAIMER}`;
@@ -65,7 +65,7 @@ export async function* streamMacroAnswer(question: string): AsyncGenerator<strin
   let emitted = false;
   let sawDisclaimer = false;
   try {
-    for await (const chunk of getProvider().stream(buildMessages(question, buildSystemPrompt(state)))) {
+    for await (const chunk of getProvider().stream(buildMessages(question, buildSystemPrompt(state)), { effort: 'low', maxTokens: 4000 })) {
       emitted = true;
       if (chunk.toLowerCase().includes('not financial advice')) sawDisclaimer = true;
       yield chunk;

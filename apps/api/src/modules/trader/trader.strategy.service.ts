@@ -20,23 +20,31 @@ function asStrategyTf(tf: MarketTimeframe): StrategyTimeframe {
   return '1h';
 }
 
-const PARSE_SYSTEM = `You convert plain-English trading strategy descriptions into ONE JSON object.
-Return ONLY JSON (no markdown) with this shape:
-{
-  "name": "short name",
-  "kind": "ema_cross" | "rsi_threshold" | "price_vs_ema" | "breakout" | "macd_cross",
-  "direction": "LONG" | "SHORT" | "BOTH",
-  "fast": 20,
-  "slow": 50,
-  "rsiPeriod": 14,
-  "rsiAbove": 70,
-  "rsiBelow": 30,
-  "lookback": 20,
-  "stopAtr": 1.5,
-  "targetR": 2,
-  "horizonBars": 48
-}
-Pick the closest kind. Never invent unsupported indicators. Educational use only.`;
+const PARSE_SYSTEM = `You convert a plain-English trading strategy description into one rule object.
+Pick the closest supported kind and never invent unsupported indicators. Fill every
+number: use the description's values, else these defaults — fast 20, slow 50,
+rsiPeriod 14, rsiAbove 70, rsiBelow 30, lookback 20, stopAtr 1.5, targetR 2,
+horizonBars 48. "name" is a short label (max 6 words). Educational use only.`;
+
+const STRATEGY_SCHEMA = {
+  type: 'object',
+  properties: {
+    name: { type: 'string' },
+    kind: { type: 'string', enum: ['ema_cross', 'rsi_threshold', 'price_vs_ema', 'breakout', 'macd_cross'] },
+    direction: { type: 'string', enum: ['LONG', 'SHORT', 'BOTH'] },
+    fast: { type: 'number' },
+    slow: { type: 'number' },
+    rsiPeriod: { type: 'number' },
+    rsiAbove: { type: 'number' },
+    rsiBelow: { type: 'number' },
+    lookback: { type: 'number' },
+    stopAtr: { type: 'number' },
+    targetR: { type: 'number' },
+    horizonBars: { type: 'number' },
+  },
+  required: ['name', 'kind', 'direction', 'fast', 'slow', 'rsiPeriod', 'rsiAbove', 'rsiBelow', 'lookback', 'stopAtr', 'targetR', 'horizonBars'],
+  additionalProperties: false,
+};
 
 export interface PaperPositionDto {
   id: string;
@@ -114,11 +122,11 @@ async function parseRulesFromPrompt(prompt: string): Promise<{ name: string; rul
       { role: 'system', content: PARSE_SYSTEM },
       { role: 'user', content: prompt.slice(0, 2000) },
     ];
-    const raw = await getProvider().complete(messages);
-    const start = raw.indexOf('{');
-    const end = raw.lastIndexOf('}');
-    if (start < 0 || end <= start) return fallback();
-    const parsed = JSON.parse(raw.slice(start, end + 1)) as Record<string, unknown>;
+    const parsed = (await getProvider().json(messages, STRATEGY_SCHEMA, {
+      tier: 'fast',
+      effort: 'low',
+      maxTokens: 2000,
+    })) as Record<string, unknown>;
     const rules = normalizeStrategyRules(parsed);
     if (!rules) return fallback();
     const name = typeof parsed.name === 'string' && parsed.name.trim() ? parsed.name.trim().slice(0, 64) : 'Strategy';

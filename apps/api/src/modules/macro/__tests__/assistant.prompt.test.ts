@@ -33,9 +33,9 @@ const sampleState: MacroState = {
 describe('macro assistant prompts', () => {
   it('system prompt injects state and citation rules', () => {
     const sys = buildSystemPrompt(sampleState);
-    expect(sys).toContain('ONLY using the JSON dashboard state');
+    expect(sys).toContain('Answer ONLY from the live dashboard data');
     expect(sys).toContain('Unemployment Rate');
-    expect(sys).toContain('DASHBOARD_STATE_JSON');
+    expect(sys).toContain('<MACRO_DATA>');
     expect(sys).toContain(NFA_DISCLAIMER);
     expect(sys).toContain('"label":"Goldilocks"');
   });

@@ -94,7 +94,7 @@ export async function getReport(
         { role: 'system', content: REPORT_PROMPT },
         { role: 'system', content: contextMessageContent(context) },
         { role: 'user', content: 'Write my performance review.' },
-      ])
+      ], { effort: 'medium', maxTokens: 6000 })
     ).trim();
 
     if (!content) throw new Error('Model returned an empty review');

@@ -13,9 +13,11 @@ import type { Lane } from '../../lib/ai/router.js';
 export { loadTraderContext };
 
 /**
- * Assemble the full message list sent to the provider: system + grounding +
- * (optional) web results + history. The <WEB_RESULTS> block is only inserted when
- * a search actually returned something; personal lanes omit it entirely.
+ * Assemble the full message list sent to the provider: system + grounding, then
+ * the history, then (optional) web results. The stable part (persona +
+ * TRADER_DATA + earlier turns) comes first so the provider can cache it; the
+ * per-question <WEB_RESULTS> block rides after the latest user turn. Personal
+ * lanes omit it entirely.
  */
 export function buildMessages(
   context: TraderContext,
@@ -25,11 +27,12 @@ export function buildMessages(
   const messages: ChatMessage[] = [
     { role: 'system', content: SYSTEM_PROMPT },
     { role: 'system', content: contextMessageContent(context) },
+    ...history.map(m => ({ role: m.role, content: m.content })),
   ];
   if (webResults && webResults.length > 0) {
     messages.push({ role: 'system', content: webResultsMessageContent(webResults) });
   }
-  return [...messages, ...history.map(m => ({ role: m.role, content: m.content }))];
+  return messages;
 }
 
 /** Deterministic reply when the LLM is off — surfaces the rule-based insights. */

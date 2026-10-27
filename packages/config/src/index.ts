@@ -39,13 +39,18 @@ const envSchema = z.object({
 
   CREDENTIAL_ENCRYPTION_KEY: z.string().optional(),
 
-  // ── AI trading coach (LLM) ───────────────────────────────────────────────
-  // Provider is OpenAI-wire-compatible so one adapter serves Groq (default),
-  // OpenAI, or any compatible host via AI_BASE_URL. When no key is set (typical
-  // in local dev) the AI layer degrades gracefully to the rule-based insight
-  // engine — same optional-with-fallback approach as RESEND_API_KEY above.
-  AI_PROVIDER: z.enum(['groq', 'openai', 'none']).default('none'),
+  // ── AI (coach, SignalX, reviews, news, macro) ────────────────────────────
+  // Claude via the official Anthropic SDK is the primary provider: set
+  // ANTHROPIC_API_KEY and it is picked automatically. Groq / OpenAI remain as
+  // OpenAI-wire-compatible alternatives (AI_BASE_URL for other hosts). With no key
+  // (typical in local dev) the AI layer degrades to the rule-based engines — same
+  // optional-with-fallback approach as RESEND_API_KEY above.
+  AI_PROVIDER: z.enum(['anthropic', 'groq', 'openai', 'none']).optional(),
+  ANTHROPIC_API_KEY: z.string().optional(),
+  /** Quality model: coach chat, SignalX, weekly review, macro, news brief. */
   AI_MODEL: z.string().optional(),
+  /** Fast model: query routing, news tagging, strategy parsing. */
+  AI_FAST_MODEL: z.string().optional(),
   AI_BASE_URL: z.string().url().optional(),
   GROQ_API_KEY: z.string().optional(),
   OPENAI_API_KEY: z.string().optional(),
@@ -55,7 +60,7 @@ const envSchema = z.object({
   // is set we use Tavily (purpose-built LLM search); otherwise, when AI is enabled,
   // we fall back to Groq's agentic model (SEARCH_FALLBACK_MODEL). When neither is
   // available the coach simply stays grounded on the trader's own data (no search).
-  SEARCH_PROVIDER: z.enum(['tavily', 'compound', 'none']).optional(),
+  SEARCH_PROVIDER: z.enum(['tavily', 'claude', 'compound', 'none']).optional(),
   TAVILY_API_KEY: z.string().optional(),
   SEARCH_FALLBACK_MODEL: z.string().default('groq/compound-mini'),
 
@@ -179,7 +184,7 @@ const envSchema = z.object({
   SANTIMENT_API_KEY: z.string().optional(),
   DERIBIT_REST_URL: z.string().url().default('https://www.deribit.com'),
   // The macro assistant reuses the trading coach's AI provider (AI_PROVIDER +
-  // GROQ_API_KEY / OPENAI_API_KEY above) — no separate key. No AI key → it falls
+  // ANTHROPIC_API_KEY / GROQ_API_KEY / OPENAI_API_KEY above) — no separate key. No AI key → it falls
   // back to a deterministic template summary, exactly like the coach.
   // Emails allowed to approve macro members, until a full admin UI (comma-separated).
   MACRO_ADMIN_EMAILS: z.string().optional(),
@@ -234,14 +239,18 @@ export type Env = z.infer<typeof envSchema> & {
   APP_URL: string;
   /** True when a usable AI provider + key are configured. */
   AI_ENABLED: boolean;
-  /** Resolved model id (provider default applied when AI_MODEL is unset). */
+  /** Resolved provider: explicit AI_PROVIDER, else anthropic when its key is set, else none. */
+  AI_PROVIDER_RESOLVED: 'anthropic' | 'groq' | 'openai' | 'none';
+  /** Resolved quality model id (provider default applied when AI_MODEL is unset). */
   AI_MODEL_RESOLVED: string;
+  /** Resolved fast model id (provider default applied when AI_FAST_MODEL is unset). */
+  AI_FAST_MODEL_RESOLVED: string;
   /** Resolved OpenAI-compatible base URL (provider default applied when unset). */
   AI_BASE_URL_RESOLVED: string;
-  /** The API key for the selected provider (Groq or OpenAI), if present. */
+  /** The API key for the selected provider, if present. */
   AI_API_KEY?: string;
   /** Resolved search backend: Tavily when keyed, else compound fallback when AI is on, else none. */
-  SEARCH_PROVIDER_RESOLVED: 'tavily' | 'compound' | 'none';
+  SEARCH_PROVIDER_RESOLVED: 'tavily' | 'claude' | 'compound' | 'none';
   /** True when the coach can perform a web search (Tavily key set OR AI enabled for the fallback). */
   SEARCH_ENABLED: boolean;
   /** Base URL the worker uses to reach the API (private URL in prod, API_HOST/PORT locally). */
@@ -275,8 +284,9 @@ export type Env = z.infer<typeof envSchema> & {
 };
 
 const AI_DEFAULTS = {
-  groq: { model: 'llama-3.3-70b-versatile', baseUrl: 'https://api.groq.com/openai/v1' },
-  openai: { model: 'gpt-4o-mini', baseUrl: 'https://api.openai.com/v1' },
+  anthropic: { model: 'claude-sonnet-5-5', fastModel: 'claude-haiku-5-5', baseUrl: 'https://api.anthropic.com' },
+  groq: { model: 'llama-3.3-70b-versatile', fastModel: 'llama-3.3-70b-versatile', baseUrl: 'https://api.groq.com/openai/v1' },
+  openai: { model: 'gpt-4o-mini', fastModel: 'gpt-4o-mini', baseUrl: 'https://api.openai.com/v1' },
 } as const;
 
 function loadEnv(): Env {
@@ -292,11 +302,16 @@ function loadEnv(): Env {
 
   // Resolve AI provider settings. Key comes from the provider-specific env var;
   // model / base URL fall back to the provider's default when unset.
-  const provider = parsed.data.AI_PROVIDER;
+  const provider = parsed.data.AI_PROVIDER ?? (parsed.data.ANTHROPIC_API_KEY ? 'anthropic' : 'none');
+  const AI_PROVIDER_RESOLVED = provider;
   const AI_API_KEY =
-    provider === 'groq' ? parsed.data.GROQ_API_KEY : provider === 'openai' ? parsed.data.OPENAI_API_KEY : undefined;
-  const defaults = provider === 'none' ? AI_DEFAULTS.groq : AI_DEFAULTS[provider];
+    provider === 'anthropic' ? parsed.data.ANTHROPIC_API_KEY
+    : provider === 'groq' ? parsed.data.GROQ_API_KEY
+    : provider === 'openai' ? parsed.data.OPENAI_API_KEY
+    : undefined;
+  const defaults = provider === 'none' ? AI_DEFAULTS.anthropic : AI_DEFAULTS[provider];
   const AI_MODEL_RESOLVED = parsed.data.AI_MODEL ?? defaults.model;
+  const AI_FAST_MODEL_RESOLVED = parsed.data.AI_FAST_MODEL ?? defaults.fastModel;
   const AI_BASE_URL_RESOLVED = parsed.data.AI_BASE_URL ?? defaults.baseUrl;
   const AI_ENABLED = provider !== 'none' && !!AI_API_KEY;
 
@@ -305,13 +320,17 @@ function loadEnv(): Env {
   // compound fallback when AI is enabled, else none. Compound reuses the AI client
   // so it needs AI_ENABLED; Tavily only needs its own key.
   const hasTavily = !!parsed.data.TAVILY_API_KEY;
-  let SEARCH_PROVIDER_RESOLVED: 'tavily' | 'compound' | 'none';
+  // Claude's server-side web search needs the anthropic provider; Groq's compound
+  // model needs groq.
+  const viaAi: 'claude' | 'compound' | null =
+    AI_ENABLED && provider === 'anthropic' ? 'claude' : AI_ENABLED && provider === 'groq' ? 'compound' : null;
+  let SEARCH_PROVIDER_RESOLVED: 'tavily' | 'claude' | 'compound' | 'none';
   const explicit = parsed.data.SEARCH_PROVIDER;
   if (explicit === 'tavily' && hasTavily) SEARCH_PROVIDER_RESOLVED = 'tavily';
-  else if (explicit === 'compound' && AI_ENABLED) SEARCH_PROVIDER_RESOLVED = 'compound';
+  else if ((explicit === 'claude' || explicit === 'compound') && viaAi === explicit) SEARCH_PROVIDER_RESOLVED = explicit;
   else if (explicit === 'none') SEARCH_PROVIDER_RESOLVED = 'none';
   else if (hasTavily) SEARCH_PROVIDER_RESOLVED = 'tavily';
-  else if (AI_ENABLED) SEARCH_PROVIDER_RESOLVED = 'compound';
+  else if (viaAi) SEARCH_PROVIDER_RESOLVED = viaAi;
   else SEARCH_PROVIDER_RESOLVED = 'none';
   const SEARCH_ENABLED = SEARCH_PROVIDER_RESOLVED !== 'none';
 
@@ -367,7 +386,9 @@ function loadEnv(): Env {
     ...parsed.data,
     APP_URL,
     AI_ENABLED,
+    AI_PROVIDER_RESOLVED,
     AI_MODEL_RESOLVED,
+    AI_FAST_MODEL_RESOLVED,
     AI_BASE_URL_RESOLVED,
     AI_API_KEY,
     SEARCH_PROVIDER_RESOLVED,

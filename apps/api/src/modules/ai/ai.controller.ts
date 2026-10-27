@@ -128,7 +128,7 @@ export async function handleChat(req: Request, res: Response, next: NextFunction
       //    wanted but produced nothing, add a soft note so the model says so.
       const messages = buildMessages(context, input.messages, sources);
       if (wantsWeb && sources.length === 0) {
-        messages.splice(2, 0, {
+        messages.push({
           role: 'system',
           content:
             'Note: a live web search was attempted but returned no usable results (or was unavailable). Do not invent external facts, prices, or news — tell the user you could not fetch live information.',
@@ -136,7 +136,7 @@ export async function handleChat(req: Request, res: Response, next: NextFunction
       }
 
       // 4) Stream the reply token-by-token.
-      for await (const token of provider.stream(messages, controller.signal)) {
+      for await (const token of provider.stream(messages, { effort: 'medium', maxTokens: 6000, signal: controller.signal })) {
         if (aborted) break;
         full += token;
         sseWrite(res, { token });

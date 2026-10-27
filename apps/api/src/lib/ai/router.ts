@@ -22,7 +22,7 @@ export interface Route {
   searchQuery: string;
 }
 
-const ROUTER_PROMPT = `You route questions for a trading-journal assistant. Reply with ONLY a JSON object: {"lane":"personal"|"web"|"hybrid","searchQuery":"..."}.
+const ROUTER_PROMPT = `You route questions for a trading-journal assistant into a lane, and write a web search query when one is needed.
 
 Lanes:
 - "personal": about the user's OWN trading history, stats, behaviour, or journal (e.g. "why do I lose on Fridays?", "am I cutting winners early?", "what's my biggest leak?"). No outside information needed.
@@ -31,38 +31,43 @@ Lanes:
 
 searchQuery rules:
 - For "web" and "hybrid": write a concise, keyword-focused web search query (3-10 words) scoped to trading/markets/economy/finance that will retrieve the needed facts. Resolve vague time/topic words using the trading context — e.g. "what's coming up this week?" → "economic calendar this week high impact events". Never make it about entertainment, TV, or movies.
-- For "personal": use an empty string "".
+- For "personal": use an empty string "".`;
 
-Reply with the JSON object only — no prose, no markdown.`;
+const ROUTE_SCHEMA = {
+  type: 'object',
+  properties: {
+    lane: { type: 'string', enum: ['personal', 'web', 'hybrid'] },
+    searchQuery: { type: 'string' },
+  },
+  required: ['lane', 'searchQuery'],
+  additionalProperties: false,
+};
 
-/** Parse the first JSON object from a model reply, tolerant of code fences/prose. */
-function parseRoute(raw: string): Route | null {
-  const match = raw.match(/\{[\s\S]*\}/);
-  if (!match) return null;
-  try {
-    const obj = JSON.parse(match[0]) as { lane?: unknown; searchQuery?: unknown };
-    if (obj.lane !== 'personal' && obj.lane !== 'web' && obj.lane !== 'hybrid') return null;
-    const searchQuery = typeof obj.searchQuery === 'string' ? obj.searchQuery.trim() : '';
-    return { lane: obj.lane, searchQuery };
-  } catch {
-    return null;
-  }
+/** Validate the structured reply (it is still model output). */
+function parseRoute(value: unknown): Route | null {
+  if (!value || typeof value !== 'object') return null;
+  const obj = value as { lane?: unknown; searchQuery?: unknown };
+  if (obj.lane !== 'personal' && obj.lane !== 'web' && obj.lane !== 'hybrid') return null;
+  const searchQuery = typeof obj.searchQuery === 'string' ? obj.searchQuery.trim() : '';
+  return { lane: obj.lane, searchQuery };
 }
 
 export async function routeQuery(query: string, provider: AiProvider, signal?: AbortSignal): Promise<Route> {
   const trimmed = query.trim();
   if (!trimmed) return { lane: 'personal', searchQuery: '' };
   try {
-    const reply = await provider.complete(
+    // Fast model, no reasoning: this sits in front of every coach answer.
+    const reply = await provider.json(
       [
         { role: 'system', content: ROUTER_PROMPT },
         { role: 'user', content: trimmed.slice(0, 1000) },
       ],
-      signal,
+      ROUTE_SCHEMA,
+      { tier: 'fast', effort: 'low', thinking: false, maxTokens: 300, signal },
     );
     const route = parseRoute(reply);
     if (!route) {
-      logger.warn(`Router returned unparseable output; defaulting to personal: ${reply.slice(0, 80)}`);
+      logger.warn(`Router returned an invalid route; defaulting to personal: ${JSON.stringify(reply).slice(0, 80)}`);
       return { lane: 'personal', searchQuery: '' };
     }
     // Safety: if a web lane came back without a usable query, fall back to the

@@ -25,6 +25,26 @@ export const llmAnalysisSchema = z.object({
 });
 export type LlmAnalysis = z.infer<typeof llmAnalysisSchema>;
 
+/** Structured-output contract handed to the model (mirrors llmAnalysisSchema). */
+export const ANALYSIS_JSON_SCHEMA = {
+  type: 'object',
+  properties: {
+    direction: { type: 'string', enum: ['LONG', 'SHORT', 'WAIT'] },
+    entryLow: { type: 'number' },
+    entryHigh: { type: 'number' },
+    stop: { type: 'number' },
+    t1: { type: 'number' },
+    t2: { type: 'number' },
+    t3: { type: 'number' },
+    confidence: { type: 'number', description: '0-100' },
+    rationale: { type: 'string', description: '2-3 sentences' },
+    detail: { type: 'string', description: '4-6 sentences of top-down reasoning' },
+    invalidation: { type: 'string', description: '1 sentence' },
+  },
+  required: ['direction', 'entryLow', 'entryHigh', 'stop', 't1', 't2', 't3', 'confidence', 'rationale', 'detail', 'invalidation'],
+  additionalProperties: false,
+} as const;
+
 function fmt(n: number): string {
   return Number.isFinite(n) ? String(Math.round(n * 1e6) / 1e6) : 'n/a';
 }
@@ -61,10 +81,9 @@ export function buildSystemPrompt(symbol: string, timeframes: string[], perTf: T
     `  direction=${candidate.direction} entry=${fmt(candidate.entryLow)}–${fmt(candidate.entryHigh)}`,
     `  stop=${fmt(candidate.stop)} t1=${fmt(candidate.t1)} t2=${fmt(candidate.t2)} t3=${fmt(candidate.t3)}`,
     '',
-    'Respond with ONLY a JSON object, no prose, no code fences, with keys:',
-    '{"direction":"LONG|SHORT|WAIT","entryLow":num,"entryHigh":num,"stop":num,',
-    '"t1":num,"t2":num,"t3":num,"confidence":0-100,"rationale":"2-3 sentences",',
-    '"detail":"4-6 sentences of top-down reasoning","invalidation":"1 sentence"}',
+    'Return the call as the structured object: direction, entry zone, stop, three',
+    'targets, confidence (0-100), a 2-3 sentence rationale, 4-6 sentences of',
+    'top-down detail, and a one-sentence invalidation.',
     'Keep direction consistent with the higher-timeframe trend. If you keep the',
     `engine levels, just echo them. Always end the rationale with "${NFA}".`,
   ].join('\n');
@@ -75,6 +94,11 @@ export function buildSystemPrompt(symbol: string, timeframes: string[], perTf: T
  * around the JSON. Returns null on any failure so the caller keeps the
  * deterministic analysis.
  */
+export function parseAnalysisObject(value: unknown): LlmAnalysis | null {
+  const parsed = llmAnalysisSchema.safeParse(value);
+  return parsed.success ? parsed.data : null;
+}
+
 export function parseAnalysisJson(raw: string): LlmAnalysis | null {
   if (!raw || typeof raw !== 'string') return null;
   // Prefer a ```json fenced block, else the first balanced-looking {...}.

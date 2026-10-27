@@ -39,7 +39,7 @@ import { fetchSantiment } from '../../lib/market/flow/santiment.js';
 import { fetchFearGreed } from '../../lib/market/flow/fear-greed.js';
 import { getMacroState } from '../macro/macro.service.js';
 import { env } from '@tradinjournal/config';
-import { buildSystemPrompt, parseAnalysisJson, NFA, type LlmAnalysis } from './trader.prompt.js';
+import { ANALYSIS_JSON_SCHEMA, buildSystemPrompt, parseAnalysisObject, NFA, type LlmAnalysis } from './trader.prompt.js';
 import { applyMetaConfidence } from './trader.meta.service.js';
 
 /** Bars pulled per timeframe (enough for EMA50 + swing structure). */
@@ -466,8 +466,9 @@ export async function analyze(input: TraderAnalyzeInput, userId?: string): Promi
         { role: 'system', content: buildSystemPrompt(input.symbol, timeframes, perTf, engineResult) },
         { role: 'user', content: `Analyze ${input.symbol} on ${timeframes.join(', ')} and return the JSON.` },
       ];
-      const raw = await getProvider().complete(messages);
-      const parsed = parseAnalysisJson(raw);
+      const parsed = parseAnalysisObject(
+        await getProvider().json(messages, ANALYSIS_JSON_SCHEMA, { effort: 'medium', maxTokens: 6000 }),
+      );
       if (parsed) {
         result = mergeLlm(engineResult, parsed, ctx);
         // Keep calibrated confidence — LLM must not overwrite meta/heuristic confidence.

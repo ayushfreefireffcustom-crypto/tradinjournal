@@ -113,7 +113,7 @@ export async function handleNewsBrief(req: Request, res: Response): Promise<void
         { role: 'system', content: BRIEF_PROMPT },
         { role: 'user', content: briefUserContent(headlines) },
       ],
-      controller.signal,
+      { effort: 'low', maxTokens: 4000, signal: controller.signal },
     )) {
       if (res.writableEnded) break;
       sseWrite(res, { token });

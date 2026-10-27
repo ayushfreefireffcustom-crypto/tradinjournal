@@ -1,19 +1,21 @@
 // Web-search abstraction for the AI coach, mirroring provider.ts: callers depend
 // only on the SearchProvider interface, never on a concrete backend. Tavily is
-// the primary (purpose-built LLM search, clean ranked results); Groq's agentic
-// `compound-mini` is the zero-config fallback when only an AI key is present.
+// used when keyed (purpose-built LLM search); otherwise the AI provider searches:
+// Claude's server-side web search tool, or Groq's agentic `compound-mini`.
 //
 // getSearchProvider() returns null when neither backend is available, so the
 // coach simply stays grounded on the trader's own data (no web search).
 import { env } from '@tradinjournal/config';
 import { logger } from '@tradinjournal/logger';
 import type { AiSource } from '@tradinjournal/contracts';
+import type Anthropic from '@anthropic-ai/sdk';
+import { getAnthropicClient } from './provider.js';
 
 /** One web result. Shape matches the shared AiSource contract. */
 export type SearchResult = AiSource;
 
 export interface SearchProvider {
-  readonly name: 'tavily' | 'compound';
+  readonly name: 'tavily' | 'claude' | 'compound';
   /** Return up to a few ranked results for the query. Never throws for "no
    *  results" — returns []. Honours the abort signal + an internal hard timeout. */
   search(query: string, signal?: AbortSignal): Promise<SearchResult[]>;
@@ -31,10 +33,10 @@ function clampSnippet(s: string): string {
 }
 
 /** Merge the caller signal with an internal timeout into one AbortSignal. */
-function withTimeout(signal: AbortSignal | undefined): { signal: AbortSignal; clear: () => void } {
+function withTimeout(signal: AbortSignal | undefined, ms = SEARCH_TIMEOUT_MS): { signal: AbortSignal; clear: () => void } {
   const ctrl = new AbortController();
   const onAbort = () => ctrl.abort();
-  const timer = setTimeout(() => ctrl.abort(), SEARCH_TIMEOUT_MS);
+  const timer = setTimeout(() => ctrl.abort(), ms);
   if (signal) {
     if (signal.aborted) ctrl.abort();
     else signal.addEventListener('abort', onAbort, { once: true });
@@ -185,6 +187,67 @@ export function extractCompoundSources(json: CompoundResponse): SearchResult[] {
   return out;
 }
 
+// ── Claude web search (when the AI provider is anthropic) ────────────────────
+// One call on the fast model with Claude's server-side web search tool. Result
+// blocks give ranked title+URL; the passages Claude cites become the snippets.
+/** A search plus a short write-up takes longer than a plain search API call. */
+const CLAUDE_SEARCH_TIMEOUT_MS = 20_000;
+
+class ClaudeSearchProvider implements SearchProvider {
+  readonly name = 'claude' as const;
+  constructor(private readonly client: Anthropic, private readonly model: string) {}
+
+  async search(query: string, signal?: AbortSignal): Promise<SearchResult[]> {
+    const { signal: s, clear } = withTimeout(signal, CLAUDE_SEARCH_TIMEOUT_MS);
+    try {
+      const msg = await this.client.messages.create(
+        {
+          model: this.model,
+          max_tokens: 2000,
+          output_config: { effort: 'low' },
+          tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 2 }],
+          messages: [
+            {
+              role: 'user',
+              content: `Search the web for: ${query}\n\nThen list the specific facts a trader needs (dates, figures, what happened), citing your sources. Facts only, no advice.`,
+            },
+          ],
+        },
+        { signal: s },
+      );
+      return claudeSearchResults(msg);
+    } finally {
+      clear();
+    }
+  }
+}
+
+/** Ranked sources from the search result blocks, with cited passages as snippets. */
+export function claudeSearchResults(msg: Pick<Anthropic.Message, 'content'>): SearchResult[] {
+  const cited = new Map<string, string[]>();
+  const ranked: { title: string; url: string }[] = [];
+  for (const block of msg.content) {
+    // An error result arrives as an object instead of a list — nothing to rank.
+    if (block.type === 'web_search_tool_result' && Array.isArray(block.content)) {
+      for (const r of block.content) ranked.push({ title: r.title || r.url, url: r.url });
+    }
+    if (block.type === 'text') {
+      for (const c of block.citations ?? []) {
+        if (c.type !== 'web_search_result_location') continue;
+        const prev = cited.get(c.url) ?? [];
+        if (!prev.includes(c.cited_text)) cited.set(c.url, [...prev, c.cited_text]);
+      }
+    }
+  }
+  const seen = new Set<string>();
+  const out = ranked
+    .filter(r => !seen.has(r.url) && seen.add(r.url))
+    .map(r => ({ ...r, snippet: clampSnippet((cited.get(r.url) ?? []).join(' … ')) }));
+  // Sources Claude actually cited first, then the rest of the ranking.
+  out.sort((a, b) => Number(!!b.snippet) - Number(!!a.snippet));
+  return out.slice(0, MAX_RESULTS);
+}
+
 // ── Selection (cached, like getProvider) ──────────────────────────────────────
 let cached: SearchProvider | null | undefined;
 
@@ -193,6 +256,9 @@ export function getSearchProvider(): SearchProvider | null {
   if (env.SEARCH_PROVIDER_RESOLVED === 'tavily' && env.TAVILY_API_KEY) {
     cached = new TavilySearchProvider(env.TAVILY_API_KEY);
     logger.info('Search provider ready: tavily');
+  } else if (env.SEARCH_PROVIDER_RESOLVED === 'claude' && getAnthropicClient()) {
+    cached = new ClaudeSearchProvider(getAnthropicClient()!, env.AI_FAST_MODEL_RESOLVED);
+    logger.info(`Search provider ready: claude web search · ${env.AI_FAST_MODEL_RESOLVED}`);
   } else if (env.SEARCH_PROVIDER_RESOLVED === 'compound' && env.AI_API_KEY) {
     cached = new CompoundMiniSearchProvider(env.AI_API_KEY, env.AI_BASE_URL_RESOLVED, env.SEARCH_FALLBACK_MODEL);
     logger.info(`Search provider ready: compound · ${env.SEARCH_FALLBACK_MODEL}`);
