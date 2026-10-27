@@ -6,6 +6,7 @@ import { Suspense, useEffect, useRef, useState } from 'react';
 import AuthShell, { AuthSubmit } from '@/components/v3/auth-shell';
 import { LoadingScreen } from '@/components/loader';
 import { authClient } from '@/lib/auth-client';
+import { resetUserCaches } from '@/lib/session-caches';
 
 const OTP_LEN = 6;
 const RESEND_COOLDOWN = 30; // seconds
@@ -47,7 +48,8 @@ function VerifyInner() {
     try {
       const res = await authClient.emailOtp.verifyEmail({ email, otp: fullCode });
       if (res?.error) throw new Error(res.error.message ?? 'Invalid or expired code');
-      router.push('/dashboard');
+      resetUserCaches();
+      router.replace('/dashboard');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Verification failed');
       setDigits(Array(OTP_LEN).fill(''));

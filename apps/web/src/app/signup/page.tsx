@@ -59,7 +59,7 @@ export default function SignupPage() {
   const strength = useMemo(() => passwordStrength(password), [password]);
   const canSubmit =
     name.trim().length > 1 &&
-    email.includes('@') &&
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) &&
     strength.score >= 2 &&
     agree &&
     country.length === 2 &&
@@ -71,11 +71,12 @@ export default function SignupPage() {
     if (!canSubmit) return;
     setError('');
     setLoading(true);
+    const addr = email.trim().toLowerCase();
     try {
       const res = await authClient.signUp.email({
-        email,
+        email: addr,
         password,
-        name,
+        name: name.trim(),
         country: country.toUpperCase(),
         city: city.trim(),
         postalCode: postalCode.trim(),
@@ -83,7 +84,7 @@ export default function SignupPage() {
         ...(refValid ? { referralCode: refCode.trim() } : {}),
       });
       if (res?.error) throw new Error(res.error.message ?? 'Could not create account');
-      router.push(`/verify?email=${encodeURIComponent(email)}`);
+      router.push(`/verify?email=${encodeURIComponent(addr)}`);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Sign up failed');
       setLoading(false);

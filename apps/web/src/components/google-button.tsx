@@ -6,6 +6,7 @@
 
 import { useState } from 'react';
 import { authClient } from '@/lib/auth-client';
+import { safeNext } from '@/lib/use-redirect-if-authed';
 
 export default function GoogleButton({ label = 'Continue with Google' }: { label?: string }) {
   const [loading, setLoading] = useState(false);
@@ -19,7 +20,7 @@ export default function GoogleButton({ label = 'Continue with Google' }: { label
       const origin = window.location.origin;
       await authClient.signIn.social({
         provider: 'google',
-        callbackURL: `${origin}/dashboard`,
+        callbackURL: `${origin}${safeNext()}`,
         errorCallbackURL: `${origin}/login`,
       });
     } catch {

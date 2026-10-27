@@ -33,10 +33,36 @@ export function persistSelectedAccountId(id: string | null) {
   writeStored(id);
 }
 
+// Every page mounts its own AppShell + useAccounts, so without a shared copy each
+// sidebar click re-fetched the list and showed skeletons first. Pages now render
+// from this copy instantly and refresh it in the background once it's stale.
+const FRESH_MS = 60_000;
+let cache: { accs: BrokerAccount[]; at: number } | null = null;
+let inflight: Promise<BrokerAccount[]> | null = null;
+
+function fetchAccounts(): Promise<BrokerAccount[]> {
+  inflight ??= api.accounts.list()
+    .then(accs => { cache = { accs, at: Date.now() }; return accs; })
+    .finally(() => { inflight = null; });
+  return inflight;
+}
+
+/** Drop the shared list (sign-out / user switch). */
+export function clearAccountsCache() {
+  cache = null;
+}
+
 export function useAccounts(initialIdOverride?: string | null) {
-  const [accounts, setAccountsState] = useState<BrokerAccount[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [accounts, setAccountsState] = useState<BrokerAccount[]>(() => cache?.accs ?? []);
+  const [selectedId, setSelectedId] = useState<string | null>(() => {
+    if (!cache) return null; // first load: resolved in the effect so SSR and hydration match
+    const wanted = initialIdOverride ?? readStored();
+    return cache.accs.find(a => a.id === wanted)?.id ?? cache.accs[0]?.id ?? null;
+  });
+  const [loading, setLoading] = useState(() => !cache);
+  // Only a list that actually loaded may send someone to /brokers — a 401 or a
+  // network blip must not bounce a signed-out (or offline) user there.
+  const [loaded, setLoaded] = useState(() => !!cache);
   const router = useRouter();
   const pathname = usePathname();
 
@@ -45,20 +71,25 @@ export function useAccounts(initialIdOverride?: string | null) {
   // partner portal and admin pages work without a broker — many partners don't trade.
   useEffect(() => {
     const brokerFree = pathname === '/brokers' || pathname.startsWith('/partner') || pathname.startsWith('/admin');
-    if (!loading && accounts.length === 0 && !brokerFree) {
+    if (loaded && !loading && accounts.length === 0 && !brokerFree) {
       router.replace('/brokers');
     }
-  }, [loading, accounts.length, pathname, router]);
+  }, [loaded, loading, accounts.length, pathname, router]);
 
   // Initial load — read the persisted selection inside the effect (never during
   // render) so server and client first paint match.
   useEffect(() => {
     let alive = true;
+    if (cache && Date.now() - cache.at < FRESH_MS) {
+      if (initialIdOverride && cache.accs.some(a => a.id === initialIdOverride)) writeStored(initialIdOverride);
+      return;
+    }
     (async () => {
       try {
-        const accs = await api.accounts.list();
+        const accs = await fetchAccounts();
         if (!alive) return;
         setAccountsState(accs);
+        setLoaded(true);
         const wanted = initialIdOverride ?? readStored();
         const resolved = accs.find(a => a.id === wanted)?.id ?? accs[0]?.id ?? null;
         setSelectedId(resolved);
@@ -95,6 +126,7 @@ export function useAccounts(initialIdOverride?: string | null) {
           writeStored(resolved);
           return resolved;
         });
+        cache = { accs: next, at: Date.now() };
         return next;
       });
     },

@@ -2,11 +2,12 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import AuthShell, { AuthSubmit, EyeButton } from '@/components/v3/auth-shell';
 import GoogleButton from '@/components/google-button';
 import { authClient } from '@/lib/auth-client';
-import { useRedirectIfAuthed } from '@/lib/use-redirect-if-authed';
+import { safeNext, useRedirectIfAuthed } from '@/lib/use-redirect-if-authed';
+import { resetUserCaches } from '@/lib/session-caches';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -17,31 +18,41 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Google sends failures back here as ?error=…; say so instead of a silent reload.
+  useEffect(() => {
+    const code = new URLSearchParams(window.location.search).get('error');
+    if (code) setError(code === 'access_denied' ? 'Google sign-in was cancelled.' : 'Google sign-in didn’t go through. Try again, or use your email.');
+  }, []);
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
     setLoading(true);
+    const addr = email.trim().toLowerCase();
     try {
-      const res = await authClient.signIn.email({ email, password, callbackURL: '/dashboard' });
+      // No callbackURL: with one, better-auth hard-redirects itself and skips ?next.
+      const res = await authClient.signIn.email({ email: addr, password });
       if (res?.error) {
         // Unverified accounts can't sign in — send them to finish verification.
         const status = res.error.status;
         const msg = res.error.message ?? '';
         if (status === 403 || /verif/i.test(msg)) {
-          await authClient.emailOtp.sendVerificationOtp({ email, type: 'email-verification' }).catch(() => {});
-          router.push(`/verify?email=${encodeURIComponent(email)}`);
+          await authClient.emailOtp.sendVerificationOtp({ email: addr, type: 'email-verification' }).catch(() => {});
+          router.push(`/verify?email=${encodeURIComponent(addr)}`);
           return;
         }
-        throw new Error(msg || 'Invalid credentials');
+        if (status === 429) throw new Error('Too many attempts. Wait a minute, then try again.');
+        throw new Error(msg || 'Invalid email or password');
       }
-      router.push('/dashboard');
+      resetUserCaches();
+      router.replace(safeNext());
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Sign in failed');
+      setError(err instanceof TypeError ? 'Can’t reach TRADElogs right now. Check your connection and try again.' : err instanceof Error ? err.message : 'Sign in failed');
       setLoading(false);
     }
   }
 
-  const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
   return (
     <AuthShell variant="signin" testId="login-page" top={<>No account yet? <Link href="/signup" data-testid="login-to-signup">Create one</Link></>}>
       <form onSubmit={submit} data-testid="login-form" noValidate={false}>

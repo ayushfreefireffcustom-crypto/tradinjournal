@@ -10,6 +10,7 @@
 // signUp.email / signOut) so pages don't branch on the mode.
 import { createAuthClient } from 'better-auth/react';
 import { emailOTPClient } from 'better-auth/client/plugins';
+import { resetUserCaches } from '@/lib/session-caches';
 
 const USE_MOCKS = process.env.NEXT_PUBLIC_USE_MOCKS === 'true';
 
@@ -69,5 +70,19 @@ const realAuthClient = createAuthClient({
   plugins: [emailOTPClient()],
 });
 
+// Signing out also drops the per-user caches (broker list, access/role flags).
+// The better-auth client is a Proxy, so wrap rather than spread it.
+const withCacheReset = new Proxy(realAuthClient, {
+  get(target, key, recv) {
+    if (key === 'signOut') {
+      return async (...args: Parameters<typeof realAuthClient.signOut>) => {
+        resetUserCaches();
+        return realAuthClient.signOut(...args);
+      };
+    }
+    return Reflect.get(target, key, recv);
+  },
+});
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const authClient: any = USE_MOCKS ? mockAuthClient : realAuthClient;
+export const authClient: any = USE_MOCKS ? mockAuthClient : withCacheReset;
