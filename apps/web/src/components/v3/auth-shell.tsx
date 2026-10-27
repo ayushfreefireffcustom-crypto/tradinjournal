@@ -4,6 +4,7 @@
 // the form on paper on the right, with a top-right switch link and a quiet
 // footer. Collapses to the form column alone on small screens.
 import Link from 'next/link';
+import Ridgeline from './ridgeline';
 import { type ReactNode, useEffect, useRef } from 'react';
 import '@/styles/app-v3.css';
 import '@/styles/app-v5-auto.css';
@@ -14,19 +15,8 @@ type Variant = 'signin' | 'signup' | 'verify' | 'forgot';
 const LOCK = <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V8a4 4 0 018 0v3" /></svg>;
 const SHIELD = <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z" /></svg>;
 
-// The real dashboard (sample account), tilted and fading into the copy below.
-function Showcase({ variant }: { variant: Variant }) {
-  return (
-    <div className={`au-shot ${variant === 'signup' ? 'is-short' : ''}`} aria-hidden>
-      <div className="au-frame">
-        <img src="/landing/dashboard-v5.jpg" alt="" width={2160} height={1350} decoding="async" fetchPriority="high" />
-      </div>
-      <span className="au-tag">Sample account</span>
-      {variant === 'signin' && (
-        <div className="au-fix"><span><i>!</i> One thing to fix this week</span><p>Close losing trades at your stop — don’t wait for them to come back.</p><small>From your weekly review</small></div>
-      )}
-    </div>
-  );
+function Showcase() {
+  return <div className="au-art"><Ridgeline /></div>;
 }
 
 const COPY: Record<Variant, { h: ReactNode; p?: string; foot: ReactNode }> = {
@@ -52,14 +42,14 @@ export default function AuthShell({ variant, top, children, testId }: { variant:
       <aside className="au-side" ref={asideRef}
         onPointerMove={e => { const r = asideRef.current?.getBoundingClientRect(); if (r) asideRef.current!.style.setProperty('--mx', `${((e.clientX - r.left) / r.width) * 100}%`), asideRef.current!.style.setProperty('--my', `${((e.clientY - r.top) / r.height) * 100}%`); }}>
         <Link href="/" className="au-wm">TRADE<span>logs</span></Link>
-        <Showcase variant={variant} />
+        <Showcase />
         <div className="au-copy">
           <h2>{c.h}</h2>
           {c.p && <p>{c.p}</p>}
           {variant === 'signup' && (
             <ol className="au-steps">
               {STEPS.map(([t, s], i) => (
-                <li key={t} className={i === 0 ? 'on' : ''}><i>{i + 1}</i><span><b>{t}</b><small>{s}</small></span>{i === 0 && <em>You’re here</em>}</li>
+                <li key={t} className={i === 0 ? 'on' : ''}><i>0{i + 1}</i><span><b>{t}</b><small>{s}</small></span>{i === 0 && <em>You’re here</em>}</li>
               ))}
             </ol>
           )}

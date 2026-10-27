@@ -733,23 +733,32 @@
 /* Status card accent word follows the card's tone (a red error shouldn't end in green). */
 .v5 .sc-card:has(.sc-k.r) h1 em { color: var(--short); }
 .v5 .sc-card:has(.sc-k.a) h1 em { color: var(--amber); }
-/* Auth showcase: product shot in perspective, bleeding off the panel edge. */
-.v5 .au-shot { position: relative; flex: 1; min-height: 0; margin: 40px -52px 28px 0; perspective: 1800px; }
-.v5 .au-frame { position: absolute; left: 0; top: 26px; bottom: 0; height: auto; aspect-ratio: 2160 / 1350; border-radius: 18px; overflow: hidden; border: 1px solid #262626; background: #0A0A0A;
-  transform: rotateY(-18deg) rotateX(8deg) rotateZ(1.5deg); transform-origin: 0 40%;
-  box-shadow: 0 60px 120px -40px rgba(0,0,0,.95), 0 0 0 6px rgba(255,255,255,.02), 0 0 80px -20px rgba(8,196,101,.18);
-  -webkit-mask-image: linear-gradient(180deg, #000 62%, transparent 100%); mask-image: linear-gradient(180deg, #000 62%, transparent 100%);
-  animation: au-shot-in 900ms var(--ease-premium) both; }
-.v5 .au-frame img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: left top; }
-.v5 .au-tag { position: absolute; left: 0; top: 0; display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-v5-mono), ui-monospace, monospace; font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; color: rgba(255,255,255,.4); }
-.v5 .au-shot .au-fix { left: 6%; top: auto; bottom: 10%; width: min(78%, 400px); z-index: 2; background: rgba(20,20,20,.86); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
-.v5 .au-copy { position: relative; z-index: 1; margin-top: 0; }
-@keyframes au-shot-in { from { opacity: 0; transform: rotateY(-26deg) rotateX(10deg) rotateZ(1.5deg) translateY(24px); } }
-@media (max-height: 820px) { .v5 .au-shot.is-short { display: none; } .v5 .au-shot.is-short + .au-copy, .v5 .au-copy { margin-top: auto; } }
-@media (max-width: 1100px) { .v5 .au-shot { margin-right: -36px; } }
-@media (prefers-reduced-motion: reduce) { .v5 .au-frame { animation: none; } }
-.v5 .au-tag::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--long); box-shadow: 0 0 10px var(--long); }
 .v5 .au-side { border-right: 1px solid #141414; }
-.v5 .au-frame img { filter: brightness(1.08) saturate(1.05); }
-.v5 .au-shot.is-short .au-frame { width: 125%; aspect-ratio: auto; }
-@media (max-height: 760px) { .v5 .au-shot .au-fix { display: none; } }
+/* Auth art: ridgeline of sessions, one green line trending up through the noise. */
+.v5 .au-side::before { display: none; }
+.v5 .au-side::after { background: radial-gradient(closest-side, rgba(8,196,101,.10), transparent); }
+.v5 .au-art { position: relative; flex: 1; min-height: 0; margin: 8px -52px 20px;
+  -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 22%, #000 82%, transparent 100%); mask-image: linear-gradient(180deg, transparent 0%, #000 22%, #000 82%, transparent 100%); }
+.v5 .au-art svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.v5 .rl-fill { fill: #050505; }
+.v5 .rl-line { fill: none; stroke: #fff; stroke-width: 1; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.v5 .rl-hl .rl-line { stroke: var(--long); stroke-width: 1.6; }
+.v5 .rl-glow { fill: none; stroke: var(--long); stroke-width: 6; opacity: .45; }
+.v5 .rl-row { animation: rl-in 900ms var(--ease-premium) both; }
+@keyframes rl-in { from { opacity: 0; transform: translateY(10px); } }
+@media (prefers-reduced-motion: reduce) { .v5 .rl-row { animation: none; } }
+@media (max-width: 1100px) { .v5 .au-art { margin-left: -36px; margin-right: -36px; } }
+/* Signup steps: a quiet typographic list, no boxes. */
+.v5 .au-steps { gap: 0; margin-top: 26px; border-top: 1px solid rgba(255,255,255,.08); }
+.v5 .au-steps li, .v5 .au-steps li.on { padding: 14px 0; border: 0; border-bottom: 1px solid rgba(255,255,255,.08); border-radius: 0; background: none; gap: 18px; }
+.v5 .au-steps i, .v5 .au-steps li.on i { width: auto; height: auto; border: 0; border-radius: 0; background: none; font-family: var(--font-v5-mono), ui-monospace, monospace; font-size: 12px; color: rgba(255,255,255,.3); }
+.v5 .au-steps li.on i { color: var(--long); }
+.v5 .au-steps b { font-size: 15.5px; color: rgba(255,255,255,.62); }
+.v5 .au-steps li.on b { color: #fff; }
+.v5 .au-steps small { font-size: 13px; }
+.v5 .au-steps em { font-family: var(--font-v5-mono), ui-monospace, monospace; font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--long); }
+.v5 .rl-dot { fill: #fff; }
+.v5 .rl-halo { fill: var(--long); opacity: .35; animation: rl-pulse 2.6s ease-in-out 1.2s infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes rl-pulse { 50% { opacity: .08; transform: scale(1.9); } }
+@media (prefers-reduced-motion: reduce) { .v5 .rl-halo { animation: none; } }
+.v5 .au-steps li:last-child { border-bottom: 0; }
