@@ -8,6 +8,7 @@ import { env } from '@tradinjournal/config';
 import { logger } from '@tradinjournal/logger';
 import { auth } from './lib/auth.js';
 import { errorHandler } from './http/middleware/error-handler.js';
+import { requireSameOrigin } from './http/middleware/require-same-origin.js';
 import { accountsRouter } from './modules/accounts/accounts.routes.js';
 import { tradesRouter } from './modules/trades/trades.routes.js';
 import { journalRouter } from './modules/journal/journal.routes.js';
@@ -63,6 +64,9 @@ export function createApp(): Express {
   app.all('/api/auth/*', toNodeHandler(auth));
 
   app.use(express.json());
+
+  // Cookie-authenticated writes must come from the web app (see the middleware).
+  app.use('/api', requireSameOrigin);
 
   app.get('/health', async (_req: Request, res: Response) => {
     let maintenance: Awaited<ReturnType<typeof import('./modules/admin/settings.service.js').getMaintenanceMode>> = {

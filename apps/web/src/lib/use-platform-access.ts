@@ -4,7 +4,9 @@ import { useEffect, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { accessApi, type AccessStatusDto } from '@/lib/access-api';
 
-const SKIP_PATHS = ['/access/', '/maintenance', '/admin', '/brokers', '/notebook'];
+// /partner: partners needn't be active traders — the API serves their portal
+// without the trading gate, so the page mustn't bounce them to /access either.
+const SKIP_PATHS = ['/access/', '/maintenance', '/admin', '/partner', '/brokers', '/notebook'];
 
 /** Survives AppShell remounts between Next.js pages — without this, every
  *  sidebar click re-runs a multi-second access check and blanks the UI. */

@@ -1,4 +1,5 @@
 import { prisma } from '@tradinjournal/db';
+import { NotFoundError } from '../../http/errors.js';
 
 export interface JournalEntryInput {
   title?: string;
@@ -18,6 +19,11 @@ export async function listJournalEntries(userId: string, brokerAccountId?: strin
 }
 
 export async function createJournalEntry(userId: string, input: JournalEntryInput) {
+  // Only ever file an entry under one of the caller's own broker accounts.
+  if (input.brokerAccountId) {
+    const owned = await prisma.brokerAccount.findFirst({ where: { id: input.brokerAccountId, userId }, select: { id: true } });
+    if (!owned) throw new NotFoundError('Broker account not found');
+  }
   return prisma.journalEntry.create({
     data: {
       userId,
@@ -34,7 +40,7 @@ export async function createJournalEntry(userId: string, input: JournalEntryInpu
 
 export async function updateJournalEntry(userId: string, id: string, input: Partial<JournalEntryInput>) {
   const entry = await prisma.journalEntry.findFirst({ where: { id, userId } });
-  if (!entry) throw Object.assign(new Error('Journal entry not found'), { statusCode: 404 });
+  if (!entry) throw new NotFoundError('Journal entry not found');
 
   return prisma.journalEntry.update({
     where: { id },
@@ -51,6 +57,6 @@ export async function updateJournalEntry(userId: string, id: string, input: Part
 
 export async function deleteJournalEntry(userId: string, id: string) {
   const entry = await prisma.journalEntry.findFirst({ where: { id, userId } });
-  if (!entry) throw Object.assign(new Error('Journal entry not found'), { statusCode: 404 });
+  if (!entry) throw new NotFoundError('Journal entry not found');
   await prisma.journalEntry.delete({ where: { id } });
 }
