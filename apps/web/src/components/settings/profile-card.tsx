@@ -59,7 +59,7 @@ export default function ProfileCard({ accountCount }: { accountCount: number }) 
           {!editing ? (
             <b>{loc?.complete ? `${loc.city}, ${countryName(loc.country)} · ${loc.postalCode}` : <span className="am">Not set — required</span>}</b>
           ) : (
-            <div style={{ marginTop: 12 }}><LocationForm initial={loc ?? undefined} onSaved={() => { setEditing(false); loadLoc(); }} /></div>
+            <div style={{ marginTop: 12 }}><LocationForm initial={loc ?? undefined} submitLabel="Save location" onSaved={() => { setEditing(false); loadLoc(); }} /></div>
           )}
         </div>
       </div>

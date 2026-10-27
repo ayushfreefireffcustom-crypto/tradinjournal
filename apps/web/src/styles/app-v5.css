@@ -598,3 +598,23 @@
 /* ══ SignalX ══════════════════════════════════════════════════════════════ */
 .v5 .sx-kpis b.num, .v5 .sx-tr b.num, .v5 .sx-stats b.num { font-family: inherit; font-weight: 500; letter-spacing: -.035em; }
 .v5 .sx-split i { background: var(--long-fill); } .v5 .sx-split i.l { background: rgba(254, 58, 49, .7); }
+
+/* ══ Brokers ══════════════════════════════════════════════════════════════ */
+.v5 .br-sum b.num, .v5 .br-sum b { font-family: inherit; font-weight: 500; letter-spacing: -.04em; }
+.v5 .br-fig b, .v5 .br-fig b.num { font-weight: 500; }
+.v5 .br-id small { font-family: inherit; }
+@media (max-width: 640px) {
+  .v5 .br-sum { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .v5 .br-sum > :nth-child(2) { grid-column: 1 / -1; order: -1; }
+  .v5 .br-sum .v3-card { padding: 16px 18px; }
+  .v5 .br-sum b { font-size: 26px; }
+  .v5 .br-sum small { font-size: 13px; }
+}
+
+/* ══ Settings ═════════════════════════════════════════════════════════════ */
+.v5 .v3-tg { background: #262626; box-shadow: inset 0 0 0 1px #333; }
+.v5 .v3-tg i { background: #8B8B94; box-shadow: 0 2px 6px rgba(0, 0, 0, .5); }
+.v5 .v3-tg[aria-checked='true'] { background: var(--acc); box-shadow: none; }
+.v5 .v3-tg[aria-checked='true'] i { background: #fff; }
+.v5 .pf-band { background: radial-gradient(90% 160% at 100% 0%, rgba(8, 196, 101, .45), transparent 60%), linear-gradient(120deg, #06140C 0%, #0A2A1A 60%, #0E3B24 100%); }
+.v5 .pf-band svg path, .v5 .pf-band svg polyline { stroke: rgba(125, 242, 182, .7); }

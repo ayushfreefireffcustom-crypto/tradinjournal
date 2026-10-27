@@ -12,6 +12,8 @@ interface Props {
   blocking?: boolean;
   title?: string;
   subtitle?: string;
+  /** Button text — "Continue" in the first-run gate, "Save location" when editing. */
+  submitLabel?: string;
 }
 
 const fieldClass =
@@ -116,6 +118,7 @@ export default function LocationForm({
   blocking = false,
   title = 'Where do you trade from?',
   subtitle = 'A quiet detail for product insights — country, city, and postal code. Takes a moment.',
+  submitLabel = 'Continue',
 }: Props) {
   const [country, setCountry] = useState(initial?.country?.toUpperCase() ?? '');
   const [city, setCity] = useState(initial?.city ?? '');
@@ -280,7 +283,7 @@ export default function LocationForm({
         }
         data-testid="location-submit"
       >
-        {busy ? 'Saving…' : 'Continue'}
+        {busy ? 'Saving…' : submitLabel}
       </button>
     </form>
   );
