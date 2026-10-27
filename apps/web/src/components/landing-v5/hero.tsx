@@ -59,17 +59,21 @@ export default function Hero() {
             </picture>
           </div>
         </div>
-        <div className="l5-float l5-f-ins" aria-hidden>
+        <div className="l5-stage-fade" aria-hidden />
+      </div>
+
+      {/* Two things the product tells you, pinned under the shot. */}
+      <div className="l5-notes" aria-hidden>
+        <div className="l5-note l5-f-ins">
           <small>Insight</small>
           <div className="l5-f-row"><i className="r"><svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M8 2 1.5 13.5h13L8 2Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" /><path d="M8 6.5v3m0 2v.2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg></i>
             <span>Losers held <b>3.4× longer</b> than winners.</span></div>
           <div className="l5-f-bars"><i style={{ height: '40%' }} className="g" /><i style={{ height: '62%' }} className="g" /><i style={{ height: '34%' }} className="r" /><i style={{ height: '55%' }} className="g" /><i style={{ height: '70%' }} className="r" /><i style={{ height: '84%' }} className="r" /><i style={{ height: '100%' }} className="r" /><i style={{ height: '78%' }} className="r" /></div>
         </div>
-        <div className="l5-float l5-f-mail" aria-hidden>
+        <div className="l5-note l5-f-mail">
           <div className="l5-f-row"><i className="tl">TL</i><span><b>Your week in review</b><small>Mon 07:00 · 23 trades</small></span></div>
           <p>One thing to fix: <b>stop new entries after 15:00 London.</b></p>
         </div>
-        <div className="l5-stage-fade" aria-hidden />
       </div>
 
       <div className="l5-trust">
