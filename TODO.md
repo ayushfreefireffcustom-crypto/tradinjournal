@@ -573,7 +573,7 @@ Legend:
 - [x] A0.D2 **Decided: "SignalX" everywhere.** SignalX naming. It is also called "TradeAI signals" (macro side-nav) and "Signals tab" (paper blotter). One name everywhere `S`
 - [x] A0.D3 **Decided: go with the proposal (user delegated).** Dashboard content. Proposal: keep the hero P&L + 4 key stats, one AI card (merged), month calendar, recent trades; move instruments, hour and day charts to Analytics. User approves the mock `S`
 - [x] A0.D4 **Decided: yes (user delegated).** Analytics owns the deep charts; trades and calendar stop repeating KPI strips. User approves `S`
-- [ ] A0.D5 **User wants 3 detailed landing iterations first (`design/landing-v6/`), then picks.** Landing serif-italic: keep one word in the hero, or none `S`
+- [x] A0.D5 **Decided 30 Oct: landing = iteration A (Obsidian Bento) with more detailed drawings; build it first. App theme = dark default + light toggle (tokens in `design/dashboard-v6`). Dashboard mock v6 rejected: redo closer to the user's "Hello, Aditya" reference.** Landing serif-italic: keep one word in the hero, or none `S`
 
 **CSS architecture:**
 - [ ] A0.1 Stop importing `app-v3.css` + `app-v5-auto.css` + `app-v5.css` stacked in `components/app-shell.tsx:18-20`. Replace with `tokens.css` + `components.css` once pages are migrated (the order is a blocker for A3.11) `M`
