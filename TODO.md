@@ -125,22 +125,23 @@ Legend:
 ## A4. Pages (filled from `reports/ui-audit.md`; see the bottom of this file)
 
 ## A5. Landing page (Apptics rhythm, black)
-- [ ] A5.1 Section pattern component: label pill + 2-line heading (left), muted paragraph + one dark pill CTA (right), bento below `M`
-- [ ] A5.2 Stat tile: icon tile + **bold number** + regular words, with a ghost watermark glyph `S`
+- [x] A5.1 Section pattern component: label pill + 2-line heading (left), muted paragraph + one dark pill CTA (right), bento below `M`
+- [x] A5.2 Stat tile: icon tile + **bold number** + regular words, with a ghost watermark glyph `S`
 - [ ] A5.3 Code-built glass art, one SVG/CSS scene per product area, each self-contained `L → split`:
-  - [ ] A5.3a Journal notebook slab + floating trade chips `M`
+  - [x] A5.3a Journal notebook slab + floating trade chips `M`
   - [ ] A5.3b Copy trading: leader card → you card + "Copied · 0.4s · slippage" toast `M`
   - [ ] A5.3c Strategy blocks ("RSI < 30", "EMA 50 > 200") + green Deploy chip `M`
-  - [ ] A5.3d Risk shield in red with "Daily loss cap hit" toasts `M`
-  - [ ] A5.3e Analytics: isometric glass bars in green `M`
-  - [ ] A5.3f AI coach chat bubble stack `M`
-- [ ] A5.4 Closing scene: 8 feature icon tiles scattered on a faint grid `M`
-- [ ] A5.5 Integrations grid (dashed lines): MT5, brokers, exchanges, TradingView, Telegram. Only logos we're allowed to use `S`
-- [ ] A5.6 FAQ accordion with hairlines and +/× `S`
-- [ ] A5.7 Footer with a giant ghosted "TRADElogs" wordmark, link columns and a Telegram contact card `S`
+  - [x] A5.3d Risk shield in red with "Daily loss cap hit" toasts `M`
+  - [x] A5.3e Analytics: isometric glass bars in green `M`
+  - [x] A5.3f AI coach chat bubble stack `M`
+- [x] A5.4 Closing scene: 8 feature icon tiles scattered on a faint grid `M`
+- [x] A5.5 Integrations grid (dashed lines): MT5, brokers, exchanges, TradingView, Telegram. Only logos we're allowed to use `S`
+- [x] A5.6 FAQ accordion with hairlines and +/× `S`
+- [x] A5.7 Footer with a giant ghosted "TRADElogs" wordmark, link columns and a contact card `S` (contact card points to the AI coach; there is no Telegram channel yet)
 - [ ] A5.8 Rewrite landing copy for the new scope (journal + copy + strategies). No unverified numbers `M`
+- [ ] A5.11 Delete the unused `components/landing-v5/` (keep `useSignedIn` by moving it to `lib/`, it is imported by landing-v6) and `public/landing/*` shots it used `S`
 - [ ] A5.9 Landing performance: Lighthouse ≥ 90 on mobile, no layout shift, lazy art `M`
-- [ ] A5.10 Check the hero WebGL silk: keep it or replace it with a calmer glass object (decide with the user using screenshots) `S`
+- [x] A5.10 Check the hero WebGL silk: keep it or replace it with a calmer glass object (decide with the user using screenshots) `S`
 
 ## A6. Auth and system pages
 - [ ] A6.1 `/login`, `/signup`, `/forgot`, `/verify` on the new primitives (see the audit for specifics) `M`
@@ -852,11 +853,11 @@ Legend:
 - [ ] L: `/news`, `/economic-calendar` redirects: confirm nothing links to them `S`
 
 ### A4.19 Landing `/` (in addition to A5)
-- [ ] M: one serif word max (A0.D5) instead of 17 `S`
-- [ ] M: Security section white → dark; light mail mock → dark `S`
-- [ ] M: no amber "Timing" bar `S`
-- [ ] M: one bar above the hero (not announcement + nav + ticker) `S`
+- [x] M: one serif word max (A0.D5) instead of 17 `S`
+- [x] M: Security section white → dark; light mail mock → dark `S`
+- [x] M: no amber "Timing" bar `S`
+- [x] M: one bar above the hero (not announcement + nav + ticker) `S`
 - [ ] M: re-shoot the product images after Part A (the current shot shows the cluttered dashboard) `S`
 - [ ] L: fewer glows (`landing.css` has 54 gradients) `S`
 - [ ] L: mobile: the "Syncs read-only…" overlap `S`
-- [ ] L: sentence-case eyebrows; drop the A/B/C/D indices `S`
+- [x] L: sentence-case eyebrows; drop the A/B/C/D indices `S`
