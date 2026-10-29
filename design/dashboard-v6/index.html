@@ -8,6 +8,16 @@
   --canvas:#0B0B0C;--s1:#151517;--s2:#1C1C1F;--s3:#232327;--line:rgba(255,255,255,.06);
   --tx:#EDEDEF;--mut:#8A8A90;--dim:#55555B;--g:#08C465;--r:#FE3A31;
   --gt:rgba(8,196,101,.12);--rt:rgba(254,58,49,.12);
+  --gt2:rgba(8,196,101,.24);--gtx:#5BE39D;--rtx:#FF7A72;
+  --inv:#0B0B0C;--line2:rgba(255,255,255,.12);--grid:rgba(255,255,255,.05);
+  --shadow:none;--tipshadow:0 8px 24px rgba(0,0,0,.4);--bar-bg:rgba(21,21,23,.92);--ring:var(--tx);
+}
+:root[data-theme=light]{
+  --canvas:#F2F2F3;--s1:#FFFFFF;--s2:#F5F5F6;--s3:#ECECEE;--line:rgba(11,11,12,.07);
+  --tx:#0B0B0C;--mut:#5E5E66;--dim:#9A9AA2;--g:#06A957;--r:#E5322A;
+  --gt:rgba(8,196,101,.12);--rt:rgba(229,50,42,.10);--gt2:rgba(8,196,101,.24);--gtx:#047A3F;--rtx:#C42820;
+  --inv:#FFFFFF;--line2:rgba(11,11,12,.16);--grid:rgba(11,11,12,.06);
+  --shadow:0 1px 2px rgba(11,11,12,.04),0 8px 24px -12px rgba(11,11,12,.10);--tipshadow:0 8px 24px rgba(11,11,12,.12);--bar-bg:rgba(255,255,255,.92);--ring:#0B0B0C;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{background:var(--canvas)}
@@ -45,18 +55,18 @@ main{flex:1;min-width:0;padding:16px 28px 40px 12px}
 
 /* ---------- cards ---------- */
 .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:16px}
-.card{background:var(--s1);border-radius:24px;padding:24px}
+.card{background:var(--s1);border-radius:24px;padding:24px;box-shadow:var(--shadow)}
 .ch{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:18px}
 .ch h2{font-size:15px;font-weight:500;letter-spacing:-.01em}
 .ch p{font-size:12.5px;color:var(--mut);margin-top:2px}
 .btn{height:36px;border-radius:999px;padding:0 16px;display:inline-flex;align-items:center;gap:8px;font:500 13px Satoshi;border:0;white-space:nowrap}
-.btn-w{background:var(--tx);color:#0B0B0C}
+.btn-w{background:var(--tx);color:var(--inv)}
 .btn-d{background:var(--s2);color:var(--tx)}
 .link{font-size:13px;color:var(--mut);display:inline-flex;align-items:center;gap:6px}
 .seg{display:inline-flex;background:var(--s2);border-radius:999px;padding:3px}
 .seg span{padding:6px 12px;border-radius:999px;font-size:12.5px;color:var(--mut)}
-.seg .on{background:var(--tx);color:#0B0B0C}
-.sample{font:500 10.5px "JetBrains Mono";color:var(--dim);border:1px dashed rgba(255,255,255,.12);border-radius:6px;padding:2px 6px;letter-spacing:0}
+.seg .on{background:var(--tx);color:var(--inv)}
+.sample{font:500 10.5px "JetBrains Mono";color:var(--dim);border:1px dashed var(--line2);border-radius:6px;padding:2px 6px;letter-spacing:0}
 
 /* hello / hero */
 .hello{grid-column:span 8;display:flex;flex-direction:column}
@@ -75,7 +85,7 @@ main{flex:1;min-width:0;padding:16px 28px 40px 12px}
 .chart{position:relative;margin-top:8px;flex:1;min-height:210px}
 .chart svg{padding-left:0}
 .chart svg{width:100%;height:100%;display:block}
-.tip{position:absolute;background:var(--s3);border-radius:10px;padding:7px 10px;font-size:11.5px;color:var(--mut);white-space:nowrap;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.tip{position:absolute;background:var(--s3);border-radius:10px;padding:7px 10px;font-size:11.5px;color:var(--mut);white-space:nowrap;box-shadow:var(--tipshadow)}
 .tip b{display:block;color:var(--tx);font:500 13px "JetBrains Mono"}
 
 /* coach */
@@ -116,11 +126,11 @@ main{flex:1;min-width:0;padding:16px 28px 40px 12px}
 .cal-g b{font-weight:400;font-size:11.5px;color:var(--dim);text-align:center;padding-bottom:4px}
 .cal-g div{aspect-ratio:1/0.86;border-radius:10px;background:var(--s2);padding:6px 7px;display:flex;flex-direction:column;justify-content:space-between;font-size:11px;color:var(--dim)}
 .cal-g div.e{background:transparent}
-.cal-g div.p{background:var(--gt)}.cal-g div.p2{background:rgba(8,196,101,.24)}
+.cal-g div.p{background:var(--gt)}.cal-g div.p2{background:var(--gt2)}
 .cal-g div.n{background:var(--rt)}
 .cal-g div em{font:500 11px "JetBrains Mono";font-style:normal;text-align:right}
-.cal-g div.p em,.cal-g div.p2 em{color:#5BE39D}.cal-g div.n em{color:#FF7A72}
-.cal-g div.today{box-shadow:inset 0 0 0 1.5px var(--tx);color:var(--tx)}
+.cal-g div.p em,.cal-g div.p2 em{color:var(--gtx)}.cal-g div.n em{color:var(--rtx)}
+.cal-g div.today{box-shadow:inset 0 0 0 1.5px var(--ring);color:var(--tx)}
 .cal-sum{display:flex;gap:28px;margin-top:18px;padding-top:16px;border-top:1px solid var(--line);font-size:12.5px;color:var(--mut)}
 .cal-sum b{display:block;font:500 16px "JetBrains Mono";color:var(--tx);margin-top:2px}
 
@@ -168,7 +178,7 @@ td{padding:13px 0;border-top:1px solid var(--line);white-space:nowrap}
   .st:nth-child(n+3){border-top:1px solid var(--line)}
   .wk i{width:34px;height:34px}
   .hide-m{display:none}
-  .tabbar{display:flex;position:sticky;margin:0 12px;bottom:12px;background:rgba(21,21,23,.92);backdrop-filter:blur(14px);border-radius:22px;padding:8px;justify-content:space-around}
+  .tabbar{display:flex;position:sticky;margin:0 12px;bottom:12px;background:var(--bar-bg);backdrop-filter:blur(14px);border-radius:22px;padding:8px;justify-content:space-around}
   .tabbar a{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10.5px;color:var(--mut);padding:6px 8px;border-radius:14px;text-decoration:none}
   .tabbar a.on{color:var(--tx)}.tabbar a.on svg{color:var(--g)}
   .mtitle{display:block!important}
@@ -318,6 +328,7 @@ td{padding:13px 0;border-top:1px solid var(--line);white-space:nowrap}
 </nav>
 
 <script>
+if(new URLSearchParams(location.search).get("theme")==="light")document.documentElement.dataset.theme="light";
 // equity curve (deterministic sample walk)
 (function(){
   const el=document.getElementById('chart');const W=820,H=230;let s=11;const rnd=()=>(s=(s*16807)%2147483647)/2147483647;
@@ -329,7 +340,7 @@ td{padding:13px 0;border-top:1px solid var(--line);white-space:nowrap}
   const lbl=['Jan','Mar','May','Jul','Sep','Oct'];
   el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
    <defs><linearGradient id="f" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#08C465" stop-opacity=".22"/><stop offset="1" stop-color="#08C465" stop-opacity="0"/></linearGradient></defs>
-   ${ticks.map(t=>`<line x1="0" x2="${W}" y1="${Y(t)}" y2="${Y(t)}" stroke="rgba(255,255,255,.05)" vector-effect="non-scaling-stroke"/>`).join('')}
+   ${ticks.map(t=>`<line x1="0" x2="${W}" y1="${Y(t)}" y2="${Y(t)}" style="stroke:var(--grid)" vector-effect="non-scaling-stroke"/>`).join('')}
    <path d="${d} L${W} ${H} L0 ${H}Z" fill="url(#f)"/>
    <path d="${d}" fill="none" stroke="#08C465" stroke-width="2" vector-effect="non-scaling-stroke"/>
   </svg>
