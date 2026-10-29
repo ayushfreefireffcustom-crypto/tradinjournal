@@ -1,0 +1,920 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TRADElogs — The complete trading journal</title>
+<link rel="preconnect" href="https://api.fontshare.com">
+<link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0B0B0C; --s1:#151517; --s2:#1C1C1F; --s3:#232327;
+  --line:rgba(255,255,255,.06); --line2:rgba(255,255,255,.10); --line3:rgba(255,255,255,.16);
+  --tx:#EDEDEF; --mut:#8A8A90; --dim:#55555B;
+  --g:#08C465; --g-hi:#3DE296; --g-lo:#047A3E;
+  --r:#FE3A31; --r-hi:#FF7A70; --r-lo:#A3160F;
+  --sans:'Satoshi',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:var(--tx);font:400 15px/1.55 var(--sans);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+a{color:inherit;text-decoration:none}
+.num{font-family:var(--mono);font-feature-settings:"tnum";letter-spacing:-.01em}
+.wrap{max-width:1120px;margin:0 auto;padding:0 24px}
+.pos{color:var(--g)} .neg{color:var(--r)}
+
+/* ── nav ─────────────────────────────── */
+.nav{position:sticky;top:14px;z-index:50;display:flex;justify-content:center;padding:0 16px}
+.nav-in{display:flex;align-items:center;gap:28px;height:52px;padding:0 8px 0 18px;border-radius:16px;background:rgba(21,21,23,.78);backdrop-filter:blur(14px) saturate(140%);-webkit-backdrop-filter:blur(14px) saturate(140%);box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 0 0 1px var(--line),0 12px 30px -12px rgba(0,0,0,.7);width:min(820px,100%)}
+.nav-in .logo svg{height:20px;width:auto;display:block}
+.nav-links{display:flex;gap:26px;margin:0 auto;font-size:13.5px;color:var(--mut)}
+.nav-links a:hover{color:var(--tx)}
+.nav-cta{display:flex;align-items:center;gap:6px}
+.nav-cta .ghost{font-size:13.5px;color:var(--mut);padding:0 12px}
+
+/* ── buttons ─────────────────────────── */
+.btn{display:inline-flex;align-items:center;gap:10px;height:40px;padding:0 18px;border-radius:999px;font:500 14px/1 var(--sans);white-space:nowrap;cursor:pointer;border:0;transition:transform .2s ease,background .2s ease}
+.btn svg{width:15px;height:15px}
+.btn-white{background:#F4F4F5;color:#0B0B0C;box-shadow:inset 0 -1px 0 rgba(0,0,0,.12),0 8px 20px -10px rgba(255,255,255,.35)}
+.btn-dark{background:linear-gradient(180deg,#2A2A2E,#18181B);color:var(--tx);box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 0 0 1px rgba(255,255,255,.06),0 10px 22px -10px rgba(0,0,0,.9)}
+.btn-green{height:46px;padding:0 22px;background:linear-gradient(180deg,#22D97C,#08C465 55%,#06A955);color:#03140A;box-shadow:inset 0 1px 0 rgba(255,255,255,.45),inset 0 -2px 0 rgba(0,0,0,.18),0 14px 34px -12px rgba(8,196,101,.85)}
+.btn:hover{transform:translateY(-1px)}
+.btn-sm{height:34px;padding:0 14px;font-size:13px}
+
+/* ── pills & labels ──────────────────── */
+.label{display:inline-flex;align-items:center;gap:8px;height:26px;padding:0 11px;border-radius:8px;background:var(--s1);box-shadow:0 0 0 1px var(--line2),inset 0 1px 0 rgba(255,255,255,.05);font-size:12px;color:var(--mut)}
+.label i{width:6px;height:6px;border-radius:50%;background:var(--g);box-shadow:0 0 0 3px rgba(8,196,101,.16)}
+.label.red i{background:var(--r);box-shadow:0 0 0 3px rgba(254,58,49,.16)}
+.label.gray i{background:#C9C9CE;box-shadow:0 0 0 3px rgba(255,255,255,.08)}
+.soon{display:inline-flex;align-items:center;height:22px;padding:0 9px;border-radius:999px;font-size:11.5px;color:var(--tx);background:rgba(255,255,255,.07);box-shadow:inset 0 0 0 1px var(--line2)}
+.sample{position:absolute;font:500 10px/1 var(--mono);letter-spacing:.02em;color:rgba(255,255,255,.42);padding:4px 7px;border-radius:6px;background:rgba(0,0,0,.35);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);z-index:5}
+
+/* ── hero ────────────────────────────── */
+.hero{position:relative;padding:88px 0 0;text-align:center;overflow:hidden}
+.hero h1{font-weight:500;font-size:clamp(44px,7vw,84px);line-height:.98;letter-spacing:-.045em;margin:22px auto 0;max-width:900px}
+.hero h1 span{color:var(--mut)}
+.hero p.sub{margin:22px auto 0;max-width:560px;color:var(--mut);font-size:17px;line-height:1.55}
+.hero .ctas{margin-top:30px;display:flex;justify-content:center;gap:12px;flex-wrap:wrap}
+.hero .assure{margin-top:22px;display:flex;justify-content:center;gap:22px;flex-wrap:wrap;font-size:12.5px;color:var(--dim)}
+.hero .assure span{display:inline-flex;align-items:center;gap:7px}
+.hero .assure svg{width:14px;height:14px;color:var(--mut)}
+.stage-box{position:relative;width:100%;margin:26px auto 0}
+.stage{position:absolute;left:0;top:0;transform-origin:0 0}
+
+/* ── sections ────────────────────────── */
+.sec{padding:120px 0 0}
+.sec-head{display:grid;grid-template-columns:1.05fr 1fr;gap:48px;align-items:end;margin-bottom:40px}
+.sec-head h2{margin-top:16px;font-weight:500;font-size:clamp(30px,3.4vw,40px);line-height:1.08;letter-spacing:-.035em}
+.sec-head p{color:var(--mut);font-size:15px;line-height:1.6;max-width:440px}
+.sec-head .act{margin-top:20px}
+.bento{display:grid;grid-template-columns:1fr 1fr 2.05fr;gap:12px}
+.bento.flip{grid-template-columns:2.05fr 1fr 1fr}
+.bento .tiles{display:contents}
+.bento .art{grid-column:3;grid-row:1 / span 2}
+.bento.flip .art{grid-column:1;grid-row:1 / span 2}
+
+/* tile */
+.tile{position:relative;background:var(--s1);border-radius:22px;padding:8px;box-shadow:inset 0 1px 0 rgba(255,255,255,.04),0 0 0 1px var(--line);display:flex;flex-direction:column;min-height:186px}
+.tile-top{height:66px;border-radius:15px;background:linear-gradient(180deg,#1F1F23,#19191C);box-shadow:inset 0 1px 0 rgba(255,255,255,.05);display:flex;align-items:center;justify-content:space-between;padding:0 14px 0 13px}
+.tile-ghost{width:40px;height:40px;color:rgba(255,255,255,.07)}
+.tile-ghost svg{width:100%;height:100%;stroke-width:1.4}
+.tile-t{margin-top:auto;padding:22px 10px 10px;font-size:15.5px;line-height:1.32;letter-spacing:-.01em;color:var(--mut)}
+.tile-t b{font-weight:500;color:var(--tx)}
+
+/* icon tile master */
+.it{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;position:relative;flex:none;
+  background:linear-gradient(180deg,#36E08F 0%,#0BC468 52%,#079E52 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.55),inset 0 -2px 3px rgba(0,0,0,.22),0 0 0 1px rgba(0,0,0,.25),0 8px 16px -6px rgba(8,196,101,.7)}
+.it::after{content:"";position:absolute;inset:1px 1px 50% 1px;border-radius:10px 10px 6px 6px;background:linear-gradient(180deg,rgba(255,255,255,.28),rgba(255,255,255,0));pointer-events:none}
+.it svg{width:19px;height:19px;color:#fff;stroke-width:2;filter:drop-shadow(0 1px 1px rgba(0,0,0,.25));position:relative;z-index:1}
+.it.red{background:linear-gradient(180deg,#FF7C72 0%,#FE3A31 52%,#D3201A 100%);box-shadow:inset 0 1px 0 rgba(255,255,255,.5),inset 0 -2px 3px rgba(0,0,0,.22),0 0 0 1px rgba(0,0,0,.25),0 8px 16px -6px rgba(254,58,49,.7)}
+.it.gray{background:linear-gradient(180deg,#5A5A62 0%,#38383F 52%,#25252A 100%);box-shadow:inset 0 1px 0 rgba(255,255,255,.4),inset 0 -2px 3px rgba(0,0,0,.3),0 0 0 1px rgba(0,0,0,.35),0 8px 16px -6px rgba(0,0,0,.8)}
+.it.lg{width:72px;height:72px;border-radius:21px}
+.it.lg::after{border-radius:20px 20px 10px 10px}
+.it.lg svg{width:34px;height:34px;stroke-width:1.9}
+svg.ic{fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round}
+
+/* art panel */
+.art{position:relative;border-radius:24px;overflow:hidden;min-height:384px;box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 0 0 1px var(--line)}
+.art .stage-box{margin:0;height:100%}
+.art-g{background:radial-gradient(90% 70% at 50% 108%,rgba(8,196,101,.42),rgba(8,196,101,0) 62%),radial-gradient(60% 50% at 80% 0%,rgba(8,196,101,.14),transparent 70%),linear-gradient(165deg,#0F241A 0%,#0A120E 55%,#0C0D0D 100%)}
+.art-r{background:radial-gradient(90% 70% at 50% 110%,rgba(254,58,49,.5),rgba(254,58,49,0) 60%),radial-gradient(50% 40% at 15% 5%,rgba(254,58,49,.12),transparent 70%),linear-gradient(165deg,#2A0E0C 0%,#150A09 55%,#0D0B0B 100%)}
+.art-k{background:radial-gradient(80% 70% at 50% 100%,rgba(255,255,255,.10),transparent 62%),radial-gradient(50% 45% at 85% 5%,rgba(255,255,255,.06),transparent 70%),linear-gradient(165deg,#1B1B1F 0%,#111113 55%,#0C0C0D 100%)}
+.art-dots{position:absolute;inset:auto 0 0 0;height:46%;background-image:radial-gradient(rgba(255,255,255,.16) 1px,transparent 1.4px);background-size:14px 14px;-webkit-mask-image:linear-gradient(to top,#000 10%,transparent);mask-image:linear-gradient(to top,#000 10%,transparent);opacity:.55}
+
+/* glass chip (floating toasts in art) */
+.chip{position:absolute;display:flex;align-items:center;gap:10px;padding:9px 13px 9px 9px;border-radius:14px;background:rgba(28,28,31,.62);backdrop-filter:blur(12px) saturate(150%);-webkit-backdrop-filter:blur(12px) saturate(150%);box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 0 0 1px rgba(255,255,255,.08),0 18px 36px -14px rgba(0,0,0,.85);font-size:12.5px;line-height:1.25;white-space:nowrap;z-index:4}
+.chip .sym{width:30px;height:30px;border-radius:9px;background:#26262B;box-shadow:inset 0 1px 0 rgba(255,255,255,.08);display:grid;place-items:center;font:500 10px/1 var(--mono);color:var(--tx);letter-spacing:.01em;flex:none}
+.chip small{display:block;color:var(--mut);font-size:11px;margin-top:2px}
+.chip .v{margin-left:6px;font:500 12.5px/1 var(--mono)}
+.chip.dim{opacity:.38;filter:blur(.6px)}
+.chip.red-t{background:rgba(60,14,12,.55);box-shadow:inset 0 1px 0 rgba(255,140,130,.22),0 0 0 1px rgba(254,58,49,.35),0 18px 40px -12px rgba(254,58,49,.45)}
+.chip .dot{width:8px;height:8px;border-radius:50%;background:var(--g);box-shadow:0 0 0 4px rgba(8,196,101,.18);margin:0 4px 0 6px;flex:none}
+
+/* ── how (3 cards) ───────────────────── */
+.center-head{text-align:center;max-width:640px;margin:0 auto 44px}
+.center-head h2{margin-top:16px;font-weight:500;font-size:clamp(32px,4vw,48px);line-height:1.04;letter-spacing:-.04em}
+.center-head p{margin-top:14px;color:var(--mut)}
+.three{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.card3{background:var(--s1);border-radius:24px;box-shadow:inset 0 1px 0 rgba(255,255,255,.04),0 0 0 1px var(--line);overflow:hidden}
+.card3 .viz{height:190px;position:relative;background:linear-gradient(180deg,#18181B,#141416);border-bottom:1px solid var(--line)}
+.card3 .tx{padding:22px 24px 26px}
+.card3 .step{font:500 11.5px/1 var(--mono);color:var(--dim)}
+.card3 h3{font-weight:500;font-size:17px;letter-spacing:-.015em;margin-top:10px}
+.card3 p{color:var(--mut);font-size:14px;margin-top:6px;line-height:1.55}
+
+/* ── coming next ─────────────────────── */
+.next{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.next .n{position:relative;background:var(--s1);border-radius:22px;padding:22px;box-shadow:inset 0 1px 0 rgba(255,255,255,.04),0 0 0 1px var(--line);min-height:190px;display:flex;flex-direction:column}
+.next .n .soon{position:absolute;top:22px;right:22px}
+.next .n h3{font-weight:500;font-size:17px;letter-spacing:-.015em;margin-top:auto;padding-top:28px}
+.next .n p{color:var(--mut);font-size:14px;margin-top:6px}
+
+/* ── integrations grid ───────────────── */
+.int-title{text-align:center;font-size:13px;color:var(--mut);letter-spacing:.01em;margin-bottom:26px}
+.intgrid{position:relative;display:grid;grid-template-columns:repeat(4,1fr)}
+.intgrid::before{content:"";position:absolute;inset:-28px -28px;background:
+  linear-gradient(to right,transparent 0,transparent 100%);pointer-events:none}
+.intgrid .c{height:104px;display:flex;align-items:center;justify-content:center;gap:11px;font-size:16px;font-weight:500;letter-spacing:-.01em;color:#D6D6DA;border-right:1px dashed rgba(255,255,255,.12);border-bottom:1px dashed rgba(255,255,255,.12)}
+.intgrid .c:nth-child(4n){border-right:0}
+.intgrid .c:nth-child(n+5){border-bottom:0}
+.intgrid .c svg{width:20px;height:20px;color:var(--mut)}
+.intframe{position:relative;padding:0 28px}
+.intframe::before,.intframe::after{content:"";position:absolute;left:0;right:0;border-top:1px dashed rgba(255,255,255,.12)}
+.intframe::before{top:0}.intframe::after{bottom:0}
+.intframe .vl{position:absolute;top:-28px;bottom:-28px;border-left:1px dashed rgba(255,255,255,.12)}
+
+/* ── FAQ ─────────────────────────────── */
+.faq{display:grid;grid-template-columns:.8fr 1.4fr;gap:56px;align-items:start}
+.faq h2{font-weight:500;font-size:clamp(34px,4vw,50px);line-height:1.02;letter-spacing:-.04em;margin-top:16px}
+.faq .side p{color:var(--mut);margin-top:18px;max-width:300px;font-size:14.5px}
+.qa{border-bottom:1px solid var(--line2)}
+.qa summary{list-style:none;display:flex;align-items:center;gap:16px;padding:20px 0;cursor:pointer;font-size:16px;font-weight:500;letter-spacing:-.01em}
+.qa summary::-webkit-details-marker{display:none}
+.qa summary .pm{width:20px;height:20px;flex:none;position:relative;color:var(--mut)}
+.qa summary .pm::before,.qa summary .pm::after{content:"";position:absolute;left:3px;right:3px;top:9.25px;height:1.5px;background:currentColor;border-radius:2px;transition:transform .25s ease}
+.qa summary .pm::after{transform:rotate(90deg)}
+.qa[open] summary .pm::before{transform:rotate(45deg)}
+.qa[open] summary .pm::after{transform:rotate(135deg)}
+.qa .a{padding:0 0 22px 36px;color:var(--mut);font-size:14.5px;line-height:1.65;max-width:620px}
+
+/* ── closing scene ───────────────────── */
+.closing{display:grid;grid-template-columns:.9fr 1.1fr;gap:40px;align-items:center}
+.closing h2{font-weight:500;font-size:clamp(46px,6.2vw,80px);line-height:.96;letter-spacing:-.05em;margin-top:18px}
+.closing p{color:var(--mut);margin-top:20px;max-width:380px;font-size:15.5px}
+.closing .btn{margin-top:28px}
+.scatter{position:relative;height:470px}
+.scatter .grid{position:absolute;inset:0;background-position:0 0!important;background-image:linear-gradient(rgba(255,255,255,.055) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.055) 1px,transparent 1px);background-size:94px 94px;background-position:-1px -1px;-webkit-mask-image:radial-gradient(70% 70% at 55% 50%,#000 40%,transparent 100%);mask-image:radial-gradient(70% 70% at 55% 50%,#000 40%,transparent 100%)}
+.scatter .it{position:absolute}
+.scatter .it::before{content:"";position:absolute;left:10%;right:10%;bottom:-28px;height:30px;border-radius:50%;background:inherit;filter:blur(18px);opacity:.55;z-index:-1}
+
+/* ── footer ──────────────────────────── */
+footer{margin-top:140px;border-top:1px solid var(--line);padding-top:48px;position:relative;overflow:hidden}
+.foot{display:grid;grid-template-columns:1.3fr .8fr .8fr .8fr;gap:32px}
+.foot .logo svg{height:22px;width:auto;display:block}
+.foot h4{font-weight:500;font-size:13px;color:var(--tx);margin-bottom:14px}
+.foot ul{list-style:none;display:grid;gap:10px;font-size:13.5px;color:var(--mut)}
+.contact{margin-top:22px;display:flex;align-items:center;gap:12px;padding:12px 16px 12px 12px;border-radius:16px;background:var(--s1);box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 0 0 1px var(--line);max-width:300px}
+.contact b{font-weight:500;font-size:13.5px;display:block}
+.contact small{color:var(--mut);font-size:12px}
+.ghostmark{margin-top:56px;font-weight:500;font-size:clamp(60px,17.5vw,205px);line-height:.8;letter-spacing:-.065em;text-align:center;background:linear-gradient(180deg,rgba(255,255,255,.09),rgba(255,255,255,0) 82%);-webkit-background-clip:text;background-clip:text;color:transparent;user-select:none;white-space:nowrap}
+.fine{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;padding:18px 0 28px;border-top:1px solid var(--line);font-size:12px;color:var(--dim)}
+.fine .links{display:flex;gap:20px}
+
+/* ── responsive ──────────────────────── */
+@media (max-width:980px){
+  .nav-links{display:none}
+  .nav-in{gap:12px}
+  .sec{padding-top:88px}
+  .sec-head{grid-template-columns:1fr;gap:16px;margin-bottom:28px}
+  .bento,.bento.flip{grid-template-columns:1fr 1fr}
+  .bento .art,.bento.flip .art{grid-column:1 / -1;grid-row:auto;order:-1;min-height:0}
+  .three,.next{grid-template-columns:1fr}
+  .intgrid{grid-template-columns:repeat(2,1fr)}
+  .intgrid .c:nth-child(4n){border-right:1px dashed rgba(255,255,255,.12)}
+  .intgrid .c:nth-child(2n){border-right:0}
+  .intgrid .c:nth-child(n+5){border-bottom:1px dashed rgba(255,255,255,.12)}
+  .intgrid .c:nth-child(n+7){border-bottom:0}
+  .intframe .vl{display:none}
+  .faq{grid-template-columns:1fr;gap:20px}
+  .closing{grid-template-columns:1fr}
+  .scatter{height:360px}
+  .foot{grid-template-columns:1fr 1fr}
+  .foot .brand{grid-column:1 / -1}
+}
+@media (max-width:560px){
+  .wrap{padding:0 16px}
+  .nav-cta .ghost{display:none}
+  .hero{padding-top:56px}
+  .hero-stage{margin-top:8px}
+  .hero p.sub{font-size:15.5px}
+  .tile{min-height:150px}
+  .tile-top{height:58px}
+  .tile-t{font-size:14.5px;padding:18px 8px 8px}
+  .bento{gap:10px}
+  .intgrid .c{height:84px;font-size:14px}
+  .scatter{height:300px}
+  .qa summary{font-size:15px}
+  .qa .a{padding-left:36px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<!-- one SVG sprite: line glyphs used inside every icon tile -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20"/><path d="M9 8h7M9 12h5"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M10 8.5v7l6-3.5z"/></symbol>
+    <symbol id="i-tag" viewBox="0 0 24 24"><path d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9z"/><circle cx="7.5" cy="7.5" r="1.5"/></symbol>
+    <symbol id="i-layers" viewBox="0 0 24 24"><path d="M12 3 3 8l9 5 9-5z"/><path d="m3 13 9 5 9-5"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></symbol>
+    <symbol id="i-bars" viewBox="0 0 24 24"><path d="M5 20V11M12 20V4M19 20v-6"/></symbol>
+    <symbol id="i-curve" viewBox="0 0 24 24"><path d="M3 17l5-5 4 3 9-9"/><path d="M15 6h6v6"/></symbol>
+    <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9h8M8 12h5"/></symbol>
+    <symbol id="i-signal" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2.5"/><path d="M7.5 7.5a6.4 6.4 0 0 0 0 9M16.5 7.5a6.4 6.4 0 0 1 0 9M4.6 4.6a10.5 10.5 0 0 0 0 14.8M19.4 4.6a10.5 10.5 0 0 1 0 14.8"/></symbol>
+    <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m4 7 8 6 8-6"/></symbol>
+    <symbol id="i-bulb" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.4 1 1.1 1 1.8V16h5v-.3c0-.7.4-1.4 1-1.8A6 6 0 0 0 12 3z"/></symbol>
+    <symbol id="i-flame" viewBox="0 0 24 24"><path d="M12 21c4 0 7-2.7 7-6.6 0-3.3-2.2-5.4-3.7-7-.4 1.9-1.4 3-2.6 3.6.3-2.6-.6-5.7-3.2-8C9.7 6 5 8.8 5 14.4 5 18.3 8 21 12 21z"/></symbol>
+    <symbol id="i-gauge" viewBox="0 0 24 24"><path d="M4.5 18a9 9 0 1 1 15 0"/><path d="m12 13 4-4"/><circle cx="12" cy="13" r="1.4"/></symbol>
+    <symbol id="i-list" viewBox="0 0 24 24"><path d="m4 6 1.5 1.5L8 5M4 12l1.5 1.5L8 11M4 18l1.5 1.5L8 17"/><path d="M11 6h9M11 12h9M11 18h9"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M10 9v6M14 9v6"/></symbol>
+    <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.6 2.8 2.6 15.2 0 18M12 3c-2.6 2.8-2.6 15.2 0 18"/></symbol>
+    <symbol id="i-news" viewBox="0 0 24 24"><rect x="3" y="4" width="15" height="16" rx="2"/><path d="M18 8h3v10a2 2 0 0 1-2 2"/><path d="M7 8h7M7 12h7M7 16h4"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 21h4"/></symbol>
+    <symbol id="i-pulse" viewBox="0 0 24 24"><path d="M3 12h4l2.5-6 4 12 2.5-6H21"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4.5" y="10.5" width="15" height="10" rx="2.5"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/><path d="M12 14.5v2"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/></symbol>
+    <symbol id="i-plug" viewBox="0 0 24 24"><path d="M9 3v5M15 3v5M7 8h10v3a5 5 0 0 1-10 0z"/><path d="M12 16v5"/></symbol>
+    <symbol id="i-unlink" viewBox="0 0 24 24"><path d="M9.5 14.5 14.5 9.5"/><path d="M8 11 5.5 13.5a3.5 3.5 0 0 0 5 5L13 16M16 13l2.5-2.5a3.5 3.5 0 0 0-5-5L11 8"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></symbol>
+    <symbol id="i-blocks" viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="13" width="8" height="8" rx="2"/><path d="M15 3h6v6M3 15v6h6"/></symbol>
+    <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4"/><path d="m11 12 9-9M17 6l3 3M14.5 8.5l2 2"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+    <symbol id="i-card" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 10h18"/><path d="m5 3 14 18" /></symbol>
+  </defs>
+</svg>
+
+<!-- ── NAV ──────────────────────────────────────────────── -->
+<div class="nav" style="padding-top:14px">
+  <div class="nav-in">
+    <a class="logo" href="#" aria-label="TRADElogs"><svg role="img" aria-label="TRADElogs" xmlns="http://www.w3.org/2000/svg" viewBox="70 70 4322 1226"><g transform="translate(0,1365) scale(.1,-.1)"><path fill="#fff" d="M37475 12900 c-8 -13 -8 -4537 0 -4550 10 -15 828 -13 843 2 8 8 12 46 12 105 0 81 -2 94 -19 103 -12 6 -123 10 -289 10 -209 0 -272 3 -280 13 -13 16 -12 4061 1 4074 5 4 133 9 285 11 173 2 282 7 289 14 9 7 13 43 13 113 0 85 -3 104 -16 109 -27 10 -832 7 -839 -4z M43033 12898 c-5 -8 -7 -58 -4 -118 l6 -105 280 -5 c154 -3 281 -7 283 -8 8 -7 1 -4082 -8 -4087 -5 -3 -131 -7 -279 -8 -148 -1 -273 -6 -277 -10 -8 -8 -6 -196 2 -209 7 -11 822 -10 828 1 4 6 10 4296 6 4549 0 9 -90 12 -414 12 -319 0 -416 -3 -423 -12z M763 8583 c-20 -7 -19 -1346 0 -1362 10 -8 257 -12 868 -13 l854 -3 5 -2300 5 -2300 775 0 775 0 6 105 c4 58 7 1089 8 2291 1 1819 3 2188 14 2198 10 8 260 12 878 13 l864 3 3 675 c2 622 1 676 -15 687 -13 10 -553 12 -2522 12 -1378 0 -2512 -3 -2518 -6z M5987 8579 c-18 -11 -19 -108 -15 -2986 2 -2164 6 -2977 14 -2984 7 -5 326 -8 790 -7 l779 3 5 1003 c4 863 7 1004 20 1012 8 5 245 9 535 9 566 1 650 -5 779 -53 211 -80 337 -188 428 -371 47 -92 55 -119 78 -250 18 -99 20 -159 20 -590 0 -264 5 -511 11 -550 5 -38 12 -97 16 -130 3 -33 10 -66 16 -72 14 -19 3160 -19 3175 0 15 17 57 133 158 427 46 135 107 308 137 385 l53 140 1079 0 1079 0 19 -50 c11 -27 23 -58 28 -67 5 -10 13 -34 18 -55 5 -21 26 -83 46 -138 20 -55 40 -113 45 -130 9 -32 25 -80 46 -135 7 -19 28 -80 45 -135 31 -100 48 -148 77 -218 l15 -37 2271 3 c2100 3 2279 4 2371 20 525 91 773 176 1120 381 531 314 982 889 1174 1496 77 243 77 245 121 460 28 135 41 295 47 562 4 233 2 316 -11 435 -32 276 -69 447 -156 720 -11 33 -24 72 -29 85 -42 107 -60 147 -108 247 -73 152 -173 315 -302 491 -158 217 -459 492 -693 635 -9 5 -54 33 -100 61 -233 142 -561 267 -879 334 -268 56 -207 54 -1754 57 -786 2 -1435 0 -1442 -5 -9 -5 -12 -704 -15 -2894 -2 -1587 -7 -2890 -11 -2895 -11 -10 -26 16 -59 102 -14 38 -36 95 -48 125 -11 30 -30 82 -41 115 -11 33 -25 69 -31 79 -6 11 -14 31 -18 45 -5 14 -18 51 -30 81 -34 89 -50 131 -75 205 -28 80 -45 127 -75 205 -17 44 -100 277 -150 420 -5 14 -18 50 -30 80 -41 107 -51 135 -57 155 -2 11 -11 34 -18 50 -34 80 -43 102 -49 132 -4 18 -12 35 -17 38 -5 4 -9 16 -9 28 0 13 -6 31 -14 42 -7 11 -16 31 -19 45 -3 14 -15 50 -27 80 -12 30 -25 66 -30 80 -5 14 -18 50 -30 80 -12 30 -25 66 -30 80 -5 14 -18 50 -30 80 -32 83 -48 128 -75 205 -13 39 -33 95 -45 125 -12 30 -26 71 -32 90 -5 19 -13 40 -18 45 -4 6 -10 19 -13 30 -3 11 -15 45 -27 75 -12 30 -25 66 -30 80 -5 14 -18 50 -30 80 -12 30 -32 87 -45 125 -28 81 -53 148 -84 225 -13 30 -29 72 -37 93 -29 78 -45 118 -60 160 -9 23 -23 60 -31 82 -8 22 -21 54 -28 70 -7 17 -16 45 -19 62 -4 18 -12 35 -17 38 -5 4 -9 14 -9 24 0 10 -14 52 -31 92 -17 41 -37 91 -45 112 -37 100 -73 193 -93 242 -15 35 -38 98 -71 190 -35 97 -114 301 -135 350 -8 17 -29 77 -49 135 -19 58 -44 128 -54 155 -11 28 -45 118 -76 200 -31 83 -60 159 -65 170 -5 11 -22 55 -37 98 -15 43 -35 82 -45 87 -21 12 -1558 13 -1576 2 -12 -8 -41 -79 -88 -217 -12 -38 -35 -101 -50 -140 -15 -38 -35 -95 -46 -125 -18 -56 -33 -96 -87 -235 -17 -44 -63 -165 -102 -270 -39 -104 -93 -246 -120 -315 -27 -69 -81 -213 -121 -320 -39 -107 -93 -247 -119 -310 -26 -63 -66 -162 -88 -220 -73 -189 -173 -445 -182 -465 -5 -11 -17 -45 -28 -75 -25 -71 -71 -188 -187 -480 -52 -129 -118 -298 -148 -375 -77 -198 -136 -345 -153 -382 -8 -17 -14 -35 -14 -39 0 -11 -108 -300 -135 -359 -32 -72 -58 -137 -100 -245 -20 -52 -40 -104 -44 -115 -5 -11 -17 -40 -27 -65 -23 -58 -53 -130 -64 -155 -5 -11 -19 -45 -30 -75 -11 -30 -25 -64 -30 -75 -5 -11 -32 -81 -60 -155 -28 -74 -55 -144 -60 -155 -5 -11 -26 -60 -45 -110 -20 -49 -42 -103 -49 -120 -8 -16 -22 -52 -32 -80 -10 -27 -24 -61 -31 -75 -7 -14 -13 -30 -13 -37 0 -20 -34 -73 -45 -70 -5 2 -13 44 -17 93 -4 49 -14 163 -22 254 -12 119 -16 281 -16 580 0 519 -14 660 -85 875 -56 171 -134 301 -261 434 -47 50 -116 113 -154 141 -65 48 -292 164 -375 191 -22 7 -46 19 -54 26 -12 10 -12 13 5 19 10 3 57 22 103 41 134 56 210 101 322 191 158 127 285 284 367 453 119 246 172 483 172 768 -1 249 -36 447 -120 661 -12 30 -24 64 -27 74 -5 17 -32 69 -82 161 -107 195 -324 418 -545 559 -188 120 -482 237 -726 290 -238 52 -157 49 -1890 53 -1153 2 -1620 0 -1633 -8z m2983 -1368 c245 -75 392 -215 457 -434 24 -83 28 -222 8 -324 -27 -136 -73 -222 -176 -323 -89 -89 -158 -131 -274 -169 -149 -49 -177 -51 -804 -51 -324 0 -596 3 -605 6 -14 6 -16 72 -16 653 0 504 3 650 13 660 9 9 151 11 667 8 650 -3 656 -3 730 -26z m10715 -11 c206 -24 427 -97 599 -199 224 -133 421 -319 560 -529 141 -214 190 -343 256 -672 38 -186 12 -418 -71 -650 -92 -257 -155 -373 -305 -565 -72 -93 -267 -286 -336 -333 -197 -135 -424 -231 -629 -267 -119 -21 -1057 -24 -1070 -4 -5 8 -9 702 -9 1606 0 1434 2 1593 16 1607 14 14 69 16 457 16 243 0 482 -5 532 -10z m-5585 -453 c0 -1 30 -88 66 -192 36 -105 81 -237 101 -295 19 -58 41 -118 48 -135 7 -16 29 -77 50 -135 20 -58 41 -114 45 -125 4 -11 40 -114 78 -230 142 -423 155 -460 163 -477 5 -10 13 -34 18 -55 6 -21 20 -69 32 -108 11 -38 22 -83 23 -100 l1 -30 -647 -3 -648 -2 0 25 c0 14 4 33 10 43 5 9 23 58 39 107 16 50 64 189 106 310 42 121 83 238 90 260 14 41 60 174 165 475 33 96 78 227 100 290 21 63 57 169 80 235 23 66 43 126 46 133 3 10 34 19 34 9z M22833 8580 l-23 -9 -1 -1613 c-1 -3547 2 -4342 14 -4350 7 -4 1027 -7 2267 -5 l2255 2 3 676 2 676 -85 7 c-48 3 -714 6 -1482 6 -918 0 -1399 3 -1403 10 -9 14 -6 973 3 988 7 9 276 12 1292 12 l1285 0 5 23 c3 12 4 299 3 637 l-3 615 -1287 3 c-1265 2 -1288 2 -1298 22 -7 13 -9 167 -8 458 2 354 6 442 17 455 12 16 127 17 1465 17 798 0 1456 4 1462 8 8 5 13 207 18 679 7 666 7 672 -13 682 -25 14 -4455 14 -4488 1z"/><path fill="#00C054" d="M42152 12471 c-11 -6 -14 -95 -15 -442 l-2 -434 -169 -1 c-151 -1 -170 -3 -182 -19 -18 -24 -20 -1840 -3 -1862 9 -10 51 -13 175 -13 103 0 165 -4 169 -11 4 -5 9 -195 11 -421 3 -291 7 -415 16 -425 8 -10 31 -13 82 -11 l71 3 3 419 c1 289 6 423 13 433 9 10 50 13 173 13 88 0 166 4 173 8 10 6 13 219 13 932 1 509 1 931 1 938 -1 9 -43 12 -175 12 -129 0 -176 3 -184 13 -7 8 -11 150 -11 431 1 230 -3 422 -8 426 -12 11 -136 21 -151 11z M38995 12438 c-3 -7 -6 -200 -7 -428 l-3 -415 -171 -3 c-125 -2 -175 -6 -183 -15 -14 -18 -17 -1855 -2 -1870 6 -6 73 -9 171 -8 112 2 166 -1 176 -10 12 -9 14 -80 14 -423 0 -307 3 -415 12 -424 16 -16 143 -16 155 1 6 7 11 182 12 427 2 228 5 417 8 420 2 3 76 7 163 10 87 3 162 9 167 13 13 13 17 1857 4 1870 -7 7 -68 10 -170 9 -134 -2 -160 0 -165 13 -3 8 -6 194 -6 412 -1 236 -5 404 -11 415 -8 15 -22 18 -85 18 -50 0 -76 -4 -79 -12z M28141 8576 c-11 -13 -17 -5963 -6 -5974 6 -7 974 -4 985 3 5 3 8 1235 7 2993 l-2 2987 -487 2 c-384 1 -489 -1 -497 -11z M31485 6795 c-264 -48 -346 -71 -555 -155 -178 -71 -306 -149 -491 -298 -131 -105 -273 -246 -351 -348 -118 -154 -265 -403 -293 -494 -4 -14 -11 -29 -15 -35 -4 -5 -13 -26 -18 -45 -6 -19 -19 -60 -30 -90 -58 -161 -78 -256 -98 -470 -39 -396 43 -798 237 -1167 94 -179 154 -265 292 -421 161 -180 284 -282 500 -411 203 -122 360 -185 607 -245 157 -38 218 -46 405 -52 301 -12 536 25 855 132 168 57 456 223 610 352 77 65 244 236 295 302 188 247 327 527 400 810 72 276 76 756 8 1000 -24 89 -109 339 -142 417 -106 256 -335 555 -572 747 -106 86 -289 207 -384 254 -189 94 -463 181 -650 207 -159 23 -508 28 -610 10z m486 -901 c171 -31 289 -81 456 -189 96 -63 231 -193 312 -300 89 -118 168 -303 207 -487 36 -167 19 -453 -36 -614 -57 -164 -170 -345 -295 -469 -191 -190 -388 -289 -671 -335 -156 -25 -243 -25 -375 0 -139 26 -187 41 -296 88 -282 123 -473 312 -613 603 -119 250 -133 638 -33 919 28 77 112 231 171 314 132 183 397 375 597 433 189 55 407 69 576 37z M35888 6795 c-199 -29 -468 -115 -628 -202 -248 -136 -524 -381 -662 -589 -232 -350 -325 -584 -384 -964 -25 -164 -25 -527 0 -665 46 -255 64 -324 133 -500 109 -279 239 -480 452 -698 187 -193 411 -340 638 -421 305 -109 547 -146 818 -125 241 18 394 58 590 155 162 79 268 159 413 308 62 64 117 114 122 111 5 -3 7 -101 6 -218 -3 -189 -6 -229 -34 -372 -36 -186 -52 -236 -116 -365 -118 -236 -255 -382 -457 -488 -81 -42 -232 -97 -294 -108 -22 -3 -65 -13 -95 -20 -73 -19 -329 -18 -445 1 -142 23 -255 60 -405 132 -110 53 -162 86 -245 158 -33 28 -70 60 -83 71 -13 10 -60 63 -105 117 -45 53 -88 97 -95 97 -14 0 -143 -115 -396 -354 -82 -78 -169 -156 -193 -175 -23 -18 -43 -38 -43 -43 0 -31 195 -264 314 -375 141 -132 252 -207 437 -296 143 -69 179 -84 254 -106 125 -38 172 -49 372 -90 177 -36 576 -39 753 -6 212 39 253 49 381 90 402 129 728 366 976 711 180 250 332 626 377 929 9 61 21 142 28 180 15 91 24 4010 9 4029 -12 14 -870 11 -885 -4 -4 -4 -9 -120 -10 -256 -1 -214 -3 -249 -16 -252 -9 -1 -24 12 -34 29 -83 141 -336 353 -531 445 -78 37 -277 97 -400 120 -116 21 -398 26 -517 9z m572 -901 c397 -75 731 -367 861 -753 88 -260 93 -554 13 -804 -103 -323 -363 -620 -644 -734 -165 -67 -242 -84 -409 -90 -313 -12 -590 97 -826 324 -87 84 -149 169 -211 293 -74 146 -89 192 -124 388 -25 143 -25 217 0 362 31 183 59 269 132 415 155 308 450 531 798 600 93 19 310 18 410 -1z"/><path fill="#F52222" d="M40570 11736 c-6 -6 -10 -160 -10 -412 0 -362 -2 -404 -17 -419 -14 -15 -37 -16 -170 -13 -116 2 -156 0 -162 -10 -12 -20 -11 -1645 1 -1659 8 -10 55 -13 174 -13 155 0 163 -1 169 -20 4 -12 5 -205 4 -430 -2 -225 -1 -412 3 -415 11 -11 148 -12 163 -1 13 9 15 69 17 436 l3 425 164 3 c101 1 170 7 178 13 18 15 20 1654 2 1665 -7 4 -82 6 -167 6 -100 -1 -160 2 -169 9 -10 9 -13 93 -13 420 0 300 -3 410 -12 415 -18 11 -147 11 -158 0z M39760 4646 c-128 -20 -213 -53 -332 -129 -136 -87 -222 -220 -259 -402 -42 -204 10 -377 152 -508 39 -37 75 -67 80 -67 4 0 30 -13 56 -28 26 -16 57 -31 68 -34 11 -4 45 -16 75 -27 68 -26 210 -64 335 -90 180 -38 259 -80 291 -156 30 -73 11 -140 -56 -198 -56 -48 -116 -68 -225 -74 -111 -7 -197 6 -295 43 -64 25 -86 40 -150 104 -41 41 -87 91 -101 110 -24 32 -27 34 -47 20 -29 -21 -282 -296 -282 -308 0 -15 143 -147 207 -190 145 -98 288 -154 452 -177 353 -50 670 46 863 260 63 71 107 167 127 279 46 255 -68 480 -301 595 -48 23 -111 49 -140 57 -29 8 -75 21 -103 29 -27 8 -90 24 -140 36 -222 52 -314 92 -363 154 -17 21 -22 41 -22 84 0 72 28 116 101 156 52 29 58 30 189 30 114 0 144 -4 193 -22 68 -25 181 -99 220 -142 34 -39 49 -39 82 2 15 17 75 83 134 146 58 62 108 120 109 128 5 20 -36 62 -123 128 -129 97 -271 158 -430 184 -106 17 -275 20 -365 7z"/></g></svg></a>
+    <nav class="nav-links">
+      <a href="#journal">Journal</a><a href="#analytics">Analytics</a><a href="#coach">AI coach</a><a href="#markets">Markets</a><a href="#faq">FAQ</a>
+    </nav>
+    <div class="nav-cta"><a class="ghost" href="#">Sign in</a><a class="btn btn-white btn-sm" href="#">Start free</a></div>
+  </div>
+</div>
+
+<!-- ── HERO ─────────────────────────────────────────────── -->
+<header class="hero">
+  <div class="wrap">
+    <span class="label"><i></i>Read-only sync for any MetaTrader 5 broker</span>
+    <h1>The complete<br>trading journal</h1>
+    <p class="sub">Every MT5 fill journaled, every habit measured, and every Monday one thing to fix. Read-only by design, free while we’re getting started.</p>
+    <div class="ctas">
+      <a class="btn btn-green" href="#">Start journaling free <svg class="ic" viewBox="0 0 24 24" stroke-width="2.2"><use href="#i-arrow"/></svg></a>
+    </div>
+    <div class="assure">
+      <span><svg class="ic" viewBox="0 0 24 24" stroke-width="2"><use href="#i-eye"/></svg>Investor password only</span>
+      <span><svg class="ic" viewBox="0 0 24 24" stroke-width="2"><use href="#i-check"/></svg>History backfills automatically</span>
+      <span><svg class="ic" viewBox="0 0 24 24" stroke-width="2"><use href="#i-card"/></svg>No card needed</span>
+    </div>
+  </div>
+
+  <div class="stage-box hero-stage" data-w="1200" data-h="470" data-crop="700" style="max-width:1200px">
+    <div class="stage" style="width:1200px;height:470px">
+      <svg width="1200" height="470" viewBox="0 0 1200 470" style="position:absolute;inset:0">
+        <defs>
+          <radialGradient id="h-floorfade" cx="50%" cy="38%" r="62%">
+            <stop offset="0" stop-color="#fff" stop-opacity="1"/><stop offset=".75" stop-color="#fff" stop-opacity=".25"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>
+          </radialGradient>
+          <mask id="h-floormask"><rect width="1200" height="470" fill="url(#h-floorfade)"/></mask>
+          <linearGradient id="h-top" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#2E2E33"/><stop offset=".55" stop-color="#18181B"/><stop offset="1" stop-color="#0E0E10"/>
+          </linearGradient>
+          <radialGradient id="h-topglint" cx="50%" cy="100%" r="70%">
+            <stop offset="0" stop-color="#08C465" stop-opacity=".55"/><stop offset=".6" stop-color="#08C465" stop-opacity=".08"/><stop offset="1" stop-color="#08C465" stop-opacity="0"/>
+          </radialGradient>
+          <linearGradient id="h-front" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0" stop-color="#0A2416"/><stop offset=".12" stop-color="#0C0C0E"/><stop offset=".5" stop-color="#121214"/><stop offset=".88" stop-color="#0C0C0E"/><stop offset="1" stop-color="#0A2416"/>
+          </linearGradient>
+          <linearGradient id="h-frontv" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#fff" stop-opacity=".10"/><stop offset=".25" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#08C465" stop-opacity=".18"/>
+          </linearGradient>
+          <linearGradient id="h-rim" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0" stop-color="#08C465" stop-opacity="0"/><stop offset=".2" stop-color="#3DE296" stop-opacity=".9"/><stop offset=".5" stop-color="#C8FFE2" stop-opacity="1"/><stop offset=".8" stop-color="#3DE296" stop-opacity=".9"/><stop offset="1" stop-color="#08C465" stop-opacity="0"/>
+          </linearGradient>
+          <linearGradient id="h-backrim" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".5" stop-color="#fff" stop-opacity=".45"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>
+          </linearGradient>
+          <radialGradient id="h-glow" cx="50%" cy="50%" r="50%">
+            <stop offset="0" stop-color="#08C465" stop-opacity=".55"/><stop offset=".5" stop-color="#08C465" stop-opacity=".16"/><stop offset="1" stop-color="#08C465" stop-opacity="0"/>
+          </radialGradient>
+          <linearGradient id="h-ghost" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#fff" stop-opacity=".07"/><stop offset="1" stop-color="#fff" stop-opacity=".02"/>
+          </linearGradient>
+          <linearGradient id="h-line" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".5" stop-color="#fff" stop-opacity=".16"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>
+          </linearGradient>
+          <filter id="h-blur" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="22"/></filter>
+        </defs>
+
+        <!-- perspective floor grid -->
+        <g mask="url(#h-floormask)" stroke="#fff" stroke-opacity=".075" stroke-width="1" id="h-grid"></g>
+
+        <!-- ghost slabs -->
+        <g id="h-ghosts"></g>
+
+        <!-- connector traces -->
+        <g fill="none" stroke="rgba(255,255,255,.10)" stroke-width="1.2">
+          <path d="M470 286 H372 q-14 0 -14 -14 V196 q0 -12 -12 -12 H300"/>
+          <path d="M470 312 H356 q-14 0 -14 14 V348 q0 12 -12 12 H262"/>
+          <path d="M730 286 H828 q14 0 14 -14 V196 q0 -12 12 -12 H900"/>
+          <path d="M730 312 H844 q14 0 14 14 V348 q0 12 12 12 H938"/>
+        </g>
+        <g fill="#3DE296">
+          <circle cx="300" cy="184" r="2.6" opacity=".8"/><circle cx="262" cy="360" r="2.6" opacity=".55"/><circle cx="900" cy="184" r="2.6" opacity=".8"/><circle cx="938" cy="360" r="2.6" opacity=".55"/>
+        </g>
+
+        <!-- glow beneath block -->
+        <ellipse cx="600" cy="352" rx="210" ry="46" fill="url(#h-glow)"/>
+        <ellipse cx="600" cy="340" rx="150" ry="22" fill="#08C465" opacity=".35" filter="url(#h-blur)"/>
+
+        <!-- glass block: front face -->
+        <path d="M468 252 H732 V316 Q732 346 702 346 H498 Q468 346 468 316 Z" fill="url(#h-front)"/>
+        <path d="M468 252 H732 V316 Q732 346 702 346 H498 Q468 346 468 316 Z" fill="url(#h-frontv)"/>
+        <path d="M498 346 H702" stroke="#3DE296" stroke-opacity=".55" stroke-width="1.2"/>
+        <path d="M469 258 V316 Q469 345 498 345.5" fill="none" stroke="#3DE296" stroke-opacity=".5" stroke-width="1.2"/>
+        <path d="M731 258 V316 Q731 345 702 345.5" fill="none" stroke="#3DE296" stroke-opacity=".5" stroke-width="1.2"/>
+
+        <!-- glass block: top face -->
+        <path d="M512 168 H688 Q708 168 715 186 L734 236 Q740 254 720 254 H480 Q460 254 466 236 L485 186 Q492 168 512 168 Z" fill="url(#h-top)"/>
+        <path d="M512 168 H688 Q708 168 715 186 L734 236 Q740 254 720 254 H480 Q460 254 466 236 L485 186 Q492 168 512 168 Z" fill="url(#h-topglint)"/>
+        <path d="M512 168.6 H688" stroke="url(#h-backrim)" stroke-width="1.4"/>
+        <path d="M466 238 Q462 253.4 480 253.4 H720 Q738 253.4 734 238" fill="none" stroke="url(#h-rim)" stroke-width="2"/>
+
+        <!-- engraved mark on top face: bracketed candles, laid onto the plane -->
+        <g transform="translate(600 211) scale(1 .42)">
+          <g fill="none" stroke="#E8E8EC" stroke-opacity=".85" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M-92 -62 H-110 V62 H-92"/><path d="M92 -62 H110 V62 H92"/>
+          </g>
+          <g>
+            <line x1="-50" y1="-66" x2="-50" y2="56" stroke="#3DE296" stroke-width="5" stroke-linecap="round"/>
+            <rect x="-62" y="-36" width="24" height="64" rx="5" fill="#08C465"/>
+            <line x1="0" y1="-46" x2="0" y2="66" stroke="#FF6A62" stroke-width="5" stroke-linecap="round"/>
+            <rect x="-12" y="-20" width="24" height="56" rx="5" fill="#FE3A31"/>
+            <line x1="50" y1="-76" x2="50" y2="44" stroke="#3DE296" stroke-width="5" stroke-linecap="round"/>
+            <rect x="38" y="-56" width="24" height="70" rx="5" fill="#08C465"/>
+          </g>
+        </g>
+        <!-- specular sweep -->
+        <path d="M500 178 Q600 168 700 178" fill="none" stroke="#fff" stroke-opacity=".10" stroke-width="10" stroke-linecap="round"/>
+      </svg>
+
+      <!-- frosted chips -->
+      <div class="chip" style="left:150px;top:118px"><span class="sym">MT5</span><div>Account synced<small>History backfilled</small></div><span class="dot"></span></div>
+      <div class="chip" style="left:892px;top:118px"><span class="sym"><svg class="ic" viewBox="0 0 24 24" width="15" height="15" stroke-width="2"><use href="#i-mail"/></svg></span><div>Weekly review ready<small>One thing to fix</small></div></div>
+      <div class="chip dim" style="left:128px;top:378px"><span class="sym">XAU</span><div>Trade journaled<small>Notes · tags · replay</small></div></div>
+      <div class="chip dim" style="left:902px;top:378px"><span class="sym"><svg class="ic" viewBox="0 0 24 24" width="15" height="15" stroke-width="2"><use href="#i-flame"/></svg></span><div>Tilt check<small>Behaviour score updated</small></div></div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+<!-- ── 1. JOURNAL (green) ───────────────────────────────── -->
+<section class="sec" id="journal">
+  <div class="sec-head">
+    <div>
+      <span class="label"><i></i>TRADElogs Journal</span>
+      <h2>Every fill journaled<br>the moment it closes</h2>
+    </div>
+    <div>
+      <p>Connect MT5 once. Your history backfills, new trades appear as they close, and fees, swaps and partial closes are rebuilt into clean positions you can replay and annotate.</p>
+      <div class="act"><a class="btn btn-dark" href="#">See the journal</a></div>
+    </div>
+  </div>
+  <div class="bento">
+    <div class="tiles">
+      <div class="tile"><div class="tile-top"><span class="it"><svg class="ic"><use href="#i-book"/></svg></span><span class="tile-ghost"><svg class="ic" viewBox="0 0 24 24"><use href="#i-book"/></svg></span></div><div class="tile-t"><b>Auto-synced</b> trade log</div></div>
+      <div class="tile"><div class="tile-top"><span class="it"><svg class="ic"><use href="#i-play"/></svg></span><span class="tile-ghost"><svg class="ic" viewBox="0 0 24 24"><use href="#i-play"/></svg></span></div><div class="tile-t"><b>Replay</b> any trade on its chart</div></div>
+      <div class="tile"><div class="tile-top"><span class="it"><svg class="ic"><use href="#i-tag"/></svg></span><span class="tile-ghost"><svg class="ic" viewBox="0 0 24 24"><use href="#i-tag"/></svg></span></div><div class="tile-t"><b>Notes, tags</b> and emotions per trade</div></div>
+      <div class="tile"><div class="tile-top"><span class="it"><svg class="ic"><use href="#i-layers"/></svg></span><span class="tile-ghost"><svg class="ic" viewBox="0 0 24 24"><use href="#i-layers"/></svg></span></div><div class="tile-t"><b>Fees and swaps</b> rebuilt into positions</div></div>
+    </div>
+    <div class="art art-g">
+      <div class="art-dots"></div>
+      <div class="stage-box" data-w="560" data-h="400"><div class="stage" style="width:560px;height:400px">
+        <span class="sample" style="right:16px;top:16px">Sample</span>
+        <!-- 3D glass slab -->
+        <div style="position:absolute;left:84px;top:66px;width:390px;height:276px;perspective:1000px">
+          <div class="slab" style="position:absolute;inset:0;border-radius:26px;transform:rotateX(44deg) rotateZ(-28deg);transform-style:preserve-3d;
+            background:linear-gradient(150deg,#26262B 0%,#141416 45%,#0B0B0C 100%);
+            box-shadow:inset 0 1px 0 rgba(255,255,255,.22),inset 0 0 0 1px rgba(255,255,255,.07),0 2px 0 #0a2a18,0 4px 0 #082214,0 6px 0 #071c11,0 8px 0 #06170e,0 10px 0 #05120b,0 12px 0 #040e09,0 50px 70px -10px rgba(0,0,0,.85),0 0 90px rgba(8,196,101,.28)">
+            <svg viewBox="0 0 370 262" width="370" height="262" style="position:absolute;inset:0">
+              <defs><linearGradient id="j-sheen" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".09"/><stop offset=".45" stop-color="#fff" stop-opacity="0"/></linearGradient></defs>
+              <rect x="22" y="20" width="96" height="9" rx="4.5" fill="#fff" opacity=".22"/>
+              <rect x="22" y="37" width="56" height="7" rx="3.5" fill="#fff" opacity=".1"/>
+              <rect x="272" y="18" width="76" height="26" rx="13" fill="#08C465" opacity=".16"/>
+              <text x="310" y="35.5" text-anchor="middle" font-family="JetBrains Mono" font-size="11" fill="#3DE296">+612.40</text>
+              <g id="j-candles"></g>
+              <line x1="22" x2="348" y1="168" y2="168" stroke="#3DE296" stroke-dasharray="4 5" stroke-opacity=".7"/>
+              <line x1="22" x2="348" y1="98" y2="98" stroke="#fff" stroke-dasharray="4 5" stroke-opacity=".35"/>
+              <rect x="22" y="214" width="326" height="28" rx="10" fill="#fff" opacity=".045"/>
+              <rect x="34" y="225" width="150" height="6" rx="3" fill="#fff" opacity=".18"/>
+              <rect x="0" y="0" width="370" height="262" rx="26" fill="url(#j-sheen)"/>
+            </svg>
+          </div>
+        </div>
+        <div class="chip" style="left:258px;top:44px"><span class="sym">XAU</span><div>XAUUSD · Long<small>Closed 14:02 · held 2h 10m</small></div><span class="v pos">+$612.40</span></div>
+        <div class="chip" style="left:20px;top:268px"><span class="sym">EU</span><div>EURUSD · Short<small>Stopped out · tagged “late entry”</small></div><span class="v neg">−$118.20</span></div>
+        <div class="chip" style="left:300px;top:326px"><span class="sym"><svg class="ic" viewBox="0 0 24 24" width="15" height="15" stroke-width="2"><use href="#i-tag"/></svg></span><div>Note added<small>“Waited for the retest”</small></div></div>
+      </div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ── 2. ANALYTICS (green, flipped) ────────────────────── -->
+<section class="sec" id="analytics">
+  <div class="sec-head">
+    <div>
+      <span class="label"><i></i>TRADElogs Analytics</span>
+      <h2>Find the leak,<br>not just the loss</h2>
+    </div>
+    <div>
+      <p>Most journals stop at P&amp;L. TRADElogs breaks your results down by symbol, weekday, hour and session, so the pattern behind the red days becomes obvious.</p>
+      <div class="act"><a class="btn btn-dark" href="#">Explore analytics</a></div>
+    </div>
+  </div>
+  <div class="bento flip">
+    <div class="art art-g">
+      <div class="stage-box" data-w="560" data-h="400"><div class="stage" style="width:560px;height:400px">
+        <span class="sample" style="left:16px;top:16px">Sample</span>
+        <svg width="560" height="400" viewBox="0 0 560 400" style="position:absolute;inset:0" id="iso"></svg>
+        <div class="chip" style="left:330px;top:52px"><span class="sym"><svg class="ic" viewBox="0 0 24 24" width="15" height="15" stroke-width="2"><use href="#i-clock"/></svg></span><div>Best window<small>London open, 07:00–10:00</small></div></div>
+        <div class="chip red-t" style="left:24px;top:318px"><span class="sym" style="background:rgba(254,58,49,.18);color:#FF8A82"><svg class="ic" viewBox="0 0 24 24" width="15" height="15" stroke-width="2"><use href="#i-pulse"/></svg></span><div>Leak found<small>Friday entries after 15:00</small></div></div>
+      </div></div>
+    </div>
+    <div class="tiles">
+      <div class="tile"><div class="tile-top"><span class="it"><svg class="ic"><use href="#i-clock"/></svg></span><span class="tile-ghost"><svg class="ic" viewBox="0 0 24 24"><use href="#i-clock"/></svg></span></div><div class="tile-t"><b>Best hours</b> and sessions mapped</div></div>
+      <div class="tile"><div class="tile-top"><span class="it"><svg class="ic"><use href="#i-bars"/></svg></span><span class="tile-ghost"><svg class="ic" viewBox="0 0 24 24"><use href="#i-bars"/></svg></span></div><div class="tile-t"><b>Edge by symbol</b> and weekday</div></div>
+      <div class="tile"><div class="tile-top"><span class="it"><svg class="ic"><use href="#i-curve"/></svg></span><span class="tile-ghost"><svg class="ic" viewBox="0 0 24 24"><use href="#i-curve"/></svg></span></div><div class="tile-t"><b>Equity and drawdown</b> over any range</div></div>
+      <div class="tile"><div class="tile-top"><span class="it"><svg class="ic"><use href="#i-cal"/></svg></span><span class="tile-ghost"><svg class="ic" viewBox="0 0 24 24"><use href="#i-cal"/></svg></span></div><div class="tile-t"><b>P&amp;L calendar</b> day by day</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ── 3. AI COACH + SIGNALX (green) ────────────────────── -->
+<section class="sec" id="coach">
+  <div class="sec-head">
+    <div>
+      <span class="label"><i></i>AI coach · SignalX</span>
+      <h2>An AI that has read<br>every trade you’ve taken</h2>
+    </div>
+    <div>
+      <p>Ask the coach anything and it answers from your real fills. Before your next trade, SignalX gives a bias, key levels and scenarios for the symbol you’re watching.</p>
+      <div class="act"><a class="btn btn-dark" href="#">Ask the coach</a></div>
+    </div>
+  </div>
+  <div class="bento">
+    <div class="tiles">
+      <div class="tile"><div class="tile-top"><span class="it"><svg class="ic"><use href="#i-chat"/></svg></span><span class="tile-ghost"><svg class="ic" viewBox="0 0 24 24"><use href="#i-chat"/></svg></span></div><div class="tile-t"><b>Answers</b> from your own trades</div></div>
+      <div class="tile"><div class="tile-top"><span class="it"><svg class="ic"><use href="#i-signal"/></svg></span><span class="tile-ghost"><svg class="ic" viewBox="0 0 24 24"><use href="#i-signal"/></svg></span></div><div class="tile-t"><b>SignalX</b> bias, levels and scenarios</div></div>
+      <div class="tile"><div class="tile-top"><span class="it"><svg class="ic"><use href="#i-mail"/></svg></span><span class="tile-ghost"><svg class="ic" viewBox="0 0 24 24"><use href="#i-mail"/></svg></span></div><div class="tile-t"><b>Weekly review</b> every Monday</div></div>
+      <div class="tile"><div class="tile-top"><span class="it"><svg class="ic"><use href="#i-bulb"/></svg></span><span class="tile-ghost"><svg class="ic" viewBox="0 0 24 24"><use href="#i-bulb"/></svg></span></div><div class="tile-t"><b>Plain-English</b> insights, no jargon</div></div>
+    </div>
+    <div class="art art-g">
+      <div class="stage-box" data-w="560" data-h="400"><div class="stage" style="width:560px;height:400px">
+        <div style="position:absolute;left:-10px;right:-10px;bottom:-58px;text-align:center;font:500 196px/1 var(--sans);letter-spacing:-.06em;background:linear-gradient(180deg,rgba(61,226,150,.55),rgba(8,196,101,.06) 78%);-webkit-background-clip:text;background-clip:text;color:transparent">Coach</div>
+        <span class="sample" style="right:16px;top:16px">Sample</span>
+        <!-- conversation -->
+        <div class="chip dim" style="left:70px;top:30px;padding:11px 14px;border-radius:16px;white-space:normal;width:250px">Which symbol costs me the most?</div>
+        <div style="position:absolute;left:174px;top:74px;width:290px;padding:13px 15px;border-radius:18px 18px 6px 18px;background:linear-gradient(180deg,#2A2A2F,#1F1F23);box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 16px 30px -14px rgba(0,0,0,.9);font-size:13.5px;line-height:1.4;z-index:4">What’s the one thing I should fix this week?</div>
+        <div style="position:absolute;left:52px;top:142px;width:372px;padding:15px 16px;border-radius:18px 18px 18px 6px;background:rgba(14,30,22,.72);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:inset 0 1px 0 rgba(140,255,200,.2),0 0 0 1px rgba(8,196,101,.32),0 24px 46px -16px rgba(0,0,0,.9);font-size:13.5px;line-height:1.5;color:#D9F5E6;z-index:4">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:12px;color:#8FD9B4"><span class="it" style="width:20px;height:20px;border-radius:6px"><svg class="ic" viewBox="0 0 24 24" style="width:11px;height:11px;stroke-width:2.4"><use href="#i-chat"/></svg></span>TRADElogs coach · read your trades</div>
+          Trades opened <b style="font-weight:500;color:#fff">after 15:00 London</b> are the leak: <span class="num" style="color:#FF8A82">31%</span> win rate, against <span class="num" style="color:#3DE296">64%</span> before noon.
+          <div style="margin-top:10px;display:inline-flex;align-items:center;gap:7px;padding:6px 10px;border-radius:10px;background:rgba(8,196,101,.16);color:#BFF5DA;font-size:12px"><svg class="ic" viewBox="0 0 24 24" width="13" height="13" stroke-width="2.2"><use href="#i-check"/></svg>Suggestion: no new entries after 15:00</div>
+        </div>
+        <!-- signalx card -->
+        <div class="chip" style="left:236px;top:296px;padding:12px 14px 12px 12px;gap:12px"><span class="it" style="width:30px;height:30px;border-radius:9px"><svg class="ic" viewBox="0 0 24 24" style="width:15px;height:15px"><use href="#i-signal"/></svg></span><div>SignalX · XAUUSD 1h<small>Bias bullish · levels <span class="num">2,368</span> / <span class="num">2,402</span></small></div></div>
+      </div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ── 4. DISCIPLINE (red, flipped) ─────────────────────── -->
+<section class="sec" id="discipline">
+  <div class="sec-head">
+    <div>
+      <span class="label red"><i></i>Behaviour engine</span>
+      <h2>Catch the tilt<br>before it costs you</h2>
+    </div>
+    <div>
+      <p>TRADElogs watches how you trade, not just what. It scores how well you followed your own rules and flags revenge sequences the moment they start to form.</p>
+      <div class="act"><a class="btn btn-dark" href="#">See your behaviour score</a></div>
+    </div>
+  </div>
+  <div class="bento flip">
+    <div class="art art-r">
+      <div class="art-dots"></div>
+      <div class="stage-box" data-w="560" data-h="400"><div class="stage" style="width:560px;height:400px">
+        <span class="sample" style="left:16px;top:16px">Sample</span>
+        <svg width="560" height="400" viewBox="0 0 560 400" style="position:absolute;inset:0">
+          <defs>
+            <linearGradient id="sh-body" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4A1612"/><stop offset=".5" stop-color="#220B09"/><stop offset="1" stop-color="#120707"/></linearGradient>
+            <linearGradient id="sh-face" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity=".95"/><stop offset=".5" stop-color="#E9E9EE" stop-opacity=".92"/><stop offset="1" stop-color="#B9B9C2" stop-opacity=".9"/></linearGradient>
+            <linearGradient id="sh-rim" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FF9A92"/><stop offset="1" stop-color="#FE3A31" stop-opacity=".2"/></linearGradient>
+            <radialGradient id="sh-glow" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#FE3A31" stop-opacity=".55"/><stop offset="1" stop-color="#FE3A31" stop-opacity="0"/></radialGradient>
+            <linearGradient id="sh-shine" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity=".0"/><stop offset=".5" stop-color="#fff" stop-opacity=".55"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+          </defs>
+          <ellipse cx="280" cy="350" rx="190" ry="40" fill="url(#sh-glow)"/>
+          <!-- side coins -->
+          <g id="coins"></g>
+          <!-- shield back plate -->
+          <path d="M280 110 L382 146 V232 C382 292 336 330 280 352 C224 330 178 292 178 232 V146 Z" fill="url(#sh-body)" stroke="url(#sh-rim)" stroke-width="2"/>
+          <!-- shield face -->
+          <path d="M280 124 L368 155 V231 C368 283 328 316 280 336 C232 316 192 283 192 231 V155 Z" fill="url(#sh-face)"/>
+          <path d="M280 124 L368 155 V176 C330 160 300 154 280 154 C260 154 230 160 192 176 V155 Z" fill="#fff" opacity=".55"/>
+          <!-- emblem: interrupted streak -->
+          <g transform="translate(280 236)">
+            <g fill="none" stroke="#2A2A30" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M-52 22 L-28 -6 L-10 10 L8 -14"/>
+            </g>
+            <g stroke="#FE3A31" stroke-width="7" stroke-linecap="round"><path d="M22 -26 L50 2"/><path d="M50 -26 L22 2"/></g>
+          </g>
+          <path d="M214 160 Q280 136 346 160" fill="none" stroke="url(#sh-shine)" stroke-width="3"/>
+        </svg>
+        <!-- stacked alert toasts -->
+        <div class="chip red-t dim" style="left:150px;top:20px;opacity:.32"><span class="sym" style="background:rgba(254,58,49,.2);color:#FF8A82"><svg class="ic" viewBox="0 0 24 24" width="14" height="14" stroke-width="2"><use href="#i-flame"/></svg></span>Revenge sequence detected</div>
+        <div class="chip red-t" style="left:120px;top:58px"><span class="sym" style="background:rgba(254,58,49,.22);color:#FF8A82"><svg class="ic" viewBox="0 0 24 24" width="15" height="15" stroke-width="2"><use href="#i-flame"/></svg></span><div>Revenge sequence<small style="color:#E8A7A2">4 trades in 11 min after a loss</small></div></div>
+        <div class="chip" style="left:334px;top:262px"><span class="sym"><svg class="ic" viewBox="0 0 24 24" width="15" height="15" stroke-width="2"><use href="#i-list"/></svg></span><div><span class="num">2</span> of <span class="num">3</span> rules kept<small>Broken: no trades after 15:00</small></div></div>
+      </div></div>
+    </div>
+    <div class="tiles">
+      <div class="tile"><div class="tile-top"><span class="it red"><svg class="ic"><use href="#i-flame"/></svg></span><span class="tile-ghost"><svg class="ic" viewBox="0 0 24 24"><use href="#i-flame"/></svg></span></div><div class="tile-t"><b>Tilt detection</b> flags revenge trades</div></div>
+      <div class="tile"><div class="tile-top"><span class="it red"><svg class="ic"><use href="#i-gauge"/></svg></span><span class="tile-ghost"><svg class="ic" viewBox="0 0 24 24"><use href="#i-gauge"/></svg></span></div><div class="tile-t"><b>Behaviour score</b> out of 100</div></div>
+      <div class="tile"><div class="tile-top"><span class="it red"><svg class="ic"><use href="#i-list"/></svg></span><span class="tile-ghost"><svg class="ic" viewBox="0 0 24 24"><use href="#i-list"/></svg></span></div><div class="tile-t"><b>Your rules</b>, checked every week</div></div>
+      <div class="tile"><div class="tile-top"><span class="it red"><svg class="ic"><use href="#i-pause"/></svg></span><span class="tile-ghost"><svg class="ic" viewBox="0 0 24 24"><use href="#i-pause"/></svg></span></div><div class="tile-t"><b>Holding habits</b>: winners vs losers</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ── 5. MARKETS (graphite) ────────────────────────────── -->
+<section class="sec" id="markets">
+  <div class="sec-head">
+    <div>
+      <span class="label gray"><i></i>Markets &amp; macro</span>
+      <h2>The market context,<br>right next to your trades</h2>
+    </div>
+    <div>
+      <p>An economic calendar, market news filtered to your symbols, a macro dashboard and price alerts, so you know what moved the market on the days you won and lost.</p>
+      <div class="act"><a class="btn btn-dark" href="#">Open markets</a></div>
+    </div>
+  </div>
+  <div class="bento">
+    <div class="tiles">
+      <div class="tile"><div class="tile-top"><span class="it gray"><svg class="ic"><use href="#i-cal"/></svg></span><span class="tile-ghost"><svg class="ic" viewBox="0 0 24 24"><use href="#i-cal"/></svg></span></div><div class="tile-t"><b>Economic calendar</b> with impact levels</div></div>
+      <div class="tile"><div class="tile-top"><span class="it gray"><svg class="ic"><use href="#i-news"/></svg></span><span class="tile-ghost"><svg class="ic" viewBox="0 0 24 24"><use href="#i-news"/></svg></span></div><div class="tile-t"><b>News</b> for the symbols you trade</div></div>
+      <div class="tile"><div class="tile-top"><span class="it gray"><svg class="ic"><use href="#i-globe"/></svg></span><span class="tile-ghost"><svg class="ic" viewBox="0 0 24 24"><use href="#i-globe"/></svg></span></div><div class="tile-t"><b>Macro dashboard</b> and asset bias</div></div>
+      <div class="tile"><div class="tile-top"><span class="it gray"><svg class="ic"><use href="#i-bell"/></svg></span><span class="tile-ghost"><svg class="ic" viewBox="0 0 24 24"><use href="#i-bell"/></svg></span></div><div class="tile-t"><b>Price alerts</b> to web push</div></div>
+    </div>
+    <div class="art art-k">
+      <div class="stage-box" data-w="560" data-h="400"><div class="stage" style="width:560px;height:400px">
+        <span class="sample" style="right:16px;top:16px">Sample</span>
+        <svg width="560" height="400" viewBox="0 0 560 400" style="position:absolute;inset:0" id="globe"></svg>
+        <!-- session track -->
+        <div style="position:absolute;left:34px;right:34px;top:30px;height:54px;border-radius:16px;background:rgba(28,28,31,.6);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:inset 0 1px 0 rgba(255,255,255,.1),0 0 0 1px rgba(255,255,255,.07);z-index:4;display:flex;align-items:center;padding:0 18px;gap:0">
+          <div style="position:relative;flex:1;height:2px;background:rgba(255,255,255,.12);border-radius:2px">
+            <div style="position:absolute;left:0;width:58%;height:2px;background:linear-gradient(90deg,rgba(8,196,101,.2),#08C465);border-radius:2px"></div>
+            <span style="position:absolute;left:0;top:-5px;width:12px;height:12px;border-radius:50%;background:#2A2A2F;box-shadow:inset 0 0 0 2px #08C465"></span>
+            <span style="position:absolute;left:29%;top:-5px;width:12px;height:12px;border-radius:50%;background:#2A2A2F;box-shadow:inset 0 0 0 2px #08C465"></span>
+            <span style="position:absolute;left:58%;top:-7px;width:16px;height:16px;border-radius:50%;background:#08C465;box-shadow:0 0 0 5px rgba(8,196,101,.2)"></span>
+            <span style="position:absolute;left:84%;top:-5px;width:12px;height:12px;border-radius:50%;background:#2A2A2F;box-shadow:inset 0 0 0 2px rgba(255,255,255,.25)"></span>
+            <span style="position:absolute;right:0;top:-5px;width:12px;height:12px;border-radius:50%;background:#2A2A2F;box-shadow:inset 0 0 0 2px rgba(255,255,255,.25)"></span>
+            <span class="num" style="position:absolute;left:-2px;top:12px;font-size:10px;color:var(--dim)">00:00</span>
+            <span class="num" style="position:absolute;left:27%;top:12px;font-size:10px;color:var(--dim)">07:00</span>
+            <span class="num" style="position:absolute;left:56%;top:12px;font-size:10px;color:#8FD9B4">13:30</span>
+            <span class="num" style="position:absolute;left:82%;top:12px;font-size:10px;color:var(--dim)">19:00</span>
+          </div>
+        </div>
+        <div class="chip" style="left:286px;top:110px"><span class="sym">US</span><div>CPI release · 13:30<small>High impact · watching XAUUSD</small></div></div>
+        <div class="chip" style="left:34px;top:300px"><span class="sym">XAU</span><div>Macro bias · gold<small>Bullish · rates easing</small></div></div>
+        <div class="chip" style="left:330px;top:318px"><span class="sym"><svg class="ic" viewBox="0 0 24 24" width="15" height="15" stroke-width="2"><use href="#i-bell"/></svg></span><div>Alert hit<small>EURUSD crossed <span class="num">1.0900</span></small></div></div>
+      </div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ── 6. SECURITY (graphite, flipped) ──────────────────── -->
+<section class="sec" id="security">
+  <div class="sec-head">
+    <div>
+      <span class="label gray"><i></i>Read-only by design</span>
+      <h2>It can look at your account.<br>It can never touch it.</h2>
+    </div>
+    <div>
+      <p>TRADElogs connects with MetaTrader’s investor password, the one that can view history but cannot open, modify or close a position. It’s encrypted at rest, and disconnecting removes the synced data.</p>
+      <div class="act"><a class="btn btn-dark" href="#">How we keep it safe</a></div>
+    </div>
+  </div>
+  <div class="bento flip">
+    <div class="art art-k">
+      <div class="art-dots" style="opacity:.35"></div>
+      <div class="stage-box" data-w="560" data-h="400"><div class="stage" style="width:560px;height:400px">
+        <svg width="560" height="400" viewBox="0 0 560 400" style="position:absolute;inset:0">
+          <defs>
+            <linearGradient id="lk-sh" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#3A3A40"/><stop offset=".35" stop-color="#9C9CA6"/><stop offset=".55" stop-color="#E4E4EA"/><stop offset=".8" stop-color="#55555C"/><stop offset="1" stop-color="#2A2A2F"/></linearGradient>
+            <linearGradient id="lk-body" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2C2C31"/><stop offset=".4" stop-color="#141416"/><stop offset="1" stop-color="#0A0A0B"/></linearGradient>
+            <linearGradient id="lk-edge" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity=".05"/><stop offset=".5" stop-color="#fff" stop-opacity=".55"/><stop offset="1" stop-color="#fff" stop-opacity=".05"/></linearGradient>
+            <radialGradient id="lk-hole" cx="50%" cy="40%" r="60%"><stop offset="0" stop-color="#7CFFC0"/><stop offset=".45" stop-color="#08C465"/><stop offset="1" stop-color="#035A2D"/></radialGradient>
+            <radialGradient id="lk-glow" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#fff" stop-opacity=".16"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+            <filter id="lk-blur"><feGaussianBlur stdDeviation="8"/></filter>
+          </defs>
+          <ellipse cx="280" cy="350" rx="190" ry="36" fill="url(#lk-glow)"/>
+          <g transform="translate(280 250) scale(1.12) translate(-280 -250)">
+          <!-- shackle -->
+          <path d="M218 196 V150 a62 62 0 0 1 124 0 V196" fill="none" stroke="#0E0E10" stroke-width="30" stroke-linecap="round" transform="translate(4 6)" opacity=".7"/>
+          <path d="M218 196 V150 a62 62 0 0 1 124 0 V196" fill="none" stroke="url(#lk-sh)" stroke-width="26" stroke-linecap="round"/>
+          <path d="M212 160 a68 68 0 0 1 58 -70" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width="2.5" stroke-linecap="round"/>
+          <!-- body -->
+          <rect x="176" y="178" width="208" height="164" rx="36" fill="url(#lk-body)"/>
+          <rect x="176.5" y="178.5" width="207" height="163" rx="35.5" fill="none" stroke="rgba(255,255,255,.14)"/>
+          <path d="M200 179 H360" stroke="url(#lk-edge)" stroke-width="1.6"/>
+          <!-- keyhole -->
+          <circle cx="280" cy="246" r="20" fill="#08C465" opacity=".4" filter="url(#lk-blur)"/>
+          <circle cx="280" cy="244" r="14" fill="url(#lk-hole)"/>
+          <path d="M273 252 L287 252 L291 288 Q291 294 285 294 H275 Q269 294 269 288 Z" fill="url(#lk-hole)"/>
+          <!-- engraved label -->
+          <text x="280" y="324" text-anchor="middle" font-family="Satoshi" font-weight="500" font-size="12" fill="#fff" fill-opacity=".38" letter-spacing=".2">Read only</text>
+          </g>
+        </svg>
+        <div class="chip" style="left:22px;top:52px"><span class="sym"><svg class="ic" viewBox="0 0 24 24" width="15" height="15" stroke-width="2"><use href="#i-eye"/></svg></span><div>Investor password<small>View history only</small></div></div>
+        <div class="chip" style="left:372px;top:132px"><span class="sym"><svg class="ic" viewBox="0 0 24 24" width="15" height="15" stroke-width="2"><use href="#i-key"/></svg></span><div>Encrypted at rest<small>AES-256-GCM</small></div></div>
+        <div class="chip" style="left:22px;top:318px"><span class="sym" style="color:#FF8A82"><svg class="ic" viewBox="0 0 24 24" width="15" height="15" stroke-width="2"><use href="#i-unlink"/></svg></span><div>Can’t trade or withdraw<small>By design, not by setting</small></div></div>
+      </div></div>
+    </div>
+    <div class="tiles">
+      <div class="tile"><div class="tile-top"><span class="it gray"><svg class="ic"><use href="#i-eye"/></svg></span><span class="tile-ghost"><svg class="ic" viewBox="0 0 24 24"><use href="#i-eye"/></svg></span></div><div class="tile-t"><b>Investor password</b> only</div></div>
+      <div class="tile"><div class="tile-top"><span class="it gray"><svg class="ic"><use href="#i-key"/></svg></span><span class="tile-ghost"><svg class="ic" viewBox="0 0 24 24"><use href="#i-key"/></svg></span></div><div class="tile-t"><b>AES-256-GCM</b> encryption at rest</div></div>
+      <div class="tile"><div class="tile-top"><span class="it gray"><svg class="ic"><use href="#i-plug"/></svg></span><span class="tile-ghost"><svg class="ic" viewBox="0 0 24 24"><use href="#i-plug"/></svg></span></div><div class="tile-t"><b>Any MT5 broker</b> with an investor login</div></div>
+      <div class="tile"><div class="tile-top"><span class="it gray"><svg class="ic"><use href="#i-unlink"/></svg></span><span class="tile-ghost"><svg class="ic" viewBox="0 0 24 24"><use href="#i-unlink"/></svg></span></div><div class="tile-t"><b>Disconnect</b> and the synced data goes</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ── HOW IT WORKS ─────────────────────────────────────── -->
+<section class="sec">
+  <div class="center-head">
+    <span class="label"><i></i>How it works</span>
+    <h2>One journal for the<br>whole improvement loop</h2>
+  </div>
+  <div class="three">
+    <div class="card3">
+      <div class="viz"><svg viewBox="0 0 340 190" width="100%" height="100%" preserveAspectRatio="xMidYMid meet">
+        <defs><linearGradient id="v1" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#08C465" stop-opacity="0"/><stop offset=".5" stop-color="#08C465"/><stop offset="1" stop-color="#08C465" stop-opacity="0"/></linearGradient></defs>
+        <rect x="40" y="62" width="92" height="66" rx="16" fill="#1F1F23" stroke="rgba(255,255,255,.08)"/>
+        <text x="86" y="100" text-anchor="middle" font-family="JetBrains Mono" font-size="15" fill="#EDEDEF">MT5</text>
+        <rect x="208" y="62" width="92" height="66" rx="16" fill="#1F1F23" stroke="rgba(8,196,101,.35)"/>
+        <g transform="translate(254 95) scale(.36)"><path d="M-92 -62 H-110 V62 H-92 M92 -62 H110 V62 H92" fill="none" stroke="#EDEDEF" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/><rect x="-62" y="-36" width="24" height="64" rx="5" fill="#08C465"/><rect x="-12" y="-20" width="24" height="56" rx="5" fill="#FE3A31"/><rect x="38" y="-56" width="24" height="70" rx="5" fill="#08C465"/></g>
+        <path d="M140 95 H200" stroke="url(#v1)" stroke-width="2"/><circle cx="170" cy="95" r="4" fill="#08C465"/>
+        <text x="170" y="150" text-anchor="middle" font-family="Satoshi" font-size="11.5" fill="#55555B">investor password · read-only</text>
+      </svg></div>
+      <div class="tx"><div class="step">01</div><h3>Connect MT5, read-only</h3><p>Add your MT5 login, investor password and server. Your history backfills on its own.</p></div>
+    </div>
+    <div class="card3">
+      <div class="viz"><svg viewBox="0 0 340 190" width="100%" height="100%" id="v2"></svg></div>
+      <div class="tx"><div class="step">02</div><h3>See where your edge is</h3><p>Every trade measured by symbol, hour, weekday and session, with replay and notes.</p></div>
+    </div>
+    <div class="card3">
+      <div class="viz"><svg viewBox="0 0 340 190" width="100%" height="100%">
+        <rect x="58" y="40" width="224" height="112" rx="16" fill="#1F1F23" stroke="rgba(255,255,255,.07)"/>
+        <rect x="76" y="58" width="70" height="8" rx="4" fill="#fff" opacity=".22"/>
+        <rect x="76" y="76" width="168" height="6" rx="3" fill="#fff" opacity=".09"/>
+        <rect x="76" y="90" width="140" height="6" rx="3" fill="#fff" opacity=".09"/>
+        <rect x="76" y="112" width="188" height="24" rx="8" fill="#08C465" opacity=".14"/>
+        <circle cx="90" cy="124" r="5" fill="#08C465"/>
+        <rect x="102" y="121" width="120" height="6" rx="3" fill="#3DE296" opacity=".6"/>
+        <text x="170" y="174" text-anchor="middle" font-family="Satoshi" font-size="11.5" fill="#55555B">Monday · your week in review</text>
+      </svg></div>
+      <div class="tx"><div class="step">03</div><h3>Fix one thing a week</h3><p>A short review every Monday: what worked, what leaked, and the single habit to change.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ── COMING NEXT ──────────────────────────────────────── -->
+<section class="sec">
+  <div class="sec-head">
+    <div>
+      <span class="label gray"><i></i>Coming next</span>
+      <h2>From reviewing trades<br>to automating them</h2>
+    </div>
+    <div>
+      <p>We’re building trade execution on top of the journal. These aren’t live yet, and we’ll only ship them once they’re safe to use with real money.</p>
+    </div>
+  </div>
+  <div class="next">
+    <div class="n"><span class="soon">Coming soon</span><span class="it gray"><svg class="ic"><use href="#i-copy"/></svg></span><h3>Copy verified traders</h3><p>Follow a trader whose record is synced from their broker, sized to your account, with your own loss caps.</p></div>
+    <div class="n"><span class="soon">Coming soon</span><span class="it gray"><svg class="ic"><use href="#i-blocks"/></svg></span><h3>No-code strategy builder</h3><p>Describe the rules, backtest them, then run them on paper before anything goes live.</p></div>
+    <div class="n"><span class="soon">Coming soon</span><span class="it gray"><svg class="ic"><use href="#i-key"/></svg></span><h3>Crypto exchanges</h3><p>Connect exchanges with trade-only API keys. Withdrawal permission is never accepted.</p></div>
+  </div>
+</section>
+
+<!-- ── WHAT IT CONNECTS ─────────────────────────────────── -->
+<section class="sec">
+  <div class="int-title">What TRADElogs works with today</div>
+  <div class="intframe">
+    <span class="vl" style="left:0"></span><span class="vl" style="right:0"></span>
+    <div class="intgrid">
+      <div class="c"><svg class="ic" viewBox="0 0 24 24" stroke-width="1.8"><use href="#i-plug"/></svg>MetaTrader 5</div>
+      <div class="c"><svg class="ic" viewBox="0 0 24 24" stroke-width="1.8"><use href="#i-eye"/></svg>Any MT5 broker</div>
+      <div class="c"><svg class="ic" viewBox="0 0 24 24" stroke-width="1.8"><use href="#i-bell"/></svg>Web push</div>
+      <div class="c"><svg class="ic" viewBox="0 0 24 24" stroke-width="1.8"><use href="#i-mail"/></svg>Email reviews</div>
+      <div class="c"><svg class="ic" viewBox="0 0 24 24" stroke-width="1.8"><use href="#i-cal"/></svg>Economic calendar</div>
+      <div class="c"><svg class="ic" viewBox="0 0 24 24" stroke-width="1.8"><use href="#i-news"/></svg>Market news</div>
+      <div class="c"><svg class="ic" viewBox="0 0 24 24" stroke-width="1.8"><use href="#i-globe"/></svg>Macro data</div>
+      <div class="c"><svg class="ic" viewBox="0 0 24 24" stroke-width="1.8"><use href="#i-curve"/></svg>Live charts</div>
+    </div>
+  </div>
+</section>
+
+<!-- ── FAQ ──────────────────────────────────────────────── -->
+<section class="sec" id="faq">
+  <div class="faq">
+    <div class="side">
+      <span class="label gray"><i></i>FAQ</span>
+      <h2>Frequently<br>asked<br>questions</h2>
+      <p>Can’t find it here? Create a free account and ask the AI coach anything about your trading.</p>
+    </div>
+    <div>
+      <details class="qa" open><summary><span class="pm"></span>Can TRADElogs place or close trades on my account?</summary><div class="a">No. You connect with MT5’s investor (read-only) password, which can view your history but cannot open, modify or close positions.</div></details>
+      <details class="qa"><summary><span class="pm"></span>Which brokers work?</summary><div class="a">Any broker that offers MetaTrader 5. You only need your MT5 login, investor password and your broker’s server name.</div></details>
+      <details class="qa"><summary><span class="pm"></span>How much does it cost?</summary><div class="a">TRADElogs is free while we’re getting started, and you don’t need a card to sign up.</div></details>
+      <details class="qa"><summary><span class="pm"></span>What happens to my password and data?</summary><div class="a">Your investor password is encrypted (AES-256-GCM) so we can keep syncing, and it can only read your account. Disconnecting a broker from the Brokers page deletes its synced data.</div></details>
+      <details class="qa"><summary><span class="pm"></span>Do I have to import trades by hand?</summary><div class="a">Never. Once your account is connected, your history backfills automatically and new trades appear as they close.</div></details>
+    </div>
+  </div>
+</section>
+
+<!-- ── CLOSING SCENE ────────────────────────────────────── -->
+<section class="sec">
+  <div class="closing">
+    <div>
+      <span class="label"><i></i>Free while we’re getting started</span>
+      <h2>Sync. Review.<br>Fix. Repeat.</h2>
+      <p>Connect your MT5 account in a couple of minutes and get your first weekly review on Monday.</p>
+      <a class="btn btn-green" href="#">Start journaling free <svg class="ic" viewBox="0 0 24 24" stroke-width="2.2"><use href="#i-arrow"/></svg></a>
+    </div>
+    <div class="scatter" id="scatter">
+      <div class="grid"></div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- ── FOOTER ───────────────────────────────────────────── -->
+<footer>
+  <div class="wrap">
+    <div class="foot">
+      <div class="brand">
+        <a class="logo" href="#"><svg role="img" aria-label="TRADElogs" xmlns="http://www.w3.org/2000/svg" viewBox="70 70 4322 1226"><g transform="translate(0,1365) scale(.1,-.1)"><path fill="#fff" d="M37475 12900 c-8 -13 -8 -4537 0 -4550 10 -15 828 -13 843 2 8 8 12 46 12 105 0 81 -2 94 -19 103 -12 6 -123 10 -289 10 -209 0 -272 3 -280 13 -13 16 -12 4061 1 4074 5 4 133 9 285 11 173 2 282 7 289 14 9 7 13 43 13 113 0 85 -3 104 -16 109 -27 10 -832 7 -839 -4z M43033 12898 c-5 -8 -7 -58 -4 -118 l6 -105 280 -5 c154 -3 281 -7 283 -8 8 -7 1 -4082 -8 -4087 -5 -3 -131 -7 -279 -8 -148 -1 -273 -6 -277 -10 -8 -8 -6 -196 2 -209 7 -11 822 -10 828 1 4 6 10 4296 6 4549 0 9 -90 12 -414 12 -319 0 -416 -3 -423 -12z M763 8583 c-20 -7 -19 -1346 0 -1362 10 -8 257 -12 868 -13 l854 -3 5 -2300 5 -2300 775 0 775 0 6 105 c4 58 7 1089 8 2291 1 1819 3 2188 14 2198 10 8 260 12 878 13 l864 3 3 675 c2 622 1 676 -15 687 -13 10 -553 12 -2522 12 -1378 0 -2512 -3 -2518 -6z M5987 8579 c-18 -11 -19 -108 -15 -2986 2 -2164 6 -2977 14 -2984 7 -5 326 -8 790 -7 l779 3 5 1003 c4 863 7 1004 20 1012 8 5 245 9 535 9 566 1 650 -5 779 -53 211 -80 337 -188 428 -371 47 -92 55 -119 78 -250 18 -99 20 -159 20 -590 0 -264 5 -511 11 -550 5 -38 12 -97 16 -130 3 -33 10 -66 16 -72 14 -19 3160 -19 3175 0 15 17 57 133 158 427 46 135 107 308 137 385 l53 140 1079 0 1079 0 19 -50 c11 -27 23 -58 28 -67 5 -10 13 -34 18 -55 5 -21 26 -83 46 -138 20 -55 40 -113 45 -130 9 -32 25 -80 46 -135 7 -19 28 -80 45 -135 31 -100 48 -148 77 -218 l15 -37 2271 3 c2100 3 2279 4 2371 20 525 91 773 176 1120 381 531 314 982 889 1174 1496 77 243 77 245 121 460 28 135 41 295 47 562 4 233 2 316 -11 435 -32 276 -69 447 -156 720 -11 33 -24 72 -29 85 -42 107 -60 147 -108 247 -73 152 -173 315 -302 491 -158 217 -459 492 -693 635 -9 5 -54 33 -100 61 -233 142 -561 267 -879 334 -268 56 -207 54 -1754 57 -786 2 -1435 0 -1442 -5 -9 -5 -12 -704 -15 -2894 -2 -1587 -7 -2890 -11 -2895 -11 -10 -26 16 -59 102 -14 38 -36 95 -48 125 -11 30 -30 82 -41 115 -11 33 -25 69 -31 79 -6 11 -14 31 -18 45 -5 14 -18 51 -30 81 -34 89 -50 131 -75 205 -28 80 -45 127 -75 205 -17 44 -100 277 -150 420 -5 14 -18 50 -30 80 -41 107 -51 135 -57 155 -2 11 -11 34 -18 50 -34 80 -43 102 -49 132 -4 18 -12 35 -17 38 -5 4 -9 16 -9 28 0 13 -6 31 -14 42 -7 11 -16 31 -19 45 -3 14 -15 50 -27 80 -12 30 -25 66 -30 80 -5 14 -18 50 -30 80 -12 30 -25 66 -30 80 -5 14 -18 50 -30 80 -32 83 -48 128 -75 205 -13 39 -33 95 -45 125 -12 30 -26 71 -32 90 -5 19 -13 40 -18 45 -4 6 -10 19 -13 30 -3 11 -15 45 -27 75 -12 30 -25 66 -30 80 -5 14 -18 50 -30 80 -12 30 -32 87 -45 125 -28 81 -53 148 -84 225 -13 30 -29 72 -37 93 -29 78 -45 118 -60 160 -9 23 -23 60 -31 82 -8 22 -21 54 -28 70 -7 17 -16 45 -19 62 -4 18 -12 35 -17 38 -5 4 -9 14 -9 24 0 10 -14 52 -31 92 -17 41 -37 91 -45 112 -37 100 -73 193 -93 242 -15 35 -38 98 -71 190 -35 97 -114 301 -135 350 -8 17 -29 77 -49 135 -19 58 -44 128 -54 155 -11 28 -45 118 -76 200 -31 83 -60 159 -65 170 -5 11 -22 55 -37 98 -15 43 -35 82 -45 87 -21 12 -1558 13 -1576 2 -12 -8 -41 -79 -88 -217 -12 -38 -35 -101 -50 -140 -15 -38 -35 -95 -46 -125 -18 -56 -33 -96 -87 -235 -17 -44 -63 -165 -102 -270 -39 -104 -93 -246 -120 -315 -27 -69 -81 -213 -121 -320 -39 -107 -93 -247 -119 -310 -26 -63 -66 -162 -88 -220 -73 -189 -173 -445 -182 -465 -5 -11 -17 -45 -28 -75 -25 -71 -71 -188 -187 -480 -52 -129 -118 -298 -148 -375 -77 -198 -136 -345 -153 -382 -8 -17 -14 -35 -14 -39 0 -11 -108 -300 -135 -359 -32 -72 -58 -137 -100 -245 -20 -52 -40 -104 -44 -115 -5 -11 -17 -40 -27 -65 -23 -58 -53 -130 -64 -155 -5 -11 -19 -45 -30 -75 -11 -30 -25 -64 -30 -75 -5 -11 -32 -81 -60 -155 -28 -74 -55 -144 -60 -155 -5 -11 -26 -60 -45 -110 -20 -49 -42 -103 -49 -120 -8 -16 -22 -52 -32 -80 -10 -27 -24 -61 -31 -75 -7 -14 -13 -30 -13 -37 0 -20 -34 -73 -45 -70 -5 2 -13 44 -17 93 -4 49 -14 163 -22 254 -12 119 -16 281 -16 580 0 519 -14 660 -85 875 -56 171 -134 301 -261 434 -47 50 -116 113 -154 141 -65 48 -292 164 -375 191 -22 7 -46 19 -54 26 -12 10 -12 13 5 19 10 3 57 22 103 41 134 56 210 101 322 191 158 127 285 284 367 453 119 246 172 483 172 768 -1 249 -36 447 -120 661 -12 30 -24 64 -27 74 -5 17 -32 69 -82 161 -107 195 -324 418 -545 559 -188 120 -482 237 -726 290 -238 52 -157 49 -1890 53 -1153 2 -1620 0 -1633 -8z m2983 -1368 c245 -75 392 -215 457 -434 24 -83 28 -222 8 -324 -27 -136 -73 -222 -176 -323 -89 -89 -158 -131 -274 -169 -149 -49 -177 -51 -804 -51 -324 0 -596 3 -605 6 -14 6 -16 72 -16 653 0 504 3 650 13 660 9 9 151 11 667 8 650 -3 656 -3 730 -26z m10715 -11 c206 -24 427 -97 599 -199 224 -133 421 -319 560 -529 141 -214 190 -343 256 -672 38 -186 12 -418 -71 -650 -92 -257 -155 -373 -305 -565 -72 -93 -267 -286 -336 -333 -197 -135 -424 -231 -629 -267 -119 -21 -1057 -24 -1070 -4 -5 8 -9 702 -9 1606 0 1434 2 1593 16 1607 14 14 69 16 457 16 243 0 482 -5 532 -10z m-5585 -453 c0 -1 30 -88 66 -192 36 -105 81 -237 101 -295 19 -58 41 -118 48 -135 7 -16 29 -77 50 -135 20 -58 41 -114 45 -125 4 -11 40 -114 78 -230 142 -423 155 -460 163 -477 5 -10 13 -34 18 -55 6 -21 20 -69 32 -108 11 -38 22 -83 23 -100 l1 -30 -647 -3 -648 -2 0 25 c0 14 4 33 10 43 5 9 23 58 39 107 16 50 64 189 106 310 42 121 83 238 90 260 14 41 60 174 165 475 33 96 78 227 100 290 21 63 57 169 80 235 23 66 43 126 46 133 3 10 34 19 34 9z M22833 8580 l-23 -9 -1 -1613 c-1 -3547 2 -4342 14 -4350 7 -4 1027 -7 2267 -5 l2255 2 3 676 2 676 -85 7 c-48 3 -714 6 -1482 6 -918 0 -1399 3 -1403 10 -9 14 -6 973 3 988 7 9 276 12 1292 12 l1285 0 5 23 c3 12 4 299 3 637 l-3 615 -1287 3 c-1265 2 -1288 2 -1298 22 -7 13 -9 167 -8 458 2 354 6 442 17 455 12 16 127 17 1465 17 798 0 1456 4 1462 8 8 5 13 207 18 679 7 666 7 672 -13 682 -25 14 -4455 14 -4488 1z"/><path fill="#00C054" d="M42152 12471 c-11 -6 -14 -95 -15 -442 l-2 -434 -169 -1 c-151 -1 -170 -3 -182 -19 -18 -24 -20 -1840 -3 -1862 9 -10 51 -13 175 -13 103 0 165 -4 169 -11 4 -5 9 -195 11 -421 3 -291 7 -415 16 -425 8 -10 31 -13 82 -11 l71 3 3 419 c1 289 6 423 13 433 9 10 50 13 173 13 88 0 166 4 173 8 10 6 13 219 13 932 1 509 1 931 1 938 -1 9 -43 12 -175 12 -129 0 -176 3 -184 13 -7 8 -11 150 -11 431 1 230 -3 422 -8 426 -12 11 -136 21 -151 11z M38995 12438 c-3 -7 -6 -200 -7 -428 l-3 -415 -171 -3 c-125 -2 -175 -6 -183 -15 -14 -18 -17 -1855 -2 -1870 6 -6 73 -9 171 -8 112 2 166 -1 176 -10 12 -9 14 -80 14 -423 0 -307 3 -415 12 -424 16 -16 143 -16 155 1 6 7 11 182 12 427 2 228 5 417 8 420 2 3 76 7 163 10 87 3 162 9 167 13 13 13 17 1857 4 1870 -7 7 -68 10 -170 9 -134 -2 -160 0 -165 13 -3 8 -6 194 -6 412 -1 236 -5 404 -11 415 -8 15 -22 18 -85 18 -50 0 -76 -4 -79 -12z M28141 8576 c-11 -13 -17 -5963 -6 -5974 6 -7 974 -4 985 3 5 3 8 1235 7 2993 l-2 2987 -487 2 c-384 1 -489 -1 -497 -11z M31485 6795 c-264 -48 -346 -71 -555 -155 -178 -71 -306 -149 -491 -298 -131 -105 -273 -246 -351 -348 -118 -154 -265 -403 -293 -494 -4 -14 -11 -29 -15 -35 -4 -5 -13 -26 -18 -45 -6 -19 -19 -60 -30 -90 -58 -161 -78 -256 -98 -470 -39 -396 43 -798 237 -1167 94 -179 154 -265 292 -421 161 -180 284 -282 500 -411 203 -122 360 -185 607 -245 157 -38 218 -46 405 -52 301 -12 536 25 855 132 168 57 456 223 610 352 77 65 244 236 295 302 188 247 327 527 400 810 72 276 76 756 8 1000 -24 89 -109 339 -142 417 -106 256 -335 555 -572 747 -106 86 -289 207 -384 254 -189 94 -463 181 -650 207 -159 23 -508 28 -610 10z m486 -901 c171 -31 289 -81 456 -189 96 -63 231 -193 312 -300 89 -118 168 -303 207 -487 36 -167 19 -453 -36 -614 -57 -164 -170 -345 -295 -469 -191 -190 -388 -289 -671 -335 -156 -25 -243 -25 -375 0 -139 26 -187 41 -296 88 -282 123 -473 312 -613 603 -119 250 -133 638 -33 919 28 77 112 231 171 314 132 183 397 375 597 433 189 55 407 69 576 37z M35888 6795 c-199 -29 -468 -115 -628 -202 -248 -136 -524 -381 -662 -589 -232 -350 -325 -584 -384 -964 -25 -164 -25 -527 0 -665 46 -255 64 -324 133 -500 109 -279 239 -480 452 -698 187 -193 411 -340 638 -421 305 -109 547 -146 818 -125 241 18 394 58 590 155 162 79 268 159 413 308 62 64 117 114 122 111 5 -3 7 -101 6 -218 -3 -189 -6 -229 -34 -372 -36 -186 -52 -236 -116 -365 -118 -236 -255 -382 -457 -488 -81 -42 -232 -97 -294 -108 -22 -3 -65 -13 -95 -20 -73 -19 -329 -18 -445 1 -142 23 -255 60 -405 132 -110 53 -162 86 -245 158 -33 28 -70 60 -83 71 -13 10 -60 63 -105 117 -45 53 -88 97 -95 97 -14 0 -143 -115 -396 -354 -82 -78 -169 -156 -193 -175 -23 -18 -43 -38 -43 -43 0 -31 195 -264 314 -375 141 -132 252 -207 437 -296 143 -69 179 -84 254 -106 125 -38 172 -49 372 -90 177 -36 576 -39 753 -6 212 39 253 49 381 90 402 129 728 366 976 711 180 250 332 626 377 929 9 61 21 142 28 180 15 91 24 4010 9 4029 -12 14 -870 11 -885 -4 -4 -4 -9 -120 -10 -256 -1 -214 -3 -249 -16 -252 -9 -1 -24 12 -34 29 -83 141 -336 353 -531 445 -78 37 -277 97 -400 120 -116 21 -398 26 -517 9z m572 -901 c397 -75 731 -367 861 -753 88 -260 93 -554 13 -804 -103 -323 -363 -620 -644 -734 -165 -67 -242 -84 -409 -90 -313 -12 -590 97 -826 324 -87 84 -149 169 -211 293 -74 146 -89 192 -124 388 -25 143 -25 217 0 362 31 183 59 269 132 415 155 308 450 531 798 600 93 19 310 18 410 -1z"/><path fill="#F52222" d="M40570 11736 c-6 -6 -10 -160 -10 -412 0 -362 -2 -404 -17 -419 -14 -15 -37 -16 -170 -13 -116 2 -156 0 -162 -10 -12 -20 -11 -1645 1 -1659 8 -10 55 -13 174 -13 155 0 163 -1 169 -20 4 -12 5 -205 4 -430 -2 -225 -1 -412 3 -415 11 -11 148 -12 163 -1 13 9 15 69 17 436 l3 425 164 3 c101 1 170 7 178 13 18 15 20 1654 2 1665 -7 4 -82 6 -167 6 -100 -1 -160 2 -169 9 -10 9 -13 93 -13 420 0 300 -3 410 -12 415 -18 11 -147 11 -158 0z M39760 4646 c-128 -20 -213 -53 -332 -129 -136 -87 -222 -220 -259 -402 -42 -204 10 -377 152 -508 39 -37 75 -67 80 -67 4 0 30 -13 56 -28 26 -16 57 -31 68 -34 11 -4 45 -16 75 -27 68 -26 210 -64 335 -90 180 -38 259 -80 291 -156 30 -73 11 -140 -56 -198 -56 -48 -116 -68 -225 -74 -111 -7 -197 6 -295 43 -64 25 -86 40 -150 104 -41 41 -87 91 -101 110 -24 32 -27 34 -47 20 -29 -21 -282 -296 -282 -308 0 -15 143 -147 207 -190 145 -98 288 -154 452 -177 353 -50 670 46 863 260 63 71 107 167 127 279 46 255 -68 480 -301 595 -48 23 -111 49 -140 57 -29 8 -75 21 -103 29 -27 8 -90 24 -140 36 -222 52 -314 92 -363 154 -17 21 -22 41 -22 84 0 72 28 116 101 156 52 29 58 30 189 30 114 0 144 -4 193 -22 68 -25 181 -99 220 -142 34 -39 49 -39 82 2 15 17 75 83 134 146 58 62 108 120 109 128 5 20 -36 62 -123 128 -129 97 -271 158 -430 184 -106 17 -275 20 -365 7z"/></g></svg></a>
+        <p style="color:var(--mut);font-size:13.5px;margin-top:14px;max-width:280px">The trading journal that reads your MT5 history and tells you what to fix.</p>
+        <div class="contact"><span class="it" style="width:34px;height:34px;border-radius:10px"><svg class="ic" viewBox="0 0 24 24" style="width:17px;height:17px"><use href="#i-chat"/></svg></span><div><b>Questions about your trading?</b><small>Ask the AI coach inside the app</small></div></div>
+      </div>
+      <div><h4>Product</h4><ul><li>Journal</li><li>Analytics</li><li>AI coach</li><li>SignalX</li><li>Markets</li></ul></div>
+      <div><h4>Explore</h4><ul><li>How it works</li><li>Security</li><li>FAQ</li></ul></div>
+      <div><h4>Legal</h4><ul><li>Privacy policy</li><li>Terms of service</li></ul></div>
+    </div>
+    <div class="ghostmark" aria-hidden="true">TRADElogs</div>
+    <div class="fine"><span>© 2026 TRADElogs. Trading involves risk. Past performance does not guarantee future results. Figures shown are illustrative.</span><span class="links"><a href="#">Privacy</a><a href="#">Terms</a></span></div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  const NS='http://www.w3.org/2000/svg';
+  const el=(t,a,p)=>{const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);p&&p.appendChild(e);return e};
+  let seed=7;const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647;
+
+  // hero: perspective floor grid
+  const g=document.getElementById('h-grid');
+  const vx=600,vy=-260,base=470;
+  for(let x=-900;x<=2100;x+=75){el('line',{x1:vx+(x-vx)*0.18,y1:150,x2:x,y2:base},g)}
+  let y=150,step=10;while(y<base){el('line',{x1:0,y1:y,x2:1200,y2:y},g);y+=step;step*=1.32}
+
+  // hero: ghost slabs (rounded parallelograms with thickness)
+  const gh=document.getElementById('h-ghosts');
+  function slab(cx,cy,w,d,skew,op){
+    const k=skew; // horizontal shift of back edge
+    const p=(x,y)=>`${x} ${y}`;
+    const tl=[cx-w/2+k,cy-d/2],tr=[cx+w/2+k,cy-d/2],br=[cx+w/2,cy+d/2],bl=[cx-w/2,cy+d/2];
+    const top=`M${p(...tl)} L${p(...tr)} L${p(...br)} L${p(...bl)} Z`;
+    const g2=el('g',{opacity:op},gh);
+    el('path',{d:`M${p(bl[0],bl[1])} L${p(br[0],br[1])} L${p(br[0],br[1]+10)} L${p(bl[0],bl[1]+10)} Z`,fill:'rgba(255,255,255,.035)'},g2);
+    el('path',{d:top,fill:'url(#h-ghost)',stroke:'rgba(255,255,255,.12)','stroke-width':1,'stroke-linejoin':'round'},g2);
+    el('path',{d:`M${p(...tl)} L${p(...tr)}`,stroke:'rgba(255,255,255,.22)','stroke-width':1},g2);
+  }
+  slab(300,190,150,50,26,.9); slab(250,362,170,56,30,.65);
+  slab(900,190,150,50,-26,.9); slab(950,362,170,56,-30,.65);
+
+  // journal slab candles
+  const jc=document.getElementById('j-candles');
+  let pr=150;for(let i=0;i<26;i++){const o=pr;pr+= (rnd()-.46)*14;pr=Math.max(90,Math.min(200,pr));const c=pr;const hi=Math.min(o,c)-rnd()*8,lo=Math.max(o,c)+rnd()*8;const x=30+i*12;const up=c<o;const col=up?'#08C465':'#FE3A31';
+    el('line',{x1:x+3,x2:x+3,y1:hi,y2:lo,stroke:col,'stroke-width':1.2,opacity:.9},jc);el('rect',{x:x,y:Math.min(o,c),width:6,height:Math.max(2,Math.abs(c-o)),rx:1.2,fill:col},jc);}
+
+  // analytics isometric bars
+  const iso=document.getElementById('iso');
+  const defs=el('defs',{},iso);
+  function grad(id,stops,x2='0',y2='1'){const lg=el('linearGradient',{id,x1:'0',y1:'0',x2,y2},defs);stops.forEach(([o,c,a])=>el('stop',{offset:o,'stop-color':c,'stop-opacity':a},lg))}
+  grad('gt',[[0,'#7CF2B8',1],[1,'#18D27A',1]],'1','1');
+  grad('gl',[[0,'#0FB862',.95],[1,'#055C30',.9]]);
+  grad('gr',[[0,'#0A8E4B',.95],[1,'#03381D',.9]]);
+  grad('rt',[[0,'#FFA39C',1],[1,'#FE3A31',1]],'1','1');
+  grad('rl',[[0,'#E52A21',.95],[1,'#7A0F0A',.9]]);
+  grad('rr',[[0,'#B81C15',.95],[1,'#4A0906',.9]]);
+  grad('kt',[[0,'#3A3A40',1],[1,'#26262B',1]],'1','1');
+  grad('kl',[[0,'#222226',1],[1,'#151517',1]]);
+  grad('kr',[[0,'#1A1A1D',1],[1,'#0F0F11',1]]);
+  // base plate
+  function box(x,y,a,h,pal,hl){
+    const b=a*0.5;
+    const T=[x,y-h-b],R=[x+a,y-h],B=[x,y-h+b],L=[x-a,y-h];
+    const pts=a=>a.map(p=>p.join(' ')).join(' L');
+    const grp=el('g',{},iso);
+    el('path',{d:`M${pts([L,B,[B[0],B[1]+h],[L[0],L[1]+h]])}Z`,fill:`url(#${pal}l)`},grp);
+    el('path',{d:`M${pts([B,R,[R[0],R[1]+h],[B[0],B[1]+h]])}Z`,fill:`url(#${pal}r)`},grp);
+    el('path',{d:`M${pts([T,R,B,L])}Z`,fill:`url(#${pal}t)`},grp);
+    el('path',{d:`M${pts([L,T,R])}`,fill:'none',stroke:'#fff','stroke-opacity':.55,'stroke-width':1},grp);
+    el('path',{d:`M${B.join(' ')} L${B[0]} ${B[1]+h}`,stroke:'#fff','stroke-opacity':.18,'stroke-width':1},grp);
+    if(hl){const s=el('g',{transform:`matrix(${a/24*0.62} ${b/24*0.62} ${-a/24*0.62} ${b/24*0.62} ${x} ${y-h})`},grp);
+      const u=el('use',{href:hl,x:-12,y:-12,width:24,height:24},s);u.setAttribute('class','ic');s.setAttribute('style','color:#fff');s.setAttribute('stroke','#fff');s.setAttribute('stroke-width','2.4');s.setAttribute('fill','none');}
+    return grp;
+  }
+  // platform
+  box(290,318,210,10,'k');
+  const bars=[[170,262,34,80,'g'],[234,294,34,140,'g','#i-clock'],[298,326,34,62,'r'],[226,230,34,104,'g'],[290,262,34,190,'g','#i-bars'],[354,294,34,120,'g'],[282,198,34,128,'g'],[346,230,34,160,'g','#i-cal'],[410,262,34,96,'g']];
+  bars.sort((p,q)=>p[1]-q[1]||p[0]-q[0]).forEach(b=>box(b[0],b[1],b[2],b[3],b[4],b[5]));
+
+  // discipline side coins
+  const coins=document.getElementById('coins');
+  [[120,190,24,.9],[440,170,20,.8],[96,300,16,.55],[466,286,18,.6]].forEach(([x,y,r,o])=>{
+    const c=el('g',{opacity:o},coins);
+    el('circle',{cx:x,cy:y+3,r:r,fill:'#000',opacity:.35},c);
+    el('circle',{cx:x,cy:y,r:r,fill:'#2A0D0B',stroke:'rgba(255,130,120,.45)','stroke-width':1.2},c);
+    el('circle',{cx:x,cy:y,r:r-6,fill:'none',stroke:'rgba(255,255,255,.15)'},c);
+  });
+
+  // globe of dots
+  const gl=document.getElementById('globe');
+  const gd=el('defs',{},gl);
+  const rg=el('radialGradient',{id:'gb',cx:'45%',cy:'35%',r:'70%'},gd);el('stop',{offset:0,'stop-color':'#2A2A30'},rg);el('stop',{offset:1,'stop-color':'#0E0E10'},rg);
+  const CX=280,CY=330,RAD=210;
+  el('circle',{cx:CX,cy:CY,r:RAD,fill:'url(#gb)',stroke:'rgba(255,255,255,.12)'},gl);
+  const tilt=-0.35;
+  for(let lat=-80;lat<=80;lat+=7){for(let lon=-180;lon<180;lon+=5.5){
+    const la=lat*Math.PI/180,lo=(lon+20)*Math.PI/180;
+    let x=Math.cos(la)*Math.sin(lo),y=Math.sin(la),z=Math.cos(la)*Math.cos(lo);
+    const y2=y*Math.cos(tilt)-z*Math.sin(tilt),z2=y*Math.sin(tilt)+z*Math.cos(tilt);
+    if(z2<=0.05)continue;
+    // crude land mask: continents as lat/lon blobs
+    const land=(lat>10&&lat<70&&lon>-130&&lon<-60)||(lat>-55&&lat<12&&lon>-80&&lon<-35)||(lat>35&&lat<70&&lon>-10&&lon<40)||(lat>-35&&lat<35&&lon>-18&&lon<50)||(lat>5&&lat<70&&lon>40&&lon<140)||(lat>-40&&lat<-12&&lon>113&&lon<153);
+    el('circle',{cx:CX+x*RAD,cy:CY-y2*RAD,r:land?1.9:1.1,fill:'#fff','fill-opacity':(land?.55:.14)*z2},gl);
+  }}
+  // session pins (London, New York, Tokyo)
+  [[51.5,-0.1,'#08C465'],[40.7,-74,'#fff'],[35.7,139.7,'#fff']].forEach(([lat,lon,c])=>{
+    const la=lat*Math.PI/180,lo=(lon+20)*Math.PI/180;let x=Math.cos(la)*Math.sin(lo),y=Math.sin(la),z=Math.cos(la)*Math.cos(lo);
+    const y2=y*Math.cos(tilt)-z*Math.sin(tilt),z2=y*Math.sin(tilt)+z*Math.cos(tilt);if(z2<=0)return;
+    const px=CX+x*RAD,py=CY-y2*RAD;
+    el('circle',{cx:px,cy:py,r:11,fill:c,'fill-opacity':.18},gl);el('circle',{cx:px,cy:py,r:4.5,fill:c},gl);
+  });
+
+  // how-it-works viz 2: mini heat grid
+  const v2=document.getElementById('v2');
+  for(let r=0;r<5;r++)for(let c=0;c<12;c++){
+    let v=0;if(c>=2&&c<=4)v=.5+rnd()*.5;else if(c>=6&&c<=8)v=(rnd()-.45);else v=(rnd()-.5)*.3;if(r===4&&c>=8)v=-(.5+rnd()*.5);
+    const fill=v>0?`rgba(8,196,101,${(.12+v*.8).toFixed(2)})`:v<0?`rgba(254,58,49,${(.12-v*.7).toFixed(2)})`:'#1C1C1F';
+    el('rect',{x:46+c*21,y:38+r*21,width:18,height:18,rx:4,fill},v2);
+  }
+  ['M','T','W','T','F'].forEach((d,i)=>{const t=el('text',{x:34,y:51+i*21,'text-anchor':'middle','font-family':'Satoshi','font-size':10,fill:'#55555B'},v2);t.textContent=d});
+
+  // closing scatter of icon tiles
+  const sc=document.getElementById('scatter');
+  const tiles=[['#i-book','',1,0],['#i-chat','',3,0],['#i-signal','',5,1],['#i-bars','',0,2],['#i-flame','red',2,2],['#i-curve','',4,3],['#i-cal','gray',1,4],['#i-lock','gray',3,4]];
+  function placeTiles(){sc.querySelectorAll('.it').forEach(n=>n.remove());const cell=sc.clientWidth<520?Math.floor(sc.clientWidth/6):94;sc.querySelector('.grid').style.backgroundSize=cell+'px '+cell+'px';const big=cell>=80;
+    tiles.forEach(([ic,cls,c,r])=>{const d=document.createElement('span');d.className='it '+(big?'lg ':'')+cls;d.style.left=(cell*c+cell/2)+'px';d.style.top=(cell*r+cell/2)+'px';d.style.transform='translate(-50%,-50%)';d.innerHTML=`<svg class="ic" viewBox="0 0 24 24"><use href="${ic}"/></svg>`;sc.appendChild(d)});
+    sc.style.height=(cell*5)+'px'}
+  placeTiles();addEventListener('resize',placeTiles);
+
+  // scale fixed-size stages to their container width
+  function fit(){document.querySelectorAll('.stage-box').forEach(b=>{const w=+b.dataset.w,h=+b.dataset.h;const crop=+(b.dataset.crop||0);const s=crop&&b.clientWidth<crop?b.clientWidth/crop:Math.min(1.25,b.clientWidth/w);const st=b.querySelector('.stage');st.style.transform=`scale(${s})`;if(b.parentElement.classList.contains('art')){st.style.left=Math.max(0,(b.clientWidth-w*s)/2)+'px';b.style.height=Math.max(h*s,b.parentElement.clientHeight)+'px';st.style.top=Math.max(0,(b.parentElement.clientHeight-h*s)/2)+'px'}else{b.style.height=h*s+'px';st.style.left=(b.clientWidth-w*s)/2+'px'}})}
+  fit();addEventListener('resize',fit);document.fonts&&document.fonts.ready.then(fit);
+})();
+</script>
+</body>
+</html>

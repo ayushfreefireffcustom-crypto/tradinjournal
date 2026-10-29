@@ -42,7 +42,7 @@ Legend:
 > Order of work: **A0 (cross-cutting cleanup + decisions) and A4 (per-page fixes) are at the bottom of this file**. Do A0 decisions → A1 → A2 → A3 → A0 cleanup → A4 pages → A5 → A6 → A7.
 
 ## A1. Design foundation (v6 tokens)
-- [ ] A1.1 Create branch `feat/ui-v6` from `main` `S`
+- [x] A1.1 Create branch `feat/ui-v6` from `main` `S`
 - [ ] A1.2 Write `apps/web/src/styles/tokens.css` with the tokens from the UI report `S`:
   - canvas `#0B0B0C`
   - surface-1 `#151517`
@@ -569,11 +569,11 @@ Legend:
 ## A0. Cross-cutting cleanup (from `reports/ui-audit.md` §1; do alongside A1–A3)
 
 **Decisions to confirm with the user before building** (screenshots, no assumptions):
-- [ ] A0.D1 Nav names. Today `/journal` = "Chart replay" and `/notebook` = "Journal". Proposal: `/journal` → **"Trade review"** (per-trade replay + notes), `/notebook` → **"Notebook"** (free-form daily log). Or merge the two pages (both capture emotions). User picks `S`
-- [ ] A0.D2 SignalX naming. It is also called "TradeAI signals" (macro side-nav) and "Signals tab" (paper blotter). One name everywhere `S`
-- [ ] A0.D3 Dashboard content. Proposal: keep the hero P&L + 4 key stats, one AI card (merged), month calendar, recent trades; move instruments, hour and day charts to Analytics. User approves the mock `S`
-- [ ] A0.D4 Analytics owns the deep charts; trades and calendar stop repeating KPI strips. User approves `S`
-- [ ] A0.D5 Landing serif-italic: keep one word in the hero, or none `S`
+- [x] A0.D1 **Decided 29 Oct: MERGE** `/journal` (Chart replay) + `/notebook` (Journal) into one **Journal** page (per-trade review + replay + free-form notes, one place for emotions/tags). Old routes redirect. Nav names. Today `/journal` = "Chart replay" and `/notebook` = "Journal". Proposal: `/journal` → **"Trade review"** (per-trade replay + notes), `/notebook` → **"Notebook"** (free-form daily log). Or merge the two pages (both capture emotions). User picks `S`
+- [x] A0.D2 **Decided: "SignalX" everywhere.** SignalX naming. It is also called "TradeAI signals" (macro side-nav) and "Signals tab" (paper blotter). One name everywhere `S`
+- [x] A0.D3 **Decided: go with the proposal (user delegated).** Dashboard content. Proposal: keep the hero P&L + 4 key stats, one AI card (merged), month calendar, recent trades; move instruments, hour and day charts to Analytics. User approves the mock `S`
+- [x] A0.D4 **Decided: yes (user delegated).** Analytics owns the deep charts; trades and calendar stop repeating KPI strips. User approves `S`
+- [ ] A0.D5 **User wants 3 detailed landing iterations first (`design/landing-v6/`), then picks.** Landing serif-italic: keep one word in the hero, or none `S`
 
 **CSS architecture:**
 - [ ] A0.1 Stop importing `app-v3.css` + `app-v5-auto.css` + `app-v5.css` stacked in `components/app-shell.tsx:18-20`. Replace with `tokens.css` + `components.css` once pages are migrated (the order is a blocker for A3.11) `M`
@@ -738,7 +738,14 @@ Legend:
 - [ ] L: alert dialog: `NumberStepper` instead of the native spinner `S`
 - [ ] L: mobile: time axis not clipped; one chart at a time with a pane switcher `S`
 
-### A4.7 `/journal` (rename per A0.D1): `app/journal/page.tsx`, `components/replay/trade-chart.tsx`
+### A4.7 + A4.8 MERGED → one `/journal` page (A0.D1)
+- [ ] Merge design: list of trades (left) → selected trade review with replay chart + notes/tags/emotions (right); a "Day notes" mode for free-form entries without a trade `M`
+- [ ] Data: confirm both pages write `JournalEntry` (check `tradeId` nullable) so no migration is needed; if not, plan an additive one `S`
+- [ ] `/notebook` → permanent redirect to `/journal?view=notes`; update nav, ⌘K, links, emails `S`
+- [ ] Nav: one "Journal" item; remove "Chart replay" `S`
+- [ ] SignalX: rename "TradeAI signals" (macro side-nav) and "Signals tab" (paper blotter) to SignalX `S`
+
+### A4.7 `/journal` (old Chart replay part): `app/journal/page.tsx`, `components/replay/trade-chart.tsx`
 - [ ] H: rename in nav, crumb and title per A0.D1 `S`
 - [ ] M: filter chips scroll with fade, never cut "Reviewed 0" `S`
 - [ ] M: "Save entry" = standard primary (same as notebook) `S`

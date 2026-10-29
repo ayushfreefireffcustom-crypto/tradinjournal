@@ -1,0 +1,907 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TRADElogs — the trading journal that tells you what to fix</title>
+<link rel="preconnect" href="https://api.fontshare.com">
+<link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --canvas:#F2F2F3; --sheet:#FFFFFF; --ink:#0B0B0C; --muted:#5E5E66; --dim:#9A9AA2;
+  --line:rgba(11,11,12,.07); --line-2:rgba(11,11,12,.12); --well:#F5F5F6;
+  --g:#08C465; --g-2:#06A957; --g-tint:#E7F8EF; --r:#FE3A31; --r-tint:#FFEDEB;
+  --sans:"Satoshi",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --shadow-tile:0 1px 2px rgba(11,11,12,.04),0 10px 28px -16px rgba(11,11,12,.14);
+  --shadow-float:0 1px 2px rgba(11,11,12,.06),0 16px 40px -18px rgba(11,11,12,.28);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--canvas);color:var(--ink);font:400 15px/1.55 var(--sans);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;overflow-x:hidden}
+a{color:inherit;text-decoration:none}
+b,strong{font-weight:500}
+.num{font-family:var(--mono);font-feature-settings:"tnum";letter-spacing:-.01em}
+.sheet{max-width:1240px;margin:28px auto 28px;background:var(--sheet);border-radius:40px;box-shadow:0 1px 0 rgba(255,255,255,.8) inset,0 30px 80px -40px rgba(11,11,12,.18);overflow:hidden;position:relative}
+.wrap{max-width:1000px;margin:0 auto;padding:0 32px}
+
+/* ── nav ─────────────────────────────────────────── */
+.nav{position:relative;z-index:5;display:flex;justify-content:center;padding-top:22px}
+.nav-in{display:flex;align-items:center;gap:28px;background:#fff;border-radius:18px;padding:9px 9px 9px 18px;box-shadow:0 1px 2px rgba(11,11,12,.05),0 8px 26px -14px rgba(11,11,12,.22);border:1px solid var(--line)}
+.logo{display:flex;align-items:center;gap:8px;font-weight:500;font-size:16.5px;letter-spacing:-.025em}
+.logo .mk{width:24px;height:24px}
+.logo i{font-style:normal;color:var(--g)}
+.nav-links{display:flex;gap:22px;font-size:13.5px;color:var(--muted)}
+.nav-links a:hover{color:var(--ink)}
+.nav-cta{display:flex;align-items:center;gap:14px;font-size:13.5px}
+.nav-cta .si{color:var(--muted)}
+
+/* ── buttons ─────────────────────────────────────── */
+.btn{display:inline-flex;align-items:center;gap:10px;height:40px;padding:0 6px 0 18px;border-radius:999px;background:var(--ink);color:#fff;font:500 13.5px/1 var(--sans);letter-spacing:-.005em;box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 1px 2px rgba(0,0,0,.2),0 10px 20px -10px rgba(0,0,0,.55);transition:background .2s}
+.btn:hover{background:#26262A}
+.btn .ar{width:28px;height:28px;border-radius:50%;background:#fff;display:grid;place-items:center}
+.btn .ar svg{width:14px;height:14px;stroke:var(--ink);fill:none;stroke-width:2}
+.btn.sm{height:34px;padding:0 16px;font-size:13px}
+.btn.lg{height:48px;padding:0 7px 0 22px;font-size:15px}
+.btn.lg .ar{width:34px;height:34px}
+.tlink{font-size:14px;color:var(--muted);display:inline-flex;gap:6px;align-items:center}
+.tlink:hover{color:var(--ink)}
+
+/* ── pills / labels ──────────────────────────────── */
+.pill{display:inline-flex;align-items:center;gap:7px;height:26px;padding:0 11px;border-radius:999px;background:#fff;border:1px solid var(--line-2);font-size:12px;color:var(--muted);box-shadow:0 1px 2px rgba(11,11,12,.04)}
+.pill .d{width:6px;height:6px;border-radius:50%;background:var(--g);box-shadow:0 0 0 3px rgba(8,196,101,.16)}
+.pill.soon{color:var(--g-2);border-color:rgba(8,196,101,.3);background:var(--g-tint)}
+.tag{display:inline-block;font:500 10px/1 var(--mono);letter-spacing:.02em;color:var(--dim);background:rgba(255,255,255,.75);border:1px solid var(--line);padding:4px 7px;border-radius:6px}
+
+/* ── icon tile master (one SVG master + 3 palettes) ─ */
+.it{--a1:#3BE08D;--a2:#05A253;--glow:rgba(8,196,101,.65);position:relative;width:40px;height:40px;flex:none;border-radius:12px;display:grid;place-items:center;
+  background:linear-gradient(180deg,var(--a1),var(--a2));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.55),inset 0 -3px 6px rgba(0,0,0,.16),0 8px 16px -8px var(--glow),0 2px 3px -1px rgba(0,0,0,.18)}
+.it::before{content:"";position:absolute;inset:1px 1px 52% 1px;border-radius:11px 11px 5px 5px;background:linear-gradient(180deg,rgba(255,255,255,.42),rgba(255,255,255,0))}
+.it svg{position:relative;z-index:1;width:20px;height:20px;stroke:#fff;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 1px 1px rgba(0,0,0,.18))}
+.it.r{--a1:#FF7A6F;--a2:#E3261C;--glow:rgba(254,58,49,.6)}
+.it.k{--a1:#45454C;--a2:#0D0D0F;--glow:rgba(11,11,12,.45)}
+.it.s{width:26px;height:26px;border-radius:8px}
+.it.s::before{border-radius:7px 7px 4px 4px}
+.it.s svg{width:14px;height:14px;stroke-width:2.1}
+.it.xl{width:76px;height:76px;border-radius:22px}
+.it.xl::before{border-radius:21px 21px 10px 10px}
+.it.xl svg{width:34px;height:34px;stroke-width:1.8}
+
+/* ── hero ────────────────────────────────────────── */
+.hero{text-align:center;padding:76px 0 0;position:relative}
+.hero .pill{margin-bottom:26px}
+.hero h1{text-wrap:balance;font-weight:500;font-size:76px;line-height:.98;letter-spacing:-.048em;max-width:860px;margin:0 auto}
+.hero h1 span{color:var(--dim)}
+.hero p.sub{max-width:520px;margin:22px auto 0;color:var(--muted);font-size:17px;line-height:1.5}
+.hero .ctas{margin-top:30px;display:flex;justify-content:center;align-items:center;gap:22px}
+.hero .trust{margin-top:22px;display:flex;justify-content:center;gap:22px;font-size:12.5px;color:var(--dim)}
+.hero .trust span{display:inline-flex;align-items:center;gap:7px}
+.hero .trust svg{width:14px;height:14px;stroke:var(--g-2);fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.hero-art{position:relative;margin:26px auto 0;max-width:1100px;height:350px}
+.hero-art svg{width:100%;height:100%;display:block}
+.hero-fade{position:absolute;left:0;right:0;bottom:0;height:120px;background:linear-gradient(180deg,rgba(255,255,255,0),#fff)}
+
+/* ── section rhythm ──────────────────────────────── */
+.sec{padding:118px 0 0}
+.sec-head{display:grid;grid-template-columns:1.05fr 1fr;gap:48px;align-items:start;margin-bottom:46px}
+.sec-head .pill{margin-bottom:16px}
+.sec-head h2{font-weight:500;font-size:35px;line-height:1.12;letter-spacing:-.032em;max-width:440px}
+.sec-head .rt{padding-top:42px}
+.sec-head .rt p{color:var(--muted);font-size:14.5px;line-height:1.6;max-width:430px;margin-bottom:18px}
+.bento{display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:176px 176px;gap:12px}
+.bento .tile:nth-child(1){grid-column:1;grid-row:1}
+.bento .tile:nth-child(2){grid-column:2;grid-row:1}
+.bento .tile:nth-child(3){grid-column:1;grid-row:2}
+.bento .tile:nth-child(4){grid-column:2;grid-row:2}
+.bento .art{grid-column:3/5;grid-row:1/3}
+.bento.flip .tile:nth-child(1){grid-column:3}
+.bento.flip .tile:nth-child(2){grid-column:4}
+.bento.flip .tile:nth-child(3){grid-column:3}
+.bento.flip .tile:nth-child(4){grid-column:4}
+.bento.flip .art{grid-column:1/3}
+
+.tile{background:#fff;border-radius:22px;padding:10px 10px 18px;display:flex;flex-direction:column;justify-content:space-between;box-shadow:var(--shadow-tile);border:1px solid rgba(11,11,12,.045)}
+.tile-top{height:70px;border-radius:15px;background:linear-gradient(180deg,#F7F7F8,#F2F2F3);display:flex;align-items:center;justify-content:space-between;padding:0 12px 0 13px;position:relative;overflow:hidden}
+.tile-top .ghost{width:46px;height:46px;stroke:#DCDCE0;fill:none;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round;margin-right:-4px}
+.tile p{min-height:2.6em;padding:0 8px;font-size:15.5px;line-height:1.3;letter-spacing:-.012em;color:var(--muted)}
+.tile p b{color:var(--ink)}
+.tile .soon-t{margin-left:8px;font:500 10px/1 var(--mono);color:var(--g-2);background:var(--g-tint);padding:3px 6px;border-radius:5px;vertical-align:2px}
+
+/* ── art panels ──────────────────────────────────── */
+.art{position:relative;border-radius:26px;overflow:hidden;isolation:isolate;
+  background:radial-gradient(120% 95% at 50% 108%,#A9EDC8 0%,#D2F5E2 38%,#EDFAF3 70%,#F7FCF9 100%)}
+.art::before{content:"";position:absolute;inset:0;z-index:-1;background-image:radial-gradient(rgba(6,169,87,.18) 1px,transparent 1.4px);background-size:14px 14px;-webkit-mask:linear-gradient(0deg,#000 0%,transparent 55%);mask:linear-gradient(0deg,#000 0%,transparent 55%)}
+.art::after{content:"";position:absolute;inset:0;border-radius:26px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.7);pointer-events:none}
+.art.red{background:radial-gradient(120% 95% at 50% 108%,#FFB9B3 0%,#FFD9D5 38%,#FFF0EE 70%,#FFF8F7 100%)}
+.art.red::before{background-image:radial-gradient(rgba(227,38,28,.16) 1px,transparent 1.4px)}
+.art.gray{background:radial-gradient(120% 95% at 50% 108%,#D3D3D8 0%,#E6E6E9 40%,#F2F2F4 72%,#F8F8F9 100%)}
+.art.gray::before{background-image:radial-gradient(rgba(11,11,12,.14) 1px,transparent 1.4px)}
+.art > svg{position:absolute;inset:0;width:100%;height:100%}
+.art .tag{position:absolute;right:14px;bottom:12px;z-index:3}
+.art .soon-big{position:absolute;left:16px;top:16px;z-index:3}
+
+.chip{position:absolute;z-index:2;display:flex;align-items:center;gap:10px;padding:9px 14px 9px 9px;border-radius:15px;
+  background:rgba(255,255,255,.74);-webkit-backdrop-filter:blur(12px) saturate(1.4);backdrop-filter:blur(12px) saturate(1.4);
+  border:1px solid rgba(255,255,255,.95);box-shadow:var(--shadow-float);white-space:nowrap}
+.chip .t1{font-size:12.5px;font-weight:500;letter-spacing:-.01em;line-height:1.2}
+.chip .t2{font-size:11px;color:var(--muted);line-height:1.25;margin-top:1px}
+.chip .pos{color:var(--g-2)} .chip .neg{color:var(--r)}
+.chip.fade1{opacity:.42;transform:scale(.92)} .chip.fade2{opacity:.68;transform:scale(.96)}
+
+/* ── why row ─────────────────────────────────────── */
+.why{padding-top:130px;text-align:center}
+.why .pill{margin-bottom:18px}
+.why h2{font-weight:500;font-size:44px;line-height:1.05;letter-spacing:-.04em;max-width:640px;margin:0 auto}
+.why-row{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:46px;text-align:left}
+.why-card{background:#fff;border-radius:24px;padding:12px 12px 24px;box-shadow:var(--shadow-tile);border:1px solid rgba(11,11,12,.045)}
+.why-vis{height:150px;border-radius:17px;background:linear-gradient(180deg,#F7F7F8,#F1F1F2);position:relative;overflow:hidden;margin-bottom:20px}
+.why-vis svg{position:absolute;inset:0;width:100%;height:100%}
+.why-card h3{font-size:15px;font-weight:500;letter-spacing:-.015em;padding:0 10px}
+.why-card p{font-size:13.5px;color:var(--muted);padding:6px 10px 0;line-height:1.55}
+
+/* ── integrations ───────────────────────────────── */
+.integ{padding-top:120px;text-align:center}
+.integ .cap{font-size:14px;color:var(--muted);margin-bottom:30px}
+.grid-dash{position:relative;display:grid;grid-template-columns:repeat(3,1fr);max-width:820px;margin:0 auto}
+.grid-dash .cell{height:104px;display:grid;place-items:center;border-right:1px dashed #D8D8DC;border-bottom:1px dashed #D8D8DC}
+.grid-dash .cell:nth-child(3n){border-right:0}
+.grid-dash .cell:nth-child(n+4){border-bottom:0}
+.grid-dash::before,.grid-dash::after{content:"";position:absolute;left:-40px;right:-40px;border-top:1px dashed #E3E3E6}
+.grid-dash::before{top:0}.grid-dash::after{bottom:0}
+.wm{font-size:22px;letter-spacing:-.02em;color:#3B3B41;display:flex;align-items:center;gap:9px}
+.wm.mt5{font-weight:500}
+.wm.mt5 .b{width:30px;height:30px;border-radius:8px;background:var(--ink);color:#fff;display:grid;place-items:center;font:500 11px/1 var(--mono)}
+.wm.xm{font-weight:500;letter-spacing:.02em}
+.wm.ex{font-weight:500;letter-spacing:-.04em}
+.wm.va{font-weight:400;letter-spacing:.14em;font-size:18px}
+.wm.xe{font-weight:500;font-size:20px}
+.wm.any{font-size:15px;color:var(--muted)}
+.integ .note{margin-top:22px;font-size:12.5px;color:var(--dim)}
+
+/* ── faq ─────────────────────────────────────────── */
+.faq{padding-top:130px;display:grid;grid-template-columns:.8fr 1.2fr;gap:56px}
+.faq h2{font-weight:500;font-size:46px;line-height:1.02;letter-spacing:-.04em;margin-top:16px}
+.qa{border-bottom:1px solid var(--line-2)}
+.qa button{all:unset;cursor:pointer;display:flex;gap:16px;align-items:center;width:100%;padding:18px 0;font-size:15.5px;letter-spacing:-.01em}
+.qa button:focus-visible{outline:2px solid var(--g);outline-offset:4px;border-radius:6px}
+.qa .x{width:18px;height:18px;flex:none;position:relative;transition:transform .25s}
+.qa .x::before,.qa .x::after{content:"";position:absolute;left:2px;right:2px;top:8.25px;height:1.5px;background:var(--ink);border-radius:2px}
+.qa .x::after{transform:rotate(90deg)}
+.qa.open .x{transform:rotate(45deg)}
+.qa .ans{display:grid;grid-template-rows:0fr;transition:grid-template-rows .3s}
+.qa.open .ans{grid-template-rows:1fr}
+.qa .ans > div{overflow:hidden}
+.qa .ans p{padding:0 0 20px 34px;color:var(--muted);font-size:14px;max-width:560px}
+
+/* ── final scene ────────────────────────────────── */
+.final{margin-top:130px;display:grid;grid-template-columns:.9fr 1.1fr;gap:20px;align-items:center}
+.final h2{font-weight:500;font-size:64px;line-height:.98;letter-spacing:-.048em;margin:18px 0 18px}
+.final p{color:var(--muted);font-size:15px;max-width:380px;margin-bottom:26px}
+.scene{position:relative;height:430px}
+.scene .grid{position:absolute;inset:0;background-image:linear-gradient(#EBEBEE 1px,transparent 1px),linear-gradient(90deg,#EBEBEE 1px,transparent 1px);background-size:76px 76px;background-position:-1px -1px;-webkit-mask:radial-gradient(70% 70% at 55% 50%,#000 30%,transparent 80%);mask:radial-gradient(70% 70% at 55% 50%,#000 30%,transparent 80%)}
+.scene .it{position:absolute}
+.scene .it::after{content:"";position:absolute;left:10%;right:10%;bottom:-26px;height:26px;border-radius:50%;background:var(--glow);filter:blur(16px);opacity:.55;z-index:-1}
+
+/* ── footer ─────────────────────────────────────── */
+footer{margin-top:120px;padding-top:34px;border-top:1px solid var(--line-2);position:relative}
+.foot{display:grid;grid-template-columns:1.2fr .7fr .7fr .7fr;gap:30px}
+.foot h4{font-size:13px;font-weight:500;margin-bottom:12px}
+.foot a{display:block;font-size:13px;color:var(--muted);margin-bottom:9px}
+.foot a:hover{color:var(--ink)}
+.foot a.logo{display:flex;margin-bottom:0;color:var(--ink);font-size:16.5px}
+.contact{margin-top:20px;display:flex;align-items:center;gap:12px;background:var(--g-tint);border:1px solid rgba(8,196,101,.22);border-radius:16px;padding:12px 16px 12px 12px;max-width:290px}
+.contact .t1{font-size:13px;font-weight:500}
+.contact .t2{font-size:12px;color:var(--muted)}
+.ghostword{font-weight:500;font-size:188px;line-height:.8;letter-spacing:-.06em;text-align:center;margin:64px 0 0;background:linear-gradient(180deg,#EDEDEF 10%,#FFFFFF 92%);-webkit-background-clip:text;background-clip:text;color:transparent;user-select:none;white-space:nowrap}
+.legal{display:flex;justify-content:space-between;gap:20px;font-size:12px;color:var(--dim);padding:16px 0 30px}
+.legal nav{display:flex;gap:18px}
+
+/* ── responsive ─────────────────────────────────── */
+@media (max-width:1100px){.sheet{margin:16px 12px;border-radius:32px}}
+@media (max-width:860px){
+  .hero-art{height:280px}
+  .nav-links{display:none}
+  .nav-in{gap:18px}
+  .hero{padding-top:56px}
+  .hero h1{font-size:52px}
+  .hero-art{height:300px}
+  .sec{padding-top:80px}
+  .sec-head{grid-template-columns:1fr;gap:0;margin-bottom:28px}
+  .sec-head .rt{padding-top:14px}
+  .bento,.bento.flip{grid-template-columns:1fr 1fr;grid-template-rows:auto}
+  .bento .tile:nth-child(n),.bento.flip .tile:nth-child(n){grid-column:auto;grid-row:auto}
+  .bento .art,.bento.flip .art{grid-column:1/3;grid-row:auto;height:340px;order:-1}
+  .why-row{grid-template-columns:1fr}
+  .faq{grid-template-columns:1fr;gap:10px}
+  .final{grid-template-columns:1fr}
+  .foot{grid-template-columns:1fr 1fr}
+  .ghostword{font-size:118px}
+}
+@media (max-width:520px){
+  body{font-size:14px}
+  .sheet{margin:10px 8px;border-radius:26px}
+  .wrap{padding:0 18px}
+  .nav{padding-top:14px}
+  .nav-in{padding:7px 7px 7px 14px;gap:12px}
+  .nav-cta .si{display:none}
+  .hero h1{font-size:39px;letter-spacing:-.045em}
+  .hero p.sub{font-size:15px;padding:0 6px}
+  .hero .ctas{flex-direction:column;gap:14px}
+  .hero .trust{flex-wrap:wrap;gap:8px 16px;padding:0 10px}
+  .hero-art{height:230px;margin-top:22px;overflow:hidden}
+  .hero-art svg{width:190%;margin-left:-45%}
+  .hero-fade{height:70px}
+  .sec-head h2{font-size:28px}
+  .bento,.bento.flip{gap:10px}
+  .bento .art,.bento.flip .art{height:300px}
+  .tile{padding:8px 8px 14px}
+  .tile-top{height:56px}
+  .tile-top .ghost{width:36px;height:36px}
+  .tile p{font-size:13.5px;padding:0 6px}
+  .chip{padding:7px 11px 7px 7px;gap:8px;border-radius:13px}
+  .chip .t1{font-size:11px} .chip .t2{font-size:10px}
+  .chip .it.s{width:22px;height:22px}
+  .chip.hide-m{display:none}
+  .why h2,.faq h2{font-size:34px}
+  .grid-dash{grid-template-columns:repeat(2,1fr)}
+  .grid-dash .cell{height:84px;border-right:1px dashed #D8D8DC!important;border-bottom:1px dashed #D8D8DC!important}
+  .grid-dash .cell:nth-child(2n){border-right:0!important}
+  .grid-dash .cell:nth-child(n+5){border-bottom:0!important}
+  .wm{font-size:18px}
+  .final h2{font-size:44px}
+  .scene{height:330px}
+  .scene .it.xl{width:58px;height:58px;border-radius:17px}
+  .scene .it.xl svg{width:26px;height:26px}
+  .foot{grid-template-columns:1fr 1fr}
+  .foot .brand{grid-column:1/3}
+  .ghostword{font-size:76px;margin-top:40px}
+  .legal{flex-direction:column}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+
+<!-- ═══ global SVG defs + glyph sprite ═══════════════════════════════ -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="glassTop" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3A3A41"/><stop offset=".45" stop-color="#18181B"/><stop offset="1" stop-color="#0A0A0B"/></linearGradient>
+    <linearGradient id="glassFace" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2C2C32"/><stop offset=".5" stop-color="#121214"/><stop offset="1" stop-color="#050506"/></linearGradient>
+    <linearGradient id="glassFront" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1B1B1F"/><stop offset="1" stop-color="#040405"/></linearGradient>
+    <linearGradient id="glassSide" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#0E0E10"/><stop offset="1" stop-color="#1E1E22"/></linearGradient>
+    <linearGradient id="screen" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#121215"/><stop offset="1" stop-color="#08080A"/></linearGradient>
+    <linearGradient id="rimG" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#08C465" stop-opacity="0"/><stop offset=".25" stop-color="#3BF29A"/><stop offset=".6" stop-color="#08C465"/><stop offset="1" stop-color="#08C465" stop-opacity=".15"/></linearGradient>
+    <linearGradient id="rimR" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#FE3A31" stop-opacity="0"/><stop offset=".3" stop-color="#FF8A80"/><stop offset=".65" stop-color="#FE3A31"/><stop offset="1" stop-color="#FE3A31" stop-opacity=".2"/></linearGradient>
+    <linearGradient id="rimW" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".35" stop-color="#fff" stop-opacity=".85"/><stop offset=".7" stop-color="#C9C9CF" stop-opacity=".6"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+    <linearGradient id="shine" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".22"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+    <linearGradient id="isoTopG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1F3B2D"/><stop offset=".55" stop-color="#0E1A14"/><stop offset="1" stop-color="#07100B"/></linearGradient>
+    <linearGradient id="isoL" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#232328"/><stop offset="1" stop-color="#09090B"/></linearGradient>
+    <linearGradient id="isoR" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#121215"/><stop offset="1" stop-color="#030304"/></linearGradient>
+    <linearGradient id="lineG" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#08C465" stop-opacity=".2"/><stop offset="1" stop-color="#3BF29A"/></linearGradient>
+    <linearGradient id="areaG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#08C465" stop-opacity=".35"/><stop offset="1" stop-color="#08C465" stop-opacity="0"/></linearGradient>
+    <radialGradient id="glowG"><stop offset="0" stop-color="#08C465" stop-opacity=".75"/><stop offset=".55" stop-color="#08C465" stop-opacity=".18"/><stop offset="1" stop-color="#08C465" stop-opacity="0"/></radialGradient>
+    <radialGradient id="glowR"><stop offset="0" stop-color="#FE3A31" stop-opacity=".7"/><stop offset=".55" stop-color="#FE3A31" stop-opacity=".16"/><stop offset="1" stop-color="#FE3A31" stop-opacity="0"/></radialGradient>
+    <radialGradient id="glowK"><stop offset="0" stop-color="#0B0B0C" stop-opacity=".45"/><stop offset="1" stop-color="#0B0B0C" stop-opacity="0"/></radialGradient>
+    <radialGradient id="sphere" cx=".38" cy=".32" r=".75"><stop offset="0" stop-color="#4A4A52"/><stop offset=".35" stop-color="#1A1A1E"/><stop offset="1" stop-color="#030304"/></radialGradient>
+    <linearGradient id="gridFade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".35" stop-color="#fff" stop-opacity="1"/><stop offset="1" stop-color="#fff" stop-opacity="1"/></linearGradient>
+    <mask id="gridMask"><rect x="0" y="130" width="1100" height="300" fill="url(#gridFade)"/></mask>
+    <filter id="b4" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="4"/></filter>
+    <filter id="b12" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="12"/></filter>
+    <filter id="b24" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="24"/></filter>
+    <filter id="softShadow" x="-30%" y="-30%" width="160%" height="180%"><feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#0B0B0C" flood-opacity=".14"/></filter>
+  </defs>
+  <!-- line glyphs (24×24) -->
+  <symbol id="g-mark" viewBox="0 0 24 24"><path d="M6 4v16M12 7v13M18 3v14"/><rect x="4" y="8" width="4" height="7" rx="1"/><rect x="10" y="10" width="4" height="6" rx="1"/><rect x="16" y="6" width="4" height="7" rx="1"/></symbol>
+  <symbol id="g-play" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M10 8.5l5 3.5-5 3.5z"/></symbol>
+  <symbol id="g-note" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></symbol>
+  <symbol id="g-list" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2"/></symbol>
+  <symbol id="g-layers" viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/></symbol>
+  <symbol id="g-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></symbol>
+  <symbol id="g-gauge" viewBox="0 0 24 24"><path d="M4 17a8 8 0 1 1 16 0"/><path d="M12 17l4-5"/><circle cx="12" cy="17" r="1.2"/></symbol>
+  <symbol id="g-chart" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M21 20H3"/></symbol>
+  <symbol id="g-cal" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 10h18M8 3v4M16 3v4"/><path d="M8 14h2M14 14h2M8 17.5h2"/></symbol>
+  <symbol id="g-chat" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9.5h8M8 12.5h5"/></symbol>
+  <symbol id="g-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3.5 7l8.5 6 8.5-6"/></symbol>
+  <symbol id="g-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1"/></symbol>
+  <symbol id="g-stack" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="5" rx="1.5"/><rect x="4" y="10" width="16" height="5" rx="1.5"/><rect x="4" y="16" width="16" height="4" rx="1.5"/></symbol>
+  <symbol id="g-compass" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></symbol>
+  <symbol id="g-levels" viewBox="0 0 24 24"><path d="M3 7h18M3 17h18" stroke-dasharray="2 2.5"/><path d="M4 14l4-4 4 3 6-6"/></symbol>
+  <symbol id="g-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="g-badge" viewBox="0 0 24 24"><circle cx="12" cy="9" r="6"/><path d="M9 14l-1.5 7L12 19l4.5 2L15 14"/><path d="M9.6 9l1.6 1.6 3.2-3.2"/></symbol>
+  <symbol id="g-alert" viewBox="0 0 24 24"><path d="M12 3l9.5 16.5h-19z"/><path d="M12 10v4M12 17v.2"/></symbol>
+  <symbol id="g-hour" viewBox="0 0 24 24"><path d="M7 3h10M7 21h10M8 3c0 5 8 5 8 9s-8 4-8 9M16 3c0 5-8 5-8 9s8 4 8 9"/></symbol>
+  <symbol id="g-down" viewBox="0 0 24 24"><path d="M3 6l6 6 4-4 8 8"/><path d="M15 16h6v-6"/></symbol>
+  <symbol id="g-streak" viewBox="0 0 24 24"><path d="M3 15l4-4 3 3 4-6 3 4 4-3"/><path d="M3 20h18"/></symbol>
+  <symbol id="g-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></symbol>
+  <symbol id="g-news" viewBox="0 0 24 24"><path d="M4 5h13v14H6a2 2 0 0 1-2-2z"/><path d="M17 9h3v8a2 2 0 0 1-2 2"/><path d="M7.5 9h6M7.5 12.5h6M7.5 16h4"/></symbol>
+  <symbol id="g-bell" viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></symbol>
+  <symbol id="g-key" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4.5"/><path d="M11.2 11.8L20 3M16 7l3 3M14 9l2 2"/></symbol>
+  <symbol id="g-lock" viewBox="0 0 24 24"><rect x="4.5" y="10.5" width="15" height="10.5" rx="2.5"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/><path d="M12 15v2"/></symbol>
+  <symbol id="g-card" viewBox="0 0 24 24"><rect x="3" y="5.5" width="18" height="13" rx="2.5"/><path d="M3 10h18"/><path d="M4 20L20 4"/></symbol>
+  <symbol id="g-plug" viewBox="0 0 24 24"><path d="M9 3v5M15 3v5M6 8h12v3a6 6 0 0 1-12 0z"/><path d="M12 17v4"/></symbol>
+  <symbol id="g-copy" viewBox="0 0 24 24"><rect x="8.5" y="8.5" width="12" height="12" rx="2.5"/><path d="M15.5 8.5V5.5a2 2 0 0 0-2-2h-8a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h3"/></symbol>
+  <symbol id="g-blocks" viewBox="0 0 24 24"><rect x="3" y="4" width="11" height="6" rx="1.8"/><rect x="10" y="14" width="11" height="6" rx="1.8"/><path d="M8.5 10v2.5a1.5 1.5 0 0 0 1.5 1.5h0"/></symbol>
+  <symbol id="g-coin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 8.5h4a2 2 0 0 1 0 4h-4h4.5a2 2 0 0 1 0 4h-4.5zM11 7v1.5M11 16.5V18"/></symbol>
+  <symbol id="g-flask" viewBox="0 0 24 24"><path d="M9 3h6M10 3v6l-5.5 9.5A2 2 0 0 0 6.2 21h11.6a2 2 0 0 0 1.7-2.5L14 9V3"/><path d="M7.5 15h9"/></symbol>
+  <symbol id="g-shield" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 4.5-3.4 8-8 9-4.6-1-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/></symbol>
+  <symbol id="g-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+  <symbol id="g-check" viewBox="0 0 24 24"><path d="M4 12.5l5 5 11-11"/></symbol>
+  <symbol id="g-signal" viewBox="0 0 24 24"><path d="M4 18l5-6 4 3 7-9"/><circle cx="20" cy="6" r="1.6"/><path d="M4 21h16"/></symbol>
+</svg>
+
+<div class="sheet">
+
+<!-- ═══ nav ═══════════════════════════════════════════════════════════ -->
+<header class="nav">
+  <div class="nav-in">
+    <a class="logo" href="#"><svg class="mk" viewBox="0 0 24 24"><rect width="24" height="24" rx="7" fill="#0B0B0C"/><g stroke="#fff" stroke-width="1.6" stroke-linecap="round"><path d="M7.5 5.5v13M12 7.5v11M16.5 4.5v11"/></g><rect x="6" y="9" width="3" height="5.5" rx=".8" fill="#fff"/><rect x="10.5" y="10.5" width="3" height="4.5" rx=".8" fill="#08C465"/><rect x="15" y="7" width="3" height="5.5" rx=".8" fill="#fff"/></svg><span>TRADE<i>logs</i></span></a>
+    <nav class="nav-links"><a href="#journal">Product</a><a href="#security">Security</a><a href="#next">What's next</a><a href="#faq">FAQ</a></nav>
+    <div class="nav-cta"><a class="si" href="#">Sign in</a><a class="btn sm" href="#">Start free</a></div>
+  </div>
+</header>
+
+<!-- ═══ hero ══════════════════════════════════════════════════════════ -->
+<section class="hero">
+  <div class="wrap">
+    <span class="pill"><span class="d"></span>Read-only sync with any MetaTrader 5 broker</span>
+    <h1>The trading journal that tells you <span>what to fix.</span></h1>
+    <p class="sub">Connect MetaTrader 5 with a read-only login. Every fill is journaled, every habit measured, and every Monday you get one thing to fix.</p>
+    <div class="ctas">
+      <a class="btn lg" href="#">Start journaling free<span class="ar"><svg viewBox="0 0 24 24"><use href="#g-arrow"/></svg></span></a>
+      <a class="tlink" href="#journal">See the product</a>
+    </div>
+    <div class="trust">
+      <span><svg viewBox="0 0 24 24"><use href="#g-check"/></svg>Investor password only</span>
+      <span><svg viewBox="0 0 24 24"><use href="#g-check"/></svg>History backfills automatically</span>
+      <span><svg viewBox="0 0 24 24"><use href="#g-check"/></svg>Free, no card</span>
+    </div>
+  </div>
+  <div class="hero-art" aria-hidden="true">
+    <svg viewBox="0 100 1100 330" preserveAspectRatio="xMidYMid meet" id="heroSvg"></svg>
+    <div class="hero-fade"></div>
+  </div>
+</section>
+
+<main class="wrap">
+
+<!-- ═══ 1. journal ════════════════════════════════════════════════════ -->
+<section class="sec" id="journal">
+  <div class="sec-head">
+    <div><span class="pill">Journal</span><h2>Every trade, rebuilt and ready to review</h2></div>
+    <div class="rt"><p>Fills land in your journal the moment they close. Fees, swaps and partial closes are reconstructed into clean positions, and every trade can be replayed on its candles with your notes beside it.</p><a class="btn sm" href="#">Open the journal</a></div>
+  </div>
+  <div class="bento">
+    <div class="tile"><div class="tile-top"><span class="it"><svg><use href="#g-play"/></svg></span><svg class="ghost" viewBox="0 0 24 24"><use href="#g-mark"/></svg></div><p><b>Replay any trade</b> on its own candles</p></div>
+    <div class="tile"><div class="tile-top"><span class="it"><svg><use href="#g-note"/></svg></span><svg class="ghost" viewBox="0 0 24 24"><use href="#g-mark"/></svg></div><p><b>Notes, tags</b> and emotions on every trade</p></div>
+    <div class="tile"><div class="tile-top"><span class="it"><svg><use href="#g-list"/></svg></span><svg class="ghost" viewBox="0 0 24 24"><use href="#g-mark"/></svg></div><p><b>Every fill</b> journaled as it closes</p></div>
+    <div class="tile"><div class="tile-top"><span class="it"><svg><use href="#g-layers"/></svg></span><svg class="ghost" viewBox="0 0 24 24"><use href="#g-mark"/></svg></div><p><b>Partial closes</b> rebuilt into one position</p></div>
+    <div class="art" id="artJournal"><svg viewBox="0 0 560 380" preserveAspectRatio="xMidYMid meet"></svg>
+      <div class="chip" style="left:5%;top:15%"><span class="it s"><svg><use href="#g-arrow"/></svg></span><div><div class="t1">Entry <span class="num">1.0842</span></div><div class="t2">EURUSD · long · 0.50 lots</div></div></div>
+      <div class="chip" style="right:5%;top:36%"><span class="it s"><svg><use href="#g-check"/></svg></span><div><div class="t1">Exit <span class="num pos">+$256.00</span></div><div class="t2">Held 2h 14m</div></div></div>
+      <div class="chip hide-m" style="left:12%;bottom:12%"><span class="it s k"><svg><use href="#g-note"/></svg></span><div><div class="t1">Waited for the London open</div><div class="t2">Tag · plan followed</div></div></div>
+      <span class="tag">Sample</span>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ 2. analytics ══════════════════════════════════════════════════ -->
+<section class="sec" id="analytics">
+  <div class="sec-head">
+    <div><span class="pill">Analytics</span><h2>Find the leak, not just the P&amp;L</h2></div>
+    <div class="rt"><p>Most journals stop at profit and loss. TRADElogs looks at how you traded: timing, sizing, streaks and tilt, and shows you the pattern behind the red days.</p><a class="btn sm" href="#">See your edge</a></div>
+  </div>
+  <div class="bento flip">
+    <div class="tile"><div class="tile-top"><span class="it"><svg><use href="#g-grid"/></svg></span><svg class="ghost" viewBox="0 0 24 24"><use href="#g-chart"/></svg></div><p><b>Session heatmap</b> by weekday and hour</p></div>
+    <div class="tile"><div class="tile-top"><span class="it"><svg><use href="#g-gauge"/></svg></span><svg class="ghost" viewBox="0 0 24 24"><use href="#g-chart"/></svg></div><p><b>Behaviour score:</b> how well you followed yourself</p></div>
+    <div class="tile"><div class="tile-top"><span class="it"><svg><use href="#g-chart"/></svg></span><svg class="ghost" viewBox="0 0 24 24"><use href="#g-chart"/></svg></div><p><b>Win rate, profit factor</b> and drawdown</p></div>
+    <div class="tile"><div class="tile-top"><span class="it"><svg><use href="#g-cal"/></svg></span><svg class="ghost" viewBox="0 0 24 24"><use href="#g-chart"/></svg></div><p><b>P&amp;L calendar</b> day by day</p></div>
+    <div class="art" id="artAnalytics"><svg viewBox="0 0 560 380" preserveAspectRatio="xMidYMid meet"></svg>
+      <div class="chip" style="left:5%;top:9%"><span class="it s"><svg><use href="#g-clock"/></svg></span><div><div class="t1">Best hours · London open</div><div class="t2">07:00 – 10:00</div></div></div>
+      <div class="chip hide-m" style="right:4%;bottom:10%"><span class="it s r"><svg><use href="#g-down"/></svg></span><div><div class="t1">Friday afternoons <span class="num neg">−$1,240</span></div><div class="t2">Last 30 days</div></div></div>
+      <span class="tag">Sample</span>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ 3. AI coach + weekly review ══════════════════════════════════ -->
+<section class="sec" id="coach">
+  <div class="sec-head">
+    <div><span class="pill">AI coach · Weekly review</span><h2>A coach that has read every trade you've taken</h2></div>
+    <div class="rt"><p>Ask questions and get answers built from your real fills, not generic tips. Every Monday a short review lands in your inbox: what worked, what leaked, and the single habit to change this week.</p><a class="btn sm" href="#">Ask the coach</a></div>
+  </div>
+  <div class="bento">
+    <div class="tile"><div class="tile-top"><span class="it"><svg><use href="#g-chat"/></svg></span><svg class="ghost" viewBox="0 0 24 24"><use href="#g-chat"/></svg></div><p><b>Answers</b> from your own trades</p></div>
+    <div class="tile"><div class="tile-top"><span class="it"><svg><use href="#g-mail"/></svg></span><svg class="ghost" viewBox="0 0 24 24"><use href="#g-chat"/></svg></div><p><b>Weekly review</b> every Monday</p></div>
+    <div class="tile"><div class="tile-top"><span class="it"><svg><use href="#g-target"/></svg></span><svg class="ghost" viewBox="0 0 24 24"><use href="#g-chat"/></svg></div><p><b>One thing</b> to fix each week</p></div>
+    <div class="tile"><div class="tile-top"><span class="it"><svg><use href="#g-stack"/></svg></span><svg class="ghost" viewBox="0 0 24 24"><use href="#g-chat"/></svg></div><p><b>Plain English,</b> no dashboards to decode</p></div>
+    <div class="art" id="artCoach"><svg viewBox="0 0 560 380" preserveAspectRatio="xMidYMid meet"></svg>
+      <div class="chip" style="left:4%;top:14%"><span class="it s"><svg><use href="#g-mail"/></svg></span><div><div class="t1">Your week in review</div><div class="t2">Mon 07:00 · 23 trades</div></div></div>
+      <div class="chip" style="right:3%;bottom:15%"><span class="it s k"><svg><use href="#g-target"/></svg></span><div><div class="t1">One thing to fix</div><div class="t2">No new entries after 15:00 London</div></div></div>
+      <span class="tag">Sample</span>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ 4. SignalX ════════════════════════════════════════════════════ -->
+<section class="sec" id="signalx">
+  <div class="sec-head">
+    <div><span class="pill">SignalX</span><h2>A technical read on any chart, before you take it</h2></div>
+    <div class="rt"><p>Pick a symbol and a timeframe. SignalX lays out the bias, the levels that matter and the scenarios to watch, and keeps a track record of how its past calls played out.</p><a class="btn sm" href="#">Try SignalX</a></div>
+  </div>
+  <div class="bento flip">
+    <div class="tile"><div class="tile-top"><span class="it"><svg><use href="#g-compass"/></svg></span><svg class="ghost" viewBox="0 0 24 24"><use href="#g-signal"/></svg></div><p><b>Bias</b> for any symbol</p></div>
+    <div class="tile"><div class="tile-top"><span class="it"><svg><use href="#g-levels"/></svg></span><svg class="ghost" viewBox="0 0 24 24"><use href="#g-signal"/></svg></div><p><b>Levels</b> and scenarios to watch</p></div>
+    <div class="tile"><div class="tile-top"><span class="it"><svg><use href="#g-clock"/></svg></span><svg class="ghost" viewBox="0 0 24 24"><use href="#g-signal"/></svg></div><p><b>15m to 1d</b> timeframes</p></div>
+    <div class="tile"><div class="tile-top"><span class="it"><svg><use href="#g-badge"/></svg></span><svg class="ghost" viewBox="0 0 24 24"><use href="#g-signal"/></svg></div><p><b>Track record</b> of past calls</p></div>
+    <div class="art" id="artSignal"><svg viewBox="0 0 560 380" preserveAspectRatio="xMidYMid meet"></svg>
+      <div class="chip" style="left:6%;top:11%"><span class="it s"><svg><use href="#g-compass"/></svg></span><div><div class="t1">Bias · bullish</div><div class="t2">XAUUSD · 1h</div></div></div>
+      <div class="chip hide-m" style="right:5%;bottom:11%"><span class="it s k"><svg><use href="#g-levels"/></svg></span><div><div class="t1">Scenario · break above <span class="num">2,412</span></div><div class="t2">Invalid below <span class="num">2,368</span></div></div></div>
+      <span class="tag">Sample</span>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ 5. risk (red) ═════════════════════════════════════════════════ -->
+<section class="sec" id="risk">
+  <div class="sec-head">
+    <div><span class="pill">Discipline</span><h2>Catch the tilt before it costs you the week</h2></div>
+    <div class="rt"><p>Revenge sequences, losers held too long and late-session overtrading are flagged from your own history, so the habit shows up as a pattern instead of a feeling.</p><a class="btn sm" href="#">See your habits</a></div>
+  </div>
+  <div class="bento">
+    <div class="tile"><div class="tile-top"><span class="it r"><svg><use href="#g-alert"/></svg></span><svg class="ghost" viewBox="0 0 24 24"><use href="#g-shield"/></svg></div><p><b>Tilt detection</b> flags revenge trading</p></div>
+    <div class="tile"><div class="tile-top"><span class="it r"><svg><use href="#g-hour"/></svg></span><svg class="ghost" viewBox="0 0 24 24"><use href="#g-shield"/></svg></div><p><b>Holding time</b> of losers vs winners</p></div>
+    <div class="tile"><div class="tile-top"><span class="it r"><svg><use href="#g-down"/></svg></span><svg class="ghost" viewBox="0 0 24 24"><use href="#g-shield"/></svg></div><p><b>Drawdown</b> from your peak, always visible</p></div>
+    <div class="tile"><div class="tile-top"><span class="it r"><svg><use href="#g-streak"/></svg></span><svg class="ghost" viewBox="0 0 24 24"><use href="#g-shield"/></svg></div><p><b>Win and loss streaks</b> tracked</p></div>
+    <div class="art red" id="artRisk"><svg viewBox="0 0 560 380" preserveAspectRatio="xMidYMid meet"></svg>
+      <div class="chip fade1" style="left:50%;top:3%;translate:-50% 0"><span class="it s r"><svg><use href="#g-alert"/></svg></span><div><div class="t1">Tilt detected</div></div></div>
+      <div class="chip fade2" style="left:50%;top:11%;translate:-50% 0"><span class="it s r"><svg><use href="#g-alert"/></svg></span><div><div class="t1">Tilt detected</div></div></div>
+      <div class="chip" style="left:50%;top:20%;translate:-50% 0"><span class="it s r"><svg><use href="#g-alert"/></svg></span><div><div class="t1">Tilt detected · <span class="num">4</span> trades in <span class="num">11</span> min</div><div class="t2">Three came within 20 min of a loss</div></div></div>
+      <div class="chip hide-m" style="right:4%;bottom:10%"><span class="it s r"><svg><use href="#g-hour"/></svg></span><div><div class="t1">Losers held <span class="num neg">1.8×</span> longer</div><div class="t2">than winners, last 30 days</div></div></div>
+      <span class="tag">Sample</span>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ 6. markets / macro ═══════════════════════════════════════════ -->
+<section class="sec" id="markets">
+  <div class="sec-head">
+    <div><span class="pill">Markets · Macro</span><h2>The macro picture and the calendar, next to your trades</h2></div>
+    <div class="rt"><p>A macro dashboard with regime and asset bias, an economic calendar you can watch events on, news filtered to the markets you trade, and price alerts that reach you by push.</p><a class="btn sm" href="#">Open markets</a></div>
+  </div>
+  <div class="bento flip">
+    <div class="tile"><div class="tile-top"><span class="it"><svg><use href="#g-globe"/></svg></span><svg class="ghost" viewBox="0 0 24 24"><use href="#g-globe"/></svg></div><p><b>Macro dashboard</b> with regime and bias</p></div>
+    <div class="tile"><div class="tile-top"><span class="it"><svg><use href="#g-cal"/></svg></span><svg class="ghost" viewBox="0 0 24 24"><use href="#g-globe"/></svg></div><p><b>Economic calendar</b> with watched events</p></div>
+    <div class="tile"><div class="tile-top"><span class="it"><svg><use href="#g-news"/></svg></span><svg class="ghost" viewBox="0 0 24 24"><use href="#g-globe"/></svg></div><p><b>News</b> filtered to your markets</p></div>
+    <div class="tile"><div class="tile-top"><span class="it"><svg><use href="#g-bell"/></svg></span><svg class="ghost" viewBox="0 0 24 24"><use href="#g-globe"/></svg></div><p><b>Price alerts</b> with push notifications</p></div>
+    <div class="art" id="artMacro"><svg viewBox="0 0 560 380" preserveAspectRatio="xMidYMid meet"></svg>
+      <div class="chip" style="left:5%;top:12%"><span class="it s r"><svg><use href="#g-cal"/></svg></span><div><div class="t1">US CPI · <span class="num">13:30</span></div><div class="t2">High impact · watching</div></div></div>
+      <div class="chip" style="right:5%;top:42%"><span class="it s"><svg><use href="#g-globe"/></svg></span><div><div class="t1">Gold · macro bias bullish</div><div class="t2">Updated this morning</div></div></div>
+      <div class="chip hide-m" style="left:10%;bottom:9%"><span class="it s k"><svg><use href="#g-bell"/></svg></span><div><div class="t1">XAUUSD crossed <span class="num">2,400</span></div><div class="t2">Price alert</div></div></div>
+      <span class="tag">Sample</span>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ 7. security (graphite) ═══════════════════════════════════════ -->
+<section class="sec" id="security">
+  <div class="sec-head">
+    <div><span class="pill">Security</span><h2>It can look at your account. It can never touch it.</h2></div>
+    <div class="rt"><p>TRADElogs connects with MetaTrader's investor password, the read-only one. It can see your history but cannot open, modify or close a position. Disconnecting a broker deletes its synced data.</p><a class="btn sm" href="#">Read the privacy policy</a></div>
+  </div>
+  <div class="bento">
+    <div class="tile"><div class="tile-top"><span class="it k"><svg><use href="#g-key"/></svg></span><svg class="ghost" viewBox="0 0 24 24"><use href="#g-lock"/></svg></div><p><b>Investor password</b> only, read-only</p></div>
+    <div class="tile"><div class="tile-top"><span class="it k"><svg><use href="#g-lock"/></svg></span><svg class="ghost" viewBox="0 0 24 24"><use href="#g-lock"/></svg></div><p><b>Encrypted</b> with AES-256-GCM</p></div>
+    <div class="tile"><div class="tile-top"><span class="it k"><svg><use href="#g-plug"/></svg></span><svg class="ghost" viewBox="0 0 24 24"><use href="#g-lock"/></svg></div><p><b>Any MT5 broker,</b> just your login and server</p></div>
+    <div class="tile"><div class="tile-top"><span class="it k"><svg><use href="#g-card"/></svg></span><svg class="ghost" viewBox="0 0 24 24"><use href="#g-lock"/></svg></div><p><b>Free</b> while we're getting started, no card</p></div>
+    <div class="art gray" id="artLock"><svg viewBox="0 0 560 380" preserveAspectRatio="xMidYMid meet"></svg>
+      <div class="chip" style="left:5%;top:13%"><span class="it s k"><svg><use href="#g-key"/></svg></span><div><div class="t1">Investor password</div><div class="t2">Read-only access</div></div></div>
+      <div class="chip" style="right:5%;top:40%"><span class="it s k"><svg><use href="#g-lock"/></svg></span><div><div class="t1">AES-256-GCM</div><div class="t2">Encrypted at rest</div></div></div>
+      <div class="chip hide-m" style="left:9%;bottom:10%"><span class="it s k"><svg><use href="#g-check"/></svg></span><div><div class="t1">Disconnect anytime</div><div class="t2">Synced data is deleted</div></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ 8. coming next ════════════════════════════════════════════════ -->
+<section class="sec" id="next">
+  <div class="sec-head">
+    <div><span class="pill soon"><span class="d"></span>Coming soon</span><h2>From reviewing trades to running them</h2></div>
+    <div class="rt"><p>We're building copy trading, a no-code strategy builder with backtests, and crypto exchanges connected with trade-only API keys. None of it is live yet. Join now and you'll see it first.</p><a class="btn sm" href="#">Get early access</a></div>
+  </div>
+  <div class="bento flip">
+    <div class="tile"><div class="tile-top"><span class="it"><svg><use href="#g-copy"/></svg></span><svg class="ghost" viewBox="0 0 24 24"><use href="#g-blocks"/></svg></div><p><b>Copy trading</b> of verified traders<span class="soon-t">Soon</span></p></div>
+    <div class="tile"><div class="tile-top"><span class="it"><svg><use href="#g-blocks"/></svg></span><svg class="ghost" viewBox="0 0 24 24"><use href="#g-blocks"/></svg></div><p><b>No-code</b> strategy builder<span class="soon-t">Soon</span></p></div>
+    <div class="tile"><div class="tile-top"><span class="it"><svg><use href="#g-flask"/></svg></span><svg class="ghost" viewBox="0 0 24 24"><use href="#g-blocks"/></svg></div><p><b>Backtests</b> before you risk capital<span class="soon-t">Soon</span></p></div>
+    <div class="tile"><div class="tile-top"><span class="it"><svg><use href="#g-coin"/></svg></span><svg class="ghost" viewBox="0 0 24 24"><use href="#g-blocks"/></svg></div><p><b>Crypto exchanges</b> via trade-only keys<span class="soon-t">Soon</span></p></div>
+    <div class="art" id="artNext"><svg viewBox="0 0 560 380" preserveAspectRatio="xMidYMid meet"></svg>
+            <div class="chip" style="left:50%;bottom:9%;translate:-50% 0"><span class="it s"><svg><use href="#g-copy"/></svg></span><div><div class="t1">Copied in your size</div><div class="t2">Fill price vs leader shown on every trade</div></div></div>
+      <span class="tag">Preview</span>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ why TRADElogs ═════════════════════════════════════════════════ -->
+<section class="why">
+  <span class="pill">Why TRADElogs</span>
+  <h2>One journal that reads your trades and coaches you on them</h2>
+  <div class="why-row">
+    <div class="why-card"><div class="why-vis" id="whyA"></div><h3>Honest numbers</h3><p>Positions rebuilt from your broker's own fills, including fees, swaps and partial closes. Nothing typed in by hand.</p></div>
+    <div class="why-card"><div class="why-vis" id="whyB"></div><h3>Read-only by design</h3><p>An investor-password connection that can look but never trade, encrypted, and deleted when you disconnect.</p></div>
+    <div class="why-card"><div class="why-vis" id="whyC"></div><h3>Coaching, not dashboards</h3><p>Plain-English insight from your own history, and one habit to work on each week.</p></div>
+  </div>
+</section>
+
+<!-- ═══ integrations ══════════════════════════════════════════════════ -->
+<section class="integ">
+  <div class="cap">Works with the MetaTrader 5 broker you already use</div>
+  <div class="grid-dash">
+    <div class="cell"><span class="wm mt5"><span class="b">MT5</span>MetaTrader 5</span></div>
+    <div class="cell"><span class="wm xm">XM</span></div>
+    <div class="cell"><span class="wm ex">Exness</span></div>
+    <div class="cell"><span class="wm va">VANTAGE</span></div>
+    <div class="cell"><span class="wm xe">Xellion</span></div>
+    <div class="cell"><span class="wm any">+ any MT5 broker</span></div>
+  </div>
+  <p class="note">All you need is your MT5 login, investor password and server name.</p>
+</section>
+
+<!-- ═══ faq ══════════════════════════════════════════════════════════ -->
+<section class="faq" id="faq">
+  <div><span class="pill">FAQ</span><h2>Frequently asked questions</h2></div>
+  <div>
+    <div class="qa open"><button aria-expanded="true"><span class="x"></span>Can TRADElogs place or close trades on my account?</button><div class="ans"><div><p>No. You connect with MT5's investor (read-only) password, which can view your history but cannot open, modify or close positions.</p></div></div></div>
+    <div class="qa"><button aria-expanded="false"><span class="x"></span>Which brokers does it work with?</button><div class="ans"><div><p>Any broker that offers MetaTrader 5. You only need your MT5 login, investor password and your broker's server name.</p></div></div></div>
+    <div class="qa"><button aria-expanded="false"><span class="x"></span>Is it free?</button><div class="ans"><div><p>Yes. TRADElogs is free while we're getting started, and you don't need a card to sign up.</p></div></div></div>
+    <div class="qa"><button aria-expanded="false"><span class="x"></span>How is my password stored?</button><div class="ans"><div><p>Your investor password is encrypted with AES-256-GCM so we can keep syncing, and it can only read your account, never trade or withdraw. Disconnecting a broker deletes its synced data.</p></div></div></div>
+    <div class="qa"><button aria-expanded="false"><span class="x"></span>Do I need to export or upload my trades?</button><div class="ans"><div><p>Never. Once your account is connected, your history backfills automatically and new trades appear as they close.</p></div></div></div>
+  </div>
+</section>
+
+<!-- ═══ final scene ═══════════════════════════════════════════════════ -->
+<section class="final">
+  <div>
+    <span class="pill"><span class="d"></span>Built for MetaTrader 5</span>
+    <h2>Journal. Review. Fix. Repeat.</h2>
+    <p>Free while we're getting started. Read-only by design. Works with any MetaTrader 5 broker.</p>
+    <a class="btn lg" href="#">Create free account<span class="ar"><svg viewBox="0 0 24 24"><use href="#g-arrow"/></svg></span></a>
+  </div>
+  <div class="scene" aria-hidden="true">
+    <div class="grid"></div>
+    <span class="it xl" style="left:44%;top:4%"><svg><use href="#g-play"/></svg></span>
+    <span class="it xl k" style="left:16%;top:22%"><svg><use href="#g-lock"/></svg></span>
+    <span class="it xl" style="left:76%;top:22%"><svg><use href="#g-chat"/></svg></span>
+    <span class="it xl r" style="left:44%;top:40%"><svg><use href="#g-alert"/></svg></span>
+    <span class="it xl k" style="left:28%;top:58%"><svg><use href="#g-note"/></svg></span>
+    <span class="it xl" style="left:62%;top:58%"><svg><use href="#g-grid"/></svg></span>
+    <span class="it xl" style="left:6%;top:72%"><svg><use href="#g-signal"/></svg></span>
+    <span class="it xl k" style="left:80%;top:76%"><svg><use href="#g-globe"/></svg></span>
+  </div>
+</section>
+
+<!-- ═══ footer ════════════════════════════════════════════════════════ -->
+<footer>
+  <div class="foot">
+    <div class="brand">
+      <a class="logo" href="#"><svg class="mk" viewBox="0 0 24 24"><rect width="24" height="24" rx="7" fill="#0B0B0C"/><g stroke="#fff" stroke-width="1.6" stroke-linecap="round"><path d="M7.5 5.5v13M12 7.5v11M16.5 4.5v11"/></g><rect x="6" y="9" width="3" height="5.5" rx=".8" fill="#fff"/><rect x="10.5" y="10.5" width="3" height="4.5" rx=".8" fill="#08C465"/><rect x="15" y="7" width="3" height="5.5" rx=".8" fill="#fff"/></svg><span>TRADE<i>logs</i></span></a>
+      <div class="contact"><span class="it s"><svg><use href="#g-mail"/></svg></span><div><div class="t1">hello@tradelogs.com</div><div class="t2">Questions, feedback, broker requests</div></div></div>
+    </div>
+    <div><h4>Product</h4><a href="#journal">Journal</a><a href="#analytics">Analytics</a><a href="#coach">AI coach</a><a href="#signalx">SignalX</a><a href="#markets">Markets &amp; macro</a></div>
+    <div><h4>Company</h4><a href="#security">Security</a><a href="#next">What's next</a><a href="#faq">FAQ</a></div>
+    <div><h4>Legal</h4><a href="#">Privacy policy</a><a href="#">Terms of service</a></div>
+  </div>
+  <div class="ghostword" aria-hidden="true">TRADElogs</div>
+  <div class="legal"><span>© 2026 TRADElogs. Trading involves risk. Past performance does not guarantee future results. Figures shown are illustrative.</span><nav><a href="#">Privacy</a><a href="#">Terms</a></nav></div>
+</footer>
+
+</main>
+</div>
+
+<script>
+/* ── tiny helpers ─────────────────────────────────────────────────── */
+const NS = 'http://www.w3.org/2000/svg';
+const $ = s => document.querySelector(s);
+const put = (sel, html) => { const el = $(sel); if (el) el.innerHTML = html; };
+let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+const markGlyph = (x, y, s, col = '#fff', acc = '#08C465') => `
+  <g transform="translate(${x} ${y}) scale(${s})" stroke-linecap="round">
+    <g stroke="${col}" stroke-width="1.5" opacity=".9"><path d="M7.5 4v16M12 6.5v14M16.5 3v13"/></g>
+    <rect x="5.8" y="8" width="3.4" height="6.5" rx=".9" fill="${col}"/>
+    <rect x="10.3" y="10" width="3.4" height="5.5" rx=".9" fill="${acc}"/>
+    <rect x="14.8" y="6" width="3.4" height="6.5" rx=".9" fill="${col}"/>
+  </g>`;
+// rounded polygon: stroke trick (fill + same-colour round-join stroke)
+const rpoly = (pts, fill, r = 14, extra = '') => `<polygon points="${pts}" fill="${fill}" stroke="${fill}" stroke-width="${r}" stroke-linejoin="round" ${extra}/>`;
+
+/* ── hero: perspective grid + ghost cards + black glass block ────── */
+(function hero(){
+  const W = 1100, H = 430, vx = 550, vy = -260;
+  let g = '';
+  // perspective grid: horizontal lines spaced by depth, verticals converge on vanishing point
+  for (let i = 0; i < 12; i++) { const t = i / 11; const y = 150 + Math.pow(t, 1.7) * 280; g += `<line x1="0" x2="${W}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}"/>`; }
+  for (let i = -14; i <= 14; i++) { const xb = vx + i * 92; const y0 = 150; const k = (y0 - vy) / (H - vy); const x0 = vx + (xb - vx) * k; g += `<line x1="${x0.toFixed(1)}" y1="${y0}" x2="${xb.toFixed(1)}" y2="${H}"/>`; }
+  // ghost white slabs (top face + thin front edge)
+  const slab = (cx, cy, w, d, t, rot) => {
+    const hw = w / 2, k = d * 0.5;
+    const top = `${cx-hw+k*0.4},${cy-d/2} ${cx+hw-k*0.4},${cy-d/2} ${cx+hw},${cy+d/2} ${cx-hw},${cy+d/2}`;
+    const front = `${cx-hw},${cy+d/2} ${cx+hw},${cy+d/2} ${cx+hw},${cy+d/2+t} ${cx-hw},${cy+d/2+t}`;
+    return `<g transform="rotate(${rot} ${cx} ${cy})" filter="url(#softShadow)">${rpoly(front,'#E7E7EA',10)}${rpoly(top,'#FFFFFF',10)}<polygon points="${top}" fill="none" stroke="#EDEDF0" stroke-width="1"/></g>`;
+  };
+  const ghosts = slab(250, 170, 150, 46, 10, -4) + slab(850, 170, 150, 46, 10, 4) + slab(170, 262, 170, 54, 11, -3) + slab(930, 262, 170, 54, 11, 3);
+  // connectors from block to ghost slabs
+  const conn = `<g stroke="#DADADF" stroke-width="1.4" fill="none" stroke-dasharray="0">
+      <path d="M445 250 H330 V196"/><path d="M655 250 H770 V196"/><path d="M445 290 H262 V290"/><path d="M655 290 H838"/></g>`;
+  // the black glass block (Apptics-style slab: wide top face, short front, rim light)
+  const cx = 550, top = 150, w = 268, d = 104, t = 58, ins = 26;
+  const T = `${cx-w/2+ins},${top} ${cx+w/2-ins},${top} ${cx+w/2},${top+d} ${cx-w/2},${top+d}`;
+  const F = `${cx-w/2},${top+d} ${cx+w/2},${top+d} ${cx+w/2},${top+d+t} ${cx-w/2},${top+d+t}`;
+  const refl = `${cx-w/2+ins+10},${top+6} ${cx-6},${top+6} ${cx-40},${top+d-8} ${cx-w/2+12},${top+d-8}`;
+  const block = `
+    <ellipse cx="${cx}" cy="${top+d+t+20}" rx="230" ry="40" fill="url(#glowG)" filter="url(#b24)"/>
+    <ellipse cx="${cx}" cy="${top+d+t+8}" rx="150" ry="13" fill="#0B0B0C" opacity=".4" filter="url(#b12)"/>
+    ${rpoly(F,'url(#glassFront)',28)}
+    <rect x="${cx-w/2-6}" y="${top+d+14}" width="${w+12}" height="${t-26}" rx="12" fill="url(#shine)" opacity=".35"/>
+    <ellipse cx="${cx}" cy="${top+d+t-4}" rx="${w*.42}" ry="10" fill="#08C465" opacity=".22" filter="url(#b12)"/>
+    ${rpoly(T,'url(#glassFace)',28)}
+    <polygon points="${refl}" fill="#fff" opacity=".07" stroke="#fff" stroke-opacity=".07" stroke-width="18" stroke-linejoin="round"/>
+    <polygon points="${T}" fill="none" stroke="url(#rimG)" stroke-width="2.2" stroke-linejoin="round" opacity=".95"/>
+    <path d="M${cx-w/2-13} ${top+d+5} L${cx+w/2+13} ${top+d+5}" stroke="url(#rimG)" stroke-width="2.6" stroke-linecap="round"/>
+    <path d="M${cx-w/2-13} ${top+d+5} L${cx+w/2+13} ${top+d+5}" stroke="#3BF29A" stroke-width="6" stroke-linecap="round" opacity=".35" filter="url(#b4)"/>
+    <path d="M${cx-w/2+ins+18} ${top-12} L${cx+w/2-ins-18} ${top-12}" stroke="url(#rimW)" stroke-width="1.4" stroke-linecap="round" opacity=".75"/>
+    <g transform="translate(0 ${top+d/2}) scale(1 .5) translate(0 ${-(top+d/2)})">
+      <circle cx="${cx}" cy="${top+d/2}" r="70" fill="url(#glowG)" opacity=".8" filter="url(#b12)"/>
+      ${markGlyph(cx-60, top+d/2-58, 5, '#F4F4F6', '#3BF29A')}
+    </g>`;
+  put('#heroSvg', `<g stroke="#ECECEF" stroke-width="1" mask="url(#gridMask)">${g}</g>${conn}${ghosts}${block}`);
+})();
+
+/* ── 1. journal: glass card with candle replay ───────────────────── */
+(function journal(){
+  const x0 = 120, y0 = 84, w = 330, h = 218;
+  const cx0 = x0 + 26, cw = w - 52, cy0 = y0 + 44, ch = h - 70;
+  seed = 21; let p = 50; const cs = [];
+  for (let i = 0; i < 24; i++) { const o = p; p += (rnd() - (i > 7 && i < 17 ? .32 : .52)) * 7; const hi = Math.max(o, p) + rnd() * 3.5, lo = Math.min(o, p) - rnd() * 3.5; cs.push({ o, c: p, hi, lo }); }
+  const mn = Math.min(...cs.map(c => c.lo)), mx = Math.max(...cs.map(c => c.hi));
+  const Y = v => cy0 + ch - (v - mn) / (mx - mn) * ch; const X = i => cx0 + 6 + i * (cw - 12) / 23;
+  const E = 7, Xi = 17;
+  let candles = '';
+  cs.forEach((c, i) => {
+    const up = c.c >= c.o, col = up ? '#18D477' : '#FF5148';
+    const dim = (i < E || i > Xi) ? .55 : 1;
+    candles += `<g opacity="${dim}"><line x1="${X(i)}" x2="${X(i)}" y1="${Y(c.hi)}" y2="${Y(c.lo)}" stroke="${col}" stroke-width="1.2"/><rect x="${X(i)-3.6}" y="${Math.min(Y(c.o),Y(c.c))}" width="7.2" height="${Math.max(2, Math.abs(Y(c.o)-Y(c.c)))}" rx="1.2" fill="${col}"/></g>`;
+  });
+  const ey = Y(cs[E].c), xy = Y(cs[Xi].c);
+  const zone = `<rect x="${X(E)}" y="${Math.min(ey,xy)}" width="${X(Xi)-X(E)}" height="${Math.abs(ey-xy)}" fill="#08C465" opacity=".08"/>
+    <line x1="${cx0}" x2="${cx0+cw}" y1="${ey}" y2="${ey}" stroke="#FFFFFF" stroke-opacity=".28" stroke-dasharray="3 4"/>
+    <line x1="${cx0}" x2="${cx0+cw}" y1="${xy}" y2="${xy}" stroke="#3BF29A" stroke-opacity=".55" stroke-dasharray="3 4"/>
+    <path d="M${X(E)} ${ey} L${X(Xi)} ${xy}" stroke="#3BF29A" stroke-width="2" filter="url(#b4)" opacity=".8"/>
+    <path d="M${X(E)} ${ey} L${X(Xi)} ${xy}" stroke="#3BF29A" stroke-width="1.6"/>
+    <circle cx="${X(E)}" cy="${ey}" r="5" fill="#0B0B0C" stroke="#fff" stroke-width="1.6"/>
+    <circle cx="${X(Xi)}" cy="${xy}" r="5.5" fill="#08C465" stroke="#CFFFE6" stroke-width="1.6"/>`;
+  const grid = [0,1,2,3].map(i => `<line x1="${cx0}" x2="${cx0+cw}" y1="${cy0 + i*ch/3}" y2="${cy0 + i*ch/3}" stroke="#fff" stroke-opacity=".05"/>`).join('');
+  put('#artJournal svg', `
+    <ellipse cx="285" cy="${y0+h+26}" rx="200" ry="30" fill="url(#glowG)" filter="url(#b24)"/>
+    <rect x="${x0+10}" y="${y0+14}" width="${w}" height="${h}" rx="24" fill="#020203" opacity=".9"/>
+    <rect x="${x0}" y="${y0}" width="${w}" height="${h}" rx="24" fill="url(#glassFace)"/>
+    <rect x="${x0+.75}" y="${y0+.75}" width="${w-1.5}" height="${h-1.5}" rx="23.5" fill="none" stroke="url(#rimG)" stroke-width="1.5"/>
+    <path d="M${x0+30} ${y0+1.2} H${x0+w-30}" stroke="url(#rimW)" stroke-width="1.2" opacity=".8"/>
+    <text x="${cx0}" y="${y0+28}" font-family="JetBrains Mono" font-size="10" fill="#8A8A90">EURUSD · 15m · replay</text>
+    <g transform="translate(${x0+w-58} ${y0+17})"><rect width="34" height="16" rx="8" fill="#08C465" opacity=".16"/><circle cx="9" cy="8" r="3" fill="#3BF29A"/><text x="15" y="11.5" font-family="Satoshi" font-size="9" fill="#8DF5BF">Win</text></g>
+    ${grid}${zone}${candles}
+    <g transform="translate(${x0+26} ${y0+h-20})">
+      <rect width="${w-52}" height="4" rx="2" fill="#fff" opacity=".08"/>
+      <rect width="${(w-52)*0.72}" height="4" rx="2" fill="#08C465" opacity=".85"/>
+      <circle cx="${(w-52)*0.72}" cy="2" r="5" fill="#fff"/>
+    </g>`);
+})();
+
+/* ── 2. analytics: isometric black glass bars ────────────────────── */
+(function analytics(){
+  const a = 44, b = 25;
+  const bar = (cx, base, h, icon, glow) => {
+    const ty = base - 2*b - h;
+    const P0 = [cx, ty], P1 = [cx+a, ty+b], P2 = [cx, ty+2*b], P3 = [cx-a, ty+b];
+    const L = `${P3} ${P2} ${P2[0]},${P2[1]+h} ${P3[0]},${P3[1]+h}`;
+    const R = `${P2} ${P1} ${P1[0]},${P1[1]+h} ${P2[0]},${P2[1]+h}`;
+    const T = `${P0} ${P1} ${P2} ${P3}`;
+    return `
+      <ellipse cx="${cx}" cy="${base+6}" rx="${a*1.25}" ry="${b*.9}" fill="#0B0B0C" opacity=".22" filter="url(#b12)"/>
+      <polygon points="${L}" fill="url(#isoL)"/>
+      <polygon points="${R}" fill="url(#isoR)"/>
+      <polygon points="${T}" fill="url(#isoTopG)"/>
+      <polygon points="${T}" fill="none" stroke="url(#rimG)" stroke-width="1.6" stroke-linejoin="round"/>
+      <line x1="${P2[0]}" y1="${P2[1]}" x2="${P2[0]}" y2="${P2[1]+h}" stroke="#fff" stroke-opacity=".14"/>
+      <line x1="${P3[0]}" y1="${P3[1]}" x2="${P3[0]}" y2="${P3[1]+h}" stroke="#fff" stroke-opacity=".08"/>
+      ${glow ? `<ellipse cx="${cx}" cy="${ty+b}" rx="${a*.8}" ry="${b*.75}" fill="url(#glowG)" filter="url(#b12)" opacity=".9"/>` : ''}
+      <g transform="translate(${cx} ${ty+b}) scale(1 .58) rotate(45)">
+        <rect x="-15" y="-15" width="30" height="30" rx="8" fill="#08C465"/>
+        <rect x="-15" y="-15" width="30" height="15" rx="8" fill="#fff" opacity=".22"/>
+      </g>
+      <g transform="translate(${cx-9} ${ty+b-11}) scale(.75)" stroke="#fff" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"><use href="#${icon}" width="24" height="24"/></g>`;
+  };
+  // floor dots path
+  const floor = `<path d="M70 330 L280 225 L490 330 L280 435 Z" fill="none" stroke="#08C465" stroke-opacity=".12"/>`;
+  put('#artAnalytics svg', `
+    <ellipse cx="290" cy="300" rx="230" ry="60" fill="url(#glowG)" filter="url(#b24)" opacity=".7"/>
+    ${floor}
+    ${bar(170, 330, 50, 'g-cal', false)}
+    ${bar(262, 306, 92, 'g-grid', false)}
+    ${bar(354, 282, 136, 'g-gauge', true)}
+    ${bar(446, 258, 182, 'g-chart', true)}`);
+})();
+
+/* ── 3. coach: black glass phone with chat ───────────────────────── */
+(function coach(){
+  const x = 196, y = 34, w = 178, h = 318;
+  const bubble = (bx, by, bw, bh, fill, lines, align='l', stroke) => `
+    <rect x="${bx}" y="${by}" width="${bw}" height="${bh}" rx="12" fill="${fill}" ${stroke?`stroke="${stroke}"`:''}/>
+    ${lines.map((l,i)=>`<text x="${bx+10}" y="${by+17+i*13}" font-family="Satoshi" font-size="9.4" fill="${l[1]||'#E9E9EC'}">${l[0]}</text>`).join('')}`;
+  put('#artCoach svg', `
+    <ellipse cx="${x+w/2}" cy="${y+h+12}" rx="170" ry="26" fill="url(#glowG)" filter="url(#b24)"/>
+    <rect x="${x+8}" y="${y+12}" width="${w}" height="${h}" rx="32" fill="#020203"/>
+    <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="32" fill="url(#glassFace)"/>
+    <rect x="${x+.75}" y="${y+.75}" width="${w-1.5}" height="${h-1.5}" rx="31.5" fill="none" stroke="url(#rimG)" stroke-width="1.5"/>
+    <rect x="${x+8}" y="${y+8}" width="${w-16}" height="${h-16}" rx="25" fill="url(#screen)"/>
+    <rect x="${x+w/2-24}" y="${y+15}" width="48" height="11" rx="5.5" fill="#000"/>
+    <g transform="translate(${x+18} ${y+42})">
+      <circle cx="9" cy="9" r="9" fill="#08C465"/>${markGlyph(2.2, 2.2, .57, '#fff', '#0B0B0C')}
+      <text x="24" y="8" font-family="Satoshi" font-size="10" fill="#F2F2F4" font-weight="500">TRADElogs coach</text>
+      <text x="24" y="19" font-family="Satoshi" font-size="8.2" fill="#77777E">Read 312 trades · MT5</text>
+    </g>
+    ${bubble(x+46, y+80, 116, 34, '#26262B', [['What should I fix'],['this week?']])}
+    ${bubble(x+16, y+124, 146, 86, '#121215', [['Trades after 15:00 London'],['are the leak. They closed'],['at a 31% win rate vs 64%','#8DF5BF'],['before noon.'],[' ']], 'l', 'rgba(8,196,101,.35)')}
+    ${bubble(x+16, y+218, 146, 46, '#121215', [['Suggestion: no new entries'],['after 15:00 this week.','#8DF5BF']], 'l', 'rgba(255,255,255,.06)')}
+    <rect x="${x+16}" y="${y+h-44}" width="${w-32}" height="26" rx="13" fill="#1C1C20"/>
+    <text x="${x+28}" y="${y+h-27}" font-family="Satoshi" font-size="9" fill="#66666D">Ask about your trading</text>
+    <circle cx="${x+w-30}" cy="${y+h-31}" r="9" fill="#08C465"/><path d="M${x+w-34} ${y+h-31} h8 m-3 -3 l3 3 -3 3" stroke="#04140B" stroke-width="1.6" fill="none" stroke-linecap="round"/>`);
+})();
+
+/* ── 4. SignalX: chart card with levels ──────────────────────────── */
+(function signal(){
+  const x0 = 96, y0 = 78, w = 368, h = 226;
+  const px0 = x0 + 22, pw = w - 44, py0 = y0 + 46, ph = h - 76;
+  seed = 5; let v = 40; const pts = [];
+  for (let i = 0; i <= 40; i++) { v += (rnd() - (i < 18 ? .55 : .36)) * 6; pts.push(v); }
+  const mn = Math.min(...pts) - 6, mx = Math.max(...pts) + 10;
+  const X = i => px0 + i * pw / 40, Y = p => py0 + ph - (p - mn) / (mx - mn) * ph;
+  const d = pts.map((p,i)=>`${i?'L':'M'}${X(i).toFixed(1)} ${Y(p).toFixed(1)}`).join(' ');
+  const res = Y(mx - 7), sup = Y(mn + 9);
+  put('#artSignal svg', `
+    <ellipse cx="280" cy="${y0+h+22}" rx="210" ry="30" fill="url(#glowG)" filter="url(#b24)"/>
+    <rect x="${x0+10}" y="${y0+14}" width="${w}" height="${h}" rx="24" fill="#020203"/>
+    <rect x="${x0}" y="${y0}" width="${w}" height="${h}" rx="24" fill="url(#glassFace)"/>
+    <rect x="${x0+.75}" y="${y0+.75}" width="${w-1.5}" height="${h-1.5}" rx="23.5" fill="none" stroke="url(#rimG)" stroke-width="1.5"/>
+    <path d="M${x0+30} ${y0+1.2} H${x0+w-30}" stroke="url(#rimW)" stroke-width="1.2" opacity=".8"/>
+    <text x="${px0}" y="${y0+28}" font-family="JetBrains Mono" font-size="10" fill="#8A8A90">XAUUSD · 1h · SignalX</text>
+    <g transform="translate(${x0+w-112} ${y0+16})"><rect width="90" height="18" rx="9" fill="#08C465" opacity=".16"/><text x="12" y="12.5" font-family="Satoshi" font-size="9.5" fill="#8DF5BF">Bias · bullish ▲</text></g>
+    <line x1="${px0}" x2="${px0+pw}" y1="${res}" y2="${res}" stroke="#FF6A62" stroke-dasharray="4 4" stroke-opacity=".8"/>
+    <line x1="${px0}" x2="${px0+pw}" y1="${sup}" y2="${sup}" stroke="#3BF29A" stroke-dasharray="4 4" stroke-opacity=".8"/>
+    <rect x="${px0+pw-46}" y="${res-9}" width="46" height="16" rx="5" fill="#2A1513"/><text x="${px0+pw-40}" y="${res+2.5}" font-family="JetBrains Mono" font-size="9" fill="#FF8A80">2,412</text>
+    <rect x="${px0+pw-46}" y="${sup-9}" width="46" height="16" rx="5" fill="#0E2A1C"/><text x="${px0+pw-40}" y="${sup+2.5}" font-family="JetBrains Mono" font-size="9" fill="#8DF5BF">2,368</text>
+    <path d="${d} L${X(40)} ${py0+ph} L${px0} ${py0+ph} Z" fill="url(#areaG)" opacity=".7"/>
+    <path d="${d}" fill="none" stroke="#3BF29A" stroke-width="3" filter="url(#b4)" opacity=".55"/>
+    <path d="${d}" fill="none" stroke="#3BF29A" stroke-width="1.8" stroke-linejoin="round"/>
+    <path d="M${X(40)} ${Y(pts[40])} C ${X(40)+12} ${Y(pts[40])-18}, ${X(40)+8} ${res-22}, ${X(40)+14} ${res-30}" fill="none" stroke="#fff" stroke-opacity=".5" stroke-dasharray="3 4"/>
+    <circle cx="${X(40)}" cy="${Y(pts[40])}" r="5" fill="#08C465" stroke="#CFFFE6" stroke-width="1.6"/>`);
+})();
+
+/* ── 5. risk: red glass shield ───────────────────────────────────── */
+(function risk(){
+  const cx = 280, top = 112, sc = 1;
+  const S = (k, dy=0) => { const t = top + dy; const w = 96*k, h = 210*k; return `M${cx} ${t} C${cx+w*.55} ${t+18*k} ${cx+w*.9} ${t+22*k} ${cx+w} ${t+24*k} L${cx+w} ${t+100*k} C${cx+w} ${t+158*k} ${cx+w*.5} ${t+192*k} ${cx} ${t+h} C${cx-w*.5} ${t+192*k} ${cx-w} ${t+158*k} ${cx-w} ${t+100*k} L${cx-w} ${t+24*k} C${cx-w*.9} ${t+22*k} ${cx-w*.55} ${t+18*k} ${cx} ${t} Z`; };
+  const disc = (x, y, r, icon, red) => `
+    <ellipse cx="${x}" cy="${y+r*.9}" rx="${r*.9}" ry="${r*.25}" fill="#0B0B0C" opacity=".25" filter="url(#b4)"/>
+    <circle cx="${x}" cy="${y}" r="${r}" fill="url(#glassFace)"/>
+    <circle cx="${x}" cy="${y}" r="${r-.8}" fill="none" stroke="${red?'url(#rimR)':'url(#rimW)'}" stroke-width="1.4"/>
+    <g transform="translate(${x-r*.45} ${y-r*.45}) scale(${r*.9/24})" stroke="${red?'#FF8A80':'#fff'}" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><use href="#${icon}" width="24" height="24"/></g>`;
+  put('#artRisk svg', `
+    <ellipse cx="${cx}" cy="${top+150}" rx="180" ry="120" fill="url(#glowR)" filter="url(#b24)" opacity=".85"/>
+    <path d="${S(1, 12)}" fill="#020203" opacity=".55" transform="translate(8 0)"/>
+    <path d="${S(1)}" fill="url(#glassFace)"/>
+    <path d="${S(1)}" fill="none" stroke="url(#rimR)" stroke-width="2"/>
+    <path d="${S(.78, 26)}" fill="none" stroke="#fff" stroke-opacity=".1" stroke-width="1.2"/>
+    <path d="M${cx-60} ${top+22} Q ${cx} ${top-4} ${cx+60} ${top+22}" stroke="url(#rimW)" stroke-width="1.4" fill="none" opacity=".7"/>
+    <circle cx="${cx}" cy="${top+100}" r="40" fill="url(#glowR)" filter="url(#b12)" opacity=".75"/>
+    <g transform="translate(${cx-23} ${top+76}) scale(1.95)" stroke="#FFD2CE" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round"><use href="#g-alert" width="24" height="24"/></g>
+    ${disc(118, 272, 26, 'g-down', true)}
+    ${disc(444, 262, 22, 'g-hour', true)}
+    ${disc(470, 168, 15, 'g-streak', false)}
+    ${disc(96, 190, 15, 'g-clock', false)}`);
+})();
+
+/* ── 6. macro: black glass globe with orbit ──────────────────────── */
+(function macro(){
+  const cx = 280, cy = 200, r = 104;
+  let mer = '';
+  for (let i = 1; i <= 4; i++) mer += `<ellipse cx="${cx}" cy="${cy}" rx="${r * Math.cos(i * Math.PI / 10)}" ry="${r}" fill="none"/>`;
+  let lat = '';
+  [-.6, -.3, 0, .3, .6].forEach(t => { const y = cy + t * r; const rr = r * Math.sqrt(1 - t*t); lat += `<ellipse cx="${cx}" cy="${y}" rx="${rr}" ry="${rr*.18}" fill="none"/>`; });
+  put('#artMacro svg', `
+    <ellipse cx="${cx}" cy="${cy+r+16}" rx="190" ry="34" fill="url(#glowG)" filter="url(#b24)"/>
+    <ellipse cx="${cx}" cy="${cy+r+4}" rx="96" ry="12" fill="#0B0B0C" opacity=".3" filter="url(#b12)"/>
+    <ellipse cx="${cx}" cy="${cy}" rx="186" ry="44" transform="rotate(-14 ${cx} ${cy})" fill="none" stroke="#0B0B0C" stroke-opacity=".22" stroke-width="1.2"/>
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="url(#sphere)"/>
+    <g stroke="#3BF29A" stroke-opacity=".32" stroke-width="1">${mer}${lat}</g>
+    <circle cx="${cx}" cy="${cy}" r="${r-.8}" fill="none" stroke="url(#rimG)" stroke-width="1.8"/>
+    <ellipse cx="${cx-34}" cy="${cy-52}" rx="46" ry="22" fill="#fff" opacity=".08" transform="rotate(-24 ${cx-34} ${cy-52})"/>
+    <path d="M${cx-186*Math.cos(.245)} ${cy+186*Math.sin(.245)} A186 44 -14 0 0 ${cx+186*Math.cos(.245)} ${cy-186*Math.sin(.245)}" transform="rotate(0)" fill="none" stroke="#CFFFE6" stroke-opacity=".55" stroke-width="1.1"/>
+    <g fill="#08C465"><circle cx="${cx+150}" cy="${cy-58}" r="6"/></g><circle cx="${cx+150}" cy="${cy-58}" r="12" fill="#08C465" opacity=".25"/>
+    <g fill="#3BF29A">${[[-40,-20],[20,-46],[52,12],[-18,40],[-66,18]].map(([dx,dy])=>`<circle cx="${cx+dx}" cy="${cy+dy}" r="3.2"/><circle cx="${cx+dx}" cy="${cy+dy}" r="8" opacity=".22"/>`).join('')}</g>`);
+})();
+
+/* ── 7. security: black glass padlock ───────────────────────────── */
+(function lock(){
+  const cx = 280, bx = cx - 90, by = 160, bw = 180, bh = 150;
+  put('#artLock svg', `
+    <ellipse cx="${cx}" cy="${by+bh+16}" rx="190" ry="30" fill="url(#glowK)" filter="url(#b24)"/>
+    <path d="M${cx-58} ${by+4} V${by-38} a58 58 0 0 1 116 0 V${by+4}" fill="none" stroke="#050506" stroke-width="30" stroke-linecap="round"/>
+    <path d="M${cx-58} ${by+4} V${by-38} a58 58 0 0 1 116 0 V${by+4}" fill="none" stroke="#2A2A30" stroke-width="22" stroke-linecap="round"/>
+    <path d="M${cx-62} ${by-36} a62 62 0 0 1 60 -60" fill="none" stroke="#fff" stroke-opacity=".35" stroke-width="2" stroke-linecap="round"/>
+    <rect x="${bx+9}" y="${by+12}" width="${bw}" height="${bh}" rx="28" fill="#020203"/>
+    <rect x="${bx}" y="${by}" width="${bw}" height="${bh}" rx="28" fill="url(#glassFace)"/>
+    <rect x="${bx+.75}" y="${by+.75}" width="${bw-1.5}" height="${bh-1.5}" rx="27.5" fill="none" stroke="url(#rimW)" stroke-width="1.6"/>
+    <rect x="${bx+14}" y="${by+12}" width="${bw-28}" height="30" rx="14" fill="url(#shine)" opacity=".6"/>
+    <circle cx="${cx}" cy="${by+66}" r="30" fill="#fff" opacity=".07" filter="url(#b12)"/>
+    <circle cx="${cx}" cy="${by+62}" r="13" fill="#0B0B0C" stroke="#fff" stroke-opacity=".55" stroke-width="1.4"/>
+    <path d="M${cx-5} ${by+70} L${cx-7} ${by+98} H${cx+7} L${cx+5} ${by+70}" fill="#0B0B0C" stroke="#fff" stroke-opacity=".55" stroke-width="1.4" stroke-linejoin="round"/>
+    <circle cx="${cx}" cy="${by+62}" r="4" fill="#08C465"/>
+    <g font-family="JetBrains Mono" font-size="8.5" fill="#76767D"><text x="${bx+22}" y="${by+bh-18}">READ</text><text x="${bx+bw-62}" y="${by+bh-18}">ONLY</text></g>`);
+})();
+
+/* ── 8. coming next: leader → you cards + strategy blocks ────────── */
+(function next(){
+  const card = (x, y, title, sub, val) => `
+    <rect x="${x+7}" y="${y+10}" width="164" height="100" rx="20" fill="#020203"/>
+    <rect x="${x}" y="${y}" width="164" height="100" rx="20" fill="url(#glassFace)"/>
+    <rect x="${x+.75}" y="${y+.75}" width="162.5" height="98.5" rx="19.5" fill="none" stroke="url(#rimG)" stroke-width="1.4"/>
+    <circle cx="${x+26}" cy="${y+28}" r="12" fill="#26262B"/><circle cx="${x+26}" cy="${y+24}" r="4.5" fill="#8A8A90"/><path d="M${x+18} ${y+35} a8 6 0 0 1 16 0" fill="#8A8A90"/>
+    <text x="${x+46}" y="${y+26}" font-family="Satoshi" font-size="11" fill="#F2F2F4" font-weight="500">${title}</text>
+    <text x="${x+46}" y="${y+39}" font-family="Satoshi" font-size="9" fill="#77777E">${sub}</text>
+    <text x="${x+18}" y="${y+76}" font-family="JetBrains Mono" font-size="15" fill="#3BF29A">${val}</text>
+    <path d="M${x+96} ${y+78} l12 -8 10 5 14 -14 12 4" fill="none" stroke="#3BF29A" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>`;
+  const blk = (x, y, w, txt, green) => `
+    <rect x="${x}" y="${y}" width="${w}" height="30" rx="10" fill="${green ? '#08C465' : 'url(#glassFace)'}"/>
+    <rect x="${x+.5}" y="${y+.5}" width="${w-1}" height="29" rx="9.5" fill="none" stroke="${green ? '#7DF2B6' : 'rgba(255,255,255,.16)'}"/>
+    <text x="${x + w/2}" y="${y+19.5}" text-anchor="middle" font-family="JetBrains Mono" font-size="10.5" fill="${green ? '#04140B' : '#E9E9EC'}">${txt}</text>`;
+  put('#artNext svg', `
+    <ellipse cx="280" cy="300" rx="230" ry="44" fill="url(#glowG)" filter="url(#b24)"/>
+    ${card(60, 92, 'Leader', 'Verified track record', '+12.4%')}
+    ${card(336, 92, 'You', 'Your size, your caps', '+6.1%')}
+    <path d="M228 142 C 268 112, 292 172, 332 142" fill="none" stroke="#08C465" stroke-width="2" stroke-dasharray="5 5"/>
+    <circle cx="280" cy="142" r="13" fill="#08C465"/><circle cx="280" cy="142" r="20" fill="#08C465" opacity=".2"/>
+    <path d="M274 142 h12 m-4 -4 l4 4 -4 4" stroke="#04140B" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    ${blk(128, 222, 92, 'RSI &lt; 30')}
+    ${blk(232, 222, 110, 'EMA 50 &gt; 200')}
+    ${blk(354, 222, 74, 'Deploy', true)}`);
+})();
+
+/* ── why visuals ─────────────────────────────────────────────────── */
+(function why(){
+  // A: rebuilt positions: fills merging into one line
+  put('#whyA', `<svg viewBox="0 0 320 150" preserveAspectRatio="xMidYMid meet">
+    ${[0,1,2].map(i=>`<g transform="translate(26 ${30+i*34})"><rect width="92" height="22" rx="7" fill="#fff" stroke="#E5E5E8"/><text x="10" y="15" font-family="JetBrains Mono" font-size="9.5" fill="#5E5E66">fill ${i+1}</text></g><path d="M118 ${41+i*34} C 160 ${41+i*34}, 160 75, 196 75" fill="none" stroke="#C9C9CF" stroke-width="1.3"/>`).join('')}
+    <g transform="translate(196 58)"><rect width="104" height="34" rx="10" fill="#0B0B0C"/><text x="12" y="15" font-family="Satoshi" font-size="9.5" fill="#9A9AA2">Position</text><text x="12" y="27" font-family="JetBrains Mono" font-size="10.5" fill="#3BF29A">+$256.00</text></g></svg>`);
+  // B: key + read-only toggle
+  put('#whyB', `<svg viewBox="0 0 320 150" preserveAspectRatio="xMidYMid meet">
+    <g transform="translate(70 30)"><rect width="180" height="70" rx="18" fill="#fff" stroke="#E5E5E8"/>
+    <circle cx="36" cy="35" r="17" fill="#0B0B0C"/><g transform="translate(26 25) scale(.85)" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><use href="#g-key" width="24" height="24"/></g>
+    <text x="64" y="31" font-family="Satoshi" font-size="11" fill="#0B0B0C" font-weight="500">Investor password</text>
+    <text x="64" y="46" font-family="Satoshi" font-size="9.5" fill="#9A9AA2">View only · no trading</text>
+    </g>
+    <g transform="translate(70 118)"><text x="0" y="12" font-family="Satoshi" font-size="10" fill="#5E5E66">Read-only</text><g transform="translate(142 0)"><rect width="38" height="20" rx="10" fill="#08C465"/><circle cx="28" cy="10" r="7.5" fill="#fff"/></g></g></svg>`);
+  // C: chat bubble + one-thing card
+  put('#whyC', `<svg viewBox="0 0 320 150" preserveAspectRatio="xMidYMid meet">
+    <g transform="translate(46 30)"><rect width="150" height="34" rx="12" fill="#fff" stroke="#E5E5E8"/><text x="12" y="21" font-family="Satoshi" font-size="10" fill="#5E5E66">What should I fix this week?</text></g>
+    <g transform="translate(110 76)"><rect width="168" height="44" rx="12" fill="#0B0B0C"/><text x="12" y="18" font-family="Satoshi" font-size="9.5" fill="#9A9AA2">One thing to fix</text><text x="12" y="32" font-family="Satoshi" font-size="10.5" fill="#F2F2F4">No entries after 15:00 London</text></g></svg>`);
+})();
+
+/* ── faq accordion ───────────────────────────────────────────────── */
+document.querySelectorAll('.qa button').forEach(b => b.addEventListener('click', () => {
+  const qa = b.closest('.qa'); const open = !qa.classList.contains('open');
+  qa.classList.toggle('open', open); b.setAttribute('aria-expanded', String(open));
+}));
+</script>
+</body>
+</html>
