@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import LegalPage, { type LegalSection } from '@/components/v3/legal-page';
+import LegalPage, { type LegalSection } from '@/components/v6/auth/legal-page';
 import { PARTNERS_ENABLED } from '@/lib/features';
 
 export const metadata: Metadata = {
@@ -79,7 +79,7 @@ const S: LegalSection[] = [
 
 export default function PrivacyPage() {
   return (
-    <LegalPage kicker="Legal" title="Privacy" accent="policy." updated="18 October 2026" sections={S}
+    <LegalPage kicker="Legal" title="Privacy policy" updated="18 October 2026" sections={S}
       other={{ href: '/terms', label: 'Terms of service' }}
       intro={<p>We collect what we need to run your journal, we don’t sell it, and you can take it with you or ask us to delete it.</p>} />
   );

@@ -35,25 +35,25 @@ export default function SymbolSearch({ value, onSelect }: { value: string; onSel
   const open = focus && q.trim().length > 0;
 
   return (
-    <div className={`ch-search ${focus ? 'on' : ''}`} data-testid="symbol-search">
-      <ISearch size={17} />
+    <div className={`mk-sym ${focus ? 'on' : ''}`} data-testid="symbol-search">
+      <ISearch size={15} />
       <input ref={inputRef} value={q} onChange={e => setQ(e.target.value)} onFocus={() => setFocus(true)} onBlur={() => setTimeout(() => setFocus(false), 120)}
         placeholder={focus ? 'Search BTCUSDT, AAPL, EURUSD…' : ''} data-testid="symbol-search-input" aria-label={`Symbol: ${value}. Type to search`}
-        role="combobox" aria-expanded={open} aria-controls="ch-results"
+        role="combobox" aria-expanded={open} aria-controls="mk-sym-results" aria-autocomplete="list"
         onKeyDown={e => {
           if (e.key === 'ArrowDown') { e.preventDefault(); setHi(h => Math.min(results.length - 1, h + 1)); }
           if (e.key === 'ArrowUp') { e.preventDefault(); setHi(h => Math.max(0, h - 1)); }
           if (e.key === 'Enter') { const r = results[hi]; if (r) pick(r.symbol); else if (q.trim()) pick(q.trim().toUpperCase()); }
           if (e.key === 'Escape') { setQ(''); inputRef.current?.blur(); }
         }} />
-      {!focus && !q && <span className="ch-cur" aria-hidden><b>{value}</b><small>{sourceFor(value)}</small></span>}
+      {!focus && !q && <span className="mk-sym-cur" aria-hidden><b>{value}</b><small>{sourceFor(value)}</small></span>}
       {open && (
-        <div className="ch-pop ch-results" id="ch-results" role="listbox">
-          {loading && !results.length ? <div className="ch-none">Searching…</div>
-            : !results.length ? <div className="ch-none">No matches — press Enter to try “{q.trim().toUpperCase()}”</div>
+        <div className="x-pop mk-sym-pop" id="mk-sym-results" role="listbox">
+          {loading && !results.length ? <div className="mk-pop-note">Searching…</div>
+            : !results.length ? <div className="mk-pop-note">No matches. Press Enter to try “{q.trim().toUpperCase()}”</div>
             : results.map((r, i) => (
               <button key={`${r.provider}:${r.symbol}`} role="option" aria-selected={i === hi} className={i === hi ? 'hi' : ''} onMouseEnter={() => setHi(i)} onMouseDown={e => e.preventDefault()} onClick={() => pick(r.symbol)}>
-                <span>{r.symbol}<small>{r.name}</small></span><em>{CLASS_LABEL[r.assetClass] ?? r.assetClass}</em>
+                <span className="mk-sym-r"><b>{r.symbol}</b><small>{r.name}</small></span><span className="x-tag">{CLASS_LABEL[r.assetClass] ?? r.assetClass}</span>
               </button>
             ))}
         </div>

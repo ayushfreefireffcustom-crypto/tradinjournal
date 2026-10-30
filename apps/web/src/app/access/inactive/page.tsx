@@ -7,8 +7,8 @@ import { authClient } from '@/lib/auth-client';
 import { accessApi, type AccessStatusDto } from '@/lib/access-api';
 import { invalidateAccessCache, primeAccessCache } from '@/lib/use-platform-access';
 import { LoadingScreen } from '@/components/loader';
-import StatusCard, { SC_ICONS } from '@/components/v3/status-card';
-import { AuthSubmit } from '@/components/v3/auth-shell';
+import StatusCard, { SC_ICONS } from '@/components/v6/auth/status-card';
+import { AuthError, AuthSubmit } from '@/components/v6/auth/auth-shell';
 
 export default function InactiveAccessPage() {
   const router = useRouter();
@@ -57,9 +57,7 @@ export default function InactiveAccessPage() {
   }
 
   if (isPending || !session?.session) {
-    return (
-      <div className="h-dvh"><LoadingScreen /></div>
-    );
+    return <LoadingScreen />;
   }
 
   const minTrades = status?.minTradesRequired ?? 2;
@@ -67,18 +65,18 @@ export default function InactiveAccessPage() {
   const tradeCount = status?.tradeCount7d ?? 0;
 
   return (
-    <StatusCard testId="access-inactive-page" icon={SC_ICONS.warn} tone="a" bar kicker="Activity required"
-      title={<><b>Keep trading to</b> <em>stay in.</em></>}
-      body={<>Full access needs at least <b>{minTrades}</b> closed trades on your Elefin account in the last <b>{windowDays}</b> days. Trade, then recheck — it updates instantly.</>}
+    <StatusCard testId="access-inactive-page" icon={SC_ICONS.warn} tone="r" kicker="Activity required"
+      title="Keep trading to keep access"
+      body={<>Full access needs at least <b>{minTrades}</b> closed trades on your Elefin account in the last <b>{windowDays}</b> days. Trade, then recheck; it updates instantly.</>}
       onSignOut={() => void authClient.signOut().then(() => router.replace('/login'))}>
-      <div className="sc-tiles">
-        <div className="a"><span>Your trades</span><b className="num">{tradeCount}</b><small>last {windowDays} days</small></div>
-        <div className="g"><span>Required</span><b className="num">{minTrades}</b><small>closed on Elefin</small></div>
+      <div className="x-strip" style={{ ['--n' as string]: 2 }}>
+        <div><span>Your trades</span><b className="m">{status ? tradeCount : '—'}</b><small>last {windowDays} days</small></div>
+        <div><span>Required</span><b className="m">{minTrades}</b><small>closed on Elefin</small></div>
       </div>
-      {error && <div className="au-err" role="alert" style={{ marginTop: 16 }}>{error}</div>}
-      <form className="sc-actions" onSubmit={e => { e.preventDefault(); void recheck(); }}>
+      <form className="au-stacts" onSubmit={e => { e.preventDefault(); void recheck(); }}>
+        {error && <AuthError>{error}</AuthError>}
         <AuthSubmit loading={busy}>{busy ? 'Checking…' : 'Recheck activity'}</AuthSubmit>
-        <Link href="/brokers" className="sc-ghost">Connect / sync broker</Link>
+        <Link href="/brokers" className="x-btn x-btn--lg x-btn--full">Connect or sync broker</Link>
       </form>
     </StatusCard>
   );

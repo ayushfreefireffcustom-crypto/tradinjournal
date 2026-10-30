@@ -189,6 +189,8 @@ export interface AdminGeoDto {
 
 const USE_MOCKS = process.env.NEXT_PUBLIC_USE_MOCKS === 'true';
 const API = USE_MOCKS ? '' : (process.env.NEXT_PUBLIC_API_URL || '');
+// Mock mode answers from the local /data/admin/* routes (lib/mock-admin.ts).
+const P = USE_MOCKS ? '/data' : '/api';
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API}${path}`, {
@@ -207,7 +209,7 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const adminApi = {
-  overview: () => req<AdminOverviewDto>('/api/admin/overview'),
+  overview: () => req<AdminOverviewDto>(`${P}/admin/overview`),
   traderOps: () =>
     req<{
       champion: 'heuristic' | 'logistic' | 'lgbm';
@@ -216,28 +218,28 @@ export const adminApi = {
       lgbm: { trained: boolean; serving: boolean; reason: string | null; auc: number | null };
       vendors: Array<{ id: string; at: string | null; ok: boolean | null }>;
       openPaperPositions: number;
-    }>('/api/admin/trader'),
+    }>(`${P}/admin/trader`),
   engagement: (range: '7d' | '14d' | '30d' = '14d') =>
-    req<AdminEngagementDto>(`/api/admin/engagement?range=${range}`),
-  geo: () => req<AdminGeoDto>('/api/admin/geo'),
+    req<AdminEngagementDto>(`${P}/admin/engagement?range=${range}`),
+  geo: () => req<AdminGeoDto>(`${P}/admin/geo`),
   users: (page = 1, limit = 25, q?: string, filter: AdminUserFilter = 'all') => {
     const params = new URLSearchParams({ page: String(page), limit: String(limit), filter });
     if (q?.trim()) params.set('q', q.trim());
-    return req<AdminUsersResponse>(`/api/admin/users?${params}`);
+    return req<AdminUsersResponse>(`${P}/admin/users?${params}`);
   },
-  user: (id: string) => req<AdminUserDossierDto>(`/api/admin/users/${id}`),
-  grants: () => req<AccessGrantDto[]>('/api/admin/grants'),
+  user: (id: string) => req<AdminUserDossierDto>(`${P}/admin/users/${id}`),
+  grants: () => req<AccessGrantDto[]>(`${P}/admin/grants`),
   createGrant: (body: CreateAccessGrantInput) =>
-    req<AccessGrantDto>('/api/admin/grants', { method: 'POST', body: JSON.stringify(body) }),
+    req<AccessGrantDto>(`${P}/admin/grants`, { method: 'POST', body: JSON.stringify(body) }),
   revokeGrant: (id: string) =>
-    req<AccessGrantDto>(`/api/admin/grants/${id}`, { method: 'DELETE' }),
-  maintenance: () => req<MaintenanceModeDto>('/api/admin/maintenance'),
+    req<AccessGrantDto>(`${P}/admin/grants/${id}`, { method: 'DELETE' }),
+  maintenance: () => req<MaintenanceModeDto>(`${P}/admin/maintenance`),
   setMaintenance: (body: MaintenanceModeInput) =>
-    req<MaintenanceModeDto>('/api/admin/maintenance', { method: 'POST', body: JSON.stringify(body) }),
+    req<MaintenanceModeDto>(`${P}/admin/maintenance`, { method: 'POST', body: JSON.stringify(body) }),
   audit: (page = 1, limit = 50) =>
     req<{ items: AdminAuditItemDto[]; total: number; page: number; limit: number }>(
-      `/api/admin/audit?page=${page}&limit=${limit}`,
+      `${P}/admin/audit?page=${page}&limit=${limit}`,
     ),
   recheckUser: (id: string) =>
-    req<{ ok: boolean }>(`/api/admin/users/${id}/recheck`, { method: 'POST' }),
+    req<{ ok: boolean }>(`${P}/admin/users/${id}/recheck`, { method: 'POST' }),
 };

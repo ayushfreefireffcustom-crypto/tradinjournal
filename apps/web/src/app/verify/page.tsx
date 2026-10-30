@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useRef, useState } from 'react';
-import AuthShell, { AuthSubmit } from '@/components/v3/auth-shell';
+import AuthShell, { AuthError, AuthOk, AuthSubmit } from '@/components/v6/auth/auth-shell';
 import { LoadingScreen } from '@/components/loader';
 import { authClient } from '@/lib/auth-client';
 import { resetUserCaches } from '@/lib/session-caches';
@@ -105,28 +105,31 @@ function VerifyInner() {
   return (
     <AuthShell variant="verify" testId="verify-page">
       <form onSubmit={e => { e.preventDefault(); if (code.length === OTP_LEN) verify(code); }}>
-        <Link href="/signup" className="au-back"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M19 12H5M11 6l-6 6 6 6" /></svg> Back to sign up</Link>
-        <div className="au-ic"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><rect x="3" y="5" width="18" height="14" rx="2.5" /><path d="M3.5 7l8.5 6 8.5-6" /></svg></div>
-        <h1 className="au-h"><b>Check your</b> <em>inbox.</em></h1>
-        <p className="au-sub">We sent a 6-digit code to <b>{email || 'your email'}</b>.</p>
-        <div className={`au-otp ${error ? 'err' : ''}`} data-testid="otp-inputs" role="group" aria-label="6-digit code">
+        <Link href="/signup" className="au-return"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M19 12H5M11 6l-6 6 6 6" /></svg> Back to sign up</Link>
+        <div className="au-mail" aria-hidden><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><rect x="3" y="5" width="18" height="14" rx="2.5" /><path d="M3.5 7l8.5 6 8.5-6" /></svg></div>
+        <h1 className="au-t">Check your inbox</h1>
+        <p className="au-lead">We sent a 6-digit code to <b>{email || 'your email'}</b>.</p>
+        <div className={`au-codes ${error ? 'err' : ''}`} data-testid="otp-inputs" role="group" aria-label="6-digit code">
           {digits.map((d, i) => (
             <span key={i} style={{ display: 'contents' }}>
-              {i === 3 && <span className="dash" aria-hidden />}
+              {i === 3 && <span className="au-dash" aria-hidden />}
               <input ref={el => { inputs.current[i] = el; }} type="text" inputMode="numeric" autoComplete={i === 0 ? 'one-time-code' : 'off'} maxLength={OTP_LEN}
                 value={d} onChange={e => setDigit(i, e.target.value)} onKeyDown={e => onKeyDown(i, e)} disabled={loading} className={d ? 'f' : ''}
                 aria-label={`Digit ${i + 1}`} data-testid={`otp-${i}`} />
             </span>
           ))}
         </div>
-        <div className="au-meta">
+        <div className="au-resend">
           <span>Codes expire after <b>10 minutes</b></span>
           <button type="button" onClick={resend} disabled={cooldown > 0} data-testid="verify-resend">{cooldown > 0 ? `Resend in ${cooldown}s` : 'Resend code'}</button>
         </div>
-        {error && <div className="au-err" data-testid="verify-error" role="alert" style={{ marginBottom: 14 }}>{error}</div>}
-        {resent && !error && <div className="au-err" style={{ marginBottom: 14, background: 'var(--long-soft)', borderColor: 'rgba(8,196,101,.3)', color: 'var(--long)' }}>New code sent — check your inbox.</div>}
+        {(error || resent) && (
+          <div style={{ marginBottom: 16 }}>
+            {error ? <AuthError testId="verify-error">{error}</AuthError> : <AuthOk>New code sent. Check your inbox.</AuthOk>}
+          </div>
+        )}
         <AuthSubmit loading={loading} disabled={code.length !== OTP_LEN} testId="verify-submit">{loading ? 'Verifying…' : 'Verify email'}</AuthSubmit>
-        <p className="au-note">Wrong address? <Link href="/signup" data-testid="verify-to-login">Change email</Link></p>
+        <p className="au-small">Wrong address? <Link href="/signup" data-testid="verify-to-login">Change email</Link></p>
       </form>
     </AuthShell>
   );
@@ -134,7 +137,7 @@ function VerifyInner() {
 
 export default function VerifyPage() {
   return (
-    <Suspense fallback={<div className="h-dvh"><LoadingScreen label="Loading" /></div>}>
+    <Suspense fallback={<LoadingScreen label="Loading" />}>
       <VerifyInner />
     </Suspense>
   );

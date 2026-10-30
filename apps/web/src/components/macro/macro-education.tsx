@@ -1,31 +1,32 @@
 'use client';
 
-import { GROUP_ORDER, GROUP_GLYPH, INDICATOR_META, type MacroGroup } from '@/lib/macro-meta';
+import { GROUP_ORDER, GROUP_ICON, INDICATOR_META, type MacroGroup } from '@/lib/macro-meta';
+import { GroupIcon, PanelHead, groupTitle } from '@/components/v6/macro/ui';
 
 const CONCEPTS: { title: string; body: string }[] = [
   {
-    title: 'Net Liquidity',
+    title: 'Net liquidity',
     body: 'Fed balance sheet minus TGA minus reverse repo. Rising net liquidity adds fuel for risk assets; draining it tightens conditions.',
   },
   {
-    title: 'Confluence Score',
+    title: 'Confluence score',
     body: 'A 0–100 bias built from weighted macro factors (inflation, policy, growth, rates, liquidity, credit, risk, dollar) and each asset’s sensitivities.',
   },
   {
-    title: 'Regime Quadrant',
+    title: 'Regime quadrant',
     body: 'Growth × inflation map: Goldilocks, Reflation, Stagflation, Deflation. Guides which asset classes historically lead.',
   },
   {
-    title: 'Yield Curve Inversion',
+    title: 'Yield curve inversion',
     body: 'When short rates exceed long rates (e.g. 2s10s < 0), markets often price tighter policy and higher recession odds.',
   },
   {
-    title: 'REF Quotes',
+    title: 'Ref quotes',
     body: 'Reference or delayed prints (official FX, ETF proxies). Not a tick-by-tick feed — use TradingView for live charts.',
   },
 ];
 
-/** Education glossary from macro-meta + desk concepts. */
+/** Education glossary from macro-meta plus desk concepts. */
 export default function MacroEducation() {
   const byGroup = GROUP_ORDER.map(g => ({
     group: g as MacroGroup,
@@ -33,41 +34,30 @@ export default function MacroEducation() {
   })).filter(g => g.items.length > 0);
 
   return (
-    <div className="space-y-4" data-testid="macro-education">
-      <div>
-        <div className="text-[10px] tracking-[0.2em] text-fg-3">Education</div>
-        <h2 className="font-display font-black text-xl tracking-tight mt-1">Macro Glossary</h2>
-        <p className="text-[12px] text-fg-3 mt-1 max-w-2xl leading-relaxed">
-          Plain-English primers for every dashboard concept — beginner to desk-ready.
-        </p>
-      </div>
+    <div className="mc-stack" data-testid="macro-education">
+      <PanelHead eyebrow="Education" title="Macro glossary" lead="Plain-English primers for every concept on the dashboard, from beginner to desk-ready." />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 items-stretch">
+      <div className="mc-2 mc-2--even">
         {CONCEPTS.map(c => (
-          <article key={c.title} className="tcard p-4 h-full">
-            <h3 className="font-display font-bold text-[15px] tracking-tight">{c.title}</h3>
-            <p className="text-[12px] text-fg-3 mt-2 leading-relaxed">{c.body}</p>
+          <article key={c.title} className="x-card mc-ed-c">
+            <h3>{c.title}</h3>
+            <p>{c.body}</p>
           </article>
         ))}
       </div>
 
-      <div className="space-y-3">
+      <div className="mc-igs">
         {byGroup.map(({ group, items }) => (
-          <section key={group} className="tcard p-4">
-            <div className="flex items-center gap-2 border-b border-border-soft pb-2">
-              <span className="text-fg-3 w-4 text-center">{GROUP_GLYPH[group]}</span>
-              <h3 className="text-[11px] tracking-[0.16em] uppercase text-fg">{group}</h3>
-              <span className="ml-auto text-[10px] text-fg-3 numeric">{items.length}</span>
-            </div>
-            <ul className="mt-2 divide-y divide-border-soft">
-              {items.map(([key, meta]) => (
-                <li key={key} className="py-2">
-                  <div className="text-[12px] text-fg font-medium">{key}</div>
-                  <p className="text-[11px] text-fg-3 mt-0.5 leading-relaxed">{meta.blurb}</p>
-                </li>
-              ))}
-            </ul>
-          </section>
+          <div key={group} className="mc-igs-i">
+            <section className="x-card">
+              <div className="x-ch"><GroupIcon name={GROUP_ICON[group]} /><h3>{groupTitle(group)}</h3><span className="x-r m">{items.length}</span></div>
+              <ul className="mc-ed-l x-list">
+                {items.map(([key, meta]) => (
+                  <li key={key}><b className="m">{key}</b><p>{meta.blurb}</p></li>
+                ))}
+              </ul>
+            </section>
+          </div>
         ))}
       </div>
     </div>

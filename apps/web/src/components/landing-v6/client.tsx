@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
-import { useSignedIn } from '@/components/landing-v5/ui';
+import { useSignedIn } from '@/lib/use-signed-in';
 import { useTerminalEntry } from '@/components/terminal-entry';
 import { Ic } from './icons';
 

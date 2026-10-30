@@ -26,19 +26,13 @@ function activeQuad(regime: Regime): Quad {
   return QUADS.find(q => q.g === regime.growth && q.i === regime.inflation) ?? DEFLATION;
 }
 
-function cellFor(g: 'up' | 'down', i: 'up' | 'down'): string {
-  const col = i === 'down' ? 1 : 2;
-  const row = g === 'up' ? 1 : 2;
-  return `${row}/${col}`;
-}
-
 export default function RegimeQuadrant({ regime }: { regime: MacroState['regime'] }) {
   if (!regime) {
     return (
-      <div className="tcard p-4 flex flex-col h-full" data-testid="macro-regime-quadrant-empty">
-        <div className="text-[10px] tracking-[0.2em] text-fg-3">Regime</div>
-        <p className="text-sm text-fg-3 mt-3 flex-1 flex items-center">No regime classified yet.</p>
-      </div>
+      <section className="x-card" data-testid="macro-regime-quadrant-empty">
+        <div className="x-ch"><h2>Regime</h2><span className="x-sub">growth × inflation</span></div>
+        <p className="x-muted mc-p">No regime classified yet.</p>
+      </section>
     );
   }
 
@@ -46,82 +40,35 @@ export default function RegimeQuadrant({ regime }: { regime: MacroState['regime'
   const odds = regime.recessionOdds;
 
   return (
-    <div className="tcard p-4 sm:p-5 flex flex-col h-full rise" style={{ ['--i' as string]: 0 }} data-testid="macro-regime-quadrant">
-      <div className="flex items-center justify-between shrink-0 gap-2">
-        <div className="text-[10px] tracking-[0.2em] text-fg-3">Regime</div>
-        <div className="text-[10px] tracking-[0.14em] text-fg-3">GROWTH × INFLATION</div>
-      </div>
-
-      {/* One centered composition — grid + read stay locked together at all widths */}
-      <div className="flex-1 flex items-center py-3 min-h-0">
-        <div className="w-full grid grid-cols-1 sm:grid-cols-[minmax(0,200px)_1fr] gap-5 sm:gap-6 items-center">
-          <div className="flex gap-2 mx-auto sm:mx-0 w-full max-w-[220px]">
-            <div className="flex flex-col items-center justify-between py-1 text-[9px] tracking-[0.14em] text-fg-3 shrink-0">
-              <span>G+</span>
-              <span className="[writing-mode:vertical-rl] rotate-180 tracking-[0.3em]">GROWTH</span>
-              <span>G−</span>
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="grid grid-cols-2 grid-rows-2 gap-1.5 aspect-square">
-                {QUADS.map(q => {
-                  const isActive = q.key === active.key;
-                  return (
-                    <div
-                      key={q.key}
-                      style={{ gridArea: cellFor(q.g, q.i) }}
-                      data-testid={`regime-quad-${q.key}`}
-                      data-active={isActive}
-                      className={`relative rounded-[var(--radius-btn)] border flex items-center justify-center p-1.5 text-center transition-colors ${
-                        isActive
-                          ? 'border-profit/50 bg-profit/10 text-fg shadow-[var(--shadow-glow-green)]'
-                          : 'border-border-soft bg-surface/40 text-fg-3'
-                      }`}
-                    >
-                      <span className={`text-[10px] sm:text-[11px] font-display tracking-tight ${isActive ? 'font-black' : 'font-medium'}`}>
-                        {q.name}
-                      </span>
-                      {isActive && (
-                        <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-profit pulse-dot" />
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="flex items-center justify-between mt-1.5 text-[9px] tracking-[0.14em] text-fg-3">
-                <span>INFL−</span>
-                <span className="tracking-[0.24em]">INFL</span>
-                <span>INFL+</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="min-w-0 flex flex-col justify-center gap-3 text-center sm:text-left">
-            <div>
-              <div className="font-display font-black text-xl sm:text-2xl tracking-tight text-fg" data-testid="regime-active-label">
-                {active.name}
-              </div>
-              <p className="text-[12px] text-fg-3 leading-relaxed mt-1.5 max-w-sm mx-auto sm:mx-0">
-                {active.read}
-              </p>
-            </div>
-
-            {odds != null && (
-              <div className="max-w-sm mx-auto sm:mx-0 w-full">
-                <div className="flex items-center justify-between text-[10px] tracking-[0.14em] text-fg-3">
-                  <span>Recession odds</span>
-                  <CountUp value={odds} suffix="%" className="numeric text-fg" duration={1000} />
+    <section className="x-card mc-rq" data-testid="macro-regime-quadrant">
+      <div className="x-ch"><h2>Regime</h2><span className="x-sub">growth × inflation</span></div>
+      <div className="mc-rq-in">
+        <div className="mc-rq-map">
+          <span className="mc-rq-y"><span>Growth falling</span><span>Growth rising</span></span>
+          <div className="mc-rq-grid">
+            {QUADS.map(q => {
+              const on = q.key === active.key;
+              return (
+                <div key={q.key} style={{ gridArea: `${q.g === 'up' ? 1 : 2}/${q.i === 'down' ? 1 : 2}` }}
+                  data-testid={`regime-quad-${q.key}`} data-active={on} className={on ? 'on' : ''}>
+                  {on && <i className="x-dot" aria-hidden />}{q.name}
                 </div>
-                <div className="mt-1.5 h-1.5 rounded-full bg-border-soft overflow-hidden">
-                  <div
-                    className={`h-full bar-grow-x ${odds >= 50 ? 'bg-loss' : odds >= 30 ? 'bg-warning' : 'bg-profit'}`}
-                    style={{ width: `${Math.max(0, Math.min(100, odds))}%` }}
-                  />
-                </div>
-              </div>
-            )}
+              );
+            })}
           </div>
+          <span className="mc-rq-x"><span>Inflation falling</span><span>Inflation rising</span></span>
+        </div>
+        <div className="mc-rq-read">
+          <b data-testid="regime-active-label">{active.name}</b>
+          <p>{active.read}</p>
+          {odds != null && (
+            <div className="mc-rq-odds">
+              <span>Recession odds <CountUp value={odds} suffix="%" className="m" duration={1000} /></span>
+              <div className="x-bar"><i style={{ width: `${Math.max(0, Math.min(100, odds))}%`, background: odds >= 30 ? 'var(--r)' : 'var(--g)' }} /></div>
+            </div>
+          )}
         </div>
       </div>
-    </div>
+    </section>
   );
 }

@@ -1,11 +1,12 @@
 'use client';
 
-// Thread list for the AI Coach: switch between past conversations, start a new
-// one, or delete a thread. Rendered as a fixed column on desktop and as a slide-in
-// drawer on small screens (the parent owns the open/close state).
+// Thread list for the AI coach: switch between past conversations, start a new
+// one, or delete a thread. Rendered as a card column on desktop and inside a
+// slide-in drawer on smaller screens (the parent owns the open/close state).
 import { useEffect, useState } from 'react';
 import { IClose, ICheck, IPlus } from '@/components/v3/icons';
 import type { AiConversationSummary } from '@/lib/api';
+import '@/styles/v6/ai.css';
 
 interface Props {
   conversations: AiConversationSummary[];
@@ -16,7 +17,7 @@ interface Props {
   onSelect: (id: string) => void;
   onNew: () => void;
   onDelete: (id: string) => void;
-  /** Mobile drawer only — omitted on the desktop column. */
+  /** Drawer only — omitted on the desktop column. */
   onClose?: () => void;
 }
 
@@ -56,28 +57,28 @@ export default function ConversationSidebar({
   }
 
   return (
-    <aside className="cs" data-testid="coach-sidebar">
-      <div className="cs-top">
-        <button onClick={onNew} disabled={busy} data-testid="coach-new-chat" className="v3-btn v3-btn--ink cs-new"><IPlus size={16} /> New chat</button>
-        {onClose && <button onClick={onClose} aria-label="Close history" className="v3-modal-x"><IClose size={15} /></button>}
+    <aside className="x-card ai-th" data-testid="coach-sidebar" aria-label="Conversations">
+      <div className="ai-th-top">
+        <button onClick={onNew} disabled={busy} data-testid="coach-new-chat" className="x-btn x-btn--hi"><IPlus size={15} /> New chat</button>
+        {onClose && <button onClick={onClose} aria-label="Close history" className="x-btn x-btn--icon"><IClose size={15} /></button>}
       </div>
-      <div className="cs-list">
-        {loading ? <div style={{ display: 'grid', gap: 8, padding: '6px 4px' }}>{[0, 1, 2].map(i => <div key={i} className="skel d-sk" style={{ height: 44 }} />)}</div>
-          : conversations.length === 0 ? <p className="cs-none">No conversations yet. Ask something to start one.</p>
+      <div className="ai-th-list">
+        {loading ? <div className="ai-th-sk">{[0, 1, 2].map(i => <i key={i} className="x-skel x-skel--in" />)}</div>
+          : conversations.length === 0 ? <p className="ai-th-none">No conversations yet. Ask something to start one.</p>
           : groups.map(([label, rows]) => (
-            <div key={label} className="cs-g">
+            <div key={label} className="ai-th-g">
               <h4>{label}</h4>
               <ul>
                 {rows.map(c => {
                   const active = c.id === activeId, armed = armedId === c.id;
                   return (
-                    <li key={c.id}>
-                      <button onClick={() => onSelect(c.id)} disabled={busy} data-testid="coach-thread" aria-current={active ? 'true' : undefined} className="cs-t">
+                    <li key={c.id} className={active ? 'on' : undefined}>
+                      <button onClick={() => onSelect(c.id)} disabled={busy} data-testid="coach-thread" aria-current={active ? 'true' : undefined} className="ai-th-t">
                         <b>{c.title?.trim() || 'Untitled chat'}</b><small>{whenLabel(c.updatedAt)}</small>
                       </button>
                       <button onClick={() => { if (armed) { setArmedId(null); onDelete(c.id); } else setArmedId(c.id); }} disabled={busy}
                         title={armed ? 'Click again to delete' : 'Delete conversation'} aria-label={armed ? 'Confirm delete' : `Delete ${c.title?.trim() || 'conversation'}`}
-                        data-testid="coach-thread-delete" className={`cs-del ${armed ? 'armed' : ''}`}>
+                        data-testid="coach-thread-delete" className={`ai-th-del ${armed ? 'armed' : ''}`}>
                         {armed ? <ICheck size={14} /> : <IClose size={14} />}
                       </button>
                     </li>

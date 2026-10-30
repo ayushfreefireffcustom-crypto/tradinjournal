@@ -1,7 +1,10 @@
 'use client';
 
+import Link from 'next/link';
 import type { MacroState } from '@/lib/macro-api';
-import { biasTone, formatBiasLabel, formatMacroNumber, formatSignedPct } from '@/lib/macro-format';
+import { biasTone, formatMacroNumber, formatSignedPct } from '@/lib/macro-format';
+import { tickerMark } from '@/lib/desk';
+import { BiasTag, ScoreTrack } from '@/components/v6/macro/ui';
 import CountUp from './count-up';
 
 const NAMES: Record<string, string> = {
@@ -10,20 +13,14 @@ const NAMES: Record<string, string> = {
   SOL: 'Solana',
   XAU: 'Gold (spot)',
   XAG: 'Silver (spot)',
-  DXY: 'Dollar Index',
+  DXY: 'Dollar index',
   SPX: 'S&P 500',
   NDX: 'Nasdaq 100',
-  OIL: 'Crude Oil',
+  OIL: 'Crude oil',
   UST: 'US Treasuries',
 };
 
-function chip(tone: ReturnType<typeof biasTone>): string {
-  if (tone === 'bull') return 'text-profit border-profit/30 bg-profit/10';
-  if (tone === 'bear') return 'text-loss border-loss/30 bg-loss/10';
-  return 'text-fg-3 border-border bg-surface-hover';
-}
-
-/** Live market tiles fused with each asset's confluence bias. */
+/** Live market quotes fused with each asset's confluence bias. Table on desktop, list on phones. */
 export default function MarketTiles({
   markets,
   bias,
@@ -33,56 +30,44 @@ export default function MarketTiles({
 }) {
   if (!markets.length) return null;
   const biasBy = new Map(bias.map(b => [b.asset, b]));
+  const rows = markets.map(m => {
+    const b = biasBy.get(m.symbol);
+    const c = m.changePct;
+    return { m, b, tone: b ? biasTone(b.label) : 'neutral' as const, chg: c == null ? '—' : formatSignedPct(c), chgCls: c == null || c === 0 ? 'x-muted' : c > 0 ? 'pos' : 'neg' };
+  });
+  const sym = (m: MacroState['markets'][number], b: unknown) => {
+    const inner = <><span className="x-mk">{tickerMark(m.symbol)}</span><span><b>{m.symbol}</b><small>{NAMES[m.symbol] ?? m.symbol}</small></span></>;
+    return b ? <Link href={`/macro/assets/${m.symbol.toLowerCase()}`} className="x-sym mc-lnk">{inner}</Link> : <span className="x-sym">{inner}</span>;
+  };
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 items-stretch" data-testid="macro-market-tiles">
-      {markets.map((m, i) => {
-        const up = (m.changePct ?? 0) > 0;
-        const down = (m.changePct ?? 0) < 0;
-        const priceTone = up ? 'text-profit' : down ? 'text-loss' : 'text-fg';
-        const b = biasBy.get(m.symbol);
-        const tone = b ? biasTone(b.label) : 'neutral';
-        return (
-          <div
-            key={m.symbol}
-            className="tcard tcard-hover p-3 flex flex-col h-full min-h-[112px] rise"
-            style={{ ['--i' as string]: i }}
-            data-testid={`macro-tile-${m.symbol}`}
-          >
-            <div className="flex items-center justify-between">
-              <div className="min-w-0">
-                <div className="text-[11px] tracking-[0.16em] text-fg font-medium">{m.symbol}</div>
-                <div className="text-[10px] text-fg-3 leading-tight">{NAMES[m.symbol] ?? m.symbol}</div>
-              </div>
-              {b && (
-                <span className={`text-[9px] px-1.5 py-0.5 rounded border shrink-0 ${chip(tone)}`}>
-                  {formatBiasLabel(b.label)}
-                </span>
-              )}
-            </div>
-            <div className="mt-auto pt-2 flex items-baseline justify-between gap-2">
-              <span className="numeric text-lg text-fg">{formatMacroNumber(m.price)}</span>
-              <span className={`numeric text-[12px] ${priceTone}`}>
-                {m.changePct == null ? '—' : formatSignedPct(m.changePct)}
-              </span>
-            </div>
-            {b && (
-              <div className="mt-2 flex items-center gap-2">
-                <div className="flex-1 h-1 rounded-full bg-border-soft overflow-hidden">
-                  <div
-                    className={`h-full bar-grow-x ${tone === 'bull' ? 'bg-profit' : tone === 'bear' ? 'bg-loss' : 'bg-fg-3'}`}
-                    style={{
-                      width: `${Math.max(0, Math.min(100, b.score))}%`,
-                      ['--i' as string]: i,
-                    }}
-                  />
-                </div>
-                <CountUp value={b.score} className="numeric text-[10px] text-fg-3 w-6 text-right" />
-              </div>
-            )}
-          </div>
-        );
-      })}
-    </div>
+    <section className="x-card" data-testid="macro-market-tiles">
+      <div className="x-ch"><h2>Markets</h2><span className="x-sub">quotes with macro bias</span></div>
+      <div className="mc-tbl-only">
+        <table className="x-tbl mc-mkt">
+          <thead><tr><th>Asset</th><th className="n">Price</th><th className="n">Change</th><th>Bias</th><th>Score</th></tr></thead>
+          <tbody>
+            {rows.map(({ m, b, tone, chg, chgCls }) => (
+              <tr key={m.symbol} data-testid={`macro-tile-${m.symbol}`}>
+                <td>{sym(m, b)}</td>
+                <td className="n m">{formatMacroNumber(m.price)}</td>
+                <td className={`n m ${chgCls}`}>{chg}</td>
+                <td>{b ? <BiasTag tone={tone} label={b.label} /> : <span className="x-dim">—</span>}</td>
+                <td>{b ? <span className="mc-mkt-s"><ScoreTrack score={b.score} tone={tone} /><CountUp value={b.score} className="m" /></span> : <span className="x-dim">—</span>}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <ul className="mc-list-only mc-mlist" aria-label="Markets">
+        {rows.map(({ m, b, tone, chg, chgCls }) => (
+          <li key={m.symbol}>
+            {sym(m, b)}
+            <span className="mc-mlist-v"><b className="m">{formatMacroNumber(m.price)}</b><small className={`m ${chgCls}`}>{chg}</small></span>
+            {b && <span className="mc-mlist-b"><BiasTag tone={tone} label={b.label} /><ScoreTrack score={b.score} tone={tone} /><span className="m">{Math.round(b.score)}</span></span>}
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }

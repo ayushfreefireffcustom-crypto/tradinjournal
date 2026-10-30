@@ -6,7 +6,7 @@
 import Link from 'next/link';
 import { use, useCallback, useEffect, useState } from 'react';
 import AppShell from '@/components/app-shell';
-import AdminOnly from '@/components/v3/admin-only';
+import AdminOnly from '@/components/v6/admin/admin-only';
 import { useAccounts } from '@/lib/use-accounts';
 import {
   partnerApi, type AdminPartnerDetail, type AdminPartnerRow, type ClientsPage, type PartnerClient, type PartnerRange, type StatusAction,
@@ -14,9 +14,11 @@ import {
 import { IArrowLeft } from '@/components/v3/icons';
 import {
   ActivityFeed, Avatar, ChannelTable, ClientRows, Funnel, PartnerStatusPill, RangeSeg, TrendCard, day, n,
-} from '@/components/v3/partner-parts';
+} from '@/components/v6/account/partner-parts';
 import { timeAgo } from '@/components/app-shell';
-import { useConfirm, type ConfirmOptions, type ConfirmResult } from '@/components/v3/confirm-dialog';
+import { useConfirm, type ConfirmOptions, type ConfirmResult } from '@/components/confirm-dialog';
+import '@/styles/v6/account.css';
+import '@/styles/v6/admin.css';
 
 const PAGE = 10;
 const msg = (e: unknown, f: string) => (e instanceof Error ? e.message : f);
@@ -74,75 +76,75 @@ export default function AdminPartnerPage({ params }: { params: Promise<{ id: str
 
   const p = d?.admin;
   return (
-    <AppShell accounts={accounts} selectedAccount={selected} onSelectAccount={select} crumbParent="Admin / Partners" pageTitle={p?.name ?? 'Partner'}>
-      <div className="v3-page" data-testid="admin-partner"><AdminOnly>
-        <Link href="/admin/partners" className="v3-link pt-back"><IArrowLeft size={14} /> All partners</Link>
-        {error && <div className="v3-card d-empty" role="alert"><b>Couldn&rsquo;t load partner</b>{error}</div>}
-        {!d && !error && <div className="skel d-sk" style={{ height: 420 }} />}
+    <AppShell legacy={false} accounts={accounts} selectedAccount={selected} onSelectAccount={select} pageTitle={p?.name ?? 'Partner'}
+      pageSubtitle={<Link href="/admin/partners" className="ad-back"><IArrowLeft size={13} />All partners</Link>}
+      actions={d ? <RangeSeg value={range} onChange={setRange} /> : null}>
+      <div className="x-page" data-testid="admin-partner"><AdminOnly>
+        <div className="x-page">
+          {error && <div className="x-banner x-banner--err" role="alert"><span>Couldn&rsquo;t load partner. {error}</span><button type="button" className="x-btn x-btn--sm" onClick={() => void load()}>Retry</button></div>}
+          {!d && !error && <><div className="x-skel ad-sk-status" /><div className="x-skel ad-sk-card" /></>}
 
-        {d && p && <>
-          <section className="v3-card pt-prof">
-            <Avatar name={p.name} size={56} />
-            <div className="who">
-              <h1>{p.name} <PartnerStatusPill s={p.status} /></h1>
-              <p>{p.email}{p.audience ? ` · ${p.audience}` : ''}</p>
-            </div>
-            <dl>
-              <div><dt>Code</dt><dd>{p.code ? <code className="pt-c">{p.code}</code> : '—'}</dd></div>
-              <div><dt>Link</dt><dd>{(d.channels.find(c => c.slug === null)?.url ?? `tradelogs.com/r/${p.code}`).replace(/^https?:\/\//, '')}</dd></div>
-              <div><dt>{p.status === 'PENDING' || !p.approvedAt ? 'Applied' : 'Partner since'}</dt><dd>{day(p.status === 'PENDING' || !p.approvedAt ? p.joinedAt : p.approvedAt)}</dd></div>
-            </dl>
-            <div className="btns">
-              {ACTIONS[p.status]!.map(x => (
-                <button key={x.a} className={`v3-btn ${x.ink ? 'v3-btn--ink' : 'v3-btn--o'}`} disabled={!!busy} onClick={() => status(x.a, x.l, x.ask)} data-testid={`status-${x.a}`}>{x.l}</button>
-              ))}
-            </div>
-          </section>
-
-          <div className="pt-head">
-            <h2 className="pt-h2">Performance</h2>
-            <RangeSeg value={range} onChange={setRange} small />
-          </div>
-          <Funnel f={d.funnel} rule={d.partner.activeRule} title="Funnel" />
-          <div className="pt-g3">
-            <TrendCard daily={d.daily} />
-            <ActivityFeed events={d.activity} limit={7} empty="Signups and MT5 connections from this partner show up here." />
-          </div>
-          <ChannelTable channels={d.channels} withLinks />
-
-          <section className="v3-card a-flush" data-testid="admin-partner-clients">
-            <div className="v3-ch"><h3>Clients<span> · {n(clients?.meta.total ?? d.totalClients)}</span></h3></div>
-            {!clients ? <div className="skel d-sk" style={{ height: 200, margin: 16 }} />
-              : clients.items.length ? <>
-                <ClientRows clients={clients.items} onUnlink={unlink} />
-                <div className="pt-pager">
-                  <span>{(clients.meta.page - 1) * PAGE + 1}–{Math.min(clients.meta.total, clients.meta.page * PAGE)} of {n(clients.meta.total)}</span>
-                  <div><button className="v3-btn v3-btn--o" disabled={page <= 1} onClick={() => setPage(x => x - 1)}>Previous</button><button className="v3-btn v3-btn--o" disabled={page >= clients.meta.totalPages} onClick={() => setPage(x => x + 1)}>Next</button></div>
-                </div>
-              </> : <div className="d-empty"><b>No clients right now</b>New signups through their link or code will appear here.</div>}
-          </section>
-
-          <div className="pt-g2 pt-tools">
-            <AssignCard partnerId={id} busy={busy} act={act} />
-            <MoveCard from={p} busy={busy} act={act} ask={ask} />
-          </div>
-
-          <div className="pt-g2 pt-tools">
-            <section className="v3-card pt-tool" data-testid="admin-partner-codes">
-              <div className="v3-ch"><h3>Codes<span> · {d.codes.length}</span></h3></div>
-              <ul className="pt-codes">
-                {d.codes.map(c => (
-                  <li key={c.id}><b>{c.code}</b><span className="mute">{c.isPrimary ? 'Primary · ' : ''}{n(c.clicks)} clicks · {n(c.signups)} signups</span>
-                    {!c.isPrimary && <button type="button" className="pt-rowbtn" disabled={!!busy} onClick={async () => { if (await ask({ title: `Revoke ${c.code}?`, body: 'The code stops working straight away and becomes bookable by anyone again. Clients who already joined with it stay.', confirmLabel: 'Revoke code', tone: 'danger' })) void act(`rc:${c.id}`, () => partnerApi.adminRevokeCode(id, c.id), `${c.code} revoked.`); }} data-testid={`revoke-${c.code}`}>Revoke</button>}
-                  </li>
-                ))}
-              </ul>
+          {d && p && <>
+            <section className="x-card ad-prof">
+              <Avatar name={p.name} size={52} />
+              <div className="ad-prof-who">
+                <h1>{p.name} <PartnerStatusPill s={p.status} /></h1>
+                <p>{p.email}{p.audience ? ` · ${p.audience}` : ''}</p>
+              </div>
+              <dl className="ad-prof-dl">
+                <div><dt>Code</dt><dd>{p.code ? <code className="m ad-code">{p.code}</code> : '—'}</dd></div>
+                <div><dt>Link</dt><dd className="m ad-ell">{(d.channels.find(c => c.slug === null)?.url ?? `tradelogs.com/r/${p.code}`).replace(/^https?:\/\//, '')}</dd></div>
+                <div><dt>{p.status === 'PENDING' || !p.approvedAt ? 'Applied' : 'Partner since'}</dt><dd>{day(p.status === 'PENDING' || !p.approvedAt ? p.joinedAt : p.approvedAt)}</dd></div>
+              </dl>
+              <div className="ad-prof-btns">
+                {ACTIONS[p.status]!.map(x => {
+                  const danger = x.a === 'suspend' || x.a === 'revoke' || x.a === 'decline';
+                  return <button key={x.a} type="button" className={`x-btn ${x.ink ? 'x-btn--hi' : danger ? 'x-btn--danger' : ''}`} disabled={!!busy} onClick={() => status(x.a, x.l, x.ask)} data-testid={`status-${x.a}`}>{x.l}</button>;
+                })}
+              </div>
             </section>
-            <NotesCard partnerId={id} notes={d.notes} onAdded={load} />
-          </div>
-        </>}
+
+            <Funnel f={d.funnel} rule={d.partner.activeRule} title="Funnel" />
+            <div className="ac-g3">
+              <TrendCard daily={d.daily} />
+              <ActivityFeed events={d.activity} limit={7} empty="Signups and MT5 connections from this partner show up here." />
+            </div>
+            <ChannelTable channels={d.channels} withLinks />
+
+            <section className="x-card" data-testid="admin-partner-clients">
+              <div className="x-ch"><h2>Clients</h2><span className="x-sub"><span className="m">{n(clients?.meta.total ?? d.totalClients)}</span></span></div>
+              {!clients ? <div className="ad-tbl-sk">{[0, 1, 2, 3].map(i => <i key={i} className="x-skel x-skel--in" />)}</div>
+                : clients.items.length ? <>
+                  <ClientRows clients={clients.items} onUnlink={unlink} />
+                  <div className="ac-pager">
+                    <span><span className="m">{(clients.meta.page - 1) * PAGE + 1}–{Math.min(clients.meta.total, clients.meta.page * PAGE)}</span> of <span className="m">{n(clients.meta.total)}</span></span>
+                    <div><button type="button" className="x-btn x-btn--sm" disabled={page <= 1} onClick={() => setPage(x => x - 1)}>Previous</button><button type="button" className="x-btn x-btn--sm" disabled={page >= clients.meta.totalPages} onClick={() => setPage(x => x + 1)}>Next</button></div>
+                  </div>
+                </> : <div className="x-empty"><b>No clients right now</b><p>New signups through their link or code will appear here.</p></div>}
+            </section>
+
+            <div className="ad-row2">
+              <AssignCard partnerId={id} busy={busy} act={act} />
+              <MoveCard from={p} busy={busy} act={act} ask={ask} />
+            </div>
+
+            <div className="ad-row2">
+              <section className="x-card" data-testid="admin-partner-codes">
+                <div className="x-ch"><h2>Codes</h2><span className="x-sub"><span className="m">{d.codes.length}</span></span></div>
+                <ul className="ac-codes">
+                  {d.codes.map(c => (
+                    <li key={c.id}><span><b className="m">{c.code}</b><small>{c.isPrimary ? 'Primary · ' : ''}<span className="m">{n(c.clicks)}</span> clicks · <span className="m">{n(c.signups)}</span> signups</small></span>
+                      {!c.isPrimary && <button type="button" className="x-btn x-btn--sm x-btn--ghost ad-revoke" disabled={!!busy} onClick={async () => { if (await ask({ title: `Revoke ${c.code}?`, body: 'The code stops working straight away and becomes bookable by anyone again. Clients who already joined with it stay.', confirmLabel: 'Revoke code', tone: 'danger' })) void act(`rc:${c.id}`, () => partnerApi.adminRevokeCode(id, c.id), `${c.code} revoked.`); }} data-testid={`revoke-${c.code}`}>Revoke</button>}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+              <NotesCard partnerId={id} notes={d.notes} onAdded={load} />
+            </div>
+          </>}
+        </div>
       </AdminOnly></div>
-      {toast && <div className="pt-toast" role="status">{toast}</div>}
+      {toast && <div className="ac-toast" role="status">{toast}</div>}
       {dialog}
     </AppShell>
   );
@@ -155,14 +157,14 @@ function AssignCard({ partnerId, busy, act }: { partnerId: string; busy: string 
   const [force, setForce] = useState(false);
   const [reason, setReason] = useState('');
   return (
-    <section className="v3-card pt-tool">
-      <div className="v3-ch"><h3>Assign a client</h3></div>
-      <p className="pt-tool-sub">Attach an existing TRADElogs user to this partner — for someone who forgot to use the link or code.</p>
-      <form className="pt-tool-form" onSubmit={async e => { e.preventDefault(); if (await act('assign', () => partnerApi.adminAssign(partnerId, { email: email.trim(), force, ...(reason.trim() ? { reason: reason.trim() } : {}) }), 'Client assigned.')) { setEmail(''); setReason(''); setForce(false); } }}>
-        <input type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="client@example.com" aria-label="Client email" />
-        <input value={reason} maxLength={300} onChange={e => setReason(e.target.value)} placeholder="Reason (optional)" aria-label="Reason" />
-        <label className="pt-check"><input type="checkbox" checked={force} onChange={e => setForce(e.target.checked)} /> Move them if another partner already has them</label>
-        <button type="submit" className="v3-btn v3-btn--ink pt-copy-ink" disabled={!email || busy === 'assign'}>{busy === 'assign' ? 'Assigning…' : 'Assign'}</button>
+    <section className="x-card">
+      <div className="x-ch"><h2>Assign a client</h2></div>
+      <p className="ac-p">Attach an existing TRADElogs user to this partner, for someone who forgot to use the link or code.</p>
+      <form className="ad-tool-form" onSubmit={async e => { e.preventDefault(); if (await act('assign', () => partnerApi.adminAssign(partnerId, { email: email.trim(), force, ...(reason.trim() ? { reason: reason.trim() } : {}) }), 'Client assigned.')) { setEmail(''); setReason(''); setForce(false); } }}>
+        <input className="x-input" type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="client@example.com" aria-label="Client email" />
+        <input className="x-input" value={reason} maxLength={300} onChange={e => setReason(e.target.value)} placeholder="Reason (optional)" aria-label="Reason" />
+        <label className="ad-check"><input type="checkbox" className="x-check" checked={force} onChange={e => setForce(e.target.checked)} /> Move them if another partner already has them</label>
+        <button type="submit" className="x-btn x-btn--hi" disabled={!email || busy === 'assign'}>{busy === 'assign' ? 'Assigning…' : 'Assign'}</button>
       </form>
     </section>
   );
@@ -174,21 +176,21 @@ function MoveCard({ from, busy, act, ask }: { from: AdminPartnerRow; busy: strin
   useEffect(() => { partnerApi.adminList('ACTIVE').then(r => setTargets(r.filter(x => x.id !== from.id))).catch(() => {}); }, [from.id]);
   const target = targets.find(t => t.id === to);
   return (
-    <section className="v3-card pt-tool">
-      <div className="v3-ch"><h3>Move all clients</h3></div>
-      <p className="pt-tool-sub">Hands every client of {from.name.split(' ')[0]} to another active partner. Use when a partner merges accounts or leaves.</p>
-      <form className="pt-tool-form" onSubmit={async e => {
+    <section className="x-card">
+      <div className="x-ch"><h2>Move all clients</h2></div>
+      <p className="ac-p">Hands every client of {from.name.split(' ')[0]} to another active partner. Use when a partner merges accounts or leaves.</p>
+      <form className="ad-tool-form" onSubmit={async e => {
         e.preventDefault();
         if (!target) return;
         const r = await ask({ title: `Move ${from.clients} client${from.clients === 1 ? '' : 's'} to ${target.name}?`, body: `Every client of ${from.name} will count for ${target.name} from now on.`, confirmLabel: 'Move clients', reason: true });
         if (!r) return;
         await act('move', () => partnerApi.adminMove(from.id, target.id, r.reason), `Clients moved to ${target.name}.`);
       }}>
-        <select className="pt-select" value={to} onChange={e => setTo(e.target.value)} aria-label="Move to partner">
+        <select className="x-select" value={to} onChange={e => setTo(e.target.value)} aria-label="Move to partner">
           <option value="">Pick a partner…</option>
           {targets.map(t => <option key={t.id} value={t.id}>{t.name} · {t.code}</option>)}
         </select>
-        <button type="submit" className="v3-btn v3-btn--o" disabled={!to || from.clients === 0 || busy === 'move'}>{busy === 'move' ? 'Moving…' : `Move ${from.clients} client${from.clients === 1 ? '' : 's'}`}</button>
+        <button type="submit" className="x-btn x-btn--hi" disabled={!to || from.clients === 0 || busy === 'move'}>{busy === 'move' ? 'Moving…' : `Move ${from.clients} client${from.clients === 1 ? '' : 's'}`}</button>
       </form>
     </section>
   );
@@ -198,19 +200,21 @@ function NotesCard({ partnerId, notes, onAdded }: { partnerId: string; notes: Ad
   const [body, setBody] = useState('');
   const [busy, setBusy] = useState(false);
   return (
-    <section className="v3-card pt-tool" data-testid="admin-partner-notes">
-      <div className="v3-ch"><h3>Notes<span> · {notes.length}</span></h3></div>
-      <form className="pt-note-form" onSubmit={async e => {
+    <section className="x-card" data-testid="admin-partner-notes">
+      <div className="x-ch"><h2>Notes</h2><span className="x-sub"><span className="m">{notes.length}</span></span></div>
+      <form className="ad-tool-form" onSubmit={async e => {
         e.preventDefault(); if (!body.trim()) return;
         setBusy(true);
         try { await partnerApi.adminNote(partnerId, body.trim()); setBody(''); await onAdded(); } finally { setBusy(false); }
       }}>
-        <textarea value={body} onChange={e => setBody(e.target.value)} maxLength={2000} rows={2} placeholder="Context for whoever picks this up next…" aria-label="New note" />
-        <button type="submit" className="v3-btn v3-btn--ink pt-copy-ink" disabled={!body.trim() || busy}>Add note</button>
+        <textarea className="x-textarea ad-note-ta" value={body} onChange={e => setBody(e.target.value)} maxLength={2000} rows={2} placeholder="Context for whoever picks this up next…" aria-label="New note" />
+        <button type="submit" className="x-btn x-btn--hi" disabled={!body.trim() || busy}>Add note</button>
       </form>
-      <ul className="pt-notes">
-        {notes.map(x => <li key={x.id}><p>{x.body}</p><small>{x.authorEmail} · {timeAgo(x.createdAt)}</small></li>)}
-      </ul>
+      {notes.length > 0 && (
+        <ul className="ad-notes">
+          {notes.map(x => <li key={x.id}><p>{x.body}</p><small>{x.authorEmail} · {timeAgo(x.createdAt)}</small></li>)}
+        </ul>
+      )}
     </section>
   );
 }

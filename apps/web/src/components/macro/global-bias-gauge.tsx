@@ -15,33 +15,36 @@ function lean(score: number): [string, string] {
   return ['Strongly bearish', 'broad risk-off'];
 }
 
-/** Global bias: big score + bear→bull scale with a knob (weighted average of asset biases). */
+/** Global bias: big score + bear→bull scale with a marker (weighted average of asset biases). */
 export default function GlobalBiasGauge({ bias }: { bias: MacroState['bias'] }) {
   const avg = averageBiasScore(bias);
   const live = useCountUp(avg == null ? null : avg, { duration: 1100 }) ?? avg ?? 50;
   const [l1, l2] = lean(Math.round(live));
-  const tone = avg == null ? '' : live >= 55 ? 'lg' : live <= 45 ? 'sh' : '';
+  const tone = avg == null ? '' : live >= 55 ? 'pos' : live <= 45 ? 'neg' : '';
+  const bull = bias.filter(b => b.score >= 55).length, bear = bias.filter(b => b.score <= 45).length, neu = bias.length - bull - bear;
   return (
-    <section className="v3-card mg" data-testid="macro-global-bias" aria-labelledby="mg-t">
-      <h3 id="mg-t" className="mc-lbl">Global macro market bias</h3>
-      <div className="mg-row">
-        <b className="mg-n num" data-testid="global-bias-score">{avg == null ? '—' : <CountUp value={Math.round(avg)} duration={1100} />}</b>
-        <span className="mg-l">{avg == null ? 'Awaiting factors' : <><b className={tone}>{l1}</b> · {l2}</>}</span>
+    <section className="x-card mc-gb" data-testid="macro-global-bias" aria-labelledby="mc-gb-t">
+      <div className="x-ch"><h2 id="mc-gb-t">Global market bias</h2><span className="x-sub">across {bias.length || '—'} assets</span></div>
+      <div className="mc-big">
+        <b className={tone} data-testid="global-bias-score">{avg == null ? '—' : <CountUp value={Math.round(avg)} duration={1100} />}</b>
+        <span>{avg == null ? 'Awaiting factors' : <><em>{l1}</em> · {l2}</>}</span>
       </div>
-      <div className="mg-scale" role="img" aria-label={`Bias ${Math.round(live)} of 100`}>
-        <i className="mg-knob" style={{ left: `${Math.max(0, Math.min(100, live))}%` }} />
+      <div className="mc-scale" role="img" aria-label={`Bias ${Math.round(live)} of 100`}>
+        <span className="mc-scale-band" />
+        <i style={{ left: `${Math.max(0, Math.min(100, live))}%` }} className={tone} />
       </div>
-      <div className="mg-axis"><span>Bear</span><span>Neutral 45–55</span><span>Bull</span></div>
-      {bias.length > 0 && (() => {
-        const bull = bias.filter(b => b.score >= 55).length, bear = bias.filter(b => b.score <= 45).length, neu = bias.length - bull - bear;
-        return (
-          <div className="mg-split" aria-label={`${bull} bullish, ${neu} neutral, ${bear} bearish`}>
-            <div className="bar">{bull > 0 && <i className="g" style={{ flex: bull }} />}{neu > 0 && <i className="n" style={{ flex: neu }} />}{bear > 0 && <i className="r" style={{ flex: bear }} />}</div>
-            <div className="lg2"><span><b className="num">{bull}</b> bullish</span><span><b className="num">{neu}</b> neutral</span><span><b className="num">{bear}</b> bearish</span></div>
+      <div className="mc-scale-ax"><span>Bearish <b className="m">0</b></span><span>Neutral <b className="m">45–55</b></span><span><b className="m">100</b> Bullish</span></div>
+      {bias.length > 0 && (
+        <div className="mc-split" aria-label={`${bull} bullish, ${neu} neutral, ${bear} bearish`}>
+          <div className="mc-split-bar">{bull > 0 && <i className="g" style={{ flex: bull }} />}{neu > 0 && <i className="n" style={{ flex: neu }} />}{bear > 0 && <i className="r" style={{ flex: bear }} />}</div>
+          <div className="mc-split-l">
+            <span><i className="g" /><b className="m">{bull}</b> bullish</span>
+            <span><i className="n" /><b className="m">{neu}</b> neutral</span>
+            <span><i className="r" /><b className="m">{bear}</b> bearish</span>
           </div>
-        );
-      })()}
-      <p className="mg-foot">Weighted across {bias.length || '—'} assets · 0 = max bearish, 100 = max bullish</p>
+        </div>
+      )}
+      <p className="mc-foot">Weighted average of asset scores. 0 is max bearish, 100 is max bullish.</p>
     </section>
   );
 }

@@ -24,18 +24,29 @@ export default function LayoutGrid({ panes, activeId, onActivate, onClose, regis
   const multi = panes.length > 1;
   const [quotes, setQuotes] = useState<Record<string, { last: number; ref: number | null }>>({});
   return (
-    <div className={`ch-grid n${panes.length}`} data-testid="layout-grid">
+    <div className={`mk-cgrid n${panes.length}`} data-testid="layout-grid">
       {panes.map(p => {
         const q = quotes[`${p.id}:${p.symbol}:${p.tf}`];
         const chg = q && q.ref ? ((q.last - q.ref) / q.ref) * 100 : null;
+        const on = multi && p.id === activeId;
         return (
-          <div key={p.id} onMouseDown={() => onActivate(p.id)} className={`ch-pane ${multi && p.id === activeId ? 'on' : ''}`} data-testid={`chart-pane-${p.id}`}>
-            <div className="ch-pane-hd">
-              <b>{p.symbol}</b><span className="tf">{p.tf}</span>
-              {q && <span className={`px num ${chg == null ? '' : chg >= 0 ? 'lg' : 'sh'}`}>{fmtQuote(q.last)} <em>{fmtChg(chg)}</em></span>}
-              {multi && <button onMouseDown={e => e.stopPropagation()} onClick={() => onClose(p.id)} className="x" aria-label={`Close ${p.symbol} pane`}><IClose size={13} /></button>}
+          <div key={p.id} onMouseDown={() => onActivate(p.id)} className={`x-card mk-pane ${on ? 'on' : ''}`} data-testid={`chart-pane-${p.id}`}>
+            <div className="mk-pane-hd">
+              <b>{p.symbol}</b>
+              <span className="x-tag mk-pane-tf">{p.tf}</span>
+              {q ? (
+                <span className="mk-pane-px m">
+                  {fmtQuote(q.last)} <em className={chg == null ? 'x-muted' : chg >= 0 ? 'pos' : 'neg'}>{fmtChg(chg)}</em>
+                </span>
+              ) : <span className="mk-pane-px m x-dim">—</span>}
+              {on && <span className="x-dot mk-pane-on" title="Active pane: the toolbar edits this chart" />}
+              {multi && (
+                <button onMouseDown={e => e.stopPropagation()} onClick={() => onClose(p.id)} className="x-btn x-btn--ghost x-btn--icon x-btn--sm mk-pane-x" aria-label={`Close ${p.symbol} pane`}>
+                  <IClose size={13} />
+                </button>
+              )}
             </div>
-            <div className="ch-pane-bd">
+            <div className="mk-pane-bd">
               <KlineChart ref={handle => registerRef(p.id, handle)} symbol={p.symbol} tf={p.tf}
                 onQuote={v => setQuotes(s => ({ ...s, [`${p.id}:${p.symbol}:${p.tf}`]: v }))} />
             </div>

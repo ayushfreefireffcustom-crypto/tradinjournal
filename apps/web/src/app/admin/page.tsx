@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import AppShell from '@/components/app-shell';
 import { useAccounts } from '@/lib/use-accounts';
-import { LoadingScreen } from '@/components/loader';
 import {
   adminApi,
   type AdminOverviewDto,
@@ -19,8 +18,9 @@ import { CommandOverview } from '@/components/admin/command-overview';
 import { AdminMaintenancePanel } from '@/components/admin/admin-maintenance';
 import { AdminGrantsSection } from '@/components/admin/admin-grants';
 import { AdminUsersSection } from '@/components/admin/admin-users';
-import { ArrowsClockwise, ShieldWarning } from '@phosphor-icons/react';
-import { fmtRelative } from '@/components/admin/admin-utils';
+import { auditLabel, fmtRelative, sentence } from '@/components/admin/admin-utils';
+import { ISync } from '@/components/v3/icons';
+import '@/styles/v6/admin.css';
 
 export default function AdminPage() {
   const router = useRouter();
@@ -165,155 +165,127 @@ export default function AdminPage() {
   const inactiveCount = overview?.inactiveTraders ?? 0;
 
   return (
-    <AppShell accounts={accounts} selectedAccount={selected} onSelectAccount={select} crumbParent="Admin" pageTitle="Command center">
-      {loading ? (
-        <LoadingScreen label="Loading command center" />
-      ) : (
-        <div
-          className="w-full max-w-[1440px] mx-auto p-3 sm:p-4 lg:p-5 space-y-4 min-w-0 overflow-x-hidden"
-          data-testid="admin-page"
-        >
-          <div className="flex items-center justify-between gap-3 min-w-0">
-            <div className="min-w-0">
-              <h1 className="font-display font-black text-xl sm:text-2xl tracking-tight text-fg truncate">
-                Ops command center
-              </h1>
-              <p className="text-[11px] sm:text-[12px] text-fg-2 mt-1">
-                Usage, access, brokers, and platform health — built for leadership visibility.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => void loadCore(true)}
-              disabled={refreshing}
-              className="btn btn-ghost border border-border-soft px-3 py-2 text-[10px] tracking-widest shrink-0 flex items-center gap-1.5"
-            >
-              <ArrowsClockwise size={14} className={refreshing ? 'animate-spin' : ''} />
-              <span className="hidden sm:inline">REFRESH</span>
-            </button>
+    <AppShell legacy={false} accounts={accounts} selectedAccount={selected} onSelectAccount={select}
+      pageTitle="Command center" pageSubtitle="Usage, access, brokers and platform health"
+      actions={
+        <button type="button" onClick={() => void loadCore(true)} disabled={refreshing || loading} className="x-btn" data-testid="admin-refresh">
+          <ISync size={15} className={refreshing ? 'x-spin' : ''} />Refresh
+        </button>
+      }>
+      <div className="x-page ad-page" data-testid="admin-page">
+        {error && (
+          <div className="x-banner x-banner--err" role="alert">
+            <span>{error}</span>
+            <button type="button" className="x-btn x-btn--sm" onClick={() => void loadCore(true)}>Retry</button>
           </div>
+        )}
 
-          {error && (
-            <div className="tcard p-3 text-loss text-sm border border-loss/30 bg-loss/5" role="alert">
-              {error}
-            </div>
-          )}
+        <AdminTabs tab={tab} onChange={setTab} />
 
-          <AdminTabs tab={tab} onChange={setTab} />
+        {loading ? (
+          <div className="x-page" aria-busy="true" data-testid="admin-loading">
+            <div className="x-skel ad-sk-status" />
+            <div className="x-skel ad-sk-strip" />
+            <div className="ad-row2"><div className="x-skel ad-sk-card" /><div className="x-skel ad-sk-card" /></div>
+          </div>
+        ) : (
+          <>
+            {overview && tab === 'overview' && (
+              <CommandOverview
+                overview={overview}
+                engagement={engagement}
+                onToggleMaint={() => void toggleMaintenance()}
+                maintBusy={maintBusy}
+              />
+            )}
 
-          {overview && tab === 'overview' && (
-            <CommandOverview
-              overview={overview}
-              engagement={engagement}
-              onToggleMaint={() => void toggleMaintenance()}
-              maintBusy={maintBusy}
-            />
-          )}
+            {tab === 'users' && (users ? (
+              <AdminUsersSection
+                users={users.users}
+                total={users.total}
+                page={userPage}
+                limit={users.limit}
+                search={searchInput}
+                filter={userFilter}
+                loading={usersLoading}
+                actionBusy={actionBusy}
+                onSearchChange={setSearchInput}
+                onSearchSubmit={handleSearchSubmit}
+                onFilterChange={handleFilterChange}
+                onPageChange={setUserPage}
+                onRecheck={id => void recheckUser(id)}
+              />
+            ) : <div className="x-skel ad-sk-card" />)}
 
-          {tab === 'users' && users && (
-            <AdminUsersSection
-              users={users.users}
-              total={users.total}
-              page={userPage}
-              limit={users.limit}
-              search={searchInput}
-              filter={userFilter}
-              loading={usersLoading}
-              actionBusy={actionBusy}
-              onSearchChange={setSearchInput}
-              onSearchSubmit={handleSearchSubmit}
-              onFilterChange={handleFilterChange}
-              onPageChange={setUserPage}
-              onRecheck={id => void recheckUser(id)}
-            />
-          )}
+            {tab === 'access' && overview && (
+              <div className="x-page">
+                <div className="x-strip x-strip--card ad-strip3">
+                  <div>
+                    <span>Elefin verification</span>
+                    <b>{sentence(overview.elefinVerifyMode)}</b>
+                    {overview.elefinVerifyMode === 'stub' && <small className="ad-small neg">Stub mode. Switch to live once the Elefin API is ready.</small>}
+                  </div>
+                  <div><span>Pending Elefin</span><b className="m">{pendingElefin}</b><small className="ad-small">waiting for verification</small></div>
+                  <div><span>Inactive queue</span><b className={`m ${inactiveCount ? 'neg' : ''}`}>{inactiveCount}</b><small className="ad-small">below the activity rule</small></div>
+                </div>
+                <AdminGrantsSection
+                  grants={grants}
+                  grantEmail={grantEmail}
+                  grantNote={grantNote}
+                  grantBusy={grantBusy}
+                  actionBusy={actionBusy}
+                  onEmailChange={setGrantEmail}
+                  onNoteChange={setGrantNote}
+                  onSubmit={addGrant}
+                  onRevoke={id => void revokeGrant(id)}
+                />
+              </div>
+            )}
 
-          {tab === 'access' && overview && (
-            <div className="space-y-4 min-w-0">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                <div className="tcard p-4">
-                  <div className="text-[9px] tracking-widest text-fg-3">ELEFIN MODE</div>
-                  <div className="font-display font-black text-lg mt-1 uppercase">{overview.elefinVerifyMode}</div>
-                  {overview.elefinVerifyMode === 'stub' && (
-                    <div className="flex items-center gap-1 text-[10px] text-warning mt-1">
-                      <ShieldWarning size={12} /> Stub — set live when boss API ready
+            {tab === 'system' && overview && (
+              <div className="x-page">
+                <AdminMaintenancePanel
+                  maintenance={overview.maintenance}
+                  maintMessage={maintMessage}
+                  maintBusy={maintBusy}
+                  onMessageChange={setMaintMessage}
+                  onToggle={() => void toggleMaintenance()}
+                />
+
+                <div className="x-strip x-strip--card ad-strip4">
+                  <div><span>Auth sessions</span><b className="m">{overview.activeSessionsNow}</b></div>
+                  <div><span>Live usage</span><b className="m pos">{overview.liveUsageSessions}</b></div>
+                  <div><span>Sync healthy</span><b className="m">{overview.syncHealthy}</b></div>
+                  <div><span>Sync stale</span><b className={`m ${overview.syncStale ? 'neg' : ''}`}>{overview.syncStale}</b></div>
+                </div>
+
+                <section className="x-card" data-testid="admin-audit">
+                  <div className="x-ch"><h2>Audit log</h2><span className="x-sub">latest {audit.length}</span></div>
+                  {audit.length === 0 ? (
+                    <div className="x-empty"><p>No admin actions yet.</p></div>
+                  ) : (
+                    <div className="x-tblwrap ad-scroll ad-audit-wrap">
+                      <table className="x-tbl ad-tbl ad-audit">
+                        <thead><tr><th>Action</th><th>Admin</th><th>Target</th><th className="n">When</th></tr></thead>
+                        <tbody>
+                          {audit.map(a => (
+                            <tr key={a.id}>
+                              <td>{auditLabel(a.action)}</td>
+                              <td className="x-muted">{a.actorEmail}</td>
+                              <td className="x-muted">{a.targetType ?? '—'}</td>
+                              <td className="n x-muted">{fmtRelative(a.createdAt)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
                   )}
-                </div>
-                <div className="tcard p-4">
-                  <div className="text-[9px] tracking-widest text-fg-3">PENDING ELEFIN</div>
-                  <div className="font-display font-black text-2xl numeric mt-1">{pendingElefin}</div>
-                </div>
-                <div className="tcard p-4">
-                  <div className="text-[9px] tracking-widest text-fg-3">INACTIVE QUEUE</div>
-                  <div className="font-display font-black text-2xl numeric mt-1 text-warning">{inactiveCount}</div>
-                </div>
+                </section>
               </div>
-              <AdminGrantsSection
-                grants={grants}
-                grantEmail={grantEmail}
-                grantNote={grantNote}
-                grantBusy={grantBusy}
-                actionBusy={actionBusy}
-                onEmailChange={setGrantEmail}
-                onNoteChange={setGrantNote}
-                onSubmit={addGrant}
-                onRevoke={id => void revokeGrant(id)}
-              />
-            </div>
-          )}
-
-          {tab === 'system' && overview && (
-            <div className="space-y-4 min-w-0">
-              <AdminMaintenancePanel
-                maintenance={overview.maintenance}
-                maintMessage={maintMessage}
-                maintBusy={maintBusy}
-                onMessageChange={setMaintMessage}
-                onToggle={() => void toggleMaintenance()}
-              />
-
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                <div className="tcard p-3">
-                  <div className="text-[9px] tracking-widest text-fg-3">AUTH SESSIONS</div>
-                  <div className="font-display font-black text-xl numeric">{overview.activeSessionsNow}</div>
-                </div>
-                <div className="tcard p-3">
-                  <div className="text-[9px] tracking-widest text-fg-3">LIVE USAGE</div>
-                  <div className="font-display font-black text-xl numeric text-profit">{overview.liveUsageSessions}</div>
-                </div>
-                <div className="tcard p-3">
-                  <div className="text-[9px] tracking-widest text-fg-3">SYNC HEALTHY</div>
-                  <div className="font-display font-black text-xl numeric">{overview.syncHealthy}</div>
-                </div>
-                <div className="tcard p-3">
-                  <div className="text-[9px] tracking-widest text-fg-3">SYNC STALE</div>
-                  <div className="font-display font-black text-xl numeric text-warning">{overview.syncStale}</div>
-                </div>
-              </div>
-
-              <div className="tcard p-4 sm:p-5">
-                <div className="text-[10px] tracking-[0.2em] text-fg-3 uppercase mb-3">Audit log</div>
-                {audit.length === 0 ? (
-                  <p className="text-sm text-fg-3">No admin actions yet.</p>
-                ) : (
-                  <div className="space-y-1 max-h-[420px] overflow-y-auto">
-                    {audit.map(a => (
-                      <div key={a.id} className="flex flex-col sm:flex-row sm:justify-between gap-1 py-2 border-b border-border-soft/50 text-[11px]">
-                        <div className="min-w-0">
-                          <div className="text-fg truncate">{a.action}</div>
-                          <div className="text-fg-3 truncate">{a.actorEmail}</div>
-                        </div>
-                        <div className="text-fg-3 shrink-0">{fmtRelative(a.createdAt)}</div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
+            )}
+          </>
+        )}
+      </div>
     </AppShell>
   );
 }

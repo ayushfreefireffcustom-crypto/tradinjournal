@@ -21,18 +21,21 @@ export default function IndicatorMenu({ onAdd, onClear }: { onAdd: (name: string
     return () => { document.removeEventListener('mousedown', close); document.removeEventListener('keydown', close); };
   }, [open]);
   return (
-    <div className="ch-menu" ref={ref} data-testid="indicator-menu">
-      <button className="ch-pill" aria-expanded={open} onClick={() => setOpen(o => !o)}><i className="fx">ƒx</i> Indicators{active.size > 0 && <span className="ch-count num">{active.size}</span>}</button>
+    <div className="mk-menu" ref={ref} data-testid="indicator-menu">
+      <button className="x-btn x-btn--sm" aria-expanded={open} aria-haspopup="menu" onClick={() => setOpen(o => !o)}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M3 17l5-6 4 4 8-9" /><path d="M3 21h18" /></svg>
+        Indicators{active.size > 0 && <span className="mk-count m">{active.size}</span>}
+      </button>
       {open && (
-        <div className="ch-pop" role="menu">
+        <div className="x-pop mk-ind-pop" role="menu">
           {INDICATORS.map(ind => (
             <button key={ind.name} role="menuitemcheckbox" aria-checked={active.has(ind.name)} disabled={active.has(ind.name)}
               onClick={() => { onAdd(ind.name); setActive(p => new Set(p).add(ind.name)); }}>
-              <span>{ind.label}<small>{ind.name}</small></span>{active.has(ind.name) && <ICheck size={15} />}
+              <span className="mk-ind-l">{ind.label}<small className="m">{ind.name}</small></span>{active.has(ind.name) && <ICheck size={15} />}
             </button>
           ))}
-          <div className="sep" />
-          <button className="clr" disabled={!active.size} onClick={() => { onClear(); setActive(new Set()); setOpen(false); }}>Clear all indicators</button>
+          <hr />
+          <button className="mk-ind-clr" disabled={!active.size} onClick={() => { onClear(); setActive(new Set()); setOpen(false); }}>Clear all indicators</button>
         </div>
       )}
     </div>

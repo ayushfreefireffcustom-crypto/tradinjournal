@@ -1,11 +1,10 @@
 'use client';
 
-// Macro AI assistant — reuses the shared ChatConversation surface (same UX as the
-// AI Coach). This component owns only the macro transport: stream over SSE, and
+// Macro AI assistant on the v6 chat surface. This component owns only the macro transport: stream over SSE, and
 // fall back to the JSON endpoint (which itself degrades to a deterministic
 // template) when the stream yields nothing.
 import { useCallback, useState } from 'react';
-import ChatConversation, { type ChatVM } from '@/components/chat/chat-conversation';
+import MacroChat, { type ChatVM } from '@/components/v6/macro/chat';
 import { macroApi } from '@/lib/macro-api';
 
 const STARTERS = [
@@ -71,23 +70,21 @@ export default function MacroAssistant() {
   );
 
   return (
-    <ChatConversation
+    <MacroChat
       data-testid="macro-assistant"
-      className="h-full"
-      headerLabel="// MACRO AI"
-      headerRight="Grounded on live state · not financial advice"
-      live
+      title="Macro AI"
+      sub="Grounded on live dashboard state"
       messages={messages}
       sending={sending}
       thinking={thinking}
       input={input}
       onInput={setInput}
       onSend={send}
-      placeholder="Ask a macro question…"
+      placeholder="Ask a macro question"
       starters={STARTERS}
       emptyTitle="Ask the macro desk"
       emptyText="Answers cite the dashboard’s own indicators, regime and confluence scores."
-      disclaimer="NOT FINANCIAL ADVICE · GROUNDED ON LIVE DASHBOARD STATE"
+      disclaimer="Not financial advice. Answers are grounded on the live dashboard state."
       error={error}
     />
   );

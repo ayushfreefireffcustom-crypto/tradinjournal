@@ -13,7 +13,7 @@ import MacroEventsHeadlines from './events-headlines';
 import ConfluencePanel from './confluence-panel';
 import RegimeQuadrant from './regime-quadrant';
 
-/** Command-centre dashboard — IITian density: hero → bias grid → summaries → deep data. */
+/** Macro dashboard: bias and regime first, then trends, markets, rates and the deep data. */
 export default function MacroDashboard({ state }: { state: MacroState }) {
   return (
     <div className="mc-stack" data-testid="macro-dashboard">
@@ -32,7 +32,7 @@ export default function MacroDashboard({ state }: { state: MacroState }) {
 
       <MarketTiles markets={state.markets} bias={state.bias} />
 
-      <div className="mc-2">
+      <div className="mc-2 mc-2--yc">
         <YieldCurve macro={state.macro} />
         <PolicyRates macro={state.macro} />
       </div>

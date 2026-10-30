@@ -4,13 +4,15 @@
 // real-time web search for external/current questions. Streams the reply
 // token-by-token over SSE, shows a "searching/thinking" state, renders markdown,
 // cites web sources, and keeps every conversation in a switchable thread list.
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import AppShell from '@/components/app-shell';
 import MarkdownMessage from '@/components/coach/markdown-message';
-import ThinkingIndicator from '@/components/coach/thinking-indicator';
 import SourcesFooter from '@/components/coach/sources-footer';
 import ConversationSidebar from '@/components/coach/conversation-sidebar';
 import MessageActions from '@/components/coach/message-actions';
+import { IHistory, ISend, Thinking } from '@/components/v6/ai/bits';
+import { IPlus } from '@/components/v3/icons';
 import { useAccounts } from '@/lib/use-accounts';
 import { api, type AiChatMessage, type AiConversationSummary, type BrokerAccount } from '@/lib/api';
 
@@ -37,6 +39,8 @@ export default function CoachPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   // Live stream controller, so Stop can cut the current reply short.
   const abortRef = useRef<AbortController | null>(null);
   const accountId = selected?.id ?? null;
@@ -45,6 +49,35 @@ export default function CoachPage() {
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages, phase]);
+
+  // Grow the composer with its content (capped by CSS max-height).
+  useLayoutEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
+  }, [input]);
+
+  // Size the chat to the viewport below the top bar, so the composer stays
+  // pinned on screen (and above the phone tab bar).
+  useLayoutEffect(() => {
+    const el = rootRef.current;
+    if (!el) return;
+    const fit = () => el.style.setProperty('--ai-top', `${Math.round(el.getBoundingClientRect().top + window.scrollY)}px`);
+    fit();
+    const ro = new ResizeObserver(fit);
+    if (el.parentElement) ro.observe(el.parentElement.parentElement ?? el.parentElement);
+    window.addEventListener('resize', fit);
+    return () => { ro.disconnect(); window.removeEventListener('resize', fit); };
+  }, []);
+
+  // Esc closes the history drawer.
+  useEffect(() => {
+    if (!sidebarOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setSidebarOpen(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [sidebarOpen]);
 
   // Never leave a stream running after the page goes away.
   useEffect(() => () => abortRef.current?.abort(), []);
@@ -201,6 +234,15 @@ export default function CoachPage() {
     void runTurn(messages.slice(0, idx + 1), Boolean(conversationId));
   }, [sending, messages, conversationId, runTurn]);
 
+  // Error banner retry: re-send an unanswered question, otherwise regenerate the last reply.
+  const retry = useCallback(() => {
+    if (sending) return;
+    const last = messages[messages.length - 1];
+    if (!last) return;
+    if (last.role === 'user') void runTurn(messages);
+    else regenerate();
+  }, [sending, messages, runTurn, regenerate]);
+
   const openThread = useCallback(
     async (id: string) => {
       setSidebarOpen(false);
@@ -258,56 +300,66 @@ export default function CoachPage() {
     onNew: newChat,
     onDelete: (id: string) => void deleteThread(id),
   };
+  const title = conversations.find(c => c.id === conversationId)?.title?.trim() || 'New chat';
 
   return (
-    <AppShell accounts={accounts} selectedAccount={selected} onSelectAccount={(a: BrokerAccount) => select(a)} pageTitle="AI coach">
-      <div className="co" data-testid="coach-page">
-        <div className="co-side"><ConversationSidebar {...sidebarProps} /></div>
+    <AppShell legacy={false} accounts={accounts} selectedAccount={selected} onSelectAccount={(a: BrokerAccount) => select(a)}
+      pageTitle="AI coach" pageSubtitle="Reads your trades and journal, searches the web when it helps">
+      <div className="ai-co" ref={rootRef} data-testid="coach-page">
+        <ConversationSidebar {...sidebarProps} />
 
         {sidebarOpen && (
-          <div className="v3-modal co-drawer" role="dialog" aria-label="Conversation history">
-            <div className="v3-modal-bg" onClick={() => setSidebarOpen(false)} />
-            <div className="v3-modal-card"><ConversationSidebar {...sidebarProps} onClose={() => setSidebarOpen(false)} /></div>
+          <div className="x-dialog-scrim ai-drawer" role="dialog" aria-modal="true" aria-label="Conversation history" onMouseDown={e => { if (e.target === e.currentTarget) setSidebarOpen(false); }}>
+            <div className="ai-drawer-p"><ConversationSidebar {...sidebarProps} onClose={() => setSidebarOpen(false)} /></div>
           </div>
         )}
 
-        <div className="co-main">
-          <div className="co-mbar">
-            <button onClick={() => setSidebarOpen(true)} data-testid="coach-history-toggle" className="v3-btn v3-btn--o">History</button>
-            <span>{conversations.find(c => c.id === conversationId)?.title?.trim() ?? 'New chat'}</span>
+        <section className="x-card ai-chat" aria-label="Conversation">
+          <div className="ai-chat-hd">
+            <button onClick={() => setSidebarOpen(true)} data-testid="coach-history-toggle" className="x-btn x-btn--sm"><IHistory size={14} /> History</button>
+            <span className="ai-ell">{title}</span>
+            <button onClick={newChat} disabled={sending} className="x-btn x-btn--sm x-btn--icon ai-chat-new" aria-label="New chat"><IPlus size={15} /></button>
           </div>
 
-          <div ref={scrollRef} className="co-stream" data-testid="coach-messages">
-            {isEmpty ? (
-              <div className="co-empty" data-testid="coach-empty">
-                <span className="co-av">TL</span>
-                <h2 className="v3-h1"><b>Ask your</b> <em>coach.</em></h2>
-                <p>{threadLoading ? 'Loading your history…' : 'I read your closed trades, stats and journal — and can search the web for market context. Ask about your behaviour or what’s happening out there. No trade signals, just clarity.'}</p>
-                <div className="co-starters">
-                  {STARTERS.map(({ web, text }) => (
-                    <button key={text} onClick={() => send(text)} disabled={sending || !accountId} data-testid="coach-starter">
-                      <i>{web ? 'Web' : 'Your data'}</i>{text}
-                    </button>
-                  ))}
-                </div>
+          <div ref={scrollRef} className="ai-stream" data-testid="coach-messages" aria-live="polite" aria-busy={sending || threadLoading}>
+            {threadLoading ? (
+              <div className="ai-msgs" aria-hidden>
+                <i className="x-skel x-skel--in ai-sk-u" />
+                <div className="ai-sk-a">{[0, 1, 2, 3].map(k => <i key={k} className="x-skel x-skel--in" />)}</div>
+              </div>
+            ) : isEmpty ? (
+              <div className="ai-hello" data-testid="coach-empty">
+                <span className="ai-av">TL</span>
+                <h2>Ask your coach</h2>
+                <p>{accountId
+                  ? 'I read your closed trades, stats and journal, and can search the web for market context. Ask about your behaviour or what\u2019s happening out there. No trade signals, just clarity.'
+                  : 'Connect a broker account first. The coach answers from your own closed trades, so it needs some to read.'}</p>
+                {accountId ? (
+                  <div className="ai-starters">
+                    {STARTERS.map(({ web, text }) => (
+                      <button key={text} className="x-tag" onClick={() => send(text)} disabled={sending} data-testid="coach-starter">
+                        <i>{web ? 'Web' : 'Your data'}</i>{text}
+                      </button>
+                    ))}
+                  </div>
+                ) : <Link href="/brokers" className="x-btn x-btn--hi ai-mt">Connect a broker</Link>}
               </div>
             ) : (
-              <div className="co-msgs">
+              <div className="ai-msgs">
                 {messages.map((m, i) => {
                   const isLast = i === messages.length - 1;
-                  if (m.role === 'user') return <div key={i} className="co-u" data-testid="coach-msg-user"><p>{m.content}</p></div>;
+                  if (m.role === 'user') return <div key={i} className="ai-u" data-testid="coach-msg-user">{m.content}</div>;
+                  const streaming = isLast && sending && !!m.content;
                   return (
-                    <div key={i} className="co-a" data-testid="coach-msg-assistant">
-                      <span className="co-av">TL</span>
-                      <div className="co-a-body">
-                        <div className="co-card">
-                          {m.content ? (
-                            <>
-                              <MarkdownMessage content={m.content} />
-                              {m.sources && m.sources.length > 0 && <SourcesFooter sources={m.sources} />}
-                            </>
-                          ) : isLast && phase ? <ThinkingIndicator phase={phase} /> : <ThinkingIndicator phase="thinking" />}
-                        </div>
+                    <div key={i} className="ai-a" data-testid="coach-msg-assistant">
+                      <span className="ai-av" aria-hidden>TL</span>
+                      <div className="ai-a-bd">
+                        {m.content ? (
+                          <>
+                            <div className={streaming ? 'ai-caret-wrap' : undefined}><MarkdownMessage content={m.content} /></div>
+                            {m.sources && m.sources.length > 0 && <SourcesFooter sources={m.sources} />}
+                          </>
+                        ) : <Thinking phase={isLast && phase ? phase : 'thinking'} />}
                         {m.content && (!isLast || !sending) && <MessageActions content={m.content} onRegenerate={isLast ? regenerate : undefined} />}
                       </div>
                     </div>
@@ -317,25 +369,28 @@ export default function CoachPage() {
             )}
           </div>
 
-          {error && <div className="d-err co-err" data-testid="coach-error" role="alert"><span>{error}</span></div>}
+          {error && (
+            <div className="x-banner x-banner--err ai-err" data-testid="coach-error" role="alert">
+              <span>{error}</span>
+              {messages.length > 0 && !sending && <button type="button" className="x-btn x-btn--sm" onClick={retry} data-testid="coach-retry">Retry</button>}
+            </div>
+          )}
 
-          <form onSubmit={e => { e.preventDefault(); send(input); }} className="co-form" data-testid="coach-form">
-            <div className="co-comp">
-              <textarea value={input} onChange={e => setInput(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(input); } }}
+          <form onSubmit={e => { e.preventDefault(); send(input); }} className="ai-form" data-testid="coach-form">
+            <div className="ai-comp">
+              <textarea ref={inputRef} value={input} onChange={e => setInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); send(input); } }}
                 rows={1} placeholder={accountId ? 'Ask about your trading, or anything market-related…' : 'Connect a broker to start'}
                 disabled={sending || !accountId} data-testid="coach-input" aria-label="Message" />
               {sending ? (
-                <button type="button" onClick={stop} data-testid="coach-stop" className="co-send stop" aria-label="Stop generating"><i /></button>
+                <button type="button" onClick={stop} data-testid="coach-stop" className="x-btn ai-stop" aria-label="Stop generating"><i /></button>
               ) : (
-                <button type="submit" disabled={!accountId || !input.trim()} data-testid="coach-send" className="co-send" aria-label="Send">
-                  <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M21 3L10 14M21 3l-7 18-4-7-7-4z" /></svg>
-                </button>
+                <button type="submit" disabled={!accountId || !input.trim()} data-testid="coach-send" className="x-btn x-btn--hi" aria-label="Send"><ISend /></button>
               )}
             </div>
-            <p className="co-note">Not financial advice · reviews your behaviour · web answers are general info — verify before acting</p>
+            <p className="ai-fine">Not financial advice. The coach reviews your behaviour; web answers are general info, so verify before acting.</p>
           </form>
-        </div>
+        </section>
       </div>
     </AppShell>
   );

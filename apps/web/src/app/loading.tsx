@@ -2,9 +2,5 @@
 import { LoadingScreen } from '@/components/loader';
 
 export default function Loading() {
-  return (
-    <div className="h-dvh bg-app">
-      <LoadingScreen />
-    </div>
-  );
+  return <LoadingScreen />;
 }

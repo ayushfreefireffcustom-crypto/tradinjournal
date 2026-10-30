@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { adminApi, type AdminUserDossierDto } from '@/lib/admin-api';
-import { fmtDate, fmtRelative, statusTone, toneClass } from './admin-utils';
-import { X, ArrowsClockwise } from '@phosphor-icons/react';
+import { fmtDate, fmtRelative, sentence, statusTone, tagClass } from './admin-utils';
+import { V6Portal } from '@/components/confirm-dialog';
+import { IClose, ISync } from '@/components/v3/icons';
+import '@/styles/v6/admin.css';
 
 export function UserDrawer({
   userId,
@@ -30,129 +32,91 @@ export function UserDrawer({
     return () => { cancelled = true; };
   }, [userId]);
 
-  return (
-    <>
-      <div className="fixed inset-0 z-40 bg-app/70 backdrop-blur-sm" onClick={onClose} aria-hidden />
-      <aside
-        className="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-surface border-l border-border flex flex-col shadow-2xl"
-        data-testid="admin-user-drawer"
-      >
-        <div className="h-14 border-b border-border flex items-center justify-between px-4 shrink-0">
-          <div className="text-[10px] tracking-[0.2em] text-fg-3">// USER DOSSIER</div>
-          <button type="button" onClick={onClose} className="p-2 text-fg-3 hover:text-fg" aria-label="Close">
-            <X size={18} />
-          </button>
-        </div>
+  useEffect(() => {
+    const k = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', k);
+    return () => window.removeEventListener('keydown', k);
+  }, [onClose]);
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 min-w-0">
-          {loading && <p className="text-sm text-fg-3">Loading…</p>}
-          {error && <p className="text-sm text-loss">{error}</p>}
+  return (
+    <V6Portal>
+      <div className="ad-drawer-scrim" onClick={onClose} aria-hidden />
+      <aside className="ad-drawer" role="dialog" aria-modal="true" aria-label="User details" data-testid="admin-user-drawer">
+        <header className="ad-drawer-h">
+          <span className="x-label">User details</span>
+          <button type="button" onClick={onClose} className="x-btn x-btn--ghost x-btn--icon x-btn--sm" aria-label="Close"><IClose size={16} /></button>
+        </header>
+
+        <div className="ad-drawer-bd">
+          {loading && <div className="ad-tbl-sk">{[0, 1, 2, 3].map(i => <i key={i} className="x-skel x-skel--in" />)}</div>}
+          {error && <div className="x-banner x-banner--err"><span>{error}</span></div>}
           {data && (
             <>
-              <div>
-                <div className="font-display font-black text-xl tracking-tight">{data.name || 'Unnamed'}</div>
-                <div className="text-sm text-fg-2 truncate">{data.email}</div>
-                <div className="flex flex-wrap gap-1.5 mt-2">
-                  <span className={`text-[9px] tracking-widest px-2 py-0.5 border rounded ${toneClass[statusTone('elefin', data.elefinStatus)]}`}>
-                    {data.elefinStatus}
-                  </span>
-                  <span className={`text-[9px] tracking-widest px-2 py-0.5 border rounded ${toneClass[statusTone('activity', data.activityStatus)]}`}>
-                    {data.activityStatus}
-                  </span>
-                  {data.source && (
-                    <span className="text-[9px] tracking-widest px-2 py-0.5 border rounded border-border-soft text-fg-2">
-                      {data.source}
-                    </span>
-                  )}
+              <div className="ad-dos-id">
+                <b>{data.name || 'Unnamed'}</b>
+                <span>{data.email}</span>
+                <div className="ad-tags">
+                  <span className={tagClass[statusTone('elefin', data.elefinStatus)]}>Elefin · {sentence(data.elefinStatus)}</span>
+                  <span className={tagClass[statusTone('activity', data.activityStatus)]}>{sentence(data.activityStatus)}</span>
+                  {data.source && <span className="x-tag">{sentence(data.source)}</span>}
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-2 text-[11px]">
-                {[
-                  ['Usage today', `${data.usageMinToday}m`],
-                  ['Usage 7d', `${data.avgSessionMin7d}m`],
-                  ['Trades 7d', data.tradeCount7d],
-                  ['Total trades', data.totalTrades],
-                  ['Open trades', data.openTrades],
-                  ['Brokers', data.brokerCount],
-                  ['Sessions', data.sessionCount],
-                  ['Joined', fmtDate(data.createdAt)],
-                  ['Last auth', fmtRelative(data.lastActiveAt)],
-                  ['Last product', fmtRelative(data.lastProductAt)],
-                  ['Top feature', data.topFeature ?? '—'],
-                  ['Auth', data.authProviders.join(', ') || 'email'],
-                ].map(([k, v]) => (
-                  <div key={String(k)} className="border border-border-soft rounded p-2 bg-app/40">
-                    <div className="text-[9px] tracking-widest text-fg-3">{k}</div>
-                    <div className="text-fg mt-0.5 truncate numeric">{v}</div>
+              <dl className="ad-facts">
+                {([
+                  ['Usage today', `${data.usageMinToday}m`, true],
+                  ['Usage, 7 days', `${data.avgSessionMin7d}m`, true],
+                  ['Trades, 7 days', data.tradeCount7d, true],
+                  ['Total trades', data.totalTrades, true],
+                  ['Open trades', data.openTrades, true],
+                  ['Brokers', data.brokerCount, true],
+                  ['Sessions', data.sessionCount, true],
+                  ['Joined', fmtDate(data.createdAt), false],
+                  ['Last sign-in', fmtRelative(data.lastActiveAt), false],
+                  ['Last in product', fmtRelative(data.lastProductAt), false],
+                  ['Top feature', data.topFeature ?? '—', false],
+                  ['Sign-in', data.authProviders.join(', ') || 'email', false],
+                ] as const).map(([k, v, num]) => (
+                  <div key={k}><dt>{k}</dt><dd className={num ? 'm' : ''}>{v}</dd></div>
+                ))}
+              </dl>
+
+              {data.lastIp && <p className="ad-note">Last IP <span className="m">{data.lastIp}</span></p>}
+              {(data.city || data.country || data.postalCode) && (
+                <div className="x-inset ad-dos-box">
+                  <span className="x-label">Location</span>
+                  <p>{[data.city, data.country, data.postalCode].filter(Boolean).join(' · ')}</p>
+                  {data.lat != null && data.lng != null && <small className="m">{data.lat.toFixed(3)}, {data.lng.toFixed(3)}</small>}
+                </div>
+              )}
+              {data.lastDeniedReason && <div className="x-banner x-banner--err"><span>{data.lastDeniedReason}</span></div>}
+
+              <div className="ad-dos-sec">
+                <span className="x-label">Brokers</span>
+                {data.brokerDetails.length === 0 ? <p className="ad-none">None connected</p> : data.brokerDetails.map(b => (
+                  <div key={`${b.mt5Login}-${b.server}`} className="x-inset ad-dos-box">
+                    <div className="ad-dos-row"><b>{b.broker}</b><span className="m x-muted">#{b.mt5Login}</span></div>
+                    <small>{b.server}</small>
+                    <small>Synced {fmtRelative(b.lastSyncAt).toLowerCase()} · {sentence(b.status)}</small>
                   </div>
                 ))}
               </div>
 
-              {data.lastIp && (
-                <div className="text-[10px] text-fg-3">Last IP · {data.lastIp}</div>
-              )}
-              {(data.city || data.country || data.postalCode) && (
-                <div className="text-[11px] text-fg-2 border border-border-soft rounded p-2 bg-app/40">
-                  <div className="text-[9px] tracking-widest text-fg-3 mb-0.5">LOCATION</div>
-                  {[data.city, data.country, data.postalCode].filter(Boolean).join(' · ')}
-                  {data.lat != null && data.lng != null && (
-                    <div className="text-[10px] text-fg-3 numeric mt-0.5">{data.lat.toFixed(3)}, {data.lng.toFixed(3)}</div>
-                  )}
-                </div>
-              )}
-              {data.lastDeniedReason && (
-                <div className="text-[11px] text-loss border border-loss/20 bg-loss/5 rounded p-2">
-                  {data.lastDeniedReason}
-                </div>
-              )}
-
-              <div>
-                <div className="text-[9px] tracking-widest text-fg-3 mb-2">BROKERS</div>
-                {data.brokerDetails.length === 0 ? (
-                  <p className="text-sm text-fg-3">None connected</p>
-                ) : (
-                  <div className="space-y-2">
-                    {data.brokerDetails.map(b => (
-                      <div key={`${b.mt5Login}-${b.server}`} className="border border-border-soft rounded p-2">
-                        <div className="flex justify-between gap-2">
-                          <span className="text-fg text-sm">{b.broker}</span>
-                          <span className="text-fg-3 text-[10px]">#{b.mt5Login}</span>
-                        </div>
-                        <div className="text-[10px] text-fg-3 truncate">{b.server}</div>
-                        <div className="text-[10px] text-fg-3 mt-1">Sync {fmtRelative(b.lastSyncAt)} · {b.status}</div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <div className="text-[9px] tracking-widest text-fg-3 mb-2">USAGE SESSIONS 7D</div>
-                {data.usageSessions7d.length === 0 ? (
-                  <p className="text-sm text-fg-3">No product sessions yet</p>
-                ) : (
-                  <div className="space-y-1 max-h-40 overflow-y-auto">
+              <div className="ad-dos-sec">
+                <span className="x-label">Product sessions, 7 days</span>
+                {data.usageSessions7d.length === 0 ? <p className="ad-none">No product sessions yet</p> : (
+                  <ul className="ad-feed">
                     {data.usageSessions7d.map(s => (
-                      <div key={s.id} className="flex justify-between text-[11px] py-1 border-b border-border-soft/40 gap-2">
-                        <span className="truncate text-fg-2">{s.pagePath || '—'}</span>
-                        <span className="numeric text-fg-3 shrink-0">{Math.round(s.durationSec / 60)}m · {fmtRelative(s.startedAt)}</span>
-                      </div>
+                      <li key={s.id}><span className="m">{s.pagePath || '—'}</span><small><span className="m">{Math.round(s.durationSec / 60)}m</span> · {fmtRelative(s.startedAt)}</small></li>
                     ))}
-                  </div>
+                  </ul>
                 )}
               </div>
 
               {data.recentFeatures.length > 0 && (
-                <div>
-                  <div className="text-[9px] tracking-widest text-fg-3 mb-2">FEATURES</div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {data.recentFeatures.map(f => (
-                      <span key={f.feature} className="text-[10px] px-2 py-1 border border-border-soft rounded">
-                        {f.feature} · {f.count}
-                      </span>
-                    ))}
-                  </div>
+                <div className="ad-dos-sec">
+                  <span className="x-label">Features</span>
+                  <div className="ad-tags">{data.recentFeatures.map(f => <span key={f.feature} className="x-tag">{f.feature} · <span className="m">{f.count}</span></span>)}</div>
                 </div>
               )}
             </>
@@ -160,19 +124,13 @@ export function UserDrawer({
         </div>
 
         {data && (
-          <div className="p-4 border-t border-border shrink-0">
-            <button
-              type="button"
-              onClick={() => onRecheck(data.id)}
-              disabled={recheckBusy}
-              className="btn btn-ghost border border-border-soft w-full py-2.5 text-[11px] tracking-widest flex items-center justify-center gap-2"
-            >
-              <ArrowsClockwise size={14} className={recheckBusy ? 'animate-spin' : ''} />
-              RECHECK ACCESS
+          <footer className="ad-drawer-f">
+            <button type="button" onClick={() => onRecheck(data.id)} disabled={recheckBusy} className="x-btn x-btn--hi x-btn--full">
+              <ISync size={15} className={recheckBusy ? 'x-spin' : ''} />Recheck access
             </button>
-          </div>
+          </footer>
         )}
       </aside>
-    </>
+    </V6Portal>
   );
 }

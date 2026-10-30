@@ -5,13 +5,13 @@
 // Previous → Forecast → Actual progression with a plain-English surprise read,
 // and keep actions understated. Provenance is fetched from the detail endpoint.
 import { useEffect, useMemo, useState } from 'react';
-import { IClose } from '@/components/v3/icons';
+import MkDialog, { MkClose } from '@/components/v6/markets/dialog';
 import { api, type CalendarEvent, type CalendarEventDetail, type EventImpact } from '@/lib/api';
 
-const impactMeta: Record<EventImpact, { pill: string; label: string; note: string }> = {
-  HIGH: { pill: 'r', label: 'High impact', note: 'Often moves the market on release.' },
-  MEDIUM: { pill: 'a', label: 'Medium impact', note: 'Can move the market.' },
-  LOW: { pill: 'n', label: 'Low impact', note: 'Usually a limited reaction.' },
+const impactMeta: Record<EventImpact, { cls: string; label: string; note: string }> = {
+  HIGH: { cls: 'high', label: 'High impact', note: 'Often moves the market on release.' },
+  MEDIUM: { cls: 'medium', label: 'Medium impact', note: 'Can move the market.' },
+  LOW: { cls: 'low', label: 'Low impact', note: 'Usually a limited reaction.' },
 };
 
 // Plain-English descriptions for common events (à la Investing.com's event blurbs).
@@ -27,12 +27,6 @@ const GLOSSARY: Array<[RegExp, string]> = [
   [/interest rate|bank rate|rate decision/i, "The central bank's benchmark interest-rate decision."],
   [/speaks|speech|press conference|testimony/i, 'Remarks from a central-bank official — watched closely for policy hints.'],
 ];
-
-function flag(cc: string): string {
-  const c = cc.toUpperCase();
-  if (!/^[A-Z]{2}$/.test(c)) return '🏳️';
-  return String.fromCodePoint(...[...c].map(ch => 0x1f1e6 + ch.charCodeAt(0) - 65));
-}
 
 function num(s: string | null): number | null {
   if (!s) return null;
@@ -71,12 +65,6 @@ export default function EventModal({
   const now = useNow(true);
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [onClose]);
-
-  useEffect(() => {
     let alive = true;
     api.calendar.get(event.id).then(d => { if (alive) setDetail(d); }).catch(() => {});
     return () => { alive = false; };
@@ -103,60 +91,60 @@ export default function EventModal({
   const read = (() => {
     const a = num(event.actual), f = num(event.forecast), p = num(event.previous);
     if (event.actual && a != null && f != null) {
-      if (a > f) return { arrow: '↑', cls: 'lg', text: 'Actual came in above forecast' };
-      if (a < f) return { arrow: '↓', cls: 'sh', text: 'Actual came in below forecast' };
-      return { arrow: '→', cls: 'mute', text: 'Actual in line with forecast' };
+      if (a > f) return { arrow: '↑', cls: 'pos', text: 'Actual came in above forecast' };
+      if (a < f) return { arrow: '↓', cls: 'neg', text: 'Actual came in below forecast' };
+      return { arrow: '→', cls: 'x-muted', text: 'Actual in line with forecast' };
     }
     if (!released && f != null && p != null) {
-      if (f > p) return { arrow: '↑', cls: 'mute', text: 'Forecast points higher than previous' };
-      if (f < p) return { arrow: '↓', cls: 'mute', text: 'Forecast points lower than previous' };
-      return { arrow: '→', cls: 'mute', text: 'Forecast unchanged from previous' };
+      if (f > p) return { arrow: '↑', cls: 'x-muted', text: 'Forecast points higher than previous' };
+      if (f < p) return { arrow: '↓', cls: 'x-muted', text: 'Forecast points lower than previous' };
+      return { arrow: '→', cls: 'x-muted', text: 'Forecast unchanged from previous' };
     }
     return null;
   })();
 
   const heroCol = released ? 'actual' : 'forecast';
-  const dir = event.actual && read?.cls === 'lg' ? 'up' : event.actual && read?.cls === 'sh' ? 'down' : null;
+  const dir = event.actual && read?.cls === 'pos' ? 'up' : event.actual && read?.cls === 'neg' ? 'down' : null;
 
   const col = (key: string, label: string, value: string | null) => {
     const hero = key === heroCol;
-    const tone = key === 'actual' && event.actual ? (dir === 'up' ? 'lg' : dir === 'down' ? 'sh' : '') : '';
-    return <div className={`em-col ${hero ? 'hero' : ''}`}><span>{label}</span><b className={`num ${tone}`}>{value ?? '–'}</b></div>;
+    const tone = key === 'actual' && event.actual ? (dir === 'up' ? 'pos' : dir === 'down' ? 'neg' : '') : '';
+    return <div className={hero ? 'mk-em-hero' : ''}><span>{label}</span><b className={`m ${tone}`}>{value ?? '—'}</b></div>;
   };
 
+  const cc = /^[A-Z]{2}$/i.test(event.country) ? event.country.toUpperCase() : null;
+
   return (
-    <div className="v3 v3-modal" role="dialog" aria-modal="true" aria-labelledby="em-t" data-testid="event-modal">
-      <div className="v3-modal-bg" onClick={onClose} />
-      <div className="v3-modal-card em-card">
-        <div className="em-bd">
-          <div className="em-top">
-            <span className="em-cc"><span className="fl">{flag(event.country)}</span>{event.currency}</span>
-            <span className={`v3-pill ${impact.pill}`}>{impact.label}</span>
-            <button onClick={onClose} aria-label="Close" className="v3-modal-x" style={{ marginLeft: 'auto' }}><IClose size={16} /></button>
-          </div>
-          <h2 id="em-t">{event.title}</h2>
-          {description && <p className="em-desc">{description}</p>}
-          <div className="em-when">
-            <span className="num">{new Date(event.eventTime).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
-            {countdown ? <span className="v3-pill v num">{countdown}</span> : <span className="v3-pill n">Released</span>}
-          </div>
-          <div className="em-cols">
-            {col('previous', 'Previous', event.previous)}
-            {col('forecast', 'Forecast', event.forecast)}
-            {col('actual', 'Actual', event.actual)}
-          </div>
-          {read && <p className={`em-read ${read.cls}`}><b>{read.arrow}</b> {read.text}</p>}
-          <p className="em-meta">{impact.note}{prov.names.length > 0 && <> · Source: {prov.names.join(' + ')}</>}{prov.conflict && <span className="am"> · Sources disagreed on impact</span>}</p>
-          {released ? (
-            <div className="em-released" data-testid="event-modal-released">Already released</div>
-          ) : (
-            <button onClick={() => { setWatched(w => !w); onToggleWatch(event); }} data-testid="event-modal-watch" className={`em-watch ${watched ? 'on' : ''}`} aria-pressed={watched}>
-              <svg width="17" height="17" viewBox="0 0 24 24" fill={watched ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9 6.8 19.6l1-5.8L3.5 9.7l5.9-.9z" /></svg>
-              {watched ? 'Watching — you’ll get a reminder' : 'Watch & remind me'}
-            </button>
-          )}
+    <MkDialog onClose={onClose} labelledBy="mk-em-t" testId="event-modal">
+      <div className="mk-dh">
+        <div className="mk-dh-m mk-em-top">
+          {cc && <span className="mk-cc m" title={`Country: ${cc}`}>{cc}</span>}
+          <span className="x-tag x-tag--m">{event.currency}</span>
+          <span className={`mk-imptag mk-imptag--${impact.cls}`}><i className={`mk-imp mk-imp--${impact.cls}`} aria-hidden />{impact.label}</span>
         </div>
+        <MkClose onClose={onClose} />
       </div>
-    </div>
+      <h2 id="mk-em-t" className="mk-em-t">{event.title}</h2>
+      {description && <p className="mk-em-desc">{description}</p>}
+      <div className="mk-em-when">
+        <span>{new Date(event.eventTime).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+        {countdown ? <span className="x-tag x-tag--m">{countdown}</span> : <span className="x-tag">Released</span>}
+      </div>
+      <div className="x-strip mk-em-cols">
+        {col('previous', 'Previous', event.previous)}
+        {col('forecast', 'Forecast', event.forecast)}
+        {col('actual', 'Actual', event.actual)}
+      </div>
+      {read && <p className={`mk-em-read ${read.cls}`}><b>{read.arrow}</b> {read.text}</p>}
+      <p className="mk-em-meta">{impact.note}{prov.names.length > 0 && <> · Source: {prov.names.join(' + ')}</>}{prov.conflict && <> · Sources disagreed on impact</>}</p>
+      {released ? (
+        <div className="x-inset mk-em-done" data-testid="event-modal-released">Already released</div>
+      ) : (
+        <button onClick={() => { setWatched(w => !w); onToggleWatch(event); }} data-testid="event-modal-watch" className={`x-btn x-btn--lg x-btn--full ${watched ? '' : 'x-btn--hi'}`} aria-pressed={watched}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill={watched ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" aria-hidden><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9 6.8 19.6l1-5.8L3.5 9.7l5.9-.9z" /></svg>
+          {watched ? 'Watching: you’ll get a reminder' : 'Watch and remind me'}
+        </button>
+      )}
+    </MkDialog>
   );
 }

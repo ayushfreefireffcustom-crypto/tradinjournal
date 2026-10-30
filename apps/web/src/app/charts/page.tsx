@@ -18,15 +18,16 @@ import DrawingToolbar from '@/components/charts/drawing-toolbar';
 import Watchlist from '@/components/charts/watchlist';
 import AlertsPanel from '@/components/charts/alerts-panel';
 import AlertDialog from '@/components/charts/alert-dialog';
+import '@/styles/v6/markets.css';
 
 const DEFAULT_SYMBOLS = ['BTCUSDT', 'ETHUSDT', 'XAUUSD', 'EURUSD'];
 const LAYOUT_KEY = 'tradelogs.charts.layout';
 const newId = () => (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `p${Math.random()}`);
 
 const LAYOUTS: { n: number; label: string; icon: React.ReactNode }[] = [
-  { n: 1, label: 'Single chart', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><rect x="4" y="4" width="16" height="16" rx="3" /></svg> },
-  { n: 2, label: 'Two charts', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><rect x="4" y="4" width="16" height="16" rx="3" /><path d="M12 4v16" /></svg> },
-  { n: 4, label: 'Four charts', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><rect x="4" y="4" width="16" height="16" rx="3" /><path d="M12 4v16M4 12h16" /></svg> },
+  { n: 1, label: 'Single chart', icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><rect x="4" y="4" width="16" height="16" rx="3" /></svg> },
+  { n: 2, label: 'Two charts', icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><rect x="4" y="4" width="16" height="16" rx="3" /><path d="M12 4v16" /></svg> },
+  { n: 4, label: 'Four charts', icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><rect x="4" y="4" width="16" height="16" rx="3" /><path d="M12 4v16M4 12h16" /></svg> },
 ];
 
 export default function ChartsPage() {
@@ -118,28 +119,31 @@ export default function ChartsPage() {
 
   const layoutSeg = (
     <>
-      <div className="v3-seg ch-layout" role="group" aria-label="Layout">
+      <div className="x-seg mk-layout" role="group" aria-label="Layout">
         {LAYOUTS.map(l => <button key={l.n} aria-pressed={panes.length === l.n} onClick={() => setLayout(l.n)} title={l.label} aria-label={l.label} data-testid={`layout-${l.n}`}>{l.icon}</button>)}
       </div>
-      <button onClick={openAlert} data-testid="add-alert" className="v3-btn v3-btn--o ch-alert" aria-label={`New price alert for ${active.symbol}`}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M6 16V11a6 6 0 0112 0v5l2 2H4z" /><path d="M10 20a2 2 0 004 0" /></svg><span>Alert</span>
+      <button onClick={openAlert} data-testid="add-alert" className="x-btn mk-alert-btn" aria-label={`New price alert for ${active.symbol}`}>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M6 16V11a6 6 0 0112 0v5l2 2H4z" /><path d="M10 20a2 2 0 004 0" /></svg><span>Alert</span>
       </button>
     </>
   );
 
   return (
-    <AppShell accounts={accounts} selectedAccount={selected} onSelectAccount={(a: BrokerAccount) => select(a)} pageTitle="Charts" actions={layoutSeg}>
-      <div className="v3-page ch-page" data-testid="charts-page">
-        <div className="ch-main">
-          <div className="v3-card ch-bar">
+    <AppShell legacy={false} accounts={accounts} selectedAccount={selected} onSelectAccount={(a: BrokerAccount) => select(a)}
+      pageTitle="Charts" pageSubtitle="Live candles · crypto from Binance, FX and stocks from Twelve Data" actions={layoutSeg}>
+      <div className="mk-charts" data-testid="charts-page">
+        <div className="mk-cmain">
+          <div className="x-card mk-tools">
             <SymbolSearch value={active.symbol} onSelect={symbol => patchActive({ symbol })} />
             <TimeframeBar value={active.tf} onChange={tf => patchActive({ tf })} />
-            <IndicatorMenu onAdd={name => activeChart()?.createIndicator(name)} onClear={() => activeChart()?.removeIndicators()} />
-            <DrawingToolbar onDraw={name => activeChart()?.createOverlay(name)} onClear={() => activeChart()?.removeOverlays()} />
+            <div className="mk-tools-r">
+              <IndicatorMenu onAdd={name => activeChart()?.createIndicator(name)} onClear={() => activeChart()?.removeIndicators()} />
+              <DrawingToolbar onDraw={name => activeChart()?.createOverlay(name)} onClear={() => activeChart()?.removeOverlays()} />
+            </div>
           </div>
           <LayoutGrid panes={panes} activeId={activeId} onActivate={setActiveId} onClose={closePane} registerRef={registerRef} />
         </div>
-        <div className="ch-rail">
+        <div className="mk-crail">
           <Watchlist activeSymbol={active.symbol} onPick={symbol => patchActive({ symbol })} />
           <AlertsPanel activeSymbol={active.symbol} reloadToken={alertsReload} onNew={openAlert} />
         </div>

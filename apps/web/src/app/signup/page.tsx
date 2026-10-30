@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
-import AuthShell, { AuthSubmit, EyeButton, PasswordStrength } from '@/components/v3/auth-shell';
+import AuthShell, { AuthError, AuthSubmit, EyeButton, I_CHECK, PasswordStrength } from '@/components/v6/auth/auth-shell';
 import GoogleButton from '@/components/google-button';
 import { authClient } from '@/lib/auth-client';
 import { useRedirectIfAuthed } from '@/lib/use-redirect-if-authed';
@@ -11,7 +11,7 @@ import { COUNTRIES } from '@/lib/countries';
 import { partnerApi } from '@/lib/partner-api';
 import { PARTNERS_ENABLED } from '@/lib/features';
 
-function passwordStrength(pw: string): { score: number; label: string; color: string } {
+function passwordStrength(pw: string): { score: number; label: string } {
   let score = 0;
   if (pw.length >= 8) score++;
   if (pw.length >= 12) score++;
@@ -20,8 +20,7 @@ function passwordStrength(pw: string): { score: number; label: string; color: st
   if (/[^A-Za-z0-9]/.test(pw)) score++;
   const bucket = Math.min(4, score);
   const labels = ['Weak', 'Weak', 'Fair', 'Strong', 'Very strong'];
-  const colors = ['#FE3A31', '#FE3A31', '#FF9F0A', '#08C465', '#08C465'];
-  return { score: bucket, label: labels[bucket]!, color: colors[bucket]! };
+  return { score: bucket, label: labels[bucket]! };
 }
 
 export default function SignupPage() {
@@ -92,71 +91,69 @@ export default function SignupPage() {
     }
   }
 
-  const ok = (v: boolean) => v && <svg className="ok-i" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>;
+  const ok = (v: boolean) => v && <span className="au-ok" aria-hidden>{I_CHECK}</span>;
   const nameOk = name.trim().length > 1, emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   const flagOf = (cc: string) => (/^[A-Z]{2}$/.test(cc) ? String.fromCodePoint(...[...cc].map(ch => 0x1f1e6 + ch.charCodeAt(0) - 65)) : '');
   return (
-    <AuthShell variant="signup" testId="signup-page" top={<>Already journaling? <Link href="/login" data-testid="signup-to-login">Sign in</Link></>}>
+    <AuthShell variant="signup" testId="signup-page" wide top={<>Already journaling? <Link href="/login" data-testid="signup-to-login">Sign in</Link></>}>
       <form onSubmit={submit} data-testid="signup-form">
-        <h1 className="au-h"><b>Create your</b> <em>account.</em></h1>
-        <p className="au-sub">Free · up to 2 MT5 accounts · no card.</p>
-        <div style={{ marginTop: 26 }}><GoogleButton label="Sign up with Google" /></div>
-        <div className="au-or">or with email</div>
-        <div className="au-fields">
-          <div className="au-row2">
-            <label><span className="au-lbl">Full name</span>
-              <span className={`au-in ${nameOk ? 'ok' : ''}`}><input type="text" required value={name} onChange={e => setName(e.target.value)} data-testid="signup-name" placeholder="Alex Morgan" autoComplete="name" />{ok(nameOk)}</span>
-            </label>
-            <label><span className="au-lbl">Email</span>
-              <span className={`au-in ${emailOk ? 'ok' : ''}`}><input type="email" required value={email} onChange={e => setEmail(e.target.value)} data-testid="signup-email" placeholder="you@example.com" autoComplete="email" />{ok(emailOk)}</span>
-            </label>
+        <h1 className="au-t">Create your account</h1>
+        <p className="au-lead">Free, up to 2 MT5 accounts, no card.</p>
+        <div className="au-gbtn-wrap"><GoogleButton label="Sign up with Google" /></div>
+        <div className="au-sep">or with email</div>
+        <div className="au-stack">
+          <div className="au-two">
+            <div className="x-field"><label htmlFor="su-name">Full name</label>
+              <div className="au-inw"><input id="su-name" className="x-input" type="text" required value={name} onChange={e => setName(e.target.value)} data-testid="signup-name" placeholder="Alex Morgan" autoComplete="name" />{ok(nameOk)}</div>
+            </div>
+            <div className="x-field"><label htmlFor="su-email">Email</label>
+              <div className="au-inw"><input id="su-email" className="x-input" type="email" required value={email} onChange={e => setEmail(e.target.value)} data-testid="signup-email" placeholder="you@example.com" autoComplete="email" />{ok(emailOk)}</div>
+            </div>
           </div>
-          <div>
-            <label className="au-lbl" htmlFor="su-pw">Password</label>
-            <span className="au-in">
-              <input id="su-pw" type={showPassword ? 'text' : 'password'} required value={password} onChange={e => setPassword(e.target.value)} data-testid="signup-password" placeholder="At least 8 characters" autoComplete="new-password" />
+          <div className="x-field">
+            <label htmlFor="su-pw">Password</label>
+            <div className="au-inw">
+              <input id="su-pw" className="x-input" type={showPassword ? 'text' : 'password'} required value={password} onChange={e => setPassword(e.target.value)} data-testid="signup-password" placeholder="At least 8 characters" autoComplete="new-password" />
               <EyeButton shown={showPassword} onClick={() => setShowPassword(s => !s)} testId="toggle-password" />
-            </span>
+            </div>
             {password && <PasswordStrength score={strength.score} label={strength.label} />}
           </div>
-          <label><span className="au-lbl">Country</span>
-            <span className="au-in">
-              {country && <span style={{ position: 'absolute', left: 16, fontSize: 20, pointerEvents: 'none' }} aria-hidden>{flagOf(country)}</span>}
-              <select required value={country} onChange={e => setCountry(e.target.value)} data-testid="signup-country" style={country ? { paddingLeft: 48 } : undefined}>
+          <div className="x-field"><label htmlFor="su-country">Country</label>
+            <div className="au-inw">
+              {country && <span className="au-flag" aria-hidden>{flagOf(country)}</span>}
+              <select id="su-country" className="x-select" required value={country} onChange={e => setCountry(e.target.value)} data-testid="signup-country" style={country ? { paddingLeft: 44 } : undefined}>
                 <option value="">Select country…</option>
                 {COUNTRIES.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
               </select>
-              <svg className="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M6 9l6 6 6-6" /></svg>
-            </span>
-          </label>
-          <div className="au-row2">
-            <label><span className="au-lbl">City</span><span className="au-in"><input type="text" required value={city} onChange={e => setCity(e.target.value)} data-testid="signup-city" placeholder="e.g. Raipur" autoComplete="address-level2" /></span></label>
-            <label><span className="au-lbl">Postal / ZIP / PIN</span><span className="au-in"><input type="text" required value={postalCode} onChange={e => setPostalCode(e.target.value)} data-testid="signup-postal" placeholder="e.g. 492001" autoComplete="postal-code" /></span></label>
+            </div>
+          </div>
+          <div className="au-two">
+            <div className="x-field"><label htmlFor="su-city">City</label><input id="su-city" className="x-input" type="text" required value={city} onChange={e => setCity(e.target.value)} data-testid="signup-city" placeholder="e.g. Raipur" autoComplete="address-level2" /></div>
+            <div className="x-field"><label htmlFor="su-postal">Postal / ZIP / PIN</label><input id="su-postal" className="x-input" type="text" required value={postalCode} onChange={e => setPostalCode(e.target.value)} data-testid="signup-postal" placeholder="e.g. 492001" autoComplete="postal-code" /></div>
           </div>
           {PARTNERS_ENABLED && (
             <div className="au-ref" data-testid="signup-referral">
               {!refOpen ? (
-                <button type="button" className="au-ref-toggle" onClick={() => setRefOpen(true)}>Have a referral code?</button>
-              ) : <>
-                <label className="au-lbl" htmlFor="su-ref">Referral code <span className="au-lbl-opt">optional</span></label>
-                <span className={`au-in ${refValid ? 'ok' : ''}`}>
-                  <input id="su-ref" type="text" value={refCode} maxLength={20} onChange={e => setRefCode(e.target.value.replace(/[^A-Za-z0-9_-]/g, '').toUpperCase())} placeholder="e.g. ROHANFX" autoComplete="off" data-testid="signup-ref" />{ok(refValid)}
-                </span>
+                <button type="button" className="x-link" onClick={() => setRefOpen(true)}>Have a referral code?</button>
+              ) : <div className="x-field">
+                <label htmlFor="su-ref">Referral code <span className="au-opt">· optional</span></label>
+                <div className="au-inw">
+                  <input id="su-ref" className="x-input" type="text" value={refCode} maxLength={20} onChange={e => setRefCode(e.target.value.replace(/[^A-Za-z0-9_-]/g, '').toUpperCase())} placeholder="e.g. ROHANFX" autoComplete="off" data-testid="signup-ref" />{ok(refValid)}
+                </div>
                 {refValid && refCheck?.partnerName && (
-                  <p className="au-ref-note" data-testid="signup-ref-ok"><b>Referred by {refCheck.partnerName}.</b> They&rsquo;ll see your name, city and how actively you trade — never your email, balance or trades.</p>
+                  <p className="au-refnote" data-testid="signup-ref-ok"><b>Referred by {refCheck.partnerName}.</b> They&rsquo;ll see your name, city and how actively you trade, never your email, balance or trades.</p>
                 )}
                 {refCheck && refCheck.code === refCode.trim() && !refCheck.valid && (
-                  <p className="au-ref-note bad" data-testid="signup-ref-bad">We don&rsquo;t recognise that code. You can still sign up — it just won&rsquo;t be linked to anyone.</p>
+                  <p className="au-refnote bad" data-testid="signup-ref-bad">We don&rsquo;t recognise that code. You can still sign up; it just won&rsquo;t be linked to anyone.</p>
                 )}
-              </>}
+              </div>}
             </div>
           )}
-          <label className="au-check">
-            <input type="checkbox" checked={agree} onChange={e => setAgree(e.target.checked)} data-testid="agree-toggle" />
-            <span className="box"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg></span>
-            <span>I agree to the <Link href="/terms" target="_blank">Terms</Link> and <Link href="/privacy" target="_blank">Privacy policy</Link>. TRADElogs is a journal, not investment advice — we only use your read-only MT5 login.</span>
+          <label className="au-tick">
+            <input type="checkbox" className="x-check" checked={agree} onChange={e => setAgree(e.target.checked)} data-testid="agree-toggle" />
+            <span>I agree to the <Link href="/terms" target="_blank">Terms</Link> and <Link href="/privacy" target="_blank">Privacy policy</Link>. TRADElogs is a journal, not investment advice; we only use your read-only MT5 login.</span>
           </label>
-          {error && <div className="au-err" data-testid="signup-error" role="alert">{error}</div>}
+          {error && <AuthError testId="signup-error">{error}</AuthError>}
           <AuthSubmit loading={loading} disabled={!canSubmit} testId="signup-submit">{loading ? 'Creating account…' : 'Create account'}</AuthSubmit>
         </div>
       </form>

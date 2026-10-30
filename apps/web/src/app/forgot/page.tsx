@@ -8,7 +8,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
-import AuthShell, { AuthSubmit, EyeButton, PasswordStrength } from '@/components/v3/auth-shell';
+import AuthShell, { AuthError, AuthSubmit, EyeButton, PasswordStrength } from '@/components/v6/auth/auth-shell';
 import { authClient } from '@/lib/auth-client';
 
 function strengthOf(pw: string) {
@@ -75,28 +75,27 @@ export default function ForgotPasswordPage() {
     <AuthShell variant="forgot" testId="forgot-page" top={<>Remembered it? <Link href="/login" data-testid="forgot-to-login">Sign in</Link></>}>
       {stage === 'email' ? (
         <form onSubmit={requestCode} data-testid="forgot-email-form">
-          <div className="au-steps2" aria-hidden><i className="on" /><i /></div>
-          <p className="au-kicker">Step 1 of 2 · Find your account</p>
-          <h1 className="au-h"><b>Forgot your</b> <em>password?</em></h1>
-          <p className="au-sub">Enter your email and we’ll send a 6-digit code to reset it.</p>
-          <div className="au-fields" style={{ marginTop: 26 }}>
-            <label><span className="au-lbl">Email</span>
-              <span className="au-in"><input type="email" required value={email} onChange={e => setEmail(e.target.value)} data-testid="forgot-email" autoComplete="email" autoFocus placeholder="you@example.com" /></span>
-            </label>
-            {error && <div className="au-err" data-testid="forgot-error" role="alert">{error}</div>}
+          <p className="au-step"><span className="au-prog" aria-hidden><i className="on" /><i /></span>Step 1 of 2</p>
+          <h1 className="au-t">Forgot your password?</h1>
+          <p className="au-lead">Enter your email and we’ll send a 6-digit code to reset it.</p>
+          <div className="au-stack" style={{ marginTop: 24 }}>
+            <div className="x-field"><label htmlFor="fp-email">Email</label>
+              <input id="fp-email" className="x-input" type="email" required value={email} onChange={e => setEmail(e.target.value)} data-testid="forgot-email" autoComplete="email" autoFocus placeholder="you@example.com" aria-invalid={error ? true : undefined} />
+              {error && <AuthError testId="forgot-error">{error}</AuthError>}
+            </div>
             <AuthSubmit loading={loading} disabled={!email.includes('@')} testId="forgot-send">{loading ? 'Sending code…' : 'Send reset code'}</AuthSubmit>
           </div>
+          <p className="au-small"><Link href="/login">Back to sign in</Link></p>
         </form>
       ) : (
         <form onSubmit={submitReset} data-testid="forgot-reset-form">
-          <div className="au-steps2" aria-hidden><i className="on" /><i className="on" /></div>
-          <p className="au-kicker">Step 2 of 2 · Reset password</p>
-          <h1 className="au-h"><b>Choose a new</b> <em>password.</em></h1>
-          <p className="au-sub">We sent a code to <b>{email}</b>. Enter it below with your new password.</p>
-          <div className="au-fields" style={{ marginTop: 24 }}>
-            <div>
-              <span className="au-lbl">6-digit code</span>
-              <div className="au-otp" style={{ marginTop: 0 }} role="group" aria-label="6-digit code" data-testid="forgot-otp">
+          <p className="au-step"><span className="au-prog" aria-hidden><i className="on" /><i className="on" /></span>Step 2 of 2</p>
+          <h1 className="au-t">Choose a new password</h1>
+          <p className="au-lead">We sent a code to <b>{email}</b>. Enter it below with your new password.</p>
+          <div className="au-stack" style={{ marginTop: 24 }}>
+            <div className="x-field au-field">
+              <label>6-digit code</label>
+              <div className="au-codes" role="group" aria-label="6-digit code" data-testid="forgot-otp">
                 {Array.from({ length: 6 }).map((_, i) => {
                   const d = (otp[i] ?? '').trim();
                   return <input key={i} ref={el => { boxes.current[i] = el; }} inputMode="numeric" autoComplete={i === 0 ? 'one-time-code' : 'off'} maxLength={6} value={d}
@@ -105,18 +104,18 @@ export default function ForgotPasswordPage() {
                 })}
               </div>
             </div>
-            <div>
-              <label className="au-lbl" htmlFor="fp-pw">New password</label>
-              <span className="au-in">
-                <input id="fp-pw" type={showPassword ? 'text' : 'password'} required value={password} onChange={e => setPassword(e.target.value)} data-testid="forgot-password" autoComplete="new-password" placeholder="At least 8 characters" />
+            <div className="x-field">
+              <label htmlFor="fp-pw">New password</label>
+              <div className="au-inw">
+                <input id="fp-pw" className="x-input" type={showPassword ? 'text' : 'password'} required value={password} onChange={e => setPassword(e.target.value)} data-testid="forgot-password" autoComplete="new-password" placeholder="At least 8 characters" />
                 <EyeButton shown={showPassword} onClick={() => setShowPassword(s => !s)} />
-              </span>
+              </div>
               {password && <PasswordStrength score={st.score} label={st.label} />}
+              {error && <AuthError testId="forgot-error">{error}</AuthError>}
             </div>
-            {error && <div className="au-err" data-testid="forgot-error" role="alert">{error}</div>}
             <AuthSubmit loading={loading} testId="forgot-reset-submit">{loading ? 'Resetting…' : 'Reset password'}</AuthSubmit>
           </div>
-          <p className="au-note"><button type="button" onClick={() => { setStage('email'); setOtp(''); setPassword(''); setError(''); }}>← Use a different email</button></p>
+          <p className="au-small"><button type="button" onClick={() => { setStage('email'); setOtp(''); setPassword(''); setError(''); }}>Use a different email</button></p>
         </form>
       )}
     </AuthShell>

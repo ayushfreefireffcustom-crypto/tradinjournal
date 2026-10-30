@@ -4,6 +4,7 @@ import type { MacroState } from '@/lib/macro-api';
 import CountUp from './count-up';
 
 type Regime = NonNullable<MacroState['regime']>;
+type PillTone = 'green' | 'red' | 'neutral';
 
 const NARRATIVE: Record<string, { title: string; body: string; tension: string }> = {
   Goldilocks: {
@@ -33,37 +34,23 @@ const NARRATIVE: Record<string, { title: string; body: string; tension: string }
   },
 };
 
-function derivePills(regime: Regime, macro: MacroState['macro']) {
+function derivePills(regime: Regime, macro: MacroState['macro']): { label: string; tone: PillTone }[] {
   const by = new Map(macro.map(m => [m.key, m]));
   const net = by.get('NET_LIQUIDITY');
-  const liqExpanding =
-    net && net.prev != null ? net.value > net.prev : regime.growth === 'up';
+  const liqExpanding = net && net.prev != null ? net.value > net.prev : regime.growth === 'up';
   const riskOn = regime.growth === 'up' && regime.inflation === 'down';
   const fragile = (regime.recessionOdds ?? 0) >= 25;
-
-  return {
-    risk: riskOn
-      ? { label: fragile ? 'Risk-on (fragile)' : 'Risk-on', tone: 'blue' as const, on: true }
-      : { label: 'Risk-off bias', tone: 'red' as const, on: true },
-    liquidity: {
-      label: liqExpanding ? 'Liquidity expanding' : 'Liquidity tightening',
-      tone: 'purple' as const,
-      on: true,
-    },
-    inflation: {
-      label: regime.inflation === 'down' ? 'Inflation falling' : 'Inflation rising',
-      tone: regime.inflation === 'down' ? ('green' as const) : ('orange' as const),
-      on: true,
-    },
-    growth: {
-      label: regime.growth === 'up' ? 'Growth firming' : 'Growth slowing',
-      tone: regime.growth === 'up' ? ('green' as const) : ('orange' as const),
-      on: true,
-    },
-  };
+  return [
+    riskOn ? { label: fragile ? 'Risk-on (fragile)' : 'Risk-on', tone: 'neutral' } : { label: 'Risk-off bias', tone: 'red' },
+    { label: liqExpanding ? 'Liquidity expanding' : 'Liquidity tightening', tone: 'neutral' },
+    { label: regime.inflation === 'down' ? 'Inflation falling' : 'Inflation rising', tone: regime.inflation === 'down' ? 'green' : 'red' },
+    { label: regime.growth === 'up' ? 'Growth firming' : 'Growth slowing', tone: regime.growth === 'up' ? 'green' : 'red' },
+  ];
 }
 
-/** Narrative regime card with status pills + key tension — IITian-style hero. */
+const TAG: Record<PillTone, string> = { green: 'x-tag x-tag--g', red: 'x-tag x-tag--r', neutral: 'x-tag' };
+
+/** Narrative regime card with status tags and the key tension. */
 export default function RegimeNarrative({
   regime,
   macro,
@@ -73,28 +60,23 @@ export default function RegimeNarrative({
 }) {
   if (!regime) {
     return (
-      <section className="mr" data-testid="macro-regime-narrative-empty">
-        <span className="mc-lbl">Current macro regime</span>
-        <p className="mr-body">No regime classified yet — waiting on the first data ingest.</p>
+      <section className="x-card mc-rn" data-testid="macro-regime-narrative-empty">
+        <div className="x-ch"><h2>Current macro regime</h2></div>
+        <p className="mc-rn-body">No regime classified yet. It appears after the first data ingest.</p>
       </section>
     );
   }
 
   const copy = NARRATIVE[regime.label] ?? NARRATIVE.Unclear!;
-  const pills = derivePills(regime, macro);
   const odds = regime.recessionOdds;
-  const pillList = [pills.risk, pills.liquidity, pills.inflation, pills.growth] as const;
-
-  const words = copy.title.split(' ');
-  const last = words.pop();
   return (
-    <section className="mr" data-testid="macro-regime-narrative" aria-labelledby="mr-t">
-      <div className="mr-top"><span className="mc-lbl">Current macro regime</span>
-        {odds != null && <span className="mr-odds num">Recession risk <CountUp value={odds} suffix="%" duration={1000} /></span>}</div>
-      <h2 id="mr-t" data-testid="regime-narrative-title">{words.join(' ')} <em>{last}.</em></h2>
-      <p className="mr-body">{copy.body}</p>
-      <div className="mr-pills">{pillList.map((p, i) => <span key={p.label} className={`t-${p.tone}`} style={{ animationDelay: `${i * 70}ms` }}>{p.label}</span>)}</div>
-      <div className="mr-key"><b>Key tension:</b> {copy.tension}</div>
+    <section className="x-card mc-rn" data-testid="macro-regime-narrative" aria-labelledby="mc-rn-t">
+      <div className="x-ch"><h2>Current macro regime</h2>
+        {odds != null && <span className="x-r"><span className="x-tag">Recession risk <b className="m"><CountUp value={odds} suffix="%" duration={1000} /></b></span></span>}</div>
+      <h3 id="mc-rn-t" className="mc-rn-t" data-testid="regime-narrative-title">{copy.title}</h3>
+      <p className="mc-rn-body">{copy.body}</p>
+      <div className="mc-tags">{derivePills(regime, macro).map(p => <span key={p.label} className={TAG[p.tone]}>{p.label}</span>)}</div>
+      <div className="mc-callout"><i /><p><b>Key tension</b> {copy.tension}</p></div>
     </section>
   );
 }

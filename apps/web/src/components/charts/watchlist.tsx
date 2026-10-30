@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { marketApi, MARKET_SYMBOL_NAMES } from '@/lib/market-api';
+import { tickerMark } from '@/lib/desk';
 import { IClose } from '@/components/v3/icons';
 import { useQuotes, fmtQuote, fmtChg } from './quote';
 
@@ -21,22 +22,28 @@ export default function Watchlist({ activeSymbol, onPick }: { activeSymbol: stri
   const pinned = symbols.includes(activeSymbol);
 
   return (
-    <section className="v3-card ch-side" data-testid="watchlist" aria-labelledby="ch-wl-t">
-      <div className="ch-side-hd">
-        <h3 id="ch-wl-t"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9 6.8 19.6l1-5.8L3.5 9.7l5.9-.9z" /></svg> Watchlist</h3>
-        <button className="v3-link" onClick={() => !pinned && save([...symbols, activeSymbol])} disabled={pinned} title={pinned ? `${activeSymbol} is pinned` : `Pin ${activeSymbol}`} data-testid="watchlist-add">{pinned ? 'Pinned' : '+ Add'}</button>
+    <section className="x-card mk-side" data-testid="watchlist" aria-labelledby="mk-wl-t">
+      <div className="x-ch">
+        <h3 id="mk-wl-t">Watchlist</h3>
+        {!loading && symbols.length > 0 && <span className="x-sub m">{symbols.length}</span>}
+        <div className="x-r">
+          <button className="x-btn x-btn--sm" onClick={() => !pinned && save([...symbols, activeSymbol])} disabled={pinned} title={pinned ? `${activeSymbol} is pinned` : `Pin ${activeSymbol}`} data-testid="watchlist-add">
+            {pinned ? 'Pinned' : <>Pin <span className="mk-ell">{activeSymbol}</span></>}
+          </button>
+        </div>
       </div>
-      <div className="ch-side-bd">
-        {loading ? Array.from({ length: 4 }).map((_, i) => <div key={i} className="skel d-sk" style={{ height: 46, margin: '4px 0' }} />)
-          : symbols.length === 0 ? <p className="ch-none">Nothing pinned yet. Open a symbol and press + Add.</p>
+      <div className="mk-side-bd">
+        {loading ? Array.from({ length: 4 }).map((_, i) => <div key={i} className="x-skel x-skel--in mk-sk-row" />)
+          : symbols.length === 0 ? <p className="mk-none">Nothing pinned yet. Open a symbol and press Pin.</p>
           : symbols.map(s => {
             const q = quotes[s];
-            const tone = q?.chg == null ? '' : q.chg >= 0 ? 'lg' : 'sh';
+            const tone = q?.chg == null ? 'x-muted' : q.chg >= 0 ? 'pos' : 'neg';
             return (
-              <div key={s} role="button" tabIndex={0} className={`ch-wl ${s === activeSymbol ? 'on' : ''}`} onClick={() => onPick(s)} onKeyDown={e => { if (e.key === 'Enter') onPick(s); }} data-testid={`watchlist-item-${s}`}>
-                <span><b>{s}</b><small>{MARKET_SYMBOL_NAMES[s] ?? ' '}</small></span>
-                <span className={`r num ${tone}`}>{q ? fmtQuote(q.last) : '—'}<small className={tone}>{q ? fmtChg(q.chg) : ''}</small></span>
-                <button className="x" onClick={e => { e.stopPropagation(); save(symbols.filter(x => x !== s)); }} aria-label={`Unpin ${s}`}><IClose size={12} /></button>
+              <div key={s} role="button" tabIndex={0} className={`mk-wl ${s === activeSymbol ? 'on' : ''}`} onClick={() => onPick(s)} onKeyDown={e => { if (e.key === 'Enter') onPick(s); }} data-testid={`watchlist-item-${s}`} aria-current={s === activeSymbol || undefined}>
+                <span className="x-mk">{tickerMark(s)}</span>
+                <span className="mk-wl-n"><b>{s}</b><small>{MARKET_SYMBOL_NAMES[s] ?? ' '}</small></span>
+                <span className="mk-wl-px m">{q ? fmtQuote(q.last) : '—'}<small className={tone}>{q ? fmtChg(q.chg) : ' '}</small></span>
+                <button className="mk-wl-x" onClick={e => { e.stopPropagation(); save(symbols.filter(x => x !== s)); }} onKeyDown={e => e.stopPropagation()} aria-label={`Unpin ${s}`} title={`Unpin ${s}`}><IClose size={12} /></button>
               </div>
             );
           })}

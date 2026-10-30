@@ -2,18 +2,16 @@
 
 import { useMemo, useState } from 'react';
 import type { MacroState } from '@/lib/macro-api';
-import { formatWhen, impactTone } from '@/lib/macro-format';
-
-function impactPill(tone: ReturnType<typeof impactTone>): string {
-  if (tone === 'high') return 'text-loss border-loss/40 bg-loss/10';
-  if (tone === 'medium') return 'text-warning border-warning/40 bg-warning/10';
-  if (tone === 'low') return 'text-fg-3 border-border bg-surface-hover';
-  return 'text-fg-3 border-border-soft';
-}
+import { formatWhen } from '@/lib/macro-format';
+import { ImpactTag } from '@/components/v6/macro/impact';
+import { PanelHead } from '@/components/v6/macro/ui';
 
 type ImpactFilter = 'ALL' | 'HIGH' | 'MEDIUM' | 'LOW';
+const FILTERS: { key: ImpactFilter; label: string }[] = [
+  { key: 'ALL', label: 'All' }, { key: 'HIGH', label: 'High' }, { key: 'MEDIUM', label: 'Medium' }, { key: 'LOW', label: 'Low' },
+];
 
-/** Richer macro calendar with impact filters + countdowns. */
+/** Macro calendar with impact and country filters plus countdowns. */
 export default function MacroCalendarPanel({ events }: { events: MacroState['events'] }) {
   const [impact, setImpact] = useState<ImpactFilter>('ALL');
   const [country, setCountry] = useState('ALL');
@@ -35,90 +33,50 @@ export default function MacroCalendarPanel({ events }: { events: MacroState['eve
   const nextHigh = upcoming.find(e => (e.impact ?? '').toUpperCase() === 'HIGH');
 
   return (
-    <div className="space-y-3" data-testid="macro-calendar-panel">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div>
-          <div className="text-[10px] tracking-[0.2em] text-fg-3">Economic calendar</div>
-          <h2 className="font-display font-black text-xl tracking-tight mt-1">Event Window</h2>
-        </div>
-        <div className="text-[11px] text-fg-3 numeric">{filtered.length} events</div>
-      </div>
+    <div className="mc-stack" data-testid="macro-calendar-panel">
+      <PanelHead eyebrow="Economic calendar" title="Event window" right={<span className="x-muted"><span className="m">{filtered.length}</span> events</span>} />
 
       {nextHigh && (
-        <div className="tcard p-3 border-loss/25 flex items-center justify-between gap-3" data-testid="macro-calendar-next-high">
-          <div className="min-w-0">
-            <div className="text-[9px] tracking-[0.16em] text-loss">Next high impact</div>
-            <div className="text-[13px] text-fg truncate mt-0.5">{nextHigh.title}</div>
-          </div>
-          <div className="text-right shrink-0">
-            <div className="text-[10px] text-fg-3">{nextHigh.country ?? '—'}</div>
-            <div className="numeric text-[12px] text-profit mt-0.5">{formatWhen(nextHigh.at, now)}</div>
-          </div>
+        <div className="x-card mc-next" data-testid="macro-calendar-next-high">
+          <i className="x-dot x-dot--r" aria-hidden />
+          <div className="mc-next-m"><small>Next high-impact event</small><b>{nextHigh.title}</b></div>
+          <div className="mc-next-r"><small>{nextHigh.country ?? '—'}</small><b className="m pos">{formatWhen(nextHigh.at, now)}</b></div>
         </div>
       )}
 
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="seg overflow-x-auto no-scrollbar">
-          {(['ALL', 'HIGH', 'MEDIUM', 'LOW'] as ImpactFilter[]).map(x => (
-            <button
-              key={x}
-              type="button"
-              data-active={impact === x}
-              onClick={() => setImpact(x)}
-              className="seg-item shrink-0 tracking-[0.12em]"
-            >
-              {x}
-            </button>
-          ))}
+      <section className="x-card">
+        <div className="mc-filters">
+          <div className="x-seg x-seg--sm" role="group" aria-label="Impact">
+            {FILTERS.map(f => <button key={f.key} type="button" aria-pressed={impact === f.key} data-active={impact === f.key} onClick={() => setImpact(f.key)}>{f.label}</button>)}
+          </div>
+          <select value={country} onChange={e => setCountry(e.target.value)} className="x-select mc-sel" aria-label="Country" data-testid="macro-calendar-country">
+            {countries.map(c => <option key={c} value={c}>{c === 'ALL' ? 'All countries' : c}</option>)}
+          </select>
         </div>
-        <select
-          value={country}
-          onChange={e => setCountry(e.target.value)}
-          className="bg-surface border border-border rounded-[var(--radius-btn)] px-2 py-1.5 text-[11px] text-fg"
-          data-testid="macro-calendar-country"
-        >
-          {countries.map(c => (
-            <option key={c} value={c}>{c === 'ALL' ? 'All countries' : c}</option>
-          ))}
-        </select>
-      </div>
 
-      {!filtered.length ? (
-        <div className="tcard p-4 text-sm text-fg-3">No events match these filters.</div>
-      ) : (
-        <ul className="tcard divide-y divide-border-soft">
-          {filtered.map((e, i) => {
-            const tone = impactTone(e.impact);
-            const upcomingEv = Date.parse(e.at) >= now;
-            return (
-              <li key={`${e.title}-${e.at}-${i}`} className="flex items-center justify-between gap-3 px-3 py-2.5">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className={`text-[9px] px-1.5 py-0.5 rounded border shrink-0 ${impactPill(tone)}`}>
-                      {(e.impact ?? '—').toUpperCase()}
-                    </span>
-                    <span className="text-[13px] text-fg truncate">{e.title}</span>
+        {!filtered.length ? (
+          <div className="x-empty"><b>No events match</b><p>Try a different impact level or country.</p></div>
+        ) : (
+          <ul className="mc-ev x-list">
+            {filtered.map((e, i) => {
+              const up = Date.parse(e.at) >= now;
+              return (
+                <li key={`${e.title}-${e.at}-${i}`}>
+                  <ImpactTag impact={e.impact} />
+                  <div className="mc-ev-m">
+                    <b>{e.title}</b>
+                    <small>{e.country ?? '—'}{(e.forecast || e.prev) && <> · forecast <span className="m">{e.forecast ?? '—'}</span> · prior <span className="m">{e.prev ?? '—'}</span></>}</small>
                   </div>
-                  <div className="text-[10px] text-fg-3 mt-0.5">
-                    {e.country ?? '—'}
-                    {(e.forecast || e.prev) && (
-                      <span className="numeric"> · F {e.forecast ?? '—'} · P {e.prev ?? '—'}</span>
-                    )}
+                  <div className="mc-ev-r">
+                    {e.actual != null && e.actual !== '' && <b className="m">{e.actual}</b>}
+                    <small className={`m ${up ? 'pos' : ''}`}>{formatWhen(e.at, now)}</small>
                   </div>
-                </div>
-                <div className="text-right shrink-0">
-                  {e.actual != null && e.actual !== '' && (
-                    <div className="numeric text-[12px] text-fg">{e.actual}</div>
-                  )}
-                  <div className={`text-[10px] numeric ${upcomingEv ? 'text-profit' : 'text-fg-3'}`}>
-                    {formatWhen(e.at, now)}
-                  </div>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
     </div>
   );
 }

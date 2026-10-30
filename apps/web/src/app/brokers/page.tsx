@@ -1,31 +1,29 @@
 'use client';
 
-// Broker management — the "connections hub". A hero header with summary stat
-// cards (total brokers / total balance / active connections), a searchable
-// broker list with per-account balance/equity/P&L pulled from the stats API, a
-// dashed add-new card, and a security reassurance strip. The account cap (2) is
-// enforced by the backend; the UI disables adding once the limit is hit.
+// Broker connections: one card per MT5 account (status, last sync, balance /
+// equity / P&L from the stats API, update-password and remove actions), plus an
+// "add broker" slot that explains itself once the account cap (2) is reached.
+// The cap is enforced by the backend; the UI only mirrors it.
 
 import { useEffect, useMemo, useState } from 'react';
-import AppShell from '@/components/app-shell';
+import AppShell, { timeAgo as syncAgo } from '@/components/app-shell';
 import ConnectBrokerModal from '@/components/connect-broker-modal';
 import UpdateBrokerPasswordModal from '@/components/update-broker-password-modal';
 import ConfirmDialog from '@/components/confirm-dialog';
 import { useToast } from '@/components/toast';
 import { useAccounts } from '@/lib/use-accounts';
 import { api, type BrokerAccount, type AccountStats } from '@/lib/api';
-import { IPlus, ISearch, IClose } from '@/components/v3/icons';
+import { IPlus, ISearch, IClose, ILock } from '@/components/v3/icons';
+import '@/styles/v6/account.css';
 
 const MAX_ACCOUNTS = 2;
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
 
 const fmtMoney = (n: number, currency = 'USD') =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
 
 const fmtSigned = (n: number) => `${n >= 0 ? '+' : '−'}$${Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-function timeAgo(iso: string): string {
+function connectedAgo(iso: string): string {
   const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
   if (days <= 0) return 'today';
   if (days === 1) return '1 day ago';
@@ -40,7 +38,8 @@ const monogram = (broker: string) =>
 
 interface AccountFigures { balance: number; equity: number; pnl: number }
 
-// ── Page ─────────────────────────────────────────────────────────────────────
+const IKey = () => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden><circle cx="8" cy="15" r="4" /><path d="M11 12l9-9M17 6l3 3" /></svg>;
+const IBin = () => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M5 7h14M10 7V5h4v2M7 7l1 13h8l1-13" /></svg>;
 
 export default function BrokersPage() {
   const { accounts, selected, select, setAccounts, loading } = useAccounts();
@@ -55,7 +54,7 @@ export default function BrokersPage() {
   const atLimit = accounts.length >= MAX_ACCOUNTS;
 
   // Fetch balance/equity/P&L for each connected account (parallel, tolerant of
-  // per-account failures → that row simply shows em-dashes).
+  // per-account failures → that card simply shows em-dashes).
   useEffect(() => {
     let cancelled = false;
     accounts.forEach(acc => {
@@ -114,77 +113,95 @@ export default function BrokersPage() {
 
   const totalBalance = accounts.reduce((sum, a) => sum + (figures[a.id]?.balance ?? 0), 0);
   const figuresReady = accounts.length > 0 && accounts.every(a => figures[a.id] !== undefined);
+  const allFailed = accounts.length > 0 && accounts.every(a => figures[a.id] === null);
   const activeCount = accounts.filter(a => a.status?.toUpperCase() !== 'DISCONNECTED').length;
-
   const allOk = activeCount === accounts.length;
-  const KeyIcon = () => <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="15" r="4" /><path d="M11 12l9-9M17 6l3 3" /></svg>;
-  const BinIcon = () => <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M5 7h14M10 7V5h4v2M7 7l1 13h8l1-13" /></svg>;
+  const limitNote = `You're using ${accounts.length} of ${MAX_ACCOUNTS} broker slots. Remove an account to connect another.`;
 
   return (
-    <AppShell accounts={accounts} selectedAccount={selected} onSelectAccount={select} onConnectClick={() => { if (!atLimit) setShowConnect(true); }} crumbParent="Account" pageTitle="Brokers">
-      <div className="v3-page" data-testid="brokers-page">
-        <section className="br-hero">
-          <div>
-            <span>Manage connections</span>
-            <h1><b>Your</b> <em>brokers.</em></h1>
-            <p>Read-only MT5 connections and account limits.</p>
+    <AppShell legacy={false} accounts={accounts} selectedAccount={selected} onSelectAccount={select} onConnectClick={() => { if (!atLimit) setShowConnect(true); }}
+      pageTitle="Brokers" pageSubtitle="Read-only MT5 connections"
+      actions={
+        <button onClick={() => setShowConnect(true)} disabled={atLimit} data-testid="brokers-add" title={atLimit ? 'Account limit reached. Remove one to add another.' : undefined} className="x-btn x-btn--hi">
+          <IPlus size={15} />Add broker
+        </button>
+      }>
+      <div className="x-page" data-testid="brokers-page">
+        <div className="x-strip x-strip--card ac-br-sum" data-testid="brokers-summary">
+          <div><span>Broker slots</span><b className="m">{accounts.length} / {MAX_ACCOUNTS}</b></div>
+          <div><span>Total balance</span><b className="m">{accounts.length === 0 || allFailed ? '—' : figuresReady ? fmtMoney(totalBalance) : <i className="x-skel x-skel--in ac-skel-num" />}</b></div>
+          <div><span>Connections</span>
+            <b className="ac-br-state">{accounts.length === 0 ? <><i className="x-dot x-dot--off" />None yet</> : allOk ? <><i className="x-dot" />All connected</> : <><i className="x-dot x-dot--r" />Needs attention</>}</b>
           </div>
-          <button onClick={() => setShowConnect(true)} disabled={atLimit} data-testid="brokers-add" title={atLimit ? 'Account limit reached — remove one to add another' : undefined} className="br-add">
-            <span>Add broker</span><span className="ar"><IPlus size={15} /></span>
-          </button>
-        </section>
-
-        <div className="br-sum" data-testid="brokers-summary">
-          <div className="v3-card"><span>Total brokers</span><b className="num">{accounts.length}</b><small>Connected account{accounts.length === 1 ? '' : 's'}</small></div>
-          <div className="v3-card"><span>Total balance</span><b className="num">{figuresReady ? fmtMoney(totalBalance) : accounts.length === 0 ? '$0.00' : <span className="skel d-sk" style={{ display: 'inline-block', width: 160, height: 30 }} />}</b><small>Across all accounts</small></div>
-          <div className="v3-card"><span>Active connections</span><b className="num">{activeCount} / {MAX_ACCOUNTS}</b><small className={accounts.length === 0 ? '' : allOk ? 'ok' : 'warn'}>{accounts.length === 0 ? 'No brokers yet' : allOk ? 'All systems operational' : 'Attention needed'}</small></div>
         </div>
 
-        <section className="v3-card br-list" data-testid="brokers-list" aria-labelledby="br-t">
-          <div className="br-list-hd">
-            <h3 id="br-t">Your brokers</h3>
-            {accounts.length > 1 && (
-              <label className="v3-field br-search"><ISearch size={16} />
-                <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search brokers…" data-testid="brokers-search" />
-                {query && <button aria-label="Clear" onClick={() => setQuery('')}><IClose size={14} /></button>}
-              </label>
-            )}
+        {atLimit && (
+          <div className="x-banner ac-br-limit" data-testid="brokers-limit">
+            <ILock size={15} />
+            <span>{limitNote}</span>
           </div>
+        )}
+
+        <section className="ac-br" data-testid="brokers-list" aria-label="Your brokers">
+          {accounts.length > 1 && (
+            <div className="ac-br-tools">
+              <label className="x-search ac-br-search">
+                <ISearch size={15} />
+                <input className="x-input" value={query} onChange={e => setQuery(e.target.value)} placeholder="Search brokers" aria-label="Search brokers" data-testid="brokers-search" />
+                {query && <button type="button" className="ac-search-x" aria-label="Clear" onClick={() => setQuery('')}><IClose size={13} /></button>}
+              </label>
+            </div>
+          )}
           {loading ? (
-            <div style={{ padding: 22, display: 'grid', gap: 12 }}>{[0, 1].map(i => <div key={i} className="skel d-sk" style={{ height: 86, borderRadius: 16 }} />)}</div>
+            <div className="ac-br-grid">{[0, 1].map(i => <div key={i} className="x-skel ac-br-skel" />)}</div>
           ) : (
             <>
-              {filtered.length === 0 && accounts.length > 0 && <div className="d-empty" data-testid="brokers-no-results">No brokers match “{query}”.</div>}
-              {filtered.map(acc => {
-                const fig = figures[acc.id];
-                const connected = acc.status?.toUpperCase() !== 'DISCONNECTED';
-                const val = (v: string | undefined) => (v ?? (fig === null ? '—' : <span className="skel d-sk" style={{ display: 'inline-block', width: 90, height: 18 }} />));
-                return (
-                  <div key={acc.id} className={`br-row ${connected ? '' : 'off'}`} data-testid={`brokers-account-${acc.mt5Login}`}>
-                    <span className="br-mono">{monogram(acc.broker)}</span>
-                    <div className="br-id">
-                      <div className="t"><b>{acc.broker}</b><span className="num">#{acc.mt5Login}</span>{connected ? <span className="v3-pill g"><i />Active</span> : <span className="v3-pill r">Disconnected</span>}</div>
-                      <small>{acc.server} · {acc.baseCurrency} · connected {timeAgo(acc.createdAt)}</small>
-                    </div>
-                    <div className="br-fig"><span>Balance</span><b className="num">{val(fig ? fmtMoney(fig.balance) : undefined)}</b></div>
-                    <div className="br-fig"><span>Equity</span><b className="num">{val(fig ? fmtMoney(fig.equity) : undefined)}</b></div>
-                    <div className="br-fig"><span>P&amp;L</span><b className={`num ${fig ? (fig.pnl >= 0 ? 'lg' : 'sh') : ''}`}>{val(fig ? fmtSigned(fig.pnl) : undefined)}</b></div>
-                    <div className="br-fig br-st"><span>Status</span><b className={connected ? 'lg' : 'sh'}><i />{connected ? 'Connected' : 'Disconnected'}</b></div>
-                    <div className="br-acts">
-                      <button onClick={() => setPendingPasswordUpdate(acc)} aria-label={`Update password for ${acc.broker} #${acc.mt5Login}`} data-testid={`brokers-update-password-${acc.mt5Login}`} title="Update MT5 password"><KeyIcon /></button>
-                      <button onClick={() => setPendingDelete(acc)} aria-label={`Remove ${acc.broker} #${acc.mt5Login}`} data-testid={`brokers-delete-${acc.mt5Login}`} title="Remove broker" className="del"><BinIcon /></button>
-                    </div>
-                  </div>
-                );
-              })}
-              <button onClick={() => { if (!atLimit) setShowConnect(true); }} disabled={atLimit} data-testid="brokers-add-card" className="br-new">
-                <span className="pl"><IPlus size={18} /></span>
-                <span><b>{atLimit ? 'Broker limit reached' : accounts.length === 0 ? 'Connect your first broker' : 'Add another broker'}</b>
-                  <small>{atLimit ? `You're using ${accounts.length} of ${MAX_ACCOUNTS} broker slots. Remove one to connect another account.` : 'Investor (read-only) credentials — trades sync within a minute.'}</small></span>
-              </button>
+              {filtered.length === 0 && accounts.length > 0 && <div className="x-card x-empty" data-testid="brokers-no-results"><p>No brokers match &ldquo;{query}&rdquo;.</p></div>}
+              <div className="ac-br-grid">
+                {filtered.map(acc => {
+                  const fig = figures[acc.id];
+                  const connected = acc.status?.toUpperCase() !== 'DISCONNECTED';
+                  const failing = connected && !!acc.lastSyncError;
+                  const val = (v: string | undefined) => (v ?? (fig === null ? '—' : <i className="x-skel x-skel--in ac-skel-fig" />));
+                  return (
+                    <article key={acc.id} className={`x-card ac-acct ${connected ? '' : 'off'}`} data-testid={`brokers-account-${acc.mt5Login}`}>
+                      <header className="ac-acct-h">
+                        <span className="x-mk ac-acct-mk">{monogram(acc.broker)}</span>
+                        <div className="ac-acct-id">
+                          <b>{acc.broker} <span className="m x-muted">#{acc.mt5Login}</span></b>
+                          <small>{acc.server} · {acc.baseCurrency}</small>
+                        </div>
+                        <span className={`x-tag ${connected && !failing ? 'x-tag--g' : 'x-tag--r'} ac-acct-st`}>
+                          <i className={`x-dot ${connected && !failing ? '' : 'x-dot--r'}`} />{!connected ? 'Disconnected' : failing ? 'Sync failing' : 'Connected'}
+                        </span>
+                      </header>
+                      <div className="x-strip ac-figs">
+                        <div><span>Balance</span><b className="m">{val(fig ? fmtMoney(fig.balance) : undefined)}</b></div>
+                        <div><span>Equity</span><b className="m">{val(fig ? fmtMoney(fig.equity) : undefined)}</b></div>
+                        <div><span>Net P&amp;L</span><b className={`m ${fig ? (fig.pnl >= 0 ? 'pos' : 'neg') : ''}`}>{val(fig ? fmtSigned(fig.pnl) : undefined)}</b></div>
+                      </div>
+                      {acc.lastSyncError && <p className="ac-acct-err" role="status">{acc.lastSyncError}</p>}
+                      <footer className="ac-acct-f">
+                        <span className="ac-acct-sync">Synced {syncAgo(acc.lastSyncAt)} · connected {connectedAgo(acc.createdAt)}</span>
+                        <span className="ac-acct-acts">
+                          <button className="x-btn x-btn--sm" onClick={() => setPendingPasswordUpdate(acc)} aria-label={`Update password for ${acc.broker} #${acc.mt5Login}`} data-testid={`brokers-update-password-${acc.mt5Login}`} title="Update MT5 password"><IKey />Password</button>
+                          <button className="x-btn x-btn--sm x-btn--ghost ac-del" onClick={() => setPendingDelete(acc)} aria-label={`Remove ${acc.broker} #${acc.mt5Login}`} data-testid={`brokers-delete-${acc.mt5Login}`} title="Remove broker"><IBin />Remove</button>
+                        </span>
+                      </footer>
+                    </article>
+                  );
+                })}
+                <button onClick={() => { if (!atLimit) setShowConnect(true); }} disabled={atLimit} aria-disabled={atLimit} data-testid="brokers-add-card" className={`ac-br-new ${atLimit ? 'full' : ''}`}>
+                  <span className="ac-br-new-ic">{atLimit ? <ILock size={18} /> : <IPlus size={18} />}</span>
+                  <b>{atLimit ? 'Broker limit reached' : accounts.length === 0 ? 'Connect your first broker' : 'Add another broker'}</b>
+                  <small>{atLimit ? `${accounts.length} of ${MAX_ACCOUNTS} slots used` : 'Investor (read-only) credentials. Trades sync within a minute.'}</small>
+                </button>
+              </div>
             </>
           )}
         </section>
+
+        <p className="ac-br-note"><ILock size={14} />TRADElogs only reads your MT5 history. It can never place trades or move funds.</p>
       </div>
 
       {showConnect && (

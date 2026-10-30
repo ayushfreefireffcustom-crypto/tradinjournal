@@ -6,8 +6,22 @@ import 'leaflet/dist/leaflet.css';
 import { adminApi, type AdminGeoDto } from '@/lib/admin-api';
 import { countryName } from '@/lib/countries';
 
-/** Esri dark-gray canvas: keyless (Carto's dark_all now serves "API key required" tiles). */
-const TILE_URL = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}';
+/** Esri gray canvases: keyless (Carto's dark_all now serves "API key required" tiles). */
+const tileUrl = (light: boolean) =>
+  `https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_${light ? 'Light' : 'Dark'}_Gray_Base/MapServer/tile/{z}/{y}/{x}`;
+
+/** Follows the frame's light/dark switch (html[data-theme]). */
+function useLightTheme() {
+  const [light, setLight] = useState(false);
+  useEffect(() => {
+    const read = () => setLight(document.documentElement.dataset.theme === 'light');
+    read();
+    const mo = new MutationObserver(read);
+    mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    return () => mo.disconnect();
+  }, []);
+  return light;
+}
 const TILE_ATTR = 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ';
 
 export function AdminGeoMap() {
@@ -16,6 +30,7 @@ export function AdminGeoMap() {
   const [geo, setGeo] = useState<AdminGeoDto | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const light = useLightTheme();
 
   useEffect(() => {
     let cancelled = false;
@@ -42,8 +57,9 @@ export function AdminGeoMap() {
     });
     mapRef.current = map;
 
-    L.tileLayer(TILE_URL, { attribution: TILE_ATTR, maxZoom: 16 }).addTo(map);
+    L.tileLayer(tileUrl(light), { attribution: TILE_ATTR, maxZoom: 16 }).addTo(map);
 
+    const brand = getComputedStyle(mapEl.current).getPropertyValue('--g').trim() || 'currentColor';
     const maxCount = Math.max(...geo.points.map(p => p.userCount), 1);
     const bounds: L.LatLngTuple[] = [];
 
@@ -51,8 +67,8 @@ export function AdminGeoMap() {
       const r = 8 + (p.userCount / maxCount) * 28;
       const circle = L.circleMarker([p.lat, p.lng], {
         radius: r,
-        color: '#08C465',
-        fillColor: '#08C465',
+        color: brand,
+        fillColor: brand,
         fillOpacity: 0.35 + (p.userCount / maxCount) * 0.45,
         weight: 1.5,
         opacity: 0.9,
@@ -81,7 +97,7 @@ export function AdminGeoMap() {
       map.remove();
       mapRef.current = null;
     };
-  }, [geo]);
+  }, [geo, light]);
 
   const topCities = (geo?.points ?? [])
     .slice()
@@ -89,50 +105,35 @@ export function AdminGeoMap() {
     .slice(0, 8);
 
   return (
-    <div className="tcard p-4 sm:p-5 min-w-0" data-testid="admin-geo-map">
-      <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-        <div className="text-[10px] tracking-[0.2em] text-fg-3 uppercase">User locations</div>
-        {geo && (
-          <div className="text-[10px] text-fg-3 numeric">
-            {geo.locatedUsers} mapped · {geo.unlocated} unlocated · {geo.totalUsers} total
-          </div>
-        )}
+    <section className="x-card" data-testid="admin-geo-map">
+      <div className="x-ch">
+        <h2>User locations</h2>
+        {geo && <span className="x-sub"><span className="m">{geo.locatedUsers}</span> mapped · <span className="m">{geo.unlocated}</span> unlocated · <span className="m">{geo.totalUsers}</span> total</span>}
       </div>
 
-      {loading && <p className="text-sm text-fg-3 py-8 text-center">Loading map…</p>}
-      {error && <p className="text-sm text-loss">{error}</p>}
+      {loading && <div className="x-skel x-skel--in ad-map-sk" />}
+      {error && <div className="x-banner x-banner--err"><span>{error}</span></div>}
 
       {!loading && !error && geo && geo.points.length === 0 && (
-        <p className="text-sm text-fg-3 py-8 text-center">
-          No geocoded users yet. Locations appear after signup / location gate + geocode.
-        </p>
+        <div className="x-empty"><p>No geocoded users yet. Locations appear after signup or the location prompt.</p></div>
       )}
 
       {geo && geo.points.length > 0 && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-          <div
-            ref={mapEl}
-            className="lg:col-span-2 h-[280px] sm:h-[340px] rounded-md overflow-hidden border border-border-soft bg-app z-0"
-            data-testid="admin-geo-leaflet"
-          />
-          <div className="min-w-0">
-            <div className="text-[9px] tracking-widest text-fg-3 mb-2">TOP CLUSTERS</div>
-            <ul className="space-y-1.5">
+        <div className="ad-geo">
+          <div ref={mapEl} className="ad-map" data-testid="admin-geo-leaflet" />
+          <div className="ad-geo-list">
+            <span className="x-label">Top clusters</span>
+            <ul>
               {topCities.map((p, i) => (
-                <li
-                  key={`${p.lat}-${p.lng}-${i}`}
-                  className="flex items-center justify-between gap-2 text-[11px] border border-border-soft rounded px-2 py-1.5 bg-app/40"
-                >
-                  <span className="truncate text-fg">
-                    {p.city ?? '—'}, {countryName(p.country)}
-                  </span>
-                  <span className="numeric text-profit shrink-0">{p.userCount}</span>
+                <li key={`${p.lat}-${p.lng}-${i}`}>
+                  <span>{p.city ?? '—'}, {countryName(p.country)}</span>
+                  <b className="m">{p.userCount}</b>
                 </li>
               ))}
             </ul>
           </div>
         </div>
       )}
-    </div>
+    </section>
   );
 }

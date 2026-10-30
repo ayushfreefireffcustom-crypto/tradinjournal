@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Loader } from '@/components/loader';
 import { marketApi, type MarketSymbol } from '@/lib/market-api';
 import {
   traderApi,
@@ -9,8 +8,12 @@ import {
   type TraderTimeframe,
   type TraderAnalysis,
 } from '@/lib/trader-api';
+import { IScan, ISearchLine, Spinner } from '@/components/v6/ai/bits';
 import AnalysisReport from './analysis-report';
 import AnalysisHistory from './history-list';
+
+const CLASS: Record<string, string> = { crypto: 'Crypto', forex: 'Forex', stock: 'Stocks', commodity: 'Metals', broker: 'Broker' };
+const ORDER: TraderTimeframe[] = ['15m', '1h', '4h', '1d'];
 
 export default function TraderMaster({
   onAnalyzed,
@@ -30,6 +33,7 @@ export default function TraderMaster({
   const [historyKey, setHistoryKey] = useState(0);
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchWrap = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (searchTimer.current) clearTimeout(searchTimer.current);
@@ -88,11 +92,9 @@ export default function TraderMaster({
       return;
     }
     setShowResults(false);
-    const order: TraderTimeframe[] = ['15m', '1h', '4h', '1d'];
-    const tfs = order.filter((t) => timeframes.includes(t));
+    const tfs = ORDER.filter((t) => timeframes.includes(t));
     setError('');
     setAnalyzing(true);
-    setShowResults(false);
     try {
       const a = await traderApi.analyze(sym, tfs);
       setAnalysis(a);
@@ -105,51 +107,72 @@ export default function TraderMaster({
     }
   }, [symbol, query, timeframes, onAnalyzed]);
 
-  const CLASS: Record<string, string> = { crypto: 'Crypto', forex: 'Forex', stock: 'Stocks', commodity: 'Metals', broker: 'Broker' };
+  const hasSym = !!(symbol || query).trim();
+  const tfLabel = ORDER.filter(t => timeframes.includes(t)).join(', ');
   return (
-    <div className="sx-master" data-testid="trader-master">
-      <div className="v3-card sx-bar">
-        <div ref={searchWrap} className={`ch-search sx-search ${focused ? 'on' : ''}`}>
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" strokeLinecap="round" /></svg>
-          <input value={query} onChange={e => { setQuery(e.target.value); setSymbol(''); setPicked(null); }}
-            onFocus={() => { setFocused(true); if (results.length > 0) setShowResults(true); }} onBlur={() => setFocused(false)}
-            onKeyDown={e => { if (e.key === 'Enter') void runAnalyze(); if (e.key === 'Escape') setShowResults(false); }}
-            placeholder="Search a symbol — XAUUSD, BTCUSDT, EURUSD…" data-testid="trader-symbol-input" autoComplete="off" spellCheck={false} aria-label="Symbol" />
-          {picked && !focused && query === picked.symbol && <span className="sx-pick" aria-hidden><b>{picked.symbol}</b> {picked.name} · {CLASS[picked.assetClass] ?? picked.assetClass}</span>}
-          {showResults && focused && results.length > 0 && (
-            <div className="ch-pop ch-results" role="listbox" data-testid="trader-search-results" style={{ width: '100%' }}>
-              {results.map(s => (
-                <button key={`${s.provider}:${s.symbol}`} type="button" role="option" aria-selected={false} onMouseDown={e => e.preventDefault()} onClick={() => pick(s)}>
-                  <span>{s.symbol}<small>{s.name}</small></span><em>{CLASS[s.assetClass] ?? s.assetClass}</em>
-                </button>
-              ))}
-            </div>
-          )}
+    <div className="ai-col" data-testid="trader-master">
+      <section className="x-card" aria-labelledby="ai-an-t">
+        <div className="x-ch"><h2 id="ai-an-t">Analyse a symbol</h2><span className="x-sub">pick one or more timeframes</span></div>
+        <div className="ai-bar">
+          <div ref={searchWrap} className="x-search ai-sym">
+            <ISearchLine size={16} />
+            <input ref={inputRef} className="x-input" value={query} onChange={e => { setQuery(e.target.value); setSymbol(''); setPicked(null); }}
+              onFocus={() => { setFocused(true); if (results.length > 0) setShowResults(true); }} onBlur={() => setFocused(false)}
+              onKeyDown={e => { if (e.key === 'Enter') void runAnalyze(); if (e.key === 'Escape') setShowResults(false); }}
+              placeholder="XAUUSD, BTCUSDT, EURUSD…" data-testid="trader-symbol-input" autoComplete="off" spellCheck={false} aria-label="Symbol"
+              aria-expanded={showResults && focused && results.length > 0} aria-controls="ai-sym-results" role="combobox" />
+            {picked && !focused && query === picked.symbol && (
+              <span className="ai-pick ai-ell" aria-hidden><b>{picked.symbol}</b><small>{picked.name} · {CLASS[picked.assetClass] ?? picked.assetClass}</small></span>
+            )}
+            {showResults && focused && results.length > 0 && (
+              <div className="x-pop ai-results" role="listbox" id="ai-sym-results" data-testid="trader-search-results">
+                {results.map(s => (
+                  <button key={`${s.provider}:${s.symbol}`} type="button" role="option" aria-selected={false} onMouseDown={e => e.preventDefault()} onClick={() => pick(s)}>
+                    <span className="ai-ell"><b>{s.symbol}</b><small className="ai-ell">{s.name}</small></span><em>{CLASS[s.assetClass] ?? s.assetClass}</em>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="x-seg" role="group" aria-label="Timeframes (multi-select)">
+            {TRADER_TIMEFRAMES.map(tf => (
+              <button key={tf} type="button" onClick={() => toggleTf(tf)} aria-pressed={timeframes.includes(tf)} data-testid={`trader-tf-${tf}`}>{tf}</button>
+            ))}
+          </div>
+          <button type="button" onClick={() => void runAnalyze()} disabled={analyzing || !hasSym} title={!hasSym ? 'Pick a symbol first' : undefined} className="x-btn x-btn--hi" data-testid="trader-analyze">
+            {analyzing ? <><Spinner size={15} /> Analysing</> : <><IScan size={16} /> Analyse</>}
+          </button>
         </div>
-        <div className="v3-seg sx-tf" role="group" aria-label="Timeframes (multi-select)">
-          {TRADER_TIMEFRAMES.map(tf => (
-            <button key={tf} type="button" onClick={() => toggleTf(tf)} aria-pressed={timeframes.includes(tf)} data-testid={`trader-tf-${tf}`}>{tf}</button>
-          ))}
+      </section>
+
+      {error && (
+        <div className="x-banner x-banner--err" role="alert" data-testid="trader-error">
+          <span>{error}</span>
+          {hasSym && <button type="button" className="x-btn x-btn--sm" onClick={() => void runAnalyze()} disabled={analyzing}>Try again</button>}
         </div>
-        <button type="button" onClick={() => void runAnalyze()} disabled={analyzing || !(symbol || query).trim()} title={!(symbol || query).trim() ? 'Pick a symbol first' : undefined} className="mk-brief-btn sx-go" data-testid="trader-analyze">
-          {analyzing ? <><Loader size={16} className="!gap-0" /> Analysing</> : <>⚡ Analyze</>}
-        </button>
-      </div>
-
-      {error && <div className="d-err" role="alert" data-testid="trader-error"><span>{error}</span></div>}
-
-      {analyzing && !analysis && (
-        <div className="v3-card sx-busy" data-testid="trader-analyzing"><Loader size={22} /><span>Reading {(symbol || query).toUpperCase()} across {timeframes.join(', ')}…</span></div>
       )}
 
-      {analysis && <div className={analyzing ? 'sx-dim' : ''}><AnalysisReport a={analysis} /></div>}
+      {analyzing && !analysis && (
+        <section className="x-card ai-busy" data-testid="trader-analyzing" aria-live="polite">
+          <div className="ai-busy-hd"><Spinner size={16} /><span>Reading {(symbol || query).toUpperCase()} across {tfLabel}…</span></div>
+          <div className="ai-busy-sk">{[0, 1, 2, 3, 4].map(i => <i key={i} className="x-skel x-skel--in" />)}</div>
+          <i className="x-skel x-skel--in ai-busy-ch" />
+        </section>
+      )}
+
+      {analysis && <AnalysisReport a={analysis} dim={analyzing} />}
 
       {!analysis && !analyzing && !error && (
-        <div className="v3-card sx-empty" data-testid="trader-empty">
+        <section className="x-card x-empty" data-testid="trader-empty">
+          <span className="x-ic"><IScan size={22} /></span>
           <b>Pick a symbol and timeframe</b>
-          <p>SignalX returns a direction, entry zone, stop and three targets — then grades the call when the horizon closes.</p>
-          <div>{['XAUUSD', 'BTCUSDT', 'EURUSD'].map(x => <button key={x} type="button" className="t-tag" onClick={() => { setQuery(x); setSymbol(x); }}>{x}</button>)}</div>
-        </div>
+          <p>SignalX returns a direction, entry zone, stop and three targets, then grades the call when the horizon closes.</p>
+          <div className="ai-ideas ai-ideas--c">
+            {['XAUUSD', 'BTCUSDT', 'EURUSD'].map(x => (
+              <button key={x} type="button" className="x-tag x-tag--m" onClick={() => { setQuery(x); setSymbol(x); setPicked(null); }}>{x}</button>
+            ))}
+          </div>
+        </section>
       )}
 
       <AnalysisHistory refreshKey={historyKey} onSelect={a => { setAnalysis(a); setQuery(a.symbol); setSymbol(a.symbol); setPicked(null); }} />

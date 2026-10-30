@@ -13,21 +13,22 @@ import { statsForRange, rangeStart, RANGES, type RangeKey } from '@/lib/stats';
 import { useAccounts } from '@/lib/use-accounts';
 import AppShell from '@/components/app-shell';
 import ConnectBrokerModal from '@/components/connect-broker-modal';
-import SortableCard from '@/components/sortable-card';
-import YearHeatmap from '@/components/year-heatmap';
 import { useToast } from '@/components/toast';
-import { AKpis, Strike, Dist, Equity, Sessions, Rolling, SymbolTable, GroupBars, Hours, Scatter, type Group } from '@/components/v3/analytics-parts';
-import { DayBars } from '@/components/v3/dashboard-parts';
+import { SortableCard } from '@/components/v6/analytics/kit';
+import YearHeatmap from '@/components/v6/analytics/year-heatmap';
+import {
+  KpiStrip, Strike, Dist, Equity, Sessions, Rolling, SymbolTable, GroupBars, Hours, Scatter, DayBars, Direction, type Group,
+} from '@/components/v6/analytics/cards';
 
 // Rearrangeable analytics blocks. Order is persisted per-account in localStorage.
 // Spans tile the 12-col grid in the default order; on reorder CSS grid
 // auto-flow keeps rows filled left-to-right.
-const BLOCK_IDS = ['donut', 'pnldist', 'heatmap', 'timeofday', 'equity', 'rolling', 'scatter', 'yearheat', 'bysymbol', 'tag', 'emotion', 'byday'] as const;
+const BLOCK_IDS = ['donut', 'pnldist', 'heatmap', 'timeofday', 'equity', 'rolling', 'scatter', 'yearheat', 'bysymbol', 'tag', 'emotion', 'byday', 'direction'] as const;
 type BlockId = (typeof BLOCK_IDS)[number];
-const DEFAULT_ORDER: BlockId[] = ['donut', 'pnldist', 'equity', 'heatmap', 'rolling', 'bysymbol', 'emotion', 'tag', 'timeofday', 'byday', 'yearheat', 'scatter'];
+const DEFAULT_ORDER: BlockId[] = ['equity', 'donut', 'pnldist', 'rolling', 'heatmap', 'bysymbol', 'direction', 'timeofday', 'byday', 'emotion', 'tag', 'scatter', 'yearheat'];
 const SPANS: Record<BlockId, string> = {
-  donut: 'a-s5', pnldist: 'a-s7', equity: 'a-s12', heatmap: 'a-s6', rolling: 'a-s6',
-  bysymbol: 'a-s6', emotion: 'a-s6', tag: 'a-s6', timeofday: 'a-s6', scatter: 'a-s12', byday: 'a-s5', yearheat: 'a-s7',
+  equity: 'an-s12', donut: 'an-s5', pnldist: 'an-s7', rolling: 'an-s7', heatmap: 'an-s5',
+  bysymbol: 'an-s7', direction: 'an-s5', timeofday: 'an-s7', byday: 'an-s5', emotion: 'an-s6', tag: 'an-s6', scatter: 'an-s12', yearheat: 'an-s12',
 };
 const orderKey = (accountId: string) => `tradelogs.analytics.order.${accountId}`;
 function sameOrder(a: BlockId[], b: BlockId[]) { return a.length === b.length && a.every((x, i) => x === b[i]); }
@@ -36,7 +37,8 @@ function normalizeOrder(saved: string[]): BlockId[] {
   return [...known, ...DEFAULT_ORDER.filter(id => !known.includes(id))];
 }
 const EMOTION_ORDER = ['Disciplined', 'Confident', 'Patient', 'FOMO', 'Revenge', 'Hesitant'];
-const RANGE_LABEL: Record<RangeKey, string> = { '1W': 'last 7 days', '1M': 'last 30 days', '3M': 'last 3 months', '1Y': 'last 12 months', ALL: 'all time' };
+const RANGE_LABEL: Record<RangeKey, string> = { '1W': 'Last 7 days', '1M': 'Last 30 days', '3M': 'Last 3 months', '1Y': 'Last 12 months', ALL: 'All time' };
+const RANGE_SHORT: Record<RangeKey, string> = { '1W': '7D', '1M': '30D', '3M': '90D', '1Y': '1Y', ALL: 'All' };
 
 export default function AnalyticsPage() {
   const { accounts, selected, select, setAccounts, loading: accountsLoading } = useAccounts();
@@ -164,56 +166,56 @@ export default function AnalyticsPage() {
       case 'heatmap': return <Sessions trades={rangedTrades} />;
       case 'rolling': return <Rolling trades={rangedTrades} />;
       case 'bysymbol': return <SymbolTable rows={view.bySymbol} />;
-      case 'emotion': return <GroupBars testId="perf-by-emotion" title="Psychology edge" sub="P&L by emotion" rows={emotionStats} order={EMOTION_ORDER} empty="Log how you felt on a trade in Chart replay to see which states pay." />;
-      case 'tag': return <GroupBars testId="perf-by-tag" title="Setup edge" sub="P&L by tag" rows={tagStats.slice(0, 8)} empty="Tag your setups in Chart replay or the journal to see which ones carry your edge." />;
+      case 'emotion': return <GroupBars testId="perf-by-emotion" title="Psychology edge" sub="net P&L by emotion" rows={emotionStats} order={EMOTION_ORDER} empty="Log how you felt on a trade in Chart replay to see which states pay." />;
+      case 'tag': return <GroupBars testId="perf-by-tag" title="Setup edge" sub="net P&L by tag" rows={tagStats.slice(0, 8)} empty="Tag your setups in Chart replay or the journal to see which ones carry your edge." />;
       case 'timeofday': return <Hours trades={rangedTrades} />;
       case 'scatter': return <Scatter trades={rangedTrades} />;
       case 'byday': return <DayBars data={view.byDay} />;
       case 'yearheat': return <YearHeatmap trades={trades} accountId={selected?.id} />;
+      case 'direction': return <Direction view={view} />;
     }
   }
 
-  const rangeSeg = (where: 'top' | 'page') => (
-    <div className={`v3-seg d-range d-range--${where}`} role="group" aria-label="Date range" data-testid={where === 'top' ? 'range-selector' : undefined}>
-      {RANGES.map(r => <button key={r} aria-pressed={range === r} onClick={() => setRange(r)} data-testid={where === 'top' ? `range-${r}` : undefined}>{r === 'ALL' ? 'All' : r}</button>)}
-    </div>
-  );
+  const subtitle = selected
+    ? <>{selected.broker} <span className="m">·{selected.mt5Login.slice(-4)}</span> · {RANGE_LABEL[range].toLowerCase()}</>
+    : RANGE_LABEL[range];
 
   return (
-    <AppShell accounts={accounts} selectedAccount={selected} onSelectAccount={select} onConnectClick={() => setShowConnect(true)} pageTitle="Analytics" actions={rangeSeg('top')}>
-      <div className="v3-page" data-testid="analytics-page">
-        <header className="a-head">
-          <div>
-            <p className="v3-sub" style={{ marginTop: 0 }}>Analytics · {RANGE_LABEL[range]}</p>
-            <h1 className="v3-h1 a-h1"><b>Dissect your</b> <em>edge.</em></h1>
-            {rangeSeg('page')}
-          </div>
-          {view && (
-            <div className="a-arrange" data-testid="analytics-arrange-bar">
-              <svg width="10" height="14" viewBox="0 0 10 14" fill="currentColor" aria-hidden><circle cx="2" cy="2" r="1.3" /><circle cx="8" cy="2" r="1.3" /><circle cx="2" cy="7" r="1.3" /><circle cx="8" cy="7" r="1.3" /><circle cx="2" cy="12" r="1.3" /><circle cx="8" cy="12" r="1.3" /></svg>
-              <span>Drag cards to rearrange</span>
-              {!isDefaultOrder && <>· <button className="v3-link" onClick={() => { persistOrder(DEFAULT_ORDER); toast.info('Layout reset'); }} data-testid="analytics-reset-layout">Reset layout</button></>}
-            </div>
-          )}
-        </header>
-
+    <AppShell legacy={false} accounts={accounts} selectedAccount={selected} onSelectAccount={select} onConnectClick={() => setShowConnect(true)}
+      pageTitle="Analytics" pageSubtitle={subtitle}
+      actions={(
+        <div className="x-seg" role="group" aria-label="Date range" data-testid="range-selector">
+          {RANGES.map(r => <button key={r} aria-pressed={range === r} onClick={() => setRange(r)} title={RANGE_LABEL[r]} data-testid={`range-${r}`}>{RANGE_SHORT[r]}</button>)}
+        </div>
+      )}>
+      <div className="x-page an-page" data-testid="analytics-page">
         {error && !loading ? (
-          <div className="d-err" role="alert" data-testid="analytics-error">
-            <span>{error}</span><button className="v3-btn v3-btn--o" onClick={() => selected && loadStats(selected)}>Retry</button>
+          <div className="x-banner x-banner--err" role="alert" data-testid="analytics-error">
+            <span>{error}</span><button className="x-btn x-btn--sm" onClick={() => selected && loadStats(selected)}>Retry</button>
           </div>
         ) : !selected && !accountsLoading ? (
-          <section className="v3-card d-empty d-empty--lg"><b>Connect your MT5 account</b>Analytics fill in once your first trades sync.</section>
+          <section className="x-card x-empty">
+            <span className="x-ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"><path d="M3 20h18M6 16v-5M11 16V7M16 16v-8M21 16V4" /></svg></span>
+            <b>Connect your MT5 account</b>
+            <p>Analytics fill in once your first trades sync.</p>
+            <button className="x-btn x-btn--hi" onClick={() => setShowConnect(true)}>Connect MT5</button>
+          </section>
         ) : loading || !view ? (
-          <div className="d-grid">
-            <div className="skel d-sk" style={{ height: 120, borderRadius: 20 }} />
-            <div className="a-grid">{[5, 7, 12].map((n, i) => <div key={i} className={`skel d-sk a-s${n}`} style={{ height: 380, borderRadius: 20 }} />)}</div>
+          <div className="x-page" aria-busy="true" aria-label="Loading analytics">
+            <div className="x-skel" style={{ height: 96 }} />
+            <div className="an-grid">{[12, 5, 7].map((n, i) => <div key={i} className={`x-skel an-s${n}`} style={{ height: n === 12 ? 380 : 340 }} />)}</div>
           </div>
         ) : (
           <>
-            <AKpis view={view} />
+            <KpiStrip view={view} />
+            <div className="an-bar" data-testid="analytics-arrange-bar">
+              <svg width="10" height="14" viewBox="0 0 10 14" fill="currentColor" aria-hidden><circle cx="2" cy="2" r="1.3" /><circle cx="8" cy="2" r="1.3" /><circle cx="2" cy="7" r="1.3" /><circle cx="8" cy="7" r="1.3" /><circle cx="2" cy="12" r="1.3" /><circle cx="8" cy="12" r="1.3" /></svg>
+              <span>Drag a card by its handle to rearrange</span>
+              {!isDefaultOrder && <button className="x-btn x-btn--sm" onClick={() => { persistOrder(DEFAULT_ORDER); toast.info('Layout reset'); }} data-testid="analytics-reset-layout">Reset layout</button>}
+            </div>
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
               <SortableContext items={order} strategy={rectSortingStrategy}>
-                <div className="a-grid" data-testid="analytics-grid">
+                <div className="an-grid" data-testid="analytics-grid">
                   {order.map(id => (
                     <SortableCard key={id} id={id} className={SPANS[id]}>
                       {renderBlock(id)}

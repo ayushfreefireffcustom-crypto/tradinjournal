@@ -1,14 +1,9 @@
 'use client';
 
 import type { MacroState } from '@/lib/macro-api';
-import { formatWhen, impactTone } from '@/lib/macro-format';
-
-function impactPill(tone: ReturnType<typeof impactTone>): string {
-  if (tone === 'high') return 'text-loss border-loss/40 bg-loss/10';
-  if (tone === 'medium') return 'text-warning border-warning/40 bg-warning/10';
-  if (tone === 'low') return 'text-fg-3 border-border bg-surface-hover';
-  return 'text-fg-3 border-border-soft';
-}
+import { formatWhen } from '@/lib/macro-format';
+import { ImpactTag } from '@/components/v6/macro/impact';
+import { IExt } from '@/components/v6/macro/ui';
 
 export default function MacroEventsHeadlines({
   events,
@@ -19,42 +14,23 @@ export default function MacroEventsHeadlines({
 }) {
   const now = Date.now();
   return (
-    <div className="grid lg:grid-cols-2 gap-3 items-stretch" data-testid="macro-events-headlines">
-      <section className="tcard p-4 min-h-[280px] h-full flex flex-col">
-        <div className="flex items-center justify-between border-b border-border-soft pb-2 shrink-0">
-          <div className="text-[10px] tracking-[0.2em] text-fg-3">Economic calendar</div>
-          <div className="text-[10px] text-fg-3 numeric">{events.length}</div>
-        </div>
-        {!events.length ? (
-          <p className="text-sm text-fg-3 mt-3 flex-1 flex items-center">No calendar events in window.</p>
-        ) : (
-          <ul className="mt-1 divide-y divide-border-soft flex-1">
+    <div className="mc-2" data-testid="macro-events-headlines">
+      <section className="x-card">
+        <div className="x-ch"><h2>Economic calendar</h2><span className="x-sub"><span className="m">{events.length}</span> events</span></div>
+        {!events.length ? <p className="x-muted mc-p">No calendar events in this window.</p> : (
+          <ul className="mc-ev x-list">
             {events.slice(0, 8).map((e, i) => {
-              const tone = impactTone(e.impact);
               const upcoming = Date.parse(e.at) >= now;
               return (
-                <li key={`${e.title}-${e.at}-${i}`} className="flex items-center justify-between gap-3 py-2">
-                  <div className="min-w-0">
-                    <div className="flex items-start gap-2">
-                      <span className={`text-[9px] px-1.5 py-0.5 rounded border shrink-0 mt-px ${impactPill(tone)}`}>
-                        {(e.impact ?? '—').toUpperCase()}
-                      </span>
-                      <span className="text-[12px] text-fg leading-snug min-w-0">{e.title}</span>
-                    </div>
-                    <div className="text-[10px] text-fg-3 mt-0.5 ml-0.5">
-                      {e.country ?? '—'}
-                      {(e.forecast || e.prev) && (
-                        <span className="numeric"> · F {e.forecast ?? '—'} · P {e.prev ?? '—'}</span>
-                      )}
-                    </div>
+                <li key={`${e.title}-${e.at}-${i}`}>
+                  <ImpactTag impact={e.impact} />
+                  <div className="mc-ev-m">
+                    <b>{e.title}</b>
+                    <small>{e.country ?? '—'}{(e.forecast || e.prev) && <> · forecast <span className="m">{e.forecast ?? '—'}</span> · prior <span className="m">{e.prev ?? '—'}</span></>}</small>
                   </div>
-                  <div className="text-right shrink-0">
-                    {e.actual != null && e.actual !== '' && (
-                      <div className="numeric text-[12px] text-fg">{e.actual}</div>
-                    )}
-                    <div className={`text-[10px] numeric ${upcoming ? 'text-profit' : 'text-fg-3'}`}>
-                      {formatWhen(e.at, now)}
-                    </div>
+                  <div className="mc-ev-r">
+                    {e.actual != null && e.actual !== '' && <b className="m">{e.actual}</b>}
+                    <small className={`m ${upcoming ? 'pos' : ''}`}>{formatWhen(e.at, now)}</small>
                   </div>
                 </li>
               );
@@ -63,33 +39,17 @@ export default function MacroEventsHeadlines({
         )}
       </section>
 
-      <section className="tcard p-4 min-h-[280px] h-full flex flex-col">
-        <div className="flex items-center justify-between border-b border-border-soft pb-2 shrink-0">
-          <div className="text-[10px] tracking-[0.2em] text-fg-3">Market headlines</div>
-          <div className="text-[10px] text-fg-3 numeric">{headlines.length}</div>
-        </div>
-        {!headlines.length ? (
-          <p className="text-sm text-fg-3 mt-3 flex-1 flex items-center">No headlines yet.</p>
-        ) : (
-          <ul className="mt-1 divide-y divide-border-soft flex-1">
+      <section className="x-card">
+        <div className="x-ch"><h2>Market headlines</h2><span className="x-sub"><span className="m">{headlines.length}</span> stories</span></div>
+        {!headlines.length ? <p className="x-muted mc-p">No headlines yet.</p> : (
+          <ul className="mc-hl x-list">
             {headlines.slice(0, 8).map((h, i) => (
-              <li key={`${h.url}-${i}`} className="py-2">
-                <a
-                  href={h.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="group flex items-start gap-2"
-                >
-                  <span className="mt-1.5 w-1 h-1 rounded-full bg-border-strong group-hover:bg-profit shrink-0 transition-colors" />
-                  <span className="min-w-0">
-                    <span className="block text-[12px] text-fg group-hover:text-profit transition-colors line-clamp-2">
-                      {h.title}
-                    </span>
-                    <span className="block text-[10px] text-fg-3 mt-0.5">
-                      {h.source ?? '—'} · {formatWhen(h.at, now)}
-                    </span>
-                  </span>
+              <li key={`${h.url}-${i}`}>
+                <a href={h.url} target="_blank" rel="noreferrer">
+                  <b>{h.title}</b>
+                  <small>{h.source ?? '—'} · {formatWhen(h.at, now)}</small>
                 </a>
+                <IExt size={13} className="mc-hl-x" />
               </li>
             ))}
           </ul>

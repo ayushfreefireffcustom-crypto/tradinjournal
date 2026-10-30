@@ -5,32 +5,18 @@ import { useRouter } from 'next/navigation';
 import AppShell, { timeAgo } from '@/components/app-shell';
 import ConnectBrokerModal from '@/components/connect-broker-modal';
 import DealsTable from '@/components/deals-table';
-import { api, type BrokerAccount, type Deal, type Trade } from '@/lib/api';
+import { api, type BrokerAccount, type Deal, type JournalEntry, type Trade } from '@/lib/api';
 import { useAccounts } from '@/lib/use-accounts';
 import { toCsv, downloadCsv, dateStamp } from '@/lib/csv';
 import { useToast } from '@/components/toast';
-import { IDownload, ISearch, IChevronDown, IClose } from '@/components/v3/icons';
-import { money, moneyShort, price, stamp, dur, tone } from '@/components/v3/format';
+import { IDownload, ISearch, IClose } from '@/components/v3/icons';
+import { money, moneyShort } from '@/components/v3/format';
+import { notesByTrade } from '@/lib/desk';
+import { TradeLog, type SortKey } from '@/components/v6/trades/trade-log';
 
 type Filter = 'ALL' | 'LONG' | 'SHORT' | 'WIN' | 'LOSS';
-type SortKey = 'open' | 'net' | 'held' | 'symbol';
 const FILTERS: [Filter, string][] = [['ALL', 'All'], ['LONG', 'Long'], ['SHORT', 'Short'], ['WIN', 'Win'], ['LOSS', 'Loss']];
 const PAGE = 50;
-const BAD_TAG = /revenge|fomo|tilt|hold.?loser|mistake|overtrad|chase/i;
-
-const tagLabel = (t: string) => `#${t.trim().toLowerCase().replace(/\s+/g, '-')}`;
-
-function SortTh({ k, label, cur, dir, onSort, className }: { k: SortKey; label: string; cur: SortKey; dir: 'asc' | 'desc'; onSort: (k: SortKey) => void; className?: string }) {
-  const active = cur === k;
-  return (
-    <th className={className} aria-sort={active ? (dir === 'asc' ? 'ascending' : 'descending') : 'none'}>
-      <button className={`v3-sort ${active ? 'on' : ''}`} onClick={() => onSort(k)} data-testid={`sort-${k}`}>
-        {label}
-        <svg width="9" height="12" viewBox="0 0 9 12" aria-hidden><path d="M4.5 1v10M1.5 4l3-3 3 3" className="up" /><path d="M1.5 8l3 3 3-3" className="dn" /></svg>
-      </button>
-    </th>
-  );
-}
 
 export default function TradesPage() {
   const router = useRouter();
@@ -38,6 +24,8 @@ export default function TradesPage() {
   const { accounts, selected, select, setAccounts, loading: accountsLoading } = useAccounts();
   const [trades, setTrades] = useState<Trade[]>([]);
   const [deals, setDeals] = useState<Deal[]>([]);
+  const [journal, setJournal] = useState<JournalEntry[]>([]);
+  const [balance, setBalance] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [syncedAt, setSyncedAt] = useState<string | null>(null);
   const [error, setError] = useState('');
@@ -55,10 +43,13 @@ export default function TradesPage() {
     setLoading(true);
     setError('');
     try {
-      const [t, d, j] = await Promise.all([api.trades.list(acc.id), api.trades.deals(acc.id), api.journal.list(acc.id)]);
+      // Stats only supply the balance for "% of balance"; the log works without them.
+      const [t, d, j, s] = await Promise.all([api.trades.list(acc.id), api.trades.deals(acc.id), api.journal.list(acc.id), api.trades.stats(acc.id).catch(() => null)]);
       const tagsByTrade = new Map(j.filter(e => e.tradeId).map(e => [e.tradeId as string, e.tags]));
       setTrades(t.map(trade => ({ ...trade, tags: tagsByTrade.get(trade.positionId) ?? trade.tags })));
       setDeals(d);
+      setJournal(j);
+      setBalance(s?.currentEquity ?? null);
       setSyncedAt(new Date().toISOString());
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to load trades');
@@ -142,141 +133,103 @@ export default function TradesPage() {
   const open = (t: Trade) => selected && router.push(`/trades/${t.positionId}?account=${encodeURIComponent(selected.id)}`);
   const exportDisabled = (tab === 'deals' ? deals.length : sorted.length) === 0;
   const filtersOn = filter !== 'ALL' || symbolFilter !== 'ALL' || search.trim() !== '';
+  const clearFilters = () => { setFilter('ALL'); setSymbolFilter('ALL'); setSearch(''); };
+  const notes = useMemo(() => notesByTrade(journal), [journal]);
+  const pnlTone = (v: number) => (v > 0 ? 'pos' : v < 0 ? 'neg' : '');
+  const noData = (loading || !!error) && !trades.length;
+
+  const subtitle = selected ? (
+    <>
+      {noData ? '—' : trades.length} position{trades.length === 1 ? '' : 's'} · {error && !deals.length ? 'couldn’t load deals' : <>from {deals.length} deal{deals.length === 1 ? '' : 's'}</>}
+      {syncedAt && <> · synced {timeAgo(syncedAt)}</>}
+    </>
+  ) : 'Every closed position from your broker';
 
   const actions = (
-    <>
-      {syncedAt && <span className="d-synced">Synced {timeAgo(syncedAt).toLowerCase()}</span>}
-      <button className="v3-btn v3-btn--o t-export" onClick={exportCsv} disabled={exportDisabled} data-testid="export-csv">
-        <IDownload size={16} /><span>Export CSV</span>
-      </button>
-    </>
+    <button className="x-btn" onClick={exportCsv} disabled={exportDisabled} data-testid="export-csv">
+      <IDownload size={15} /><span>Export CSV</span>
+    </button>
+  );
+
+  const empty = trades.length === 0 ? (
+    <div className="x-empty">
+      {error ? <><b>Positions couldn’t load</b><p>They’ll appear here once the broker connection is back.</p></>
+        : !selected ? <><b>No broker connected</b><p>Connect your MT5 account and your closed trades show up here.</p><button className="x-btn x-btn--hi" onClick={() => setShowConnect(true)}>Connect MT5</button></>
+          : <><b>No positions yet</b><p>Closed trades appear here after your next MT5 sync.</p></>}
+    </div>
+  ) : (
+    <div className="x-empty"><b>No trades match these filters</b><button className="x-btn x-btn--sm" onClick={clearFilters}>Clear filters</button></div>
   );
 
   return (
-    <AppShell accounts={accounts} selectedAccount={selected} onSelectAccount={select} onConnectClick={() => setShowConnect(true)} pageTitle="Trade log" actions={actions}>
-      <div className="v3-page" data-testid="trades-page">
-        <header className="t-head">
-          <div>
-            <h1 className="v3-h1 t-h1"><span className="num">{(loading || error) && !trades.length ? '—' : trades.length}</span> <em>position{trades.length === 1 ? '' : 's'}.</em></h1>
-            <p className="v3-sub">{error && !deals.length ? 'Couldn’t load deals' : <>Reconstructed from {deals.length} deal{deals.length === 1 ? '' : 's'}</>}{selected ? ` · ${selected.broker}` : ''}</p>
-          </div>
-          <div className="v3-seg t-filter" role="group" aria-label="Filter positions">
-            {FILTERS.map(([f, l]) => (
-              <button key={f} aria-pressed={filter === f} onClick={() => { setFilter(f); if (tab !== 'trades') setTab('trades'); }} data-testid={`filter-${f.toLowerCase()}`}>
-                {l}<small className="num">{counts[f]}</small>
-              </button>
-            ))}
-          </div>
-        </header>
-
+    <AppShell legacy={false} accounts={accounts} selectedAccount={selected} onSelectAccount={select} onConnectClick={() => setShowConnect(true)}
+      pageTitle="Trade log" pageSubtitle={subtitle} actions={actions}>
+      <div className="tr-page" data-testid="trades-page">
         {error && (
-          <div className="d-err" role="alert" data-testid="trades-error" style={{ marginBottom: 18 }}>
+          <div className="x-banner x-banner--err" role="alert" data-testid="trades-error">
             <span>{error}</span>
-            <button className="v3-btn v3-btn--o" onClick={() => selected && loadTrades(selected)}>Retry</button>
+            <button className="x-btn x-btn--sm" onClick={() => selected && loadTrades(selected)}>Retry</button>
           </div>
         )}
 
-        <section className="v3-card t-card">
-          <div className="t-bar">
-            <div className="v3-seg" role="tablist" aria-label="View">
-              <button role="tab" aria-selected={tab === 'trades'} aria-pressed={tab === 'trades'} onClick={() => setTab('trades')} data-testid="tab-trades">Positions</button>
-              <button role="tab" aria-selected={tab === 'deals'} aria-pressed={tab === 'deals'} onClick={() => setTab('deals')} data-testid="tab-deals">Raw deals</button>
+        {tab === 'trades' && slice.n > 0 && (
+          <dl className="x-strip x-strip--card tr-strip" data-testid="trades-summary" aria-label="Summary of the trades shown">
+            <div><dt><span>Net P&amp;L{filtersOn ? ' · filtered' : ''}</span></dt><dd><b className={`m tr-full ${pnlTone(filteredPnl)}`}>{money(filteredPnl)}</b><b className={`m tr-short ${pnlTone(filteredPnl)}`}>{moneyShort(filteredPnl)}</b></dd></div>
+            <div><dt><span>Win rate</span></dt><dd><b className="m">{(slice.win * 100).toFixed(1)}%</b></dd></div>
+            <div><dt><span>Avg trade</span></dt><dd><b className={`m tr-full ${pnlTone(slice.avg)}`}>{money(slice.avg)}</b><b className={`m tr-short ${pnlTone(slice.avg)}`}>{moneyShort(slice.avg)}</b></dd></div>
+            <div><dt><span>Best</span></dt><dd><b className={`m ${Number.isFinite(slice.best) ? pnlTone(slice.best) : ''}`}>{Number.isFinite(slice.best) ? money(slice.best) : '—'}</b></dd></div>
+            <div><dt><span>Worst</span></dt><dd><b className={`m ${Number.isFinite(slice.worst) ? pnlTone(slice.worst) : ''}`}>{Number.isFinite(slice.worst) ? money(slice.worst) : '—'}</b></dd></div>
+          </dl>
+        )}
+
+        <section className="x-card">
+          <div className="tr-bar">
+            <div className="x-seg x-seg--in" role="tablist" aria-label="View">
+              <button role="tab" aria-selected={tab === 'trades'} onClick={() => setTab('trades')} data-testid="tab-trades">Positions</button>
+              <button role="tab" aria-selected={tab === 'deals'} onClick={() => setTab('deals')} data-testid="tab-deals">Raw deals</button>
             </div>
             {tab === 'trades' && (
               <>
-                <label className="v3-select">
-                  <span className="sr-only">Symbol</span>
-                  <select value={symbolFilter} onChange={e => setSymbolFilter(e.target.value)} data-testid="symbol-filter">
-                    <option value="ALL">All symbols</option>
-                    {symbols.map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
-                  <IChevronDown size={16} />
-                </label>
-                <label className="v3-field t-search">
-                  <ISearch size={16} />
-                  <input ref={searchRef} type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search symbol or tag…" data-testid="symbol-search"
+                <div className="x-seg x-seg--in" role="group" aria-label="Filter positions">
+                  {FILTERS.map(([f, l]) => (
+                    <button key={f} aria-pressed={filter === f} onClick={() => setFilter(f)} data-testid={`filter-${f.toLowerCase()}`}>
+                      {l}<small>{counts[f]}</small>
+                    </button>
+                  ))}
+                </div>
+                <select className="x-select tr-sel" value={symbolFilter} onChange={e => setSymbolFilter(e.target.value)} data-testid="symbol-filter" aria-label="Symbol">
+                  <option value="ALL">All symbols</option>
+                  {symbols.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+                <label className="x-search tr-search">
+                  <ISearch size={15} />
+                  <input ref={searchRef} className="x-input" type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search symbol or tag" aria-label="Search symbol or tag" data-testid="symbol-search"
                     onKeyDown={e => { if (e.key === 'Escape') setSearch(''); }} />
-                  {search && <button aria-label="Clear search" onClick={() => { setSearch(''); searchRef.current?.focus(); }}><IClose size={14} /></button>}
+                  {search && <button type="button" className="tr-x" aria-label="Clear search" onClick={() => { setSearch(''); searchRef.current?.focus(); }}><IClose size={13} /></button>}
                 </label>
+                {filtersOn && <button className="x-btn x-btn--ghost x-btn--sm" onClick={clearFilters}>Reset</button>}
               </>
             )}
-            <span className="t-count" data-testid="showing-count">
-              {tab === 'trades'
-                ? <>Showing <b className="num">{Math.min(shown, sorted.length)}</b> of <span className="num">{sorted.length}</span>{filtersOn && <> · <button className="t-clear" onClick={() => { setFilter('ALL'); setSymbolFilter('ALL'); setSearch(''); }} data-testid="clear-filters">Clear filters</button></>}</>
-                : <><b className="num">{deals.length}</b> deals</>}
-            </span>
           </div>
 
-          {tab === 'trades' && slice.n > 0 && (
-            <dl className="t-sum" data-testid="trades-summary" aria-label="Summary of the trades shown">
-              <div><dt>Net P&amp;L</dt><dd className={`num ${tone(filteredPnl)}`}><span className="t-full">{money(filteredPnl)}</span><span className="t-short">{moneyShort(filteredPnl)}</span></dd></div>
-              <div><dt>Win rate</dt><dd className="num">{(slice.win * 100).toFixed(1)}%</dd></div>
-              <div><dt>Avg trade</dt><dd className={`num ${tone(slice.avg)}`}><span className="t-full">{money(slice.avg)}</span><span className="t-short">{moneyShort(slice.avg)}</span></dd></div>
-              <div><dt>Best</dt><dd className={`num ${Number.isFinite(slice.best) ? tone(slice.best) : ''}`}>{Number.isFinite(slice.best) ? money(slice.best) : '—'}</dd></div>
-              <div><dt>Worst</dt><dd className={`num ${Number.isFinite(slice.worst) ? tone(slice.worst) : ''}`}>{Number.isFinite(slice.worst) ? money(slice.worst) : '—'}</dd></div>
-            </dl>
-          )}
-
           {tab === 'trades' ? (
-            <div className="v3-tbl-wrap" data-testid="trades-table">
-              <table className="v3-table t-table">
-                <thead>
-                  <tr>
-                    <SortTh k="symbol" label="Symbol" cur={sortKey} dir={sortDir} onSort={toggleSort} />
-                    <th>Dir</th>
-                    <th className="r c-vol">Volume</th>
-                    <SortTh k="open" label="Open" cur={sortKey} dir={sortDir} onSort={toggleSort} className="c-open" />
-                    <th className="c-close">Close</th>
-                    <th className="r c-px">Entry</th>
-                    <th className="r c-px">Exit</th>
-                    <SortTh k="held" label="Held" cur={sortKey} dir={sortDir} onSort={toggleSort} className="r c-held" />
-                    <SortTh k="net" label="Net P&L" cur={sortKey} dir={sortDir} onSort={toggleSort} className="r" />
-                    <th className="c-tag">Tag</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {loading && !trades.length ? (
-                    Array.from({ length: 8 }).map((_, i) => (
-                      <tr key={i} className="sk">{Array.from({ length: 10 }).map((_, j) => <td key={j}><div className="skel d-sk" style={{ height: 12, width: 34 + ((i + j) % 4) * 14 }} /></td>)}</tr>
-                    ))
-                  ) : sorted.length === 0 ? (
-                    <tr className="sk"><td colSpan={10}>
-                      <div className="d-empty">
-                        {trades.length === 0 ? (error ? <><b>Positions couldn’t load</b>They’ll appear here once the broker connection is back.</> : <><b>No positions yet</b>Closed trades appear here after your next MT5 sync.</>)
-                          : <><b>No trades match these filters</b><button className="v3-link" onClick={() => { setFilter('ALL'); setSymbolFilter('ALL'); setSearch(''); }}>Clear filters</button></>}
-                      </div>
-                    </td></tr>
-                  ) : (
-                    sorted.slice(0, shown).map(t => {
-                      const tag = t.tags?.[0];
-                      return (
-                        <tr key={t.positionId} tabIndex={0} onClick={() => open(t)} onKeyDown={e => { if (e.key === 'Enter') open(t); }} data-testid={`trade-row-${t.positionId}`}>
-                          <td><div className="d-sym"><i>{t.symbol.slice(0, 2)}</i><span>{t.symbol}<small className="t-mdate num">{new Date(t.openTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · {dur(t.durationSecs)}</small></span></div></td>
-                          <td><span className={`d-side ${t.direction === 'LONG' ? 'L' : 'S'}`}>
-                            <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden>{t.direction === 'LONG' ? <path d="M2 8L8 2M3.5 2H8v4.5" /> : <path d="M2 2l6 6M8 3.5V8H3.5" />}</svg>
-                            {t.direction === 'LONG' ? 'Long' : 'Short'}</span></td>
-                          <td className="r num mute c-vol">{t.volume.toFixed(2)}</td>
-                          <td className="num mute c-open">{stamp(t.openTime)}</td>
-                          <td className="num mute c-close">{t.status === 'OPEN' ? <span className="v3-pill v">Open</span> : stamp(t.closeTime)}</td>
-                          <td className="r num c-px">{price(t.entryPrice)}</td>
-                          <td className="r num c-px">{price(t.exitPrice)}</td>
-                          <td className="r num mute c-held">{dur(t.durationSecs)}</td>
-                          <td className={`r num t-pnl ${tone(t.netPnl)}`}>{money(t.netPnl)}</td>
-                          <td className="c-tag">{tag ? <span className={`t-tag ${BAD_TAG.test(tag) ? 'bad' : ''}`}>{tagLabel(tag)}</span> : <span className="mute">—</span>}</td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-              {sorted.length > shown && (
-                <div className="v3-tbl-foot">
-                  <button className="v3-btn v3-btn--o" onClick={() => setShown(n => n + PAGE)} data-testid="load-more">Show {Math.min(PAGE, sorted.length - shown)} more</button>
+            <>
+              <TradeLog rows={sorted} shown={shown} sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} notes={notes} balance={balance}
+                onOpen={open} loading={loading && !trades.length} empty={empty} />
+              {trades.length > 0 && (
+                <div className="tr-foot">
+                  <span className="tr-count" data-testid="showing-count">
+                    Showing <b className="m">{Math.min(shown, sorted.length)}</b> of <span className="m">{sorted.length}</span>{filtersOn && <> · <button className="x-link" onClick={clearFilters} data-testid="clear-filters">Clear filters</button></>}
+                  </span>
+                  {sorted.length > shown && <button className="x-btn" onClick={() => setShown(n => n + PAGE)} data-testid="load-more">Show {Math.min(PAGE, sorted.length - shown)} more</button>}
                 </div>
               )}
-            </div>
+            </>
           ) : (
-            <DealsTable deals={deals} loading={loading && !deals.length} />
+            <>
+              <DealsTable deals={deals} loading={loading && !deals.length} />
+              <div className="tr-foot"><span className="tr-count" data-testid="showing-count"><b className="m">{deals.length}</b> deals</span></div>
+            </>
           )}
         </section>
       </div>

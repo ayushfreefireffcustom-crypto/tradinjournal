@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import LegalPage, { type LegalSection } from '@/components/v3/legal-page';
+import LegalPage, { type LegalSection } from '@/components/v6/auth/legal-page';
 import { PARTNERS_ENABLED } from '@/lib/features';
 
 export const metadata: Metadata = {
@@ -74,7 +74,7 @@ const S: LegalSection[] = [
 
 export default function TermsPage() {
   return (
-    <LegalPage kicker="Legal" title="Terms of" accent="service." updated="18 October 2026" sections={PARTNERS_ENABLED ? S : S.filter(x => x.id !== 'partners')}
+    <LegalPage kicker="Legal" title="Terms of service" updated="18 October 2026" sections={PARTNERS_ENABLED ? S : S.filter(x => x.id !== 'partners')}
       other={{ href: '/privacy', label: 'Privacy policy' }}
       intro={<p>The short version: TRADElogs is a <b>read-only</b> journal for your MT5 trades. It can’t trade for you, it isn’t investment advice, and your data stays yours.</p>} />
   );

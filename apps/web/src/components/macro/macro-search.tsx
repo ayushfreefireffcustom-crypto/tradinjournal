@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import type { MacroState } from '@/lib/macro-api';
-import { formatBiasLabel, formatIndicatorValue } from '@/lib/macro-format';
+import { biasTone, formatIndicatorValue } from '@/lib/macro-format';
+import { BiasTag, ISearch, sentence } from '@/components/v6/macro/ui';
 
 interface Props {
   open: boolean;
@@ -20,17 +21,19 @@ export default function MacroSearch({ open, onClose, state, onNavigate }: Props)
     if (!open) setQ('');
   }, [open]);
 
+  // Capture phase so on this page ⌘K opens the macro search instead of the app-wide page switcher.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
+        e.stopPropagation();
         if (open) onClose();
         else document.dispatchEvent(new CustomEvent('macro-search-open'));
       }
       if (e.key === 'Escape' && open) onClose();
     }
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
   }, [open, onClose]);
 
   const results = useMemo(() => {
@@ -41,7 +44,7 @@ export default function MacroSearch({ open, onClose, state, onNavigate }: Props)
         .filter(m => m.key.toLowerCase().includes(needle) || m.label.toLowerCase().includes(needle))
         .slice(0, 8),
       assets: state.bias
-        .filter(b => b.asset.toLowerCase().includes(needle) || formatBiasLabel(b.label).toLowerCase().includes(needle))
+        .filter(b => b.asset.toLowerCase().includes(needle) || b.label.replace(/_/g, ' ').toLowerCase().includes(needle))
         .slice(0, 8),
       events: state.events
         .filter(e => e.title.toLowerCase().includes(needle) || (e.country ?? '').toLowerCase().includes(needle))
@@ -50,79 +53,64 @@ export default function MacroSearch({ open, onClose, state, onNavigate }: Props)
   }, [state, q]);
 
   if (!open) return null;
+  const none = q.trim() && !results.assets.length && !results.indicators.length && !results.events.length;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-[12vh] px-4" data-testid="macro-search">
-      <div className="absolute inset-0 bg-app/80 backdrop-blur-sm" onClick={onClose} aria-hidden />
-      <div className="relative w-full max-w-xl tcard p-0 overflow-hidden fade-up shadow-[var(--shadow-md)]">
-        <input
-          autoFocus
-          value={q}
-          onChange={e => setQ(e.target.value)}
-          placeholder="Search indicators, assets, events…"
-          className="w-full bg-transparent border-b border-border-soft px-4 py-3.5 text-[14px] text-fg outline-none"
-          data-testid="macro-search-input"
-        />
-        <div className="max-h-[50vh] overflow-y-auto p-2 space-y-2">
-          {!q.trim() && (
-            <p className="text-[12px] text-fg-3 px-2 py-3">Type to search the live macro state. Esc to close.</p>
-          )}
+    <div className="x-dialog-scrim mc-sscrim" data-testid="macro-search" onMouseDown={onClose}>
+      <div className="mc-sdlg" role="dialog" aria-modal="true" aria-label="Search macro" onMouseDown={e => e.stopPropagation()}>
+        <div className="mc-sin">
+          <ISearch size={17} />
+          <input
+            autoFocus
+            value={q}
+            onChange={e => setQ(e.target.value)}
+            placeholder="Search indicators, assets, events"
+            aria-label="Search indicators, assets, events"
+            data-testid="macro-search-input"
+          />
+          <kbd>Esc</kbd>
+        </div>
+        <div className="mc-sres">
+          {!q.trim() && <p className="mc-shint">Type to search the live macro state.</p>}
+          {none && <p className="mc-shint">Nothing matches “{q.trim()}”.</p>}
 
           {results.assets.length > 0 && (
-            <div>
-              <div className="text-[9px] tracking-[0.16em] text-fg-3 px-2 py-1">ASSETS</div>
+            <div className="mc-sgrp">
+              <small>Assets</small>
               {results.assets.map(b => (
-                <Link
-                  key={b.asset}
-                  href={`/macro/assets/${b.asset.toLowerCase()}`}
-                  onClick={onClose}
-                  className="flex items-center justify-between px-2 py-2 rounded-md hover:bg-surface-hover"
-                >
-                  <span className="text-[13px] text-fg">{b.asset}</span>
-                  <span className="text-[11px] text-fg-3">{formatBiasLabel(b.label)} · {b.score}</span>
+                <Link key={b.asset} href={`/macro/assets/${b.asset.toLowerCase()}`} onClick={onClose}>
+                  <span className="mc-st">{b.asset}</span>
+                  <span className="mc-sr"><BiasTag tone={biasTone(b.label)} label={sentence(b.label)} /><span className="m">{b.score}</span></span>
                 </Link>
               ))}
             </div>
           )}
 
           {results.indicators.length > 0 && (
-            <div>
-              <div className="text-[9px] tracking-[0.16em] text-fg-3 px-2 py-1">INDICATORS</div>
+            <div className="mc-sgrp">
+              <small>Indicators</small>
               {results.indicators.map(m => (
-                <button
-                  key={m.key}
-                  type="button"
-                  onClick={() => { onNavigate('dashboard'); onClose(); }}
-                  className="w-full flex items-center justify-between px-2 py-2 rounded-md hover:bg-surface-hover text-left"
-                >
-                  <span className="text-[13px] text-fg">{m.label}</span>
-                  <span className="text-[11px] text-fg-3 numeric">{formatIndicatorValue(m.value, m.unit)}</span>
+                <button key={m.key} type="button" onClick={() => { onNavigate('dashboard'); onClose(); }}>
+                  <span className="mc-st">{m.label}</span>
+                  <span className="mc-sr m">{formatIndicatorValue(m.value, m.unit)}</span>
                 </button>
               ))}
             </div>
           )}
 
           {results.events.length > 0 && (
-            <div>
-              <div className="text-[9px] tracking-[0.16em] text-fg-3 px-2 py-1">EVENTS</div>
+            <div className="mc-sgrp">
+              <small>Events</small>
               {results.events.map((e, i) => (
-                <button
-                  key={`${e.title}-${i}`}
-                  type="button"
-                  onClick={() => { onNavigate('calendar'); onClose(); }}
-                  className="w-full flex items-center justify-between px-2 py-2 rounded-md hover:bg-surface-hover text-left gap-2"
-                >
-                  <span className="text-[13px] text-fg truncate">{e.title}</span>
-                  <span className="text-[11px] text-fg-3 shrink-0">{e.country ?? '—'}</span>
+                <button key={`${e.title}-${i}`} type="button" onClick={() => { onNavigate('calendar'); onClose(); }}>
+                  <span className="mc-st">{e.title}</span>
+                  <span className="mc-sr x-muted">{e.country ?? '—'}</span>
                 </button>
               ))}
             </div>
           )}
         </div>
-        <div className="border-t border-border-soft px-3 py-2 text-[10px] text-fg-3 flex justify-between">
-          <span>⌘K / Ctrl+K</span>
-          <span>Esc close</span>
-        </div>
+        <div className="mc-sft"><span><kbd>⌘K</kbd> or <kbd>Ctrl K</kbd> to toggle</span><span><kbd>Esc</kbd> to close</span></div>
       </div>
     </div>
   );

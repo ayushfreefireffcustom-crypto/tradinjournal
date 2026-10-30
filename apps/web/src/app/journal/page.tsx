@@ -5,16 +5,21 @@ import { useSearchParams } from 'next/navigation';
 import AppShell from '@/components/app-shell';
 import ConnectBrokerModal from '@/components/connect-broker-modal';
 import { pipMove, pipSize } from '@/components/replay/trade-chart';
-import { TradeCandles, useTradeCandles } from '@/components/v3/trade-candles';
-import { ICheck, IClose, IPlus, ISearch, IReplay } from '@/components/v3/icons';
-import { money, price, dur, tone } from '@/components/v3/format';
+import { useTradeCandles } from '@/components/v3/trade-candles';
+import { ICheck, IClose, IPlus, ISearch, IReplay, IArrowLeft, IArrowRight } from '@/components/v3/icons';
+import { SideChip } from '@/components/v6/desk';
+import { ReplayChart } from '@/components/v6/journal/replay-chart';
+import { EmotionChips, TagEditor } from '@/components/v6/journal/chips';
+import { fmtHold, fmtUsd } from '@/lib/dashboard-v6';
+import { fmtPrice, marketKind, tickerMark } from '@/lib/desk';
 import { api, type BrokerAccount, type Trade, type JournalEntry } from '@/lib/api';
 import { useAccounts } from '@/lib/use-accounts';
+import '@/styles/v6/journal.css';
 
 const EMOTIONS = ['Disciplined', 'Confident', 'Patient', 'FOMO', 'Revenge', 'Hesitant'];
-const NEG = ['FOMO', 'Revenge', 'Hesitant'];
 type FilterKey = 'all' | 'wins' | 'losses' | 'journaled';
-const tagLabel = (t: string) => `#${t.trim().toLowerCase().replace(/\s+/g, '-')}`;
+const shortDate = (iso: string) => new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+const tone = (v: number) => (v > 0 ? 'pos' : v < 0 ? 'neg' : '');
 
 export default function ChartReplayPage() {
   return <Suspense fallback={null}><ChartReplay /></Suspense>;
@@ -39,6 +44,8 @@ function ChartReplay() {
   const [showConnect, setShowConnect] = useState(false);
   const [filter, setFilter] = useState<FilterKey>('all');
   const [query, setQuery] = useState('');
+  // Phones show the list or the replay, not both; a deep link opens the replay.
+  const [view, setView] = useState<'list' | 'detail'>(wanted ? 'detail' : 'list');
   const listRef = useRef<HTMLDivElement>(null);
 
   const loadTrades = useCallback(async (acc: BrokerAccount) => {
@@ -130,7 +137,14 @@ function ChartReplay() {
   }); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     listRef.current?.querySelector<HTMLElement>('[aria-current="true"]')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-  }, [activeId]);
+  }, [activeId, view]);
+
+  const narrow = () => typeof window !== 'undefined' && window.matchMedia('(max-width: 900px)').matches;
+  function openTrade(id: string) {
+    setActiveId(id);
+    setView('detail');
+    if (narrow()) window.scrollTo({ top: 0 });
+  }
 
   async function handleSave() {
     if (!active || !selected) return;
@@ -171,153 +185,163 @@ function ChartReplay() {
     { key: 'journaled', label: 'Reviewed', n: summary.journaled },
   ];
 
+  const subtitle = selected
+    ? (loading ? `${selected.broker} · loading…` : <>{selected.broker} · <span className="m">{summary.journaled}/{trades.length}</span> reviewed</>)
+    : 'Replay each closed trade and note what happened';
+
+  const status = saveError
+    ? <span className="jn-status is-err" role="alert">{saveError}</span>
+    : dirty ? <span className="jn-status is-dirty">Unsaved changes</span>
+      : activeEntry ? <span className="jn-status">Saved {shortDate(activeEntry.updatedAt)}</span>
+        : <span className="jn-status">Not reviewed yet</span>;
+
   return (
-    <AppShell accounts={accounts} selectedAccount={selected} onSelectAccount={select} onConnectClick={() => setShowConnect(true)} pageTitle="Chart replay">
-      <div className="v3-page r-page" data-testid="chart-replay-page">
+    <AppShell legacy={false} accounts={accounts} selectedAccount={selected} onSelectAccount={select} onConnectClick={() => setShowConnect(true)}
+      pageTitle="Chart replay" pageSubtitle={subtitle}>
+      <div className="jn-page" data-testid="chart-replay-page">
         {error && (
-          <div className="d-err" role="alert" data-testid="journal-error" style={{ marginBottom: 18 }}>
-            <span>{error}</span><button className="v3-btn v3-btn--o" onClick={() => selected && loadTrades(selected)}>Retry</button>
+          <div className="x-banner x-banner--err" role="alert" data-testid="journal-error">
+            <span>{error}</span><button className="x-btn x-btn--sm" onClick={() => selected && loadTrades(selected)}>Retry</button>
           </div>
         )}
 
         {loading ? (
-          <div className="r-grid">
-            <div className="skel d-sk r-sk" /><div className="skel d-sk r-sk" /><div className="skel d-sk r-sk" />
+          <div className="jn-replay" aria-busy="true" aria-label="Loading positions">
+            <div className="x-skel" style={{ height: 560 }} />
+            <div className="jn-detail"><div className="x-skel" style={{ height: 600 }} /><div className="x-skel" style={{ height: 300 }} /></div>
           </div>
         ) : trades.length === 0 ? (
-          <section className="v3-card r-empty" data-testid="replay-empty">
-            <span className="r-empty-ic"><IReplay size={22} /></span>
-            <h1 className="v3-h1" style={{ fontSize: 28 }}><b>Replay every trade.</b> <em>Learn</em> from each one.</h1>
-            <p>Each closed position is redrawn with your entry and exit marked. Log how it felt, tag the setup, and write what you’d do next time.</p>
-            {selected ? <p className="mute" style={{ fontSize: 14 }}>{error ? `Your ${selected.broker} positions will show here once the connection is back.` : `No closed positions on ${selected.broker} yet — they appear here after the next sync.`}</p>
-              : <button className="v3-btn v3-btn--ink" onClick={() => setShowConnect(true)}><span>Connect MT5</span><span className="ar"><IPlus size={14} /></span></button>}
+          <section className="x-card x-empty" data-testid="replay-empty">
+            <span className="x-ic"><IReplay size={22} /></span>
+            <b>{selected ? 'No closed positions yet' : 'Replay every trade'}</b>
+            <p>{selected
+              ? (error ? `Your ${selected.broker} positions will show here once the connection is back.` : `Closed positions on ${selected.broker} appear here after the next sync, redrawn with your entry and exit.`)
+              : 'Connect your MT5 account and each closed position is redrawn with your entry and exit, ready for notes.'}</p>
+            {!selected && <button className="x-btn x-btn--hi" onClick={() => setShowConnect(true)}><IPlus size={15} />Connect MT5</button>}
           </section>
         ) : (
-          <div className="r-grid">
-            {/* ── Left: positions ── */}
-            <aside className="v3-card r-list" data-testid="trade-list" aria-label="Positions">
-              <div className="r-list-hd">
-                <h3>Positions <span>· {trades.length}</span></h3>
-                <div className="r-sum">
-                  <div><span>Net</span><b className={`num ${tone(summary.net)}`}>{money(summary.net)}</b></div>
-                  <div><span>Win rate</span><b className="num">{summary.winRate}%</b></div>
-                  <div><span>Reviewed</span><b className="num">{summary.journaled}/{trades.length}</b></div>
+          <div className="jn-replay" data-view={view}>
+            {/* ── Positions ── */}
+            <aside className="x-card jn-list" data-testid="trade-list" aria-label="Positions">
+              <div className="jn-list-hd">
+                <div className="x-ch"><h2>Positions</h2><span className="x-sub">{trades.length} closed</span></div>
+                <div className="x-strip" style={{ ['--n' as string]: 3 }}>
+                  <div><span>Net</span><b className={`m ${tone(summary.net)}`}>{fmtUsd(summary.net, 0)}</b></div>
+                  <div><span>Win rate</span><b className="m">{summary.winRate}%</b></div>
+                  <div><span>Reviewed</span><b className="m">{summary.journaled}/{trades.length}</b></div>
                 </div>
-                <label className="v3-field r-search">
+                <label className="x-search">
                   <ISearch size={16} />
-                  <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Filter symbol…" data-testid="trade-search" onKeyDown={e => { if (e.key === 'Escape') setQuery(''); }} />
-                  {query && <button aria-label="Clear" onClick={() => setQuery('')}><IClose size={14} /></button>}
+                  <input className="x-input" value={query} onChange={e => setQuery(e.target.value)} placeholder="Filter by symbol" aria-label="Filter by symbol" data-testid="trade-search" onKeyDown={e => { if (e.key === 'Escape') setQuery(''); }} />
+                  {query && <button className="jn-clear" aria-label="Clear" onClick={() => setQuery('')}><IClose size={14} /></button>}
                 </label>
-                <div className="r-chips" role="group" aria-label="Filter">
+                <div className="x-seg x-seg--sm" role="group" aria-label="Filter">
                   {filters.map(f => (
-                    <button key={f.key} aria-pressed={filter === f.key} onClick={() => setFilter(f.key)} data-testid={`filter-${f.key}`}>{f.label} <span className="num">{f.n}</span></button>
+                    <button key={f.key} aria-pressed={filter === f.key} onClick={() => setFilter(f.key)} data-testid={`filter-${f.key}`}>{f.label} <span className="m">{f.n}</span></button>
                   ))}
                 </div>
               </div>
-              <div className="r-rows" ref={listRef}>
-                {visible.length === 0 ? <div className="d-empty">No positions match.</div> : visible.map(t => {
+              <div className="jn-rows" ref={listRef}>
+                {visible.length === 0 ? (
+                  <div className="jn-none"><span>No positions match.</span><button className="x-btn x-btn--sm" onClick={() => { setQuery(''); setFilter('all'); }}>Clear filters</button></div>
+                ) : visible.map(t => {
                   const on = t.positionId === activeId;
                   return (
-                    <button key={t.positionId} aria-current={on} onClick={() => setActiveId(t.positionId)} data-testid={`trade-row-${t.positionId}`} className="r-row">
-                      <i className={t.direction === 'LONG' ? 'L' : 'S'}>{t.direction === 'LONG' ? 'L' : 'S'}</i>
-                      <span className="r-row-m">
-                        <b>{t.symbol}{journalByTrade.has(t.positionId) && <svg width="12" height="12" viewBox="0 0 24 24" aria-label="Reviewed"><path d="M4 20h4L19 9l-4-4L4 16z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" /></svg>}</b>
-                        <small className="num">{t.volume.toFixed(2)} lots · {new Date(t.openTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</small>
+                    <button key={t.positionId} aria-current={on} onClick={() => openTrade(t.positionId)} data-testid={`trade-row-${t.positionId}`} className="jn-row">
+                      <span className="x-mk">{tickerMark(t.symbol)}</span>
+                      <span className="jn-row-m">
+                        <span><b>{t.symbol}</b><SideChip dir={t.direction} /></span>
+                        <small>{shortDate(t.openTime)} · <span className="m">{t.volume.toFixed(2)}</span> lots</small>
                       </span>
-                      <b className={`num ${tone(t.netPnl)}`}>{money(t.netPnl)}</b>
+                      <span className="jn-row-r">
+                        <b className={`m ${tone(t.netPnl)}`}>{fmtUsd(t.netPnl)}</b>
+                        {journalByTrade.has(t.positionId) && <span className="jn-noted">Reviewed</span>}
+                      </span>
                     </button>
                   );
                 })}
               </div>
             </aside>
 
-            {/* ── Center: chart ── */}
-            <section className="v3-card r-chart">
-              {active && (
-                <>
-                  <div className="r-chart-hd">
-                    <b className="r-sym" data-testid="candle-chart-symbol">{active.symbol}</b>
-                    <span className={`d-side ${active.direction === 'LONG' ? 'L' : 'S'}`}>{active.direction === 'LONG' ? '↑ Long' : '↓ Short'} · {active.volume.toFixed(2)}</span>
-                    <span className={`v3-pill ${win ? 'g' : 'r'}`}>{win ? 'Win' : 'Loss'}</span>
-                    <b className={`num r-pnl ${tone(active.netPnl)}`}>{money(active.netPnl)}</b>
-                    <span className={`r-src ${candles.candles ? 'live' : ''}`} title={candles.candles ? 'Market candles for the trade window' : 'Price path reconstructed from your entry and exit fills — not tick data'}>
-                      {candles.loading ? 'Loading…' : candles.candles ? 'Live data' : 'Illustrative'}
-                    </span>
-                    {visible.length > 1 && activeIdx >= 0 && (
-                      <div className="v3-seg sm r-step" role="group" aria-label="Browse trades">
-                        <button onClick={() => step(-1)} disabled={activeIdx <= 0} aria-label="Previous trade" data-testid="replay-prev">‹</button>
-                        <span className="num">{activeIdx + 1}/{visible.length}</span>
-                        <button onClick={() => step(1)} disabled={activeIdx >= visible.length - 1} aria-label="Next trade" data-testid="replay-next">›</button>
+            <div className="jn-detail">
+              <button className="x-btn x-btn--sm jn-back" onClick={() => setView('list')} data-testid="replay-back"><IArrowLeft size={15} />All positions</button>
+
+              {/* ── Replay ── */}
+              <section className="x-card jn-chartcard" aria-label="Replay">
+                {active && (
+                  <>
+                    <div className="jn-hd">
+                      <span className="x-sym">
+                        <span className="x-mk">{tickerMark(active.symbol)}</span>
+                        <span><b data-testid="candle-chart-symbol">{active.symbol}</b><small>{marketKind(active.symbol) ? `${marketKind(active.symbol)} · ` : ''}<span className="m">{active.volume.toFixed(2)}</span> lots · {shortDate(active.openTime)}</small></span>
+                      </span>
+                      <SideChip dir={active.direction} />
+                      <div className="jn-hd-r">
+                        <span className={`x-tag jn-src ${candles.candles ? 'x-tag--g' : ''}`} title={candles.candles ? 'Market candles for the trade window' : 'Price path reconstructed from your entry and exit fills, not tick data'}>
+                          {candles.loading ? 'Loading candles' : candles.candles ? 'Market data' : 'Illustrative'}
+                        </span>
+                        {visible.length > 1 && activeIdx >= 0 && (
+                          <div className="jn-step" role="group" aria-label="Browse trades">
+                            <button onClick={() => step(-1)} disabled={activeIdx <= 0} aria-label="Previous trade" data-testid="replay-prev"><IArrowLeft size={14} /></button>
+                            <span className="m">{activeIdx + 1}/{visible.length}</span>
+                            <button onClick={() => step(1)} disabled={activeIdx >= visible.length - 1} aria-label="Next trade" data-testid="replay-next"><IArrowRight size={14} /></button>
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                  <div className="r-chart-bd"><TradeCandles key={active.positionId} trade={active} real={candles.candles} height={460} /></div>
-                  <div className="r-stats">
-                    <div><span>Entry</span><b className="num">{price(active.entryPrice)}</b></div>
-                    <div><span>Exit</span><b className="num">{price(active.exitPrice)}</b></div>
-                    <div><span>Move</span><b className={`num ${tone(move)}`}>{move >= 0 ? '+' : '−'}{Math.abs(move).toFixed(1)}</b></div>
-                    <div><span>Held</span><b className="num">{dur(active.durationSecs)}</b></div>
-                    <div><span>Gross</span><b className="num">{money(active.grossPnl, 0)}</b></div>
-                    <div><span>Fees</span><b className={`num ${fees < 0 ? 'sh' : ''}`}>{fees ? money(fees, 0) : '$0'}</b></div>
-                  </div>
-                </>
-              )}
-            </section>
-
-            {/* ── Right: review ── */}
-            <aside className="v3-card r-review" data-testid="journal-panel" aria-label="Trade review">
-              <div className="r-review-hd">
-                <h3>Trade review</h3>
-                {activeEntry && <span className="v3-pill g r-done"><ICheck size={13} /> Reviewed</span>}
-              </div>
-              {active && (
-                <div className="r-review-bd">
-                  <div className={`r-result ${win ? 'w' : 'l'}`}>
-                    <b className="num">{money(active.netPnl)}</b>
-                    <span className="num">{active.symbol} · {active.direction === 'LONG' ? 'Long' : 'Short'} · {dur(active.durationSecs)} · {move >= 0 ? '+' : '−'}{Math.abs(move).toFixed(1)} {unit}</span>
-                  </div>
-
-                  <div className="r-sec">
-                    <h4>How did it feel?</h4>
-                    <div className="r-emo">
-                      {EMOTIONS.map(e => (
-                        <button key={e} aria-pressed={emotion === e} className={NEG.includes(e) ? 'neg' : ''} onClick={() => setEmotion(p => (p === e ? '' : e))} data-testid={`emotion-${e.toLowerCase()}`}>{e}</button>
-                      ))}
                     </div>
-                  </div>
-
-                  <div className="r-sec">
-                    <h4>Setup tags</h4>
-                    <div className="r-tags">
-                      {tags.map(t => (
-                        <button key={t} className="r-tag" onClick={() => setTags(p => p.filter(x => x !== t))} data-testid={`tag-${t.toLowerCase()}`} aria-label={`Remove ${tagLabel(t)}`}>{tagLabel(t)} <IClose size={13} /></button>
-                      ))}
-                      {tagDraft !== null ? (
-                        <input autoFocus className="r-tag-in" value={tagDraft} onChange={e => setTagDraft(e.target.value)} placeholder="breakout"
-                          onKeyDown={e => { if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); commitTagDraft(); } if (e.key === 'Escape') setTagDraft(null); }}
-                          onBlur={commitTagDraft} data-testid="tag-draft-input" />
-                      ) : (
-                        <button className="r-tag add" onClick={() => setTagDraft('')} data-testid="add-tag"><IPlus size={13} /> Add</button>
-                      )}
+                    <div className="jn-pnl">
+                      <b className={`m ${tone(active.netPnl)}`}>{fmtUsd(active.netPnl)}</b>
+                      <span className={`x-tag ${win ? 'x-tag--g' : 'x-tag--r'}`}>{win ? 'Win' : 'Loss'}</span>
+                      <span className="x-sub"><span className="m">{move >= 0 ? '+' : '−'}{Math.abs(move).toFixed(1)}</span> {unit} in {fmtHold(active.durationSecs)}</span>
                     </div>
-                  </div>
+                    <ReplayChart key={active.positionId} trade={active} real={candles.candles} />
+                    <div className="x-strip jn-strip6" style={{ ['--n' as string]: 6 }}>
+                      <div><span>Entry</span><b className="m">{fmtPrice(active.entryPrice, active.exitPrice)}</b></div>
+                      <div><span>Exit</span><b className="m">{fmtPrice(active.exitPrice, active.entryPrice)}</b></div>
+                      <div><span>Move</span><b className={`m ${tone(move)}`}>{move >= 0 ? '+' : '−'}{Math.abs(move).toFixed(1)}</b></div>
+                      <div><span>Held</span><b className="m">{fmtHold(active.durationSecs)}</b></div>
+                      <div><span>Gross</span><b className={`m ${tone(active.grossPnl)}`}>{fmtUsd(active.grossPnl, 0)}</b></div>
+                      <div><span>Fees</span><b className={`m ${fees < 0 ? 'neg' : ''}`}>{fees ? fmtUsd(fees) : '$0.00'}</b></div>
+                    </div>
+                  </>
+                )}
+              </section>
 
-                  <div className="r-sec r-notes">
-                    <h4>Pre / post notes</h4>
-                    <textarea value={note} onChange={e => setNote(e.target.value)} data-testid="journal-note"
-                      onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleSave(); }}
-                      placeholder="What was the plan? Did you follow it? What would you do differently next time?" />
-                  </div>
+              {/* ── Review ── */}
+              <section className="x-card jn-review" data-testid="journal-panel" aria-label="Trade review">
+                <div className="x-ch">
+                  <h2>Trade review</h2>
+                  {activeEntry && <span className="x-tag x-tag--g"><ICheck size={12} />Reviewed</span>}
+                  <div className="x-r"><span className="jn-hint">⌘ Enter to save · ↑ ↓ to switch trades</span></div>
                 </div>
-              )}
-              <div className="r-review-ft">
-                {saveError && <p className="r-err" role="alert">{saveError}</p>}
-                <button onClick={handleSave} disabled={saving || !active || (!dirty && !!activeEntry)} data-testid="save-journal" className={`r-save ${saved ? 'ok' : ''}`}>
-                  {saving ? 'Saving…' : saved ? <><ICheck size={16} /> Saved</> : activeEntry ? (dirty ? 'Update entry' : 'Up to date') : 'Save entry'}
-                </button>
-                <small className="r-hint">⌘ Enter to save · ↑ ↓ to switch trades</small>
-              </div>
-            </aside>
+                {active && (
+                  <div className="jn-review-bd">
+                    <div>
+                      <div className="jn-sec">
+                        <h3>How did it feel?</h3>
+                        <EmotionChips options={EMOTIONS} value={emotion} onChange={setEmotion} label="How did it feel?" />
+                      </div>
+                      <div className="jn-sec">
+                        <h3>Setup tags</h3>
+                        <TagEditor tags={tags} onRemove={t => setTags(p => p.filter(x => x !== t))} draft={tagDraft} setDraft={setTagDraft} onCommit={commitTagDraft} placeholder="breakout" />
+                      </div>
+                    </div>
+                    <div className="jn-notes">
+                      <label className="x-label" htmlFor="jn-note">Pre / post notes</label>
+                      <textarea id="jn-note" className="x-textarea" value={note} onChange={e => setNote(e.target.value)} data-testid="journal-note"
+                        onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleSave(); }}
+                        placeholder="What was the plan? Did you follow it? What would you do differently next time?" />
+                    </div>
+                  </div>
+                )}
+                <div className="jn-ft">
+                  {status}
+                  <button onClick={handleSave} disabled={saving || !active || (!dirty && !!activeEntry)} data-testid="save-journal" className={`x-btn x-btn--hi jn-save ${saved && !dirty ? 'is-saved' : ''}`}>
+                    {saving ? 'Saving…' : saved && !dirty ? <><ICheck size={15} />Saved</> : activeEntry ? (dirty ? 'Update entry' : 'Up to date') : 'Save entry'}
+                  </button>
+                </div>
+              </section>
+            </div>
           </div>
         )}
       </div>

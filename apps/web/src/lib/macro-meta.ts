@@ -34,17 +34,20 @@ export const GROUP_ORDER: MacroGroup[] = [
   'FX',
 ];
 
-/** Short glyph shown beside each panel header. */
-export const GROUP_GLYPH: Record<MacroGroup, string> = {
-  'Inflation & Prices': '↗',
-  'Growth & Demand': '◱',
-  'Labor': '⚒',
-  'Rates & Yield Curve': '∿',
-  'Central Banks': '◈',
-  'Liquidity Plumbing': '≋',
-  'Risk & Credit': '⚡',
-  'Positioning': '⇅',
-  'FX': '$',
+/** Line-icon name drawn beside each panel header (see components/v6/macro/ui.tsx). */
+export type GroupIconName =
+  | 'inflation' | 'growth' | 'labor' | 'rates' | 'bank' | 'liquidity' | 'risk' | 'positioning' | 'fx' | 'other';
+
+export const GROUP_ICON: Record<MacroGroup, GroupIconName> = {
+  'Inflation & Prices': 'inflation',
+  'Growth & Demand': 'growth',
+  'Labor': 'labor',
+  'Rates & Yield Curve': 'rates',
+  'Central Banks': 'bank',
+  'Liquidity Plumbing': 'liquidity',
+  'Risk & Credit': 'risk',
+  'Positioning': 'positioning',
+  'FX': 'fx',
 };
 
 export const INDICATOR_META: Record<string, IndicatorMeta> = {
@@ -122,7 +125,7 @@ export interface MacroIndicator {
 
 export interface IndicatorGroup {
   group: MacroGroup;
-  glyph: string;
+  icon: GroupIconName;
   items: MacroIndicator[];
 }
 
@@ -146,10 +149,10 @@ export function groupIndicators(macro: MacroIndicator[]): IndicatorGroup[] {
   const groups: IndicatorGroup[] = [];
   for (const g of GROUP_ORDER) {
     const items = buckets.get(g);
-    if (items && items.length) groups.push({ group: g, glyph: GROUP_GLYPH[g], items });
+    if (items && items.length) groups.push({ group: g, icon: GROUP_ICON[g], items });
   }
   if (other.length) {
-    groups.push({ group: 'FX', glyph: '·', items: other }); // rare; keep visible
+    groups.push({ group: 'FX', icon: 'other', items: other }); // rare; keep visible
   }
   return groups;
 }

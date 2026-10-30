@@ -13,9 +13,9 @@ import MarkdownMessage from '@/components/coach/markdown-message';
 import NewsModal from '@/components/news/news-modal';
 import NewsThumb from '@/components/news/news-thumb';
 import SourcePicker from '@/components/news/source-picker';
-import { Loader } from '@/components/loader';
 import { matchSymbols, matchesUserSymbols } from '@/lib/symbol-match';
 import { api, type NewsItem, type NewsCategory, type Sentiment, type EventImpact, type NewsSource } from '@/lib/api';
+import '@/styles/v6/markets.css';
 
 const EMPTY_SYMBOLS: ReadonlySet<string> = new Set();
 
@@ -28,7 +28,7 @@ const CATEGORIES: NewsCategory[] = ['CRYPTO', 'MACRO', 'GEOPOLITICAL', 'REGULATO
 const POLL_MS = 60_000;
 
 const SENT_LABEL: Record<Sentiment, string> = { BULLISH: 'Bullish', BEARISH: 'Bearish', NEUTRAL: 'Neutral' };
-const SENT_PILL: Record<Sentiment, string> = { BULLISH: 'g', BEARISH: 'r', NEUTRAL: 'v' };
+const SENT_TAG: Record<Sentiment, string> = { BULLISH: 'x-tag--g', BEARISH: 'x-tag--r', NEUTRAL: '' };
 const CAT_LABEL: Record<string, string> = { CRYPTO: 'Crypto', MACRO: 'Macro', GEOPOLITICAL: 'Geopolitical', REGULATORY: 'Regulatory', MARKETS: 'Markets' };
 // Short ticker for the card tile: the first traded symbol it mentions, else any
 // symbol it mentions, else the category.
@@ -54,37 +54,42 @@ function dedupePrepend(prev: NewsItem[], incoming: NewsItem[]): NewsItem[] {
 }
 
 /**
- * One headline card — fixed-height horizontal layout: content on the left, a
- * full-height image column on the right (with a glyph placeholder when there's
- * no/broken image). The title is single-line + ellipsis so two-column rows never
- * mismatch on title line count. `matched` = symbols on it the user trades.
+ * One headline row: ticker tile, source/time line, title + one-line summary, and
+ * the AI tags on the right. `matched` = symbols on it the user trades.
  */
-function ArrowNE() { return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><path d="M7 17L17 7M9 7h8v8" /></svg>; }
+function ArrowNE() { return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" aria-hidden><path d="M7 17L17 7M9 7h8v8" /></svg>; }
+
+function Tags({ it }: { it: NewsItem }) {
+  const high = it.impact === 'HIGH' || it.marketMoving;
+  return (
+    <>
+      {high && <span className="mk-hi"><i className="x-dot x-dot--r" aria-hidden />High impact</span>}
+      {it.sentiment && <span className={`x-tag ${SENT_TAG[it.sentiment]}`}>{SENT_LABEL[it.sentiment]}</span>}
+    </>
+  );
+}
 
 function NewsCardBase({ it, onOpen, matched = [] }: { it: NewsItem; onOpen: (i: NewsItem) => void; matched?: string[] }) {
-  const high = it.impact === 'HIGH' || it.marketMoving;
   const mine = matched.length > 0;
-  const tone = it.sentiment ? SENT_PILL[it.sentiment] : 'v';
   return (
-    <button type="button" onClick={() => onOpen(it)} data-testid="news-item" className={`mk-card ${mine ? 'mine' : ''}`}>
-      <div className="mk-card-m">
-        <div className="mk-meta">
-          {mine && <span className="v3-pill v mk-mine" data-testid="news-your-market">Your market</span>}
-          <span className="src">{it.source} · {timeAgo(it.publishedAt)}</span>
-          {it.sentiment && <span className={`v3-pill ${SENT_PILL[it.sentiment]}`}>{SENT_LABEL[it.sentiment]}</span>}
-          {high && <span className="v3-pill r">High</span>}
-          {it.category && <span className="cat">{CAT_LABEL[it.category]}</span>}
-        </div>
-        <h3>{it.title}</h3>
-        {it.summary ? <p>{it.summary}</p> : <p className="mute">Open to read at {it.source}.</p>}
+    <button type="button" onClick={() => onOpen(it)} data-testid="news-item" className={`mk-item ${mine ? 'mine' : ''}`}>
+      <span className="x-mk mk-item-mk" aria-hidden>{tileFor(it, matched)}</span>
+      <span className="mk-item-m">
+        <span className="mk-item-meta">
+          {mine && <span className="x-tag x-tag--g" data-testid="news-your-market">Your market</span>}
+          <span className="mk-ell">{it.source} · {timeAgo(it.publishedAt)}{it.category ? ` · ${CAT_LABEL[it.category]}` : ''}</span>
+        </span>
+        <b className="mk-item-t">{it.title}</b>
+        {it.summary ? <span className="mk-item-s">{it.summary}</span> : <span className="mk-item-s x-dim">Open to read at {it.source}.</span>}
+        <span className="mk-item-tags"><Tags it={it} /></span>
+      </span>
+      <span className="mk-item-r">
+        <span className="mk-item-tags"><Tags it={it} /></span>
         {typeof it.relevance === 'number' && (
-          <span className="mk-rel" title={`Relevance to traders ${it.relevance}/100`}><i style={{ width: `${it.relevance}%` }} /></span>
+          <span className="mk-relv" title={`Relevance to traders ${it.relevance}/100`}><span className="x-bar"><i style={{ width: `${it.relevance}%` }} /></span><small className="m">{it.relevance}</small></span>
         )}
-      </div>
-      <div className={`mk-tile ${tone}`}>
-        <b>{tileFor(it, matched)}</b>
-        {it.imageUrl && <NewsThumb src={it.imageUrl} className="mk-img" />}
-      </div>
+      </span>
+      {it.imageUrl && <NewsThumb src={it.imageUrl} className="mk-item-img" />}
     </button>
   );
 }
@@ -115,6 +120,10 @@ export default function NewsFeed({ userSymbols = EMPTY_SYMBOLS, symbolsReady = t
   const [highOnly, setHighOnly] = useState(false);
   const [symbolFilter, setSymbolFilter] = useState<string | null>(null);
   const [live, setLive] = useState(false);
+  const [updatedAt, setUpdatedAt] = useState<string | null>(null);
+  const [, tick] = useState(0);
+  // Keep "updated 2m ago" honest.
+  useEffect(() => { const t = setInterval(() => tick(n => n + 1), 30_000); return () => clearInterval(t); }, []);
 
   // Personalization.
   const [prefs, setPrefs] = useState<string[]>([]);
@@ -215,6 +224,7 @@ export default function NewsFeed({ userSymbols = EMPTY_SYMBOLS, symbolsReady = t
       setItems(page.items);
       setCursor(page.nextCursor);
       setError('');
+      setUpdatedAt(new Date().toISOString());
     } catch {
       setError('The news feed is unavailable right now.');
     } finally {
@@ -254,6 +264,7 @@ export default function NewsFeed({ userSymbols = EMPTY_SYMBOLS, symbolsReady = t
       if (el && el.scrollTop > 40) prependAnchor.current = { h: el.scrollHeight, top: el.scrollTop };
     };
     const route = (incoming: NewsItem[]) => {
+      setUpdatedAt(new Date().toISOString());
       if (!incoming.length) return;
       if (!personalized) {
         setItems(prev => { const next = dedupePrepend(prev, incoming); if (next !== prev) anchorIfScrolled(); return next; });
@@ -301,12 +312,23 @@ export default function NewsFeed({ userSymbols = EMPTY_SYMBOLS, symbolsReady = t
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
+    // Desktop: the list scrolls inside its card. Phones: the list is in the page
+    // flow, so measure how far its bottom is below the viewport instead.
     const onScroll = () => {
-      if (el.scrollHeight - el.scrollTop - el.clientHeight < 600) void loadMore();
+      if (!el.offsetParent) return; // hidden (calendar tab on phones)
+      const inner = el.scrollHeight > el.clientHeight + 1 && getComputedStyle(el).overflowY !== 'visible';
+      const left = inner ? el.scrollHeight - el.scrollTop - el.clientHeight : el.getBoundingClientRect().bottom - window.innerHeight;
+      if (left < 600) void loadMore();
     };
     el.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
     onScroll(); // auto-fill when the first page is shorter than the container
-    return () => el.removeEventListener('scroll', onScroll);
+    return () => {
+      el.removeEventListener('scroll', onScroll);
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+    };
   }, [loadMore, cursor]);
 
   const savePrefs = useCallback(async (next: string[]) => {
@@ -334,110 +356,119 @@ export default function NewsFeed({ userSymbols = EMPTY_SYMBOLS, symbolsReady = t
       .finally(() => setBriefLoading(false));
   }, []);
 
+  const skel = (n: number) => (
+    <div className="mk-skels" aria-hidden>{Array.from({ length: n }).map((_, i) => <div key={i} className="mk-sk-item"><i className="x-skel x-skel--in" /><span><i className="x-skel x-skel--in" /><i className="x-skel x-skel--in" /></span></div>)}</div>
+  );
+  const rows = (list: NewsItem[]) => <div className="mk-items">{list.map(it => <NewsCard key={it.id} it={it} onOpen={setSelectedItem} matched={matchOf(it)} />)}</div>;
+
   return (
     <>
-      <div className="mk-feed" data-testid="news-page">
-        <div className="mk-bar">
-          <div className="mk-chips" role="group" aria-label="Category">
+      <section className="x-card mk-news" data-testid="news-page" aria-labelledby="mk-news-t">
+        <div className="x-ch mk-news-hd">
+          <h2 id="mk-news-t">Headlines</h2>
+          <span className="x-sub mk-fresh">
+            {live && !category && !highOnly && <span className="mk-onair"><i className="x-dot" aria-hidden />Live</span>}
+            {updatedAt ? <span>Updated {timeAgo(updatedAt)}</span> : loading ? <span>Loading…</span> : null}
+          </span>
+          <div className="x-r">
+            <button onClick={() => setPickerOpen(true)} data-testid="news-customize-btn" className="x-btn x-btn--sm" aria-pressed={prefs.length > 0} title="Choose your outlets">
+              Sources{prefs.length > 0 ? <span className="mk-count m">{prefs.length}</span> : catalog.length ? <span className="x-dim m">{catalog.length}</span> : null}
+            </button>
+            <button onClick={runBrief} data-testid="news-brief-btn" className="x-btn x-btn--sm x-btn--hi">Brief</button>
+          </div>
+        </div>
+
+        <div className="mk-hscroll mk-filters">
+          <div className="x-seg x-seg--in x-seg--sm" role="group" aria-label="Category">
             <button aria-pressed={!category} onClick={() => setCategory(null)}>All</button>
             {CATEGORIES.map(c => (
               <button key={c} aria-pressed={category === c} onClick={() => setCategory(category === c ? null : c)} data-testid={`news-cat-${c}`}>{CAT_LABEL[c]}</button>
             ))}
-            <button aria-pressed={highOnly} className="hi" onClick={() => setHighOnly(v => !v)} data-testid="news-high">High impact</button>
           </div>
-          <div className="mk-acts">
-            {live && !category && !highOnly && <span className="mk-live"><i />Live</span>}
-            <button onClick={() => setPickerOpen(true)} data-testid="news-customize-btn" className={`ch-pill ${prefs.length ? 'on' : ''}`} title="Choose your outlets">
-              Sources{prefs.length > 0 ? ` · ${prefs.length}` : ` · ${catalog.length || ''}`.replace(/ · $/, '')}
-            </button>
-            <button onClick={runBrief} data-testid="news-brief-btn" className="mk-brief-btn">✦ Brief</button>
-          </div>
+          <button aria-pressed={highOnly} className="mk-tog" onClick={() => setHighOnly(v => !v)} data-testid="news-high"><i className="x-dot x-dot--r" aria-hidden />High impact</button>
         </div>
 
         {hasSymbols && (
-          <div className="mk-syms" data-testid="news-symbol-tabs">
-            <span className="lbl"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="8" /><circle cx="12" cy="12" r="3" /></svg> Your markets</span>
-            <button aria-pressed={!symbolFilter} onClick={() => setSymbolFilter(null)}>All</button>
-            {symbolTabs.map(s => <button key={s} aria-pressed={symbolFilter === s} onClick={() => setSymbolFilter(symbolFilter === s ? null : s)} data-testid={`news-symbol-${s}`}>{s}</button>)}
+          <div className="mk-hscroll mk-symrow" data-testid="news-symbol-tabs">
+            <span className="mk-symrow-l">Your markets</span>
+            <div className="x-seg x-seg--in x-seg--sm" role="group" aria-label="Your markets">
+              <button aria-pressed={!symbolFilter} onClick={() => setSymbolFilter(null)}>All</button>
+              {symbolTabs.map(s => <button key={s} aria-pressed={symbolFilter === s} onClick={() => setSymbolFilter(symbolFilter === s ? null : s)} data-testid={`news-symbol-${s}`}>{s}</button>)}
+            </div>
           </div>
         )}
 
-        <div ref={scrollRef} className="mk-list" data-testid="news-list">
+        <div ref={scrollRef} className="mk-flist" data-testid="news-list">
           {briefOpen && (
-            <section className="mk-brief" data-testid="news-brief" aria-live="polite">
-              <div className="hd">
-                <h3>✦ Your morning brief</h3>
-                <span>{new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} · written for {hasSymbols ? `your ${userSymbols.size} market${userSymbols.size === 1 ? '' : 's'}` : 'today’s session'} · <button onClick={() => setBriefOpen(false)}>Close</button></span>
+            <section className="x-inset mk-briefbox" data-testid="news-brief" aria-live="polite">
+              <div className="mk-briefbox-hd">
+                <b>Morning brief</b>
+                <span className="x-muted">{new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} · for {hasSymbols ? `your ${userSymbols.size} market${userSymbols.size === 1 ? '' : 's'}` : 'today’s session'}</span>
+                <button className="x-btn x-btn--sm x-btn--ghost" onClick={() => setBriefOpen(false)}>Close</button>
               </div>
-              {brief ? <MarkdownMessage content={brief} /> : briefLoading ? <p className="wr">Writing your brief<span className="dots" /></p> : <p className="wr">The brief isn’t available right now.</p>}
+              <div className="mk-md">
+                {brief ? <MarkdownMessage content={brief} /> : briefLoading ? <p className="x-muted">Writing your brief…</p> : <p className="x-muted">The brief isn’t available right now.</p>}
+              </div>
             </section>
           )}
 
-          {loading && items.length === 0 && topItems.length === 0 ? (
-            <div className="mk-grid">{Array.from({ length: 6 }).map((_, i) => <div key={i} className="skel d-sk" style={{ height: 200, borderRadius: 20 }} />)}</div>
-          ) : error ? (
-            <div className="v3-card d-empty"><b>News unavailable</b>{error}</div>
+          {loading && items.length === 0 && topItems.length === 0 ? skel(7)
+          : error ? (
+            <div className="x-empty"><b>News unavailable</b><p>{error}</p><button className="x-btn x-btn--sm" onClick={() => void load()}>Try again</button></div>
           ) : items.length === 0 && topItems.length === 0 ? (
-            <div className="v3-card d-empty"><b>No news yet</b>The feed fills in as headlines are ingested.</div>
+            <div className="x-empty"><b>No news yet</b><p>The feed fills in as headlines come in.</p></div>
           ) : symbolFilter ? (
-            <>
-              <div className="mk-grid" data-testid="news-symbol-view">
-                {symbolMatched.map(it => <NewsCard key={it.id} it={it} onOpen={setSelectedItem} matched={matchOf(it)} />)}
-              </div>
-              {symbolMatched.length === 0 && <div className="v3-card d-empty">No loaded headlines mention {symbolFilter} yet — they’ll appear as the feed updates.</div>}
-            </>
+            <div data-testid="news-symbol-view">
+              {symbolMatched.length > 0 ? rows(symbolMatched)
+                : <div className="x-empty"><b>Nothing on {symbolFilter} yet</b><p>Headlines that mention it appear here as the feed updates.</p></div>}
+            </div>
           ) : (
             <>
-              {lead && (() => {
-                const high = lead.impact === 'HIGH' || lead.marketMoving;
-                return (
-                  <button type="button" onClick={() => setSelectedItem(lead)} data-testid="news-lead" className="mk-lead">
-                    <div className="mk-lead-m">
-                      <div className="mk-meta">
-                        <span className="v3-pill v">Top story</span>
-                        <span className="src">{lead.source} · {timeAgo(lead.publishedAt)}</span>
-                        {lead.sentiment && <span className={`v3-pill ${SENT_PILL[lead.sentiment]}`}>{SENT_LABEL[lead.sentiment]}</span>}
-                        {high && <span className="v3-pill r">High</span>}
-                        {lead.category && <span className="cat">{CAT_LABEL[lead.category]}</span>}
-                      </div>
-                      <h2>{lead.title}</h2>
-                      {lead.summary && <p>{lead.summary}</p>}
-                      <div className="mk-lead-ft">
-                        {matchSymbols(itemText(lead)).slice(0, 3).map(s => <span key={s} className="t-tag">{s}</span>)}
-                        <span className="v3-link">Read more <ArrowNE /></span>
-                      </div>
-                    </div>
-                    <div className={`mk-lead-art ${lead.sentiment === 'BEARISH' ? 'down' : ''}`} aria-hidden>
-                      {lead.imageUrl ? <NewsThumb src={lead.imageUrl} className="mk-img" /> : (
-                        <svg viewBox="0 0 400 300" preserveAspectRatio="none"><path className="ln" d={lead.sentiment === 'BEARISH' ? 'M0 90 L60 110 L100 95 L160 150 L200 140 L260 200 L300 185 L360 240 L400 250' : 'M0 220 L60 205 L100 215 L160 150 L200 162 L260 100 L300 115 L360 55 L400 45'} /></svg>
-                      )}
-                    </div>
-                  </button>
-                );
-              })()}
+              {lead && (
+                <button type="button" onClick={() => setSelectedItem(lead)} data-testid="news-lead" className="mk-top">
+                  <span className="mk-top-m">
+                    <span className="mk-item-meta">
+                      <span className="x-tag x-tag--solid">Top story</span>
+                      <span className="mk-ell">{lead.source} · {timeAgo(lead.publishedAt)}{lead.category ? ` · ${CAT_LABEL[lead.category]}` : ''}</span>
+                    </span>
+                    <span className="mk-top-t">{lead.title}</span>
+                    {lead.summary && <span className="mk-top-s">{lead.summary}</span>}
+                    <span className="mk-top-ft">
+                      <Tags it={lead} />
+                      {matchSymbols(itemText(lead)).slice(0, 3).map(s => <span key={s} className="x-tag x-tag--m">{s}</span>)}
+                      <span className="mk-top-go">Read more <ArrowNE /></span>
+                    </span>
+                  </span>
+                  <span className={`mk-top-art ${lead.sentiment === 'BEARISH' ? 'down' : ''}`} aria-hidden>
+                    {lead.imageUrl ? <NewsThumb src={lead.imageUrl} className="mk-top-img" /> : (
+                      <svg viewBox="0 0 400 240" preserveAspectRatio="none"><path vectorEffect="non-scaling-stroke" d={lead.sentiment === 'BEARISH' ? 'M0 60 L60 76 L100 66 L160 110 L200 102 L260 150 L300 140 L360 184 L400 192' : 'M0 186 L60 174 L100 182 L160 128 L200 138 L260 86 L300 98 L360 48 L400 40'} /></svg>
+                    )}
+                  </span>
+                </button>
+              )}
 
               {radarShown.length > 0 && (
                 <section data-testid="news-radar">
-                  <div className="mk-sec"><span>On your radar</span></div>
-                  <div className="mk-grid">{radarShown.map(it => <NewsCard key={it.id} it={it} onOpen={setSelectedItem} matched={matchOf(it)} />)}</div>
+                  <h3 className="mk-h">On your radar</h3>
+                  {rows(radarShown)}
                 </section>
               )}
               {personalized && (
                 <section data-testid="news-your-sources">
-                  <div className="mk-sec"><span>From your sources</span><button className="v3-link" onClick={() => setPickerOpen(true)}>Edit</button></div>
-                  {topLoading ? <div className="mk-grid">{Array.from({ length: 2 }).map((_, i) => <div key={i} className="skel d-sk" style={{ height: 200, borderRadius: 20 }} />)}</div>
-                    : topItems.length === 0 ? <p className="mute" style={{ fontSize: 14 }}>Nothing new from your sources yet.</p>
-                    : <div className="mk-grid">{topItems.map(it => <NewsCard key={it.id} it={it} onOpen={setSelectedItem} matched={matchOf(it)} />)}</div>}
+                  <h3 className="mk-h">From your sources<button className="x-btn x-btn--sm x-btn--ghost" onClick={() => setPickerOpen(true)}>Edit</button></h3>
+                  {topLoading ? skel(2)
+                    : topItems.length === 0 ? <p className="mk-none">Nothing new from your sources yet.</p>
+                    : rows(topItems)}
                 </section>
               )}
-              {(radarShown.length > 0 || personalized) && <div className="mk-sec" data-testid="news-more"><span>More headlines</span></div>}
-              <div className="mk-grid">{gridItems.map(it => <NewsCard key={it.id} it={it} onOpen={setSelectedItem} matched={matchOf(it)} />)}</div>
-              {cursor && <div className="mk-more">{loadingMore && <Loader size={20} />}</div>}
-              <p className="mk-foot">Aggregated headlines · AI tags are informational · not investment advice</p>
+              {(radarShown.length > 0 || personalized) && <h3 className="mk-h" data-testid="news-more">More headlines</h3>}
+              {rows(gridItems)}
+              {cursor && <div className="mk-loadmore">{loadingMore && <svg width="18" height="18" viewBox="0 0 24 24" className="x-spin" aria-label="Loading more"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeOpacity=".16" strokeWidth="2.5" /><circle cx="12" cy="12" r="9" fill="none" stroke="var(--g)" strokeWidth="2.5" strokeLinecap="round" strokeDasharray="14 44" /></svg>}</div>}
+              <p className="mk-fine">Aggregated headlines · AI tags are informational · not investment advice</p>
             </>
           )}
         </div>
-      </div>
+      </section>
 
       {pickerOpen && (
         <SourcePicker

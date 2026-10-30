@@ -3,6 +3,7 @@
 import { useCountUp } from '@/hooks/use-count-up';
 import type { MacroState } from '@/lib/macro-api';
 import { formatIndicatorValue, deltaPct } from '@/lib/macro-format';
+import { Spark, type Tone } from '@/components/v6/macro/ui';
 
 type CardKey = 'inflation' | 'rates' | 'gdp' | 'labour';
 
@@ -61,19 +62,11 @@ function pick(macro: MacroState['macro'], keys: string[]) {
   return null;
 }
 
-function cardTone(def: CardDef, row: NonNullable<ReturnType<typeof pick>>): 'bull' | 'bear' | 'neutral' {
-  if (row.key === 'UNRATE') {
-    const d = deltaPct(row.value, row.prev);
-    if (d == null) return 'neutral';
-    return d > 0 ? 'bear' : d < 0 ? 'bull' : 'neutral';
-  }
-  if (row.key === 'ICSA') {
-    const d = deltaPct(row.value, row.prev);
-    if (d == null) return 'neutral';
-    return d > 0 ? 'bear' : d < 0 ? 'bull' : 'neutral';
-  }
+function cardTone(def: CardDef, row: NonNullable<ReturnType<typeof pick>>): Tone {
   const d = deltaPct(row.value, row.prev);
   if (d == null) return 'neutral';
+  // Rising unemployment or claims is softening, not strength.
+  if (row.key === 'UNRATE' || row.key === 'ICSA') return d > 0 ? 'bear' : d < 0 ? 'bull' : 'neutral';
   if (def.bullWhen === 'down') return d < 0 ? 'bull' : d > 0 ? 'bear' : 'neutral';
   return d > 0 ? 'bull' : d < 0 ? 'bear' : 'neutral';
 }
@@ -89,42 +82,25 @@ const WORD: Record<CardKey, [string, string, string]> = {
   gdp: ['accelerating', 'slowing', 'steady'], labour: ['softening', 'tightening', 'steady'],
 };
 
-function Spark({ values, tone }: { values: number[]; tone: string }) {
-  if (values.length < 2) return <div className="ms-spark" />;
-  const mn = Math.min(...values), mx = Math.max(...values), sp = mx - mn || 1;
-  const pts = values.map((v, i) => [(i / (values.length - 1)) * 100, 6 + (1 - (v - mn) / sp) * 40] as const);
-  const d = 'M' + pts.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' L');
-  const col = tone === 'bull' ? '#08C465' : tone === 'bear' ? '#FE3A31' : '#A1A1AA';
-  const id = `ms${Math.round(values[values.length - 1]! * 1000)}${values.length}${tone}`;
-  return (
-    <svg className="ms-spark" viewBox="0 0 100 50" preserveAspectRatio="none" aria-hidden>
-      <defs><linearGradient id={id} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor={col} stopOpacity=".22" /><stop offset="1" stopColor={col} stopOpacity="0" /></linearGradient></defs>
-      <path d={`${d} L100,50 L0,50Z`} fill={`url(#${id})`} />
-      <path d={d} fill="none" stroke={col} strokeWidth="2" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
-    </svg>
-  );
-}
-
-/** Four trend cards — Inflation / Rates / GDP / Labour, with direction words and history. */
+/** Four trend cards: inflation, rates, GDP, labour, each with a direction word and history. */
 export default function SummaryCards({ macro }: { macro: MacroState['macro'] }) {
   return (
-    <div className="ms" data-testid="macro-summary-cards">
-      {CARDS.map((def, i) => {
+    <div className="mc-sum" data-testid="macro-summary-cards">
+      {CARDS.map(def => {
         const row = pick(macro, def.series) ?? (def.fallbackSeries ? pick(macro, def.fallbackSeries) : null);
         const tone = row ? cardTone(def, row) : 'neutral';
         const d = row ? deltaPct(row.value, row.prev) : null;
-        // Payrolls rising is strength; unemployment/claims rising is softening.
         const w = row?.key === 'PAYEMS' ? (['strengthening', 'softening', 'steady'] as [string, string, string]) : WORD[def.key];
         const dirWord = d == null || Math.abs(d) < 0.05 ? w[2] : d > 0 ? w[0] : w[1];
-        const arrow = d == null || Math.abs(d) < 0.05 ? '–' : d > 0 ? '▲' : '▼';
-        const cls = tone === 'bull' ? 'lg' : tone === 'bear' ? 'sh' : 'v';
         const note = tone === 'bull' ? def.noteBull : tone === 'bear' ? def.noteBear : 'Awaiting a clear trend print.';
         return (
-          <article key={def.key} className="v3-card ms-card" style={{ animationDelay: `${i * 60}ms` }} data-testid={`macro-summary-${def.key}`} title={note}>
-            <span className="mc-lbl">{def.title}</span>
-            <div className="ms-v"><b className="num">{row ? <AnimatedValue value={row.value} unit={row.unit} /> : '—'}</b>
-              {row && <span className={cls}>{arrow} {dirWord}</span>}</div>
-            <Spark values={row?.history ?? []} tone={tone} />
+          <article key={def.key} className="x-card mc-sum-c" data-testid={`macro-summary-${def.key}`} title={note}>
+            <div className="x-stat">
+              <span className="l">{def.title}</span>
+              <b>{row ? <AnimatedValue value={row.value} unit={row.unit} /> : '—'}</b>
+              {row && <small className={tone === 'bull' ? 'pos' : tone === 'bear' ? 'neg' : ''}>{dirWord[0]!.toUpperCase() + dirWord.slice(1)}{row.label ? <span className="x-dim"> · {row.label}</span> : null}</small>}
+            </div>
+            <div className="mc-sum-s"><Spark values={row?.history ?? []} tone={tone} width={120} height={36} fluid area /></div>
           </article>
         );
       })}

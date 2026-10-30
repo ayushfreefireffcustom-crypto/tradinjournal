@@ -9,25 +9,24 @@ const LABELS: Record<TraderOutcome, string> = {
   SKIPPED: 'Skipped',
 };
 
+/** Tag modifier for an outcome: green target, red stop, neutral otherwise. */
 export function outcomeTone(outcome: TraderOutcome | null | undefined): string {
-  if (outcome === 'TARGET_HIT') return 'text-profit border-profit/25 bg-profit/10';
-  if (outcome === 'STOP_HIT') return 'text-loss border-loss/25 bg-loss/10';
-  if (outcome === 'EXPIRED') return 'text-fg-2 border-border-soft bg-surface-hover';
-  if (outcome === 'SKIPPED') return 'text-fg-3 border-border-soft bg-transparent';
-  return 'text-fg-3 border-border-soft bg-app/40';
+  if (outcome === 'TARGET_HIT') return 'x-tag--g';
+  if (outcome === 'STOP_HIT') return 'x-tag--r';
+  return '';
 }
 
-export function OutcomeBadge({ outcome, hitLevel, pending }: {
+export function OutcomeBadge({ outcome, hitLevel, pending, className = '' }: {
   outcome?: TraderOutcome | null;
   hitLevel?: TraderHitLevel | null;
   pending?: boolean;
   compact?: boolean;
+  className?: string;
 }) {
-  if (!outcome && pending) return <span className="v3-pill a sx-out">Open</span>;
+  if (!outcome && pending) return <span className={`x-tag ${className}`} data-testid="outcome-open">Open</span>;
   if (!outcome) return null;
   const label = outcome === 'TARGET_HIT' && hitLevel ? `Hit ${hitLevel}` : outcome === 'STOP_HIT' ? 'Stopped' : LABELS[outcome];
-  const tone = outcome === 'TARGET_HIT' ? 'g' : outcome === 'STOP_HIT' ? 'r' : 'n';
-  return <span className={`v3-pill ${tone} sx-out`} data-testid={`outcome-${outcome}`}>{label}</span>;
+  return <span className={`x-tag ${outcomeTone(outcome)} ${className}`} data-testid={`outcome-${outcome}`}>{label}</span>;
 }
 
 export function pct(n: number | null | undefined, digits = 0): string {

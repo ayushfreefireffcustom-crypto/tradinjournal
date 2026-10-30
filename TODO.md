@@ -65,16 +65,16 @@ Legend:
 - [ ] A1.11 Decide the final CSS structure: `tokens.css` + `components.css` + per-feature CSS. Document it in `apps/web/src/styles/README.md` `S`
 
 ## A2. Shared UI primitives (React, `apps/web/src/components/ui/`)
-- [ ] A2.1 `Card`: surface-1, radius 24, padding 24 (20 on mobile). Variants `inset` (surface-2, radius 16) and `flush` `S`
-- [ ] A2.2 `CardHeader`: title + muted subline on the left, one action slot on the right `S`
-- [ ] A2.3 `Button`: `primary` (white pill), `secondary` (graphite pill), `ghost`, `danger` (red), `link` (text + →); sizes sm/md; loading state; icon slot `S`
+- [x] A2.1 `Card`: surface-1, radius 24, padding 24 (20 on mobile). Variants `inset` (surface-2, radius 16) and `flush` `S` — as `x-card` / `x-inset` CSS classes in styles/v6/components.css
+- [x] A2.2 `CardHeader`: title + muted subline on the left, one action slot on the right `S` — `x-ch`
+- [x] A2.3 `Button`: `primary` (white pill), `secondary` (graphite pill), `ghost`, `danger` (red), `link` (text + →); sizes sm/md; loading state; icon slot `S` — `x-btn` + --hi/--g/--danger/--ghost/--dash/--sm/--lg/--icon
 - [ ] A2.4 `IconButton` (round, 36px), with a tooltip label for a11y `S`
-- [ ] A2.5 `Segmented` (range chips, tab switches) with keyboard arrows `S`
-- [ ] A2.6 `Tabs` (underline variant for page sub-nav) `S`
-- [ ] A2.7 `Chip`/`Tag`: neutral, pos, neg, with optional removable × `S`
+- [x] A2.5 `Segmented` (range chips, tab switches) with keyboard arrows `S` — `x-seg`
+- [x] A2.6 `Tabs` (underline variant for page sub-nav) `S` — `x-tabs`
+- [x] A2.7 `Chip`/`Tag`: neutral, pos, neg, with optional removable × `S` — `x-tag` + --g/--r/--solid
 - [ ] A2.8 `Badge` ("New", counts) `S`
-- [ ] A2.9 `Stat`: label, big `.num` value, sub-line, optional thin bar, optional ⓘ `S`
-- [ ] A2.10 `StatStrip`: 3–4 stats split by hairlines, as in the reference (27 / 32 / 33) `S`
+- [x] A2.9 `Stat`: label, big `.num` value, sub-line, optional thin bar, optional ⓘ `S` — `x-stat`
+- [x] A2.10 `StatStrip`: 3–4 stats split by hairlines, as in the reference (27 / 32 / 33) `S` — `x-strip`
 - [ ] A2.11 `InfoTip` (ⓘ popover with "what it is / why it matters"). Replace `components/macro/info-tip.tsx` usage everywhere `S`
 - [ ] A2.12 `Well`: a dark framed thumbnail container for mini-charts, with a mono caption `S`
 - [ ] A2.13 `IconTile`: glossy rounded-square SVG master, palettes green/red/graphite `M`
@@ -82,10 +82,10 @@ Legend:
 - [ ] A2.15 `Sheet`/`Dialog` (bottom sheet on mobile, centred dialog on desktop). Replace `components/confirm-dialog.tsx` and `components/v3/confirm-dialog.tsx` with one `M`
 - [ ] A2.16 `Menu`/`Dropdown` with keyboard support `S`
 - [ ] A2.17 `Tooltip` `S`
-- [ ] A2.18 `Table`: sticky header, sortable header cells, row hover, mobile card fallback, empty row `M`
-- [ ] A2.19 `EmptyState`: art slot + one sentence + one button. Replace `components/empty-state.tsx` `S`
-- [ ] A2.20 `Skeleton` set (text, stat, chart, table rows), shaped like the real content `S`
-- [ ] A2.21 `ErrorState` with retry, plus an inline `Banner` (info/warn/error), replacing ad-hoc red boxes (e.g. the dashboard "Broker bridge unavailable" box) `S`
+- [x] A2.18 `Table`: sticky header, sortable header cells, row hover, mobile card fallback, empty row `M` — `x-tbl` + `x-tblwrap`; dashboard shows the phone card fallback
+- [x] A2.19 `EmptyState`: art slot + one sentence + one button. Replace `components/empty-state.tsx` `S` — `x-empty`
+- [x] A2.20 `Skeleton` set (text, stat, chart, table rows), shaped like the real content `S` — `x-skel`
+- [x] A2.21 `ErrorState` with retry, plus an inline `Banner` (info/warn/error), replacing ad-hoc red boxes (e.g. the dashboard "Broker bridge unavailable" box) `S` — `x-banner` --err/--ok
 - [ ] A2.22 `Toast`: unify `components/toast.tsx` styling to the tokens `S`
 - [ ] A2.23 `Avatar` + `AccountPill` (exchange/broker badge + name + last-4) `S`
 - [ ] A2.24 `Pagination`/"Load more" `S`
@@ -97,10 +97,11 @@ Legend:
 
 ## A3. App shell
 - [x] A3.0 v6 frame (`components/v6/frame.tsx`) behind `AppShell frame="v6"`: icon rail in a pill, top-bar pills, phone tab bar. Dashboard uses it (30 Oct) `M`
-- [ ] A3.0b Move every other page onto `frame="v6"` (one PR per page group), then make it the default `M`
+- [x] A3.0b Frame is the default for every page; pages not yet rebuilt render inside the old style scope (`legacy`) `M`
+- [ ] A3.0d Rebuild each page on the v6 components (`legacy={false}`): trades, analytics, calendar, journal, notebook, charts, markets, macro, SignalX, coach, brokers, settings, admin, partner, auth/status/legal `L` (in progress 31 Oct)
 - [ ] A3.0c Light theme for portalled UI (connect-broker modal, toasts, ⌘K palette still render dark) `S`
-- [ ] A3.1 Rebuild `components/app-shell.tsx` on the new primitives. Keep the props API (`accounts`, `selectedAccount`, `pageTitle`, `actions`…) `M`
-- [ ] A3.2 Sidebar `M`:
+- [x] A3.1 Rebuild `components/app-shell.tsx` on the new primitives. Keep the props API (`accounts`, `selectedAccount`, `pageTitle`, `actions`…) `M` — v6 frame (`components/v6/frame.tsx`) is now the only shell; props API kept (31 Oct)
+- [x] A3.2 Sidebar `M`: — labelled groups, green active edge, icon rail with tooltips at ≤1180px
   - groups (Journal / Markets / AI / Account)
   - active item with green edge
   - consistent line icons
@@ -118,9 +119,9 @@ Legend:
 - [x] A3.5 Mobile `M`: — v6 frame: bottom tab bar (Dashboard, Trade log, Chart replay, Coach, More sheet); no sideways scroll at 360/390
   - top bar + bottom tab bar (5 key destinations) or a drawer; pick the one that tests better at 390px
   - no horizontal scroll anywhere
-- [ ] A3.6 Sidebar footer: user + plan + sign out. Remove the duplicate sync card `S`
-- [ ] A3.7 Page container: max width, gutters 32/16, consistent vertical rhythm between sections `S`
-- [ ] A3.8 Page header pattern: H1 + subline + right-side actions, used by every page `S`
+- [x] A3.6 Sidebar footer: user + plan + sign out. Remove the duplicate sync card `S` — user card with plan; menu has theme, settings, sign out
+- [x] A3.7 Page container: max width, gutters 32/16, consistent vertical rhythm between sections `S` — frame pads the content; `x-page` / `x-row` grids
+- [x] A3.8 Page header pattern: H1 + subline + right-side actions, used by every page `S` — title + subtitle + actions in the frame top bar via AppShell props
 - [ ] A3.9 Global ⌘K palette: pages + symbols + recent trades + actions, keyboard nav. Extends the existing implementation (find it via grep `cmdk|CommandPalette`) `M`
 - [ ] A3.10 Notification bell dropdown restyled. Channel tabs come later (C1) `S`
 - [ ] A3.11 Remove `app-v5-auto.css` once all pages are migrated (blocked by A4) `S`

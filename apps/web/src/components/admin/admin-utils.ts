@@ -33,34 +33,25 @@ export function pct(part: number, total: number): number {
   return Math.round((part / total) * 100);
 }
 
-export function statusTone(
-  kind: 'elefin' | 'activity' | 'grant',
-  value: string,
-): 'profit' | 'loss' | 'warning' | 'neutral' {
-  if (kind === 'elefin') {
-    if (value === 'VERIFIED') return 'profit';
-    if (value === 'FAILED') return 'loss';
-    return 'warning';
-  }
-  if (kind === 'activity') {
-    if (value === 'ACTIVE') return 'profit';
-    if (value === 'INACTIVE') return 'loss';
-    return 'neutral';
-  }
-  if (value === 'ACTIVE') return 'profit';
-  return 'loss';
+export type Tone = 'g' | 'r' | 'n';
+
+/** Tag tone for a status: green good, red bad, neutral for pending/unknown. */
+export function statusTone(kind: 'elefin' | 'activity' | 'grant', value: string): Tone {
+  if (kind === 'elefin') return value === 'VERIFIED' ? 'g' : value === 'FAILED' ? 'r' : 'n';
+  if (kind === 'activity') return value === 'ACTIVE' ? 'g' : value === 'INACTIVE' ? 'r' : 'n';
+  return value === 'ACTIVE' ? 'g' : 'r';
 }
 
-export const toneClass = {
-  profit: 'text-profit border-profit/30 bg-profit/10',
-  loss: 'text-loss border-loss/30 bg-loss/10',
-  warning: 'text-warning border-warning/30 bg-warning/10',
-  neutral: 'text-fg-2 border-border-soft bg-surface',
-} as const;
+export const tagClass: Record<Tone, string> = { g: 'x-tag x-tag--g', r: 'x-tag x-tag--r', n: 'x-tag' };
 
+/** "VERIFIED" / "NO_BROKER" → "Verified" / "No broker". */
+export function sentence(value: string): string {
+  const s = value.replace(/[_.]/g, ' ').toLowerCase();
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+/** "grant.create" → "Grant · create". */
 export function auditLabel(action: string): string {
-  return action
-    .replace(/\./g, ' · ')
-    .replace(/_/g, ' ')
-    .toUpperCase();
+  const s = action.replace(/\./g, ' · ').replace(/_/g, ' ');
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }

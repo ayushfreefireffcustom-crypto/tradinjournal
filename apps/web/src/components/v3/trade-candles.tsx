@@ -1,14 +1,11 @@
 'use client';
 
-// Light candle chart for a single position: held zone, entry/exit guides and
-// pills, hover crosshair with OHLC. Uses real candles when the market API has
-// the window; otherwise a deterministic path anchored to the fills, which is
-// labelled as illustrative by the caller.
-import { useEffect, useMemo, useRef, useState } from 'react';
+// Candle data for a single position's chart: real candles when the market API
+// has the window, otherwise a deterministic path anchored to the fills (callers
+// label that as illustrative). The charts themselves live in components/v6.
+import { useEffect, useState } from 'react';
 import type { Trade } from '@/lib/api';
 import { marketApi, type Candle, type MarketTimeframe } from '@/lib/market-api';
-import { candlesFromReal } from '@/components/replay/trade-chart';
-import { money, price as fmtPx } from './format';
 
 const TF_SECONDS: [MarketTimeframe, number][] = [
   ['1m', 60], ['5m', 300], ['15m', 900], ['30m', 1800], ['1h', 3600], ['4h', 14400], ['1d', 86400], ['1w', 604800], ['1M', 2592000],
@@ -69,74 +66,4 @@ export function synthCandles(trade: Trade, n = 72) {
     candles.push({ o, c, h: Math.max(o, c) + Math.abs(gauss()) * sig * 0.45, l: Math.min(o, c) - Math.abs(gauss()) * sig * 0.45 });
   }
   return { candles, entryIdx: e - 1, exitIdx: x - 1, min: Math.min(...candles.map(b => b.l)), max: Math.max(...candles.map(b => b.h)) };
-}
-
-export function TradeCandles({ trade, real, height = 400 }: { trade: Trade; real?: Candle[] | null; height?: number }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [hover, setHover] = useState<number | null>(null);
-  const { candles, entryIdx, exitIdx, min, max } = useMemo(
-    () => (real && real.length >= 2 ? candlesFromReal(trade, real) : synthCandles(trade, 72)),
-    [trade, real],
-  );
-  const times = useMemo(() => (real && real.length >= 2 ? real.map(c => c.openTime) : null), [real]);
-
-  const W = 1000, H = height, PT = 22, PB = 22;
-  const span = (max - min) * 1.1 || 1;
-  const lo = (max + min) / 2 - span / 2;
-  const n = candles.length;
-  const slot = W / n;
-  const cw = Math.max(2, slot * 0.58);
-  const cx = (i: number) => slot * i + slot / 2;
-  const y = (v: number) => PT + (H - PT - PB) - ((v - lo) / span) * (H - PT - PB);
-
-  const exitPx = trade.exitPrice ?? trade.entryPrice;
-  const ey = y(trade.entryPrice), xy = y(exitPx);
-  const zx = cx(entryIdx), zw = Math.max(cx(exitIdx) - zx, slot);
-  const bandTop = Math.min(ey, xy), bandH = Math.max(Math.abs(ey - xy), 22);
-  const bandY = Math.abs(ey - xy) < 22 ? (ey + xy) / 2 - 11 : bandTop;
-  const open = trade.status === 'OPEN';
-  const pct = (v: number, of: number) => `${(v / of) * 100}%`;
-
-  const onMove = (e: React.PointerEvent) => {
-    const r = ref.current?.getBoundingClientRect(); if (!r) return;
-    setHover(Math.max(0, Math.min(n - 1, Math.floor(((e.clientX - r.left) / r.width) * n))));
-  };
-  const hc = hover != null ? candles[hover] : null;
-  const hTime = hover != null && times ? new Date(times[hover]!) : null;
-  // Exit pill sits above the exit dot unless that would leave the chart.
-  const exitAbove = xy > 60;
-
-  return (
-    <div ref={ref} className="tc" style={{ height }} onPointerMove={onMove} onPointerLeave={() => setHover(null)}
-      role="img" aria-label={`${trade.symbol} ${trade.direction.toLowerCase()} from ${fmtPx(trade.entryPrice)} to ${fmtPx(exitPx)}`} data-testid="candle-chart">
-      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
-        {[0.2, 0.4, 0.6, 0.8].map(f => <line key={f} x1={0} x2={W} y1={H * f} y2={H * f} style={{ stroke: 'var(--tc-grid, #EDECF0)' }} vectorEffect="non-scaling-stroke" />)}
-        <rect className="tc-zone" x={zx} y={bandY} width={zw} height={bandH} style={{ fill: 'var(--tc-zone, #EEEAFF)', opacity: 'var(--tc-zone-a, .75)' }} />
-        <line x1={zx} x2={W} y1={ey} y2={ey} style={{ stroke: 'var(--acc, #6E4BFF)' }} strokeDasharray="5 5" opacity={0.75} vectorEffect="non-scaling-stroke" />
-        {!open && <line x1={cx(exitIdx)} x2={W} y1={xy} y2={xy} style={{ stroke: 'var(--tc-exit, #100F17)' }} strokeDasharray="5 5" opacity={0.8} vectorEffect="non-scaling-stroke" />}
-        {candles.map((c, i) => {
-          const up = c.c >= c.o, col = up ? 'var(--long-fill, #19C37D)' : 'var(--short-fill, #F4435E)';
-          const top = y(Math.max(c.o, c.c)), bot = y(Math.min(c.o, c.c));
-          const dim = hover != null && hover !== i;
-          return (
-            <g key={i} opacity={dim ? 0.55 : 1} className="tc-c" style={{ animationDelay: `${Math.min(i * 6, 500)}ms` }}>
-              <line x1={cx(i)} x2={cx(i)} y1={y(c.h)} y2={y(c.l)} style={{ stroke: col }} strokeWidth={1.4} vectorEffect="non-scaling-stroke" />
-              <rect x={cx(i) - cw / 2} y={top} width={cw} height={Math.max(bot - top, 1.2)} rx={1} style={{ fill: col }} />
-            </g>
-          );
-        })}
-      </svg>
-      {hover != null && <span className="tc-cross" style={{ left: pct(cx(hover), W) }} />}
-      <span className="tc-dot e" style={{ left: pct(zx, W), top: pct(ey, H) }} />
-      {!open && <span className="tc-dot x" style={{ left: pct(cx(exitIdx), W), top: pct(xy, H) }} />}
-      <span className="tc-pill e num" style={{ left: pct(zx, W), top: pct(ey, H) }}>Entry {fmtPx(trade.entryPrice)}</span>
-      {!open && <span className={`tc-pill x num ${exitAbove ? 'up' : ''}`} style={{ left: pct(cx(exitIdx), W), top: pct(xy, H) }}>Exit · {money(trade.netPnl)}</span>}
-      {hc && (
-        <div className="tc-ohlc num">
-          {hTime && <span>{hTime.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })}</span>}
-          <span>O <b>{fmtPx(hc.o)}</b></span><span>H <b>{fmtPx(hc.h)}</b></span><span>L <b>{fmtPx(hc.l)}</b></span><span>C <b className={hc.c >= hc.o ? 'lg' : 'sh'}>{fmtPx(hc.c)}</b></span>
-        </div>
-      )}
-    </div>
-  );
 }

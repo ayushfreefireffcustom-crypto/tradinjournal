@@ -15,10 +15,6 @@ import { UsageTracker } from '@/components/usage-tracker';
 import LocationGate from '@/components/location-gate';
 import Frame, { NAV, type FrameNavItem } from '@/components/v6/frame';
 import { IAdmin, IBrokers, ILink, IPartner, ISearch, ISettings, IUsers } from '@/components/v3/icons';
-// Pages not yet rebuilt on the v6 components still use these (inside `.v3.v5`).
-import '@/styles/app-v3.css';
-import '@/styles/app-v5-auto.css';
-import '@/styles/app-v5.css';
 import '@/styles/v6/tokens.css';
 import '@/styles/v6/components.css';
 
@@ -40,7 +36,7 @@ interface Props {
   theme?: 'v5' | 'v3';
   /** @deprecated every page uses the v6 frame. */
   frame?: 'v6';
-  /** Wrap children in the old v3/v5 style scope. True until a page is rebuilt on the v6 components. */
+  /** @deprecated every page is on the v6 components; the legacy style scope is gone. */
   legacy?: boolean;
   /** Manual sync (shows a Sync button in the top bar). */
   onSync?: () => void;
@@ -72,7 +68,7 @@ export function timeAgo(iso?: string | null): string {
 
 export default function AppShell({
   children, accounts = [], selectedAccount, onSelectAccount, onConnectClick, pageTitle, pageSubtitle, actions,
-  onSync, syncing, syncedAt, legacy = true,
+  onSync, syncing, syncedAt,
 }: Props) {
   const pathname = usePathname();
   const router = useRouter();
@@ -84,11 +80,6 @@ export default function AppShell({
   useEffect(() => {
     if (!isPending && !session?.session) router.replace(`/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`);
   }, [isPending, session, router]);
-  // Portalled legacy UI (modals, popovers) renders under <body>: give it the v5 scope too.
-  useEffect(() => {
-    document.body.classList.add('v5');
-    return () => document.body.classList.remove('v5');
-  }, []);
   useEffect(() => { setCmdk(false); }, [pathname]);
 
   // ⌘K / Ctrl-K opens the page switcher anywhere in the app.
@@ -106,7 +97,7 @@ export default function AppShell({
 
   const gatePending = isPending || (!session?.session && !isPending) || (accessLoading && !accessStatus);
   if (gatePending) {
-    return <div className="v3 v5 h-dvh w-full" data-testid="app-shell-loading"><LoadingScreen /></div>;
+    return <div className="h-dvh w-full" data-testid="app-shell-loading"><LoadingScreen /></div>;
   }
   if (accessBlocked) {
     return (
@@ -138,7 +129,7 @@ export default function AppShell({
         onSync={onSync} syncing={syncing} syncedLabel={syncedAt ? `Synced ${timeAgo(syncedAt)}` : sel?.lastSyncAt ? `Synced ${timeAgo(sel.lastSyncAt)}` : null}
         actions={actions} onOpenSearch={() => setCmdk(true)} onSignOut={() => authClient.signOut()}
       >
-        {legacy ? <div className="v3 v5 f-legacy">{children}</div> : children}
+        {children}
       </Frame>
       {cmdk && <CommandPalette onClose={() => setCmdk(false)} onGo={href => { setCmdk(false); router.push(href); }} isAdmin={isAdmin} isPartner={isPartner} />}
     </>

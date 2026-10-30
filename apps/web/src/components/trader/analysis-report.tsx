@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { formatMacroNumber } from '@/lib/macro-format';
+import { tickerMark } from '@/lib/desk';
+import { DirChip } from '@/components/v6/ai/bits';
 import LevelsChart from './levels-chart';
 import type { TraderAnalysis } from '@/lib/trader-api';
 import { OutcomeBadge } from './outcome-badge';
@@ -17,52 +19,70 @@ function shortRationale(text: string): string {
 
 const LANE_NAME: Record<string, string> = { technical: 'Trend', ml: 'Momentum', flow: 'Flow', macro: 'Macro', news: 'News' };
 
-export default function AnalysisReport({ a }: { a: TraderAnalysis }) {
+export default function AnalysisReport({ a, dim = false }: { a: TraderAnalysis; dim?: boolean }) {
   const [showDetail, setShowDetail] = useState(false);
   const conf = Math.max(0, Math.min(100, a.confidence));
-  const isLong = a.direction === 'LONG', isShort = a.direction === 'SHORT';
   const levels: [string, string, string][] = [
-    ['Entry', `${formatMacroNumber(a.entryLow)} — ${formatMacroNumber(a.entryHigh)}`, ''],
-    ['Stop', formatMacroNumber(a.stop), 'sh'],
-    ['T1', formatMacroNumber(a.t1), 'lg'], ['T2', formatMacroNumber(a.t2), 'lg'], ['T3', formatMacroNumber(a.t3), 'lg'],
+    ['Entry zone', `${formatMacroNumber(a.entryLow)} – ${formatMacroNumber(a.entryHigh)}`, ''],
+    ['Stop', formatMacroNumber(a.stop), 'neg'],
+    ['Target 1', formatMacroNumber(a.t1), 'pos'], ['Target 2', formatMacroNumber(a.t2), 'pos'], ['Target 3', formatMacroNumber(a.t3), 'pos'],
   ];
+  const src = a.confidenceSource === 'meta_lgbm' ? ' · model' : a.confidenceSource === 'meta_v1' ? ' · meta' : '';
   return (
-    <article className="v3-card sx-rep" data-testid="trader-report">
-      <header className="sx-rep-hd">
+    <article className={`x-card ai-rep ${dim ? 'dim' : ''}`} data-testid="trader-report" aria-busy={dim || undefined}>
+      <header className="ai-rep-hd">
+        <span className="x-mk">{tickerMark(a.symbol)}</span>
         <h2>{a.symbol}</h2>
-        <span className={`v3-pill ${isLong ? 'g' : isShort ? 'r' : 'n'}`} data-testid="trader-direction">{isLong ? 'Long' : isShort ? 'Short' : 'Wait'}</span>
+        <DirChip dir={a.direction} testId="trader-direction" />
         <OutcomeBadge outcome={a.outcome} hitLevel={a.hitLevel} pending={!a.outcome && !!a.id} />
-        <span className="sx-asof num">{a.timeframes.join(' · ')} · as of {new Date(a.asOf).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' })} UTC</span>
+        <span className="ai-asof"><span className="m">{a.timeframes.join(' · ')}</span> · as of <span className="m">{new Date(a.asOf).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' })}</span> UTC</span>
       </header>
-      <div className="sx-conf">
-        <span>Confidence{a.confidenceSource === 'meta_lgbm' ? ' · model' : a.confidenceSource === 'meta_v1' ? ' · meta' : ''}</span><b className="num">{a.confidence}%</b>
+
+      <div className="ai-conf">
+        <span>Confidence{src}</span>
+        <div className="x-bar" role="meter" aria-valuenow={conf} aria-valuemin={0} aria-valuemax={100} aria-label="Confidence"><i style={{ width: `${conf}%` }} /></div>
+        <b className="m">{a.confidence}%</b>
       </div>
-      <div className="sx-cbar"><i style={{ width: `${conf}%` }} /></div>
+
       {a.laneBreakdown && a.laneBreakdown.length > 0 && (
-        <div className="sx-lanes" data-testid="trader-lanes">
+        <div className="ai-lanes" data-testid="trader-lanes">
           {a.laneBreakdown.map(l => {
-            const t = l.score > 0.08 ? 'g' : l.score < -0.08 ? 'r' : 'n';
-            return <span key={l.id} title={l.rationale} className={`sx-lane ${t}`}>{l.source ?? LANE_NAME[l.id] ?? l.id} <b className="num">{l.score > 0 ? '+' : l.score < 0 ? '−' : ''}{Math.abs(l.score).toFixed(2)}</b>{l.stale && <em> · stale</em>}</span>;
+            const t = l.score > 0.08 ? 'x-tag--g' : l.score < -0.08 ? 'x-tag--r' : '';
+            return (
+              <span key={l.id} title={l.rationale} className={`x-tag ${t}`}>
+                {l.source ?? LANE_NAME[l.id] ?? l.id} <b>{l.score > 0 ? '+' : l.score < 0 ? '−' : ''}{Math.abs(l.score).toFixed(2)}</b>{l.stale && <span> · stale</span>}
+              </span>
+            );
           })}
         </div>
       )}
-      <div className="sx-levels">{levels.map(([k, v, c]) => <div key={k}><span>{k}</span><b className={`num ${c}`}>{v}</b></div>)}</div>
+
+      <div className="ai-lv"><div className="x-strip">
+        {levels.map(([k, v, c]) => <div key={k}><span>{k}</span><b className={c}>{v}</b></div>)}
+      </div></div>
+
       <LevelsChart a={a} />
+
       {(a.support.length > 0 || a.resistance.length > 0) && (
-        <div className="sx-sr">
-          {a.support.length > 0 && <><span>Support</span>{a.support.slice(0, 3).map((x, i) => <b key={`s${i}`} className="num" title={x.label}>{formatMacroNumber(x.price)}</b>)}</>}
-          {a.resistance.length > 0 && <><span>Resistance</span>{a.resistance.slice(0, 3).map((x, i) => <b key={`r${i}`} className="num" title={x.label}>{formatMacroNumber(x.price)}</b>)}</>}
+        <div className="ai-sr">
+          {a.support.length > 0 && <><span>Support</span><div>{a.support.slice(0, 3).map((x, i) => <span key={`s${i}`} className="x-tag x-tag--m" title={x.label}>{formatMacroNumber(x.price)}</span>)}</div></>}
+          {a.resistance.length > 0 && <><span>Resistance</span><div>{a.resistance.slice(0, 3).map((x, i) => <span key={`r${i}`} className="x-tag x-tag--m" title={x.label}>{formatMacroNumber(x.price)}</span>)}</div></>}
         </div>
       )}
-      <p className="sx-why">{shortRationale(a.rationale)}{' '}
-        <button type="button" className="v3-link" onClick={() => setShowDetail(v => !v)} aria-expanded={showDetail} data-testid="trader-detail-toggle">{showDetail ? 'Less' : 'Details'}</button>
+
+      <p className="ai-why">{shortRationale(a.rationale)}
+        <button type="button" className="x-link" onClick={() => setShowDetail(v => !v)} aria-expanded={showDetail} data-testid="trader-detail-toggle">{showDetail ? 'Less' : 'Details'}</button>
       </p>
       {showDetail && (
-        <div className="sx-detail" data-testid="trader-detail">
-          <p className="mute">{a.invalidation}</p>
+        <div className="x-inset ai-detail" data-testid="trader-detail">
+          <p className="x-muted">{a.invalidation}</p>
           <p>{a.detail}</p>
-          <div className="sx-tfs">{a.perTimeframe.map(tf => (
-            <span key={tf.tf} className="num"><b>{tf.tf}</b> <em className={tf.trend === 'up' ? 'lg' : tf.trend === 'down' ? 'sh' : ''}>{tf.trend}</em> · RSI {tf.rsi.toFixed(0)} · ATR {formatMacroNumber(tf.atr)}</span>
+          <div className="ai-tfs">{a.perTimeframe.map(tf => (
+            <div key={tf.tf}>
+              <b className="m">{tf.tf}</b>
+              <span className={tf.trend === 'up' ? 'pos' : tf.trend === 'down' ? 'neg' : ''}>{tf.trend === 'up' ? 'Uptrend' : tf.trend === 'down' ? 'Downtrend' : 'Range'}</span>
+              <span className="m ai-ell">RSI {tf.rsi.toFixed(0)} · ATR {formatMacroNumber(tf.atr)}</span>
+            </div>
           ))}</div>
         </div>
       )}

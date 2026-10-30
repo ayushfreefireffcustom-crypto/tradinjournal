@@ -8,9 +8,9 @@ const LABEL: Record<MarketTimeframe, string> = {
 
 export default function TimeframeBar({ value, onChange }: { value: MarketTimeframe; onChange: (tf: MarketTimeframe) => void }) {
   return (
-    <div className="ch-tf" role="group" aria-label="Timeframe" data-testid="timeframe-bar">
+    <div className="x-seg x-seg--in x-seg--sm mk-tf" role="group" aria-label="Timeframe" data-testid="timeframe-bar">
       {MARKET_TIMEFRAMES.filter(tf => tf !== '1M').map(tf => (
-        <button key={tf} aria-pressed={value === tf} onClick={() => onChange(tf)} data-testid={`tf-${tf}`}>{LABEL[tf]}</button>
+        <button key={tf} className="m" aria-pressed={value === tf} onClick={() => onChange(tf)} data-testid={`tf-${tf}`}>{LABEL[tf]}</button>
       ))}
     </div>
   );

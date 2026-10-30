@@ -2,6 +2,7 @@
 
 import type { MacroState } from '@/lib/macro-api';
 import { formatWhen } from '@/lib/macro-format';
+import { IExt, PanelHead } from '@/components/v6/macro/ui';
 
 const GEO_KEYS = [
   'war', 'conflict', 'sanction', 'missile', 'invasion', 'tariff', 'election',
@@ -19,12 +20,12 @@ function scoreHeadline(title: string): number {
 }
 
 function tier(score: number): { label: string; cls: string } {
-  if (score >= 40) return { label: 'STRUCTURAL', cls: 'text-loss border-loss/30 bg-loss/10' };
-  if (score >= 18) return { label: 'WATCH', cls: 'text-warning border-warning/30 bg-warning/10' };
-  return { label: 'NOISE', cls: 'text-fg-3 border-border-soft' };
+  if (score >= 40) return { label: 'Structural', cls: 'x-tag x-tag--r' };
+  if (score >= 18) return { label: 'Watch', cls: 'x-tag' };
+  return { label: 'Noise', cls: 'x-tag mc-imp--low' };
 }
 
-/** Lightweight geopolitics board — keyword heuristic over free news (not a paid geo terminal). */
+/** Lightweight geopolitics board: keyword heuristic over free news (not a paid geo terminal). */
 export default function GeoRisk({ headlines }: { headlines: MacroState['headlines'] }) {
   const now = Date.now();
   const scored = headlines
@@ -32,55 +33,34 @@ export default function GeoRisk({ headlines }: { headlines: MacroState['headline
     .filter(h => h.score > 0)
     .sort((a, b) => b.score - a.score);
 
-  const avg = scored.length
-    ? Math.round(scored.reduce((s, h) => s + h.score, 0) / scored.length)
-    : 0;
-  const heat = avg >= 35 ? 'ELEVATED' : avg >= 15 ? 'MODERATE' : 'LOW';
-  const heatCls =
-    avg >= 35 ? 'text-loss border-loss/30 bg-loss/10'
-    : avg >= 15 ? 'text-warning border-warning/30 bg-warning/10'
-    : 'text-profit border-profit/30 bg-profit/10';
+  const avg = scored.length ? Math.round(scored.reduce((s, h) => s + h.score, 0) / scored.length) : 0;
+  const [heat, tag] = avg >= 35 ? ['elevated', 'x-tag x-tag--r'] : avg >= 15 ? ['moderate', 'x-tag'] : ['low', 'x-tag x-tag--g'];
 
   return (
-    <div className="space-y-3" data-testid="macro-geo-risk">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div>
-          <div className="text-[10px] tracking-[0.2em] text-fg-3">Geopolitical risk</div>
-          <h2 className="font-display font-black text-xl tracking-tight mt-1">Event Heat</h2>
-        </div>
-        <span className={`text-[10px] tracking-[0.14em] px-2.5 py-1 rounded border ${heatCls}`}>
-          HEAT · {heat} · {avg}
-        </span>
-      </div>
-
-      <p className="text-[12px] text-fg-3 max-w-2xl leading-relaxed">
-        Heuristic keyword scoring over the free news wire — educational triage, not a proprietary
-        geopolitics terminal. Structural vs emotional labels are model output only.
-      </p>
+    <div className="mc-stack" data-testid="macro-geo-risk">
+      <PanelHead eyebrow="Geopolitical risk" title="Event heat" right={<span className={tag}>Heat: {heat} <b className="m">{avg}</b></span>}
+        lead="Keyword scoring over the free news wire. Educational triage, not a proprietary geopolitics terminal; structural and noise labels are model output only." />
 
       {!scored.length ? (
-        <div className="tcard p-4 text-sm text-fg-3">No geopolitics-tagged headlines in the current window.</div>
+        <div className="x-card x-empty"><b>Nothing flagged</b><p>No geopolitics-tagged headlines in the current window.</p></div>
       ) : (
-        <ul className="tcard divide-y divide-border-soft" data-testid="macro-geo-list">
-          {scored.slice(0, 12).map((h, i) => {
-            const t = tier(h.score);
-            return (
-              <li key={`${h.url}-${i}`} className="p-3 flex items-start gap-3">
-                <span className={`text-[9px] tracking-[0.12em] px-1.5 py-0.5 rounded border shrink-0 ${t.cls}`}>
-                  {t.label}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <a href={h.url} target="_blank" rel="noreferrer" className="text-[13px] text-fg hover:text-profit transition-colors line-clamp-2">
-                    {h.title}
+        <section className="x-card">
+          <ul className="mc-hl mc-geo x-list" data-testid="macro-geo-list">
+            {scored.slice(0, 12).map((h, i) => {
+              const t = tier(h.score);
+              return (
+                <li key={`${h.url}-${i}`}>
+                  <span className={t.cls}>{t.label}</span>
+                  <a href={h.url} target="_blank" rel="noreferrer">
+                    <b>{h.title}</b>
+                    <small>{h.source ?? '—'} · {formatWhen(h.at, now)} · score <span className="m">{h.score}</span></small>
                   </a>
-                  <div className="text-[10px] text-fg-3 mt-1">
-                    {h.source ?? '—'} · {formatWhen(h.at, now)} · score {h.score}
-                  </div>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
+                  <IExt size={13} className="mc-hl-x" />
+                </li>
+              );
+            })}
+          </ul>
+        </section>
       )}
     </div>
   );

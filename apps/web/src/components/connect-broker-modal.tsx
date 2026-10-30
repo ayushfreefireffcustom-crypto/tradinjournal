@@ -1,8 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { api, type BrokerAccount } from '@/lib/api';
 import { BROKERS, CUSTOM_SERVER, OTHER_BROKER } from '@/lib/brokers';
+import { V6Portal } from '@/components/confirm-dialog';
+import { IClose, ILock } from '@/components/v3/icons';
+import '@/styles/v6/account.css';
 
 interface Props {
   onClose: () => void;
@@ -25,6 +28,12 @@ export default function ConnectBrokerModal({ onClose, onConnected }: Props) {
   const isOther = brokerName === OTHER_BROKER;
   const usingCustom = isOther || serverSel === CUSTOM_SERVER;
   const server = (usingCustom ? customServer : serverSel).trim();
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && !loading) onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose, loading]);
 
   function shake() { setShaking(true); setTimeout(() => setShaking(false), 350); }
 
@@ -58,53 +67,61 @@ export default function ConnectBrokerModal({ onClose, onConnected }: Props) {
   const initials = brokerName.replace(/[^A-Za-z]/g, '').slice(0, 2).toUpperCase() || 'MT';
 
   return (
-    <div className="v3 v3-modal" role="dialog" aria-modal="true" aria-labelledby="cb-t" data-testid="connect-broker-modal">
-      <div className="v3-modal-bg" onClick={onClose} />
-      <div className={`v3-modal-card bm ${shaking ? 'shake' : ''}`}>
-        <header className="v3-modal-hd">
-          <div><small>Connect MT5</small><h2 id="cb-t">Add a broker</h2><p>Read-only investor credentials — we can never place trades.</p></div>
-          <button onClick={onClose} data-testid="modal-close" aria-label="Close" className="v3-modal-x" style={{ marginLeft: 'auto' }}>×</button>
-        </header>
-        <form onSubmit={submit} className="bm-bd">
-          <div className="bm-sum">
-            <span className="bm-mono">{initials}</span>
-            <span className="bm-id"><b>{isOther ? 'Custom broker' : brokerName}</b><small>{server || 'MetaTrader 5'}</small></span>
-            <span className="bm-live"><i />Bridge online</span>
+    <V6Portal>
+      <div className="x-dialog-scrim" onMouseDown={onClose}>
+        <div className={`x-dialog ac-dlg ac-dlg--form ${shaking ? 'ac-shake' : ''}`} role="dialog" aria-modal="true" aria-labelledby="cb-t" data-testid="connect-broker-modal" onMouseDown={e => e.stopPropagation()}>
+          <div className="ac-dlg-h">
+            <div>
+              <h2 id="cb-t">Connect a broker</h2>
+              <p className="ac-dlg-msg">Use your investor (read-only) password. TRADElogs can read your trades but never place one.</p>
+            </div>
+            <button type="button" onClick={onClose} data-testid="modal-close" aria-label="Close" className="x-btn x-btn--ghost x-btn--icon x-btn--sm"><IClose size={16} /></button>
           </div>
-          <label className="n-fld"><span>Broker</span>
-            <span className="v3-select bm-sel"><select value={brokerName} onChange={e => onBrokerChange(e.target.value)} data-testid="broker-select">
-              {BROKERS.map(b => <option key={b.name} value={b.name}>{b.name}</option>)}
-              <option value={OTHER_BROKER}>{OTHER_BROKER} (enter server manually)</option>
-            </select><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M6 9l6 6 6-6" /></svg></span>
-          </label>
-          <label className="n-fld"><span>Server</span>
-            {isOther ? (
-              <input type="text" value={customServer} onChange={e => setCustomServer(e.target.value)} placeholder="e.g. YourBroker-Live" required data-testid="broker-server-custom" className="n-in" />
-            ) : (
-              <>
-                <span className="v3-select bm-sel"><select value={serverSel} onChange={e => setServerSel(e.target.value)} data-testid="broker-server-select">
-                  {broker!.servers.map(s => <option key={s} value={s}>{s}</option>)}
-                  <option value={CUSTOM_SERVER}>Custom…</option>
-                </select><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M6 9l6 6 6-6" /></svg></span>
-                {serverSel === CUSTOM_SERVER && <input type="text" value={customServer} onChange={e => setCustomServer(e.target.value)} placeholder="e.g. XMGlobal-MT5 12" required data-testid="broker-server-custom" className="n-in" />}
-              </>
-            )}
-          </label>
-          <div className="n-row2">
-            <label className="n-fld"><span>MT5 login</span>
-              <input type="number" inputMode="numeric" value={mt5Login} onChange={e => setMt5Login(e.target.value)} placeholder="345636702" required data-testid="broker-mt5-login" className="n-in num" />
-            </label>
-            <label className="n-fld"><span>Investor password</span>
-              <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" required data-testid="broker-investor-password" className="n-in" autoComplete="off" />
-            </label>
-          </div>
-          {error && <div className="d-err" data-testid="broker-error" role="alert"><span>{error}</span></div>}
-          <footer className="bm-ft">
-            <button type="button" onClick={onClose} className="v3-btn v3-btn--o">Cancel</button>
-            <button type="submit" disabled={loading} data-testid="broker-submit" className="v3-btn v3-btn--ink" style={{ paddingRight: 18 }}>{loading ? 'Connecting…' : 'Connect'}</button>
-          </footer>
-        </form>
+          <form onSubmit={submit} className="ac-form">
+            <div className="x-inset ac-sum">
+              <span className="x-mk">{initials}</span>
+              <span className="ac-sum-id"><b>{isOther ? 'Custom broker' : brokerName}</b><small>{server || 'MetaTrader 5'}</small></span>
+              <span className="x-tag ac-sum-tag"><ILock size={12} />Read-only</span>
+            </div>
+            <div className="x-field">
+              <label htmlFor="cb-broker">Broker</label>
+              <select id="cb-broker" className="x-select" value={brokerName} onChange={e => onBrokerChange(e.target.value)} data-testid="broker-select">
+                {BROKERS.map(b => <option key={b.name} value={b.name}>{b.name}</option>)}
+                <option value={OTHER_BROKER}>{OTHER_BROKER} (enter server manually)</option>
+              </select>
+            </div>
+            <div className="x-field">
+              <label htmlFor={isOther ? 'cb-server-custom' : 'cb-server'}>Server</label>
+              {isOther ? (
+                <input id="cb-server-custom" type="text" value={customServer} onChange={e => setCustomServer(e.target.value)} placeholder="e.g. YourBroker-Live" required data-testid="broker-server-custom" className="x-input" />
+              ) : (
+                <>
+                  <select id="cb-server" className="x-select" value={serverSel} onChange={e => setServerSel(e.target.value)} data-testid="broker-server-select">
+                    {broker!.servers.map(s => <option key={s} value={s}>{s}</option>)}
+                    <option value={CUSTOM_SERVER}>Custom…</option>
+                  </select>
+                  {serverSel === CUSTOM_SERVER && <input type="text" value={customServer} onChange={e => setCustomServer(e.target.value)} placeholder="e.g. XMGlobal-MT5 12" required aria-label="Custom server" data-testid="broker-server-custom" className="x-input" />}
+                </>
+              )}
+            </div>
+            <div className="ac-row2">
+              <div className="x-field">
+                <label htmlFor="cb-login">MT5 login</label>
+                <input id="cb-login" type="number" inputMode="numeric" value={mt5Login} onChange={e => setMt5Login(e.target.value)} placeholder="345636702" required data-testid="broker-mt5-login" className="x-input m" />
+              </div>
+              <div className="x-field">
+                <label htmlFor="cb-pass">Investor password</label>
+                <input id="cb-pass" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" required data-testid="broker-investor-password" className="x-input" autoComplete="off" />
+              </div>
+            </div>
+            {error && <div className="x-banner x-banner--err" data-testid="broker-error" role="alert"><span>{error}</span></div>}
+            <footer className="ac-dlg-ft">
+              <button type="button" onClick={onClose} className="x-btn">Cancel</button>
+              <button type="submit" disabled={loading} data-testid="broker-submit" className="x-btn x-btn--hi">{loading ? 'Connecting…' : 'Connect'}</button>
+            </footer>
+          </form>
+        </div>
       </div>
-    </div>
+    </V6Portal>
   );
 }

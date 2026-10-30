@@ -3,7 +3,7 @@
 import { useCountUp } from '@/hooks/use-count-up';
 import type { MacroState } from '@/lib/macro-api';
 import { deltaPct, formatIndicatorValue, formatSignedPct } from '@/lib/macro-format';
-import Sparkline from './sparkline';
+import { PanelHead, Spark } from '@/components/v6/macro/ui';
 
 function pick(macro: MacroState['macro'], key: string) {
   return macro.find(m => m.key === key) ?? null;
@@ -14,40 +14,21 @@ function AnimatedValue({ value, unit }: { value: number; unit: string | null | u
   return <>{formatIndicatorValue(n ?? value, unit)}</>;
 }
 
-function Metric({
-  label,
-  row,
-  hint,
-  index = 0,
-}: {
-  label: string;
-  row: MacroState['macro'][number] | null;
-  hint?: string;
-  index?: number;
-}) {
+function Metric({ label, row, hint }: { label: string; row: MacroState['macro'][number] | null; hint?: string }) {
   const d = row ? deltaPct(row.value, row.prev) : null;
   return (
-    <div className="tcard p-4 flex flex-col h-full min-h-[120px] rise" style={{ ['--i' as string]: index }}>
-      <div className="text-[10px] tracking-[0.16em] text-fg-3">{label}</div>
-      <div className="mt-2 numeric text-xl font-display font-black text-fg">
-        {row ? <AnimatedValue value={row.value} unit={row.unit} /> : '—'}
+    <article className="x-card mc-lq">
+      <div className="x-stat">
+        <span className="l">{label}</span>
+        <b>{row ? <AnimatedValue value={row.value} unit={row.unit} /> : '—'}</b>
+        <small className="mc-lq-h"><span>{hint ?? row?.label ?? '—'}</span>{d != null && <span className={`m ${d > 0 ? 'pos' : d < 0 ? 'neg' : ''}`}>{formatSignedPct(d, 1)}</span>}</small>
       </div>
-      <div className="text-[11px] text-fg-3 mt-1 flex items-center justify-between gap-2">
-        <span>{hint ?? row?.label ?? '—'}</span>
-        {d != null && (
-          <span className={`numeric ${d > 0 ? 'text-profit' : d < 0 ? 'text-loss' : ''}`}>
-            {formatSignedPct(d, 1)}
-          </span>
-        )}
-      </div>
-      {row?.history && row.history.length >= 2 && (
-        <div className="mt-auto pt-3"><Sparkline values={row.history} /></div>
-      )}
-    </div>
+      {row?.history && row.history.length >= 2 && <div className="mc-lq-s"><Spark values={row.history} width={120} height={32} fluid /></div>}
+    </article>
   );
 }
 
-/** Net liquidity + banking stress console. */
+/** Net liquidity and banking stress console. */
 export default function LiquidityConsole({ macro }: { macro: MacroState['macro'] }) {
   const net = pick(macro, 'NET_LIQUIDITY');
   const walcl = pick(macro, 'WALCL');
@@ -61,37 +42,22 @@ export default function LiquidityConsole({ macro }: { macro: MacroState['macro']
     (nfci && nfci.value > 0 ? 1 : 0) +
     (hy && hy.prev != null && hy.value > hy.prev ? 1 : 0) +
     (vix && vix.value >= 20 ? 1 : 0);
-  const stressLabel = stress >= 2 ? 'ELEVATED' : stress === 1 ? 'WATCH' : 'CALM';
-  const stressTone = stress >= 2 ? 'text-loss border-loss/30 bg-loss/10' : stress === 1 ? 'text-warning border-warning/30 bg-warning/10' : 'text-profit border-profit/30 bg-profit/10';
+  const [label, tag] = stress >= 2 ? ['elevated', 'x-tag x-tag--r'] : stress === 1 ? ['watch', 'x-tag'] : ['calm', 'x-tag x-tag--g'];
 
   return (
-    <div className="space-y-3" data-testid="macro-liquidity-console">
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="text-[10px] tracking-[0.2em] text-fg-3">Banking & liquidity</div>
-          <h2 className="font-display font-black text-xl tracking-tight mt-1">Net Liquidity Console</h2>
-        </div>
-        <span className={`text-[10px] tracking-[0.14em] px-2 py-1 rounded border ${stressTone}`}>
-          STRESS · {stressLabel}
-        </span>
+    <div className="mc-stack" data-testid="macro-liquidity-console">
+      <PanelHead eyebrow="Banking & liquidity" title="Net liquidity console" right={<span className={tag}>Stress: {label}</span>}
+        lead="Net liquidity = Fed balance sheet − TGA − reverse repo. Expanding liquidity has historically supported risk assets; draining it tightens financial conditions." />
+      <div className="mc-g4">
+        <Metric label="Net liquidity" row={net} hint="WALCL − TGA − RRP" />
+        <Metric label="Fed balance sheet" row={walcl} />
+        <Metric label="TGA" row={tga} hint="Treasury General Account" />
+        <Metric label="ON RRP" row={rrp} hint="Reverse repo facility" />
       </div>
-
-      <p className="text-[12px] text-fg-3 max-w-2xl leading-relaxed">
-        Net liquidity = Fed balance sheet − TGA − reverse repo. Expanding liquidity historically
-        supports risk assets; draining it tightens financial conditions.
-      </p>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2 items-stretch">
-        <Metric label="NET LIQUIDITY" row={net} hint="WALCL − TGA − RRP" index={0} />
-        <Metric label="FED BALANCE SHEET" row={walcl} index={1} />
-        <Metric label="TGA" row={tga} hint="Treasury General Account" index={2} />
-        <Metric label="ON RRP" row={rrp} hint="Reverse repo facility" index={3} />
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-stretch">
-        <Metric label="NFCI" row={nfci} hint="Chicago Fed conditions (− = loose)" index={0} />
-        <Metric label="HY OAS" row={hy} hint="High-yield credit spread" index={1} />
-        <Metric label="VIX" row={vix} hint="Equity vol / risk appetite" index={2} />
+      <div className="mc-g3">
+        <Metric label="NFCI" row={nfci} hint="Chicago Fed conditions (− = loose)" />
+        <Metric label="HY OAS" row={hy} hint="High-yield credit spread" />
+        <Metric label="VIX" row={vix} hint="Equity vol / risk appetite" />
       </div>
     </div>
   );

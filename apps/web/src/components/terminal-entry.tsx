@@ -1,5 +1,7 @@
 'use client';
 
+import '@/styles/v6/tokens.css';
+import '@/styles/v6/components.css';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { authClient } from '@/lib/auth-client';
@@ -67,20 +69,14 @@ export function useTerminalEntry() {
   }
 
   const InactiveModal = modalOpen ? (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70" role="dialog" aria-modal="true" data-testid="inactive-modal">
-      <div className="tcard p-6 max-w-md w-full">
-        <div className="text-[10px] tracking-[0.2em] text-loss">// ACCESS DENIED</div>
-        <h2 className="font-display font-black text-lg mt-2 text-fg">Not enough recent trading activity</h2>
-        <p className="text-sm text-fg-3 mt-2 leading-relaxed">{modalMessage}</p>
-        <p className="text-sm text-fg-3 mt-2">
-          Trade actively on your Elefin account under our referral, then try again.
-        </p>
-        <button
-          type="button"
-          onClick={() => void confirmInactiveLogout()}
-          className="btn btn-primary w-full mt-5 py-2.5"
-        >
-          OK — SIGN OUT
+    <div className="v6 x-dialog-scrim" role="dialog" aria-modal="true" aria-labelledby="inactive-t" data-testid="inactive-modal">
+      <div className="x-dialog">
+        <span className="x-tag x-tag--r">Access paused</span>
+        <h2 id="inactive-t" style={{ marginTop: 12 }}>Not enough recent trading activity</h2>
+        <p className="x-lead" style={{ lineHeight: 1.55 }}>{modalMessage}</p>
+        <p className="x-lead" style={{ lineHeight: 1.55, marginTop: 8 }}>Trade actively on your Elefin account under our referral, then try again.</p>
+        <button type="button" onClick={() => void confirmInactiveLogout()} className="x-btn x-btn--hi x-btn--lg x-btn--full" style={{ marginTop: 20 }}>
+          OK, sign out
         </button>
       </div>
     </div>

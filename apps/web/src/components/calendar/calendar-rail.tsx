@@ -9,22 +9,24 @@
 // current week; add an FMP/Finnhub key for history + forecasts).
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import EventModal from '@/components/calendar/event-modal';
-import { Loader } from '@/components/loader';
 import {
   startOfDay,
   startOfWeek,
   surprise,
-  flag,
   timeLabel,
   dayKey,
 } from '@/lib/calendar-format';
 import { api, type CalendarEvent, type EventImpact } from '@/lib/api';
+import { timeAgo } from '@/components/app-shell';
+import '@/styles/v6/markets.css';
 
 const IMPACTS: EventImpact[] = ['HIGH', 'MEDIUM', 'LOW'];
 const REFRESH_MS = 45_000;
 const FILTERS = ['upcoming', 'today', 'week', 'all'] as const;
 type CalFilter = (typeof FILTERS)[number];
 const FILTER_LABEL: Record<CalFilter, string> = { upcoming: 'Upcoming', today: 'Today', week: 'Week', all: 'All' };
+const IMPACT_LABEL: Record<EventImpact, string> = { HIGH: 'High', MEDIUM: 'Medium', LOW: 'Low' };
+const IMPACT_SHORT: Record<EventImpact, string> = { HIGH: 'High', MEDIUM: 'Med', LOW: 'Low' };
 
 // Fetch window centred near now (recent past + the month ahead) so the client-side
 // filters (Upcoming/Today/Week/All) all have real data. DAY-ALIGNED so the from/to
@@ -52,6 +54,7 @@ export default function CalendarRail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selected, setSelected] = useState<CalendarEvent | null>(null);
+  const [updatedAt, setUpdatedAt] = useState<string | null>(null);
   const reqId = useRef(0); // guards against a stale response overwriting a newer one
 
   // Fetch only the selected impacts server-side — the default HIGH+MEDIUM is ~3×
@@ -67,6 +70,7 @@ export default function CalendarRail() {
       if (id !== reqId.current) return; // superseded
       setEvents(rows);
       setError('');
+      setUpdatedAt(new Date().toISOString());
     } catch {
       if (id === reqId.current) setError('The economic calendar is unavailable right now.');
     } finally {
@@ -135,24 +139,26 @@ export default function CalendarRail() {
     const fresh = ev.actualAt && Date.now() - new Date(ev.actualAt).getTime() < REFRESH_MS * 2;
     const past = new Date(ev.eventTime).getTime() <= now;
     const hasData = !!(ev.previous || ev.forecast || ev.actual);
+    const cc = /^[A-Z]{2}$/i.test(ev.country) ? ev.country.toUpperCase() : ev.currency;
     return (
-      <div key={ev.id} className={`cr-ev ${past ? 'past' : ''}`} data-testid="cal-rail-event">
-        <button type="button" className="cr-main" onClick={() => setSelected(ev)}>
-          <span className="t num">{timeLabel(ev.eventTime)}</span>
-          <i className={`dot ${ev.impact.toLowerCase()}`} title={`${ev.impact.toLowerCase()} impact`} />
-          <span className="b">
-            <span className="n"><span className="fl" title={ev.country}>{flag(ev.country)}</span> {ev.currency} · {ev.title}</span>
-            {hasData && (
-              <span className="v num">
-                {ev.actual != null && <span className={`a ${fresh ? 'fresh' : ''} ${dir === 'up' ? 'lg' : dir === 'down' ? 'sh' : ''}`}>A {ev.actual}{dir === 'up' ? '▲' : dir === 'down' ? '▼' : ''}</span>}
-                <span>F {ev.forecast ?? '–'}</span><span>P {ev.previous ?? '–'}</span>
-              </span>
-            )}
+      <div key={ev.id} className={`mk-ev ${past ? 'past' : ''}`} data-testid="cal-rail-event">
+        <button type="button" className="mk-ev-main" onClick={() => setSelected(ev)}>
+          <span className="mk-ev-t m">{timeLabel(ev.eventTime)}</span>
+          <i className={`mk-imp mk-imp--${ev.impact.toLowerCase()}`} title={`${IMPACT_LABEL[ev.impact]} impact`} aria-label={`${IMPACT_LABEL[ev.impact]} impact`} />
+          <span className="mk-ev-b">
+            <span className="mk-ev-n"><span className="mk-cc m" title={`Country: ${ev.country}`}>{cc}</span><span className="mk-ell">{ev.title}</span></span>
+            <span className="mk-ev-v m">
+              <span>{ev.currency}</span>
+              {hasData && <>
+                {ev.actual != null && <span className={`mk-ev-a ${fresh ? 'fresh' : ''} ${dir === 'up' ? 'pos' : dir === 'down' ? 'neg' : ''}`}>A {ev.actual}{dir === 'up' ? ' ▲' : dir === 'down' ? ' ▼' : ''}</span>}
+                <span>F {ev.forecast ?? '—'}</span><span>P {ev.previous ?? '—'}</span>
+              </>}
+            </span>
           </span>
         </button>
         {!past && (
-          <button type="button" className={`cr-star ${ev.watched ? 'on' : ''}`} onClick={() => void onWatch(ev)} aria-pressed={ev.watched} aria-label={ev.watched ? `Stop watching ${ev.title}` : `Watch ${ev.title}`} data-testid="cal-rail-watch">
-            <svg width="17" height="17" viewBox="0 0 24 24" fill={ev.watched ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9 6.8 19.6l1-5.8L3.5 9.7l5.9-.9z" /></svg>
+          <button type="button" className={`mk-star ${ev.watched ? 'on' : ''}`} onClick={() => void onWatch(ev)} aria-pressed={ev.watched} aria-label={ev.watched ? `Stop watching ${ev.title}` : `Watch ${ev.title}`} title={ev.watched ? 'Watching: you’ll get a reminder' : 'Watch and remind me'} data-testid="cal-rail-watch">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill={ev.watched ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9 6.8 19.6l1-5.8L3.5 9.7l5.9-.9z" /></svg>
           </button>
         )}
       </div>
@@ -168,7 +174,7 @@ export default function CalendarRail() {
       <>
         {past.map(row)}
         {past.length > 0 && future.length > 0 && (
-          <div className="cr-now" data-testid="cal-rail-now"><span><i />Now · {nowLabel}</span></div>
+          <div className="mk-now" data-testid="cal-rail-now"><span><i className="x-dot" aria-hidden />Now <b className="m">{nowLabel}</b></span></div>
         )}
         {future.map(row)}
       </>
@@ -183,36 +189,50 @@ export default function CalendarRail() {
   };
 
   return (
-    <section className="v3-card cr" data-testid="calendar-rail" aria-labelledby="cr-t">
-      <div className="cr-hd">
-        <div className="cr-top">
-          <h3 id="cr-t">Economic calendar</h3>
-          <button onClick={() => void load(true)} aria-label="Refresh calendar" className="cr-ref"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" className={loading ? 'spin' : undefined}><path d="M20 11a8 8 0 10-2.3 5.7M20 4v7h-7" /></svg></button>
+    <section className="x-card mk-cal" data-testid="calendar-rail" aria-labelledby="mk-cal-t">
+      <div className="mk-cal-hd">
+        <div className="x-ch">
+          <h2 id="mk-cal-t">Economic calendar</h2>
+          <div className="x-r">
+            {updatedAt && <span className="mk-fresh">Updated {timeAgo(updatedAt)}</span>}
+            <button onClick={() => void load(true)} aria-label="Refresh calendar" title="Refresh" className="x-btn x-btn--icon x-btn--sm">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" className={loading ? 'x-spin' : undefined}><path d="M20 11a8 8 0 10-2.3 5.7M20 4v7h-7" /></svg>
+            </button>
+          </div>
         </div>
-        <div className="cr-ctl">
-          <div className="v3-seg sm" role="group" aria-label="Range">
+        <div className="mk-cal-ctl">
+          <div className="x-seg x-seg--in x-seg--sm mk-range" role="group" aria-label="Range">
             {FILTERS.map(f => <button key={f} aria-pressed={filter === f} onClick={() => setFilter(f)} data-testid={`cal-rail-filter-${f}`}>{FILTER_LABEL[f]}</button>)}
           </div>
-          <div className="cr-imp" role="group" aria-label="Impact">
-            {IMPACTS.map(i => <button key={i} aria-pressed={impacts.has(i)} className={i.toLowerCase()} onClick={() => toggleImpact(i)} data-testid={`cal-rail-impact-${i}`} title={`${i.toLowerCase()} impact`}>{i[0]}</button>)}
+          <div className="mk-cal-sub">
+            <div className="mk-impf" role="group" aria-label="Impact">
+              {IMPACTS.map(i => (
+                <button key={i} aria-pressed={impacts.has(i)} onClick={() => toggleImpact(i)} data-testid={`cal-rail-impact-${i}`} title={`${IMPACT_LABEL[i]} impact`} aria-label={`${IMPACT_LABEL[i]} impact`}>
+                  <i className={`mk-imp mk-imp--${i.toLowerCase()}`} aria-hidden />{IMPACT_SHORT[i]}
+                </button>
+              ))}
+            </div>
+            {coverage && <p className="mk-cov"><span className="m">{coverage.count}</span> events · {shortDate(coverage.min)} to {shortDate(coverage.max)}</p>}
           </div>
         </div>
-        {coverage && <p className="cr-cov num">{coverage.count} events · {shortDate(coverage.min)} — {shortDate(coverage.max)}</p>}
       </div>
 
-      <div className="cr-list" data-testid="cal-rail-list">
-        {loading ? <div className="cr-empty"><Loader label="Loading events" /></div>
-          : error ? <p className="cr-empty">{error}</p>
-          : events.length === 0 ? <div className="cr-empty"><b>No calendar data yet</b>Events appear once the economic-calendar feed is connected.</div>
-          : totalShown === 0 ? (
-            <div className="cr-empty"><b>No {FILTER_LABEL[filter].toLowerCase()} events{impacts.size < IMPACTS.length ? ' at these impact levels' : ''}</b>
-              <button onClick={() => setFilter('all')} className="v3-link">Show all {coverage?.count ?? ''} events</button></div>
-          ) : groups.map(([day, rows]) => (
-            <div key={day} className="cr-day">
-              <div className="cr-dh"><span>{dayTitle(day)}</span><span className="num">{rows.length}</span></div>
-              {renderDay(day, rows)}
-            </div>
-          ))}
+      <div className="mk-cal-list" data-testid="cal-rail-list">
+        {loading ? (
+          <div className="mk-skels" aria-label="Loading events">{Array.from({ length: 6 }).map((_, i) => <div key={i} className="mk-sk-ev"><i className="x-skel x-skel--in" /><span><i className="x-skel x-skel--in" /><i className="x-skel x-skel--in" /></span></div>)}</div>
+        ) : error ? (
+          <div className="x-empty"><b>Calendar unavailable</b><p>{error}</p><button className="x-btn x-btn--sm" onClick={() => void load(true)}>Try again</button></div>
+        ) : events.length === 0 ? (
+          <div className="x-empty"><b>No calendar data yet</b><p>Events appear once the economic-calendar feed is connected.</p></div>
+        ) : totalShown === 0 ? (
+          <div className="x-empty"><b>No {FILTER_LABEL[filter].toLowerCase()} events{impacts.size < IMPACTS.length ? ' at these impact levels' : ''}</b>
+            <button onClick={() => setFilter('all')} className="x-btn x-btn--sm">Show all {coverage?.count ?? ''} events</button></div>
+        ) : groups.map(([day, rows]) => (
+          <div key={day} className="mk-day">
+            <div className="mk-dayh"><span>{dayTitle(day)}</span><span className="m">{rows.length}</span></div>
+            {renderDay(day, rows)}
+          </div>
+        ))}
       </div>
 
       {selected && <EventModal event={selected} onClose={() => setSelected(null)} onToggleWatch={onWatch} />}

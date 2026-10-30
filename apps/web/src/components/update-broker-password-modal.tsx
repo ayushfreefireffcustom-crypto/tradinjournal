@@ -5,8 +5,11 @@
 // password against the broker before saving, so a wrong entry fails here with a
 // clear message and nothing is persisted.
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { api, type BrokerAccount } from '@/lib/api';
+import { V6Portal } from '@/components/confirm-dialog';
+import { IClose } from '@/components/v3/icons';
+import '@/styles/v6/account.css';
 
 interface Props {
   account: BrokerAccount;
@@ -19,6 +22,12 @@ export default function UpdateBrokerPasswordModal({ account, onClose, onUpdated 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [shaking, setShaking] = useState(false);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && !loading) onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose, loading]);
 
   function shake() { setShaking(true); setTimeout(() => setShaking(false), 350); }
 
@@ -41,34 +50,43 @@ export default function UpdateBrokerPasswordModal({ account, onClose, onUpdated 
   const initials = account.broker.replace(/[^A-Za-z]/g, '').slice(0, 2).toUpperCase() || 'MT';
 
   return (
-    <div className="v3 v3-modal" role="dialog" aria-modal="true" aria-labelledby="up-t" data-testid="update-password-modal">
-      <div className="v3-modal-bg" onClick={onClose} />
-      <div className={`v3-modal-card bm ${shaking ? 'shake' : ''}`}>
-        <header className="v3-modal-hd">
-          <div><small>Update</small><h2 id="up-t">MT5 password</h2><p>Changed it at the broker? Enter the new investor password to keep syncing.</p></div>
-          <button onClick={onClose} aria-label="Close" className="v3-modal-x" style={{ marginLeft: 'auto' }}>×</button>
-        </header>
-        <form onSubmit={submit} className="bm-bd">
-          <div className="bm-sum"><span className="bm-mono">{initials}</span><span className="bm-id"><b>{account.broker} · #{account.mt5Login}</b><small>{account.server}</small></span></div>
-          <label className="n-fld"><span>New investor password</span>
-            <input
-              type="password"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              placeholder="••••••••"
-              required
-              autoFocus
-              data-testid="update-password-input"
-              className="n-in"
-            />
-          </label>
-          {error && <div className="d-err" data-testid="update-password-error" role="alert"><span>{error}</span></div>}
-          <footer className="bm-ft">
-            <button type="button" onClick={onClose} className="v3-btn v3-btn--o">Cancel</button>
-            <button type="submit" disabled={loading} data-testid="update-password-submit" className="v3-btn v3-btn--ink" style={{ paddingRight: 18 }}>{loading ? 'Verifying…' : 'Update password'}</button>
-          </footer>
-        </form>
+    <V6Portal>
+      <div className="x-dialog-scrim" onMouseDown={onClose}>
+        <div className={`x-dialog ac-dlg ac-dlg--form ${shaking ? 'ac-shake' : ''}`} role="dialog" aria-modal="true" aria-labelledby="up-t" data-testid="update-password-modal" onMouseDown={e => e.stopPropagation()}>
+          <div className="ac-dlg-h">
+            <div>
+              <h2 id="up-t">Update MT5 password</h2>
+              <p className="ac-dlg-msg">Changed it at the broker? Enter the new investor password to keep syncing.</p>
+            </div>
+            <button type="button" onClick={onClose} aria-label="Close" className="x-btn x-btn--ghost x-btn--icon x-btn--sm"><IClose size={16} /></button>
+          </div>
+          <form onSubmit={submit} className="ac-form">
+            <div className="x-inset ac-sum">
+              <span className="x-mk">{initials}</span>
+              <span className="ac-sum-id"><b>{account.broker} <span className="m x-muted">#{account.mt5Login}</span></b><small>{account.server}</small></span>
+            </div>
+            <div className="x-field">
+              <label htmlFor="up-pass">New investor password</label>
+              <input
+                id="up-pass"
+                type="password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="••••••••"
+                required
+                autoFocus
+                data-testid="update-password-input"
+                className="x-input"
+              />
+            </div>
+            {error && <div className="x-banner x-banner--err" data-testid="update-password-error" role="alert"><span>{error}</span></div>}
+            <footer className="ac-dlg-ft">
+              <button type="button" onClick={onClose} className="x-btn">Cancel</button>
+              <button type="submit" disabled={loading} data-testid="update-password-submit" className="x-btn x-btn--hi">{loading ? 'Verifying…' : 'Update password'}</button>
+            </footer>
+          </form>
+        </div>
       </div>
-    </div>
+    </V6Portal>
   );
 }

@@ -1,38 +1,32 @@
 'use client';
 
-// Topbar notification bell + center. Polls the in-app inbox for the unread count
-// and shows a dropdown of recent notifications with deep links. Self-contained
-// and self-hiding on error, so it never disturbs the shell.
+// Top-bar notification bell + inbox. Polls the in-app inbox for the unread count
+// and shows a dropdown of recent notifications with deep links. Self-contained,
+// so a failed poll never disturbs the frame. Styled by styles/v6/frame.css.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { Bell, Check } from '@phosphor-icons/react';
 import { api, type AppNotification } from '@/lib/api';
 
 const POLL_MS = 60_000;
 
 function ago(iso: string): string {
   const s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
-  if (s < 60) return 'now';
-  if (s < 3600) return `${Math.floor(s / 60)}m`;
-  if (s < 86400) return `${Math.floor(s / 3600)}h`;
-  return `${Math.floor(s / 86400)}d`;
+  if (s < 60) return 'Just now';
+  if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+  if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+  return `${Math.floor(s / 86400)}d ago`;
 }
 
-// Currency → flag emoji, for the notification avatar.
-const CCY_FLAG: Record<string, string> = {
-  USD: '🇺🇸', EUR: '🇪🇺', GBP: '🇬🇧', JPY: '🇯🇵', AUD: '🇦🇺', CAD: '🇨🇦', CHF: '🇨🇭',
-  NZD: '🇳🇿', CNY: '🇨🇳', INR: '🇮🇳', BRL: '🇧🇷', KRW: '🇰🇷', MXN: '🇲🇽', ZAR: '🇿🇦',
-  SEK: '🇸🇪', NOK: '🇳🇴', SGD: '🇸🇬', HKD: '🇭🇰', RUB: '🇷🇺', TRY: '🇹🇷', PLN: '🇵🇱',
-};
+const CCY = /^(USD|EUR|GBP|JPY|AUD|CAD|CHF|NZD|CNY|INR|BRL|KRW|MXN|ZAR|SEK|NOK|SGD|HKD|RUB|TRY|PLN)$/;
 
-/** Avatar glyph + impact-colored ring for a notification, parsed from its text. */
-function visualFor(n: { kind?: string; title: string; body?: string | null }): { glyph: string; ring: string } {
+/** Tile content + impact for a notification, parsed from its kind and text. */
+function visualFor(n: AppNotification): { tile: React.ReactNode; high: boolean } {
   const ccy = (n.title.split(/[ ·]/)[0] ?? '').toUpperCase();
-  const b = (n.body ?? '').toUpperCase();
-  const ring = b.includes('HIGH') ? 'border-loss/50' : b.includes('MEDIUM') ? 'border-warning/50' : 'border-border-strong';
-  const kind = n.kind ?? '';
-  const glyph = kind.includes('price') ? '🔔' : kind.includes('news') ? '📰' : CCY_FLAG[ccy] ?? '📅';
-  return { glyph, ring };
+  const high = (n.body ?? '').toUpperCase().includes('HIGH');
+  if (n.kind.includes('price')) return { tile: <IBell size={15} />, high };
+  if (n.kind.includes('news')) return { tile: <IDoc />, high };
+  if (CCY.test(ccy)) return { tile: <span className="m">{ccy}</span>, high };
+  return { tile: <ICal />, high };
 }
 
 export default function NotificationBell() {
@@ -47,8 +41,7 @@ export default function NotificationBell() {
       setItems(res.items);
       setUnread(res.unread);
     } catch {
-      // Keep the bell visible on a transient failure (e.g. a DB blip) — the
-      // poll retries. Hiding it permanently made it vanish on some page loads.
+      // Keep the bell on a transient failure; the next poll retries.
     }
   }, []);
 
@@ -58,12 +51,14 @@ export default function NotificationBell() {
     return () => clearInterval(t);
   }, [load]);
 
-  // Close on outside click.
+  // Close on outside click or Escape.
   useEffect(() => {
     if (!open) return;
     const onClick = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
     document.addEventListener('mousedown', onClick);
-    return () => document.removeEventListener('mousedown', onClick);
+    document.addEventListener('keydown', onKey);
+    return () => { document.removeEventListener('mousedown', onClick); document.removeEventListener('keydown', onKey); };
   }, [open]);
 
   const toggle = useCallback(async () => {
@@ -72,66 +67,61 @@ export default function NotificationBell() {
     if (next && unread > 0) {
       setUnread(0);
       setItems(prev => prev.map(i => ({ ...i, read: true })));
-      try { await api.notifications.markRead(); } catch { /* ignore */ }
+      try { await api.notifications.markRead(); } catch { /* the next poll shows the true count */ }
     }
   }, [open, unread]);
 
+  const fresh = items.filter(i => !i.read).length;
+
   return (
-    <div className="relative" ref={ref}>
-      <button
-        onClick={toggle}
-        aria-label="Notifications"
-        data-testid="notif-bell"
-        className="relative w-[38px] h-[38px] rounded-full border border-border bg-surface flex items-center justify-center text-fg-3 hover:text-fg hover:border-border-strong transition-colors focus-ring"
-      >
-        <Bell size={17} weight={unread > 0 ? 'fill' : 'regular'} className={unread > 0 ? 'text-fg' : ''} />
-        {unread > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 min-w-[17px] h-[17px] px-1 rounded-full bg-[var(--acc)] text-[var(--on-acc,#fff)] text-[10px] font-bold flex items-center justify-center ring-2 ring-[var(--color-app)]">
-            {unread > 9 ? '9+' : unread}
-          </span>
-        )}
+    <div className="nb" ref={ref}>
+      <button onClick={toggle} aria-label={unread > 0 ? `Notifications, ${unread} unread` : 'Notifications'} aria-expanded={open} aria-haspopup="dialog" data-testid="notif-bell" className="nb-btn">
+        <IBell size={17} />
+        {unread > 0 && <span className="nb-badge">{unread > 9 ? '9+' : unread}</span>}
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-[340px] max-w-[86vw] rounded-[18px] border border-border bg-surface shadow-[0_30px_70px_-25px_rgba(16,15,23,.45)] z-50 overflow-hidden fade-up" data-testid="notif-center">
-          <div className="px-4 py-3 border-b border-border-soft flex items-center justify-between">
-            <span className="text-[14px] font-semibold text-fg">Notifications</span>{unread > 0 && <span className="text-[12px] text-fg-3">{unread} new</span>}
-          </div>
-          <div className="max-h-96 overflow-y-auto">
-            {items.length === 0 ? (
-              <div className="px-4 py-10 text-center text-[13.5px] text-fg-3">
-                <Check size={18} className="mx-auto mb-2 text-fg-3" />
-                You&apos;re all caught up.
-              </div>
-            ) : (
-              <ul className="divide-y divide-border-soft">
-                {items.map(n => {
-                  const v = visualFor(n);
-                  const body = (
-                    <div className="flex gap-2.5">
-                      <span className={`shrink-0 w-8 h-8 rounded-full border ${v.ring} bg-surface flex items-center justify-center text-[15px] leading-none`} aria-hidden>{v.glyph}</span>
-                      <div className="min-w-0 flex-1">
-                        <div className="text-[13.5px] text-fg leading-snug font-medium">{n.title}</div>
-                        {n.body && <div className="text-[12.5px] text-fg-3 mt-0.5 leading-snug">{n.body}</div>}
-                        <div className="text-[11.5px] text-fg-3 mt-1">{ago(n.createdAt) === 'now' ? 'Just now' : `${ago(n.createdAt)} ago`}</div>
-                      </div>
-                    </div>
-                  );
-                  return (
-                    <li key={n.id} className={n.read ? '' : 'bg-[rgba(var(--acc-rgb),.06)]'}>
-                      {n.href ? (
-                        <Link href={n.href} onClick={() => setOpen(false)} className="block px-4 py-3 hover:bg-surface-hover transition-colors">{body}</Link>
-                      ) : (
-                        <div className="px-4 py-3">{body}</div>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </div>
+        <div className="x-pop nb-pop" role="dialog" aria-label="Notifications" data-testid="notif-center">
+          <div className="nb-hd"><b>Notifications</b>{fresh > 0 && <span>{fresh} new</span>}</div>
+          {items.length === 0 ? (
+            <div className="nb-empty"><span className="nb-tile"><ICheck /></span>You&rsquo;re all caught up.</div>
+          ) : (
+            <ul className="nb-list">
+              {items.map(n => {
+                const v = visualFor(n);
+                const body = (
+                  <>
+                    <span className="nb-tile">{v.tile}{v.high && <i className="nb-hi" aria-label="High impact" />}</span>
+                    <span className="nb-txt">
+                      <b>{n.title}</b>
+                      {n.body && <span>{n.body}</span>}
+                      <small>{ago(n.createdAt)}</small>
+                    </span>
+                  </>
+                );
+                return (
+                  <li key={n.id} className={n.read ? '' : 'nb-new'}>
+                    {n.href ? <Link href={n.href} onClick={() => setOpen(false)}>{body}</Link> : <div>{body}</div>}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
         </div>
       )}
     </div>
   );
+}
+
+function IBell({ size = 17 }: { size?: number }) {
+  return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M6 16V11a6 6 0 0112 0v5l2 2H4z" /><path d="M10 20a2 2 0 004 0" /></svg>;
+}
+function IDoc() {
+  return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M5 4h11l3 3v13H5z" /><path d="M9 10h6M9 14h6" /></svg>;
+}
+function ICal() {
+  return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" aria-hidden><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18M8 3v4M16 3v4" /></svg>;
+}
+function ICheck() {
+  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>;
 }

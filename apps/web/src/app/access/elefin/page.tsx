@@ -6,8 +6,8 @@ import { authClient } from '@/lib/auth-client';
 import { accessApi } from '@/lib/access-api';
 import { invalidateAccessCache, primeAccessCache } from '@/lib/use-platform-access';
 import { LoadingScreen } from '@/components/loader';
-import StatusCard, { SC_ICONS } from '@/components/v3/status-card';
-import { AuthSubmit } from '@/components/v3/auth-shell';
+import StatusCard, { SC_ICONS } from '@/components/v6/auth/status-card';
+import { AuthError, AuthSubmit } from '@/components/v6/auth/auth-shell';
 
 export default function ElefinAccessPage() {
   const router = useRouter();
@@ -57,25 +57,22 @@ export default function ElefinAccessPage() {
   }
 
   if (isPending || !session?.session) {
-    return (
-      <div className="h-dvh"><LoadingScreen /></div>
-    );
+    return <LoadingScreen />;
   }
 
   return (
-    <StatusCard testId="access-elefin-page" icon={SC_ICONS.shield} tone="v" kicker="Access required"
-      title={<><b>Verify your</b> <em>Elefin</em> <b>account.</b></>}
-      body="TRADElogs is available to traders with an Elefin account opened under our referral. We’ll match your email — add your MT5 login to speed it up."
+    <StatusCard testId="access-elefin-page" icon={SC_ICONS.shield} kicker="Access required"
+      title="Verify your Elefin account"
+      body="TRADElogs is available to traders with an Elefin account opened under our referral. We’ll match your email; add your MT5 login to speed it up."
       onSignOut={() => void authClient.signOut().then(() => router.replace('/login'))}>
-      <form onSubmit={submit} className="au-fields" style={{ marginTop: 24 }}>
-        <label><span className="au-lbl">Your email</span>
-          <span className="au-in sc-in-ro"><input readOnly value={session.user.email} aria-readonly />
-            <svg className="chev" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V8a4 4 0 018 0v3" /></svg></span>
-        </label>
-        <label><span className="au-lbl"><span>Elefin MT5 login <span style={{ color: 'var(--muted)', fontWeight: 400 }}>· optional</span></span></span>
-          <span className="au-in"><input type="number" inputMode="numeric" value={mt5Login} onChange={e => setMt5Login(e.target.value)} placeholder="12345678" /></span>
-        </label>
-        {error && <div className="au-err" role="alert">{error}</div>}
+      <form onSubmit={submit} className="au-stack">
+        <div className="x-field"><label htmlFor="el-email">Your email</label>
+          <div className="au-inw"><input id="el-email" className="x-input" readOnly value={session.user.email} aria-readonly /><span className="au-lock" aria-hidden>{SC_ICONS.lock}</span></div>
+        </div>
+        <div className="x-field"><label htmlFor="el-mt5">Elefin MT5 login <span className="au-opt">· optional</span></label>
+          <input id="el-mt5" className="x-input" type="number" inputMode="numeric" value={mt5Login} onChange={e => setMt5Login(e.target.value)} placeholder="12345678" aria-invalid={error ? true : undefined} />
+          {error && <AuthError>{error}</AuthError>}
+        </div>
         <AuthSubmit loading={busy}>{busy ? 'Verifying…' : 'Verify account'}</AuthSubmit>
       </form>
     </StatusCard>

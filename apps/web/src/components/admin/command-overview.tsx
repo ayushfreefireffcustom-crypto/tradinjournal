@@ -1,116 +1,104 @@
 'use client';
 
 import dynamic from 'next/dynamic';
+import { useState } from 'react';
 import type { AdminEngagementDto, AdminOverviewDto } from '@/lib/admin-api';
 import { GaugeRing, LiquidBar } from './gauge-ring';
-import { pct, fmtRelative } from './admin-utils';
-import { StatCard } from '@/components/stat-card';
-import {
-  Pulse, Clock, Bank, ChartLineUp, Users, ShieldCheck,
-} from '@phosphor-icons/react';
+import { pct, fmtRelative, auditLabel } from './admin-utils';
 import { TraderOpsStrip } from './trader-ops-strip';
 
 // Leaflet reads `window` on import — must be client-only, never SSR'd.
 const AdminGeoMap = dynamic(
   () => import('./admin-geo-map').then(m => ({ default: m.AdminGeoMap })),
-  { ssr: false, loading: () => <div className="tcard p-4 h-[200px] flex items-center justify-center text-sm text-fg-3">Loading map…</div> },
+  { ssr: false, loading: () => <section className="x-card"><div className="x-ch"><h2>User locations</h2></div><div className="x-skel x-skel--in ad-map-sk" /></section> },
 );
+
+const n = (v: number) => v.toLocaleString('en-US');
 
 function Funnel({ overview }: { overview: AdminOverviewDto }) {
   const steps = [
-    { label: 'Signups', value: overview.funnel.signups },
-    { label: 'Email OK', value: overview.funnel.emailVerified },
-    { label: 'Elefin', value: overview.funnel.elefinVerified },
-    { label: 'Broker', value: overview.funnel.withBroker },
-    { label: 'Active', value: overview.funnel.activeTraders },
+    { label: 'Signed up', value: overview.funnel.signups },
+    { label: 'Email verified', value: overview.funnel.emailVerified },
+    { label: 'Elefin verified', value: overview.funnel.elefinVerified },
+    { label: 'Broker connected', value: overview.funnel.withBroker },
+    { label: 'Active traders', value: overview.funnel.activeTraders },
   ];
   const max = Math.max(...steps.map(s => s.value), 1);
   return (
-    <div className="tcard p-4 sm:p-5 min-w-0">
-      <div className="text-[10px] tracking-[0.2em] text-fg-3 uppercase mb-4">Access funnel</div>
-      <div className="space-y-3">
-        {steps.map((s, i) => {
-          const rate = i === 0 ? 100 : pct(s.value, steps[0]!.value);
-          return (
-            <div key={s.label} className="min-w-0">
-              <div className="flex justify-between text-[11px] mb-1 gap-2">
-                <span className="text-fg-2 truncate">{s.label}</span>
-                <span className="numeric text-fg shrink-0">{s.value} · {rate}%</span>
-              </div>
-              <div className="kpi-bar h-2">
-                <div
-                  className="kpi-bar-fill h-full bg-profit"
-                  style={{ width: `${Math.max(3, (s.value / max) * 100)}%` }}
-                />
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
+    <section className="x-card">
+      <div className="x-ch"><h2>Access funnel</h2><span className="x-sub">share of signups</span></div>
+      <ol className="ad-funnel">
+        {steps.map((s, i) => (
+          <li key={s.label}>
+            <span className="l">{s.label}</span>
+            <span className="v"><b className="m">{n(s.value)}</b><small className="m">{i === 0 ? '100%' : `${pct(s.value, steps[0]!.value)}%`}</small></span>
+            <span className="x-bar"><i style={{ width: `${Math.max(2, (s.value / max) * 100)}%` }} /></span>
+          </li>
+        ))}
+      </ol>
+    </section>
   );
 }
 
 function EngagementChart({ data }: { data: AdminEngagementDto | null }) {
+  const [hover, setHover] = useState<number | null>(null);
   if (!data?.days.length) {
     return (
-      <div className="tcard p-4 sm:p-5 min-w-0">
-        <div className="text-[10px] tracking-[0.2em] text-fg-3 uppercase mb-2">Engagement</div>
-        <p className="text-sm text-fg-3">No usage data yet — heartbeats will fill this in.</p>
-      </div>
+      <section className="x-card">
+        <div className="x-ch"><h2>Daily active users</h2></div>
+        <div className="x-empty"><p>No usage data yet. Heartbeats fill this in.</p></div>
+      </section>
     );
   }
   const maxDau = Math.max(...data.days.map(d => d.dau), 1);
+  const avg = Math.round(data.days.reduce((a, d) => a + d.dau, 0) / data.days.length);
+  const fmt = (d: string, o: Intl.DateTimeFormatOptions) => new Date(d + 'T12:00:00').toLocaleDateString('en-GB', o);
+  const h = hover != null ? data.days[hover] : null;
   return (
-    <div className="tcard p-4 sm:p-5 min-w-0">
-      <div className="flex items-center justify-between gap-2 mb-4">
-        <div className="text-[10px] tracking-[0.2em] text-fg-3 uppercase">DAU · {data.range}</div>
-        <div className="text-[10px] text-fg-3 numeric">avg min overlay</div>
+    <section className="x-card ad-eng">
+      <div className="x-ch">
+        <h2>Daily active users</h2><span className="x-sub">last {data.range}</span>
+        <div className="x-r">avg <b className="m ad-tx">{avg}</b> a day</div>
       </div>
-      <div className="flex items-end gap-1">
-        {data.days.map(d => {
-          const h = Math.max(4, (d.dau / maxDau) * 100);
-          const day = new Date(d.date + 'T12:00:00').toLocaleDateString(undefined, { day: 'numeric' });
-          return (
-            <div key={d.date} className="flex-1 flex flex-col items-center gap-1 min-w-0 group relative">
-              <div className="w-full flex items-end h-28">
-                <div
-                  className="w-full rounded-sm bg-profit/70 hover:bg-profit transition-colors"
-                  style={{ height: `${h}%` }}
-                  title={`${d.dau} users · ${d.avgSessionMin}m avg`}
-                />
-              </div>
-              <span className="text-[8px] text-fg-3">{day}</span>
-            </div>
-          );
-        })}
+      <div className="ad-bars" onMouseLeave={() => setHover(null)}>
+        {data.days.map((d, i) => (
+          <div key={d.date} className={`ad-bar ${hover === i ? 'on' : ''}`} onMouseEnter={() => setHover(i)} aria-label={`${fmt(d.date, { day: 'numeric', month: 'short' })}: ${d.dau} users, ${d.avgSessionMin} min average`}>
+            <i style={{ height: `${Math.max(4, (d.dau / maxDau) * 100)}%` }} />
+          </div>
+        ))}
+        {h && hover != null && (
+          <div className={`ad-tip ${hover > data.days.length * 0.6 ? 'l' : ''}`} style={{ left: `${((hover + 0.5) / data.days.length) * 100}%` }}>
+            <span>{fmt(h.date, { weekday: 'short', day: 'numeric', month: 'short' })}</span>
+            <b className="m">{h.dau} users</b>
+            <span className="m">{h.avgSessionMin} min avg</span>
+          </div>
+        )}
       </div>
-    </div>
+      <div className="ad-axis"><span>{fmt(data.days[0]!.date, { day: 'numeric', month: 'short' })}</span><span>{fmt(data.days[data.days.length - 1]!.date, { day: 'numeric', month: 'short' })}</span></div>
+    </section>
   );
 }
 
-function FeatureCarousel({ overview }: { overview: AdminOverviewDto }) {
-  const items = overview.featureUsage7d.length
-    ? overview.featureUsage7d
-    : ['dashboard', 'charts', 'macro', 'coach', 'journal', 'trades'].map(f => ({
-        feature: f,
-        events: 0,
-        uniqueUsers: 0,
-      }));
-
+function FeatureUsage({ overview }: { overview: AdminOverviewDto }) {
+  const items = [...overview.featureUsage7d].sort((a, b) => b.events - a.events);
+  const max = Math.max(...items.map(f => f.events), 1);
   return (
-    <div className="min-w-0">
-      <div className="text-[10px] tracking-[0.2em] text-fg-3 uppercase mb-2 px-0.5">Feature usage · 7d</div>
-      <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
-        {items.map(f => (
-          <div key={f.feature} className="tcard p-3 shrink-0 min-w-[140px]">
-            <div className="text-[9px] tracking-widest text-fg-3 uppercase">{f.feature}</div>
-            <div className="font-display font-black text-xl numeric mt-1">{f.events}</div>
-            <div className="text-[10px] text-fg-3 mt-0.5">{f.uniqueUsers} users</div>
-          </div>
-        ))}
-      </div>
-    </div>
+    <section className="x-card">
+      <div className="x-ch"><h2>Feature usage</h2><span className="x-sub">last 7 days</span></div>
+      {items.length === 0 ? <div className="x-empty"><p>No feature events yet.</p></div> : (
+        <div className="ad-hbars">
+          <div className="ad-hbar ad-hbar--h"><span>Feature</span><span /><span className="r">Events</span><span className="r">Users</span></div>
+          {items.map(f => (
+            <div key={f.feature} className="ad-hbar">
+              <span className="ad-cap">{f.feature.charAt(0).toUpperCase() + f.feature.slice(1)}</span>
+              <span className="x-bar"><i style={{ width: `${Math.max(2, (f.events / max) * 100)}%` }} /></span>
+              <b className="m r">{n(f.events)}</b>
+              <span className="m r x-muted">{n(f.uniqueUsers)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -128,156 +116,96 @@ export function CommandOverview({
   const live = !overview.maintenance.enabled;
   const elefinPct = pct(overview.elefinVerified, overview.totalUsers);
   const brokerPct = pct(overview.usersWithBrokers, overview.totalUsers);
-  const activityPct = overview.elefinVerified
-    ? pct(overview.activeTraders, overview.elefinVerified)
-    : 0;
-  const syncPct = overview.brokerAccounts
-    ? pct(overview.syncHealthy, overview.brokerAccounts)
-    : 100;
+  const activityPct = overview.elefinVerified ? pct(overview.activeTraders, overview.elefinVerified) : 0;
+  const syncPct = overview.brokerAccounts ? pct(overview.syncHealthy, overview.brokerAccounts) : 100;
+  const maxBroker = overview.brokerBreakdown[0]?.count || 1;
 
   return (
-    <div className="space-y-4 min-w-0 overflow-x-hidden" data-testid="admin-overview-tab">
-      {/* Status ribbon */}
-      <div className={`tcard p-4 border-l-4 ${live ? 'border-l-profit' : 'border-l-loss'} min-w-0`}>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <Pulse size={16} className={live ? 'text-profit' : 'text-loss'} />
-              <span className={`font-display font-black text-lg tracking-tight ${live ? 'text-profit' : 'text-loss'}`}>
-                {live ? 'ALL SYSTEMS LIVE' : 'MAINTENANCE MODE'}
-              </span>
-            </div>
-            <p className="text-[11px] text-fg-2 mt-1">
-              <span className="inline-flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-profit pulse-dot" />
-                {overview.liveUsageSessions} live · {overview.dau} DAU · {overview.brokerAccounts} brokers · {overview.totalTrades7d} trades/7d
-              </span>
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onToggleMaint}
-            disabled={maintBusy}
-            className={`btn py-2 px-3 text-[10px] shrink-0 ${live ? 'btn-ghost border border-loss/40 text-loss' : 'btn-primary'}`}
-          >
-            {maintBusy ? '…' : live ? 'ENABLE MAINTENANCE' : 'GO LIVE'}
-          </button>
+    <div className="x-page" data-testid="admin-overview-tab">
+      <section className={`x-card ad-status ${live ? '' : 'off'}`}>
+        <div className="ad-status-t">
+          <b><i className={`x-dot ${live ? '' : 'x-dot--r'}`} />{live ? 'All systems live' : 'Maintenance mode is on'}</b>
+          <span><span className="m">{overview.liveUsageSessions}</span> live now · <span className="m">{overview.dau}</span> DAU · <span className="m">{overview.brokerAccounts}</span> brokers · <span className="m">{n(overview.totalTrades7d)}</span> trades in 7 days</span>
         </div>
+        <button type="button" onClick={onToggleMaint} disabled={maintBusy} className={`x-btn ${live ? 'x-btn--danger' : 'x-btn--hi'}`}>
+          {maintBusy ? 'Updating…' : live ? 'Enable maintenance' : 'Go live'}
+        </button>
+      </section>
+
+      <div className="x-strip x-strip--card ad-strip4">
+        <div><span>Daily active users</span><b className="m">{overview.dau}</b><small className="ad-small">WAU <span className="m">{overview.wau}</span> · MAU <span className="m">{overview.mau}</span></small></div>
+        <div><span>Avg session today</span><b className="m">{overview.avgSessionMinToday}m</b><small className="ad-small"><span className="m">{overview.avgSessionMin7d}m</span> avg over 7 days</small></div>
+        <div><span>Brokers connected</span><b className="m">{overview.brokerAccounts}</b><small className="ad-small"><span className="m">{overview.elefinBrokerAccounts}</span> Elefin</small></div>
+        <div><span>Active traders</span><b className="m pos">{overview.activeTraders}</b><small className="ad-small"><span className="m">{overview.inactiveTraders}</span> inactive</small></div>
       </div>
 
-      <TraderOpsStrip />
-
-      {/* Hero KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
-        <StatCard label="DAU" value={String(overview.dau)} count={overview.dau} format={n => String(n)} sub={`WAU ${overview.wau} · MAU ${overview.mau}`} accent="profit" index={0} />
-        <StatCard label="Avg session today" value={`${overview.avgSessionMinToday}m`} sub={`${overview.avgSessionMin7d}m avg · 7d`} index={1} />
-        <StatCard label="Brokers connected" value={String(overview.brokerAccounts)} count={overview.brokerAccounts} format={n => String(n)} sub={`${overview.elefinBrokerAccounts} Elefin`} index={2} />
-        <StatCard label="Active traders" value={String(overview.activeTraders)} count={overview.activeTraders} format={n => String(n)} accent="profit" sub={`${overview.inactiveTraders} inactive`} index={3} />
+      <div className="ad-rates">
+        <GaugeRing value={elefinPct} label="Elefin verified" sub={`${overview.elefinVerified} of ${overview.totalUsers} users`} tone="g" />
+        <GaugeRing value={brokerPct} label="Broker attached" sub={`${overview.usersWithBrokers} users`} tone="n" />
+        <GaugeRing value={activityPct} label="Activity pass" sub="among Elefin-verified" tone={activityPct >= 50 ? 'g' : 'r'} />
+        <LiquidBar value={syncPct} label="Sync health" sub={`${overview.syncStale} stale over 24h`} />
       </div>
 
-      {/* Gauges */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
-        <GaugeRing value={elefinPct} label="Elefin verified" sub={`${overview.elefinVerified}/${overview.totalUsers}`} tone="profit" />
-        <GaugeRing value={brokerPct} label="Broker attach" sub={`${overview.usersWithBrokers} users`} tone="neutral" />
-        <GaugeRing value={activityPct} label="Activity pass" sub="among Elefin" tone={activityPct >= 50 ? 'profit' : 'warning'} />
-        <LiquidBar value={syncPct} label="Sync health" sub={`${overview.syncStale} stale >24h`} />
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+      <div className="ad-row2">
         <EngagementChart data={engagement} />
         <Funnel overview={overview} />
       </div>
 
+      <TraderOpsStrip />
+
       <AdminGeoMap />
 
-      <FeatureCarousel overview={overview} />
-
-      {/* Extra metrics strip */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        {[
-          { icon: Clock, label: 'Usage hours 7d', value: overview.totalUsageHours7d },
-          { icon: Users, label: 'Stickiness', value: overview.stickiness },
-          { icon: ShieldCheck, label: 'Manual grants', value: overview.manualGrantsActive },
-          { icon: ChartLineUp, label: 'Signups 30d', value: overview.signups30d },
-        ].map(m => (
-          <div key={m.label} className="tcard p-3 min-w-0">
-            <m.icon size={14} className="text-fg-3" />
-            <div className="font-display font-black text-xl numeric mt-1">{m.value}</div>
-            <div className="text-[9px] tracking-widest text-fg-3 uppercase mt-0.5">{m.label}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Broker breakdown + live pulse */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-        <div className="tcard p-4 sm:p-5 min-w-0">
-          <div className="flex items-center gap-2 mb-3">
-            <Bank size={14} className="text-fg-3" />
-            <div className="text-[10px] tracking-[0.2em] text-fg-3 uppercase">Brokers</div>
-          </div>
-          {overview.brokerBreakdown.length === 0 ? (
-            <p className="text-sm text-fg-3">No brokers yet.</p>
-          ) : (
-            <div className="space-y-2">
-              {overview.brokerBreakdown.slice(0, 8).map(b => {
-                const max = overview.brokerBreakdown[0]?.count || 1;
-                return (
-                  <div key={b.broker}>
-                    <div className="flex justify-between text-[11px] mb-1 gap-2">
-                      <span className="truncate text-fg">{b.broker}{b.elefin ? ' · ELEFIN' : ''}</span>
-                      <span className="numeric text-fg-2">{b.count}</span>
-                    </div>
-                    <div className="kpi-bar h-1.5">
-                      <div className="kpi-bar-fill h-full" style={{ width: `${(b.count / max) * 100}%`, background: b.elefin ? '#08C465' : '#71717A' }} />
-                    </div>
-                  </div>
-                );
-              })}
+      <div className="ad-row2">
+        <FeatureUsage overview={overview} />
+        <section className="x-card">
+          <div className="x-ch"><h2>Brokers</h2><span className="x-sub">connected accounts</span></div>
+          {overview.brokerBreakdown.length === 0 ? <div className="x-empty"><p>No brokers yet.</p></div> : (
+            <div className="ad-hbars">
+              {overview.brokerBreakdown.slice(0, 8).map(b => (
+                <div key={b.broker} className="ad-hbar ad-hbar--3">
+                  <span className="ad-cap">{b.broker}{b.elefin && <span className="x-badge">Elefin</span>}</span>
+                  <span className={`x-bar ${b.elefin ? '' : 'ad-bar-mut'}`}><i style={{ width: `${(b.count / maxBroker) * 100}%` }} /></span>
+                  <b className="m r">{b.count}</b>
+                </div>
+              ))}
             </div>
           )}
-        </div>
+        </section>
+      </div>
 
-        <div className="tcard p-4 sm:p-5 min-w-0">
-          <div className="text-[10px] tracking-[0.2em] text-fg-3 uppercase mb-3">Live pulse</div>
-          <div className="space-y-3">
-            <div>
-              <div className="text-[9px] tracking-widest text-fg-3 mb-1">RECENT SIGNUPS</div>
-              {overview.recentSignups.slice(0, 4).map(u => (
-                <div key={u.id} className="flex justify-between gap-2 text-[11px] py-1 border-b border-border-soft/40">
-                  <span className="truncate text-fg">{u.email}</span>
-                  <span className="text-fg-3 shrink-0">{fmtRelative(u.createdAt)}</span>
-                </div>
-              ))}
-            </div>
-            <div>
-              <div className="text-[9px] tracking-widest text-fg-3 mb-1">ADMIN ACTIONS</div>
-              {overview.recentAudit.slice(0, 4).map(a => (
-                <div key={a.id} className="flex justify-between gap-2 text-[11px] py-1 border-b border-border-soft/40">
-                  <span className="truncate text-fg">{a.action}</span>
-                  <span className="text-fg-3 shrink-0">{fmtRelative(a.createdAt)}</span>
-                </div>
-              ))}
-              {overview.recentAudit.length === 0 && <p className="text-sm text-fg-3">No actions yet.</p>}
-            </div>
-            <div className="grid grid-cols-2 gap-2 text-[10px]">
-              <div className="border border-border-soft rounded p-2">
-                <div className="text-fg-3">Grant cohort</div>
-                <div className="numeric text-fg text-lg font-display font-black">{overview.cohorts.grantUsers}</div>
-              </div>
-              <div className="border border-border-soft rounded p-2">
-                <div className="text-fg-3">Elefin cohort</div>
-                <div className="numeric text-fg text-lg font-display font-black">{overview.cohorts.elefinUsers}</div>
-              </div>
-              <div className="border border-border-soft rounded p-2 col-span-2">
-                <div className="text-fg-3">Median hours → broker / Elefin</div>
-                <div className="numeric text-fg mt-0.5">
-                  {overview.onboarding.medianHoursToBroker ?? '—'}h / {overview.onboarding.medianHoursToElefin ?? '—'}h
-                </div>
-              </div>
-            </div>
+      <div className="x-strip x-strip--card ad-strip4">
+        <div><span>Usage hours, 7 days</span><b className="m">{overview.totalUsageHours7d}</b></div>
+        <div><span>Stickiness</span><b className="m">{overview.stickiness}</b></div>
+        <div><span>Manual grants</span><b className="m">{overview.manualGrantsActive}</b></div>
+        <div><span>Signups, 30 days</span><b className="m">{overview.signups30d}</b></div>
+      </div>
+
+      <section className="x-card">
+        <div className="x-ch"><h2>Live pulse</h2></div>
+        <div className="ad-pulse">
+          <div>
+            <span className="x-label">Recent signups</span>
+            {overview.recentSignups.length === 0 ? <p className="ad-none">No signups yet.</p> : (
+              <ul className="ad-feed">
+                {overview.recentSignups.slice(0, 4).map(u => <li key={u.id}><span>{u.email}</span><small>{fmtRelative(u.createdAt)}</small></li>)}
+              </ul>
+            )}
+          </div>
+          <div>
+            <span className="x-label">Admin actions</span>
+            {overview.recentAudit.length === 0 ? <p className="ad-none">No actions yet.</p> : (
+              <ul className="ad-feed">
+                {overview.recentAudit.slice(0, 4).map(a => <li key={a.id}><span>{auditLabel(a.action)}</span><small>{fmtRelative(a.createdAt)}</small></li>)}
+              </ul>
+            )}
+          </div>
+          <div className="x-strip ad-cohorts">
+            <div><span>Grant cohort</span><b className="m">{overview.cohorts.grantUsers}</b></div>
+            <div><span>Elefin cohort</span><b className="m">{overview.cohorts.elefinUsers}</b></div>
+            <div><span>Median hours to broker / Elefin</span><b className="m">{overview.onboarding.medianHoursToBroker ?? '—'}h / {overview.onboarding.medianHoursToElefin ?? '—'}h</b></div>
           </div>
         </div>
-      </div>
+      </section>
     </div>
   );
 }

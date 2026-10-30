@@ -1,13 +1,15 @@
 'use client';
 
-// Source picker — the "customize your feed" modal. Lists the outlet catalog
+// Source picker: the "customize your feed" modal. Lists the outlet catalog
 // grouped by category with checkboxes; saving replaces the user's preferred
 // sources, which pins those outlets to the top of the feed.
-import { useEffect, useMemo, useState } from 'react';
-import { IClose, ICheck } from '@/components/v3/icons';
+import { useMemo, useState } from 'react';
+import { ICheck } from '@/components/v3/icons';
+import MkDialog, { MkClose } from '@/components/v6/markets/dialog';
 import type { NewsSource, NewsCategory } from '@/lib/api';
 
 const CATEGORY_ORDER: NewsCategory[] = ['CRYPTO', 'MACRO', 'MARKETS', 'REGULATORY', 'GEOPOLITICAL'];
+const CAT: Record<string, string> = { CRYPTO: 'Crypto', MACRO: 'Macro', GEOPOLITICAL: 'Geopolitical', REGULATORY: 'Regulatory', MARKETS: 'Markets' };
 
 export default function SourcePicker({
   catalog,
@@ -26,12 +28,6 @@ export default function SourcePicker({
 }) {
   const [sel, setSel] = useState<Set<string>>(() => new Set(initial));
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [onClose]);
-
   const groups = useMemo(() => {
     const by = new Map<NewsCategory, NewsSource[]>();
     for (const s of catalog) {
@@ -49,38 +45,38 @@ export default function SourcePicker({
       return next;
     });
 
-  const CAT: Record<string, string> = { CRYPTO: 'Crypto', MACRO: 'Macro', GEOPOLITICAL: 'Geopolitical', REGULATORY: 'Regulatory', MARKETS: 'Markets' };
   return (
-    <div className="v3 v3-modal" role="dialog" aria-modal="true" aria-labelledby="sp-t" data-testid="source-picker">
-      <div className="v3-modal-bg" onClick={onClose} />
-      <div className="v3-modal-card">
-        <header className="v3-modal-hd">
-          <div><small>Your feed</small><h2 id="sp-t">Choose your sources</h2><p>Headlines from these outlets pin to the top.</p></div>
-          <button onClick={onClose} aria-label="Close" className="v3-modal-x" style={{ marginLeft: 'auto' }}><IClose size={16} /></button>
-        </header>
-        <div className="v3-modal-bd sp-bd">
-          {groups.map(([cat, sources]) => (
-            <div key={cat} className="sp-g">
-              <h4>{CAT[cat] ?? cat}</h4>
-              <div className="sp-grid">
-                {sources.map(s => {
-                  const on = sel.has(s.key);
-                  return (
-                    <button key={s.key} type="button" aria-pressed={on} onClick={() => toggle(s.key)} data-testid={`source-opt-${s.key}`} className="sp-opt">
-                      <span className="box">{on && <ICheck size={13} />}</span><span>{s.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
+    <MkDialog onClose={onClose} labelledBy="mk-sp-t" testId="source-picker" className="mk-dlg--wide">
+      <div className="mk-dh">
+        <div className="mk-dh-m">
+          <h2 id="mk-sp-t">Choose your sources</h2>
+          <p className="x-muted">Headlines from these outlets pin to the top of your feed.</p>
         </div>
-        <footer className="v3-modal-ft" style={{ justifyContent: 'flex-start', gap: 12 }}>
-          {error ? <span className="r-err" style={{ margin: 0 }} data-testid="source-picker-error">{error}</span> : <span className="mute" style={{ fontSize: 14 }}>{sel.size} selected</span>}
-          {sel.size > 0 && <button onClick={() => setSel(new Set())} className="v3-link" style={{ margin: 0 }}>Clear</button>}
-          <button onClick={() => onSave([...sel])} disabled={saving} data-testid="source-picker-save" className="v3-btn v3-btn--ink" style={{ marginLeft: 'auto', paddingRight: 18 }}>{saving ? 'Saving…' : 'Save'}</button>
-        </footer>
+        <MkClose onClose={onClose} />
       </div>
-    </div>
+      <div className="mk-dbody">
+        {groups.length === 0 && <p className="mk-none">The outlet list isn’t available right now.</p>}
+        {groups.map(([cat, sources]) => (
+          <div key={cat} className="mk-sp-g">
+            <h4>{CAT[cat] ?? cat}</h4>
+            <div className="mk-sp-grid">
+              {sources.map(s => {
+                const on = sel.has(s.key);
+                return (
+                  <button key={s.key} type="button" aria-pressed={on} onClick={() => toggle(s.key)} data-testid={`source-opt-${s.key}`} className="mk-sp-opt">
+                    <span className="mk-sp-box" aria-hidden>{on && <ICheck size={12} />}</span><span className="mk-ell">{s.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="mk-dfoot mk-dfoot--split">
+        {error ? <span className="mk-err" role="alert" data-testid="source-picker-error">{error}</span> : <span className="x-muted">{sel.size} selected</span>}
+        {sel.size > 0 && <button onClick={() => setSel(new Set())} className="x-btn x-btn--sm x-btn--ghost">Clear</button>}
+        <button onClick={() => onSave([...sel])} disabled={saving} data-testid="source-picker-save" className="x-btn x-btn--hi mk-push">{saving ? 'Saving…' : 'Save'}</button>
+      </div>
+    </MkDialog>
   );
 }

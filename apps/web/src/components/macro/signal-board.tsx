@@ -1,25 +1,10 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { LockKey } from '@phosphor-icons/react';
-import { Loader } from '@/components/loader';
 import { macroApi, type MacroSignal } from '@/lib/macro-api';
 import { formatMacroNumber } from '@/lib/macro-format';
-
-function dirClass(d: string): string {
-  if (d === 'LONG') return 'text-profit border-profit/30 bg-profit/10';
-  if (d === 'SHORT') return 'text-loss border-loss/30 bg-loss/10';
-  return 'text-fg-3 border-border bg-surface-hover';
-}
-
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex items-center justify-between py-1.5 border-b border-border-soft last:border-b-0">
-      <span className="text-[10px] tracking-[0.14em] text-fg-3 uppercase">{label}</span>
-      <span className="numeric text-[12px] text-fg">{children}</span>
-    </div>
-  );
-}
+import { tickerMark } from '@/lib/desk';
+import { ILock, ISpark, SideChip } from '@/components/v6/macro/ui';
 
 export default function SignalBoard({
   onPaperFill,
@@ -51,41 +36,23 @@ export default function SignalBoard({
 
   if (loading) {
     return (
-      <div className="min-h-[200px] flex items-center justify-center" data-testid="macro-signals-loading">
-        <Loader size={28} label="Loading signals" />
+      <div className="mc-sig" data-testid="macro-signals-loading" role="status" aria-label="Loading signals">
+        {[0, 1, 2].map(i => <div key={i} className="x-skel mc-sk-sig" />)}
       </div>
     );
   }
 
   if (error) {
     return (
-      <section className="tcard p-6 sm:p-8 text-center max-w-xl mx-auto" data-testid="macro-signals-locked">
-        <div className="w-11 h-11 mx-auto rounded-full border border-border-strong flex items-center justify-center text-fg-3">
-          <LockKey size={20} />
-        </div>
-        <h3 className="mt-3 font-display font-black text-lg tracking-tight">TradeAI Signals — Members Only</h3>
-        <p className="text-[12px] text-fg-3 mt-2 leading-relaxed">
-          Entry / stop / target levels are computed <span className="text-fg-2">server-side</span> and never sent to
-          non-members. Map a verified exchange account to unlock the full signal board with reasoning and risk sizing.
-        </p>
-        <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+      <section className="x-card x-empty" data-testid="macro-signals-locked">
+        <span className="x-ic"><ILock /></span>
+        <b>TradeAI signals are for members</b>
+        <p>Entry, stop and target levels are computed on the server and never sent to non-members. Map a verified exchange account to unlock the full board with reasoning and risk sizing.</p>
+        <div className="mc-btns">
           {onRequestAccess && (
-            <button
-              type="button"
-              onClick={onRequestAccess}
-              className="btn px-4 py-2 text-[11px] tracking-[0.12em] uppercase bg-profit/15 text-profit border border-profit/30"
-              data-testid="macro-signals-request-access"
-            >
-              Request access
-            </button>
+            <button type="button" onClick={onRequestAccess} className="x-btn x-btn--hi" data-testid="macro-signals-request-access">Request access</button>
           )}
-          <button
-            type="button"
-            onClick={() => void load()}
-            className="px-4 py-2 text-[11px] tracking-[0.12em] uppercase text-fg-3 border border-border hover:text-fg rounded-[var(--radius-btn)]"
-          >
-            Re-check
-          </button>
+          <button type="button" onClick={() => void load()} className="x-btn">Check again</button>
         </div>
       </section>
     );
@@ -93,61 +60,40 @@ export default function SignalBoard({
 
   if (!signals?.length) {
     return (
-      <div className="tcard p-6 text-sm text-fg-3 text-center" data-testid="macro-signals-empty">
-        No signals this print — the engine holds when confluence is inconclusive. Check back after the next ingest.
+      <div className="x-card x-empty" data-testid="macro-signals-empty">
+        <span className="x-ic"><ISpark /></span>
+        <b>No signals this print</b>
+        <p>The engine holds when confluence is inconclusive. Check back after the next ingest.</p>
       </div>
     );
   }
 
   return (
-    <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-3 items-stretch" data-testid="macro-signals">
+    <div className="mc-sig" data-testid="macro-signals">
       {signals.map(s => {
         const conf = Math.max(0, Math.min(100, s.confidence));
         return (
-          <article key={`${s.asset}-${s.asOf}`} className="tcard p-4 flex flex-col h-full" data-testid={`macro-signal-${s.asset}`}>
-            <div className="flex items-center justify-between gap-2 shrink-0">
-              <span className="font-display font-black text-xl tracking-tight">{s.asset}</span>
-              <span className={`text-[10px] tracking-[0.16em] px-2.5 py-1 rounded border ${dirClass(s.direction)}`}>
-                {s.direction}
-              </span>
+          <article key={`${s.asset}-${s.asOf}`} className="x-card mc-sig-c" data-testid={`macro-signal-${s.asset}`}>
+            <div className="mc-sig-h">
+              <span className="x-sym"><span className="x-mk">{tickerMark(s.asset)}</span><b>{s.asset}</b></span>
+              {s.direction === 'WAIT' ? <span className="x-tag">Wait</span> : <SideChip dir={s.direction} />}
             </div>
-
-            <div className="mt-2 shrink-0">
-              <div className="flex items-center justify-between text-[9px] tracking-[0.14em] text-fg-3">
-                <span>CONFIDENCE</span>
-                <span className="numeric text-fg">{s.confidence}%</span>
-              </div>
-              <div className="mt-1 h-1 rounded-full bg-border-soft overflow-hidden">
-                <div className="h-full bg-fg-2" style={{ width: `${conf}%` }} />
-              </div>
+            <div className="mc-sig-conf">
+              <span>Confidence <b className="m">{s.confidence}%</b></span>
+              <div className="x-bar"><i style={{ width: `${conf}%` }} /></div>
             </div>
-
-            <div className="mt-3">
-              <Row label="Entry">{formatMacroNumber(s.entryLow)} – {formatMacroNumber(s.entryHigh)}</Row>
-              <Row label="Stop"><span className="text-loss">{formatMacroNumber(s.stop)}</span></Row>
-              <Row label="Targets">
-                <span className="text-profit">{formatMacroNumber(s.t1)}</span> / {formatMacroNumber(s.t2)} /{' '}
-                <span className="text-fg-2">{formatMacroNumber(s.t3)}</span>
-              </Row>
-              <Row label="1% Risk Size">{s.qty == null ? '—' : formatMacroNumber(s.qty)}</Row>
+            <div className="mc-rows mc-rows--sm">
+              <div className="mc-row"><span>Entry</span><b className="m">{formatMacroNumber(s.entryLow)} – {formatMacroNumber(s.entryHigh)}</b></div>
+              <div className="mc-row"><span>Stop</span><b className="m neg">{formatMacroNumber(s.stop)}</b></div>
+              <div className="mc-row"><span>Targets</span><b className="m"><span className="pos">{formatMacroNumber(s.t1)}</span> / {formatMacroNumber(s.t2)} / <span className="x-muted">{formatMacroNumber(s.t3)}</span></b></div>
+              <div className="mc-row"><span>1% risk size</span><b className="m">{s.qty == null ? '—' : formatMacroNumber(s.qty)}</b></div>
             </div>
-
-            <p className="text-[12px] text-fg-2 mt-3 leading-relaxed flex-1">{s.rationale}</p>
-            <p className="text-[11px] text-fg-3 mt-2">
-              <span className="text-fg-2">Invalidation:</span> {s.invalidation}
-            </p>
-
-            <div className="mt-auto pt-3 border-t border-border-soft flex items-center justify-between shrink-0">
-              <span className="text-[9px] tracking-[0.14em] text-fg-3">{s.engineVer}</span>
+            <p className="mc-sig-r">{s.rationale}</p>
+            <p className="mc-sig-i"><span>Invalidation</span> {s.invalidation}</p>
+            <div className="mc-sig-f">
+              <span className="m x-dim">{s.engineVer}</span>
               {onPaperFill && s.direction !== 'WAIT' && (
-                <button
-                  type="button"
-                  onClick={() => onPaperFill(s)}
-                  className="text-[11px] tracking-[0.12em] uppercase text-profit hover:underline"
-                  data-testid={`macro-paper-${s.asset}`}
-                >
-                  Paper fill @ mid →
-                </button>
+                <button type="button" onClick={() => onPaperFill(s)} className="x-btn x-btn--sm" data-testid={`macro-paper-${s.asset}`}>Paper fill at mid</button>
               )}
             </div>
           </article>

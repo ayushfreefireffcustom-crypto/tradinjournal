@@ -7,9 +7,9 @@
 // dynamically inside useEffect (SSR-safe). The parent drives indicators/drawings
 // through the imperative handle.
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import type { Chart, KLineData, DataLoader, Period, Styles, DeepPartial } from 'klinecharts';
+import type { Chart, KLineData, DataLoader, Period } from 'klinecharts';
 import { marketApi, streamCandles, type Candle, type MarketTimeframe } from '@/lib/market-api';
-import { Loader } from '@/components/loader';
+import { chartStyles, onThemeChange } from '@/components/v6/markets/chart-theme';
 
 export interface KlineChartHandle {
   createIndicator: (name: string) => void;
@@ -62,33 +62,6 @@ function derivePrecision(price: number): number {
   return 8;
 }
 
-// v5 black + signal-green theme (partial Styles — every field is optional).
-// Canvas-drawn, so colours are literal here rather than CSS variables.
-const V3_STYLES: DeepPartial<Styles> = {
-  grid: { horizontal: { color: '#161616', style: 'solid' }, vertical: { show: false } },
-  candle: {
-    bar: {
-      upColor: '#08C465', downColor: '#FE3A31',
-      upBorderColor: '#08C465', downBorderColor: '#FE3A31',
-      upWickColor: '#08C465', downWickColor: '#FE3A31',
-    },
-    priceMark: {
-      high: { color: '#6E6E76' }, low: { color: '#6E6E76' },
-      last: { upColor: '#08C465', downColor: '#FE3A31', line: { style: 'dashed', dashedValue: [4, 4] } },
-    },
-    // OHLC legend only while the crosshair is active — the pane header shows price.
-    tooltip: { showRule: 'follow_cross', showType: 'standard', title: { show: false }, legend: { color: '#A1A1AA' } },
-  },
-  indicator: { tooltip: { showRule: 'follow_cross', legend: { color: '#A1A1AA' } } },
-  xAxis: { axisLine: { color: '#1E1E1E' }, tickLine: { color: '#1E1E1E' }, tickText: { color: '#6E6E76', size: 11 } },
-  yAxis: { axisLine: { color: '#1E1E1E' }, tickLine: { color: '#1E1E1E' }, tickText: { color: '#6E6E76', size: 11 } },
-  separator: { color: '#1E1E1E' },
-  crosshair: {
-    horizontal: { line: { color: '#3A3A3A' }, text: { backgroundColor: '#F4F4F5', borderColor: '#F4F4F5', color: '#030303' } },
-    vertical: { line: { color: '#3A3A3A' }, text: { backgroundColor: '#F4F4F5', borderColor: '#F4F4F5', color: '#030303' } },
-  },
-};
-
 const BAR_LIMIT = 500;
 
 const KlineChart = forwardRef<KlineChartHandle, Props>(function KlineChart({ symbol, tf, accountId, onQuote }, ref) {
@@ -119,6 +92,7 @@ const KlineChart = forwardRef<KlineChartHandle, Props>(function KlineChart({ sym
   useEffect(() => {
     let disposed = false;
     let localChart: Chart | null = null;
+    let stopTheme = () => {};
 
     void (async () => {
       const { init } = await import('klinecharts');
@@ -127,7 +101,9 @@ const KlineChart = forwardRef<KlineChartHandle, Props>(function KlineChart({ sym
       if (!chart) return;
       localChart = chart;
       chartRef.current = chart;
-      chart.setStyles(V3_STYLES);
+      // Colours come from the v6 tokens and follow the light/dark toggle.
+      chart.setStyles(chartStyles(containerRef.current));
+      stopTheme = onThemeChange(() => { if (containerRef.current) chart.setStyles(chartStyles(containerRef.current)); });
       chart.setOffsetRightDistance(24);
       chart.setBarSpace(8);
 
@@ -195,6 +171,7 @@ const KlineChart = forwardRef<KlineChartHandle, Props>(function KlineChart({ sym
     const mountEl = containerRef.current;
     return () => {
       disposed = true;
+      stopTheme();
       liveUnsubRef.current?.();
       resizeObsRef.current?.disconnect();
       resizeObsRef.current = null;
@@ -218,13 +195,14 @@ const KlineChart = forwardRef<KlineChartHandle, Props>(function KlineChart({ sym
   }, [symbol, tf, accountId]);
 
   return (
-    <div className="relative w-full h-full" data-testid="kline-chart-wrap">
+    <div className="mk-kc" data-testid="kline-chart-wrap">
       {!ready && (
-        <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/70 pointer-events-none">
-          <Loader size={24} label="Loading chart" />
+        <div className="mk-kc-load" role="status" aria-live="polite">
+          <svg width="22" height="22" viewBox="0 0 24 24" className="x-spin" aria-hidden><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeOpacity=".16" strokeWidth="2.5" /><circle cx="12" cy="12" r="9" fill="none" stroke="var(--g)" strokeWidth="2.5" strokeLinecap="round" strokeDasharray="14 44" /></svg>
+          <span>Loading chart</span>
         </div>
       )}
-      <div ref={containerRef} className="w-full h-full" data-testid="kline-chart" />
+      <div ref={containerRef} className="mk-kc-canvas" data-testid="kline-chart" />
     </div>
   );
 });

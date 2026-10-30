@@ -24,32 +24,37 @@ export default function AlertsPanel({ activeSymbol, reloadToken, onNew }: { acti
   const activeN = alerts.filter(a => a.status === 'active').length;
 
   return (
-    <section className="v3-card ch-side" data-testid="alerts-panel" aria-labelledby="ch-al-t">
-      <div className="ch-side-hd">
-        <h3 id="ch-al-t">Alerts</h3>
-        {activeN > 0 ? <span className="v3-pill v num">{activeN} active</span> : onNew ? <button className="v3-link" onClick={onNew}>+ New</button> : null}
+    <section className="x-card mk-side" data-testid="alerts-panel" aria-labelledby="mk-al-t">
+      <div className="x-ch">
+        <h3 id="mk-al-t">Price alerts</h3>
+        {activeN > 0 && <span className="x-tag x-tag--g">{activeN} active</span>}
+        {onNew && <div className="x-r"><button className="x-btn x-btn--sm" onClick={onNew}>New alert</button></div>}
       </div>
-      <div className="ch-side-bd">
-        {loading ? Array.from({ length: 2 }).map((_, i) => <div key={i} className="skel d-sk" style={{ height: 58, margin: '4px 0' }} />)
-          : sorted.length === 0 ? <p className="ch-none">No alerts yet. Use the Alert button to get pinged at a price.</p>
-          : sorted.map(a => (
-            <div key={a.id} className={`ch-al ${a.status}`} data-testid={`alert-row-${a.id}`}>
-              <div className="t">
-                <b className="num">{a.symbol} {a.direction === 'above' ? '≥' : '≤'} {Number(a.threshold).toLocaleString('en-US', { maximumFractionDigits: 5 })}</b>
-                <span className="acts">
-                  <button onClick={() => toggle(a)} aria-label={a.status === 'active' ? 'Pause alert' : 'Resume alert'} title={a.status === 'active' ? 'Pause' : 'Resume'}>
+      <div className="mk-side-bd">
+        {loading ? Array.from({ length: 2 }).map((_, i) => <div key={i} className="x-skel x-skel--in mk-sk-row" />)
+          : sorted.length === 0 ? <p className="mk-none">No alerts yet. Get pinged when {activeSymbol} crosses a price.</p>
+          : sorted.map(a => {
+            const state = a.status === 'triggered' ? 'Triggered' : a.status === 'disabled' ? 'Paused' : a.recurring ? 'Recurring' : 'Once';
+            return (
+              <div key={a.id} className={`mk-al ${a.status}`} data-testid={`alert-row-${a.id}`}>
+                <span className={`x-dot ${a.status === 'active' ? '' : 'x-dot--off'}`} aria-hidden />
+                <div className="mk-al-m">
+                  <b><span>{a.symbol}</span> <span className="m">{a.direction === 'above' ? '≥' : '≤'} {Number(a.threshold).toLocaleString('en-US', { maximumFractionDigits: 5 })}</span></b>
+                  <small>{state}{a.note ? ` · ${a.note}` : ''}</small>
+                </div>
+                <span className="mk-al-acts">
+                  <button className="x-btn x-btn--ghost x-btn--icon x-btn--sm" onClick={() => toggle(a)} aria-label={a.status === 'active' ? 'Pause alert' : 'Resume alert'} title={a.status === 'active' ? 'Pause' : 'Resume'}>
                     {a.status === 'active'
-                      ? <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1" /><rect x="14" y="5" width="4" height="14" rx="1" /></svg>
-                      : <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M7 5l12 7-12 7z" /></svg>}
+                      ? <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1" /><rect x="14" y="5" width="4" height="14" rx="1" /></svg>
+                      : <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M7 5l12 7-12 7z" /></svg>}
                   </button>
-                  <button onClick={() => remove(a.id)} aria-label="Delete alert" title="Delete" className="del">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
+                  <button className="x-btn x-btn--ghost x-btn--icon x-btn--sm mk-del" onClick={() => remove(a.id)} aria-label="Delete alert" title="Delete">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
                   </button>
                 </span>
               </div>
-              <small>{a.status === 'triggered' ? 'Triggered' : a.status === 'disabled' ? 'Paused' : a.recurring ? 'Recurring' : 'Once'}{a.note ? ` · ${a.note}` : ''}</small>
-            </div>
-          ))}
+            );
+          })}
       </div>
     </section>
   );

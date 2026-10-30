@@ -82,8 +82,22 @@ function useDismiss(open: boolean, close: () => void) {
   return ref;
 }
 
+/** True below the phone breakpoint (so phone-only and desktop-only widgets mount once). */
+function usePhone() {
+  const [phone, setPhone] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 760px)');
+    const on = () => setPhone(mq.matches);
+    on();
+    mq.addEventListener('change', on);
+    return () => mq.removeEventListener('change', on);
+  }, []);
+  return phone;
+}
+
 export default function Frame(p: Props) {
   const [theme, toggleTheme] = useTheme();
+  const phone = usePhone();
   const [more, setMore] = useState(false);
   const closeMore = useCallback(() => setMore(false), []);
   useEffect(() => { setMore(false); }, [p.activeHref]);
@@ -142,7 +156,7 @@ export default function Frame(p: Props) {
               <button className="f-ib" onClick={toggleTheme} aria-label={theme === 'light' ? 'Switch to dark theme' : 'Switch to light theme'}>
                 {theme === 'light' ? <ISunIcon /> : <IMoonIcon />}
               </button>
-              <span className="f-bell"><NotificationBell /></span>
+              {phone && <span className="f-bell"><NotificationBell /></span>}
             </div>
           </div>
           <div className="f-tools">
@@ -156,7 +170,7 @@ export default function Frame(p: Props) {
             <button className="f-ib f-dtool" onClick={toggleTheme} aria-label={theme === 'light' ? 'Switch to dark theme' : 'Switch to light theme'} data-testid="theme-toggle">
               {theme === 'light' ? <ISunIcon /> : <IMoonIcon />}
             </button>
-            <span className="f-bell f-dtool"><NotificationBell /></span>
+            {!phone && <span className="f-bell f-dtool"><NotificationBell /></span>}
           </div>
         </header>
 
