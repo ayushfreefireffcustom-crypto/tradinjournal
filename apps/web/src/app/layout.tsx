@@ -20,6 +20,8 @@ const inter = Inter({
 const serif = Instrument_Serif({ subsets: ['latin'], weight: '400', style: ['normal', 'italic'], variable: '--font-v5-serif', display: 'swap' });
 const mono = JetBrains_Mono({ subsets: ['latin'], weight: ['400', '500'], variable: '--font-v5-mono', display: 'swap' });
 
+const THEME_SCRIPT = `(function(){var t='dark';try{var q=new URLSearchParams(location.search).get('theme');var s=localStorage.getItem('tl-theme');t=q==='light'||q==='dark'?q:s==='light'?'light':'dark';}catch(e){}document.documentElement.dataset.theme=t;})();`;
+
 export const metadata: Metadata = {
   title: 'TRADElogs // Tactical Trade Journal',
   description: 'Behavioural analytics & trade journaling for MT5 forex traders. Read your edge in raw, technical clarity.',
@@ -27,8 +29,10 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`dark ${inter.variable} ${serif.variable} ${mono.variable}`}>
+    <html lang="en" className={`dark ${inter.variable} ${serif.variable} ${mono.variable}`} suppressHydrationWarning>
       <head>
+        {/* v6 theme before first paint: ?theme= wins, then the saved choice, else dark. */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
         {/* Satoshi — the v3 product typeface (Fontshare, free for commercial use). */}
         <link rel="preconnect" href="https://api.fontshare.com" />
         <link rel="preconnect" href="https://cdn.fontshare.com" crossOrigin="" />

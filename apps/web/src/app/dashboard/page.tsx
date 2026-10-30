@@ -2,21 +2,24 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { api, type BrokerAccount, type AccountStats, type Trade, type JournalEntry } from '@/lib/api';
-import { statsForRange, rangeStart, RANGES, type RangeKey } from '@/lib/stats';
+import { statsForRange, rangeStart, type RangeKey } from '@/lib/stats';
 import { buildInsights } from '@/lib/insights';
 import { useAccounts } from '@/lib/use-accounts';
 import { authClient } from '@/lib/auth-client';
-import AppShell, { timeAgo } from '@/components/app-shell';
+import AppShell from '@/components/app-shell';
 import ConnectBrokerModal from '@/components/connect-broker-modal';
 import { useToast } from '@/components/toast';
-import AiReportCard from '@/components/ai-report-card';
-import { IPlus, ISync } from '@/components/v3/icons';
 import {
-  HeroPnl, ReviewCard, KpiStrip, InsightList, MonthCalendar, RecentTrades, BehaviourCard, DayBars, Instruments, HourBars,
-} from '@/components/v3/dashboard-parts';
+  CoachReview, DashSkeleton, EdgeCard, HelloCard, PerformanceCard, RangeMenu, WeekCard,
+} from '@/components/v6/dashboard';
 
-const NEGATIVE_EMOTIONS = ['FOMO', 'Revenge', 'Hesitant'];
-const RANGE_LABEL: Record<RangeKey, string> = { '1W': 'last 7 days', '1M': 'last 30 days', '3M': 'last 3 months', '1Y': 'last 12 months', ALL: 'all time' };
+const RANGE_OPTIONS: { key: RangeKey; label: string; short: string }[] = [
+  { key: '1W', label: 'Last 7 days', short: '7D' },
+  { key: '1M', label: 'Last 30 days', short: '30D' },
+  { key: '3M', label: 'Last 3 months', short: '3M' },
+  { key: '1Y', label: 'Last 12 months', short: '1Y' },
+  { key: 'ALL', label: 'All time', short: 'All' },
+];
 
 function greeting() {
   const h = new Date().getHours();
@@ -33,6 +36,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [syncedAt, setSyncedAt] = useState<string | null>(null);
   const [, tick] = useState(0);
+  const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState('');
   const [showConnect, setShowConnect] = useState(false);
   const toast = useToast();
@@ -49,6 +53,7 @@ export default function DashboardPage() {
 
   const loadStats = useCallback(async (acc: BrokerAccount, notify = false) => {
     setLoading(true);
+    if (notify) setSyncing(true);
     setError('');
     try {
       // Manual "Sync" pulls new deals from MT5 first; normal loads read stored data
@@ -69,7 +74,7 @@ export default function DashboardPage() {
       const msg = err instanceof Error ? err.message : 'Failed to load account data';
       setError(msg);
       if (notify) toast.error(`Sync failed · ${msg}`);
-    } finally { setLoading(false); }
+    } finally { setLoading(false); setSyncing(false); }
   }, [toast]);
   // No account (brand-new user): stop loading once accounts settle.
   useEffect(() => {
@@ -79,24 +84,6 @@ export default function DashboardPage() {
   // Keep "Synced X ago" fresh.
   useEffect(() => { const id = setInterval(() => tick(n => n + 1), 30_000); return () => clearInterval(id); }, []);
 
-  const behaviour = useMemo(() => {
-    const winners = rangedTrades.filter(t => t.netPnl > 0);
-    const losers = rangedTrades.filter(t => t.netPnl <= 0);
-    const avgHold = (arr: Trade[]) => {
-      const d = arr.filter(t => t.durationSecs != null);
-      return d.length ? d.reduce((s, t) => s + (t.durationSecs ?? 0), 0) / d.length : null;
-    };
-    let streak = 0;
-    let streakWin: boolean | null = null;
-    for (const t of rangedTrades) {
-      const win = t.netPnl > 0;
-      if (streakWin === null) { streakWin = win; streak = 1; } else if (win === streakWin) streak++; else break;
-    }
-    const logged = journal.filter(e => e.emotion && (!e.tradeId || rangedTradeIds.has(e.tradeId)));
-    const tilt = logged.filter(e => NEGATIVE_EMOTIONS.includes(e.emotion!)).length;
-    return { winnersHold: avgHold(winners), losersHold: avgHold(losers), streak, streakWin, tilt, loggedCount: logged.length };
-  }, [rangedTrades, rangedTradeIds, journal]);
-
   function onConnected(account: BrokerAccount) {
     setAccounts(prev => (prev.some(a => a.id === account.id) ? prev.map(a => (a.id === account.id ? account : a)) : [account, ...prev]));
     select(account);
@@ -104,82 +91,33 @@ export default function DashboardPage() {
   }
 
   const first = (session?.user?.name ?? '').trim().split(/\s+/)[0] || 'trader';
-  const atLimit = accounts.length >= 2;
-
-  const rangeSeg = (where: 'top' | 'page') => (
-    <div className={`v3-seg d-range d-range--${where}`} role="group" aria-label="Date range" data-testid={where === 'top' ? 'range-selector' : 'range-selector-m'}>
-      {RANGES.map(r => (
-        <button key={r} aria-pressed={range === r} onClick={() => setRange(r)} data-testid={where === 'top' ? `range-${r}` : undefined}>{r === 'ALL' ? 'All' : r}</button>
-      ))}
-    </div>
-  );
-
-  const actions = (
-    <>
-      {rangeSeg('top')}
-      {syncedAt && <span className="d-synced">Synced {timeAgo(syncedAt).toLowerCase()}</span>}
-      <button className="v3-btn v3-btn--o d-sync" onClick={() => selected && loadStats(selected, true)} disabled={loading || !selected} aria-busy={loading} data-testid="header-sync-now">
-        <ISync size={16} className={loading ? 'spin' : undefined} /><span>{loading ? 'Syncing' : 'Sync'}</span>
-      </button>
-      <button className="v3-btn v3-btn--ink d-add" onClick={() => setShowConnect(true)} disabled={atLimit}
-        title={atLimit ? 'Account limit reached — remove one in Brokers' : undefined} data-testid="header-add-broker">
-        <span>Add broker</span><span className="ar"><IPlus size={14} /></span>
-      </button>
-    </>
-  );
+  const rangeLabel = RANGE_OPTIONS.find(o => o.key === range)!.label;
+  const hasTrades = !!view && view.totalTrades > 0;
 
   return (
-    <AppShell accounts={accounts} selectedAccount={selected} onSelectAccount={select} onConnectClick={() => setShowConnect(true)} pageTitle="Dashboard" actions={actions}>
-      <div className="v3-page" data-testid="dashboard-page">
-        <header className="d-head">
-          <h1 className="v3-h1"><b>{greeting()}, {first}.</b> Here&rsquo;s how your trading is <em>really</em> going.</h1>
-          <p className="v3-sub">
-            {selected ? `${selected.broker} · ` : ''}
-            {view ? `${view.totalTrades} closed trade${view.totalTrades === 1 ? '' : 's'} · ${RANGE_LABEL[range]}` : loading ? 'Loading your account…' : error ? 'Stats unavailable' : selected ? 'No closed trades yet' : 'No broker connected yet'}
-          </p>
-          {rangeSeg('page')}
-        </header>
-
+    <AppShell frame="v6" accounts={accounts} selectedAccount={selected} onSelectAccount={select} onConnectClick={() => setShowConnect(true)}
+      pageTitle="Dashboard" onSync={() => selected && loadStats(selected, true)} syncing={syncing} syncedAt={syncedAt}
+      actions={selected ? <RangeMenu value={range} options={RANGE_OPTIONS} onChange={setRange} /> : null}>
+      <div data-testid="dashboard-page">
         {error && (
-          <div className="d-err" role="alert" data-testid="dashboard-error">
+          <div className="x-err" role="alert" data-testid="dashboard-error">
             <span>{error}</span>
-            <button className="v3-btn v3-btn--o" onClick={() => selected && loadStats(selected)}>Retry</button>
+            <button className="x-btn" onClick={() => selected && loadStats(selected)}>Retry</button>
           </div>
         )}
 
-        {!selected && !accountsLoading ? (
-          <section className="v3-card d-empty d-empty--lg" data-testid="dashboard-empty">
-            <b>Connect your MT5 account</b>
-            Your trades sync automatically and your dashboard fills in within a minute.
-            <button className="v3-btn v3-btn--ink" style={{ marginTop: 18 }} onClick={() => setShowConnect(true)}><span>Connect MT5</span><span className="ar"><IPlus size={14} /></span></button>
-          </section>
-        ) : !view && error ? null : !view ? (
-          <div className="d-grid">
-            <div className="skel d-sk" style={{ height: 150, borderRadius: 20 }} />
-            <div className="d-grid d-r1"><div className="skel d-sk" style={{ height: 420, borderRadius: 22 }} /><div className="skel d-sk" style={{ height: 420, borderRadius: 22 }} /></div>
-            <div className="d-grid d-r3"><div className="skel d-sk" style={{ height: 420, borderRadius: 20 }} /><div className="skel d-sk" style={{ height: 420, borderRadius: 20 }} /></div>
-          </div>
-        ) : (
-          <div className="d-grid">
-            <KpiStrip view={view} />
-            <div className="d-grid d-r1">
-              <HeroPnl view={view} trades={rangedTrades} />
-              <ReviewCard view={view} insights={insights} rangeLabel={RANGE_LABEL[range][0]!.toUpperCase() + RANGE_LABEL[range].slice(1)} />
-            </div>
-            <div className="d-grid d-r3">
-              <BehaviourCard b={behaviour} runs={{ win: view.maxWinStreak, loss: view.maxLossStreak }} />
-              <InsightList insights={insights} />
-              <MonthCalendar trades={rangedTrades} />
-            </div>
-            <AiReportCard accountId={selected?.id ?? null} />
-            <div className="d-grid d-r5">
-              <Instruments data={view.bySymbol} />
-              <HourBars trades={rangedTrades} />
-            </div>
-            <div className="d-grid d-r4">
-              <RecentTrades trades={rangedTrades.slice(0, 6)} total={rangedTrades.length} loading={loading && !rangedTrades.length} />
-              <DayBars data={view.byDay} />
-            </div>
+        {selected && !view && !error ? <DashSkeleton /> : (
+          <div className="x-grid">
+            <HelloCard wide={!hasTrades} greeting={greeting()} name={first} account={selected} view={view} trades={trades} journal={journal}
+              rangeLabel={rangeLabel} onConnect={() => setShowConnect(true)} />
+            {hasTrades && view && selected && (
+              <>
+                <WeekCard trades={trades} insight={insights[0] ?? null} />
+                <EdgeCard trades={rangedTrades} rangeLabel={rangeLabel} />
+                <PerformanceCard view={view} trades={rangedTrades} broker={selected.broker} rangeLabel={rangeLabel} />
+                <CoachReview accountId={selected.id} />
+              </>
+            )}
           </div>
         )}
       </div>

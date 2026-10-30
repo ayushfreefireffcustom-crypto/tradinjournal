@@ -1,0 +1,98 @@
+/* v6 design tokens. Dark is the default; `html[data-theme=light]` swaps the
+   palette (set before paint by the script in app/layout.tsx). Scoped to `.v6`
+   so pages still on the v3/v5 stylesheets are untouched while they migrate. */
+.v6 {
+  --page: #0A0A0A;
+  --frame: #161616;
+  --c1: #1F1F1F;
+  --c2: #282828;
+  --c3: #313131;
+  --line: rgba(255, 255, 255, .07);
+  --line-2: rgba(255, 255, 255, .12);
+  --tx: #ECECEC;
+  --mut: #A3A3A3;
+  --dim: #6E6E6E;
+  --g: #08C465;
+  --on-g: #06150C;
+  --g-soft: rgba(8, 196, 101, .14);
+  --r: #FE3A31;
+  --r-soft: rgba(254, 58, 49, .14);
+  --btn: #2E2E2E;
+  --btn-hover: #383838;
+  --btn-on-c2: #383838;
+  --btn-hi: #F2F2F2;
+  --btn-hi-tx: #111111;
+  --rail-on: #F2F2F2;
+  --rail-on-tx: #111111;
+  --track: #3A3A3A;
+  --pop: #2A2A2A;
+  --pop-shadow: 0 18px 40px -12px rgba(0, 0, 0, .6);
+  --focus: 0 0 0 2px var(--frame), 0 0 0 4px var(--g);
+
+  /* "Screens" (chart monitors) stay dark in both themes. */
+  --scr: #0D0D0D;
+  --scr-line: rgba(255, 255, 255, .06);
+  --scr-cap: #8B8B8B;
+  --scr-axis: rgba(255, 255, 255, .12);
+  --scr-tx: #7E7E7E;
+  --scr-hi: #D6D6D6;
+  --scr-mid: #8A8A8A;
+  --scr-lo: #4C4C4C;
+  --scr-g: #08C465;
+  --scr-r: #E5534B;
+
+  --r-xl: 28px;
+  --r-lg: 20px;
+  --r-md: 16px;
+  --r-sm: 12px;
+  --r-pill: 999px;
+
+  --fs-12: 12px; --fs-13: 13px; --fs-14: 14px; --fs-15: 15px; --fs-17: 17px; --fs-19: 19px; --fs-27: 27px; --fs-40: 40px;
+  --sans: Satoshi, ui-sans-serif, system-ui, sans-serif;
+  --mono: var(--font-v5-mono), "JetBrains Mono", ui-monospace, monospace;
+  --ease: cubic-bezier(.2, .7, .2, 1);
+  --t-fast: .15s;
+  --t-med: .25s;
+
+  color-scheme: dark;
+}
+
+html[data-theme=light] .v6 {
+  --page: #E4E4E7;
+  --frame: #F1F1F3;
+  --c1: #FFFFFF;
+  --c2: #F4F4F6;
+  --c3: #EAEAED;
+  --line: rgba(0, 0, 0, .07);
+  --line-2: rgba(0, 0, 0, .12);
+  --tx: #121212;
+  --mut: #5F5F66;
+  --dim: #8E8E95;
+  --g: #06A957;
+  --on-g: #FFFFFF;
+  --g-soft: rgba(6, 169, 87, .12);
+  --r: #DE3027;
+  --r-soft: rgba(222, 48, 39, .1);
+  --btn: #EDEDF0;
+  --btn-hover: #E4E4E8;
+  --btn-on-c2: #E6E6EA;
+  --btn-hi: #121212;
+  --btn-hi-tx: #FFFFFF;
+  --rail-on: #121212;
+  --rail-on-tx: #FFFFFF;
+  --track: #E2E2E6;
+  --pop: #FFFFFF;
+  --pop-shadow: 0 18px 40px -14px rgba(0, 0, 0, .22), 0 0 0 1px rgba(0, 0, 0, .06);
+  color-scheme: light;
+}
+
+.v6 .num { font-family: var(--mono); font-feature-settings: "tnum"; letter-spacing: -.01em; }
+.v6 .pos { color: var(--g); }
+.v6 .neg { color: var(--r); }
+.v6 ::selection { background: var(--g); color: var(--on-g); }
+.v6 :focus-visible { outline: none; box-shadow: var(--focus); }
+.v6 * { scrollbar-color: var(--c3) transparent; }
+
+@media (prefers-reduced-motion: reduce) {
+  .v6 *, .v6 *::before, .v6 *::after { transition-duration: 0s !important; animation-duration: 0s !important; }
+}

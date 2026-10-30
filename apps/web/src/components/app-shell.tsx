@@ -19,6 +19,7 @@ import '@/styles/app-v3.css';
 import '@/styles/app-v5-auto.css';
 import '@/styles/app-v5.css';
 import Logo from '@/components/logo';
+import Frame from '@/components/v6/frame';
 
 interface Props {
   children: ReactNode;
@@ -36,6 +37,12 @@ interface Props {
   actions?: ReactNode;
   /** 'v5' (default) = the black + signal-green theme; 'v3' = legacy light theme. */
   theme?: 'v5' | 'v3';
+  /** 'v6' = the new rail-in-pill frame with dark/light themes (pages opt in as they migrate). */
+  frame?: 'v6';
+  /** v6 account menu: manual sync. */
+  onSync?: () => void;
+  syncing?: boolean;
+  syncedAt?: string | null;
 }
 
 type NavItem = { href: string; label: string; icon: (p: { size?: number }) => ReactNode; badge?: string };
@@ -93,6 +100,7 @@ const initials = (broker: string) => broker.replace(/[^A-Za-z ]/g, '').split(/\s
 
 export default function AppShell({
   children, accounts = [], selectedAccount, onSelectAccount, onConnectClick, pageTitle, crumbParent, actions, theme,
+  frame, onSync, syncing, syncedAt,
 }: Props) {
   const tv = theme === 'v3' ? '' : ' v5';
   const pathname = usePathname();
@@ -158,6 +166,28 @@ export default function AppShell({
   const user = session?.user;
   const sel = selectedAccount ?? accounts[0] ?? null;
   const connected = sel ? /CONNECT|ACTIVE|OK/i.test(sel.status) : false;
+
+  const palette = cmdk && (
+    <CommandPalette onClose={() => setCmdk(false)} onGo={href => { setCmdk(false); router.push(href); }} isAdmin={!!accessStatus?.isAdmin} isPartner={accessStatus?.partnerStatus === 'ACTIVE'} />
+  );
+
+  if (frame === 'v6') {
+    return (
+      <>
+        <UsageTracker />
+        <LocationGate />
+        <Frame
+          activeHref={current?.href} pageTitle={pageTitle ?? current?.label ?? ''} user={user} isAdmin={!!accessStatus?.isAdmin}
+          accounts={accounts} selected={sel} onSelectAccount={onSelectAccount} onConnectClick={onConnectClick}
+          onSync={onSync} syncing={syncing} syncedLabel={syncedAt ? `Synced ${timeAgo(syncedAt)}` : sel?.lastSyncAt ? `Synced ${timeAgo(sel.lastSyncAt)}` : null}
+          actions={actions} onOpenSearch={() => setCmdk(true)} onSignOut={() => authClient.signOut()}
+        >
+          {children}
+        </Frame>
+        {palette}
+      </>
+    );
+  }
 
   return (
     <div className={`v3${tv} v3-shell`} data-testid="app-shell">
@@ -250,7 +280,7 @@ export default function AppShell({
         <main className="v3-scroll">{children}</main>
       </div>
 
-      {cmdk && <CommandPalette onClose={() => setCmdk(false)} onGo={href => { setCmdk(false); router.push(href); }} isAdmin={!!accessStatus?.isAdmin} isPartner={accessStatus?.partnerStatus === 'ACTIVE'} />}
+      {palette}
     </div>
   );
 }
@@ -274,7 +304,7 @@ function CommandPalette({ onClose, onGo, isAdmin, isPartner }: { onClose: () => 
   }, [q, isAdmin, isPartner]);
   useEffect(() => { setI(0); }, [q]);
   return (
-    <div className="v3 v3-cmdk-scrim" onMouseDown={onClose}>
+    <div className="v3 v5 v3-cmdk-scrim" onMouseDown={onClose}>
       <div className="v3-cmdk" role="dialog" aria-label="Jump to a page" onMouseDown={e => e.stopPropagation()}>
         <input autoFocus placeholder="Jump to a page…" value={q} onChange={e => setQ(e.target.value)}
           onKeyDown={e => {

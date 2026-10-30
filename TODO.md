@@ -43,7 +43,7 @@ Legend:
 
 ## A1. Design foundation (v6 tokens)
 - [x] A1.1 Create branch `feat/ui-v6` from `main` `S`
-- [ ] A1.2 Write `apps/web/src/styles/tokens.css` with the tokens from the UI report `S`:
+- [x] A1.2 Write `apps/web/src/styles/tokens.css` with the tokens from the UI report `S`: — done 30 Oct as `styles/v6/tokens.css`, scoped to `.v6` (dark default, `html[data-theme=light]` overrides; theme set before paint in `app/layout.tsx`)
   - canvas `#0B0B0C`
   - surface-1 `#151517`
   - surface-2 `#1C1C1F`
@@ -56,11 +56,11 @@ Legend:
   - motion durations
 - [ ] A1.3 Add the type scale as tokens: 12 / 13 / 14 / 15 / 18 / 22 / 32 / 44 / 56; line-heights; letter-spacing −0.02/−0.03 for headings `S`
 - [ ] A1.4 Confirm which fonts are already loaded (`app/layout.tsx`) and keep one sans + JetBrains Mono. Remove unused font loads `S`
-- [ ] A1.5 `.num` utility: mono, `tabular-nums`, used for every price, P&L, count and time `S`
+- [x] A1.5 `.num` utility: mono, `tabular-nums`, used for every price, P&L, count and time `S` — `.v6 .num`
 - [ ] A1.6 P&L colour helpers: `.pos`/`.neg`/`.flat`, plus a JS `pnlClass(n)` in one shared file `S`
 - [ ] A1.7 Number formatters in one module: `fmtUsd`, `fmtPct`, `fmtNum`, `fmtCompact`, `fmtDuration`, `fmtUnknown` ("—"). Replace the duplicates found by grep `M`
-- [ ] A1.8 Dark scrollbars, selection colour, focus-ring token (green 2px offset) `S`
-- [ ] A1.9 `prefers-reduced-motion` handling in the tokens file `S`
+- [x] A1.8 Dark scrollbars, selection colour, focus-ring token (green 2px offset) `S` — v6 scope only
+- [x] A1.9 `prefers-reduced-motion` handling in the tokens file `S`
 - [ ] A1.10 Plan how to retire `styles/app-v5-auto.css` (an auto-generated recolour of v3): list every class it covers that is still used `S`
 - [ ] A1.11 Decide the final CSS structure: `tokens.css` + `components.css` + per-feature CSS. Document it in `apps/web/src/styles/README.md` `S`
 
@@ -96,6 +96,9 @@ Legend:
 - [ ] A2.29 Unit tests for formatters + `pnlClass`; a render smoke test for each primitive `S`
 
 ## A3. App shell
+- [x] A3.0 v6 frame (`components/v6/frame.tsx`) behind `AppShell frame="v6"`: icon rail in a pill, top-bar pills, phone tab bar. Dashboard uses it (30 Oct) `M`
+- [ ] A3.0b Move every other page onto `frame="v6"` (one PR per page group), then make it the default `M`
+- [ ] A3.0c Light theme for portalled UI (connect-broker modal, toasts, ⌘K palette still render dark) `S`
 - [ ] A3.1 Rebuild `components/app-shell.tsx` on the new primitives. Keep the props API (`accounts`, `selectedAccount`, `pageTitle`, `actions`…) `M`
 - [ ] A3.2 Sidebar `M`:
   - groups (Journal / Markets / AI / Account)
@@ -103,8 +106,8 @@ Legend:
   - consistent line icons
   - collapsible to an icon rail
   - "New" badges only where true
-- [ ] A3.3 Account switcher moved into the top bar as an `AccountPill`. The sidebar account card is removed `S`
-- [ ] A3.4 Top bar `S`:
+- [x] A3.3 Account switcher moved into the top bar as an `AccountPill`. The sidebar account card is removed `S` — v6 frame: account pill with accounts, Sync now, Add/Manage brokers
+- [x] A3.4 Top bar `S`: — v6 frame: search pill, range menu slot, account pill, theme toggle, bell, avatar menu; sync status lives in the account menu
   - breadcrumb/title
   - ⌘K search pill
   - range control slot
@@ -112,7 +115,7 @@ Legend:
   - primary action
   - bell
   - avatar menu
-- [ ] A3.5 Mobile `M`:
+- [x] A3.5 Mobile `M`: — v6 frame: bottom tab bar (Dashboard, Trade log, Chart replay, Coach, More sheet); no sideways scroll at 360/390
   - top bar + bottom tab bar (5 key destinations) or a drawer; pick the one that tests better at 390px
   - no horizontal scroll anywhere
 - [ ] A3.6 Sidebar footer: user + plan + sign out. Remove the duplicate sync card `S`
@@ -666,17 +669,17 @@ Legend:
 ## A4. Pages (from `reports/ui-audit.md` §3; H = high, M = medium, L = low severity)
 
 ### A4.1 `/dashboard`: `app/dashboard/page.tsx`, `components/v3/dashboard-parts.tsx`, `components/ai-report-card.tsx`
-- [ ] H: cut to the approved layout (A0.D3); 11 cards today `M`
-- [ ] H: merge the three AI surfaces (Your review + What your trades say + Coach review) into one card. Make sure they can't contradict each other (one source of truth for "weakest day") `M`
-- [ ] H: Drawdown tab line + fill red `S`
-- [ ] H: P&L by day: labels attached to the bars, y-axis; or move it to Analytics per A0.D3 `S`
-- [ ] M: remove serif "really"; "One thing to fix" box → a plain sentence inside the AI card `S`
-- [ ] M: topbar: range control + sync line + one action (A3.4); fix the disabled "Add broker" look `S`
-- [ ] M: KPI tiles → `Stat` × 4 (no split bar on avg win/loss; show R:R as text) `S`
+- [x] H: cut to the approved layout (A0.D3); 11 cards today `M` — v6 dashboard: greeting + weekly review, this week, your edge, performance, coach review
+- [x] H: merge the three AI surfaces (Your review + What your trades say + Coach review) into one card. Make sure they can't contradict each other (one source of truth for "weakest day") `M` — one Coach review card; the week note uses the rule-based insight
+- [x] H: Drawdown tab line + fill red `S` — tab removed; the equity screen turns red when the range is down
+- [x] H: P&L by day: labels attached to the bars, y-axis; or move it to Analytics per A0.D3 `S` — moved off the dashboard (A0.D3)
+- [x] M: remove serif "really"; "One thing to fix" box → a plain sentence inside the AI card `S`
+- [x] M: topbar: range control + sync line + one action (A3.4); fix the disabled "Add broker" look `S`
+- [x] M: KPI tiles → `Stat` × 4 (no split bar on avg win/loss; show R:R as text) `S` — performance strip: profit factor, expectancy, max drawdown
 - [ ] M: hero card: one tab style (Segmented, white active), dark tooltip, no "Start $25,000" overlap `S`
 - [ ] M: month calendar: Monday start (match /calendar after A4.5), readable amounts ≥ 12px, tint only (no coloured borders) `S`
-- [ ] M: recent trades: `SymbolMark`, `SideChip`, sentence-case head, P&L padding on mobile `S`
-- [ ] M: behaviour card simplified (one ring or one bar, no W/L soup), or moved to Analytics `S`
+- [x] M: recent trades: `SymbolMark`, `SideChip`, sentence-case head, P&L padding on mobile `S` — latest 3 trades with side, hold time, P&L; links to the trade
+- [x] M: behaviour card simplified (one ring or one bar, no W/L soup), or moved to Analytics `S` — moved off the dashboard
 - [ ] M: empty dashboard:
   - greeting for new users
   - no "+$0.00 ▲"
@@ -688,7 +691,7 @@ Legend:
   - footer link to inbox
   - badge stays while open
   - `S`
-- [ ] M: account menu pushes nav down (or becomes the top-bar AccountPill per A3.3); one "Add broker" state `S`
+- [x] M: account menu pushes nav down (or becomes the top-bar AccountPill per A3.3); one "Add broker" state `S` — account pill in the top bar
 - [ ] L: ⌘K list fade at the bottom, group header once `S`
 - [ ] L: mobile KPI orphan (A0.31) `S`
 
