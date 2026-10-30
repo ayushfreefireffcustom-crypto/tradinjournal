@@ -21,12 +21,24 @@
     }
   }
   trades.sort((a, b) => a.close - b.close);
+  // Prices, market type and journal tags on a separate seed so the P&L above stays identical across mocks.
+  let s2 = 7; const r2 = () => (s2 = (s2 * 16807) % 2147483647) / 2147483647;
+  const BASE = { XAUUSD: [2650, 2, 'Metal'], NAS100: [20800, 1, 'Index'], EURUSD: [1.082, 5, 'FX'], GBPJPY: [193.4, 3, 'FX'], US30: [42100, 0, 'Index'], BTCUSD: [68000, 0, 'Crypto'] };
+  const TAGS = [['Followed plan', 'g'], ['A+ setup', 'g'], ['Patient', 'g'], ['FOMO', 'r'], ['Moved stop', 'r'], ['Early exit', 'n'], ['News', 'n']];
+  for (const t of trades) {
+    const [b, dp, kind] = BASE[t.sym]; const entry = b * (1 + (r2() - .5) * .06); const mv = b * (0.002 + r2() * .006) * (t.pnl > 0 ? 1 : -1) * (t.side === 'Long' ? 1 : -1);
+    t.entry = +entry.toFixed(dp); t.exit = +(entry + mv).toFixed(dp); t.dp = dp; t.kind = kind;
+    t.tags = t.journaled ? [TAGS[Math.floor(r2() * TAGS.length)]].concat(r2() < .35 ? [TAGS[Math.floor(r2() * TAGS.length)]] : []).filter((x, i, a) => a.findIndex(y => y[0] === x[0]) === i) : [];
+    if (t.pnl > 0) t.tags = t.tags.filter(x => x[1] !== 'r');
+    if (t.journaled && !t.tags.length) t.tags = [['Followed plan', 'g']];
+    if (t.journaled && t.pnl < -150 && r2() < .6) t.tags = [['Moved stop', 'r']];
+  }
   let eq = START, peak = START, maxDD = 0; const equity = [{ t: trades[0].open, v: START, dd: 0 }];
   for (const t of trades) { eq += t.pnl; peak = Math.max(peak, eq); const dd = (peak - eq) / peak; maxDD = Math.max(maxDD, dd); equity.push({ t: t.close, v: eq, dd }); }
   const wins = trades.filter(t => t.pnl > 0), losses = trades.filter(t => t.pnl <= 0);
   const sum = a => a.reduce((x, t) => x + t.pnl, 0);
   const daily = {}; for (const t of trades) { const k = t.close.toISOString().slice(0, 10); (daily[k] ??= { pnl: 0, n: 0 }); daily[k].pnl += t.pnl; daily[k].n++; }
-  const bySym = SYMS.map(([sym]) => { const a = trades.filter(t => t.sym === sym); return { sym, n: a.length, net: sum(a), wr: a.filter(t => t.pnl > 0).length / (a.length || 1) }; }).sort((a, b) => b.net - a.net);
+  const bySym = SYMS.map(([sym]) => { const a = trades.filter(t => t.sym === sym); const w = a.filter(t => t.pnl > 0); return { sym, kind: a[0]?.kind, n: a.length, net: sum(a), gw: sum(w), gl: -sum(a.filter(t => t.pnl <= 0)), wr: w.length / (a.length || 1) }; }).sort((a, b) => b.net - a.net);
   const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].map((d, i) => { const a = trades.filter(t => t.close.getDay() === i + 1); return { d, n: a.length, net: sum(a) }; });
   const hold = a => a.reduce((x, t) => x + t.hold, 0) / (a.length || 1);
   window.SAMPLE = {

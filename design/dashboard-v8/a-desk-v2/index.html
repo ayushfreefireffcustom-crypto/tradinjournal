@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dashboard · Desk v2</title>
+<script>(function(){var t='dark';try{var q=new URLSearchParams(location.search).get('theme');t=q||localStorage.getItem('tl-theme')||'dark'}catch(e){}document.documentElement.dataset.theme=t})();</script>
+<link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="../data.js"></script>
+<style>
+:root{--bg:#0A0A0A;--s1:#131313;--s2:#1A1A1A;--s3:#232323;--s4:#2C2C2C;--line:rgba(255,255,255,.07);--line2:rgba(255,255,255,.13);--tx:#EDEDED;--mut:#9A9A9A;--dim:#5E5E5E;
+  --g:#08C465;--r:#FE3A31;--gs:rgba(8,196,101,.13);--rs:rgba(254,58,49,.13);--inv:#0A0A0A;--hi:#EDEDED;--tip:#262626;--grid:rgba(255,255,255,.06);--axis:#666;--track:#262626;--shadow:none}
+:root[data-theme=light]{--bg:#F1F1F3;--s1:#FFFFFF;--s2:#F6F6F8;--s3:#EEEEF1;--s4:#E6E6EA;--line:rgba(0,0,0,.07);--line2:rgba(0,0,0,.12);--tx:#111113;--mut:#64646B;--dim:#9C9CA3;
+  --g:#05A656;--r:#E0342B;--gs:rgba(5,166,86,.11);--rs:rgba(224,52,43,.1);--inv:#FFFFFF;--hi:#111113;--tip:#111113;--grid:rgba(0,0,0,.06);--axis:#9C9CA3;--track:#ECECEF;--shadow:0 1px 2px rgba(0,0,0,.04),0 0 0 1px rgba(0,0,0,.04)}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg)}
+body{color:var(--tx);font:400 14px/1.45 Satoshi,system-ui,sans-serif;-webkit-font-smoothing:antialiased;transition:background .2s}
+.m{font-family:"JetBrains Mono",monospace;font-feature-settings:"tnum";letter-spacing:-.01em}
+.pos{color:var(--g)}.neg{color:var(--r)}
+svg.i{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex:none}
+button{font:inherit;color:inherit}
+.app{display:grid;grid-template-columns:232px minmax(0,1fr);min-height:100vh}
+/* sidebar */
+.sb{border-right:1px solid var(--line);padding:22px 14px;display:flex;flex-direction:column;gap:22px;position:sticky;top:0;height:100vh}
+.brand{display:flex;align-items:center;gap:10px;padding:0 8px;font-weight:500;font-size:16px;letter-spacing:-.02em}
+.brand i{width:28px;height:28px;border-radius:8px;background:var(--g);display:grid;place-items:center;color:#fff;font:500 11px "JetBrains Mono";font-style:normal}
+:root:not([data-theme=light]) .brand i{color:#06150C}
+.grp small{display:block;font-size:11.5px;color:var(--dim);padding:0 10px 6px}
+.nv{display:flex;align-items:center;gap:11px;height:36px;padding:0 10px;border-radius:10px;color:var(--mut);font-size:14px;text-decoration:none;cursor:pointer}
+.nv:hover{color:var(--tx);background:var(--s2)}
+.nv.on{background:var(--s1);color:var(--tx);box-shadow:inset 2px 0 0 var(--g),var(--shadow)}
+.nv em{margin-left:auto;font:500 10.5px Satoshi;font-style:normal;color:var(--g);background:var(--gs);padding:1px 7px;border-radius:999px}
+.sb .foot{margin-top:auto;display:flex;align-items:center;gap:10px;padding:10px;border-radius:12px;background:var(--s1);box-shadow:var(--shadow)}
+.av{width:32px;height:32px;border-radius:50%;background:var(--s4);display:grid;place-items:center;font-size:13px}
+.foot b{font-weight:500;font-size:13.5px;display:block}.foot span{font-size:12px;color:var(--mut)}
+/* main */
+.main{padding:22px 28px 40px;min-width:0}
+.top{display:flex;align-items:center;gap:10px;margin-bottom:22px}
+.top h1{font-size:22px;font-weight:500;letter-spacing:-.02em}
+.top p{font-size:13px;color:var(--mut);display:flex;align-items:center;gap:8px}
+.sp{flex:1}
+.seg{display:flex;background:var(--s1);border-radius:999px;padding:4px;gap:2px;box-shadow:var(--shadow)}
+.seg button{height:30px;padding:0 13px;border-radius:999px;border:0;background:none;color:var(--mut);font-weight:500;font-size:12.5px;cursor:pointer;white-space:nowrap}
+.seg button.on{background:var(--hi);color:var(--inv)}
+.seg.sm button{height:26px;padding:0 11px;font-size:12px}
+.seg.sm{background:var(--s2);box-shadow:none}
+.pill{height:38px;display:flex;align-items:center;gap:8px;padding:0 14px;border-radius:999px;background:var(--s1);font-size:13px;color:var(--mut);box-shadow:var(--shadow);white-space:nowrap}
+.pill b{color:var(--tx);font-weight:500}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--g);box-shadow:0 0 0 3px var(--gs)}
+.ib{width:38px;height:38px;border-radius:50%;border:0;background:var(--s1);display:grid;place-items:center;cursor:pointer;color:var(--tx);box-shadow:var(--shadow);position:relative}
+.ib .badge{position:absolute;top:6px;right:7px;width:8px;height:8px;border-radius:50%;background:var(--g);box-shadow:0 0 0 2px var(--s1)}
+.sun{display:none}:root[data-theme=light] .sun{display:block}:root[data-theme=light] .moon{display:none}
+.btn{height:38px;padding:0 16px;border-radius:999px;border:0;background:var(--hi);color:var(--inv);font-weight:500;font-size:13px;display:inline-flex;align-items:center;gap:8px;cursor:pointer;white-space:nowrap}
+.btn.g{background:var(--s1);color:var(--tx);box-shadow:var(--shadow)}
+.card .btn.g{background:var(--s2);box-shadow:none}
+.card{background:var(--s1);border-radius:20px;padding:22px;min-width:0;box-shadow:var(--shadow)}
+.ch{display:flex;align-items:center;gap:10px;margin-bottom:14px;min-height:30px}
+.ch h2{font-size:15px;font-weight:500;white-space:nowrap}
+.ch .sub{font-size:12.5px;color:var(--mut);white-space:nowrap}
+.ch .r{margin-left:auto;font-size:12.5px;color:var(--mut);display:flex;align-items:center;gap:12px}
+.sample{font:400 10.5px "JetBrains Mono";color:var(--dim);border:1px dashed var(--line2);border-radius:6px;padding:1px 6px}
+.row1{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:16px}
+.row2{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:16px;margin-top:16px}
+.daily{display:flex;flex-direction:column}
+.dwrap{flex:1;min-height:236px;position:relative}
+.dwrap svg{position:absolute;inset:0;width:100%;height:100%}
+.dstats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));background:var(--s2);border-radius:14px;margin-top:14px}
+.dstats div{padding:14px 16px;position:relative}
+.dstats div+div:before{content:"";position:absolute;left:0;top:14px;bottom:14px;width:1px;background:var(--line)}
+.dstats span{font-size:12px;color:var(--mut);display:block}
+.dstats b{font:500 17px Satoshi;letter-spacing:-.01em;font-feature-settings:"tnum"}
+/* hero */
+.big{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+.big b{font:500 44px/1 Satoshi;letter-spacing:-.035em;font-feature-settings:"tnum"}
+.chip{font:500 12px "JetBrains Mono";padding:4px 9px;border-radius:999px;background:var(--gs);color:var(--g)}
+.meta{display:flex;gap:22px;margin:12px 0 4px;font-size:12.5px;color:var(--mut);flex-wrap:wrap}
+.meta b{color:var(--tx);font-weight:500}
+.tabs{display:flex;gap:16px;margin-left:auto}
+.tabs span{font-size:13px;color:var(--mut);padding-bottom:6px;cursor:pointer}
+.tabs span.on{color:var(--tx);box-shadow:inset 0 -2px 0 var(--tx)}
+#eq{height:300px;margin-top:8px}
+/* kpis */
+.kpis{display:grid;gap:12px}
+.kpi{background:var(--s1);border-radius:18px;padding:18px 20px;display:flex;align-items:center;gap:16px;box-shadow:var(--shadow)}
+.kpi .l{font-size:12.5px;color:var(--mut)}
+.kpi .v{font:500 24px/1.1 Satoshi;letter-spacing:-.02em;margin-top:4px;font-feature-settings:"tnum"}
+.kpi .s{font-size:12px;color:var(--mut);margin-top:3px}
+.kpi svg{margin-left:auto;flex:none}
+.wl{margin-left:auto;width:120px;display:grid;gap:6px}
+.wl div{display:flex;align-items:center;gap:8px;font:400 11px "JetBrains Mono";color:var(--mut)}
+.wl i{height:6px;border-radius:3px;display:block}
+/* daily */
+.dlegend{display:flex;gap:14px;font-size:12px;color:var(--mut)}
+.dlegend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.dlegend i.ln{height:2px;width:14px;border-radius:1px;vertical-align:3px}
+/* breakdown */
+.bd-head{display:grid;grid-template-columns:minmax(0,1fr) 150px 92px;gap:14px;font-size:11.5px;color:var(--dim);padding:0 0 8px;border-bottom:1px solid var(--line)}
+.bd-head span:last-child,.bd-head span:nth-child(2){text-align:right}
+.bd{display:grid;grid-template-columns:minmax(0,1fr) 150px 92px;align-items:center;gap:14px;padding:11px 0;border-bottom:1px solid var(--line)}
+.bd:last-of-type{border-bottom:0}
+.bd .nm{display:flex;align-items:center;gap:10px;min-width:0}
+.mk{width:34px;height:34px;border-radius:10px;background:var(--s2);display:grid;place-items:center;font:500 9px "JetBrains Mono";color:var(--mut);flex:none}
+.bd .nm b{font-weight:500;font-size:13.5px;display:block}
+.bd .nm div>span{font-size:11.5px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+.glw{display:flex;justify-content:flex-end}
+.glb{min-width:104px}
+.gl-l span{white-space:nowrap}
+.gl{display:flex;height:10px;border-radius:4px;overflow:hidden;background:var(--track);gap:2px}
+.gl i{display:block;height:100%}
+.gl-l{display:flex;justify-content:space-between;font:400 10.5px "JetBrains Mono";color:var(--dim);margin-top:5px}
+.bd .v{text-align:right;font-size:13px}
+.bd .v small{display:block;font:400 11px Satoshi;color:var(--mut);white-space:nowrap}
+.callout{display:flex;gap:10px;align-items:flex-start;background:var(--s2);border-radius:14px;padding:12px 14px;margin-top:14px;font-size:13px;line-height:1.5}
+.callout i{width:6px;height:6px;border-radius:50%;background:var(--r);margin-top:7px;flex:none}
+/* trades */
+.filters{display:flex;align-items:center;gap:10px;margin-left:auto}
+.tbl{width:100%;border-collapse:collapse;font-size:13.5px}
+.tbl th{font-weight:400;font-size:11.5px;color:var(--dim);text-align:left;padding:0 12px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+.tbl td{padding:12px;border-bottom:1px solid var(--line);white-space:nowrap;vertical-align:middle}
+.tbl tr.grp td{padding:16px 12px 6px;border-bottom:0;font-size:12px;color:var(--mut)}
+.tbl tr.grp td b{color:var(--tx);font-weight:500;margin-right:8px}
+.tbl tr.t:hover td{background:var(--s2)}
+.tbl tr.t td:first-child{border-radius:12px 0 0 12px}.tbl tr.t td:last-child{border-radius:0 12px 12px 0}
+.n{text-align:right}
+.sym{display:flex;align-items:center;gap:10px}
+.sym b{font-weight:500;display:block}.sym span{font-size:11.5px;color:var(--mut)}
+.side{display:inline-flex;align-items:center;gap:4px;font-size:12px;padding:3px 9px 3px 7px;border-radius:999px;font-weight:500}
+.side.L{color:var(--g);background:var(--gs)}.side.S{color:var(--r);background:var(--rs)}
+.side svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.px{font-size:12.5px;color:var(--mut)}
+.px b{color:var(--tx);font-weight:400}
+.holdbar{display:flex;align-items:center;gap:8px;justify-content:flex-end}
+.holdbar i{display:block;height:4px;border-radius:2px;background:var(--s4)}
+.pl b{font-weight:500;display:block}.pl span{font-size:11.5px;color:var(--mut)}
+.tags{display:flex;gap:6px;align-items:center}
+.tag{font-size:11.5px;padding:3px 9px;border-radius:999px;background:var(--s2);color:var(--mut);white-space:nowrap}
+.tag.g{color:var(--g);background:var(--gs)}.tag.r{color:var(--r);background:var(--rs)}
+.add{height:28px;padding:0 11px;border-radius:999px;border:1px dashed var(--line2);background:none;color:var(--tx);font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:5px}
+.add:hover{border-style:solid;background:var(--s2)}
+.chev{width:16px;height:16px;fill:none;stroke:var(--dim);stroke-width:1.7}
+.foot-row{display:flex;align-items:center;justify-content:space-between;margin-top:14px;font-size:12.5px;color:var(--mut)}
+.mcards{display:none}
+.tabbar{display:none}
+@media (max-width:1180px){.row1{grid-template-columns:minmax(0,1fr)}.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.row2{grid-template-columns:minmax(0,1fr)}.hide-md{display:none}}
+@media (max-width:760px){
+  .app{display:block}.sb{display:none}.main{padding:14px 14px 90px}
+  .top{flex-wrap:wrap;gap:8px}.top .tt{flex:1 1 100%;order:-1;display:flex;align-items:center;justify-content:space-between}
+  .top .seg{order:2;overflow-x:auto;max-width:100%}.top .pill{display:none}.top .sp{display:none}.top>.btn,.top>.ib{display:none}
+  .big b{font-size:34px}.meta{gap:6px 14px}.tabs{display:none}#eq{height:auto}#eq svg{height:auto!important}.top .sample{display:none}
+  .dstats{grid-template-columns:repeat(2,minmax(0,1fr))}.dstats div:nth-child(3):before{display:none}.dstats div:nth-child(n+3){border-top:1px solid var(--line)}.dwrap{min-height:200px}
+  .kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.kpi{padding:14px;flex-direction:column;align-items:flex-start;gap:8px}.kpi svg,.kpi .wl{display:none}.kpi .v{font-size:20px}
+  .card{padding:18px 16px;border-radius:18px}
+  .tbl{display:none}.mcards{display:block}.filters .seg{display:none}
+  .mc{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:4px 12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
+  .mc .mk{grid-row:span 2}.mc .a b{font-weight:500}.mc .a span{font-size:12px;color:var(--mut)}.mc .pl{text-align:right}.mc .tags{grid-column:2 / 4}
+  .mgrp{font-size:12px;color:var(--mut);padding:14px 0 4px}.mgrp b{color:var(--tx);font-weight:500;margin-right:6px}
+  .bd{grid-template-columns:minmax(0,1fr) 92px;row-gap:8px}.bd .glw{grid-column:1 / -1;grid-row:2;justify-content:flex-start;padding-left:44px}.bd-head{grid-template-columns:minmax(0,1fr) 92px}.bd-head span:nth-child(2){display:none}
+  .tabbar{display:flex;position:fixed;left:14px;right:14px;bottom:14px;background:var(--s1);border-radius:999px;padding:7px;justify-content:space-between;box-shadow:0 10px 30px rgba(0,0,0,.25);z-index:9}
+  .tabbar a{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;color:var(--mut)}.tabbar a.on{background:var(--hi);color:var(--inv)}
+}
+.mtop{display:none}@media (max-width:760px){.mtop{display:flex;gap:8px}}
+</style></head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<symbol id="home" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></symbol>
+<symbol id="log" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></symbol>
+<symbol id="jr" viewBox="0 0 24 24"><path d="M5 4h11l3 3v13H5z"/><path d="M9 10h6M9 14h6"/></symbol>
+<symbol id="an" viewBox="0 0 24 24"><path d="M3 20h18M6 16v-5M11 16V7M16 16v-8M21 16V4"/></symbol>
+<symbol id="cal" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></symbol>
+<symbol id="ch" viewBox="0 0 24 24"><path d="M7 4v16M17 4v16M4 9h6M14 14h6"/></symbol>
+<symbol id="gl" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 010 18M12 3a14 14 0 000 18"/></symbol>
+<symbol id="sx" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></symbol>
+<symbol id="co" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></symbol>
+<symbol id="sync" viewBox="0 0 24 24"><path d="M20 11a8 8 0 00-14.9-3M4 13a8 8 0 0014.9 3M4 4v4h4M20 20v-4h-4"/></symbol>
+<symbol id="sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></symbol>
+<symbol id="moon" viewBox="0 0 24 24"><path d="M19.5 14.5A8 8 0 0 1 9.5 4.5a8 8 0 1 0 10 10Z"/></symbol>
+<symbol id="bell" viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0112 0v5l2 2H4z"/><path d="M10 20a2 2 0 004 0"/></symbol>
+<symbol id="up" viewBox="0 0 24 24"><path d="M7 17 17 7M9 7h8v8"/></symbol>
+<symbol id="dn" viewBox="0 0 24 24"><path d="M7 7l10 10M17 9v8H9"/></symbol>
+<symbol id="chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+<symbol id="more" viewBox="0 0 24 24"><circle cx="6" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="18" cy="12" r="1.2"/></symbol>
+</svg>
+<div class="app">
+  <aside class="sb">
+    <div class="brand"><i>TL</i>TRADElogs</div>
+    <div class="grp"><small>Journal</small>
+      <a class="nv on"><svg class="i"><use href="#home"/></svg>Dashboard</a>
+      <a class="nv"><svg class="i"><use href="#log"/></svg>Trade log</a>
+      <a class="nv"><svg class="i"><use href="#jr"/></svg>Journal</a>
+      <a class="nv"><svg class="i"><use href="#an"/></svg>Analytics</a>
+      <a class="nv"><svg class="i"><use href="#cal"/></svg>Calendar</a></div>
+    <div class="grp"><small>Markets</small>
+      <a class="nv"><svg class="i"><use href="#ch"/></svg>Charts</a>
+      <a class="nv"><svg class="i"><use href="#gl"/></svg>Macro</a></div>
+    <div class="grp"><small>AI</small>
+      <a class="nv"><svg class="i"><use href="#sx"/></svg>SignalX<em>New</em></a>
+      <a class="nv"><svg class="i"><use href="#co"/></svg>AI coach</a></div>
+    <div class="foot"><span class="av">A</span><div><b>Alex Morgan</b><span>Free plan</span></div></div>
+  </aside>
+  <main class="main">
+    <div class="top">
+      <div class="tt"><div><h1>Dashboard</h1><p>XM Global ·6702 · synced 2 min ago <span class="sample">Sample data</span></p></div>
+        <div class="mtop"><button class="ib theme" aria-label="Toggle theme"><svg class="i moon"><use href="#moon"/></svg><svg class="i sun"><use href="#sun"/></svg></button><span class="ib"><span class="av" style="width:30px;height:30px">A</span></span></div></div>
+      <div class="sp"></div>
+      <div class="seg"><button>7D</button><button>30D</button><button class="on">90D</button><button>YTD</button><button>All</button></div>
+      <div class="pill"><span class="dot"></span><b>XM Global</b></div>
+      <button class="btn g"><svg class="i"><use href="#sync"/></svg>Sync</button>
+      <button class="ib theme" aria-label="Toggle theme"><svg class="i moon"><use href="#moon"/></svg><svg class="i sun"><use href="#sun"/></svg></button>
+      <button class="ib" aria-label="Notifications"><svg class="i"><use href="#bell"/></svg><span class="badge"></span></button>
+    </div>
+
+    <div class="row1">
+      <section class="card">
+        <div class="ch"><h2>Net P&amp;L</h2><span class="sub">last 90 days</span>
+          <div class="tabs"><span class="on">Equity</span><span>Daily</span><span>Drawdown</span></div></div>
+        <div class="big"><b id="net"></b><span class="chip" id="netpct"></span></div>
+        <div class="meta"><span>Balance <b class="m" id="bal"></b></span><span>Trades <b class="m" id="ntr"></b></span><span>Best day <b class="m pos" id="bd"></b></span><span>Worst day <b class="m neg" id="wd"></b></span></div>
+        <div id="eq"></div>
+      </section>
+      <div class="kpis">
+        <div class="kpi"><div><div class="l">Win rate</div><div class="v" id="wr"></div><div class="s" id="wrs"></div></div><svg id="ring" width="64" height="64"></svg></div>
+        <div class="kpi"><div><div class="l">Profit factor</div><div class="v" id="pf"></div><div class="s">Gross win ÷ gross loss</div></div><svg id="gauge" width="88" height="52"></svg></div>
+        <div class="kpi"><div><div class="l">Avg win / loss</div><div class="v" id="rr"></div><div class="s">Reward to risk</div></div><div class="wl" id="wl"></div></div>
+        <div class="kpi"><div><div class="l">Expectancy</div><div class="v pos" id="ex"></div><div class="s" id="dd"></div></div><svg id="spark" width="96" height="40"></svg></div>
+      </div>
+    </div>
+
+    <div class="row2">
+      <section class="card daily">
+        <div class="ch"><h2>Daily P&amp;L</h2><span class="sub">last 30 trading days</span>
+          <div class="r"><span class="dlegend hide-md"><span><i style="background:var(--g)"></i>Day</span><span><i class="ln" style="background:var(--tx)"></i>Running total</span></span><span id="dsum"></span></div></div>
+        <div class="dwrap"><svg id="daily" preserveAspectRatio="none"></svg></div>
+        <div class="dstats" id="dstats"></div>
+      </section>
+      <section class="card">
+        <div class="ch"><h2>Breakdown</h2><div class="r"><div class="seg sm" id="bdtabs"><button class="on" data-k="sym">Symbol</button><button data-k="ses">Session</button><button data-k="dow">Weekday</button></div></div></div>
+        <div class="bd-head"><span id="bdl">Symbol</span><span>Won vs given back</span><span>Net</span></div>
+        <div id="bdrows"></div>
+        <div class="callout" id="callout"></div>
+      </section>
+    </div>
+
+    <section class="card" style="margin-top:16px">
+      <div class="ch"><h2>Recent trades</h2><span class="sub" id="jsum"></span>
+        <div class="filters"><div class="seg sm" id="tf"><button class="on" data-f="all">All</button><button data-f="win">Wins</button><button data-f="loss">Losses</button><button data-f="nonote">No note</button></div><button class="btn g" style="height:32px;font-size:12.5px">View all</button></div></div>
+      <table class="tbl"><thead><tr><th>Symbol</th><th>Side</th><th>Entry → exit</th><th class="n">Size</th><th class="n">Hold</th><th class="n">P&amp;L</th><th>Journal</th><th></th></tr></thead><tbody id="tb"></tbody></table>
+      <div class="mcards" id="mc"></div>
+    </section>
+  </main>
+</div>
+<nav class="tabbar"><a class="on"><svg class="i"><use href="#home"/></svg></a><a><svg class="i"><use href="#log"/></svg></a><a><svg class="i"><use href="#jr"/></svg></a><a><svg class="i"><use href="#co"/></svg></a><a><svg class="i"><use href="#more"/></svg></a></nav>
+<script>
+const S=SAMPLE,F=fmt,$=id=>document.getElementById(id);
+const V=n=>`var(--${n})`,G=V('g'),R=V('r'),GRID=V('grid'),AX=V('axis'),mono='font-family:JetBrains Mono';
+const sum=a=>a.reduce((x,t)=>x+t.pnl,0);
+const AB=x=>({US30:'US30',NAS100:'NAS',XAUUSD:'XAU',BTCUSD:'BTC',EURUSD:'EUR',GBPJPY:'GBP'}[x]||x.slice(0,3));
+document.querySelectorAll('.theme').forEach(b=>b.onclick=()=>{const t=document.documentElement.dataset.theme==='light'?'dark':'light';document.documentElement.dataset.theme=t;try{localStorage.setItem('tl-theme',t)}catch(e){}});
+// local-day buckets
+const LD={};for(const t of S.trades){const k=t.close.toDateString();(LD[k]??={pnl:0,n:0,d:new Date(t.close.getFullYear(),t.close.getMonth(),t.close.getDate())});LD[k].pnl+=t.pnl;LD[k].n++}
+const days=Object.values(LD).sort((a,b)=>a.d-b.d);
+$('net').textContent=F.usd(S.net);$('netpct').textContent='+'+F.pct(S.net/S.START)+' · 90d';
+$('bal').textContent=F.money(S.equityNow);$('ntr').textContent=S.n;
+$('bd').textContent=F.usd(Math.max(...days.map(d=>d.pnl)),0);$('wd').textContent=F.usd(Math.min(...days.map(d=>d.pnl)),0);
+const won=Math.round(S.winRate*S.n);$('wr').textContent=F.pct(S.winRate);$('wrs').textContent=`${won} won · ${S.n-won} lost`;
+$('pf').textContent=S.pf.toFixed(2);$('rr').textContent='1 : '+(S.avgWin/-S.avgLoss).toFixed(2);
+$('ex').textContent=F.usd(S.exp,0)+' / trade';$('dd').textContent='Max drawdown '+F.pct(S.maxDD);
+// equity + drawdown
+(()=>{const W=900,H=300,L=4,Rr=52,T=10,EQB=212,DDB=290,p=S.equity,vs=p.map(x=>x.v),mn=Math.min(...vs),mx=Math.max(...vs);
+const X=i=>L+i/(p.length-1)*(W-L-Rr),Y=v=>EQB-(v-mn)/(mx-mn)*(EQB-T-6),mdd=Math.max(...p.map(x=>x.dd)),Yd=d=>EQB+18+d/mdd*(DDB-EQB-24);
+const d=p.map((q,i)=>(i?'L':'M')+X(i).toFixed(1)+' '+Y(q.v).toFixed(1)).join(' '),dd=p.map((q,i)=>(i?'L':'M')+X(i).toFixed(1)+' '+Yd(q.dd).toFixed(1)).join(' ');
+const hi=Math.round(p.length*.72),hp=p[hi];let g='';for(let k=0;k<=3;k++){const v=mn+(mx-mn)*k/3;g+=`<line x1="${L}" x2="${W-Rr}" y1="${Y(v)}" y2="${Y(v)}" stroke="${GRID}"/><text x="${W-Rr+8}" y="${Y(v)+4}" style="${mono};font-size:10.5px" fill="${AX}">${F.k(v)}</text>`}
+$('eq').innerHTML=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:100%"><defs><linearGradient id="gf" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="${G}" stop-opacity=".25"/><stop offset="1" stop-color="${G}" stop-opacity="0"/></linearGradient><linearGradient id="rf" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="${R}" stop-opacity=".04"/><stop offset="1" stop-color="${R}" stop-opacity=".3"/></linearGradient></defs>${g}
+<path d="${d} L${X(p.length-1)} ${EQB} L${X(0)} ${EQB}Z" fill="url(#gf)"/><path d="${d}" fill="none" stroke="${G}" stroke-width="2"/>
+<line x1="${L}" x2="${W-Rr}" y1="${EQB+18}" y2="${EQB+18}" stroke="${GRID}"/><path d="${dd} L${X(p.length-1)} ${EQB+18} L${X(0)} ${EQB+18}Z" fill="url(#rf)"/><path d="${dd}" fill="none" stroke="${R}" stroke-width="1.2"/>
+<text x="${W-Rr+8}" y="${EQB+22}" style="${mono};font-size:10.5px" fill="${AX}">0%</text><text x="${W-Rr+8}" y="${DDB-2}" style="${mono};font-size:10.5px" fill="${R}">−${F.pct(mdd)}</text><text x="${L}" y="${EQB+12}" style="font-size:10.5px" fill="${AX}">Drawdown</text>
+<line x1="${X(hi)}" x2="${X(hi)}" y1="${T}" y2="${DDB}" stroke="${AX}" stroke-opacity=".6" stroke-dasharray="3 3"/><circle cx="${X(hi)}" cy="${Y(hp.v)}" r="5" fill="${V('s1')}" stroke="${G}" stroke-width="2"/>
+<g transform="translate(${X(hi)+12} ${Y(hp.v)-46})"><rect width="136" height="44" rx="10" fill="${V('tip')}"/><text x="12" y="18" style="font-size:11px" fill="#9A9A9A">${hp.t.toLocaleDateString('en-US',{month:'short',day:'numeric'})}</text><text x="12" y="35" style="${mono};font-size:13px" fill="#F2F2F2">${F.money(hp.v)}</text></g></svg>`})();
+(()=>{const r=26,c=2*Math.PI*r;$('ring').innerHTML=`<circle cx="32" cy="32" r="${r}" fill="none" stroke="${V('track')}" stroke-width="7"/><circle cx="32" cy="32" r="${r}" fill="none" stroke="${G}" stroke-width="7" stroke-linecap="round" stroke-dasharray="${c*S.winRate} ${c}" transform="rotate(-90 32 32)"/>`})();
+(()=>{const v=Math.min(S.pf/3,1),a=Math.PI*(1-v),x=44+36*Math.cos(a),y=46-36*Math.sin(a);$('gauge').innerHTML=`<path d="M8 46 A36 36 0 0 1 80 46" fill="none" stroke="${V('track')}" stroke-width="7" stroke-linecap="round"/><path d="M8 46 A36 36 0 0 ${v>.5?1:0} ${x.toFixed(1)} ${y.toFixed(1)}" fill="none" stroke="${G}" stroke-width="7" stroke-linecap="round"/>`})();
+(()=>{const mx=Math.max(S.avgWin,-S.avgLoss);$('wl').innerHTML=`<div><i style="width:${S.avgWin/mx*80}px;background:${G}"></i>${F.k(S.avgWin)}</div><div><i style="width:${-S.avgLoss/mx*80}px;background:${R}"></i>${F.k(S.avgLoss)}</div>`})();
+(()=>{const t=S.trades,pts=[];for(let i=19;i<t.length;i+=2){let s=0;for(let j=i-19;j<=i;j++)s+=t[j].pnl;pts.push(s/20)}const mn=Math.min(0,...pts),mx=Math.max(...pts),z=36-(0-mn)/(mx-mn)*32;$('spark').innerHTML=`<line x1="0" x2="96" y1="${z}" y2="${z}" stroke="${GRID}"/><path d="${pts.map((v,i)=>(i?'L':'M')+(i/(pts.length-1)*94+1).toFixed(1)+' '+(36-(v-mn)/(mx-mn)*32).toFixed(1)).join(' ')}" fill="none" stroke="${G}" stroke-width="1.6"/>`})();
+// daily bars + running total
+const drawDaily=()=>{const box=$('daily').getBoundingClientRect();const last=days.slice(-30),W=Math.round(box.width),H=Math.round(box.height),L=46,Rr=8,T=12,B=26,mid=(H-B+T)/2,amp=(H-B-T)/2-6,mx=Math.max(...last.map(d=>Math.abs(d.pnl)));
+const nice=v=>{const p=Math.pow(10,Math.floor(Math.log10(v)));return Math.ceil(v/p/ .5)*.5*p};const top=nice(mx);
+let o='';[1,.5,0,-.5,-1].forEach(f=>{const y=mid-f*amp;o+=`<line x1="${L}" x2="${W-Rr}" y1="${y}" y2="${y}" stroke="${f===0?V('line2'):GRID}" ${f&&f%1?'stroke-dasharray="2 4"':''}/><text x="${L-8}" y="${y+3.5}" text-anchor="end" style="${mono};font-size:10px" fill="${AX}">${f===0?'$0':F.k(f*top)}</text>`});
+const bw=(W-L-Rr)/last.length;let run=0;const rp=[];const tot=sum(S.trades.filter(t=>t.close>=last[0].d));
+last.forEach((d,i)=>{const h=Math.abs(d.pnl)/top*amp,x=L+i*bw+bw*.18,w=bw*.64;o+=`<rect x="${x.toFixed(1)}" y="${(d.pnl>=0?mid-h:mid).toFixed(1)}" width="${w.toFixed(1)}" height="${Math.max(h,1.5).toFixed(1)}" rx="3" fill="${d.pnl>=0?G:R}" opacity=".9"/>`;run+=d.pnl;rp.push([x+w/2,run]);
+ if(i%6===0||i===last.length-1)o+=`<text x="${(x+w/2).toFixed(1)}" y="${H-6}" text-anchor="${i===last.length-1?'end':i===0?'start':'middle'}" style="font-size:10.5px" fill="${AX}">${d.d.toLocaleDateString('en-US',{month:'short',day:'numeric'})}</text>`});
+const rmx=Math.max(...rp.map(p=>p[1])),rY=v=>mid-v/rmx*amp;o+=`<path d="${rp.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+rY(p[1]).toFixed(1)).join(' ')}" fill="none" stroke="${V('tx')}" stroke-width="1.5" stroke-opacity=".75" stroke-linejoin="round"/><circle cx="${rp.at(-1)[0]}" cy="${rY(rp.at(-1)[1])}" r="3.5" fill="${V('tx')}"/>
+<text x="${rp.at(-1)[0]-8}" y="${rY(rp.at(-1)[1])-8}" text-anchor="end" style="${mono};font-size:10.5px" fill="${V('tx')}">${F.usd(run,0)}</text>`;
+$('daily').setAttribute('viewBox',`0 0 ${W} ${H}`);$('daily').innerHTML=o;const g=last.filter(d=>d.pnl>0).length;$('dsum').innerHTML=`<b class="m pos" style="font-weight:500">${g}</b>&nbsp;green · <b class="m neg" style="font-weight:500">${last.length-g}</b>&nbsp;red`;
+ const gd=last.filter(d=>d.pnl>0),rd=last.filter(d=>d.pnl<=0);let st=0,best=0;for(const d of last){st=d.pnl>0?st+1:0;best=Math.max(best,st)}
+ $('dstats').innerHTML=[['Avg green day',`<b class="m pos">${F.usd(gd.reduce((a,d)=>a+d.pnl,0)/gd.length,0)}</b>`],['Avg red day',`<b class="m neg">${F.usd(rd.reduce((a,d)=>a+d.pnl,0)/(rd.length||1),0)}</b>`],['Best green streak',`<b>${best} days</b>`],['Trades per day',`<b>${(last.reduce((a,d)=>a+d.n,0)/last.length).toFixed(1)}</b>`]].map(([a,b])=>`<div><span>${a}</span>${b}</div>`).join('')};
+drawDaily();addEventListener('resize',drawDaily);
+// breakdown
+const group=(k)=>{let keyf,label,order;if(k==='sym'){keyf=t=>t.sym;label='Symbol'}else if(k==='ses'){keyf=t=>{const h=t.open.getHours();return h<8?'Asia':h<13?'London':'New York'};label='Session';order=['Asia','London','New York']}else{keyf=t=>['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][t.close.getDay()];label='Weekday';order=['Monday','Tuesday','Wednesday','Thursday','Friday']}
+ const m={};for(const t of S.trades){const key=keyf(t);(m[key]??={key,kind:t.kind,n:0,w:0,gw:0,gl:0});const x=m[key];x.n++;if(t.pnl>0){x.w++;x.gw+=t.pnl}else x.gl-=t.pnl}
+ let rows=Object.values(m);rows=order?order.map(o=>m[o]).filter(Boolean):rows.sort((a,b)=>(b.gw-b.gl)-(a.gw-a.gl));return{rows,label}};
+const renderBD=k=>{const{rows,label}=group(k);$('bdl').textContent=label;const mx=Math.max(...rows.map(r=>r.gw+r.gl));
+ $('bdrows').innerHTML=rows.map(r=>{const net=r.gw-r.gl,ab=k==='sym'?AB(r.key):k==='ses'?{Asia:'AS',London:'LDN','New York':'NY'}[r.key]:r.key.slice(0,3);return `<div class="bd"><div class="nm"><span class="mk">${ab}</span><div style="min-width:0"><b>${r.key}</b><span>${k==='sym'?r.kind+' · ':''}${r.n} trades · ${F.pct(r.w/r.n,0)} won</span></div></div>
+ <div class="glw"><div class="glb" style="width:${(r.gw+r.gl)/mx*100}%"><div class="gl"><i style="flex:${r.gw};background:${G}"></i><i style="flex:${r.gl};background:${R}"></i></div><div class="gl-l"><span>${F.k(r.gw)}</span><span>${F.k(-r.gl)}</span></div></div></div>
+ <div class="v m ${net>=0?'pos':'neg'}">${F.k(net)}<small>${F.pct(r.gl/r.gw,0)} given back</small></div></div>`}).join('');
+ const worst=[...rows].sort((a,b)=>b.gl/b.gw-a.gl/a.gw)[0];$('callout').innerHTML=`<i></i><span><b style="font-weight:500">${worst.key}</b> gives back ${F.pct(worst.gl/worst.gw,0)} of what it wins, the most of any ${label.toLowerCase()}. ${k==='sym'?'Check stop placement there before sizing up.':'Consider trading it smaller.'}</span>`};
+$('bdtabs').onclick=e=>{const b=e.target.closest('button');if(!b)return;[...$('bdtabs').children].forEach(x=>x.classList.toggle('on',x===b));renderBD(b.dataset.k)};renderBD('sym');
+// trades
+const dayLabel=d=>{const t=new Date(2026,9,30),y=new Date(2026,9,29);return d.toDateString()===t.toDateString()?'Today':d.toDateString()===y.toDateString()?'Yesterday':d.toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'})};
+const maxHold=Math.max(...S.trades.map(t=>t.hold));
+const sideChip=t=>`<span class="side ${t.side[0]}"><svg><use href="#${t.side==='Long'?'up':'dn'}"/></svg>${t.side}</span>`;
+const tagsHtml=t=>t.journaled?`<span class="tags">${t.tags.map(([n,c])=>`<span class="tag ${c}">${n}</span>`).join('')}</span>`:`<button class="add">+ Add note</button>`;
+const renderTrades=f=>{let list=S.trades.slice().reverse();if(f==='win')list=list.filter(t=>t.pnl>0);if(f==='loss')list=list.filter(t=>t.pnl<=0);if(f==='nonote')list=list.filter(t=>!t.journaled);list=list.slice(0,8);
+ const groups=[];for(const t of list){const k=t.close.toDateString();let g=groups.find(x=>x.k===k);if(!g)groups.push(g={k,d:t.close,ts:[]});g.ts.push(t)}
+ const dayTot=k=>LD[k];
+ $('tb').innerHTML=groups.map(g=>`<tr class="grp"><td colspan="8"><b>${dayLabel(g.d)}</b>${dayTot(g.k).n} trade${dayTot(g.k).n>1?'s':''} · <span class="m ${dayTot(g.k).pnl>=0?'pos':'neg'}">${F.usd(dayTot(g.k).pnl)}</span></td></tr>`+g.ts.map(t=>`<tr class="t">
+ <td><span class="sym"><span class="mk">${AB(t.sym)}</span><span><b>${t.sym}</b><span>${t.kind} · ${t.close.toTimeString().slice(0,5)}</span></span></span></td>
+ <td>${sideChip(t)}</td><td class="px m"><b>${t.entry.toLocaleString('en-US',{minimumFractionDigits:t.dp})}</b> → ${t.exit.toLocaleString('en-US',{minimumFractionDigits:t.dp})}</td>
+ <td class="n m">${t.vol.toFixed(2)}</td><td class="n"><span class="holdbar"><i style="width:${Math.max(4,t.hold/maxHold*44)}px"></i><span class="m">${F.hold(t.hold)}</span></span></td>
+ <td class="n pl"><b class="m ${t.pnl>0?'pos':'neg'}">${F.usd(t.pnl)}</b><span class="m">${t.pnl>0?'+':'−'}${(Math.abs(t.pnl)/S.equityNow*100).toFixed(2)}%</span></td>
+ <td>${tagsHtml(t)}</td><td><svg class="chev"><use href="#chev"/></svg></td></tr>`).join('')).join('');
+ $('mc').innerHTML=groups.map(g=>`<div class="mgrp"><b>${dayLabel(g.d)}</b><span class="m ${dayTot(g.k).pnl>=0?'pos':'neg'}">${F.usd(dayTot(g.k).pnl)}</span></div>`+g.ts.map(t=>`<div class="mc"><span class="mk">${AB(t.sym)}</span><div class="a"><b>${t.sym}</b> ${sideChip(t)}<br><span>${F.hold(t.hold)} · ${t.close.toTimeString().slice(0,5)}</span></div><div class="pl"><b class="m ${t.pnl>0?'pos':'neg'}">${F.usd(t.pnl)}</b></div><div class="tags">${tagsHtml(t)}</div></div>`).join('')).join('')};
+$('tf').onclick=e=>{const b=e.target.closest('button');if(!b)return;[...$('tf').children].forEach(x=>x.classList.toggle('on',x===b));renderTrades(b.dataset.f)};renderTrades('all');
+const j=S.trades.filter(t=>t.journaled).length;$('jsum').textContent=`${j} of ${S.n} journaled`;
+</script>
+</body></html>
