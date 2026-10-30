@@ -3,28 +3,23 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { api, type BrokerAccount, type AccountStats, type Trade, type JournalEntry } from '@/lib/api';
 import { statsForRange, rangeStart, type RangeKey } from '@/lib/stats';
-import { buildInsights } from '@/lib/insights';
 import { useAccounts } from '@/lib/use-accounts';
 import { authClient } from '@/lib/auth-client';
-import AppShell from '@/components/app-shell';
+import AppShell, { timeAgo } from '@/components/app-shell';
 import ConnectBrokerModal from '@/components/connect-broker-modal';
 import { useToast } from '@/components/toast';
+import { IPlus } from '@/components/v3/icons';
 import {
-  CoachReview, DashSkeleton, EdgeCard, HelloCard, PerformanceCard, RangeMenu, WeekCard,
-} from '@/components/v6/dashboard';
+  BreakdownCard, CoachReview, DailyCard, DeskSkeleton, EquityCard, KpiColumn, RecentTrades,
+} from '@/components/v6/desk';
 
-const RANGE_OPTIONS: { key: RangeKey; label: string; short: string }[] = [
-  { key: '1W', label: 'Last 7 days', short: '7D' },
-  { key: '1M', label: 'Last 30 days', short: '30D' },
-  { key: '3M', label: 'Last 3 months', short: '3M' },
-  { key: '1Y', label: 'Last 12 months', short: '1Y' },
-  { key: 'ALL', label: 'All time', short: 'All' },
+const RANGES: { key: RangeKey; short: string; label: string }[] = [
+  { key: '1W', short: '7D', label: 'Last 7 days' },
+  { key: '1M', short: '30D', label: 'Last 30 days' },
+  { key: '3M', short: '90D', label: 'Last 90 days' },
+  { key: '1Y', short: '1Y', label: 'Last 12 months' },
+  { key: 'ALL', short: 'All', label: 'All time' },
 ];
-
-function greeting() {
-  const h = new Date().getHours();
-  return h < 5 ? 'Good evening' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
-}
 
 export default function DashboardPage() {
   const { accounts, selected, select, setAccounts, loading: accountsLoading } = useAccounts();
@@ -32,7 +27,7 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<AccountStats | null>(null);
   const [trades, setTrades] = useState<Trade[]>([]);
   const [journal, setJournal] = useState<JournalEntry[]>([]);
-  const [range, setRange] = useState<RangeKey>('ALL');
+  const [range, setRange] = useState<RangeKey>('3M');
   const [loading, setLoading] = useState(true);
   const [syncedAt, setSyncedAt] = useState<string | null>(null);
   const [, tick] = useState(0);
@@ -44,12 +39,8 @@ export default function DashboardPage() {
   const view = useMemo(() => (stats ? statsForRange(trades, stats.startingBalance, range) : null), [stats, trades, range]);
   const rangedTrades = useMemo(() => {
     const start = rangeStart(range);
-    return trades
-      .filter(t => t.status === 'CLOSED' && t.closeTime && (start === null || new Date(t.closeTime).getTime() >= start))
-      .sort((a, b) => +new Date(b.closeTime!) - +new Date(a.closeTime!));
+    return trades.filter(t => t.status === 'CLOSED' && t.closeTime && (start === null || new Date(t.closeTime).getTime() >= start));
   }, [trades, range]);
-  const rangedTradeIds = useMemo(() => new Set(rangedTrades.map(t => t.positionId)), [rangedTrades]);
-  const insights = useMemo(() => (view ? buildInsights(view, rangedTrades, journal) : []), [view, rangedTrades, journal]);
 
   const loadStats = useCallback(async (acc: BrokerAccount, notify = false) => {
     setLoading(true);
@@ -90,35 +81,58 @@ export default function DashboardPage() {
     setShowConnect(false);
   }
 
+  const rangeLabel = RANGES.find(o => o.key === range)!.label;
   const first = (session?.user?.name ?? '').trim().split(/\s+/)[0] || 'trader';
-  const rangeLabel = RANGE_OPTIONS.find(o => o.key === range)!.label;
-  const hasTrades = !!view && view.totalTrades > 0;
+  const everTraded = trades.some(t => t.status === 'CLOSED');
+  const subtitle = selected
+    ? <>{selected.broker} <span className="m">·{selected.mt5Login.slice(-4)}</span> · {syncedAt ? `synced ${timeAgo(syncedAt)}` : loading ? 'loading…' : 'not synced yet'}</>
+    : `Welcome, ${first}`;
 
   return (
-    <AppShell frame="v6" accounts={accounts} selectedAccount={selected} onSelectAccount={select} onConnectClick={() => setShowConnect(true)}
-      pageTitle="Dashboard" onSync={() => selected && loadStats(selected, true)} syncing={syncing} syncedAt={syncedAt}
-      actions={selected ? <RangeMenu value={range} options={RANGE_OPTIONS} onChange={setRange} /> : null}>
-      <div data-testid="dashboard-page">
+    <AppShell legacy={false} accounts={accounts} selectedAccount={selected} onSelectAccount={select} onConnectClick={() => setShowConnect(true)}
+      pageTitle="Dashboard" pageSubtitle={subtitle} onSync={() => selected && loadStats(selected, true)} syncing={syncing} syncedAt={syncedAt}
+      actions={selected ? (
+        <div className="x-seg" role="group" aria-label="Date range" data-testid="range-selector">
+          {RANGES.map(r => <button key={r.key} aria-pressed={range === r.key} onClick={() => setRange(r.key)} title={r.label} data-testid={`range-${r.key}`}>{r.short}</button>)}
+        </div>
+      ) : null}>
+      <div className="dk-grid" data-testid="dashboard-page">
         {error && (
-          <div className="x-err" role="alert" data-testid="dashboard-error">
+          <div className="x-banner x-banner--err" role="alert" data-testid="dashboard-error">
             <span>{error}</span>
-            <button className="x-btn" onClick={() => selected && loadStats(selected)}>Retry</button>
+            <button className="x-btn x-btn--sm" onClick={() => selected && loadStats(selected)}>Retry</button>
           </div>
         )}
 
-        {selected && !view && !error ? <DashSkeleton /> : (
-          <div className="x-grid">
-            <HelloCard wide={!hasTrades} greeting={greeting()} name={first} account={selected} view={view} trades={trades} journal={journal}
-              rangeLabel={rangeLabel} onConnect={() => setShowConnect(true)} />
-            {hasTrades && view && selected && (
-              <>
-                <WeekCard trades={trades} insight={insights[0] ?? null} />
-                <EdgeCard trades={rangedTrades} rangeLabel={rangeLabel} />
-                <PerformanceCard view={view} trades={rangedTrades} broker={selected.broker} rangeLabel={rangeLabel} />
-                <CoachReview accountId={selected.id} />
-              </>
-            )}
-          </div>
+        {!selected && !accountsLoading ? (
+          <section className="x-card dk-connect" data-testid="dashboard-empty">
+            <div>
+              <h2>Connect your MT5 account</h2>
+              <p>Use your investor (read-only) password. TRADElogs can read your trades but can never place or close one.</p>
+              <ul><li>History imports in about a minute</li><li>New trades sync on their own</li><li>Your dashboard, journal and coach fill in from real trades</li></ul>
+              <button className="x-btn x-btn--hi x-btn--lg" onClick={() => setShowConnect(true)} data-testid="dashboard-connect"><IPlus size={15} />Connect MT5</button>
+            </div>
+            <div className="dk-connect-art" aria-hidden />
+          </section>
+        ) : !view ? (error ? null : <DeskSkeleton />) : !everTraded ? (
+          <section className="x-card x-empty" data-testid="dashboard-waiting">
+            <span className="x-ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"><path d="M3 20h18M6 16v-5M11 16V7M16 16v-8M21 16V4" /></svg></span>
+            <b>Waiting for your first closed trade</b>
+            <p>{selected?.broker} is connected. As soon as a position closes it shows up here, usually within a few minutes.</p>
+          </section>
+        ) : (
+          <>
+            <div className="dk-row1">
+              <EquityCard view={view} trades={rangedTrades} rangeLabel={rangeLabel} />
+              <KpiColumn view={view} trades={rangedTrades} />
+            </div>
+            <div className="dk-row2">
+              <DailyCard trades={rangedTrades} />
+              <BreakdownCard trades={rangedTrades} />
+            </div>
+            <RecentTrades trades={rangedTrades} journal={journal} balance={view.currentEquity} />
+            <CoachReview accountId={selected?.id ?? null} />
+          </>
         )}
       </div>
 
