@@ -1,7 +1,7 @@
 // klinecharts draws on canvas, so it can't read CSS variables itself. These
 // helpers resolve the v6 tokens from the chart's container and rebuild the
 // chart styles, and re-run whenever <html data-theme> flips.
-import type { DeepPartial, Styles } from 'klinecharts';
+import type { AxisCreateTicksParams, AxisTick, Chart, DeepPartial, FormatDateParams, Styles } from 'klinecharts';
 
 function alpha(color: string, a: number): string {
   const m = /^#([0-9a-f]{6})$/i.exec(color.trim());
@@ -80,4 +80,53 @@ export function onThemeChange(fn: () => void): () => void {
   const mo = new MutationObserver(fn);
   mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
   return () => mo.disconnect();
+}
+
+const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** Calendar parts of a timestamp in the formatter's timezone. */
+function parts(fmt: Intl.DateTimeFormat, ts: number) {
+  const p: Record<string, string> = {};
+  for (const x of fmt.formatToParts(ts)) p[x.type] = x.value;
+  return { y: p.year ?? '', m: Number(p.month) - 1, d: Number(p.day), hm: `${p.hour === '24' ? '00' : p.hour}:${p.minute}` };
+}
+
+/** Crosshair and tooltip dates in the app's style: "Oct 30, 2026 04:30". */
+export function chartDate({ dateTimeFormat, timestamp, template }: FormatDateParams): string {
+  const t = parts(dateTimeFormat, timestamp);
+  if (template === 'YYYY') return t.y;
+  if (template === 'YYYY-MM') return `${MON[t.m]} ${t.y}`;
+  if (template === 'HH:mm' || template === 'HH:mm:ss') return t.hm;
+  const day = `${MON[t.m]} ${t.d}, ${t.y}`;
+  return template.includes('HH') ? `${day} ${t.hm}` : day;
+}
+
+/**
+ * X-axis ticks: the date where a day (or month, or year) starts and the time in
+ * between, and none so close to an edge that the canvas would cut it off.
+ */
+export function chartXTicks(chart: Chart) {
+  return ({ defaultTicks, bounding }: AxisCreateTicksParams): AxisTick[] => {
+    const fmt = new Intl.DateTimeFormat('en', {
+      timeZone: chart.getTimezone() || undefined, hour12: false,
+      year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit',
+    });
+    const type = chart.getPeriod()?.type ?? 'day';
+    const edge = 24;
+    let prev: ReturnType<typeof parts> | null = null;
+    const out: AxisTick[] = [];
+    for (const tick of defaultTicks) {
+      if (tick.coord < edge || tick.coord > bounding.width - edge) continue;
+      const t = parts(fmt, Number(tick.value));
+      const newDay = !prev || prev.d !== t.d || prev.m !== t.m;
+      const newYear = !!prev && prev.y !== t.y;
+      const text = type === 'year' ? t.y
+        : type === 'month' ? (newYear || !prev ? t.y : MON[t.m]!)
+        : type === 'day' || type === 'week' ? (newYear ? t.y : `${MON[t.m]} ${t.d}`)
+        : newDay ? `${MON[t.m]} ${t.d}` : t.hm;
+      out.push({ ...tick, text });
+      prev = t;
+    }
+    return out;
+  };
 }

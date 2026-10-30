@@ -260,3 +260,16 @@ html[data-theme=light] .v6 .ad-drawer-scrim { background: rgba(17, 17, 19, .35);
   .v6 .ad-prof-dl { gap: 12px 20px; }
 }
 .v6 .x-strip .ad-small span { display: inline; overflow: visible; white-space: nowrap; }
+
+/* Leaderboard: keep the ranked columns in view on smaller screens; drop the secondary ones. */
+@media (max-width: 1180px) {
+  .v6 .ad-lb { min-width: 0; }
+  .v6 .ad-lb th:nth-child(4), .v6 .ad-lb td:nth-child(4),
+  .v6 .ad-lb th:nth-child(7), .v6 .ad-lb td:nth-child(7),
+  .v6 .ad-lb th:nth-child(9), .v6 .ad-lb td:nth-child(9) { display: none; }
+}
+@media (max-width: 760px) {
+  .v6 .ad-lb th:nth-child(3), .v6 .ad-lb td:nth-child(3),
+  .v6 .ad-lb th:nth-child(5), .v6 .ad-lb td:nth-child(5),
+  .v6 .ad-lb th:nth-child(6), .v6 .ad-lb td:nth-child(6) { display: none; }
+}

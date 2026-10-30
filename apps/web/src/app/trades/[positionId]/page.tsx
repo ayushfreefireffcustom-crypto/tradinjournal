@@ -20,14 +20,16 @@ const NEGATIVE_EMOTIONS = ['FOMO', 'Revenge', 'Hesitant'];
 const ENTRY: Record<Deal['entry'], string> = { IN: 'In', OUT: 'Out', INOUT: 'In/out', OUT_BY: 'Out by' };
 const tone = (v: number) => (v > 0 ? 'pos' : v < 0 ? 'neg' : '');
 
+const pad = (n: number) => String(n).padStart(2, '0');
+const hm = (d: Date) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+const day = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', ...(d.getFullYear() !== new Date().getFullYear() ? { year: 'numeric' } : {}) });
+
+/** "Oct 19 09:59 → 11:40", with the close day added when it differs. 24h, like the trade log. */
 function when(t: Trade) {
   const o = new Date(t.openTime);
-  const date = o.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  const tm = (d: Date) => d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-  if (!t.closeTime) return `${date}, ${tm(o)} → open`;
+  if (!t.closeTime) return `${day(o)} ${hm(o)} → open`;
   const c = new Date(t.closeTime);
-  const sameDay = o.toDateString() === c.toDateString();
-  return `${date}, ${tm(o)} → ${sameDay ? '' : `${c.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}, `}${tm(c)}`;
+  return `${day(o)} ${hm(o)} → ${o.toDateString() === c.toDateString() ? '' : `${day(c)} `}${hm(c)}`;
 }
 
 export default function TradeDetailPage() {
@@ -82,7 +84,8 @@ function TradeDetail() {
   const trade = useMemo(() => trades.find(t => t.positionId === positionId) ?? null, [trades, positionId]);
   // Neighbours in trade-log order (newest first): ← newer, → older.
   const { newer, older } = useMemo(() => {
-    const list = [...trades].sort((a, b) => +new Date(b.openTime) - +new Date(a.openTime));
+    const at = (t: Trade) => (t.closeTime ? +new Date(t.closeTime) : 8e15 + +new Date(t.openTime));
+    const list = [...trades].sort((a, b) => at(b) - at(a));
     const i = list.findIndex(t => t.positionId === positionId);
     return { newer: i > 0 ? list[i - 1] : undefined, older: i >= 0 ? list[i + 1] : undefined };
   }, [trades, positionId]);
@@ -154,7 +157,7 @@ function TradeDetail() {
                 <span className="x-mk">{tickerMark(trade.symbol)}</span>
                 <div style={{ minWidth: 0 }}>
                   <h2>{trade.symbol}<SideChip dir={trade.direction} /><span className={`x-tag ${trade.status === 'OPEN' ? 'x-tag--g' : ''}`}>{trade.status === 'OPEN' ? 'Open' : 'Closed'}</span></h2>
-                  <p>{kind ? `${kind} · ` : ''}<span className="m">{when(trade)}</span> · held <span className="m">{fmtHold(trade.durationSecs)}</span></p>
+                  <p>{kind ? `${kind} · ` : ''}<span className="m tr-nw">{when(trade)}</span> · <span className="tr-nw">held <span className="m">{fmtHold(trade.durationSecs)}</span></span></p>
                 </div>
               </div>
               <div className="tr-net">

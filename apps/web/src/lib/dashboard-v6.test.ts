@@ -113,9 +113,11 @@ describe('formatting', () => {
     expect(fmtUsd(1284, 0)).toBe('+$1,284');
     expect(fmtUsd(-118.2)).toBe('−$118.20');
     expect(fmtUsd(0)).toBe('$0.00');
+    expect([fmtUsd(-0.4, 0), fmtUsd(-0.004), fmtUsd(0.3, 0)]).toEqual(['$0', '$0.00', '$0']);
   });
   it('formats compact axis money and hold times', () => {
     expect([fmtUsdCompact(25000), fmtUsdCompact(1500), fmtUsdCompact(-300), fmtUsdCompact(2_400_000)]).toEqual(['$25k', '$1.5k', '−$300', '$2.4M']);
+    expect([fmtUsdCompact(-0.4), fmtUsdCompact(999.6), fmtUsdCompact(9960), fmtUsdCompact(-999_600)]).toEqual(['$0', '$1.0k', '$10k', '−$1.0M']);
     expect([fmtHold(2880), fmtHold(7800), fmtHold(3600), fmtHold(97200), fmtHold(null)]).toEqual(['48m', '2h 10m', '1h', '1d 3h', '—']);
   });
 });

@@ -39,6 +39,7 @@ export interface MaintenanceModeDto {
 
 const USE_MOCKS = process.env.NEXT_PUBLIC_USE_MOCKS === 'true';
 const API = USE_MOCKS ? '' : (process.env.NEXT_PUBLIC_API_URL || '');
+const P = USE_MOCKS ? '/data' : '/api';
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API}${path}`, {
@@ -56,9 +57,9 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const accessApi = {
-  status: () => req<AccessStatusDto>(USE_MOCKS ? '/data/access/status' : '/api/access/status'),
+  status: () => req<AccessStatusDto>(`${P}/access/status`),
   verifyElefin: (body: VerifyElefinInput) =>
-    req<AccessStatusDto>('/api/access/verify-elefin', { method: 'POST', body: JSON.stringify(body) }),
-  checkActivity: () => req<ActivityCheckResult>('/api/access/check-activity', { method: 'POST' }),
-  maintenance: () => req<MaintenanceModeDto>('/api/access/maintenance'),
+    req<AccessStatusDto>(`${P}/access/verify-elefin`, { method: 'POST', body: JSON.stringify(body) }),
+  checkActivity: () => req<ActivityCheckResult>(`${P}/access/check-activity`, { method: 'POST' }),
+  maintenance: () => req<MaintenanceModeDto>(`${P}/access/maintenance`),
 };

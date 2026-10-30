@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import Logo from '@/components/logo';
+import LegalCta from './legal-cta';
 import '@/styles/v6/tokens.css';
 import '@/styles/v6/components.css';
 import '@/styles/v6/auth.css';
@@ -21,7 +22,7 @@ export default function LegalPage({ kicker, title, updated, intro, sections, oth
         <Link href="/" className="au-logo" aria-label="TRADElogs home"><Logo height={24} /></Link>
         <nav>
           <Link href={other.href} className="x-btn x-btn--sm x-btn--ghost au-hide-xs">{other.label}</Link>
-          <Link href="/login" className="x-btn x-btn--sm x-btn--hi">Sign in</Link>
+          <LegalCta />
         </nav>
       </header>
       <div className="au-lghero">

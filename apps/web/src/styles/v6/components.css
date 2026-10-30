@@ -102,7 +102,8 @@
 .v6 .x-bar > i { display: block; height: 100%; background: var(--g); border-radius: 3px; }
 
 /* ── table ────────────────────────────────────────────────────────────────── */
-.v6 .x-tblwrap { overflow-x: auto; margin: 0 -8px; padding: 0 8px; }
+/* Positioned so absolutely placed bits (sr-only labels) scroll with the table instead of widening the page. */
+.v6 .x-tblwrap { overflow-x: auto; margin: 0 -8px; padding: 0 8px; position: relative; }
 .v6 .x-tbl { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 .v6 .x-tbl th { font: 400 11.5px var(--sans); color: var(--dim); text-align: left; padding: 0 12px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
 .v6 .x-tbl th button { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; }

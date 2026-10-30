@@ -69,7 +69,8 @@ export function useTerminalEntry() {
   }
 
   const InactiveModal = modalOpen ? (
-    <div className="v6 x-dialog-scrim" role="dialog" aria-modal="true" aria-labelledby="inactive-t" data-testid="inactive-modal">
+    <div className="v6">
+    <div className="x-dialog-scrim" role="dialog" aria-modal="true" aria-labelledby="inactive-t" data-testid="inactive-modal">
       <div className="x-dialog">
         <span className="x-tag x-tag--r">Access paused</span>
         <h2 id="inactive-t" style={{ marginTop: 12 }}>Not enough recent trading activity</h2>
@@ -79,6 +80,7 @@ export function useTerminalEntry() {
           OK, sign out
         </button>
       </div>
+    </div>
     </div>
   ) : null;
 

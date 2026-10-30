@@ -9,6 +9,7 @@ import { invalidateAccessCache, primeAccessCache } from '@/lib/use-platform-acce
 import { LoadingScreen } from '@/components/loader';
 import StatusCard, { SC_ICONS } from '@/components/v6/auth/status-card';
 import { AuthError, AuthSubmit } from '@/components/v6/auth/auth-shell';
+import { mockStay } from '@/lib/use-redirect-if-authed';
 
 export default function InactiveAccessPage() {
   const router = useRouter();
@@ -25,6 +26,7 @@ export default function InactiveAccessPage() {
     if (!session?.session) return;
     accessApi.status().then(s => {
       setStatus(s);
+      if (mockStay()) return;
       if (s.status === 'FULL_ACCESS') router.replace('/dashboard');
       if (s.status === 'ELEFIN_REQUIRED') router.replace('/access/elefin');
       if (s.status === 'MAINTENANCE' && !s.isAdmin) router.replace('/maintenance');

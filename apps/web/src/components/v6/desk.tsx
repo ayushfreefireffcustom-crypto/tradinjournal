@@ -274,6 +274,18 @@ function DailyChart({ days }: { days: DayBucket[] }) {
   const rMax = Math.max(...runs.map(Math.abs), 1);
   const rY = (v: number) => (v >= 0 ? mid - (v / rMax) * (mid - T) * 0.94 : mid + (-v / rMax) * (h - B - mid) * 0.94);
   const every = Math.max(1, Math.ceil(days.length / Math.max(2, Math.floor(w / 90))));
+  // Date labels every `every` days plus the last one; drop any that would touch a neighbour.
+  const labels = (() => {
+    const last = days.length - 1;
+    const span = (i: number): [number, number] => {
+      const x = bx(i) + bw / 2, tw = shortDate(days[i]!.date).length * 6 + 2;
+      return i === 0 ? [x, x + tw] : i === last ? [x - tw, x] : [x - tw / 2, x + tw / 2];
+    };
+    const keep: number[] = [];
+    for (let i = 0; i < last; i += every) if (!keep.length || span(i)[0] > span(keep[keep.length - 1]!)[1] + 10) keep.push(i);
+    while (keep.length && span(keep[keep.length - 1]!)[1] + 10 > span(last)[0]) keep.pop();
+    return new Set([...keep, last]);
+  })();
   const hd = hover != null ? days[hover] : null;
   return (
     <div className="dk-daily-chart" ref={ref} onPointerLeave={() => setHover(null)}>
@@ -299,7 +311,7 @@ function DailyChart({ days }: { days: DayBucket[] }) {
           {hover == null && (
             <text x={Math.max(L + 40, bx(days.length - 1) + bw / 2 - 8)} y={Math.max(12, rY(runs[runs.length - 1]!) - 9)} textAnchor="end" fontSize="10.5" fill="var(--tx)" style={MONO} pointerEvents="none">{fmtUsd(runs[runs.length - 1]!, 0)}</text>
           )}
-          {days.map((d, i) => (i % every === 0 || i === days.length - 1) && !(i !== days.length - 1 && days.length - 1 - i < every * 0.6) ? (
+          {days.map((d, i) => labels.has(i) ? (
             <text key={d.key} x={bx(i) + bw / 2} y={h - 5} fontSize="10.5" fill="var(--axis)" textAnchor={i === 0 ? 'start' : i === days.length - 1 ? 'end' : 'middle'}>{shortDate(d.date)}</text>
           ) : null)}
         </svg>
@@ -350,7 +362,7 @@ export function BreakdownCard({ trades }: { trades: Trade[] }) {
                     <span className="x-mk">{mark}</span>
                     <div style={{ minWidth: 0 }}>
                       <b>{r.key}{by === 'session' && <span className="x-dim"> · UTC</span>}</b>
-                      <small className="dk-ell">{r.kind ? `${r.kind} · ` : ''}{r.n} trade{r.n === 1 ? '' : 's'} · {fmtPct(r.wins / r.n, 0)} won</small>
+                      <small className="dk-ell">{r.kind && <span className="dk-bd-kind">{r.kind} · </span>}{r.n} trade{r.n === 1 ? '' : 's'} · {fmtPct(r.wins / r.n, 0)} won</small>
                     </div>
                   </div>
                   <div className="dk-gl-wrap" aria-label={`Won ${fmtUsd(r.gw, 0)}, gave back ${fmtUsd(-r.gl, 0)}`}>

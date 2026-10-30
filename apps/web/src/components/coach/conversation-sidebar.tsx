@@ -30,7 +30,7 @@ function whenLabel(iso: string): string {
   if (m < 60) return `${Math.floor(m)}m ago`;
   if (d.toDateString() === new Date().toDateString()) return `${Math.floor(m / 60)}h ago`;
   if (m < 60 * 24 * 7) return d.toLocaleDateString('en-US', { weekday: 'short' });
-  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  return d.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
 }
 function groupOf(iso: string): string {
   const d = new Date(iso), now = new Date();

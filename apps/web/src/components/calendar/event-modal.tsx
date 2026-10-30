@@ -127,7 +127,7 @@ export default function EventModal({
       <h2 id="mk-em-t" className="mk-em-t">{event.title}</h2>
       {description && <p className="mk-em-desc">{description}</p>}
       <div className="mk-em-when">
-        <span>{new Date(event.eventTime).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+        <span>{new Date(event.eventTime).toLocaleString('en-US', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })}</span>
         {countdown ? <span className="x-tag x-tag--m">{countdown}</span> : <span className="x-tag">Released</span>}
       </div>
       <div className="x-strip mk-em-cols">

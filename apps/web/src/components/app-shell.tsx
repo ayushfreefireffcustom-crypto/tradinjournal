@@ -146,7 +146,9 @@ function CommandPalette({ onClose, onGo, isAdmin, isPartner }: { onClose: () => 
   }, [q, isAdmin, isPartner]);
   useEffect(() => { setI(0); }, [q]);
   return (
-    <div className="v6 x-dialog-scrim f-cmdk-scrim" onMouseDown={onClose}>
+    // The tokens and dialog styles are scoped under .v6, so the scrim needs a .v6 parent.
+    <div className="v6">
+    <div className="x-dialog-scrim f-cmdk-scrim" onMouseDown={onClose}>
       <div className="f-cmdk" role="dialog" aria-label="Jump to a page" onMouseDown={e => e.stopPropagation()}>
         <div className="f-cmdk-in">
           <ISearch size={17} />
@@ -173,6 +175,7 @@ function CommandPalette({ onClose, onGo, isAdmin, isPartner }: { onClose: () => 
           </ul>
         )}
       </div>
+    </div>
     </div>
   );
 }

@@ -388,7 +388,7 @@ export default function CoachPage() {
                 <button type="submit" disabled={!accountId || !input.trim()} data-testid="coach-send" className="x-btn x-btn--hi" aria-label="Send"><ISend /></button>
               )}
             </div>
-            <p className="ai-fine">Not financial advice. The coach reviews your behaviour; web answers are general info, so verify before acting.</p>
+            <p className="ai-fine">Not financial advice.<span> The coach reviews your behaviour; web answers are general info, so verify before acting.</span></p>
           </form>
         </section>
       </div>

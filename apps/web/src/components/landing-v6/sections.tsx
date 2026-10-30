@@ -37,7 +37,7 @@ export function Hero() {
       <div className="wrap">
         <Label>Read-only sync for any MetaTrader 5 broker</Label>
         <h1 id="hero-h">The complete<br />trading journal</h1>
-        <p className="sub">Every MT5 fill journaled, every habit measured, and every Monday one thing to fix. Read-only by design, free while we’re getting started.</p>
+        <p className="sub">Every MT5 fill journaled, every habit measured, and every Saturday one thing to fix. Read-only by design, free while we’re getting started.</p>
         <div className="ctas"><StartCta testId="hero-start" /></div>
         <div className="assure">
           <span><Ic name="eye" />Investor password only</span>
@@ -45,7 +45,7 @@ export function Hero() {
           <span><Ic name="card" />No card needed</span>
         </div>
       </div>
-      <div style={{ maxWidth: 1200, margin: '0 auto' }} aria-hidden>
+      <div className="hero-stage" style={{ maxWidth: 1200, margin: '0 auto' }} aria-hidden>
         <Stage w={1200} h={470} crop={700} maxScale={1}><HeroArt /></Stage>
       </div>
     </section>
@@ -83,7 +83,7 @@ export function Features() {
         <SecHead id="coach" label="AI coach · SignalX" title={<>An AI that has read<br />every trade you’ve taken</>}
           body="Ask the coach anything and it answers from your real fills. Before your next trade, SignalX gives a bias, key levels and scenarios for the symbol you’re watching."
           action={{ href: '/signup', text: 'Ask the coach' }} />
-        <Bento tiles={<Tiles defs={[['chat', 'Answers', 'from your own trades'], ['signal', 'SignalX', 'bias, levels and scenarios'], ['mail', 'Weekly review', 'every Monday'], ['bulb', 'Plain-English', 'insights, no jargon']]} />}
+        <Bento tiles={<Tiles defs={[['chat', 'Answers', 'from your own trades'], ['signal', 'SignalX', 'bias, levels and scenarios'], ['mail', 'Weekly review', 'every Saturday'], ['bulb', 'Plain-English', 'insights, no jargon']]} />}
           art={<Art tone="g"><CoachArt /></Art>} />
       </section>
 
@@ -167,10 +167,10 @@ export function How() {
               <rect x="76" y="106" width="188" height="24" rx="8" fill="#08C465" opacity=".14" />
               <circle cx="90" cy="118" r="5" fill="#08C465" />
               <rect x="102" y="115" width="120" height="6" rx="3" fill="#3DE296" opacity=".6" />
-              <text x="170" y="168" textAnchor="middle" fontSize="11.5" fill="#55555B">Monday · your week in review</text>
+              <text x="170" y="168" textAnchor="middle" fontSize="11.5" fill="#55555B">Saturday · your week in review</text>
             </svg>
           </div>
-          <div className="tx"><div className="step">03</div><h3>Fix one thing a week</h3><p>A short review every Monday: what worked, what leaked, and the single habit to change.</p></div>
+          <div className="tx"><div className="step">03</div><h3>Fix one thing a week</h3><p>A short review every Saturday: what worked, what leaked, and the single habit to change.</p></div>
         </article>
       </div>
     </section>
@@ -244,7 +244,7 @@ export function Closing() {
         <div>
           <Label>Free while we’re getting started</Label>
           <h2 id="close-h">Sync. Review.<br />Fix. Repeat.</h2>
-          <p>Connect your MT5 account in a couple of minutes and get your first weekly review on Monday.</p>
+          <p>Connect your MT5 account in a couple of minutes and get your first weekly review on Saturday.</p>
           <StartCta testId="closing-start" />
         </div>
         <div className="scatter" aria-hidden>

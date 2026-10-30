@@ -52,7 +52,7 @@ function EngagementChart({ data }: { data: AdminEngagementDto | null }) {
   }
   const maxDau = Math.max(...data.days.map(d => d.dau), 1);
   const avg = Math.round(data.days.reduce((a, d) => a + d.dau, 0) / data.days.length);
-  const fmt = (d: string, o: Intl.DateTimeFormatOptions) => new Date(d + 'T12:00:00').toLocaleDateString('en-GB', o);
+  const fmt = (d: string, o: Intl.DateTimeFormatOptions) => new Date(d + 'T12:00:00').toLocaleDateString('en-US', o);
   const h = hover != null ? data.days[hover] : null;
   return (
     <section className="x-card ad-eng">

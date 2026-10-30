@@ -1,7 +1,8 @@
 'use client';
 
-// Trade log table for /trades: positions grouped by the day they opened (when
-// sorted by time), sortable headers, journal tags, and stacked cards on phones.
+// Trade log table for /trades: positions grouped by the day they closed (when
+// sorted by time, matching daily P&L everywhere else), sortable headers, journal
+// tags, and stacked cards on phones.
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import type { Trade } from '@/lib/api';
@@ -23,18 +24,21 @@ const plTone = (v: number) => (v > 0 ? 'pos' : v < 0 ? 'neg' : '');
 
 interface Group { key: string; date: Date | null; trades: Trade[] }
 
-/** Consecutive runs of trades opened on the same local day (input is already sorted). */
-function groupByOpenDay(trades: Trade[]): Group[] {
+/** Consecutive runs of trades closed on the same local day (input is already sorted); open positions sit under today. */
+function groupByCloseDay(trades: Trade[]): Group[] {
   const out: Group[] = [];
   for (const t of trades) {
-    const o = new Date(t.openTime);
-    const key = localKey(o);
+    const c = t.closeTime ? new Date(t.closeTime) : new Date();
+    const key = localKey(c);
     let g = out[out.length - 1];
-    if (!g || g.key !== key) { g = { key, date: new Date(o.getFullYear(), o.getMonth(), o.getDate()), trades: [] }; out.push(g); }
+    if (!g || g.key !== key) { g = { key, date: new Date(c.getFullYear(), c.getMonth(), c.getDate()), trades: [] }; out.push(g); }
     g.trades.push(t);
   }
   return out;
 }
+
+/** When the position closed ("open" while it still is), with the day when the list isn't grouped. */
+const closedAt = (t: Trade, grouped: boolean) => (t.closeTime ? `${grouped ? '' : `${shortDay(t.closeTime)} · `}${hm(t.closeTime)}` : 'open');
 
 export function pctOfBalance(v: number, balance: number | null): string {
   if (!balance || balance <= 0) return '';
@@ -79,7 +83,7 @@ interface Props {
 export function TradeLog({ rows, shown, sortKey, sortDir, onSort, notes, balance, onOpen, loading, empty }: Props) {
   const page = rows.slice(0, shown);
   const grouped = sortKey === 'open';
-  const groups: Group[] = grouped ? groupByOpenDay(page) : [{ key: 'all', date: null, trades: page }];
+  const groups: Group[] = grouped ? groupByCloseDay(page) : [{ key: 'all', date: null, trades: page }];
   const maxHold = Math.max(1, ...rows.map(t => t.durationSecs ?? 0));
 
   const journalCell = (t: Trade) => {
@@ -102,7 +106,7 @@ export function TradeLog({ rows, shown, sortKey, sortDir, onSort, notes, balance
   };
   const sub = (t: Trade) => {
     const kind = marketKind(t.symbol);
-    return `${kind ? `${kind} · ` : ''}${grouped ? '' : `${shortDay(t.openTime)} · `}${hm(t.openTime)}`;
+    return `${kind ? `${kind} · ` : ''}${closedAt(t, grouped)}`;
   };
   const pl = (t: Trade) => (
     <span className="tr-pl"><b className={`m ${plTone(t.netPnl)}`}>{fmtUsd(t.netPnl)}</b>{pctOfBalance(t.netPnl, balance) && <small className="m">{pctOfBalance(t.netPnl, balance)}</small>}</span>
@@ -171,7 +175,7 @@ export function TradeLog({ rows, shown, sortKey, sortDir, onSort, notes, balance
             {g.trades.map(t => (
               <div key={t.positionId} className="tr-card" role="link" tabIndex={0} onClick={() => onOpen(t)} onKeyDown={keyOpen(t)}>
                 <span className="x-mk">{tickerMark(t.symbol)}</span>
-                <div className="tr-card-a"><span><b>{t.symbol}</b><SideChip dir={t.direction} /></span><small>{grouped ? '' : `${shortDay(t.openTime)} · `}{hm(t.openTime)} · {fmtHold(t.durationSecs)} · {t.volume.toFixed(2)} lots</small></div>
+                <div className="tr-card-a"><span><b>{t.symbol}</b><SideChip dir={t.direction} /></span><small>{closedAt(t, grouped)} · {fmtHold(t.durationSecs)} · {t.volume.toFixed(2)} lots</small></div>
                 {pl(t)}
                 <div className="tr-card-j"><span className="m tr-px">{fmtPrice(t.entryPrice, t.exitPrice)} → {exit(t)}</span>{journalCell(t)}</div>
               </div>

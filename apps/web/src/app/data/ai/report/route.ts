@@ -1,13 +1,13 @@
 import { ok } from '@/lib/mock-data';
 
-// Mock-mode coach review. Content mirrors the shape of a real written review.
+// Mock-mode coach review, written against the seeded trades of the first mock account.
 export function GET() {
   return ok({
     content:
-      '**Longs are carrying this account.** Your long trades are net positive while shorts give most of it back — the edge is directional, not random.\n\n' +
-      '- Losing trades are held far longer than winners. Exits, not entries, are the leak.\n' +
-      '- BTCUSD produces the bulk of profit from very few wins; index CFDs are roughly flat.\n' +
-      '- Tuesdays are the weakest day. Consider sizing down until the pattern changes.',
+      '**Shorts are carrying this account.** 44 shorts netted +$7.4k at a 75% win rate; 34 longs netted +$3.8k at 56%. Until longs earn it back, take them smaller.\n\n' +
+      '- Losing trades are held about an hour longer than winners (6.3h vs 5.2h). Exits, not entries, are the leak.\n' +
+      '- XAUUSD is your cleanest market: 11 of 12 trades won for +$3.7k.\n' +
+      '- GBPUSD and EURUSD barely cover their costs: 22 trades between them for +$365. Trade them less, or not at all.',
     cached: true,
     generated: true,
     stale: false,

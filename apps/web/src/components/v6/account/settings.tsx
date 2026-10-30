@@ -21,7 +21,7 @@ function sentLabel(iso: string | null): string {
   if (!iso) return 'Never sent';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return 'Never sent';
-  return `Last sent ${d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+  return `Last sent ${d.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}`;
 }
 
 export function Switch({ on, onClick, disabled, label, testId }: { on: boolean; onClick: () => void; disabled?: boolean; label: string; testId?: string }) {

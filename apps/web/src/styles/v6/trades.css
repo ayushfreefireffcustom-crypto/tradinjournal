@@ -44,7 +44,7 @@
 .v6 .tr-time { font-size: 12.5px; color: var(--mut); }
 .v6 .tr-time b { color: var(--tx); font-weight: 400; }
 .v6 .tr-tags { display: inline-flex; gap: 6px; align-items: center; }
-.v6 .tr-tags .x-tag { max-width: 120px; overflow: hidden; text-overflow: ellipsis; }
+.v6 .tr-tags .x-tag { display: inline-block; max-width: 120px; overflow: hidden; text-overflow: ellipsis; }
 .v6 .tr-sk td { padding: 14px 10px; }
 .v6 .tr-sk i { display: block; height: 12px; }
 .v6 .tr-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 16px; margin-top: 4px; border-top: 1px solid var(--line); flex-wrap: wrap; }
@@ -62,6 +62,7 @@
 .v6 .tr-id h2 { font-size: 24px; font-weight: 500; letter-spacing: -.02em; margin: 0; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .v6 .tr-id p { margin: 6px 0 0; font-size: 13px; color: var(--mut); }
 .v6 .tr-id p .m { color: var(--tx); }
+.v6 .tr-nw { white-space: nowrap; }
 .v6 .tr-net { text-align: right; }
 .v6 .tr-net > span { display: block; font-size: 12.5px; color: var(--mut); }
 .v6 .tr-net b { display: block; font: 500 40px/1.1 var(--sans); letter-spacing: -.03em; font-feature-settings: "tnum"; margin-top: 2px; white-space: nowrap; }
@@ -110,6 +111,7 @@
   .v6 .tr-metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .v6 .tr-metrics > div:nth-child(5)::before { display: none; }
   .v6 .tr-metrics > div:nth-child(n+5) { border-top: 1px solid var(--line); }
+  .v6 .tr-metrics > div:nth-child(7) { grid-column: span 2; }
 }
 @media (max-width: 960px) {
   .v6 .tr-tbl .tr-col-px, .v6 .tr-tbl .tr-col-chev { display: none; }
@@ -143,9 +145,10 @@
   .v6 .tr-card-a small { font-size: 12px; color: var(--mut); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .v6 .tr-card .tr-pl { text-align: right; }
   .v6 .tr-card-j { grid-column: 2 / 4; min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-  .v6 .tr-card-j .tr-px { font-size: 12px; color: var(--mut); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-  .v6 .tr-card-j .tr-tags { flex: none; }
-  .v6 .tr-card-j .tr-tags .x-tag { max-width: 110px; }
+  /* Prices never truncate; the journal tag gives way instead. */
+  .v6 .tr-card-j .tr-px { font-size: 12px; color: var(--mut); white-space: nowrap; flex: none; }
+  .v6 .tr-card-j .tr-tags { flex: 0 1 auto; min-width: 0; justify-content: flex-end; }
+  .v6 .tr-card-j .tr-tags .x-tag { max-width: 110px; min-width: 0; }
 
   .v6 .tr-dl-cards .tr-card { grid-template-columns: minmax(0, 1fr) auto; cursor: default; }
   .v6 .tr-dl-cards .tr-card-j { grid-column: 1 / -1; }

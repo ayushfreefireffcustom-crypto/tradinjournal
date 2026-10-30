@@ -10,7 +10,7 @@ export function GET() {
     unread: 2,
     items: [
       { id: 'n1', kind: 'sync', title: 'XM Global synced', body: '3 new closed positions imported.', href: '/trades', read: false, createdAt: ago(4) },
-      { id: 'n2', kind: 'review', title: 'Your weekly review is ready', body: 'Longs carried the week; Tuesdays cost you most.', href: '/dashboard', read: false, createdAt: ago(180) },
+      { id: 'n2', kind: 'review', title: 'Your weekly review is ready', body: 'Shorts carried the week; GBPUSD barely covered its costs.', href: '/dashboard', read: false, createdAt: ago(180) },
       { id: 'n3', kind: 'calendar', title: 'High-impact event in 1 hour', body: 'US CPI (m/m) at 13:30 GMT.', href: '/calendar', read: true, createdAt: ago(60 * 26) },
     ],
   });

@@ -34,9 +34,9 @@ export const setNewsPrefs = (s: string[]) => { g.__newsPrefs = s; };
 export const calWatch = () => (g.__calWatch ??= new Set(['e-cpi', 'e-core']));
 
 export const BRIEF = [
-  '- **BTCUSD** is pressing the 67.8k range high after ETF inflows; your best trades this month were longs on London-open breaks.\n',
+  '- **BTCUSD** is pressing the 67.8k range high after ETF inflows; it has been your noisiest market, 13 trades for +$759.\n',
   '- **XAUUSD** faces US CPI at 13:30 — the last two prints moved gold 1%+. Your rule: flat before high-impact data.\n',
-  '- **US100** earnings after the close; you lose on Tuesdays and after 15:00 — today is both.\n',
+  '- **US100** earnings after the close; NAS100 is your biggest earner (+$4.1k), so don’t give it back into the print.\n',
 ];
 
 /** Economic events across yesterday → +7 days, anchored on local "today". */

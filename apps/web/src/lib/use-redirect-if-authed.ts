@@ -18,13 +18,18 @@ export function safeNext(fallback = '/dashboard'): string {
   return n && n.startsWith('/') && !n.startsWith('//') && !n.startsWith('/login') ? n : fallback;
 }
 
+/** Mock mode only: `?stay` keeps auth and access pages on screen for previewing. */
+export function mockStay(): boolean {
+  return process.env.NEXT_PUBLIC_USE_MOCKS === 'true' && typeof window !== 'undefined' && window.location.search.includes('stay');
+}
+
 export function useRedirectIfAuthed(fallback = '/dashboard') {
   const router = useRouter();
   const { data: session, isPending } = authClient.useSession();
 
   useEffect(() => {
     // Mock mode is always signed in; `?stay` lets designers preview auth pages.
-    if (process.env.NEXT_PUBLIC_USE_MOCKS === 'true' && window.location.search.includes('stay')) return;
+    if (mockStay()) return;
     if (!isPending && session?.session) router.replace(safeNext(fallback));
   }, [isPending, session, router, fallback]);
 

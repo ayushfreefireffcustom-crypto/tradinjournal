@@ -211,7 +211,7 @@ export default function HeroArt() {
 
       {/* frosted chips with micro UI */}
       <Chip x={150} y={112} sym="MT5" title="Account synced" sub="History backfilled" extra={<span className="dot" />} />
-      <Chip x={880} y={112} icon="mail" title="Weekly review ready" sub="One thing to fix" extra={<span className="t">Mon</span>} />
+      <Chip x={880} y={112} icon="mail" title="Weekly review ready" sub="One thing to fix" extra={<span className="t">Sat</span>} />
       <Chip x={120} y={392} sym="XAU" dim title="Trade journaled" sub="Notes · tags · replay"
         extra={<svg className="spark" width="44" height="18" viewBox="0 0 44 18" aria-hidden><polyline points="1,14 8,11 14,12 21,6 28,8 35,3 43,4" fill="none" stroke="#3DE296" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>} />
       <Chip x={904} y={392} dim icon="flame" title="Tilt check" sub="Behaviour score updated" />

@@ -663,9 +663,9 @@ Legend:
 **States:**
 - [ ] A0.28 One `EmptyState` used everywhere. Replace the six ad-hoc versions (analytics dashed boxes, notebook, paper blotter, dashboard text, brokers dashed card, admin red bar) `M`
 - [ ] A0.29 Zero-data rule: when there's no data, show the EmptyState instead of "+$0.00 ▲0.00%" or rows of "—" `S`
-- [ ] A0.30 Mobile chip rows: edge fade + scroll snap, so chips never cut mid-word unannounced `S`
+- [x] A0.30 Mobile chip rows: edge fade + scroll snap, so chips never cut mid-word unannounced `S`
 - [ ] A0.31 Mobile: no orphan full-width KPI tile (use even counts or a 2-col span rule) `S`
-- [ ] A0.32 Mock mode completeness: add `/data/admin/*` mocks (`lib/admin-api.ts:191-210`) and a maintenance mock, so every page can be reviewed `S`
+- [x] A0.32 Mock mode completeness: add `/data/admin/*` mocks (`lib/admin-api.ts:191-210`) and a maintenance mock, so every page can be reviewed `S`
 
 ## A4. Pages (from `reports/ui-audit.md` §3; H = high, M = medium, L = low severity)
 

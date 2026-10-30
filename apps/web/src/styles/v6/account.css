@@ -355,3 +355,38 @@
   .v6 .ac-add-btns .x-btn { flex: 1; }
 }
 .v6 .ac-st-row-t .ac-st-meta { display: block; margin-top: 2px; color: var(--dim); }
+
+/* Narrow phones: three money columns don't fit, so Net P&L takes its own row. */
+@media (max-width: 480px) {
+  .v6 .ac-figs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .v6 .ac-figs > div:nth-child(3) { grid-column: 1 / -1; border-top: 1px solid var(--line); }
+  .v6 .ac-figs > div:nth-child(3)::before { display: none; }
+}
+
+/* Phones: recent clicks fit without scrolling once the device column goes. */
+@media (max-width: 760px) {
+  .v6 .ac-clicks { min-width: 0; }
+  .v6 .ac-clicks th:nth-child(3), .v6 .ac-clicks td:nth-child(3) { display: none; }
+}
+
+/* Clients table: on phones show who, where they are in the funnel, and when they last traded. */
+@media (max-width: 760px) {
+  .v6 .ac-clients { min-width: 0; }
+  .v6 .ac-clients th:nth-child(2), .v6 .ac-clients td:nth-child(2),
+  .v6 .ac-clients th:nth-child(3), .v6 .ac-clients td:nth-child(3),
+  .v6 .ac-clients th:nth-child(5), .v6 .ac-clients td:nth-child(5),
+  .v6 .ac-clients th:nth-child(6), .v6 .ac-clients td:nth-child(6) { display: none; }
+}
+/* Channel table: phones keep the channel, signups and active traders. */
+@media (max-width: 760px) {
+  .v6 .ac-cht:not(.lk) { min-width: 0; }
+  .v6 .ac-cht:not(.lk) th:nth-child(2), .v6 .ac-cht:not(.lk) td:nth-child(2),
+  .v6 .ac-cht:not(.lk) th:nth-child(4), .v6 .ac-cht:not(.lk) td:nth-child(4),
+  .v6 .ac-cht:not(.lk) th:nth-child(5), .v6 .ac-cht:not(.lk) td:nth-child(5) { display: none; }
+}
+@media (max-width: 760px) {
+  .v6 .ac-cht.lk { min-width: 520px; }
+  .v6 .ac-cht.lk th:nth-child(3), .v6 .ac-cht.lk td:nth-child(3),
+  .v6 .ac-cht.lk th:nth-child(5), .v6 .ac-cht.lk td:nth-child(5),
+  .v6 .ac-cht.lk th:nth-child(6), .v6 .ac-cht.lk td:nth-child(6) { display: none; }
+}

@@ -236,17 +236,18 @@ const MINUS = '−';
 /** Signed money: "+$1,284", "−$118.20". */
 export function fmtUsd(v: number, digits = 2): string {
   const abs = Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits });
-  if (Math.abs(v) < 0.005) return `$${abs}`;
+  // Anything that rounds to zero at this precision is plain "$0", never "−$0".
+  if (Number(Math.abs(v).toFixed(digits)) === 0) return `$${abs}`;
   return `${v > 0 ? '+' : MINUS}$${abs}`;
 }
 
 /** Compact money for axis labels: "$25k", "$1.2M". */
 export function fmtUsdCompact(v: number): string {
   const a = Math.abs(v);
-  const sign = v < 0 ? MINUS : '';
-  if (a >= 1e6) return `${sign}$${(a / 1e6).toFixed(a >= 1e7 ? 0 : 1)}M`;
-  if (a >= 1e3) return `${sign}$${(a / 1e3).toFixed(a >= 1e4 ? 0 : 1)}k`;
-  return `${sign}$${Math.round(a)}`;
+  // Round before picking the unit, so 999.6 reads "$1.0k" and 999,600 reads "$1.0M".
+  const unit = (n: number, u: string) => `${n.toFixed(n >= 9.95 ? 0 : 1)}${u}`;
+  const body = a >= 999_500 ? unit(a / 1e6, 'M') : a >= 999.5 ? unit(a / 1e3, 'k') : String(Math.round(a));
+  return `${v < 0 && body !== '0' ? MINUS : ''}$${body}`;
 }
 
 /** "48m", "2h 10m", "3d 4h". */

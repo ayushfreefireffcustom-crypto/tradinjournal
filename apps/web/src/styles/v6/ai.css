@@ -314,7 +314,9 @@
   .v6 .ai-acts { margin-left: -10px; }
   .v6 .ai-form { padding: 8px 10px 10px; }
   .v6 .ai-err { margin: 0 10px 8px; }
-  .v6 .ai-fine { display: none; }
+  /* Phones keep the disclaimer, just the short form. */
+  .v6 .ai-fine { margin-top: 6px; font-size: 11px; }
+  .v6 .ai-fine span { display: none; }
   .v6 .ai-hello h2 { font-size: 20px; }
   .v6 .ai-hello p { font-size: 13.5px; }
 }

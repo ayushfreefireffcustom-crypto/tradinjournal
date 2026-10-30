@@ -61,6 +61,8 @@ html[data-theme=light]:has(.v6.au-root), html[data-theme=light] body:has(.v6.au-
 .v6 .au-return:hover { color: var(--tx); }
 
 .v6 .au-gbtn-wrap { margin-top: 24px; }
+.v6 .au-gnote { margin: 8px 0 0; text-align: center; font-size: 12px; color: var(--dim); }
+.v6 .au-gnote a { color: var(--mut); }
 .v6 .au-gbtn { gap: 10px; }
 .v6 .au-sep { display: flex; align-items: center; gap: 12px; margin: 20px 0; font-size: 12.5px; color: var(--dim); }
 .v6 .au-sep::before, .v6 .au-sep::after { content: ""; flex: 1; height: 1px; background: var(--line); }

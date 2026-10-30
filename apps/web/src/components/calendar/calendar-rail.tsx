@@ -42,7 +42,7 @@ function fetchWindow(): { from: string; to: string } {
 }
 
 function shortDate(d: Date): string {
-  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  return d.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
 }
 
 export default function CalendarRail() {
@@ -184,7 +184,7 @@ export default function CalendarRail() {
     const first = groups.find(([d]) => d === k)?.[1][0];
     if (!first) return k;
     const d = new Date(first.eventTime);
-    const lbl = d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+    const lbl = d.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' });
     return k === todayKey ? `Today · ${lbl}` : lbl;
   };
 

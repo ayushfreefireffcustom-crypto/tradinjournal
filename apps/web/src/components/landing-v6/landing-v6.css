@@ -240,6 +240,8 @@
   .lp6 .foot{grid-template-columns:1fr 1fr}
   .lp6 .foot .brand{grid-column:1 / -1}
 }
+/* Phones crop the hero art; fade the cut edges so the side chips don't end mid-word. */
+@media (max-width:760px){.lp6 .hero-stage .stage-box{-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 22%,#000 78%,transparent 100%);mask-image:linear-gradient(90deg,transparent 0,#000 22%,#000 78%,transparent 100%)}}
 @media (max-width:560px){
   .lp6 .wrap{padding:0 16px}
   .lp6 .nav-cta .ghost{display:none}

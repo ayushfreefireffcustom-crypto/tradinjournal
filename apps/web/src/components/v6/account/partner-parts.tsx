@@ -19,7 +19,7 @@ export const RANGE_LABEL: Record<PartnerRange, string> = { '7D': 'last 7 days', 
 
 export const n = (v: number) => v.toLocaleString('en-US');
 export const pct = (a: number, b: number) => (b ? `${((a / b) * 100).toFixed(a / b < 0.1 ? 1 : 0)}%` : '—');
-export const day = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+export const day = (iso: string) => new Date(iso).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
 
 // ── Avatar + status ───────────────────────────────────────────────────────
 export function Avatar({ name, size = 32 }: { name: string; size?: number }) {
@@ -128,7 +128,7 @@ function TrendLine({ pts, label, fmt }: { pts: number[]; label: (i: number) => s
 export function TrendCard({ daily }: { daily: PartnerDailyPoint[] }) {
   const [m, setM] = useState<Metric>('signups');
   const pts = useMemo(() => daily.map(d => (m === 'clicks' ? d.clicks : m === 'signups' ? d.clients : d.active)), [m, daily]);
-  const label = (i: number) => new Date(`${daily[i]!.date}T00:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+  const label = (i: number) => new Date(`${daily[i]!.date}T00:00:00Z`).toLocaleDateString('en-US', { day: 'numeric', month: 'short', timeZone: 'UTC' });
   const fmt = (v: number) => (m === 'clicks' ? `${n(v)} clicks` : m === 'signups' ? `${n(v)} clients` : `${n(v)} active`);
   const has = pts.some(v => v > 0);
   return (

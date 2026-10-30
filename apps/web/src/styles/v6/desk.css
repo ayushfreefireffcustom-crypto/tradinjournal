@@ -46,9 +46,20 @@
 .v6 .dk-dstats { margin-top: 14px; }
 
 /* breakdown */
+.v6 .dk-bd { container-type: inline-size; }
 .v6 .dk-bd-head, .v6 .dk-bd-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(92px, 150px) 88px; gap: 14px; align-items: center; }
 .v6 .dk-bd-head { font-size: 11.5px; color: var(--dim); padding-bottom: 8px; border-bottom: 1px solid var(--line); }
-.v6 .dk-bd-head span:nth-child(n+2) { text-align: right; }
+.v6 .dk-bd-head span:nth-child(n+2) { justify-self: end; white-space: nowrap; }
+/* Side-by-side with Daily P&L the card is narrow: tighter columns, and the
+   market kind goes once the symbol line can't hold it. Phones stack instead. */
+@media (min-width: 761px) {
+  @container (max-width: 520px) {
+    .v6 .dk-bd-head, .v6 .dk-bd-row { grid-template-columns: minmax(0, 1fr) 96px 86px; gap: 12px; }
+  }
+  @container (max-width: 395px) {
+    .v6 .dk-bd-kind { display: none; }
+  }
+}
 .v6 .dk-bd-row { padding: 11px 0; border-bottom: 1px solid var(--line); }
 .v6 .dk-bd-row:last-child { border-bottom: 0; }
 .v6 .dk-bd-row .x-sym b { font-size: 13.5px; }

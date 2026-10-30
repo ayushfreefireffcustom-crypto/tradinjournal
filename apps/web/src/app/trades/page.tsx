@@ -84,7 +84,9 @@ export default function TradesPage() {
       return true;
     });
     const val = (t: Trade): number | string =>
-      sortKey === 'symbol' ? t.symbol : sortKey === 'net' ? t.netPnl : sortKey === 'held' ? t.durationSecs ?? -1 : new Date(t.openTime).getTime();
+      sortKey === 'symbol' ? t.symbol : sortKey === 'net' ? t.netPnl : sortKey === 'held' ? t.durationSecs ?? -1
+        // Time order follows the close (open positions first), like the day groups and daily P&L.
+        : t.closeTime ? new Date(t.closeTime).getTime() : 8e15 + new Date(t.openTime).getTime();
     return f.sort((a, b) => {
       const va = val(a), vb = val(b);
       const c = typeof va === 'string' ? va.localeCompare(vb as string) : (va as number) - (vb as number);

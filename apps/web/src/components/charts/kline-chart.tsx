@@ -9,7 +9,7 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import type { Chart, KLineData, DataLoader, Period } from 'klinecharts';
 import { marketApi, streamCandles, type Candle, type MarketTimeframe } from '@/lib/market-api';
-import { chartStyles, onThemeChange } from '@/components/v6/markets/chart-theme';
+import { chartDate, chartStyles, chartXTicks, onThemeChange } from '@/components/v6/markets/chart-theme';
 
 export interface KlineChartHandle {
   createIndicator: (name: string) => void;
@@ -106,6 +106,8 @@ const KlineChart = forwardRef<KlineChartHandle, Props>(function KlineChart({ sym
       stopTheme = onThemeChange(() => { if (containerRef.current) chart.setStyles(chartStyles(containerRef.current)); });
       chart.setOffsetRightDistance(24);
       chart.setBarSpace(8);
+      chart.setFormatter({ formatDate: chartDate });
+      chart.overrideXAxis({ createTicks: chartXTicks(chart) });
 
       const dataLoader: DataLoader = {
         getBars: async ({ type, timestamp, symbol: sym, period, callback }) => {

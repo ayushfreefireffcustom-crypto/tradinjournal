@@ -222,7 +222,7 @@ export default function Frame(p: Props) {
 function NavLink({ item, active }: { item: FrameNavItem; active: boolean }) {
   const Icon = item.icon;
   return (
-    <Link href={item.href} className={`f-nv ${active ? 'on' : ''}`} aria-current={active ? 'page' : undefined} data-tip={item.label}
+    <Link href={item.href} className={`f-nv ${active ? 'on' : ''}`} aria-current={active ? 'page' : undefined} data-tip={item.label} title={item.label}
       data-testid={`nav-${item.label.toLowerCase().replace(/\s+/g, '-')}`}>
       <Icon size={17} /><span className="f-nv-l">{item.label}</span>{item.badge && <em>{item.badge}</em>}
     </Link>

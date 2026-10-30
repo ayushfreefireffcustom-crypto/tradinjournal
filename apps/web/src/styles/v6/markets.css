@@ -8,6 +8,12 @@
 .v6 .mk-count { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--g); color: var(--on-g); font-size: 10.5px; font-weight: 500; }
 .v6 .mk-err { color: var(--r); font-size: 13px; margin: 0; }
 .v6 .mk-hscroll { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; max-width: 100%; min-width: 0; }
+/* Chip rows that run off the edge fade out there and snap chip by chip, so nothing ends mid-word. */
+@media (max-width: 760px) {
+  .v6 .mk-hscroll { scroll-snap-type: x proximity; padding-right: 28px;
+    -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 32px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 32px), transparent); }
+  .v6 .mk-hscroll > * { scroll-snap-align: start; flex: none; }
+}
 .v6 .mk-hscroll::-webkit-scrollbar { display: none; }
 .v6 .mk-hscroll > * { flex: none; }
 .v6 .mk-hscroll .x-seg { max-width: none; overflow: visible; }

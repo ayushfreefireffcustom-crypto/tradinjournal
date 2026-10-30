@@ -17,8 +17,10 @@ import '@/styles/v6/calendar.css';
 
 const DOW = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const tone = (v: number) => (v > 0 ? 'pos' : v < 0 ? 'neg' : '');
-const compact = (v: number) => { const a = Math.abs(v); return `${v > 0 ? '+' : v < 0 ? '−' : ''}${a >= 1000 ? `${(a / 1000).toFixed(a >= 10000 ? 0 : 1)}k` : Math.round(a)}`; };
+const compact = (v: number) => { const a = Math.abs(v); return `${v > 0 ? '+' : v < 0 ? '−' : ''}${a >= 999.5 ? `${(a / 1000).toFixed(a >= 9950 ? 0 : 1)}k` : a < 1 ? a.toFixed(1) : Math.round(a)}`; };
 const sc = (v: number) => (v > 0 ? `+${fmtUsdCompact(v)}` : fmtUsdCompact(v));
+// Whole dollars in the grid, but cents under $1 so a −$0.40 day doesn't read as $0.
+const cell = (v: number) => fmtUsd(v, Math.abs(v) < 1 ? 2 : 0);
 const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`;
 const sameDay = (iso: string, d: Date) => { const c = new Date(iso); return c.getFullYear() === d.getFullYear() && c.getMonth() === d.getMonth() && c.getDate() === d.getDate(); };
 
@@ -177,7 +179,7 @@ export default function CalendarPage() {
                             <>
                               <span className="cl-dn">{day}</span>
                               {isNote && <span className="cl-note" title="Journal note written"><NoteIcon /></span>}
-                              {a && <><b className="m cl-amt"><span className="f">{fmtUsd(a.netPnl, 0)}</span><span className="c">{sc(a.netPnl)}</span><span className="t">{compact(a.netPnl)}</span></b><small>{plural(a.trades, 'trade')}</small></>}
+                              {a && <><b className="m cl-amt"><span className="f">{cell(a.netPnl)}</span><span className="c">{sc(a.netPnl)}</span><span className="t">{compact(a.netPnl)}</span></b><small>{plural(a.trades, 'trade')}</small></>}
                             </>
                           );
                           return a ? (
@@ -187,7 +189,7 @@ export default function CalendarPage() {
                         })}
                         <div className="cl-day cl-wk">
                           <span>Week {w.index}</span>
-                          {w.days > 0 ? <><b className={`m cl-amt ${tone(w.net)}`}><span className="f">{fmtUsd(w.net, 0)}</span><span className="c">{sc(w.net)}</span><span className="t">{compact(w.net)}</span></b><small>{plural(w.trades, 'trade')}</small></> : <><b className="x-dim">—</b><small>No trades</small></>}
+                          {w.days > 0 ? <><b className={`m cl-amt ${tone(w.net)}`}><span className="f">{cell(w.net)}</span><span className="c">{sc(w.net)}</span><span className="t">{compact(w.net)}</span></b><small>{plural(w.trades, 'trade')}</small></> : <><b className="x-dim">—</b><small>No trades</small></>}
                           <span className="cl-mini" aria-hidden>
                             {w.cells.map(c => {
                               const v = c.agg?.netPnl ?? 0;
@@ -218,7 +220,7 @@ export default function CalendarPage() {
                   return (
                     <li key={w.index}>
                       <span><b>Week {w.index}</b><small>{range}</small></span>
-                      <span><b className={`m ${tone(w.net)}`}>{fmtUsd(w.net, 0)}</b><small>{plural(w.trades, 'trade')} · {plural(w.days, 'day')}</small></span>
+                      <span><b className={`m ${tone(w.net)}`}>{cell(w.net)}</b><small>{plural(w.trades, 'trade')} · {plural(w.days, 'day')}</small></span>
                     </li>
                   );
                 })}

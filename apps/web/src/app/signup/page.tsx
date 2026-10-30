@@ -33,7 +33,8 @@ export default function SignupPage() {
   const [city, setCity] = useState('');
   const [postalCode, setPostalCode] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [agree, setAgree] = useState(true);
+  // Consent is an explicit tick (DPDP: clear affirmative action), never pre-checked.
+  const [agree, setAgree] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   // Referral: pre-filled from /signup?ref=CODE (the partner link redirect) or typed.
@@ -100,6 +101,7 @@ export default function SignupPage() {
         <h1 className="au-t">Create your account</h1>
         <p className="au-lead">Free, up to 2 MT5 accounts, no card.</p>
         <div className="au-gbtn-wrap"><GoogleButton label="Sign up with Google" /></div>
+        <p className="au-gnote">By continuing with Google you agree to the <Link href="/terms" target="_blank">Terms</Link> and <Link href="/privacy" target="_blank">Privacy policy</Link>.</p>
         <div className="au-sep">or with email</div>
         <div className="au-stack">
           <div className="au-two">
