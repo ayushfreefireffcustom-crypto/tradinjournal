@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dashboard · Calendar</title>
+<link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="../data.js"></script>
+<style>
+:root{--bg:#0B0B0B;--s1:#141414;--s2:#1B1B1B;--s3:#242424;--line:rgba(255,255,255,.07);--tx:#EDEDED;--mut:#9A9A9A;--dim:#5E5E5E;--g:#08C465;--r:#FE3A31;--gs:rgba(8,196,101,.12)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--tx);font:400 14px/1.45 Satoshi,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.m{font-family:"JetBrains Mono",monospace;font-feature-settings:"tnum";letter-spacing:-.01em}
+.pos{color:var(--g)}.neg{color:var(--r)}
+svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.app{display:grid;grid-template-columns:72px minmax(0,1fr);min-height:100vh}
+.sb{border-right:1px solid var(--line);display:flex;flex-direction:column;align-items:center;padding:20px 0;gap:6px}
+.logo{width:36px;height:36px;border-radius:10px;background:var(--g);color:#06150C;display:grid;place-items:center;font:500 12px "JetBrains Mono";margin-bottom:18px}
+.sb a{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;color:var(--dim)}
+.sb a.on{color:var(--tx);background:var(--s2)}
+.sb .av{margin-top:auto;width:34px;height:34px;border-radius:50%;background:#2a2a2a;display:grid;place-items:center;font-size:13px}
+.main{padding:26px 32px 40px;min-width:0}
+.head{display:flex;align-items:flex-end;gap:16px;margin-bottom:22px}
+.head h1{font-size:40px;font-weight:500;letter-spacing:-.035em;line-height:1}
+.head h1 span{color:var(--dim)}
+.arrows{display:flex;gap:6px;margin-bottom:4px}
+.arrows button{width:34px;height:34px;border-radius:50%;border:0;background:var(--s1);color:var(--mut);cursor:pointer;font-size:16px}
+.head p{font-size:14px;color:var(--mut);margin-top:10px}
+.head p b{color:var(--tx);font-weight:500}
+.sp{flex:1}
+.seg{display:flex;background:var(--s1);border-radius:999px;padding:4px}
+.seg button{height:32px;padding:0 16px;border-radius:999px;border:0;background:none;color:var(--mut);font:500 13px Satoshi}
+.seg button.on{background:var(--tx);color:#0B0B0B}
+.pill{height:40px;display:flex;align-items:center;gap:8px;padding:0 16px;border-radius:999px;background:var(--s1);font-size:13px;color:var(--mut)}
+.pill b{color:var(--tx);font-weight:500}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--g);box-shadow:0 0 0 3px var(--gs)}
+.sample{font:400 10.5px "JetBrains Mono";color:var(--dim);border:1px dashed rgba(255,255,255,.12);border-radius:6px;padding:1px 6px;margin-left:8px}
+/* stat strip */
+.strip{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));background:var(--s1);border-radius:20px;margin-bottom:16px}
+.st{padding:18px 22px;position:relative;display:flex;align-items:flex-end;gap:10px}
+.st+.st:before{content:"";position:absolute;left:0;top:18px;bottom:18px;width:1px;background:var(--line)}
+.st .l{font-size:12.5px;color:var(--mut)}
+.st .v{font:500 24px/1.1 Satoshi;letter-spacing:-.02em;margin-top:6px;font-feature-settings:"tnum"}
+.st svg{margin-left:auto}
+/* layout */
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:16px}
+.card{background:var(--s1);border-radius:20px;padding:20px;min-width:0}
+.cal{display:grid;grid-template-columns:repeat(5,minmax(0,1fr)) 64px 64px minmax(0,.95fr);gap:6px}
+.cal .hd{font-size:12px;color:var(--mut);padding:0 8px 6px}
+.cal .hd.wk{text-align:right}
+.c{height:104px;border-radius:14px;background:var(--s2);padding:10px 11px;display:flex;flex-direction:column;position:relative;overflow:hidden}
+.c .d{font-size:12.5px;color:var(--mut)}
+.c .p{margin-top:auto;font:500 15px "JetBrains Mono";letter-spacing:-.02em}
+.c .n{font-size:11.5px;color:var(--mut);margin-top:2px}
+.c.out{background:transparent;box-shadow:inset 0 0 0 1px var(--line)}
+.c.out .d{color:var(--dim)}
+.c.we{background:transparent}
+.c.today{box-shadow:inset 0 0 0 1.5px var(--tx)}
+.c .jn{position:absolute;top:10px;right:10px;width:16px;height:16px;color:var(--mut)}
+.c.fut{background:transparent;box-shadow:inset 0 0 0 1px var(--line)}
+.wkc{height:104px;border-radius:14px;padding:10px 12px;text-align:right;display:flex;flex-direction:column;justify-content:center;gap:4px;background:var(--s2)}
+.wkc .l{font-size:11.5px;color:var(--mut)}
+.wkc .p{font:500 16px "JetBrains Mono"}
+.wkc .bars{display:flex;gap:3px;justify-content:flex-end;height:18px;align-items:flex-end;margin-top:2px}
+.wkc .bars i{width:6px;border-radius:2px}
+.legend{display:flex;align-items:center;gap:10px;margin-top:14px;font-size:12px;color:var(--mut)}
+.legend i{width:18px;height:10px;border-radius:3px;display:inline-block}
+/* rail */
+.rail{display:grid;gap:16px;align-content:start}
+.rh{display:flex;align-items:center;margin-bottom:12px}
+.rh h2{font-size:15px;font-weight:500}.rh span{margin-left:auto;font-size:12.5px;color:var(--mut)}
+.today-big{font:500 34px/1 Satoshi;letter-spacing:-.03em;font-feature-settings:"tnum"}
+.trow{display:flex;align-items:center;gap:10px;padding:11px 0;border-top:1px solid var(--line);font-size:13.5px}
+.trow .s{color:var(--mut);font-size:12.5px}
+.trow .v{margin-left:auto;font-size:12.5px}
+.btn{height:40px;width:100%;border-radius:999px;border:0;background:var(--tx);color:#0B0B0B;font:500 13.5px Satoshi;margin-top:14px}
+.btn.g{background:var(--s3);color:var(--tx)}
+.coach{background:linear-gradient(160deg,rgba(8,196,101,.16),rgba(8,196,101,.02) 60%),var(--s1)}
+.coach p{font-size:14.5px;line-height:1.55}
+.coach small{display:block;font-size:12px;color:var(--mut);margin-top:12px}
+.dows{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;align-items:end;height:110px;margin-top:6px}
+.dows div{display:flex;flex-direction:column;align-items:center;gap:6px;font-size:11.5px;color:var(--mut);height:100%;justify-content:flex-end}
+.dows i{width:100%;border-radius:6px;display:block}
+.prog{height:6px;border-radius:3px;background:var(--s3);margin-top:12px;overflow:hidden}.prog i{display:block;height:100%;background:var(--g)}
+</style></head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<symbol id="home" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></symbol>
+<symbol id="log" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></symbol>
+<symbol id="jr" viewBox="0 0 24 24"><path d="M5 4h11l3 3v13H5z"/><path d="M9 10h6M9 14h6"/></symbol>
+<symbol id="an" viewBox="0 0 24 24"><path d="M3 20h18M6 16v-5M11 16V7M16 16v-8M21 16V4"/></symbol>
+<symbol id="ch" viewBox="0 0 24 24"><path d="M7 4v16M17 4v16M4 9h6M14 14h6"/></symbol>
+<symbol id="gl" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 010 18M12 3a14 14 0 000 18"/></symbol>
+<symbol id="co" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></symbol>
+<symbol id="note" viewBox="0 0 24 24"><path d="M5 4h11l3 3v13H5z"/><path d="M9 10h6M9 14h4"/></symbol>
+</svg>
+<div class="app">
+  <aside class="sb"><div class="logo">TL</div>
+    <a class="on"><svg class="i"><use href="#home"/></svg></a><a><svg class="i"><use href="#log"/></svg></a><a><svg class="i"><use href="#jr"/></svg></a><a><svg class="i"><use href="#an"/></svg></a><a><svg class="i"><use href="#ch"/></svg></a><a><svg class="i"><use href="#gl"/></svg></a><a><svg class="i"><use href="#co"/></svg></a>
+    <span class="av">A</span></aside>
+  <main class="main">
+    <div class="head">
+      <div><h1>October <span>2026</span></h1><p id="mline"></p></div>
+      <div class="arrows"><button>‹</button><button>›</button></div>
+      <div class="sp"></div>
+      <div class="seg"><button class="on">Month</button><button>Week</button><button>Year</button></div>
+      <div class="pill"><span class="dot"></span><b>XM Global</b><span class="m">·6702</span></div>
+    </div>
+    <div class="strip" id="strip"></div>
+    <div class="grid">
+      <section class="card">
+        <div class="cal" id="cal"></div>
+        <div class="legend"><span>Loss</span><i style="background:rgba(254,58,49,.55)"></i><i style="background:rgba(254,58,49,.2)"></i><i style="background:#1B1B1B"></i><i style="background:rgba(8,196,101,.2)"></i><i style="background:rgba(8,196,101,.55)"></i><span>Profit</span><span style="margin-left:auto;display:flex;align-items:center;gap:6px"><svg class="i" style="width:14px;height:14px"><use href="#note"/></svg>Journal note written</span></div>
+      </section>
+      <div class="rail">
+        <section class="card"><div class="rh"><h2>Today</h2><span>Fri 30 Oct</span></div><div class="today-big m" id="tbig" style="font-family:Satoshi"></div><div style="font-size:12.5px;color:var(--mut);margin:6px 0 10px" id="tsub"></div><div id="trows"></div><button class="btn">Journal today</button></section>
+        <section class="card"><div class="rh"><h2>By weekday</h2><span>this month</span></div><div class="dows" id="dows"></div></section>
+        <section class="card coach"><div class="rh"><h2>Coach</h2><span>AI · this month</span></div><p id="coach"></p><small>Based on your October trades · not financial advice</small><button class="btn g">Ask a follow-up</button></section>
+      </div>
+    </div>
+  </main>
+</div>
+<script>
+const S=SAMPLE,F=fmt,$=id=>document.getElementById(id);
+const oct=S.trades.filter(t=>t.close.getMonth()===9);const sum=a=>a.reduce((x,t)=>x+t.pnl,0);
+const net=sum(oct),wins=oct.filter(t=>t.pnl>0),loss=oct.filter(t=>t.pnl<=0);
+$('mline').innerHTML=`<b class="m ${net>=0?'pos':'neg'}">${F.usd(net)}</b> this month · <b>${oct.length}</b> trades · <b>${F.pct(wins.length/oct.length,0)}</b> won <span class="sample">Sample data</span>`;
+// strip with sparks
+const spark=(vals,c)=>{const mn=Math.min(...vals),mx=Math.max(...vals);return `<svg width="70" height="28"><path d="${vals.map((v,i)=>(i?'L':'M')+(i/(vals.length-1)*68+1).toFixed(1)+' '+(26-(v-mn)/((mx-mn)||1)*24).toFixed(1)).join(' ')}" fill="none" stroke="${c}" stroke-width="1.5"/></svg>`};
+let cum=0;const cumv=oct.map(t=>cum+=t.pnl);
+const st=[['Net P&L',`<span class="pos">${F.usd(net,0)}</span>`,spark(cumv,'#08C465')],['Win rate',F.pct(wins.length/oct.length),''],['Profit factor',(sum(wins)/-sum(loss)).toFixed(2),''],['Avg trade',F.usd(net/oct.length,0),''],['Max drawdown',`<span class="neg">${F.pct(S.maxDD)}</span>`,'']];
+$('strip').innerHTML=st.map(([l,v,s])=>`<div class="st"><div><div class="l">${l}</div><div class="v m" style="font-family:Satoshi">${v}</div></div>${s}</div>`).join('');
+// calendar
+const first=new Date(2026,9,1),start=new Date(first);start.setDate(1-((first.getDay()+6)%7));
+const LD={};for(const t of S.trades){const k=t.close.toDateString();(LD[k]??={pnl:0,n:0});LD[k].pnl+=t.pnl;LD[k].n++}
+const mx=Math.max(...Object.values(LD).map(d=>Math.abs(d.pnl)));
+const tint=v=>{const a=Math.min(1,Math.abs(v)/mx);return v>=0?`rgba(8,196,101,${.08+a*.5})`:`rgba(254,58,49,${.08+a*.5})`};
+let html=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d=>`<div class="hd">${d}</div>`).join('')+'<div class="hd wk">Week</div>';
+const d=new Date(start);
+for(let w=0;w<5;w++){let wsum=0,wn=0;const bars=[];
+  for(let k=0;k<7;k++){const info=LD[d.toDateString()];const out=d.getMonth()!==9,we=k>=5,today=d.getDate()===30&&!out,fut=d>new Date(2026,9,30,23);
+    const jn=info&&S.trades.filter(t=>t.close.toDateString()===d.toDateString()).every(t=>t.journaled);
+    if(info&&!out){wsum+=info.pnl;wn+=info.n;bars.push(info.pnl)}else if(!we)bars.push(0);
+    if(we){html+=`<div class="c we" style="height:104px"><span class="d" style="color:var(--dim)">${d.getDate()}</span></div>`}
+    else html+=`<div class="c ${out?'out':''} ${today?'today':''} ${fut&&!out?'fut':''}" style="${info&&!out?'background:'+tint(info.pnl):''}"><span class="d">${d.getDate()}</span>${jn&&!out?'<svg class="i jn"><use href="#note"/></svg>':''}${info&&!out?`<span class="p">${F.usd(info.pnl,0)}</span><span class="n">${info.n} trade${info.n>1?'s':''}</span>`:''}</div>`;
+    d.setDate(d.getDate()+1)}
+  const bm=Math.max(1,...bars.map(Math.abs));
+  html+=`<div class="wkc"><span class="l">Week ${w+1}</span><span class="p ${wsum>0?'pos':wsum<0?'neg':''}">${wn?F.usd(wsum,0):'—'}</span><span class="l">${wn} trades</span><span class="bars">${bars.slice(0,5).map(b=>`<i style="height:${Math.max(2,Math.abs(b)/bm*18)}px;background:${b>0?'#08C465':b<0?'#FE3A31':'#333'}"></i>`).join('')}</span></div>`}
+$('cal').innerHTML=html;
+// today
+const td=S.trades.filter(t=>t.close.toDateString()===new Date(2026,9,30).toDateString());const tn=sum(td);
+$('tbig').innerHTML=td.length?`<span class="${tn>=0?'pos':'neg'}">${F.usd(tn)}</span>`:'<span style="color:var(--dim)">—</span>';$('tsub').textContent=td.length?`${td.length} closed trade${td.length===1?'':'s'} · ${td.filter(t=>!t.journaled).length} without a note`:'Markets are open. Nothing closed yet.';
+$('trows').innerHTML=td.slice(-3).reverse().map(t=>`<div class="trow"><b style="font-weight:500">${t.sym}</b><span class="s">${t.side} · ${F.hold(t.hold)}</span><span class="v m ${t.pnl>0?'pos':'neg'}">${F.usd(t.pnl)}</span></div>`).join('')||'<div class="trow s">No closed trades yet today.</div>';
+// weekday bars
+const FULL=['Monday','Tuesday','Wednesday','Thursday','Friday'];const dw=['Mon','Tue','Wed','Thu','Fri'].map((n,i)=>({n,f:FULL[i],v:sum(oct.filter(t=>t.close.getDay()===i+1))}));const dm=Math.max(...dw.map(x=>Math.abs(x.v)));
+$('dows').innerHTML=dw.map(x=>`<div><span class="m" style="font-size:10.5px;color:${x.v>=0?'#08C465':'#FE3A31'}">${F.k(x.v)}</span><i style="height:${Math.max(4,Math.abs(x.v)/dm*64)}px;background:${x.v>=0?'#08C465':'#FE3A31'};opacity:${x.v>=0?.9:.9}"></i>${x.n}</div>`).join('');
+const worst=[...dw].sort((a,b)=>a.v-b.v)[0],best=[...dw].sort((a,b)=>b.v-a.v)[0];
+$('coach').innerHTML=`${best.f}s carried October at <b class="m pos">${F.k(best.v)}</b>. ${worst.v<0?`${worst.f}s gave back <b class="m neg">${F.k(worst.v)}</b> — your losers there run longer than anywhere else.`:''} Try half size on ${worst.f}s next week and compare.`;
+</script>
+</body></html>
