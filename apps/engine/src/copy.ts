@@ -11,6 +11,7 @@
 import { prisma, type CopyFollow, type CopyLeader, type ExchangeConnection, type LeaderFill, type Prisma } from '@tradinjournal/db';
 import { ExchangeError, type FillEvent, type InstrumentInfo, type OrderInfo } from '@tradinjournal/exchange';
 import { logger } from '@tradinjournal/logger';
+import { SecretKeyError } from '@tradinjournal/secrets';
 import type { EngineDeps } from './deps.js';
 import { isKillSwitchOn, markConnectionInvalid, notify } from './guards.js';
 import { planCopy, type PlanLeg } from './plan.js';
@@ -162,7 +163,15 @@ async function copyToFollow(follow: FollowRow, row: LeaderFill, fill: FillEvent,
     return;
   }
   const exchange = deps.exchangeFor(follow.connection);
-  const creds = deps.credsFor(follow.connection);
+  let creds;
+  try {
+    creds = deps.credsFor(follow.connection);
+  } catch (err) {
+    if (!(err instanceof SecretKeyError)) throw err;
+    await markConnectionInvalid(follow.connectionId, 'the stored key could not be read; reconnect the account');
+    await recordSkip(follow, row, fill, 'your exchange account needs reconnecting');
+    return;
+  }
 
   let inst: InstrumentInfo | null;
   try {

@@ -263,6 +263,19 @@ describe.skipIf(!local)('copy engine (integration)', () => {
     b.fail = undefined;
   });
 
+  it('treats an unreadable stored key like a rejected one', async () => {
+    const { SecretKeyError } = await import('@tradinjournal/secrets');
+    const ub = await prisma.user.create({ data: { name: 'c', email: `${tag}-c@engine.test` } });
+    const cc = await conn(ub.id, 'FOLC');
+    const fc = await prisma.copyFollow.create({ data: { userId: ub.id, leaderId: leader.id, connectionId: cc.id, sizingMode: 'MULTIPLIER', sizingValue: 1, startedAt: new Date(Date.now() - 60_000) } });
+    const broken: EngineDeps = { ...deps, credsFor: (c) => { if (c.apiKeyEnc.endsWith('FOLC')) throw new SecretKeyError('Malformed encrypted credential'); return deps.credsFor(c); } };
+    const f = fill({ qty: 1, positionAfter: 13 });
+    await copy.ingestLeaderFill(leader, f, broken);
+    expect((await ordersFor(fc.id, f.externalId))[0]).toMatchObject({ status: 'SKIPPED' });
+    expect(await prisma.exchangeConnection.findUnique({ where: { id: cc.id } })).toMatchObject({ status: 'INVALID' });
+    await prisma.copyFollow.update({ where: { id: fc.id }, data: { status: 'STOPPED' } });
+  });
+
   it('records a rejection and notifies on insufficient margin', async () => {
     await prisma.copyFollow.update({ where: { id: followA }, data: { status: 'ACTIVE', pauseReason: null } });
     await prisma.exchangeOrder.updateMany({ where: { followId: followA }, data: { realizedPnl: 0 } });

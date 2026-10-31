@@ -6,6 +6,7 @@
 
 import { prisma, type CopyLeader, type ExchangeConnection } from '@tradinjournal/db';
 import { ExchangeError, type StreamHandle } from '@tradinjournal/exchange';
+import { SecretKeyError } from '@tradinjournal/secrets';
 import { logger } from '@tradinjournal/logger';
 import { ingestLeaderFill } from './copy.js';
 import type { EngineDeps } from './deps.js';
@@ -51,10 +52,9 @@ async function startWatcher(leader: LeaderRow, deps: EngineDeps): Promise<void> 
   const state: Watcher = watchers.get(leader.id) ?? { stream: null, starting: false, retryAt: 0, connectionId: leader.connectionId };
   state.starting = true;
   watchers.set(leader.id, state);
-  const exchange = deps.exchangeFor(leader.connection);
-  const creds = deps.credsFor(leader.connection);
-
   try {
+    const exchange = deps.exchangeFor(leader.connection);
+    const creds = deps.credsFor(leader.connection);
     state.stream = await exchange.streamFills(creds, {
       onEvent: (fill) => void ingestLeaderFill(leader, fill, deps),
       onError: (err) => {
@@ -80,6 +80,7 @@ async function startWatcher(leader: LeaderRow, deps: EngineDeps): Promise<void> 
     state.starting = false;
     state.retryAt = deps.now().getTime() + BACKOFF_MS;
     if (err instanceof ExchangeError && err.isCredentialProblem) await markConnectionInvalid(leader.connectionId, err.message);
+    if (err instanceof SecretKeyError) await markConnectionInvalid(leader.connectionId, 'the stored key could not be read; reconnect the account');
     logger.error('[engine] could not start leader watcher', { leaderId: leader.id, err: String(err) });
   }
 }
