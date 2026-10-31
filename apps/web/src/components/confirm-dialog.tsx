@@ -78,6 +78,8 @@ export interface ConfirmOptions {
   /** Show an optional reason field (kept on the partner's note trail). */
   reason?: boolean;
   reasonLabel?: string;
+  /** The reason must be given (3+ characters) before confirming. */
+  reasonRequired?: boolean;
 }
 export type ConfirmResult = { reason?: string } | null;
 
@@ -114,15 +116,15 @@ export function useConfirm(): [ReactNode, (o: ConfirmOptions) => Promise<Confirm
     <V6Portal>
       <div className="x-dialog-scrim" onMouseDown={() => close(null)}>
         <form className="x-dialog ac-dlg" role="alertdialog" aria-modal="true" aria-labelledby="ac-confirm-t" onMouseDown={e => e.stopPropagation()}
-          onSubmit={e => { e.preventDefault(); close({ reason: reason.trim() || undefined }); }} data-testid="confirm-dialog">
+          onSubmit={e => { e.preventDefault(); if (open.reasonRequired && reason.trim().length < 3) return; close({ reason: reason.trim() || undefined }); }} data-testid="confirm-dialog">
           <div className="ac-dlg-h">
             <h2 id="ac-confirm-t">{open.title}</h2>
             <button type="button" className="x-btn x-btn--ghost x-btn--icon x-btn--sm" onClick={() => close(null)} aria-label="Close"><IClose size={16} /></button>
           </div>
-          {open.body && <p className="ac-dlg-msg">{open.body}</p>}
+          {open.body && (typeof open.body === 'string' ? <p className="ac-dlg-msg">{open.body}</p> : <div className="ac-dlg-msg">{open.body}</div>)}
           {open.reason && (
             <div className="x-field ac-dlg-reason">
-              <label htmlFor="ac-confirm-reason">{open.reasonLabel ?? 'Reason'} <span className="x-dim">(optional, kept on the note trail)</span></label>
+              <label htmlFor="ac-confirm-reason">{open.reasonLabel ?? 'Reason'} {!open.reasonRequired && <span className="x-dim">(optional, kept on the note trail)</span>}</label>
               <textarea id="ac-confirm-reason" ref={reasonRef} rows={2} maxLength={300} value={reason} onChange={e => setReason(e.target.value)} data-testid="confirm-reason" className="x-textarea ac-dlg-ta"
                 // Enter confirms (what people expect in a dialog); Shift+Enter adds a line.
                 onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); e.currentTarget.form?.requestSubmit(); } }} />
@@ -130,7 +132,7 @@ export function useConfirm(): [ReactNode, (o: ConfirmOptions) => Promise<Confirm
           )}
           <footer className="ac-dlg-ft">
             <button type="button" className="x-btn" onClick={() => close(null)} data-testid="confirm-cancel">Cancel</button>
-            <button ref={confirmRef} type="submit" className={`x-btn ${open.tone === 'danger' ? 'x-btn--danger' : 'x-btn--hi'}`} data-testid="confirm-ok">{open.confirmLabel ?? 'Confirm'}</button>
+            <button ref={confirmRef} type="submit" className={`x-btn ${open.tone === 'danger' ? 'x-btn--danger' : 'x-btn--hi'}`} data-testid="confirm-ok" disabled={!!open.reasonRequired && reason.trim().length < 3}>{open.confirmLabel ?? 'Confirm'}</button>
           </footer>
         </form>
       </div>

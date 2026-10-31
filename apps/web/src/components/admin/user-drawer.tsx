@@ -5,6 +5,8 @@ import { adminApi, type AdminUserDossierDto } from '@/lib/admin-api';
 import { fmtDate, fmtRelative, sentence, statusTone, tagClass } from './admin-utils';
 import { V6Portal } from '@/components/confirm-dialog';
 import { IClose, ISync } from '@/components/v3/icons';
+import AdminUserCopySection from '@/components/v6/copy/admin-user-copy';
+import { TRADING_ENABLED } from '@/lib/features';
 import '@/styles/v6/admin.css';
 
 export function UserDrawer({
@@ -101,6 +103,8 @@ export function UserDrawer({
                   </div>
                 ))}
               </div>
+
+              {TRADING_ENABLED && <AdminUserCopySection userId={data.id} />}
 
               <div className="ad-dos-sec">
                 <span className="x-label">Product sessions, 7 days</span>

@@ -11,6 +11,7 @@ import { liveWatcherCount, stopAllWatchers, syncWatchers } from './watchers.js';
 const SYNC_MS = 5_000;
 const RECONCILE_MS = 30_000;
 const LOCK_KEY = 74_221_031; // arbitrary, fixed: "copy engine"
+export const HEARTBEAT_KEY = 'copy.engineHeartbeat';
 
 async function tryLock(): Promise<boolean> {
   const rows = await prisma.$queryRaw<Array<{ ok: boolean }>>`SELECT pg_try_advisory_lock(${LOCK_KEY}) AS ok`;
@@ -39,12 +40,20 @@ async function main(): Promise<void> {
     await new Promise((r) => setTimeout(r, 15_000));
   }
   logger.info('[engine] started', { liveEnabled: env.EXCHANGE_LIVE_ENABLED });
+  const startedAt = new Date().toISOString();
+  // The admin health panel reads this row; the engine is a separate process.
+  const beat = async () => {
+    const value = { at: new Date().toISOString(), startedAt, liveWatchers: liveWatcherCount(), pid: process.pid };
+    logger.info('[engine] heartbeat', { liveWatchers: value.liveWatchers });
+    await prisma.systemSetting.upsert({ where: { key: HEARTBEAT_KEY }, update: { value }, create: { key: HEARTBEAT_KEY, value } });
+  };
 
   await safely('sync', () => syncWatchers(deps));
+  await safely('heartbeat', beat);
   const timers = [
     setInterval(() => void safely('sync', () => syncWatchers(deps)), SYNC_MS),
     setInterval(() => void safely('reconcile', () => reconcile(deps)), RECONCILE_MS),
-    setInterval(() => logger.info('[engine] heartbeat', { liveWatchers: liveWatcherCount() }), 60_000),
+    setInterval(() => void safely('heartbeat', beat), 60_000),
   ];
 
   const shutdown = async (signal: string) => {

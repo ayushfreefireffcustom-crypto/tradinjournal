@@ -271,3 +271,55 @@ export function sizingLabel(mode: SizingMode, value: number): string {
 }
 
 export const RANGE_LABEL: Record<LeaderRange, string> = { '7d': '7 days', '30d': '30 days', all: 'All time' };
+
+// ── Admin (C5) ──────────────────────────────────────────────────────────────
+
+export type LeaderStatus = 'PENDING' | 'VERIFIED' | 'PAUSED' | 'DELISTED';
+export type AdminLeaderAction = 'approve' | 'reject' | 'pause' | 'resume' | 'delist';
+
+export interface AdminLeaderRow {
+  id: string;
+  displayName: string;
+  bio: string | null;
+  status: LeaderStatus;
+  listed: boolean;
+  user: { id: string; name: string; email: string };
+  connection: { id: string; label: string; exchange: string; environment: ExchangeEnvironment; status: string; keyLast4: string };
+  followers: number;
+  roi30dPct: number | null;
+  maxDrawdownAllPct: number | null;
+  equityUsd: number | null;
+  tradeCount: number;
+  lastTradeAt: string | null;
+  createdAt: string;
+}
+
+export interface KillSwitch { enabled: boolean; reason: string | null; by: string | null; at: string | null }
+
+export interface EngineHealth {
+  engine: { up: boolean; lastBeatAt: string | null; startedAt: string | null; liveWatchers: number | null };
+  killSwitch: KillSwitch;
+  leaders: Record<LeaderStatus, number>;
+  follows: Record<FollowStatus, number>;
+  watchedLeaders: number;
+  lastLeaderFillAt: string | null;
+  last24h: { filled: number; skipped: number; rejected: number; medianLatencyMs: number | null; p90LatencyMs: number | null; meanAbsSlippageBps: number | null; topReasons: Array<{ reason: string; count: number }> };
+  brokenConnections: number;
+  driftPositions: number;
+}
+
+export interface AdminUserCopy {
+  connections: Array<{ id: string; label: string; exchange: string; environment: ExchangeEnvironment; status: string; lastError: string | null; keyLast4: string; createdAt: string }>;
+  leader: { id: string; displayName: string; status: string } | null;
+  follows: Follow[];
+}
+
+export const adminCopyApi = {
+  leaders: (status?: LeaderStatus) => call<AdminLeaderRow[]>(`/admin/copy/leaders${qs({ status })}`),
+  act: (id: string, action: AdminLeaderAction, reason?: string) => call<{ id: string; status: string }>(`/admin/copy/leaders/${id}/action`, { method: 'POST', ...body({ action, reason }) }),
+  killSwitch: () => call<KillSwitch>('/admin/copy/kill-switch'),
+  setKillSwitch: (enabled: boolean, reason?: string) => call<KillSwitch>('/admin/copy/kill-switch', { method: 'POST', ...body({ enabled, reason }) }),
+  health: () => call<EngineHealth>('/admin/copy/health'),
+  user: (id: string) => call<AdminUserCopy>(`/admin/copy/users/${id}`),
+  stopFollow: (id: string, reason: string) => call<StopResult>(`/admin/copy/follows/${id}/stop`, { method: 'POST', ...body({ reason }) }),
+};

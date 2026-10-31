@@ -362,10 +362,10 @@ Legend:
 - [x] C4.10 Empty/not-connected states that still let users browse everything (beats MP's blank screens) `S`
 
 ## C5. Admin: copy trading
-- [ ] C5.1 Admin › Leaders: list PENDING/VERIFIED/PAUSED/DELISTED, approve/pause/delist, notifies the leader `M`
-- [ ] C5.2 Kill switch control with confirmation and audit log `S`
-- [ ] C5.3 Admin › user dossier: their connections (status only), follows, "stop copying" action `S`
-- [ ] C5.4 Engine health panel (watchers up, last fill, latency, rejects) `M`
+- [x] C5.1 Admin › Leaders: list PENDING/VERIFIED/PAUSED/DELISTED, approve/pause/delist, notifies the leader `M`
+- [x] C5.2 Kill switch control with confirmation and audit log `S`
+- [x] C5.3 Admin › user dossier: their connections (status only), follows, "stop copying" action `S`
+- [x] C5.4 Engine health panel (watchers up, last fill, latency, rejects) `M`
 
 ## C6. Notifications for trading events
 - [ ] C6.1 Event types `S`:

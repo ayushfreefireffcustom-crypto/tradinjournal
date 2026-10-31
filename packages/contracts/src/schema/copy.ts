@@ -252,3 +252,75 @@ export interface Page<T> {
   items: T[];
   nextCursor: string | null;
 }
+
+// ── Admin (C5) ──────────────────────────────────────────────────────────────
+
+export const adminLeaderActions = ['approve', 'reject', 'pause', 'resume', 'delist'] as const;
+export type AdminLeaderAction = (typeof adminLeaderActions)[number];
+
+export const adminLeaderActionSchema = z.object({
+  action: z.enum(adminLeaderActions),
+  /** Shown to the leader for reject, pause and delist. */
+  reason: z.string().trim().max(500).optional(),
+});
+export type AdminLeaderActionInput = z.infer<typeof adminLeaderActionSchema>;
+
+export const adminLeadersQuerySchema = z.object({ status: z.enum(['PENDING', 'VERIFIED', 'PAUSED', 'DELISTED']).optional() });
+
+export const killSwitchSchema = z
+  .object({ enabled: z.boolean(), reason: z.string().trim().max(500).optional() })
+  .refine((v) => !v.enabled || (v.reason?.length ?? 0) >= 3, { message: 'Say why copying is being stopped.', path: ['reason'] });
+export type KillSwitchInput = z.infer<typeof killSwitchSchema>;
+
+export const adminStopFollowSchema = z.object({ reason: z.string().trim().min(3, 'Say why.').max(500) });
+
+export interface AdminLeaderRowDto {
+  id: string;
+  displayName: string;
+  bio: string | null;
+  status: 'PENDING' | 'VERIFIED' | 'PAUSED' | 'DELISTED';
+  listed: boolean;
+  user: { id: string; name: string; email: string };
+  connection: { id: string; label: string; exchange: string; environment: 'TESTNET' | 'LIVE'; status: string; keyLast4: string };
+  followers: number;
+  roi30dPct: number | null;
+  maxDrawdownAllPct: number | null;
+  equityUsd: number | null;
+  tradeCount: number;
+  lastTradeAt: string | null;
+  createdAt: string;
+}
+
+export interface KillSwitchDto {
+  enabled: boolean;
+  reason: string | null;
+  by: string | null;
+  at: string | null;
+}
+
+export interface EngineHealthDto {
+  engine: { up: boolean; lastBeatAt: string | null; startedAt: string | null; liveWatchers: number | null };
+  killSwitch: KillSwitchDto;
+  leaders: Record<'PENDING' | 'VERIFIED' | 'PAUSED' | 'DELISTED', number>;
+  follows: Record<'ACTIVE' | 'PAUSED' | 'STOPPED', number>;
+  /** Leaders the engine should be watching (live, working key, with followers). */
+  watchedLeaders: number;
+  lastLeaderFillAt: string | null;
+  last24h: {
+    filled: number;
+    skipped: number;
+    rejected: number;
+    medianLatencyMs: number | null;
+    p90LatencyMs: number | null;
+    meanAbsSlippageBps: number | null;
+    topReasons: Array<{ reason: string; count: number }>;
+  };
+  brokenConnections: number;
+  driftPositions: number;
+}
+
+export interface AdminUserCopyDto {
+  connections: Array<{ id: string; label: string; exchange: string; environment: 'TESTNET' | 'LIVE'; status: string; lastError: string | null; keyLast4: string; createdAt: string }>;
+  leader: { id: string; displayName: string; status: string } | null;
+  follows: FollowDto[];
+}

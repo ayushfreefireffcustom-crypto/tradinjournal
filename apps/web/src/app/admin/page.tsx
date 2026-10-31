@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { TRADING_ENABLED } from '@/lib/features';
 import AppShell from '@/components/app-shell';
 import { useAccounts } from '@/lib/use-accounts';
 import {
@@ -168,9 +170,12 @@ export default function AdminPage() {
     <AppShell legacy={false} accounts={accounts} selectedAccount={selected} onSelectAccount={select}
       pageTitle="Command center" pageSubtitle="Usage, access, brokers and platform health"
       actions={
-        <button type="button" onClick={() => void loadCore(true)} disabled={refreshing || loading} className="x-btn" data-testid="admin-refresh">
-          <ISync size={15} className={refreshing ? 'x-spin' : ''} />Refresh
-        </button>
+        <>
+          {TRADING_ENABLED && <Link href="/admin/copy" className="x-btn" data-testid="admin-copy-link">Copy trading</Link>}
+          <button type="button" onClick={() => void loadCore(true)} disabled={refreshing || loading} className="x-btn" data-testid="admin-refresh">
+            <ISync size={15} className={refreshing ? 'x-spin' : ''} />Refresh
+          </button>
+        </>
       }>
       <div className="x-page ad-page" data-testid="admin-page">
         {error && (

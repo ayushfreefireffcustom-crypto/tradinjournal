@@ -11,6 +11,7 @@ import { errorHandler } from './http/middleware/error-handler.js';
 import { requireSameOrigin } from './http/middleware/require-same-origin.js';
 import { exchangesRouter } from './modules/exchanges/exchanges.routes.js';
 import { followsRouter, leadersRouter } from './modules/copy/copy.routes.js';
+import { adminCopyRouter } from './modules/copy/admin-copy.routes.js';
 import { accountsRouter } from './modules/accounts/accounts.routes.js';
 import { tradesRouter } from './modules/trades/trades.routes.js';
 import { journalRouter } from './modules/journal/journal.routes.js';
@@ -101,6 +102,8 @@ export function createApp(): Express {
     app.use('/api/admin', adminPartnersRouter);
   }
   app.use('/api/access', accessRouter);
+  // Copy-trading admin first: the general admin router 404s anything it doesn't know.
+  if (env.TRADING_ENABLED) app.use('/api/admin/copy', adminCopyRouter);
   app.use('/api/admin', adminRouter);
   app.use('/api/usage', usageRouter);
   app.use('/api/me', meRouter);

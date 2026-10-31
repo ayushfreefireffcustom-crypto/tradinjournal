@@ -54,6 +54,7 @@ const ALL: Item[] = [
   { href: '/partner/clients', label: 'Clients', icon: IUsers, group: 'Partner' },
   { href: '/admin', label: 'Admin', icon: IAdmin, group: 'Admin' },
   ...(PARTNERS_ENABLED ? [{ href: '/admin/partners', label: 'Partners', icon: IPartner, group: 'Admin' }] : []),
+  ...(TRADING_ENABLED ? [{ href: '/admin/copy', label: 'Copy trading admin', icon: IAdmin, group: 'Admin' }] : []),
   { href: '/brokers', label: 'Brokers', icon: IBrokers, group: 'Account' },
   { href: '/settings', label: 'Settings', icon: ISettings, group: 'Account' },
 ];
