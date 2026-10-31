@@ -1319,6 +1319,8 @@ model CopyFollow {
   /// Risk disclosure the follower accepted, and when (C3.6).
   riskAcceptedAt DateTime?
   riskVersion    String?
+  /// Set when the follower asked to copy the leader's open trades on start (C1.11); the engine clears it once done.
+  copyOpenRequestedAt DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

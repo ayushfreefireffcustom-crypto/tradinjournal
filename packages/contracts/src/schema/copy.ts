@@ -23,6 +23,8 @@ export const leaderRangeQuerySchema = z.object({ range: z.enum(leaderRanges).def
 export const cursorQuerySchema = z.object({
   cursor: z.string().min(1).max(40).optional(),
   limit: z.coerce.number().int().min(1).max(100).default(50),
+  /** Copied orders: '1' includes earlier runs of a re-started follow. */
+  all: z.enum(['0', '1']).optional(),
 });
 export type CursorQuery = z.infer<typeof cursorQuerySchema>;
 
@@ -68,6 +70,8 @@ export const createFollowSchema = z
     ...followSettings,
     sizingMode: followSettings.sizingMode.default('PROPORTIONAL'),
     sizingValue: followSettings.sizingValue.default(1),
+    /** Also open the leader's current positions now, at market (C1.11). */
+    copyOpenTrades: z.boolean().default(false),
     riskAccepted: z.literal(true, { errorMap: () => ({ message: 'Read and accept the risk notice to start copying.' }) }),
     riskVersion: z.literal(COPY_RISK_VERSION, { errorMap: () => ({ message: 'The risk notice changed. Reload and accept it again.' }) }),
   })

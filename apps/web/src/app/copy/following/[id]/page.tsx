@@ -23,15 +23,16 @@ export default function FollowPage() {
   const [orders, setOrders] = useState<CopiedOrder[] | null>(null);
   const [cursor, setCursor] = useState<string | null>(null);
   const expanded = useRef(false);
+  const [history, setHistory] = useState(false);
   const first = useLoad(async () => {
-    const p = await followsApi.orders(id);
+    const p = await followsApi.orders(id, undefined, history);
     // After "Show more", a refresh only updates rows and adds new ones on top.
     setOrders(prev => (expanded.current && prev
       ? [...p.items.filter(n => !prev.some(o => o.id === n.id)), ...prev.map(o => p.items.find(n => n.id === o.id) ?? o)]
       : p.items));
     if (!expanded.current) setCursor(p.nextCursor);
     return p;
-  }, [id]);
+  }, [id, history]);
   const f = follow.data;
   useCopyStream(() => { void follow.reload(); void first.reload(); }, f?.status !== 'STOPPED');
   usePoll(() => { void follow.reload(); void first.reload(); }, 60_000, f?.status !== 'STOPPED');
@@ -56,7 +57,7 @@ export default function FollowPage() {
     if (!cursor) return;
     expanded.current = true;
     try {
-      const p = await followsApi.orders(id, cursor);
+      const p = await followsApi.orders(id, cursor, history);
       setOrders(o => [...(o ?? []), ...p.items]);
       setCursor(p.nextCursor);
     } catch (e) {
@@ -125,7 +126,13 @@ export default function FollowPage() {
             </section>
 
             <section className="x-card" aria-label="Copied orders">
-              <div className="x-ch"><h2>Copied orders</h2><span className="x-sub">leader&rsquo;s price next to yours</span></div>
+              <div className="x-ch">
+                <h2>Copied orders</h2><span className="x-sub">leader&rsquo;s price next to yours</span>
+                <label className="x-r cp-toggle cp-toggle--inline">
+                  <button type="button" className="x-switch" role="switch" aria-checked={history} onClick={() => { expanded.current = false; setOrders(null); setHistory(v => !v); }} aria-label="Include earlier copies" data-testid="orders-history" />
+                  <span>Include earlier copies</span>
+                </label>
+              </div>
               {first.error && !orders ? <p className="x-muted">{first.error}</p> : orders == null ? <div className="x-skel cp-skel-table" /> : orders.length === 0 ? (
                 <p className="x-muted cp-pad">Nothing copied yet. The next trade {f.leader.displayName} opens shows up here within seconds.</p>
               ) : (

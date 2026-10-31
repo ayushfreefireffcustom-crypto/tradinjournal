@@ -299,7 +299,7 @@ Legend:
 - [x] C1.8 Sizing modes: proportional / fixed margin / multiplier, plus max position USD and reverse copy. Port `sizing.ts` with its 10 tests `S`
 - [x] C1.9 **Real daily loss limit**: today's realised + unrealised P&L per follow (timezone = the user's), auto-pause + notify (MPX gap: it summed all-time) `M`
 - [x] C1.10 Max profit cap per follow (take-profit for the subscription). Evidence: MP code `S`
-- [ ] C1.11 "Copy current open trades" option at subscribe time (open a matching position at market). Evidence: MP code `M`
+- [x] C1.11 "Copy current open trades" option at subscribe time (open a matching position at market). Evidence: MP code `M`
 - [x] C1.12 Place the order, then **poll SUBMITTED orders until terminal** (MPX gap) `M`
 - [x] C1.13 Record `leaderPrice`, our fill price and `slippageBps` per copy `S`
 - [x] C1.14 Positions: port `position.ts` `applyFill` with its 8 tests `S`

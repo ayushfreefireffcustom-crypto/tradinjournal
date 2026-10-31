@@ -25,7 +25,7 @@ type Num = string;
 const toNum = (s: Num): number | null => (s.trim() === '' ? null : Number(s));
 
 interface Props {
-  leader: { id: string; displayName: string; exchange: string; environment: ExchangeEnvironment; recommendedMarginUsd?: number | null };
+  leader: { id: string; displayName: string; exchange: string; environment: ExchangeEnvironment; recommendedMarginUsd?: number | null; openPositions?: Array<{ symbol: string; side: 'LONG' | 'SHORT' }> };
   /** Edit mode when given. */
   follow?: Follow;
   onClose: () => void;
@@ -45,6 +45,8 @@ export default function FollowDialog({ leader, follow, onClose, onDone }: Props)
   const [reverse, setReverse] = useState(follow?.copyReverse ?? false);
   const [more, setMore] = useState(!!(follow?.maxPositionUsd || follow?.leverage || follow?.copyReverse));
   const [accepted, setAccepted] = useState(false);
+  const [copyOpen, setCopyOpen] = useState(false);
+  const leaderOpen = leader.openPositions ?? [];
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -83,7 +85,7 @@ export default function FollowDialog({ leader, follow, onClose, onDone }: Props)
       copyReverse: reverse,
     };
     try {
-      onDone(edit ? await followsApi.update(follow!.id, settings) : await followsApi.create({ ...settings, leaderId: leader.id, connectionId }));
+      onDone(edit ? await followsApi.update(follow!.id, settings) : await followsApi.create({ ...settings, leaderId: leader.id, connectionId, copyOpenTrades: copyOpen && leaderOpen.length > 0 }));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
     } finally {
@@ -93,7 +95,7 @@ export default function FollowDialog({ leader, follow, onClose, onDone }: Props)
 
   const env = leader.environment === 'TESTNET' ? ' testnet' : '';
   return (
-    <Modal title={edit ? 'Copy settings' : `Copy ${leader.displayName}`} sub={edit ? 'Changes apply to the leader’s next trade.' : `New trades the leader opens from now on are copied to your account. Their open trades aren’t.`} onClose={onClose} busy={busy} wide testId="follow-dialog">
+    <Modal title={edit ? 'Copy settings' : `Copy ${leader.displayName}`} sub={edit ? 'Changes apply to the leader’s next trade.' : `New trades the leader opens from now on are copied to your account.${leaderOpen.length ? '' : ' They have nothing open right now.'}`} onClose={onClose} busy={busy} wide testId="follow-dialog">
       <form className="cp-form" onSubmit={submit}>
         {!edit && (
           <div className="x-field">
@@ -160,6 +162,16 @@ export default function FollowDialog({ leader, follow, onClose, onDone }: Props)
               <span><b>Reverse copy</b><small>Open the opposite side of every trade.</small></span>
             </label>
           </div>
+        )}
+
+        {!edit && leaderOpen.length > 0 && (
+          <label className="cp-toggle" data-testid="follow-copy-open">
+            <button type="button" className="x-switch" role="switch" aria-checked={copyOpen} onClick={() => setCopyOpen(v => !v)} aria-label="Also copy their open trades" />
+            <span>
+              <b>Also copy their {leaderOpen.length} open {leaderOpen.length === 1 ? 'trade' : 'trades'} now</b>
+              <small>{leaderOpen.map(p => `${p.side === 'LONG' ? 'Long' : 'Short'} ${p.symbol}`).join(', ')}. Opened at today’s market price, not the leader’s entry, so your result on these can differ from theirs.</small>
+            </span>
+          </label>
         )}
 
         {!edit && (

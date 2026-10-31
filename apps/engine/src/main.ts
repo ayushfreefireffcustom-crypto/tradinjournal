@@ -7,6 +7,7 @@ import { logger } from '@tradinjournal/logger';
 import { productionDeps } from './deps.js';
 import { reconcile } from './reconcile.js';
 import { liveWatcherCount, stopAllWatchers, syncWatchers } from './watchers.js';
+import { processCopyOpenRequests } from './copy.js';
 
 const SYNC_MS = 5_000;
 const RECONCILE_MS = 30_000;
@@ -52,6 +53,7 @@ async function main(): Promise<void> {
   await safely('heartbeat', beat);
   const timers = [
     setInterval(() => void safely('sync', () => syncWatchers(deps)), SYNC_MS),
+    setInterval(() => void safely('copy-open', () => processCopyOpenRequests(deps)), SYNC_MS),
     setInterval(() => void safely('reconcile', () => reconcile(deps)), RECONCILE_MS),
     setInterval(() => void safely('heartbeat', beat), 60_000),
   ];

@@ -338,6 +338,61 @@ describe.skipIf(!local)('copy engine (integration)', () => {
     await prisma.copyFollow.update({ where: { id: followA }, data: { dailyLossLimitUsd: 50 } });
   });
 
+  it("copies the leader's open trades once, at the follower's size, when asked at start", async () => {
+    const lead = fx.account(`${tag}-LEAD`);
+    const leaderBefore = new Map(lead.positions);
+    lead.positions.clear();
+    lead.positions.set('BTCUSD', -6); // leader is short 6
+    const u = await newUser('open');
+    const c = await conn(u.id, 'FOLOPEN');
+    const f = await prisma.copyFollow.create({ data: { userId: u.id, leaderId: leader.id, connectionId: c.id, sizingMode: 'MULTIPLIER', sizingValue: 0.5, startedAt: new Date(now.getTime() - 1000), copyOpenRequestedAt: new Date() } });
+    try {
+      await copy.processCopyOpenRequests(deps);
+      const acct = fx.account(`${tag}-FOLOPEN`);
+      expect(acct.positions.get('BTCUSD')).toBe(-3);
+      const orders = await prisma.exchangeOrder.findMany({ where: { followId: f.id } });
+      expect(orders).toEqual([expect.objectContaining({ side: 'SELL', status: 'FILLED', leaderFillId: null, reduceOnly: false })]);
+      expect(Number(orders[0]!.qty)).toBe(3);
+      const pos = await prisma.exchangePosition.findFirstOrThrow({ where: { followId: f.id } });
+      expect(pos).toMatchObject({ side: 'SHORT', positionKey: f.id });
+      expect((await prisma.copyFollow.findUniqueOrThrow({ where: { id: f.id } })).copyOpenRequestedAt).toBeNull();
+      expect((await prisma.notification.findFirstOrThrow({ where: { userId: u.id, kind: 'copy.open_trades' } })).title).toBe('Copied 1 open trade');
+      // Never twice.
+      await copy.processCopyOpenRequests(deps);
+      expect(await prisma.exchangeOrder.count({ where: { followId: f.id } })).toBe(1);
+      // The leader's later exit closes the copied position like any other.
+      const exit = fill({ side: 'BUY', qty: 6, positionAfter: 0 });
+      await copy.ingestLeaderFill(leader, exit, deps);
+      expect(acct.positions.get('BTCUSD')).toBe(0);
+    } finally {
+      await prisma.copyFollow.update({ where: { id: f.id }, data: { status: 'STOPPED' } });
+      lead.positions.clear();
+      for (const [k, v] of leaderBefore) lead.positions.set(k, v);
+    }
+  });
+
+  it('does not copy open trades while copying is halted, and says so', async () => {
+    const lead = fx.account(`${tag}-LEAD`);
+    lead.positions.set('BTCUSD', 2);
+    const u = await newUser('openhalt');
+    const c = await conn(u.id, 'FOLHALT');
+    const f = await prisma.copyFollow.create({ data: { userId: u.id, leaderId: leader.id, connectionId: c.id, sizingMode: 'MULTIPLIER', sizingValue: 1, copyOpenRequestedAt: new Date() } });
+    await prisma.systemSetting.create({ data: { key: guards.KILL_SWITCH_KEY, value: { enabled: true } } });
+    guards.resetKillSwitchCache();
+    try {
+      expect(await copy.copyOpenPositions(f.id, deps)).toBe(0);
+      expect(await prisma.exchangeOrder.count({ where: { followId: f.id } })).toBe(0);
+      expect(fx.account(`${tag}-FOLHALT`).positions.get('BTCUSD') ?? 0).toBe(0);
+      expect((await prisma.notification.findFirstOrThrow({ where: { userId: u.id, kind: 'copy.open_trades' } })).title).toBe('Open trades weren’t copied');
+      expect((await prisma.copyFollow.findUniqueOrThrow({ where: { id: f.id } })).copyOpenRequestedAt).toBeNull();
+    } finally {
+      await prisma.systemSetting.deleteMany({ where: { key: guards.KILL_SWITCH_KEY } });
+      guards.resetKillSwitchCache();
+      lead.positions.set('BTCUSD', 0);
+      await prisma.copyFollow.update({ where: { id: f.id }, data: { status: 'STOPPED' } });
+    }
+  });
+
   it('places nothing when the follow is stopped while the copy is being prepared', async () => {
     const u = await newUser('race');
     const c = await conn(u.id, 'FOLRACE');

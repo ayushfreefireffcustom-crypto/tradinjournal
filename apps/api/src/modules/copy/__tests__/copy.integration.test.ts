@@ -45,7 +45,7 @@ describe.skipIf(!local)('copy trading leaders and follows (integration)', () => 
     getInstrument: async () => ({ contractMultiplier: 0.001 }),
   } as unknown as Exchange;
   const deps = { adapterFor: () => fake, key: () => KEY, sleep: async () => undefined };
-  const followInput = (over: Record<string, unknown> = {}) => ({ leaderId, connectionId: conns.f1!, sizingMode: 'PROPORTIONAL' as const, sizingValue: 1, riskAccepted: true as const, riskVersion: COPY_RISK_VERSION as typeof COPY_RISK_VERSION, ...over });
+  const followInput = (over: Record<string, unknown> = {}) => ({ leaderId, connectionId: conns.f1!, sizingMode: 'PROPORTIONAL' as const, sizingValue: 1, copyOpenTrades: false, riskAccepted: true as const, riskVersion: COPY_RISK_VERSION as typeof COPY_RISK_VERSION, ...over });
 
   async function conn(userId: string, name: string, over: Record<string, unknown> = {}) {
     const c = await prisma.exchangeConnection.create({
@@ -412,12 +412,30 @@ describe.skipIf(!local)('copy trading leaders and follows (integration)', () => 
     expect(await prisma.exchangePosition.count({ where: { positionKey: followId, closedAt: null } })).toBe(0);
   });
 
+  it('records a request to copy open trades only when asked', async () => {
+    await follows.createFollow(users.fol!.id, followInput({ copyOpenTrades: true }), new Date(Date.now() + 6500));
+    expect((await prisma.copyFollow.findUniqueOrThrow({ where: { id: followId } })).copyOpenRequestedAt).not.toBeNull();
+    await follows.stopFollow(users.fol!.id, followId, false, deps);
+    await follows.createFollow(users.fol!.id, followInput(), new Date(Date.now() + 6600));
+    expect((await prisma.copyFollow.findUniqueOrThrow({ where: { id: followId } })).copyOpenRequestedAt).toBeNull();
+    await follows.stopFollow(users.fol!.id, followId, false, deps);
+  });
+
   it('never lets a re-follow inherit a position left on the old run', async () => {
     // e.g. written by an engine copy that finished after the stop.
     await prisma.exchangePosition.create({ data: { connectionId: conns.f1!, followId, positionKey: followId, source: 'COPY', symbol: 'BNBUSD', side: 'LONG', qty: 1, avgEntry: 600 } });
     const dto = await follows.createFollow(users.fol!.id, followInput(), new Date(Date.now() + 7000));
     expect(dto.openPositions).toBe(0);
     expect(await prisma.exchangePosition.count({ where: { positionKey: followId, closedAt: null } })).toBe(0);
+    await follows.stopFollow(users.fol!.id, followId, false, deps);
+  });
+
+  it("lists only the current run's orders unless asked for earlier ones", async () => {
+    const before = (await follows.followOrders(users.fol!.id, followId, { limit: 100, all: '1' })).items.length;
+    expect(before).toBeGreaterThan(0);
+    await follows.createFollow(users.fol!.id, followInput(), new Date(Date.now() + 8000));
+    expect((await follows.followOrders(users.fol!.id, followId, { limit: 100 })).items).toEqual([]);
+    expect((await follows.followOrders(users.fol!.id, followId, { limit: 100, all: '1' })).items.length).toBe(before);
     await follows.stopFollow(users.fol!.id, followId, false, deps);
   });
 

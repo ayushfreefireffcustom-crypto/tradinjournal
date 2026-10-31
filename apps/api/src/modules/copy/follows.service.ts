@@ -178,7 +178,8 @@ export async function getFollow(userId: string, id: string): Promise<FollowDetai
 export async function followOrders(userId: string, id: string, q: CursorQuery): Promise<Page<CopiedOrderDto>> {
   const f = await ownFollow(userId, id);
   const rows = await prisma.exchangeOrder.findMany({
-    where: { followId: f.id },
+    // By default only this run of the follow, matching its totals.
+    where: { followId: f.id, ...(q.all === '1' ? {} : { requestedAt: { gte: f.startedAt } }) },
     orderBy: [{ requestedAt: 'desc' }, { id: 'desc' }],
     take: q.limit + 1,
     ...(q.cursor ? { cursor: { id: q.cursor }, skip: 1 } : {}),
@@ -254,6 +255,8 @@ export async function createFollow(userId: string, input: CreateFollowInput, now
     residuals: {},
     riskAcceptedAt: now,
     riskVersion: input.riskVersion,
+    // The engine picks this up within seconds and clears it.
+    copyOpenRequestedAt: input.copyOpenTrades ? now : null,
   };
   if (existing) {
     // A fresh start never inherits positions from the last run of this follow.

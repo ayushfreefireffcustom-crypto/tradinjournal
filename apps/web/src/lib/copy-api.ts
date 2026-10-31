@@ -233,8 +233,8 @@ export const leadersApi = {
 export const followsApi = {
   list: (all = false) => call<Follow[]>(`/follows${all ? '?all=1' : ''}`),
   get: (id: string) => call<FollowDetail>(`/follows/${id}`),
-  orders: (id: string, cursor?: string) => call<Page<CopiedOrder>>(`/follows/${id}/orders${qs({ cursor, limit: 25 })}`),
-  create: (b: FollowSettings & { leaderId: string; connectionId: string }) =>
+  orders: (id: string, cursor?: string, all = false) => call<Page<CopiedOrder>>(`/follows/${id}/orders${qs({ cursor, limit: 25, all: all ? '1' : undefined })}`),
+  create: (b: FollowSettings & { leaderId: string; connectionId: string; copyOpenTrades?: boolean }) =>
     call<Follow>('/follows', { method: 'POST', ...body({ ...b, riskAccepted: true, riskVersion: COPY_RISK_VERSION }) }),
   update: (id: string, b: Partial<FollowSettings> & { action?: 'pause' | 'resume' }) => call<Follow>(`/follows/${id}`, { method: 'PATCH', ...body(b) }),
   stop: (id: string, closePositions: boolean) => call<StopResult>(`/follows/${id}/stop`, { method: 'POST', ...body({ closePositions }) }),

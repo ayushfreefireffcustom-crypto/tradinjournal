@@ -263,8 +263,9 @@ async function copyToFollow(follow: FollowRow, row: LeaderFill, fill: FillEvent,
   }
 
   for (let i = 0; i < plan.legs.length; i++) {
-    const ok = await placeLeg(follow, row, fill, inst, plan.legs[i]!, i, deps);
-    if (!ok) break;
+    const ok = await placeLeg(follow, { leaderFillId: row.id, key: fill.externalId, leaderPrice: fill.price }, inst, plan.legs[i]!, i, deps);
+    if (ok === 'stopped') await recordSkip(follow, row, fill, 'copying was stopped before the order was sent', inst.symbol);
+    if (ok !== true) break;
   }
 }
 
@@ -317,10 +318,18 @@ async function limitReached(follow: FollowRow, deps: EngineDeps): Promise<LimitH
   return null;
 }
 
-async function placeLeg(follow: FollowRow, row: LeaderFill, fill: FillEvent, inst: InstrumentInfo, leg: PlanLeg, index: number, deps: EngineDeps): Promise<boolean> {
+/** What a copy order copies: a leader fill, or (copy-open) a position the leader already held. */
+interface LegSource {
+  leaderFillId: string | null;
+  /** Unique per source; with the follow id and leg index it makes the client order id. */
+  key: string;
+  leaderPrice: number;
+}
+
+async function placeLeg(follow: FollowRow, src: LegSource, inst: InstrumentInfo, leg: PlanLeg, index: number, deps: EngineDeps): Promise<boolean | 'stopped'> {
   const exchange = deps.exchangeFor(follow.connection);
   const creds = deps.credsFor(follow.connection);
-  const clientOrderId = `copy:${follow.id}:${fill.externalId}:${index}`;
+  const clientOrderId = `copy:${follow.id}:${src.key}:${index}`;
 
   // Claim first: the unique clientOrderId makes a retry a no-op. The claim
   // locks the follow row and re-checks it: a stop that committed first wins,
@@ -336,7 +345,7 @@ async function placeLeg(follow: FollowRow, row: LeaderFill, fill: FillEvent, ins
         connectionId: follow.connectionId,
         source: 'COPY',
         followId: follow.id,
-        leaderFillId: row.id,
+        leaderFillId: src.leaderFillId,
         clientOrderId,
         symbol: inst.symbol,
         side: leg.side,
@@ -344,7 +353,7 @@ async function placeLeg(follow: FollowRow, row: LeaderFill, fill: FillEvent, ins
         timeInForce: 'IOC',
         reduceOnly: leg.reduceOnly,
         qty: leg.qty,
-        leaderPrice: fill.price,
+        leaderPrice: src.leaderPrice,
         status: 'PENDING',
       },
       });
@@ -353,10 +362,7 @@ async function placeLeg(follow: FollowRow, row: LeaderFill, fill: FillEvent, ins
     if ((err as { code?: string }).code === 'P2002') return false;
     throw err;
   }
-  if (!order) {
-    await recordSkip(follow, row, fill, 'copying was stopped before the order was sent', inst.symbol);
-    return false;
-  }
+  if (!order) return 'stopped';
 
   let result: OrderInfo;
   try {
@@ -378,7 +384,7 @@ async function placeLeg(follow: FollowRow, row: LeaderFill, fill: FillEvent, ins
   }
 
   const filled = result.filledQty;
-  const price = result.avgFillPrice ?? fill.price;
+  const price = result.avgFillPrice ?? src.leaderPrice;
   let realized: number | null = null;
   if (filled > 0) realized = await applyToPosition(follow, inst, leg.side, filled, price, deps);
 
@@ -390,7 +396,7 @@ async function placeLeg(follow: FollowRow, row: LeaderFill, fill: FillEvent, ins
       exchangeOrderId: result.exchangeOrderId || null,
       filledQty: filled,
       avgFillPrice: result.avgFillPrice,
-      slippageBps: result.avgFillPrice && fill.price > 0 ? ((result.avgFillPrice - fill.price) / fill.price) * 10_000 * (leg.side === 'BUY' ? 1 : -1) : null,
+      slippageBps: result.avgFillPrice && src.leaderPrice > 0 ? ((result.avgFillPrice - src.leaderPrice) / src.leaderPrice) * 10_000 * (leg.side === 'BUY' ? 1 : -1) : null,
       realizedPnl: realized,
       submittedAt: deps.now(),
       filledAt: filled > 0 ? deps.now() : null,
@@ -435,4 +441,100 @@ async function handleExchangeError(follow: FollowRow, err: unknown): Promise<voi
 
 function errText(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
+}
+
+// ─── copy the leader's open trades at start (C1.11) ─────────────────────────
+
+/**
+ * Follows that asked to copy the leader's open trades when they started.
+ * Each request runs once (the flag is cleared by whoever claims it) on the
+ * leader's queue, so it can't interleave with that leader's live fills.
+ */
+export async function processCopyOpenRequests(deps: EngineDeps): Promise<void> {
+  const pending = await prisma.copyFollow.findMany({
+    where: { copyOpenRequestedAt: { not: null }, status: 'ACTIVE', userId: deps.scopeUserIds ? { in: deps.scopeUserIds } : undefined },
+    select: { id: true, leaderId: true },
+    take: 50,
+  });
+  await Promise.all(pending.map((p) => enqueue(p.leaderId, async () => void (await copyOpenPositions(p.id, deps)))));
+}
+
+export async function copyOpenPositions(followId: string, deps: EngineDeps): Promise<number> {
+  // Claim: clear the request first so it never runs twice.
+  const claimed = await prisma.copyFollow.updateMany({ where: { id: followId, copyOpenRequestedAt: { not: null }, status: 'ACTIVE' }, data: { copyOpenRequestedAt: null } });
+  if (!claimed.count) return 0;
+  const follow = (await prisma.copyFollow.findUnique({ where: { id: followId }, include: { connection: true, leader: { include: { connection: true } } } }))!;
+  const leader = follow.leader as LeaderRow;
+  const tell = (title: string, body: string) => notify(follow.userId, 'copy.open_trades', title, body, `/copy/following/${follow.id}`);
+
+  if ((await isKillSwitchOn(deps.now().getTime())) || leader.status !== 'VERIFIED') {
+    await tell('Open trades weren’t copied', 'Copying is paused right now, so the leader’s open trades weren’t copied. New trades will be once it resumes.');
+    return 0;
+  }
+  if (follow.connection.status !== 'ACTIVE' || leader.connection.status !== 'ACTIVE') {
+    await tell('Open trades weren’t copied', 'An exchange key needs reconnecting, so the leader’s open trades weren’t copied.');
+    return 0;
+  }
+
+  const leaderEx = deps.exchangeFor(leader.connection);
+  const exchange = deps.exchangeFor(follow.connection);
+  let leaderPositions, leaderUsd = 0, followerUsd = 0;
+  try {
+    leaderPositions = (await leaderEx.getPositions(deps.credsFor(leader.connection))).filter((p) => p.size !== 0);
+    if (follow.sizingMode === 'PROPORTIONAL' && leaderPositions.length) {
+      leaderUsd = await leaderEquityUsd(leader, deps);
+      followerUsd = (await exchange.getAccount(deps.credsFor(follow.connection))).equityUsd;
+    }
+  } catch (err) {
+    if (err instanceof SecretKeyError || (err instanceof ExchangeError && err.isCredentialProblem)) await handleExchangeError(follow, err);
+    await tell('Open trades weren’t copied', `We couldn’t read the accounts: ${errText(err)}. New trades are still copied.`);
+    return 0;
+  }
+  if (!leaderPositions.length) return 0;
+
+  let opened = 0;
+  const skipped: string[] = [];
+  for (const p of leaderPositions) {
+    const inst = await exchange.getInstrument(p.symbol).catch(() => null);
+    if (!inst || !inst.live) {
+      skipped.push(`${p.symbol} (not tradable on your account)`);
+      continue;
+    }
+    const mark = p.markPrice ?? (await exchange.getMarkPrice(p.symbol).catch(() => null)) ?? p.avgEntry;
+    // Treat the leader's whole position as one opening fill.
+    const plan = planCopy({
+      fill: { side: p.size > 0 ? 'BUY' : 'SELL', qty: Math.abs(p.size), price: mark, positionAfter: p.size, contractMultiplier: inst.contractMultiplier },
+      sizingMode: follow.sizingMode,
+      sizingValue: Number(follow.sizingValue),
+      copyReverse: follow.copyReverse,
+      leaderEquityUsd: leaderUsd,
+      followerEquityUsd: followerUsd,
+      maxPositionUsd: follow.maxPositionUsd != null ? Number(follow.maxPositionUsd) : null,
+      followerPosition: 0,
+      instrument: inst,
+      residual: 0,
+    });
+    const legs = plan.legs.filter((l) => l.kind === 'OPEN');
+    if (plan.skipReason || !legs.length) {
+      skipped.push(`${p.symbol} (${plan.skipReason ?? 'nothing to open'})`);
+      continue;
+    }
+    if (follow.leverage != null && !leverageSet.has(`${follow.id}:${inst.symbol}`)) {
+      await exchange.setLeverage(deps.credsFor(follow.connection), inst.symbol, follow.leverage).then(() => leverageSet.add(`${follow.id}:${inst.symbol}`)).catch(() => undefined);
+    }
+    for (let i = 0; i < legs.length; i++) {
+      const ok = await placeLeg(follow, { leaderFillId: null, key: `open-${inst.symbol}-${follow.startedAt.getTime()}`, leaderPrice: mark }, inst, legs[i]!, i, deps);
+      if (ok === true) opened++;
+      if (ok !== true) {
+        skipped.push(`${p.symbol} (${ok === 'stopped' ? 'copying stopped' : 'order not filled'})`);
+        break;
+      }
+    }
+  }
+  await tell(
+    opened ? `Copied ${opened} open ${opened === 1 ? 'trade' : 'trades'}` : 'No open trades were copied',
+    `${opened ? `Opened at today’s market price, not the leader’s entry.` : ''}${skipped.length ? ` Not copied: ${skipped.join(', ')}.` : ''}`.trim() || 'The leader had nothing open that could be copied.',
+  );
+  logger.info('[engine] copied open trades', { followId, opened, skipped: skipped.length });
+  return opened;
 }
