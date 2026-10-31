@@ -4,18 +4,90 @@
 
 import { prisma, type CopyLeader, type ExchangeConnection } from '@tradinjournal/db';
 import { logger } from '@tradinjournal/logger';
+import { ExchangeError } from '@tradinjournal/exchange';
+import { SecretKeyError } from '@tradinjournal/secrets';
 import { fanOut, rememberLeaderEquity } from './copy.js';
+import { markConnectionInvalid, notify } from './guards.js';
 import type { EngineDeps } from './deps.js';
 import { curveStats, WINDOWS } from './stats.js';
 
 const EQUITY_POINT_MS = 5 * 60_000;
 const STATS_MS = 5 * 60_000;
+const DRIFT_MS = 10 * 60_000;
+/** Positions touched this recently may have a copy in flight; leave them for the next sweep. */
+const DRIFT_SETTLE_MS = 60_000;
 let lastStatsAt = 0;
+let lastDriftAt = 0;
 
 export async function reconcile(deps: EngineDeps): Promise<void> {
   await markPositions(deps);
   await refreshLeaders(deps);
   await retryUnclaimedFills(deps);
+  const nowMs = deps.now().getTime();
+  if (nowMs - lastDriftAt >= DRIFT_MS) {
+    lastDriftAt = nowMs;
+    await sweepDrift(deps).catch((err) => logger.warn('[engine] drift sweep failed', { err: String(err) }));
+  }
+}
+
+/**
+ * C1.15: compare each live copy's positions with what the exchange holds.
+ * When the user closed some or all of a copy by hand, shrink our record to
+ * what's really there (closing it at zero), flag the drift and tell them once.
+ * Holding more than we copied is fine: that's the user's own trading.
+ */
+export async function sweepDrift(deps: EngineDeps): Promise<number> {
+  const now = deps.now();
+  const open = await prisma.exchangePosition.findMany({
+    where: { closedAt: null, qty: { gt: 0 }, followId: { not: null }, follow: { status: { in: ['ACTIVE', 'PAUSED'] } }, updatedAt: { lt: new Date(now.getTime() - DRIFT_SETTLE_MS) } },
+    include: { connection: true, follow: { select: { id: true, userId: true, leader: { select: { displayName: true } } } } },
+  });
+  const byConn = new Map<string, typeof open>();
+  for (const p of open) byConn.set(p.connectionId, [...(byConn.get(p.connectionId) ?? []), p]);
+  let changed = 0;
+  for (const rows of byConn.values()) {
+    const conn = rows[0]!.connection;
+    if (conn.status !== 'ACTIVE') continue;
+    let real: Map<string, number>;
+    try {
+      real = new Map((await deps.exchangeFor(conn).getPositions(deps.credsFor(conn))).map((p) => [p.symbol, p.size]));
+    } catch (err) {
+      if (err instanceof SecretKeyError) await markConnectionInvalid(conn.id, 'the stored key could not be read; reconnect the account');
+      else if (err instanceof ExchangeError && err.isCredentialProblem) await markConnectionInvalid(conn.id, err.message);
+      continue;
+    }
+    for (const p of rows) {
+      // An order still in flight would make the exchange look different for a moment.
+      const inFlight = await prisma.exchangeOrder.count({ where: { followId: p.followId, status: { in: ['PENDING', 'SUBMITTED', 'OPEN'] } } });
+      if (inFlight) continue;
+      const size = real.get(p.symbol) ?? 0;
+      const dir = p.side === 'LONG' ? 1 : -1;
+      const held = Math.sign(size) === dir ? Math.abs(size) : 0;
+      const tracked = Number(p.qty);
+      if (held >= tracked) {
+        if (p.driftDetectedAt) await prisma.exchangePosition.update({ where: { id: p.id }, data: { exchangeQty: size, driftDetectedAt: null } });
+        continue;
+      }
+      await prisma.exchangePosition.update({
+        where: { id: p.id },
+        data: held === 0 ? { qty: 0, closedAt: now, unrealizedPnl: 0, exchangeQty: size, driftDetectedAt: now } : { qty: held, exchangeQty: size, driftDetectedAt: now },
+      });
+      changed++;
+      if (!p.driftDetectedAt && p.follow) {
+        await notify(
+          p.follow.userId,
+          'copy.position_drift',
+          `Your ${p.symbol} copy changed on the exchange`,
+          held === 0
+            ? `Your copy of ${p.follow.leader.displayName} on ${p.symbol} was closed outside TRADElogs. We've closed it on our side too.`
+            : `You hold ${held} of the ${tracked} we copied from ${p.follow.leader.displayName} on ${p.symbol}. We'll only close what's still there.`,
+          `/copy/following/${p.follow.id}`,
+        );
+      }
+      logger.info('[engine] position drift corrected', { positionId: p.id, symbol: p.symbol, tracked, held });
+    }
+  }
+  return changed;
 }
 
 /** Mark open copy positions to market with public mark prices. */

@@ -311,6 +311,81 @@ describe.skipIf(!local)('copy engine (integration)', () => {
     }
   });
 
+  it("counts the daily loss from midnight in the follower's own time zone", async () => {
+    const { dayStartIn } = await import('../time.js');
+    const u = await prisma.user.create({ data: { name: 'tz', email: `${tag}-tz@engine.test` } });
+    await prisma.notificationPreference.create({ data: { userId: u.id, timezone: 'Pacific/Kiritimati' } });
+    const c = await conn(u.id, 'FOLTZ');
+    const f = await prisma.copyFollow.create({ data: { userId: u.id, leaderId: leader.id, connectionId: c.id, sizingMode: 'MULTIPLIER', sizingValue: 1, dailyLossLimitUsd: 10, startedAt: new Date(Date.now() - 3 * 86400_000) } });
+    const midnight = dayStartIn('Pacific/Kiritimati', now).getTime();
+    const loss = await prisma.exchangeOrder.create({ data: { userId: u.id, connectionId: c.id, source: 'COPY', followId: f.id, clientOrderId: `${tag}-tzloss`, symbol: 'BTCUSD', side: 'SELL', type: 'MARKET', qty: 1, status: 'FILLED', realizedPnl: -50, filledAt: new Date(midnight - 60_000) } });
+    try {
+      // Booked yesterday in their zone: doesn't count, the entry copies.
+      const e1 = fill({ qty: 1, positionAfter: 14 });
+      await copy.ingestLeaderFill(leader, e1, deps);
+      expect((await ordersFor(f.id, e1.externalId))[0]).toMatchObject({ status: 'FILLED' });
+      // Booked a minute after their midnight: today's loss is over the limit.
+      await prisma.exchangeOrder.update({ where: { id: loss.id }, data: { filledAt: new Date(midnight + 60_000) } });
+      const e2 = fill({ qty: 1, positionAfter: 15 });
+      await copy.ingestLeaderFill(leader, e2, deps);
+      expect((await ordersFor(f.id, e2.externalId))[0]).toMatchObject({ status: 'SKIPPED' });
+      expect((await prisma.copyFollow.findUniqueOrThrow({ where: { id: f.id } })).status).toBe('PAUSED');
+    } finally {
+      await prisma.copyFollow.update({ where: { id: f.id }, data: { status: 'STOPPED' } });
+    }
+  });
+
+  it('sweeps positions the user changed on the exchange by hand', async () => {
+    await prisma.copyFollow.update({ where: { id: followA }, data: { status: 'ACTIVE', pauseReason: null } });
+    const a = fx.account(`${tag}-FOLA`);
+    const pos = await prisma.exchangePosition.findFirstOrThrow({ where: { followId: followA } });
+    // UTC text cast to timestamp: NOW() would shift by the DB session's time zone.
+    const age = () => prisma.$executeRaw`UPDATE exchange_position SET "updatedAt" = ${new Date(Date.now() - 600_000).toISOString()}::timestamp WHERE id = ${pos.id}`;
+    await prisma.exchangePosition.update({ where: { id: pos.id }, data: { side: 'LONG', qty: 4, avgEntry: 70_000, closedAt: null, driftDetectedAt: null } });
+    const drifts = () => prisma.notification.count({ where: { userId: followerUserA, kind: 'copy.position_drift' } });
+    const before = await drifts();
+
+    // Just touched: left alone (a copy may be in flight).
+    a.positions.set('BTCUSD', 1);
+    expect(await reconcile.sweepDrift(deps)).toBe(0);
+    await age();
+    // An order in flight: left alone too.
+    const pending = await prisma.exchangeOrder.create({ data: { userId: followerUserA, connectionId: (await prisma.copyFollow.findUniqueOrThrow({ where: { id: followA } })).connectionId, source: 'COPY', followId: followA, clientOrderId: `${tag}-inflight`, symbol: 'BTCUSD', side: 'SELL', type: 'MARKET', qty: 1, status: 'SUBMITTED' } });
+    expect(await reconcile.sweepDrift(deps)).toBe(0);
+    await prisma.exchangeOrder.update({ where: { id: pending.id }, data: { status: 'CANCELLED' } });
+
+    // The user closed 3 of 4 by hand: our record shrinks to 1, once, with one notification.
+    expect(await reconcile.sweepDrift(deps)).toBe(1);
+    expect(await prisma.exchangePosition.findUniqueOrThrow({ where: { id: pos.id } })).toMatchObject({ closedAt: null, driftDetectedAt: expect.any(Date) });
+    expect(Number((await prisma.exchangePosition.findUniqueOrThrow({ where: { id: pos.id } })).qty)).toBe(1);
+    expect(await drifts()).toBe(before + 1);
+    await age();
+    expect(await reconcile.sweepDrift(deps)).toBe(0); // in sync now
+    expect((await prisma.exchangePosition.findUniqueOrThrow({ where: { id: pos.id } })).driftDetectedAt).toBeNull();
+
+    // Holding more than we copied is the user's own trading: no change.
+    a.positions.set('BTCUSD', 5);
+    await age();
+    expect(await reconcile.sweepDrift(deps)).toBe(0);
+    expect(Number((await prisma.exchangePosition.findUniqueOrThrow({ where: { id: pos.id } })).qty)).toBe(1);
+
+    // Closed or flipped on the exchange: we close it too.
+    a.positions.set('BTCUSD', -2);
+    await age();
+    expect(await reconcile.sweepDrift(deps)).toBe(1);
+    expect(await prisma.exchangePosition.findUniqueOrThrow({ where: { id: pos.id } })).toMatchObject({ closedAt: expect.any(Date) });
+    expect(await drifts()).toBe(before + 2);
+
+    // Stopped follows are never swept.
+    await prisma.exchangePosition.update({ where: { id: pos.id }, data: { qty: 3, closedAt: null, driftDetectedAt: null } });
+    await prisma.copyFollow.update({ where: { id: followA }, data: { status: 'STOPPED' } });
+    await age();
+    expect(await reconcile.sweepDrift(deps)).toBe(0);
+    await prisma.copyFollow.update({ where: { id: followA }, data: { status: 'ACTIVE' } });
+    await prisma.exchangePosition.update({ where: { id: pos.id }, data: { qty: 0, closedAt: new Date() } });
+    a.positions.set('BTCUSD', 0);
+  });
+
   it('marks the account invalid and pauses copying when the exchange rejects the key', async () => {
     const b = fx.account(`${tag}-FOLB`);
     b.fail = 'auth';

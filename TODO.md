@@ -297,13 +297,13 @@ Legend:
 - [x] C1.6 Copy-from-now guard (`follow.startedAt > fill.ts` → skip). Use UTC everywhere `S`
 - [x] C1.7 Dedup on `clientOrderId = tl:{exch}:{followId}:{fillId}` `S`
 - [x] C1.8 Sizing modes: proportional / fixed margin / multiplier, plus max position USD and reverse copy. Port `sizing.ts` with its 10 tests `S`
-- [ ] C1.9 **Real daily loss limit**: today's realised + unrealised P&L per follow (timezone = the user's), auto-pause + notify (MPX gap: it summed all-time) `M` (done with a UTC day on 31 Oct; user timezone still to do)
+- [x] C1.9 **Real daily loss limit**: today's realised + unrealised P&L per follow (timezone = the user's), auto-pause + notify (MPX gap: it summed all-time) `M`
 - [x] C1.10 Max profit cap per follow (take-profit for the subscription). Evidence: MP code `S`
 - [ ] C1.11 "Copy current open trades" option at subscribe time (open a matching position at market). Evidence: MP code `M`
 - [x] C1.12 Place the order, then **poll SUBMITTED orders until terminal** (MPX gap) `M`
 - [x] C1.13 Record `leaderPrice`, our fill price and `slippageBps` per copy `S`
 - [x] C1.14 Positions: port `position.ts` `applyFill` with its 8 tests `S`
-- [ ] C1.15 **Reconcile our positions against the exchange's `getPositions`** every N minutes; flag drift (MPX gap) `M` (drift is checked and capped on every copy; a timed sweep is still to do)
+- [x] C1.15 **Reconcile our positions against the exchange's `getPositions`** every N minutes; flag drift (MPX gap) `M` (every 10 min, plus on every copy)
 - [x] C1.16 Mark-to-market from public mark prices every 30s `S`
 - [x] C1.17 Leader equity snapshots + `curveStats` (ROI, max DD) per 7d/30d/all; port `stats.ts` with its 4 tests `S`
 - [x] C1.18 Retry missed copies (24h sweep) `S`

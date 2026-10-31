@@ -13,6 +13,7 @@ import { ExchangeError, type FillEvent, type InstrumentInfo, type OrderInfo } fr
 import { logger } from '@tradinjournal/logger';
 import { SecretKeyError } from '@tradinjournal/secrets';
 import type { EngineDeps } from './deps.js';
+import { dayStartIn } from './time.js';
 import { isKillSwitchOn, markConnectionInvalid, notify } from './guards.js';
 import { planCopy, type PlanLeg } from './plan.js';
 import { applyFill } from './position.js';
@@ -157,10 +158,6 @@ async function recordSkip(follow: FollowRow, row: LeaderFill, fill: FillEvent, r
     });
 }
 
-function dayStartUtc(now: Date): Date {
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-}
-
 async function copyToFollow(follow: FollowRow, row: LeaderFill, fill: FillEvent, leaderUsd: number, deps: EngineDeps, leaderPaused = false): Promise<void> {
   if (follow.connection.status !== 'ACTIVE') {
     await recordSkip(follow, row, fill, 'your exchange account needs reconnecting');
@@ -290,7 +287,9 @@ async function limitReached(follow: FollowRow, deps: EngineDeps): Promise<LimitH
     return Number(realized._sum.realizedPnl ?? 0) + Number(open._sum.unrealizedPnl ?? 0);
   };
   if (follow.dailyLossLimitUsd != null) {
-    const today = await pnlSince(dayStartUtc(deps.now()));
+    // "Today" is the follower's own day (their notification time zone, UTC if unset).
+    const pref = await prisma.notificationPreference.findUnique({ where: { userId: follow.userId }, select: { timezone: true } });
+    const today = await pnlSince(dayStartIn(pref?.timezone ?? 'UTC', deps.now()));
     const cap = Math.abs(Number(follow.dailyLossLimitUsd));
     if (cap > 0 && today <= -cap) {
       return {
