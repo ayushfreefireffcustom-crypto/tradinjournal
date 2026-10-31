@@ -217,6 +217,22 @@ const envSchema = z.object({
   /** How long a first-ever page load waits for the initial backfill (ms). */
   SYNC_FIRST_WAIT_MS: z.coerce.number().int().min(1000).default(90_000),
 
+  // ── Trading platform (exchange connections, copy trading) ─────────────────
+  /** Master switch for exchange connections and copy trading. Off: no routes. */
+  TRADING_ENABLED: z
+    .string()
+    .default('false')
+    .transform(v => v.toLowerCase() === 'true' || v === '1'),
+  /** Static outbound IPs of the engine/API (comma list) that users whitelist on their keys. */
+  EXCHANGE_EGRESS_IPS: z.string().default(''),
+  /** Allows LIVE (real-money) exchange connections. Testnet only while false. */
+  EXCHANGE_LIVE_ENABLED: z
+    .string()
+    .default('false')
+    .transform(v => v.toLowerCase() === 'true' || v === '1'),
+  /** Connected exchange accounts per user. */
+  EXCHANGE_MAX_CONNECTIONS: z.coerce.number().int().min(1).max(50).default(8),
+
   // ── Partner programme (referral tracking) ─────────────────────────────────
   /** Master switch. Off: no partner/referral routes, no attribution, no stats job. */
   PARTNER_PROGRAM_ENABLED: z

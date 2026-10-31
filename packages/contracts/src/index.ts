@@ -712,3 +712,14 @@ export {
   type ReservedPartnerCodeDto,
   type AdminReferrerLookupDto,
 } from './schema/partner.js';
+
+export {
+  exchangeVenues,
+  exchangeEnvironments,
+  connectExchangeSchema,
+  updateExchangeSchema,
+  type ConnectExchangeInput,
+  type UpdateExchangeInput,
+  type ExchangeConnectionDto,
+  type ExchangeCatalogItemDto,
+} from './schema/exchange.js';

@@ -14,11 +14,11 @@
 
 **Recommendation:** **A** for the engine service only (it's the one process that talks to exchanges with user keys), if the account is on Pro. It's what MPX already runs in production. Show the 3 IPs on the "Connect exchange" screen so users can paste them into the whitelist. Keep C as an allowed fallback for testnet.
 
-**Needs your call:** Is the TRADElogs Railway workspace on Pro (or OK to move it)? Do we accept shared IPs, or do you want a dedicated proxy (B)?
+**Decided (31 Oct 2026):** Ayush confirmed the Railway workspace is on Pro with static outbound IPs. Going with **A**. Put the IPs in `EXCHANGE_EGRESS_IPS` (comma list) on the API and engine services so the Connect screen shows them.
 
 ## B0.10 Legal question list (for an Indian lawyer, before anything trades live)
 
-This is a list of **questions**, not advice. Nothing goes live until we have written answers (TODO Z9). Building and testing on **Delta testnet** can continue meanwhile.
+**Decided (31 Oct 2026):** Ayush is not getting a legal opinion. This list stays for reference only and does not block anything. Live trading still needs `EXCHANGE_LIVE_ENABLED=true`, which only Ayush turns on.
 
 **What we plan to offer**
 1. Users connect their own crypto exchange accounts (Delta India first) with API keys: trade permission, **no** withdrawals. We never hold user funds.

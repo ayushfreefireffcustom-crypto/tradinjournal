@@ -230,7 +230,7 @@ Legend:
 - [x] B2.4 Port the Delta WS (auth → subscribe after auth, heartbeat, 25s ping, 40s idle → reconnect) `M`
 - [ ] B2.5 Add to Delta: limit orders, stop orders, cancel, order status, leverage, open orders, the `orders`/`positions` WS channels `M` (REST parts done 31 Oct; `orders`/`positions` WS channels left)
 - [x] B2.6 Environment explicit and **required**: `DELTA_ENV=testnet|live`, no silent prod default. Fail fast on startup `S`
-- [ ] B2.7 Use our `lib/secrets.ts` for keys (move the shared crypto into a package if the engine needs it). No second vault `S`
+- [x] B2.7 Use our `lib/secrets.ts` for keys (move the shared crypto into a package if the engine needs it). No second vault `S`
 - [x] B2.8 Key fingerprint (HMAC) for duplicate detection, without decrypting stored keys `S`
 - [x] B2.9 Error taxonomy: `ExchangeAuthError`, `ExchangeRateLimitError`, `ExchangeRequestError`, `InsufficientMarginError`, `InstrumentError` `S`
 - [x] B2.10 Rate limiter per exchange + key (token bucket; reuse `lib/market` token-bucket if it fits) `S`
@@ -239,7 +239,7 @@ Legend:
 - [x] B2.13 Exchange registry for the UI: status live/beta/soon, required permissions, whitelist IPs, how-to video URL, partner sign-up URL `S`
 
 ## B3. API: exchange connections (`apps/api/src/modules/exchanges/`)
-- [ ] B3.1 Routes `M`:
+- [x] B3.1 Routes `M`:
   - `GET /api/exchanges/catalog`
   - `GET /api/exchanges`
   - `POST /api/exchanges` (connect)
@@ -247,7 +247,7 @@ Legend:
   - `PATCH /api/exchanges/:id` (label)
   - `DELETE /api/exchanges/:id`
   - `GET /api/exchanges/:id/equity`
-- [ ] B3.2 Connect flow, in order `M`:
+- [x] B3.2 Connect flow, in order `M`:
   1. validate shapes per exchange
   2. fingerprint dedup
   3. `verify`
@@ -255,13 +255,13 @@ Legend:
   5. accountRef dedup
   6. encrypt
   7. save
-- [ ] B3.3 Max 8 connections per user (MP/CM parity) `S`
-- [ ] B3.4 Delete is blocked while the connection is a leader or has active follows/deployments; the error message says why `S`
-- [ ] B3.5 zod validation, `requireAuth`, `requireSameOrigin` applies, rate limit on connect/test `S`
-- [ ] B3.6 Never return key material; return `keyLast4` only `S`
-- [ ] B3.7 Audit-log connect/disconnect `S`
-- [ ] B3.8 Tests: auth gates, IDOR (another user's connection gives 404), dedup, delete-guard `M`
-- [ ] B3.9 Add the new routes to the access-control matrix test (scratchpad `gate/matrix.mjs` → move into the repo as a test) `S`
+- [x] B3.3 Max 8 connections per user (MP/CM parity) `S`
+- [x] B3.4 Delete is blocked while the connection is a leader or has active follows/deployments; the error message says why `S`
+- [x] B3.5 zod validation, `requireAuth`, `requireSameOrigin` applies, rate limit on connect/test `S`
+- [x] B3.6 Never return key material; return `keyLast4` only `S`
+- [x] B3.7 Audit-log connect/disconnect `S`
+- [x] B3.8 Tests: auth gates, IDOR (another user's connection gives 404), dedup, delete-guard `M`
+- [x] B3.9 Add the new routes to the access-control matrix test (scratchpad `gate/matrix.mjs` → move into the repo as a test) `S`
 
 ## B4. Engine service (`apps/engine`)
 - [ ] B4.1 Scaffold `apps/engine` (tsx start, logger, config via `@tradinjournal/config`, graceful shutdown) `S`
@@ -565,7 +565,7 @@ Legend:
 - [ ] Z6 Docs: `DEPLOY.md` for the engine service + new env vars (names only) `S`
 - [ ] Z7 Railway: engine service, static egress IP decision (B0.9), env vars; **user does the push** `S`
 - [ ] Z8 Production migrations per phase: migrate status → SQL review → user OK → `migrate deploy` → verify row counts `S` (each)
-- [ ] Z9 SEBI/legal opinion received before any live execution is enabled `S`
+- [x] Z9 ~~SEBI/legal opinion~~ Not pursued (Ayush, 31 Oct 2026). Live stays behind `EXCHANGE_LIVE_ENABLED`, switched on by Ayush only `S`
 - [ ] Z10 Load test: 100 followers × 1 leader fill; fan-out latency < 1s on testnet `M`
 - [ ] Z11 Update the Google Sheet tracker after each work session `S`
 
