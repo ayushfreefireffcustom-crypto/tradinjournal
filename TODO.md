@@ -368,7 +368,7 @@ Legend:
 - [x] C5.4 Engine health panel (watchers up, last fill, latency, rejects) `M`
 
 ## C6. Notifications for trading events
-- [ ] C6.1 Event types `S`:
+- [x] C6.1 Event types `S` (engine/API write copy.* and exchange.* notifications; square-off-all and broadcast not built):
   - signal received
   - order placed
   - order filled
@@ -380,8 +380,8 @@ Legend:
   - connection invalid
   - admin broadcast
 - [ ] C6.2 **Telegram** channel: bot, link account via `/start <code>`, per-type toggles. Evidence: MP code `M`
-- [ ] C6.3 Email channel for trading events (Resend, via the existing `lib/email`) `S`
-- [ ] C6.4 Push via the existing push stack `S`
+- [x] C6.3 Email channel for trading events (Resend, via the existing `lib/email`) `S`
+- [x] C6.4 Push via the existing push stack `S`
 - [ ] C6.5 Inbox with channels and counts (Trade fills / Risk / AI / System / Reports / News); empty channels dimmed; Unread/Archived; mark all read; sound toggle. Evidence: CM seen `M`
 - [ ] C6.6 Per-type, per-channel preferences page `S`
 

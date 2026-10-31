@@ -9,6 +9,7 @@
 import { env } from '@tradinjournal/config';
 import { logger } from '@tradinjournal/logger';
 import { dispatchReminders } from './modules/notifications/dispatch.service.js';
+import { dispatchCopyNotifications } from './modules/copy/copy-notify.service.js';
 import { sendDailyDigests } from './modules/notifications/digest.service.js';
 import { ingestNews, enrichPendingNews } from './modules/news/news.service.js';
 import { ingestWindow } from './modules/calendar/calendar.service.js';
@@ -80,6 +81,8 @@ export function startInProcessScheduler(): void {
   every(5 * MIN, 'trader-paper', () => tickPaperBook());
   // Trade sync: keep every account's stored deals at most SYNC_BACKGROUND_MIN old.
   every(5 * MIN, 'trade-sync', () => queueDueSyncs());
+  // Copy-trading events to push and email (the in-app notification is written by the engine).
+  if (env.TRADING_ENABLED) every(MIN / 2, 'copy-notify', () => dispatchCopyNotifications());
   // Partner dashboards: refresh referred clients' activity snapshots in small batches.
   if (env.PARTNER_PROGRAM_ENABLED) every(15 * MIN, 'partner-stats', () => refreshReferralStats({ limit: 25 }));
 
