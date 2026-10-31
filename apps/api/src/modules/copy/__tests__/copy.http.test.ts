@@ -158,6 +158,44 @@ describe.skipIf(!local)('/api/leaders and /api/follows over HTTP', () => {
     expect((await call('fol', 'PATCH', '/api/leaders/me', { listed: false })).status).toBe(404);
   });
 
+  it('streams a ping when the user\'s copies change, and only theirs', async () => {
+    expect((await fetch(`${base}/api/follows/stream`, { headers: { origin: origin() } })).status).toBe(401);
+    const ctrl = new AbortController();
+    const res = await fetch(`${base}/api/follows/stream`, { headers: { origin: origin(), cookie: cookies.fol! }, signal: ctrl.signal });
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toContain('text/event-stream');
+    const reader = res.body!.getReader();
+    let text = '';
+    // One read stays pending across waits; a timed-out wait must not drop it.
+    let pending: ReturnType<typeof reader.read> | null = null;
+    const readFor = async (ms: number) => {
+      const end = Date.now() + ms;
+      while (Date.now() < end) {
+        pending ??= reader.read();
+        const r = await Promise.race([pending, new Promise<null>((ok) => setTimeout(() => ok(null), end - Date.now()))]);
+        if (!r) break;
+        pending = null;
+        if (r.done) break;
+        text += new TextDecoder().decode(r.value);
+      }
+    };
+    // Let one tick pass: the check overlaps by 0.5 s, so changes from just
+    // before the stream opened may still ping once (a harmless refetch).
+    await readFor(2600);
+    expect(text).toContain('retry: 5000');
+    text = '';
+    const base2 = { connectionId: ids['conn-eve']!, source: 'COPY' as const, symbol: 'BTCUSD', side: 'BUY' as const, type: 'MARKET' as const, qty: 1, status: 'SKIPPED' as const };
+    // Someone else's activity: no ping for this user.
+    await prisma.exchangeOrder.create({ data: { ...base2, userId: ids.eve!, clientOrderId: `${tag}-other` } });
+    await readFor(4500);
+    expect(text).not.toContain('"changed"');
+    // Their own activity: a ping within a couple of ticks.
+    await prisma.exchangeOrder.create({ data: { ...base2, userId: ids.fol!, connectionId: ids['conn-fol']!, clientOrderId: `${tag}-mine` } });
+    await readFor(5000);
+    expect(text).toContain('"type":"changed"');
+    ctrl.abort();
+  }, 25_000);
+
   it('is absent while trading is off', async () => {
     const off = await serve(false);
     try {

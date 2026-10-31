@@ -21,6 +21,8 @@ class FakeExchange {
   orders: Array<PlaceOrderRequest & { apiKey: string }> = [];
   leverage: Array<[string, number]> = [];
   instrumentFailures = 0;
+  /** Runs while a copy is being prepared, before the order is claimed. */
+  onResolve: (() => Promise<void>) | null = null;
 
   account(key: string) {
     let a = this.accounts.get(key);
@@ -56,6 +58,7 @@ class FakeExchange {
         return s === 'BTCUSD' ? BTC : null;
       },
       async resolveInstrument() {
+        if (self.onResolve) await self.onResolve();
         if (self.instrumentFailures > 0) {
           self.instrumentFailures--;
           throw new ExchangeError('UNAVAILABLE', 'down', 503);
@@ -308,6 +311,43 @@ describe.skipIf(!local)('copy engine (integration)', () => {
       await prisma.copyLeader.update({ where: { id: leader.id }, data: { status: 'VERIFIED' } });
       a.positions.set('BTCUSD', 0);
       await prisma.exchangePosition.update({ where: { id: pos.id }, data: { qty: 0, closedAt: new Date() } });
+    }
+  });
+
+  it('starts a reopened position clean: no old drift flag or P&L', async () => {
+    await prisma.copyFollow.update({ where: { id: followA }, data: { status: 'ACTIVE', pauseReason: null, dailyLossLimitUsd: null } });
+    const pos = await prisma.exchangePosition.findFirstOrThrow({ where: { followId: followA, symbol: 'BTCUSD' } });
+    await prisma.exchangePosition.update({ where: { id: pos.id }, data: { qty: 0, closedAt: new Date(), driftDetectedAt: new Date(), exchangeQty: 3, realizedPnl: -42, markPrice: 1 } });
+    fx.account(`${tag}-FOLA`).positions.set('BTCUSD', 0);
+    const e = fill({ qty: 1, positionAfter: 17 });
+    await copy.ingestLeaderFill(leader, e, deps);
+    const after = await prisma.exchangePosition.findUniqueOrThrow({ where: { id: pos.id } });
+    expect(after).toMatchObject({ closedAt: null, driftDetectedAt: null, exchangeQty: null, markPrice: null });
+    expect(Number(after.realizedPnl)).toBe(0);
+    expect(Number(after.qty)).toBeGreaterThan(0);
+    // Leave it flat for the tests that follow.
+    fx.account(`${tag}-FOLA`).positions.set('BTCUSD', 0);
+    await prisma.exchangePosition.update({ where: { id: pos.id }, data: { qty: 0, closedAt: new Date() } });
+    await prisma.copyFollow.update({ where: { id: followA }, data: { dailyLossLimitUsd: 50 } });
+  });
+
+  it('places nothing when the follow is stopped while the copy is being prepared', async () => {
+    const u = await prisma.user.create({ data: { name: 'race', email: `${tag}-race@engine.test` } });
+    const c = await conn(u.id, 'FOLRACE');
+    const f = await prisma.copyFollow.create({ data: { userId: u.id, leaderId: leader.id, connectionId: c.id, sizingMode: 'MULTIPLIER', sizingValue: 1, startedAt: new Date(Date.now() - 60_000) } });
+    const placedBefore = fx.orders.filter((o) => o.apiKey.endsWith('FOLRACE')).length;
+    // The user hits Stop after the engine fetched the follow but before it claims the order.
+    fx.onResolve = async () => {
+      await prisma.copyFollow.update({ where: { id: f.id }, data: { status: 'STOPPED', stoppedAt: new Date() } });
+    };
+    try {
+      const e = fill({ qty: 1, positionAfter: 16 });
+      await copy.ingestLeaderFill(leader, e, deps);
+      expect((await ordersFor(f.id, e.externalId))[0]).toMatchObject({ status: 'SKIPPED', error: 'copying was stopped before the order was sent' });
+      expect(fx.orders.filter((o) => o.apiKey.endsWith('FOLRACE')).length).toBe(placedBefore);
+      expect(await prisma.exchangePosition.count({ where: { followId: f.id } })).toBe(0);
+    } finally {
+      fx.onResolve = null;
     }
   });
 

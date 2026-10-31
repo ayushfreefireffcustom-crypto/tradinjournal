@@ -322,10 +322,15 @@ async function placeLeg(follow: FollowRow, row: LeaderFill, fill: FillEvent, ins
   const creds = deps.credsFor(follow.connection);
   const clientOrderId = `copy:${follow.id}:${fill.externalId}:${index}`;
 
-  // Claim first: the unique clientOrderId makes a retry a no-op.
+  // Claim first: the unique clientOrderId makes a retry a no-op. The claim
+  // locks the follow row and re-checks it: a stop that committed first wins,
+  // and a stop that comes after waits for this order (see stopFollow in the API).
   let order;
   try {
-    order = await prisma.exchangeOrder.create({
+    order = await prisma.$transaction(async (tx) => {
+      const [live] = await tx.$queryRaw<Array<{ status: string }>>`SELECT status FROM copy_follow WHERE id = ${follow.id} FOR UPDATE`;
+      if (!live || live.status === 'STOPPED') return null;
+      return tx.exchangeOrder.create({
       data: {
         userId: follow.userId,
         connectionId: follow.connectionId,
@@ -342,10 +347,15 @@ async function placeLeg(follow: FollowRow, row: LeaderFill, fill: FillEvent, ins
         leaderPrice: fill.price,
         status: 'PENDING',
       },
+      });
     });
   } catch (err) {
     if ((err as { code?: string }).code === 'P2002') return false;
     throw err;
+  }
+  if (!order) {
+    await recordSkip(follow, row, fill, 'copying was stopped before the order was sent', inst.symbol);
+    return false;
   }
 
   let result: OrderInfo;
@@ -407,9 +417,11 @@ async function applyToPosition(follow: FollowRow, inst: InstrumentInfo, side: 'B
       side: r.side,
       qty: r.qty,
       avgEntry: r.avgEntry,
-      realizedPnl: { increment: r.realizedDelta },
       closedAt: r.closed ? deps.now() : null,
-      ...(current ? {} : { openedAt: deps.now() }),
+      // Reopening a closed row starts a new position: nothing from the last one carries over.
+      ...(current
+        ? { realizedPnl: { increment: r.realizedDelta } }
+        : { openedAt: deps.now(), realizedPnl: r.realizedDelta, unrealizedPnl: 0, markPrice: null, exchangeQty: null, driftDetectedAt: null }),
       ...(r.closed ? { unrealizedPnl: 0 } : {}),
     },
     create: { connectionId: follow.connectionId, followId: follow.id, positionKey: follow.id, source: 'COPY', symbol: inst.symbol, side: r.side, qty: r.qty, avgEntry: r.avgEntry, openedAt: deps.now() },

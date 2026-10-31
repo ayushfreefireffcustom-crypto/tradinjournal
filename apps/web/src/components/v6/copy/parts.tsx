@@ -45,6 +45,27 @@ export function usePoll(fn: () => void, ms: number, on = true) {
   }, [ms, on]);
 }
 
+/**
+ * Refetch when the user's copy trading changes (C3.4): the API pings
+ * /api/follows/stream. EventSource reconnects by itself; callers keep a slow
+ * poll as a fallback in case the stream can't connect.
+ */
+export function useCopyStream(onChange: () => void, on = true) {
+  const ref = useRef(onChange);
+  ref.current = onChange;
+  useEffect(() => {
+    if (!on || typeof EventSource === 'undefined') return;
+    const es = new EventSource(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/follows/stream`, { withCredentials: true });
+    let t: ReturnType<typeof setTimeout> | null = null;
+    // Several writes land together (order, position, follow); refetch once.
+    es.onmessage = () => {
+      if (t) clearTimeout(t);
+      t = setTimeout(() => ref.current(), 300);
+    };
+    return () => { if (t) clearTimeout(t); es.close(); };
+  }, [on]);
+}
+
 export function Modal({ title, sub, onClose, children, footer, busy, wide, testId }: {
   title: string; sub?: ReactNode; onClose: () => void; children: ReactNode; footer?: ReactNode; busy?: boolean; wide?: boolean; testId?: string;
 }) {

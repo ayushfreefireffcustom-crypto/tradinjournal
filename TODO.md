@@ -330,7 +330,7 @@ Legend:
   - `GET /api/follows`
   - `POST /api/follows` (sizing, invested amount, daily loss cap, max profit cap, copy open trades, risk disclosure accepted)
   - `PATCH /api/follows/:id` (pause/resume/stop, edit multiplier/caps)
-- [ ] C3.4 (pages poll every 10–15 s for now) SSE `GET /api/follows/stream` and `/:id/stream`; push events from the engine (Redis pub/sub) instead of MPX's 3s DB polling `M`
+- [x] C3.4 SSE `GET /api/follows/stream` and `/:id/stream`; push events from the engine (Redis pub/sub) instead of MPX's 3s DB polling `M`
 - [x] C3.5 Guards: a follower must have a connection on the leader's exchange (MP "connect the required exchange"); can't follow yourself; re-follow resets `startedAt` `S`
 - [x] C3.6 Risk-disclosure acceptance stored with timestamp + version `S`
 - [x] C3.7 Tests: auth, IDOR, validation, guard cases `M`

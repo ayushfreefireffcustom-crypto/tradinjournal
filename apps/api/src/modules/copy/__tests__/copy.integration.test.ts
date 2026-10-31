@@ -378,6 +378,49 @@ describe.skipIf(!local)('copy trading leaders and follows (integration)', () => 
     expect(r4.closes[0]).toMatchObject({ symbol: 'DOTUSD', ok: true, qty: 0, message: 'Already closed on the exchange.' });
   });
 
+  it('finds which users had copy activity since a time', async () => {
+    const { changedUsers } = await import('../copy-stream.js');
+    const t0 = new Date();
+    await new Promise((r) => setTimeout(r, 20));
+    expect(await changedUsers([users.fol!.id, users.other!.id], t0)).toEqual(new Set());
+    await prisma.exchangePosition.updateMany({ where: { connectionId: conns.f1 }, data: { markPrice: 1 } });
+    expect(await changedUsers([users.fol!.id, users.other!.id], t0)).toEqual(new Set([users.fol!.id]));
+    await prisma.exchangeOrder.create({ data: { userId: users.other!.id, connectionId: conns.other!, source: 'COPY', symbol: 'BTCUSD', side: 'BUY', type: 'MARKET', qty: 1, status: 'SKIPPED', clientOrderId: `${tag}-stream-other` } });
+    expect(await changedUsers([users.fol!.id, users.other!.id], t0)).toEqual(new Set([users.fol!.id, users.other!.id]));
+    expect(await changedUsers([], t0)).toEqual(new Set());
+  });
+
+  it('waits for a copy that is mid-flight when stopped, and closes it too', async () => {
+    // Regression: stopping a second after a copy filled closed nothing, and the
+    // engine then wrote the position onto the stopped follow, stranding it.
+    await follows.createFollow(users.fol!.id, followInput(), new Date(Date.now() + 6000));
+    const order = await prisma.exchangeOrder.create({ data: { userId: users.fol!.id, connectionId: conns.f1!, source: 'COPY', followId, clientOrderId: `${tag}-inflight`, symbol: 'LTCUSD', side: 'BUY', type: 'MARKET', qty: 2, status: 'PENDING' } });
+    ex.placed = [];
+    ex.fail = null;
+    // The "engine" finishes 600 ms after the stop starts: position first, then the order.
+    const engine = (async () => {
+      await new Promise((r) => setTimeout(r, 600));
+      ex.positions.set('LTCUSD', 2);
+      await prisma.exchangePosition.create({ data: { connectionId: conns.f1!, followId, positionKey: followId, source: 'COPY', symbol: 'LTCUSD', side: 'LONG', qty: 2, avgEntry: 80 } });
+      await prisma.exchangeOrder.update({ where: { id: order.id }, data: { status: 'FILLED', filledQty: 2, filledAt: new Date() } });
+    })();
+    const realSleep = { ...deps, sleep: (ms: number) => new Promise<void>((r) => setTimeout(r, ms)) };
+    const r = await follows.stopFollow(users.fol!.id, followId, true, realSleep);
+    await engine;
+    expect(r.closes).toEqual([expect.objectContaining({ symbol: 'LTCUSD', ok: true, qty: 2 })]);
+    expect(ex.placed).toEqual([expect.objectContaining({ symbol: 'LTCUSD', side: 'SELL', qty: 2, reduceOnly: true })]);
+    expect(await prisma.exchangePosition.count({ where: { positionKey: followId, closedAt: null } })).toBe(0);
+  });
+
+  it('never lets a re-follow inherit a position left on the old run', async () => {
+    // e.g. written by an engine copy that finished after the stop.
+    await prisma.exchangePosition.create({ data: { connectionId: conns.f1!, followId, positionKey: followId, source: 'COPY', symbol: 'BNBUSD', side: 'LONG', qty: 1, avgEntry: 600 } });
+    const dto = await follows.createFollow(users.fol!.id, followInput(), new Date(Date.now() + 7000));
+    expect(dto.openPositions).toBe(0);
+    expect(await prisma.exchangePosition.count({ where: { positionKey: followId, closedAt: null } })).toBe(0);
+    await follows.stopFollow(users.fol!.id, followId, false, deps);
+  });
+
   it('lists live follows by default and stopped ones on request', async () => {
     expect((await follows.listFollows(users.fol!.id)).map((f) => f.id)).not.toContain(followId);
     expect((await follows.listFollows(users.fol!.id, { includeStopped: true })).map((f) => f.id)).toContain(followId);

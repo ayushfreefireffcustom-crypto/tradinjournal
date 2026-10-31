@@ -1,14 +1,14 @@
 'use client';
 
 // My copies (C4.5): every follow with its status, P&L and controls. Pause keeps
-// copying exits; stop asks what to do with open copies. Refreshes every 15 s.
+// copying exits; stop asks what to do with open copies. Updates live.
 import { useState } from 'react';
 import Link from 'next/link';
 import AppShell from '@/components/app-shell';
 import { useToast } from '@/components/toast';
 import FollowDialog from '@/components/v6/copy/follow-dialog';
 import StopDialog from '@/components/v6/copy/stop-dialog';
-import { ErrorCard, FollowStatusTag, Monogram, ago, useLoad, usePoll } from '@/components/v6/copy/parts';
+import { ErrorCard, FollowStatusTag, Monogram, ago, useCopyStream, useLoad, usePoll } from '@/components/v6/copy/parts';
 import { IMirror, IPause, IPlay } from '@/components/v3/icons';
 import { followsApi, signedUsd, sizingLabel, toneOf, venueName, type Follow } from '@/lib/copy-api';
 
@@ -16,7 +16,8 @@ export default function FollowingPage() {
   const toast = useToast();
   const [showStopped, setShowStopped] = useState(false);
   const follows = useLoad(() => followsApi.list(showStopped), [showStopped]);
-  usePoll(() => void follows.reload(), 15_000);
+  useCopyStream(() => void follows.reload());
+  usePoll(() => void follows.reload(), 60_000);
   const [editing, setEditing] = useState<Follow | null>(null);
   const [stopping, setStopping] = useState<Follow | null>(null);
   const [busy, setBusy] = useState<string | null>(null);

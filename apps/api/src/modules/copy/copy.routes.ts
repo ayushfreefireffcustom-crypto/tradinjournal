@@ -8,6 +8,7 @@ import {
   handleApplyLeader,
   handleCreateFollow,
   handleFollowOrders,
+  handleFollowStream,
   handleGetFollow,
   handleGetLeader,
   handleLeaderEquity,
@@ -37,6 +38,8 @@ leaders.get('/:id/equity', validateQuery(leaderRangeQuerySchema), handleLeaderEq
 const follows: ExpressRouter = Router();
 follows.use(requireAuth, requirePlatformAccess);
 follows.get('/', handleListFollows);
+// Before '/:id', or 'stream' would be taken for an id.
+follows.get('/stream', handleFollowStream);
 follows.post('/', writeLimit, validateBody(createFollowSchema), handleCreateFollow);
 follows.get('/:id', handleGetFollow);
 follows.get('/:id/orders', validateQuery(cursorQuerySchema), handleFollowOrders);

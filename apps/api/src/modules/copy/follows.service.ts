@@ -30,6 +30,8 @@ const defaultDeps: FollowDeps = {
 };
 
 const LIVE = { in: ['ACTIVE', 'PAUSED'] as Array<'ACTIVE' | 'PAUSED'> };
+/** Longest a stop waits for a copy that's mid-flight (market orders settle in ~2 s). */
+const IN_FLIGHT_WAIT_MS = 10_000;
 const FAILED = ['REJECTED', 'CANCELLED', 'EXPIRED'] as const;
 const DONE = new Set(['FILLED', 'CANCELLED', 'REJECTED']);
 const ENV_NAME = { TESTNET: 'testnet', LIVE: 'live' } as const;
@@ -253,6 +255,10 @@ export async function createFollow(userId: string, input: CreateFollowInput, now
     riskAcceptedAt: now,
     riskVersion: input.riskVersion,
   };
+  if (existing) {
+    // A fresh start never inherits positions from the last run of this follow.
+    await prisma.exchangePosition.updateMany({ where: { positionKey: existing.id, closedAt: null }, data: { positionKey: `left:${existing.id}:${now.getTime()}`, closedAt: now } });
+  }
   const row = existing
     ? // Re-follow: same row, fresh start (copy-from-now, residuals and totals reset).
       await prisma.copyFollow.update({
@@ -295,8 +301,17 @@ export async function updateFollow(userId: string, id: string, input: UpdateFoll
 export async function stopFollow(userId: string, id: string, closePositions: boolean, deps: FollowDeps = defaultDeps, now = new Date()): Promise<StopFollowResultDto> {
   const f = await ownFollow(userId, id);
   if (f.status !== 'STOPPED') {
-    // Stop first, so the engine places nothing new while we close.
+    // Stop first, so the engine places nothing new while we close. The engine
+    // claims each order under a lock on this row, so after this update no new
+    // order can start; one already claimed is waited for below.
     await prisma.copyFollow.update({ where: { id: f.id }, data: { status: 'STOPPED', stoppedAt: now } });
+  }
+  // A copy in flight writes its position before its final status; wait for it
+  // so that position is closed (or detached) too, not left behind.
+  for (let waited = 0; waited < IN_FLIGHT_WAIT_MS; waited += 250) {
+    const inFlight = await prisma.exchangeOrder.count({ where: { followId: f.id, status: { in: ['PENDING', 'SUBMITTED'] }, requestedAt: { gt: new Date(Date.now() - 60_000) } } });
+    if (!inFlight) break;
+    await deps.sleep(250);
   }
   const open = await prisma.exchangePosition.findMany({ where: { followId: f.id, positionKey: f.id, closedAt: null, qty: { gt: 0 } } });
   const closes: StopFollowResultDto['closes'] = [];

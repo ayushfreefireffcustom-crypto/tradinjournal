@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import type { ApplyLeaderInput, CreateFollowInput, CursorQuery, LeaderRange, LeadersQuery, StopFollowInput, UpdateFollowInput, UpdateLeaderInput } from '@tradinjournal/contracts';
 import { applyAsLeader, getLeader, getMyLeader, leaderEquity, leaderTrades, listLeaders, updateMyLeader } from './leaders.service.js';
+import { subscribeCopy } from './copy-stream.js';
 import { createFollow, followOrders, getFollow, listFollows, stopFollow, updateFollow } from './follows.service.js';
 
 const uid = (res: Response) => res.locals.user.id as string;
@@ -30,3 +31,21 @@ export const handleGetFollow = wrap(async (req, res) => res.json({ data: await g
 export const handleFollowOrders = wrap(async (req, res) => res.json({ data: await followOrders(uid(res), String(req.params.id), req.query as unknown as CursorQuery) }));
 export const handleUpdateFollow = wrap(async (req, res) => res.json({ data: await updateFollow(uid(res), String(req.params.id), req.body as UpdateFollowInput) }));
 export const handleStopFollow = wrap(async (req, res) => res.json({ data: await stopFollow(uid(res), String(req.params.id), (req.body as StopFollowInput).closePositions) }));
+
+/** GET /api/follows/stream: a ping whenever the user's copies change; the page refetches. */
+export function handleFollowStream(req: Request, res: Response): void {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.flushHeaders?.();
+  res.write('retry: 5000\n\n');
+  const send = () => res.write(`data: ${JSON.stringify({ type: 'changed', at: new Date().toISOString() })}\n\n`);
+  const off = subscribeCopy(uid(res), send);
+  // Comments keep proxies from closing an idle stream.
+  const beat = setInterval(() => res.write(': ping\n\n'), 25_000);
+  req.on('close', () => {
+    clearInterval(beat);
+    off();
+  });
+}

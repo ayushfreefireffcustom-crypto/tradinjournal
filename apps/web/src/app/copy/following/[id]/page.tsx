@@ -2,7 +2,7 @@
 
 // One copy in detail (C4.6): status and controls, P&L, tracking error and
 // latency, open positions, and every copied order with the leader's price
-// next to ours and the slippage. Refreshes every 10 s while open.
+// next to ours and the slippage. Updates live while open.
 import { useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
@@ -10,7 +10,7 @@ import AppShell from '@/components/app-shell';
 import { useToast } from '@/components/toast';
 import FollowDialog from '@/components/v6/copy/follow-dialog';
 import StopDialog from '@/components/v6/copy/stop-dialog';
-import { ErrorCard, FollowStatusTag, ago, useLoad, usePoll } from '@/components/v6/copy/parts';
+import { ErrorCard, FollowStatusTag, ago, useCopyStream, useLoad, usePoll } from '@/components/v6/copy/parts';
 import { IArrowLeft, IPause, IPlay } from '@/components/v3/icons';
 import { followsApi, price, signedUsd, sizingLabel, toneOf, usd, type CopiedOrder } from '@/lib/copy-api';
 
@@ -33,7 +33,8 @@ export default function FollowPage() {
     return p;
   }, [id]);
   const f = follow.data;
-  usePoll(() => { void follow.reload(); void first.reload(); }, 10_000, f?.status !== 'STOPPED');
+  useCopyStream(() => { void follow.reload(); void first.reload(); }, f?.status !== 'STOPPED');
+  usePoll(() => { void follow.reload(); void first.reload(); }, 60_000, f?.status !== 'STOPPED');
   const [editing, setEditing] = useState(false);
   const [stopping, setStopping] = useState(false);
   const [busy, setBusy] = useState(false);
