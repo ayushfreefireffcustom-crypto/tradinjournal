@@ -121,6 +121,37 @@ importers:
         specifier: ^2.1.8
         version: 2.1.9(@types/node@22.19.21)(lightningcss@1.32.0)
 
+  apps/engine:
+    dependencies:
+      '@tradinjournal/config':
+        specifier: workspace:*
+        version: link:../../packages/config
+      '@tradinjournal/db':
+        specifier: workspace:*
+        version: link:../../packages/db
+      '@tradinjournal/exchange':
+        specifier: workspace:*
+        version: link:../../packages/exchange
+      '@tradinjournal/logger':
+        specifier: workspace:*
+        version: link:../../packages/logger
+      '@tradinjournal/secrets':
+        specifier: workspace:*
+        version: link:../../packages/secrets
+    devDependencies:
+      '@types/node':
+        specifier: ^22.10.2
+        version: 22.19.21
+      tsx:
+        specifier: ^4.19.2
+        version: 4.22.4
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@22.19.21)(lightningcss@1.32.0)
+
   apps/web:
     dependencies:
       '@dnd-kit/core':

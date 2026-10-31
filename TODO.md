@@ -264,10 +264,10 @@ Legend:
 - [x] B3.9 Add the new routes to the access-control matrix test (scratchpad `gate/matrix.mjs` → move into the repo as a test) `S`
 
 ## B4. Engine service (`apps/engine`)
-- [ ] B4.1 Scaffold `apps/engine` (tsx start, logger, config via `@tradinjournal/config`, graceful shutdown) `S`
-- [ ] B4.2 Kill switch read from `SystemSetting` (2s cache), honoured before every order `S`
-- [ ] B4.3 Health endpoint/heartbeat log; Railway service definition documented in `DEPLOY.md` `S`
-- [ ] B4.4 Decide whether the engine shares Redis with the worker/queue (look at `packages/queue`) `S`
+- [x] B4.1 Scaffold `apps/engine` (tsx start, logger, config via `@tradinjournal/config`, graceful shutdown) `S`
+- [x] B4.2 Kill switch read from `SystemSetting` (2s cache), honoured before every order `S`
+- [x] B4.3 Health endpoint/heartbeat log; Railway service definition documented in `DEPLOY.md` `S`
+- [x] B4.4 Decide whether the engine shares Redis with the worker/queue (look at `packages/queue`) `S` (decided: no Redis; the engine owns its loops and a Postgres advisory lock. Live UI updates go through the API's existing pub/sub in C4)
 
 ## B5. Web: exchange connections UI
 - [ ] B5.1 `/exchanges` page (or a tab inside `/brokers`; decide by IA review): catalogue with live/beta/soon, "N connected" `M`
@@ -289,26 +289,26 @@ Legend:
 # PART C — Copy trading (Phase 1)
 
 ## C1. Engine: copy pipeline (port MPX + fix its gaps)
-- [ ] C1.1 Leader watchers: one WS per VERIFIED leader with ≥1 ACTIVE follow; sync every 5s; reconnect after 1.5s; back off 10s after a hard failure `M`
-- [ ] C1.2 On auth error: mark the connection INVALID, pause its follows, notify the leader and the followers `S`
-- [ ] C1.3 Backfill after (re)connect via `getRecentFills(50)`. **Log errors; don't swallow them** (MPX gap) `S`
-- [ ] C1.4 `LeaderFill` upsert with P2002 race recovery `S`
-- [ ] C1.5 Halt check (kill switch / leader not VERIFIED) writes SKIPPED orders with a reason, so a fill is never executed late `S`
-- [ ] C1.6 Copy-from-now guard (`follow.startedAt > fill.ts` → skip). Use UTC everywhere `S`
-- [ ] C1.7 Dedup on `clientOrderId = tl:{exch}:{followId}:{fillId}` `S`
-- [ ] C1.8 Sizing modes: proportional / fixed margin / multiplier, plus max position USD and reverse copy. Port `sizing.ts` with its 10 tests `S`
-- [ ] C1.9 **Real daily loss limit**: today's realised + unrealised P&L per follow (timezone = the user's), auto-pause + notify (MPX gap: it summed all-time) `M`
+- [x] C1.1 Leader watchers: one WS per VERIFIED leader with ≥1 ACTIVE follow; sync every 5s; reconnect after 1.5s; back off 10s after a hard failure `M`
+- [x] C1.2 On auth error: mark the connection INVALID, pause its follows, notify the leader and the followers `S`
+- [x] C1.3 Backfill after (re)connect via `getRecentFills(50)`. **Log errors; don't swallow them** (MPX gap) `S`
+- [x] C1.4 `LeaderFill` upsert with P2002 race recovery `S`
+- [x] C1.5 Halt check (kill switch / leader not VERIFIED) writes SKIPPED orders with a reason, so a fill is never executed late `S`
+- [x] C1.6 Copy-from-now guard (`follow.startedAt > fill.ts` → skip). Use UTC everywhere `S`
+- [x] C1.7 Dedup on `clientOrderId = tl:{exch}:{followId}:{fillId}` `S`
+- [x] C1.8 Sizing modes: proportional / fixed margin / multiplier, plus max position USD and reverse copy. Port `sizing.ts` with its 10 tests `S`
+- [ ] C1.9 **Real daily loss limit**: today's realised + unrealised P&L per follow (timezone = the user's), auto-pause + notify (MPX gap: it summed all-time) `M` (done with a UTC day on 31 Oct; user timezone still to do)
 - [ ] C1.10 Max profit cap per follow (take-profit for the subscription). Evidence: MP code `S`
 - [ ] C1.11 "Copy current open trades" option at subscribe time (open a matching position at market). Evidence: MP code `M`
-- [ ] C1.12 Place the order, then **poll SUBMITTED orders until terminal** (MPX gap) `M`
-- [ ] C1.13 Record `leaderPrice`, our fill price and `slippageBps` per copy `S`
-- [ ] C1.14 Positions: port `position.ts` `applyFill` with its 8 tests `S`
-- [ ] C1.15 **Reconcile our positions against the exchange's `getPositions`** every N minutes; flag drift (MPX gap) `M`
-- [ ] C1.16 Mark-to-market from public mark prices every 30s `S`
-- [ ] C1.17 Leader equity snapshots + `curveStats` (ROI, max DD) per 7d/30d/all; port `stats.ts` with its 4 tests `S`
-- [ ] C1.18 Retry missed copies (24h sweep) `S`
-- [ ] C1.19 Pause semantics: no new entries, exits still copied. Stop: optionally close the position first. Evidence: CM code `M`
-- [ ] C1.20 Exits when the leader closes: reduce-only orders sized to the follower position, not the leader's qty `S`
+- [x] C1.12 Place the order, then **poll SUBMITTED orders until terminal** (MPX gap) `M`
+- [x] C1.13 Record `leaderPrice`, our fill price and `slippageBps` per copy `S`
+- [x] C1.14 Positions: port `position.ts` `applyFill` with its 8 tests `S`
+- [ ] C1.15 **Reconcile our positions against the exchange's `getPositions`** every N minutes; flag drift (MPX gap) `M` (drift is checked and capped on every copy; a timed sweep is still to do)
+- [x] C1.16 Mark-to-market from public mark prices every 30s `S`
+- [x] C1.17 Leader equity snapshots + `curveStats` (ROI, max DD) per 7d/30d/all; port `stats.ts` with its 4 tests `S`
+- [x] C1.18 Retry missed copies (24h sweep) `S`
+- [x] C1.19 Pause semantics: no new entries, exits still copied. Stop: optionally close the position first. Evidence: CM code `M`
+- [x] C1.20 Exits when the leader closes: reduce-only orders sized to the follower position, not the leader's qty `S`
 - [ ] C1.21 Engine metrics: copies/min, median latency fill→order, rejects by reason (for admin) `S`
 - [ ] C1.22 Integration test on Delta testnet: leader BUY → follower FILLED → leader SELL → follower flat, realised P&L matches `M`
 
