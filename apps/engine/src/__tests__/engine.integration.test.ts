@@ -250,6 +250,34 @@ describe.skipIf(!local)('copy engine (integration)', () => {
     expect(a.positions.get('BTCUSD')).toBe(0);
   });
 
+  it('still copies the exit that arrives after an active follow breached its loss limit', async () => {
+    // Regression: the limit check used to skip the whole fill, stranding the position.
+    await prisma.copyFollow.update({ where: { id: followA }, data: { status: 'ACTIVE', pauseReason: null } });
+    const a = fx.account(`${tag}-FOLA`);
+    a.positions.set('BTCUSD', 3);
+    const pos = await prisma.exchangePosition.findFirstOrThrow({ where: { followId: followA } });
+    await prisma.exchangePosition.update({ where: { id: pos.id }, data: { side: 'LONG', qty: 3, avgEntry: 70_000, closedAt: null } });
+    const exit = fill({ side: 'SELL', qty: 12, positionAfter: 0 });
+    await copy.ingestLeaderFill(leader, exit, deps);
+    const [o] = await ordersFor(followA, exit.externalId);
+    expect(o).toMatchObject({ status: 'FILLED', reduceOnly: true });
+    expect(a.positions.get('BTCUSD')).toBe(0);
+    expect(await prisma.copyFollow.findUnique({ where: { id: followA } })).toMatchObject({ status: 'PAUSED', pauseReason: expect.stringMatching(/Daily loss limit/) });
+  });
+
+  it('pauses a follow once its profit target is reached', async () => {
+    await prisma.copyFollow.update({ where: { id: followA }, data: { status: 'ACTIVE', pauseReason: null, dailyLossLimitUsd: null, maxProfitUsd: 25 } });
+    const anyOrder = await prisma.exchangeOrder.findFirstOrThrow({ where: { followId: followA, status: 'FILLED' } });
+    await prisma.exchangeOrder.updateMany({ where: { followId: followA }, data: { realizedPnl: 0 } });
+    await prisma.exchangeOrder.update({ where: { id: anyOrder.id }, data: { realizedPnl: 40 } });
+    const f = fill({ qty: 2, positionAfter: 2 });
+    await copy.ingestLeaderFill(leader, f, deps);
+    expect((await ordersFor(followA, f.externalId))[0]).toMatchObject({ status: 'SKIPPED', error: expect.stringMatching(/profit target/) });
+    expect(await prisma.copyFollow.findUnique({ where: { id: followA } })).toMatchObject({ status: 'PAUSED', pauseReason: 'Profit target of $25 reached' });
+    expect(await prisma.notification.count({ where: { userId: followerUserA, kind: 'copy.profit_target' } })).toBe(1);
+    await prisma.copyFollow.update({ where: { id: followA }, data: { maxProfitUsd: null, dailyLossLimitUsd: 50 } });
+  });
+
   it('marks the account invalid and pauses copying when the exchange rejects the key', async () => {
     const b = fx.account(`${tag}-FOLB`);
     b.fail = 'auth';

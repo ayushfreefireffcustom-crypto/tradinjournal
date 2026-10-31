@@ -188,21 +188,9 @@ async function copyToFollow(follow: FollowRow, row: LeaderFill, fill: FillEvent,
 
   const exitsOnly = follow.status === 'PAUSED';
 
-  // G1: today's realized + current unrealized against the daily loss limit.
-  if (follow.dailyLossLimitUsd != null && !exitsOnly) {
-    const [realized, open] = await Promise.all([
-      prisma.exchangeOrder.aggregate({ where: { followId: follow.id, filledAt: { gte: dayStartUtc(deps.now()) } }, _sum: { realizedPnl: true } }),
-      prisma.exchangePosition.aggregate({ where: { followId: follow.id, closedAt: null }, _sum: { unrealizedPnl: true } }),
-    ]);
-    const today = Number(realized._sum.realizedPnl ?? 0) + Number(open._sum.unrealizedPnl ?? 0);
-    const limit = Math.abs(Number(follow.dailyLossLimitUsd));
-    if (today <= -limit) {
-      await prisma.copyFollow.update({ where: { id: follow.id }, data: { status: 'PAUSED', pausedAt: deps.now(), pauseReason: `Daily loss limit of $${limit} reached` } });
-      await recordSkip(follow, row, fill, 'daily loss limit reached; copying paused', inst.symbol);
-      await notify(follow.userId, 'copy.loss_limit', 'Copying paused: daily loss limit hit', `Today's loss on this follow reached $${Math.abs(today).toFixed(2)} (limit $${limit}). Resume it when you're ready.`);
-      return;
-    }
-  }
+  // G1 / C1.10: a hit loss limit or profit target pauses the follow. The fill is
+  // still planned so a leader exit closes the follower (never strand a position).
+  const limit = exitsOnly ? null : await limitReached(follow, deps);
 
   // Follower position: what we track for this follow, capped by what the exchange holds.
   const posRow = await prisma.exchangePosition.findUnique({ where: { connectionId_symbol_positionKey: { connectionId: follow.connectionId, symbol: inst.symbol, positionKey: follow.id } } });
@@ -244,9 +232,13 @@ async function copyToFollow(follow: FollowRow, row: LeaderFill, fill: FillEvent,
   if ((plan.residual ?? 0) !== Number(residuals[inst.symbol] ?? 0)) {
     await prisma.copyFollow.update({ where: { id: follow.id }, data: { residuals: { ...residuals, [inst.symbol]: plan.residual } as Prisma.InputJsonValue } });
   }
-  if (exitsOnly) plan.legs = plan.legs.filter((l) => l.kind === 'CLOSE');
+  if (limit) {
+    await prisma.copyFollow.update({ where: { id: follow.id }, data: { status: 'PAUSED', pausedAt: deps.now(), pauseReason: limit.pauseReason } });
+    await notify(follow.userId, limit.kind, limit.title, limit.body);
+  }
+  if (exitsOnly || limit) plan.legs = plan.legs.filter((l) => l.kind === 'CLOSE');
   if (plan.skipReason || !plan.legs.length) {
-    await recordSkip(follow, row, fill, plan.skipReason ?? 'follow is paused: only exits are copied', inst.symbol);
+    await recordSkip(follow, row, fill, plan.skipReason ?? limit?.skip ?? 'follow is paused: only exits are copied', inst.symbol);
     return;
   }
 
@@ -271,6 +263,53 @@ async function copyToFollow(follow: FollowRow, row: LeaderFill, fill: FillEvent,
     const ok = await placeLeg(follow, row, fill, inst, plan.legs[i]!, i, deps);
     if (!ok) break;
   }
+}
+
+interface LimitHit {
+  pauseReason: string;
+  skip: string;
+  kind: string;
+  title: string;
+  body: string;
+}
+
+/** Daily loss limit (today's realized + open unrealized) or profit target (since start). */
+async function limitReached(follow: FollowRow, deps: EngineDeps): Promise<LimitHit | null> {
+  if (follow.dailyLossLimitUsd == null && follow.maxProfitUsd == null) return null;
+  const pnlSince = async (since: Date) => {
+    const [realized, open] = await Promise.all([
+      prisma.exchangeOrder.aggregate({ where: { followId: follow.id, filledAt: { gte: since } }, _sum: { realizedPnl: true } }),
+      prisma.exchangePosition.aggregate({ where: { followId: follow.id, closedAt: null }, _sum: { unrealizedPnl: true } }),
+    ]);
+    return Number(realized._sum.realizedPnl ?? 0) + Number(open._sum.unrealizedPnl ?? 0);
+  };
+  if (follow.dailyLossLimitUsd != null) {
+    const today = await pnlSince(dayStartUtc(deps.now()));
+    const cap = Math.abs(Number(follow.dailyLossLimitUsd));
+    if (cap > 0 && today <= -cap) {
+      return {
+        pauseReason: `Daily loss limit of $${cap} reached`,
+        skip: 'daily loss limit reached; copying paused',
+        kind: 'copy.loss_limit',
+        title: 'Copying paused: daily loss limit hit',
+        body: `Today's loss on this follow reached $${Math.abs(today).toFixed(2)} (limit $${cap}). Open copies still close when the leader exits. Resume it when you're ready.`,
+      };
+    }
+  }
+  if (follow.maxProfitUsd != null) {
+    const total = await pnlSince(follow.startedAt);
+    const target = Math.abs(Number(follow.maxProfitUsd));
+    if (target > 0 && total >= target) {
+      return {
+        pauseReason: `Profit target of $${target} reached`,
+        skip: 'profit target reached; copying paused',
+        kind: 'copy.profit_target',
+        title: 'Copying paused: profit target reached',
+        body: `This follow is up $${total.toFixed(2)} (target $${target}). Open copies still close when the leader exits.`,
+      };
+    }
+  }
+  return null;
 }
 
 async function placeLeg(follow: FollowRow, row: LeaderFill, fill: FillEvent, inst: InstrumentInfo, leg: PlanLeg, index: number, deps: EngineDeps): Promise<boolean> {
