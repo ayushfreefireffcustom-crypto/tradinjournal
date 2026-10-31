@@ -278,6 +278,39 @@ describe.skipIf(!local)('copy engine (integration)', () => {
     await prisma.copyFollow.update({ where: { id: followA }, data: { maxProfitUsd: null, dailyLossLimitUsd: 50 } });
   });
 
+  it('copies exits but not entries while an admin has paused the leader', async () => {
+    await prisma.copyFollow.update({ where: { id: followA }, data: { status: 'ACTIVE', pauseReason: null } });
+    const a = fx.account(`${tag}-FOLA`);
+    a.positions.set('BTCUSD', 2);
+    const pos = await prisma.exchangePosition.findFirstOrThrow({ where: { followId: followA } });
+    await prisma.exchangePosition.update({ where: { id: pos.id }, data: { side: 'LONG', qty: 2, avgEntry: 70_000, closedAt: null } });
+    await prisma.copyLeader.update({ where: { id: leader.id }, data: { status: 'PAUSED' } });
+    try {
+      const entry = fill({ qty: 1, positionAfter: 11 });
+      await copy.ingestLeaderFill(leader, entry, deps);
+      expect((await ordersFor(followA, entry.externalId))[0]).toMatchObject({ status: 'SKIPPED', error: 'leader is paused: only exits are copied' });
+      const exit = fill({ side: 'SELL', qty: 11, positionAfter: 0 });
+      await copy.ingestLeaderFill(leader, exit, deps);
+      expect((await ordersFor(followA, exit.externalId))[0]).toMatchObject({ status: 'FILLED', reduceOnly: true });
+      expect(a.positions.get('BTCUSD')).toBe(0);
+      // The follow itself stays active: resuming the leader resumes entries.
+      expect((await prisma.copyFollow.findUniqueOrThrow({ where: { id: followA } })).status).toBe('ACTIVE');
+
+      // Delisted is a full halt, exits included.
+      a.positions.set('BTCUSD', 1);
+      await prisma.exchangePosition.update({ where: { id: pos.id }, data: { side: 'LONG', qty: 1, closedAt: null } });
+      await prisma.copyLeader.update({ where: { id: leader.id }, data: { status: 'DELISTED' } });
+      const late = fill({ side: 'SELL', qty: 1, positionAfter: 0 });
+      await copy.ingestLeaderFill(leader, late, deps);
+      expect((await ordersFor(followA, late.externalId))[0]).toMatchObject({ status: 'SKIPPED', error: 'leader is delisted' });
+      expect(a.positions.get('BTCUSD')).toBe(1);
+    } finally {
+      await prisma.copyLeader.update({ where: { id: leader.id }, data: { status: 'VERIFIED' } });
+      a.positions.set('BTCUSD', 0);
+      await prisma.exchangePosition.update({ where: { id: pos.id }, data: { qty: 0, closedAt: new Date() } });
+    }
+  });
+
   it('marks the account invalid and pauses copying when the exchange rejects the key', async () => {
     const b = fx.account(`${tag}-FOLB`);
     b.fail = 'auth';

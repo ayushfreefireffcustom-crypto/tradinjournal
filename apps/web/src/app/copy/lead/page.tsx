@@ -14,7 +14,7 @@ import { exchangesApi, leadersApi, signedUsd, toneOf, venueName, type MyLeader }
 const STATUS: Record<MyLeader['status'], { tag: string; tone: string; text: string }> = {
   PENDING: { tag: 'In review', tone: '', text: 'We check the account and your history, usually within two working days. You’ll get a notification.' },
   VERIFIED: { tag: 'Live', tone: 'x-tag--g', text: 'Your profile is on the leaderboard and people can copy you.' },
-  PAUSED: { tag: 'Paused', tone: 'x-tag--r', text: 'Copying of your trades is paused. Followers keep their positions; exits aren’t copied while paused.' },
+  PAUSED: { tag: 'Paused', tone: 'x-tag--r', text: 'New trades aren’t copied right now. When you close a trade, followers’ copies still close.' },
   DELISTED: { tag: 'Removed', tone: 'x-tag--r', text: 'Your profile was removed from copy trading. Contact support if you think this is a mistake.' },
 };
 

@@ -89,7 +89,7 @@ async function retryUnclaimedFills(deps: EngineDeps): Promise<void> {
   const since = new Date(deps.now().getTime() - 24 * 3600_000);
   const rows = await prisma.$queryRaw<Array<{ id: string }>>`
     SELECT lf.id FROM leader_fill lf
-    JOIN copy_leader l ON l.id = lf."leaderId" AND l.status = 'VERIFIED'
+    JOIN copy_leader l ON l.id = lf."leaderId" AND l.status IN ('VERIFIED', 'PAUSED')
     JOIN copy_follow f ON f."leaderId" = l.id AND f.status = 'ACTIVE' AND f."startedAt" <= lf."exchTs"
     WHERE lf."exchTs" >= ${since.toISOString()}::timestamp
       AND NOT EXISTS (SELECT 1 FROM exchange_order o WHERE o."followId" = f.id AND o."leaderFillId" = lf.id)

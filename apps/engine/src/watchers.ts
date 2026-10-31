@@ -1,4 +1,4 @@
-// One private fill stream per VERIFIED leader that has at least one ACTIVE or
+// One private fill stream per VERIFIED or PAUSED leader (exits still copy) with at least one ACTIVE or
 // PAUSED follow (paused follows still copy exits). Ported from MirrorPip-X: fast reconnect after a drop, longer backoff
 // after a hard failure, backfill on every (re)connect so fills placed while we
 // were away are still copied (copy-from-now keeps that safe). Backfill pages
@@ -28,7 +28,7 @@ const BACKFILL_MAX_AGE_MS = 24 * 3600_000;
 
 export async function syncWatchers(deps: EngineDeps): Promise<void> {
   const leaders = (await prisma.copyLeader.findMany({
-    where: { status: 'VERIFIED', connection: { status: 'ACTIVE' }, follows: { some: { status: { in: ['ACTIVE', 'PAUSED'] } } } },
+    where: { status: { in: ['VERIFIED', 'PAUSED'] }, connection: { status: 'ACTIVE' }, follows: { some: { status: { in: ['ACTIVE', 'PAUSED'] } } } },
     include: { connection: true },
   })) as LeaderRow[];
   const wanted = new Map(leaders.map((l) => [l.id, l]));

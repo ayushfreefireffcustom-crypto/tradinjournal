@@ -96,11 +96,15 @@ export async function fanOut(leader: LeaderRow, row: LeaderFill, fill: FillEvent
   if (!follows.length) return;
 
   // Halts: record a terminal skip so the fill never executes late when the halt lifts.
+  // A paused leader is not a halt: like a paused follow, exits still copy so
+  // followers aren't left holding positions the leader closed.
   let halt: string | null = null;
+  let leaderPaused = false;
   if (await isKillSwitchOn(deps.now().getTime())) halt = 'copy trading is stopped (kill switch)';
   else {
     const live = await prisma.copyLeader.findUnique({ where: { id: leader.id }, select: { status: true } });
-    if (live?.status !== 'VERIFIED') halt = `leader is ${live?.status?.toLowerCase() ?? 'removed'}`;
+    if (live?.status === 'PAUSED') leaderPaused = true;
+    else if (live?.status !== 'VERIFIED') halt = `leader is ${live?.status?.toLowerCase() ?? 'removed'}`;
   }
 
   let leaderUsd = 0;
@@ -118,7 +122,7 @@ export async function fanOut(leader: LeaderRow, row: LeaderFill, fill: FillEvent
         await recordSkip(follow, row, fill, halt);
         continue;
       }
-      await copyToFollow(follow, row, fill, leaderUsd, deps);
+      await copyToFollow(follow, row, fill, leaderUsd, deps, leaderPaused);
     } catch (err) {
       logger.error('[engine] copy to follow failed', { followId: follow.id, leaderFillId: row.id, err: String(err) });
     }
@@ -157,7 +161,7 @@ function dayStartUtc(now: Date): Date {
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
 }
 
-async function copyToFollow(follow: FollowRow, row: LeaderFill, fill: FillEvent, leaderUsd: number, deps: EngineDeps): Promise<void> {
+async function copyToFollow(follow: FollowRow, row: LeaderFill, fill: FillEvent, leaderUsd: number, deps: EngineDeps, leaderPaused = false): Promise<void> {
   if (follow.connection.status !== 'ACTIVE') {
     await recordSkip(follow, row, fill, 'your exchange account needs reconnecting');
     return;
@@ -186,7 +190,7 @@ async function copyToFollow(follow: FollowRow, row: LeaderFill, fill: FillEvent,
     return;
   }
 
-  const exitsOnly = follow.status === 'PAUSED';
+  const exitsOnly = follow.status === 'PAUSED' || leaderPaused;
 
   // G1 / C1.10: a hit loss limit or profit target pauses the follow. The fill is
   // still planned so a leader exit closes the follower (never strand a position).
@@ -238,13 +242,15 @@ async function copyToFollow(follow: FollowRow, row: LeaderFill, fill: FillEvent,
   }
   if (exitsOnly || limit) plan.legs = plan.legs.filter((l) => l.kind === 'CLOSE');
   if (plan.skipReason || !plan.legs.length) {
-    await recordSkip(follow, row, fill, plan.skipReason ?? limit?.skip ?? 'follow is paused: only exits are copied', inst.symbol);
+    await recordSkip(follow, row, fill, plan.skipReason ?? limit?.skip ?? (leaderPaused ? 'leader is paused: only exits are copied' : 'follow is paused: only exits are copied'), inst.symbol);
     return;
   }
 
-  // Final gate right before sending: an admin pause or kill switch mid-flight stops it.
+  // Final gate right before sending: a kill switch or delisting mid-flight stops
+  // it; an admin pause mid-flight still lets closes through.
   const live = await prisma.copyLeader.findUnique({ where: { id: follow.leaderId }, select: { status: true } });
-  if (live?.status !== 'VERIFIED' || (await isKillSwitchOn(deps.now().getTime()))) {
+  const closesOnly = plan.legs.every((l) => l.kind === 'CLOSE');
+  if (!(live?.status === 'VERIFIED' || (live?.status === 'PAUSED' && closesOnly)) || (await isKillSwitchOn(deps.now().getTime()))) {
     await recordSkip(follow, row, fill, 'copying was stopped before the order was sent', inst.symbol);
     return;
   }
