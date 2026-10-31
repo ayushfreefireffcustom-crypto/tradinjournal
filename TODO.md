@@ -235,7 +235,7 @@ Legend:
 - [x] B2.9 Error taxonomy: `ExchangeAuthError`, `ExchangeRateLimitError`, `ExchangeRequestError`, `InsufficientMarginError`, `InstrumentError` `S`
 - [x] B2.10 Rate limiter per exchange + key (token bucket; reuse `lib/market` token-bucket if it fits) `S`
 - [x] B2.11 Unit tests: signing (known vectors), size rounding (0.997 → 1 regression from MPX), instrument mapping, error mapping `M`
-- [ ] B2.12 Contract test against Delta testnet behind an env flag (verify → account → products → place tiny order → cancel) `M` (written: `pnpm --filter @tradinjournal/exchange test:testnet`; waiting on testnet keys)
+- [x] B2.12 Contract test against Delta testnet behind an env flag (verify → account → products → place tiny order → cancel) `M` (passed on real testnet 31 Oct: `pnpm --filter @tradinjournal/exchange test:testnet`)
 - [x] B2.13 Exchange registry for the UI: status live/beta/soon, required permissions, whitelist IPs, how-to video URL, partner sign-up URL `S`
 
 ## B3. API: exchange connections (`apps/api/src/modules/exchanges/`)
@@ -310,7 +310,7 @@ Legend:
 - [x] C1.19 Pause semantics: no new entries, exits still copied. Stop: optionally close the position first. Evidence: CM code `M`
 - [x] C1.20 Exits when the leader closes: reduce-only orders sized to the follower position, not the leader's qty `S`
 - [ ] C1.21 Engine metrics: copies/min, median latency fill→order, rejects by reason (for admin) `S`
-- [ ] C1.22 Integration test on Delta testnet: leader BUY → follower FILLED → leader SELL → follower flat, realised P&L matches `M`
+- [x] C1.22 Integration test on Delta testnet: leader BUY → follower FILLED → leader SELL → follower flat, realised P&L matches `M` (passed 31 Oct: leader BUY 1 BTCUSD → follower filled in 1.5 s, 0 bps slippage → leader SELL → follower flat in 1.3 s)
 
 ## C2. Leader data and grading (better than MP)
 - [ ] C2.1 Leader stats per window: P&L, ROI, max DD, win rate, Sharpe, trades, followers, days active (MP "DSL" explained in plain words) `M`
