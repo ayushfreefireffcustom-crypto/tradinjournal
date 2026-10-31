@@ -91,7 +91,7 @@ async function retryUnclaimedFills(deps: EngineDeps): Promise<void> {
     SELECT lf.id FROM leader_fill lf
     JOIN copy_leader l ON l.id = lf."leaderId" AND l.status = 'VERIFIED'
     JOIN copy_follow f ON f."leaderId" = l.id AND f.status = 'ACTIVE' AND f."startedAt" <= lf."exchTs"
-    WHERE lf."exchTs" >= ${since}
+    WHERE lf."exchTs" >= ${since.toISOString()}::timestamp
       AND NOT EXISTS (SELECT 1 FROM exchange_order o WHERE o."followId" = f.id AND o."leaderFillId" = lf.id)
     GROUP BY lf.id, lf."exchTs" ORDER BY lf."exchTs" ASC LIMIT 200`;
   for (const { id } of rows) {

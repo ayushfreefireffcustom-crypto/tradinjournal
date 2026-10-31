@@ -10,6 +10,7 @@ import { auth } from './lib/auth.js';
 import { errorHandler } from './http/middleware/error-handler.js';
 import { requireSameOrigin } from './http/middleware/require-same-origin.js';
 import { exchangesRouter } from './modules/exchanges/exchanges.routes.js';
+import { followsRouter, leadersRouter } from './modules/copy/copy.routes.js';
 import { accountsRouter } from './modules/accounts/accounts.routes.js';
 import { tradesRouter } from './modules/trades/trades.routes.js';
 import { journalRouter } from './modules/journal/journal.routes.js';
@@ -105,8 +106,12 @@ export function createApp(): Express {
   app.use('/api/me', meRouter);
 
   app.use('/api/accounts', accountsRouter);
-  // Trading platform: exchange connections. Off until TRADING_ENABLED (404).
-  if (env.TRADING_ENABLED) app.use('/api/exchanges', exchangesRouter);
+  // Trading platform: exchange connections and copy trading. Off until TRADING_ENABLED (404).
+  if (env.TRADING_ENABLED) {
+    app.use('/api/exchanges', exchangesRouter);
+    app.use('/api/leaders', leadersRouter);
+    app.use('/api/follows', followsRouter);
+  }
   app.use('/api/trades', tradesRouter);
   app.use('/api/journal', journalRouter);
   app.use('/api/ai', aiRouter);
