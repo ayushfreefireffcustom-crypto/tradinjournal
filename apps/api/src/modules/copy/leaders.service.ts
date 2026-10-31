@@ -68,6 +68,45 @@ export function recommendedMargin(leaderEquityUsd: number | null, entrySizes: nu
   return Math.ceil(leaderEquityUsd / Math.max(1, median) / 10) * 10;
 }
 
+/** Last value per UTC day, oldest first. */
+function dailyCloses(curve: Array<{ t: Date; v: number }>): number[] {
+  const byDay = new Map<string, number>();
+  for (const p of curve) byDay.set(p.t.toISOString().slice(0, 10), p.v);
+  return [...byDay.values()];
+}
+
+/**
+ * Annualised Sharpe from daily equity returns (risk-free rate 0, crypto trades
+ * every day so √365). Needs 14 days; null before that or with no variation.
+ */
+export function sharpeRatio(curve: Array<{ t: Date; v: number }>): number | null {
+  const closes = dailyCloses(curve);
+  if (closes.length < 15) return null;
+  const rets: number[] = [];
+  for (let i = 1; i < closes.length; i++) if (closes[i - 1]! > 0) rets.push(closes[i]! / closes[i - 1]! - 1);
+  if (rets.length < 14) return null;
+  const mean = rets.reduce((a, b) => a + b, 0) / rets.length;
+  const sd = Math.sqrt(rets.reduce((a, b) => a + (b - mean) ** 2, 0) / (rets.length - 1));
+  return sd > 0 ? Math.round((mean / sd) * Math.sqrt(365) * 100) / 100 : null;
+}
+
+/** Share of whole weeks (Monday-based, UTC) in which equity rose. Needs 4 weeks. */
+export function profitableWeeksPct(curve: Array<{ t: Date; v: number }>): number | null {
+  const weeks = new Map<number, { first: number; last: number }>();
+  for (const p of curve) {
+    const d = new Date(p.t);
+    const monday = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
+    const w = weeks.get(monday);
+    if (w) w.last = p.v;
+    else weeks.set(monday, { first: p.v, last: p.v });
+  }
+  // A week's change runs from the previous week's last value to this week's.
+  const ordered = [...weeks.entries()].sort((a, b) => a[0] - b[0]).map(([, w]) => w);
+  const changes = ordered.slice(1).map((w, i) => w.last - ordered[i]!.last);
+  if (changes.length < 4) return null;
+  return Math.round((changes.filter((c) => c > 0).length / changes.length) * 1000) / 10;
+}
+
 /** Evenly thin a series to at most `n` points, keeping the last one. */
 export function downsample<T>(xs: T[], n: number): T[] {
   if (xs.length <= n) return xs;
@@ -98,6 +137,8 @@ function statsFor(l: LeaderRow, range: LeaderRange, curve: Array<{ t: Date; v: n
     maxDrawdownPct: known ? Number(s.maxDrawdownPct) : null,
     winRatePct: s?.winRatePct != null ? Number(s.winRatePct) : null,
     tradeCount: s?.tradeCount ?? 0,
+    sharpe: sharpeRatio(inRange),
+    profitableWeeksPct: profitableWeeksPct(inRange),
   };
 }
 
@@ -179,6 +220,7 @@ const SORTS: Record<LeadersQuery['sort'], (a: LeaderCardDto, b: LeaderCardDto) =
   drawdown: (a, b) => byKnown(a.stats.maxDrawdownPct, b.stats.maxDrawdownPct, 1),
   followers: (a, b) => b.followers - a.followers,
   winrate: (a, b) => byKnown(a.stats.winRatePct, b.stats.winRatePct, -1),
+  sharpe: (a, b) => byKnown(a.stats.sharpe, b.stats.sharpe, -1),
   newest: (a, b) => a.daysActive - b.daysActive,
 };
 

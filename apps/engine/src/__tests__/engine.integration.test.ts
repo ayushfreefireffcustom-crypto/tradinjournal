@@ -110,7 +110,14 @@ describe.skipIf(!local)('copy engine (integration)', () => {
   const tag = `eit${Date.now()}`;
   const fx = new FakeExchange();
   let now = new Date();
-  const deps: EngineDeps = { exchangeFor: () => fx.asExchange(), credsFor: (c) => ({ apiKey: c.apiKeyEnc, apiSecret: c.apiSecretEnc }), now: () => now, sleep: async () => undefined };
+  // The loops only ever see this file's users, never other rows in the shared test DB.
+  const scope: string[] = [];
+  const deps: EngineDeps = { exchangeFor: () => fx.asExchange(), credsFor: (c) => ({ apiKey: c.apiKeyEnc, apiSecret: c.apiSecretEnc }), now: () => now, sleep: async () => undefined, scopeUserIds: scope };
+  const newUser = async (name: string) => {
+    const u = await prisma.user.create({ data: { name, email: `${tag}-${name}@engine.test` } });
+    scope.push(u.id);
+    return u;
+  };
   let leader: Awaited<ReturnType<typeof loadLeader>>;
   let followA = '';
   let followB = '';
@@ -131,7 +138,7 @@ describe.skipIf(!local)('copy engine (integration)', () => {
     copy = await import('../copy.js');
     guards = await import('../guards.js');
     reconcile = await import('../reconcile.js');
-    const mk = (s: string) => prisma.user.create({ data: { name: s, email: `${tag}-${s}@engine.test` } });
+    const mk = (s: string) => newUser(s);
     const [lu, ua, ub] = await Promise.all([mk('leader'), mk('a'), mk('b')]);
     followerUserA = ua.id;
     const lc = await conn(lu.id, 'LEAD');
@@ -332,7 +339,7 @@ describe.skipIf(!local)('copy engine (integration)', () => {
   });
 
   it('places nothing when the follow is stopped while the copy is being prepared', async () => {
-    const u = await prisma.user.create({ data: { name: 'race', email: `${tag}-race@engine.test` } });
+    const u = await newUser('race');
     const c = await conn(u.id, 'FOLRACE');
     const f = await prisma.copyFollow.create({ data: { userId: u.id, leaderId: leader.id, connectionId: c.id, sizingMode: 'MULTIPLIER', sizingValue: 1, startedAt: new Date(Date.now() - 60_000) } });
     const placedBefore = fx.orders.filter((o) => o.apiKey.endsWith('FOLRACE')).length;
@@ -353,7 +360,7 @@ describe.skipIf(!local)('copy engine (integration)', () => {
 
   it("counts the daily loss from midnight in the follower's own time zone", async () => {
     const { dayStartIn } = await import('../time.js');
-    const u = await prisma.user.create({ data: { name: 'tz', email: `${tag}-tz@engine.test` } });
+    const u = await newUser('tz');
     await prisma.notificationPreference.create({ data: { userId: u.id, timezone: 'Pacific/Kiritimati' } });
     const c = await conn(u.id, 'FOLTZ');
     const f = await prisma.copyFollow.create({ data: { userId: u.id, leaderId: leader.id, connectionId: c.id, sizingMode: 'MULTIPLIER', sizingValue: 1, dailyLossLimitUsd: 10, startedAt: new Date(Date.now() - 3 * 86400_000) } });
@@ -441,7 +448,7 @@ describe.skipIf(!local)('copy engine (integration)', () => {
 
   it('treats an unreadable stored key like a rejected one', async () => {
     const { SecretKeyError } = await import('@tradinjournal/secrets');
-    const ub = await prisma.user.create({ data: { name: 'c', email: `${tag}-c@engine.test` } });
+    const ub = await newUser('c');
     const cc = await conn(ub.id, 'FOLC');
     const fc = await prisma.copyFollow.create({ data: { userId: ub.id, leaderId: leader.id, connectionId: cc.id, sizingMode: 'MULTIPLIER', sizingValue: 1, startedAt: new Date(Date.now() - 60_000) } });
     const broken: EngineDeps = { ...deps, credsFor: (c) => { if (c.apiKeyEnc.endsWith('FOLC')) throw new SecretKeyError('Malformed encrypted credential'); return deps.credsFor(c); } };

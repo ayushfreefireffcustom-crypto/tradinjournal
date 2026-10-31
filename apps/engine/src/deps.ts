@@ -11,7 +11,16 @@ export interface EngineDeps {
   now(): Date;
   /** Wait between order-status polls. */
   sleep(ms: number): Promise<void>;
+  /**
+   * Tests only: limit the periodic loops (reconcile, watchers) to these users'
+   * leaders and accounts, so a shared test database's other rows stay untouched.
+   * Unset in production: the loops cover everyone.
+   */
+  scopeUserIds?: string[];
 }
+
+/** Prisma filter on a user id column for the optional test scope. */
+export const inScope = (deps: EngineDeps) => (deps.scopeUserIds ? { in: deps.scopeUserIds } : undefined);
 
 export function productionDeps(): EngineDeps {
   const key = requireEncryptionKey(env.CREDENTIAL_ENCRYPTION_KEY);

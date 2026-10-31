@@ -3,7 +3,7 @@ import { z } from 'zod';
 // ── Copy trading: leaders and follows (Part C) ──────────────────────────────
 
 export const leaderRanges = ['7d', '30d', 'all'] as const;
-export const leaderSorts = ['roi', 'pnl', 'drawdown', 'followers', 'winrate', 'newest'] as const;
+export const leaderSorts = ['roi', 'pnl', 'drawdown', 'followers', 'winrate', 'sharpe', 'newest'] as const;
 export const copySizingModes = ['PROPORTIONAL', 'FIXED_NOTIONAL', 'MULTIPLIER'] as const;
 export type LeaderRange = (typeof leaderRanges)[number];
 export type CopySizingModeDto = (typeof copySizingModes)[number];
@@ -107,6 +107,10 @@ export interface LeaderStatsDto {
   /** null until the leader has closed copied positions. */
   winRatePct: number | null;
   tradeCount: number;
+  /** Annualised, from daily equity returns; null under 14 days of history. */
+  sharpe: number | null;
+  /** Share of weeks equity rose; null under 4 weeks of history. */
+  profitableWeeksPct: number | null;
 }
 
 export interface LeaderCardDto {

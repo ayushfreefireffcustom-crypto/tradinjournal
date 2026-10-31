@@ -2,13 +2,13 @@
 // (gap G7): equity points at most every 5 minutes, stats every 5 minutes from
 // aggregates instead of reloading every order every 30 s.
 
-import { prisma, type CopyLeader, type ExchangeConnection } from '@tradinjournal/db';
+import { Prisma, prisma, type CopyLeader, type ExchangeConnection } from '@tradinjournal/db';
 import { logger } from '@tradinjournal/logger';
 import { ExchangeError } from '@tradinjournal/exchange';
 import { SecretKeyError } from '@tradinjournal/secrets';
 import { fanOut, rememberLeaderEquity } from './copy.js';
 import { markConnectionInvalid, notify } from './guards.js';
-import type { EngineDeps } from './deps.js';
+import { inScope, type EngineDeps } from './deps.js';
 import { curveStats, WINDOWS } from './stats.js';
 
 const EQUITY_POINT_MS = 5 * 60_000;
@@ -39,7 +39,7 @@ export async function reconcile(deps: EngineDeps): Promise<void> {
 export async function sweepDrift(deps: EngineDeps): Promise<number> {
   const now = deps.now();
   const open = await prisma.exchangePosition.findMany({
-    where: { closedAt: null, qty: { gt: 0 }, followId: { not: null }, follow: { status: { in: ['ACTIVE', 'PAUSED'] } }, updatedAt: { lt: new Date(now.getTime() - DRIFT_SETTLE_MS) } },
+    where: { closedAt: null, qty: { gt: 0 }, followId: { not: null }, follow: { status: { in: ['ACTIVE', 'PAUSED'] }, userId: inScope(deps) }, updatedAt: { lt: new Date(now.getTime() - DRIFT_SETTLE_MS) } },
     include: { connection: true, follow: { select: { id: true, userId: true, leader: { select: { displayName: true } } } } },
   });
   const byConn = new Map<string, typeof open>();
@@ -92,7 +92,7 @@ export async function sweepDrift(deps: EngineDeps): Promise<number> {
 
 /** Mark open copy positions to market with public mark prices. */
 export async function markPositions(deps: EngineDeps): Promise<void> {
-  const open = await prisma.exchangePosition.findMany({ where: { closedAt: null, qty: { gt: 0 } }, include: { connection: { select: { exchange: true, environment: true } } } });
+  const open = await prisma.exchangePosition.findMany({ where: { closedAt: null, qty: { gt: 0 }, connection: { userId: inScope(deps) } }, include: { connection: { select: { exchange: true, environment: true } } } });
   const marks = new Map<string, { price: number | null; mult: number }>();
   for (const p of open) {
     const key = `${p.connection.exchange}:${p.connection.environment}:${p.symbol}`;
@@ -111,7 +111,7 @@ export async function markPositions(deps: EngineDeps): Promise<void> {
 
 /** Leader equity (cached for sizing, stored every 5 min) and leaderboard stats. */
 async function refreshLeaders(deps: EngineDeps): Promise<void> {
-  const leaders = (await prisma.copyLeader.findMany({ where: { status: { in: ['VERIFIED', 'PAUSED'] }, connection: { status: 'ACTIVE' } }, include: { connection: true } })) as Array<CopyLeader & { connection: ExchangeConnection }>;
+  const leaders = (await prisma.copyLeader.findMany({ where: { status: { in: ['VERIFIED', 'PAUSED'] }, connection: { status: 'ACTIVE' }, userId: inScope(deps) }, include: { connection: true } })) as Array<CopyLeader & { connection: ExchangeConnection }>;
   const nowMs = deps.now().getTime();
   for (const leader of leaders) {
     try {
@@ -164,6 +164,7 @@ async function retryUnclaimedFills(deps: EngineDeps): Promise<void> {
     JOIN copy_leader l ON l.id = lf."leaderId" AND l.status IN ('VERIFIED', 'PAUSED')
     JOIN copy_follow f ON f."leaderId" = l.id AND f.status = 'ACTIVE' AND f."startedAt" <= lf."exchTs"
     WHERE lf."exchTs" >= ${since.toISOString()}::timestamp
+      ${deps.scopeUserIds ? Prisma.sql`AND f."userId" IN (${Prisma.join(deps.scopeUserIds.length ? deps.scopeUserIds : [''])})` : Prisma.empty}
       AND NOT EXISTS (SELECT 1 FROM exchange_order o WHERE o."followId" = f.id AND o."leaderFillId" = lf.id)
     GROUP BY lf.id, lf."exchTs" ORDER BY lf."exchTs" ASC LIMIT 200`;
   for (const { id } of rows) {

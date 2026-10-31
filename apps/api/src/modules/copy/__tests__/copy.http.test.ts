@@ -18,7 +18,7 @@ async function serve(tradingEnabled: boolean) {
   const server = createApp().listen(0);
   await new Promise((r) => server.once('listening', r));
   const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
-  return { base, close: () => new Promise((r) => server.close(r)) };
+  return { base, close: () => new Promise((r) => { server.closeAllConnections(); server.close(r); }) };
 }
 
 describe.skipIf(!local)('/api/leaders and /api/follows over HTTP', () => {
@@ -67,8 +67,9 @@ describe.skipIf(!local)('/api/leaders and /api/follows over HTTP', () => {
   });
 
   afterAll(async () => {
-    await close();
+    // Data first: a stuck server close must never leave test users behind.
     await prisma?.user.deleteMany({ where: { email: { startsWith: tag } } });
+    await close();
     await prisma?.$disconnect();
   });
 

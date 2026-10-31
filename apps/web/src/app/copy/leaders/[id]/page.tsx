@@ -96,6 +96,8 @@ export default function LeaderPage() {
                         ['Return', (r: LeaderRange) => <b className={`m ${toneOf(l.statsByRange[r].roiPct)}`}>{pct(l.statsByRange[r].roiPct, 2, true)}</b>],
                         ['Equity change', (r: LeaderRange) => <span className={`m ${toneOf(l.statsByRange[r].pnlUsd)}`}>{signedUsd(l.statsByRange[r].pnlUsd)}</span>],
                         ['Max drawdown', (r: LeaderRange) => <span className="m">{pct(l.statsByRange[r].maxDrawdownPct)}</span>],
+                        ['Sharpe ratio', (r: LeaderRange) => <span className="m">{l.statsByRange[r].sharpe == null ? '—' : l.statsByRange[r].sharpe!.toFixed(2)}</span>],
+                        ['Profitable weeks', (r: LeaderRange) => <span className="m">{pct(l.statsByRange[r].profitableWeeksPct, 0)}</span>],
                       ] as Array<[string, (r: LeaderRange) => React.ReactNode]>).map(([k, f]) => (
                         <tr key={k}><td className="x-muted">{k}</td><td>{f('7d')}</td><td>{f('30d')}</td><td>{f('all')}</td></tr>
                       ))}
@@ -107,7 +109,7 @@ export default function LeaderPage() {
                   <div><span>Leader trades</span><b className="m">{l.statsByRange.all.tradeCount}</b></div>
                   <div><span>Equity now</span><b className="m">{usd(l.equityUsd)}</b></div>
                 </div>
-                <p className="cp-fine">Equity change includes deposits and withdrawals. Risk grade comes from all-time max drawdown: A under 10%, B under 20%, C under 30%, D under 45%, E above; graded after 7 days.</p>
+                <p className="cp-fine">Equity change includes deposits and withdrawals. Sharpe is the average daily return divided by its swings, yearly (higher is steadier); it needs 2 weeks of history, profitable weeks needs 4. Risk grade comes from all-time max drawdown: A under 10%, B under 20%, C under 30%, D under 45%, E above; graded after 7 days.</p>
               </section>
 
               <section className="x-card" aria-label="Open positions">

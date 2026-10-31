@@ -9,7 +9,7 @@ import { ExchangeError, type StreamHandle } from '@tradinjournal/exchange';
 import { SecretKeyError } from '@tradinjournal/secrets';
 import { logger } from '@tradinjournal/logger';
 import { ingestLeaderFill } from './copy.js';
-import type { EngineDeps } from './deps.js';
+import { inScope, type EngineDeps } from './deps.js';
 import { markConnectionInvalid } from './guards.js';
 
 type LeaderRow = CopyLeader & { connection: ExchangeConnection };
@@ -28,7 +28,7 @@ const BACKFILL_MAX_AGE_MS = 24 * 3600_000;
 
 export async function syncWatchers(deps: EngineDeps): Promise<void> {
   const leaders = (await prisma.copyLeader.findMany({
-    where: { status: { in: ['VERIFIED', 'PAUSED'] }, connection: { status: 'ACTIVE' }, follows: { some: { status: { in: ['ACTIVE', 'PAUSED'] } } } },
+    where: { status: { in: ['VERIFIED', 'PAUSED'] }, userId: inScope(deps), connection: { status: 'ACTIVE' }, follows: { some: { status: { in: ['ACTIVE', 'PAUSED'] } } } },
     include: { connection: true },
   })) as LeaderRow[];
   const wanted = new Map(leaders.map((l) => [l.id, l]));

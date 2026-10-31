@@ -309,15 +309,15 @@ Legend:
 - [x] C1.18 Retry missed copies (24h sweep) `S`
 - [x] C1.19 Pause semantics: no new entries, exits still copied. Stop: optionally close the position first. Evidence: CM code `M`
 - [x] C1.20 Exits when the leader closes: reduce-only orders sized to the follower position, not the leader's qty `S`
-- [ ] C1.21 Engine metrics: copies/min, median latency fill→order, rejects by reason (for admin) `S`
+- [x] C1.21 Engine metrics: copies/min, median latency fill→order, rejects by reason (for admin) `S` (in the C5.4 engine panel: 24 h copies, median and p90 latency, slippage, top reasons)
 - [x] C1.22 Integration test on Delta testnet: leader BUY → follower FILLED → leader SELL → follower flat, realised P&L matches `M` (passed 31 Oct: leader BUY 1 BTCUSD → follower filled in 1.5 s, 0 bps slippage → leader SELL → follower flat in 1.3 s)
 
 ## C2. Leader data and grading (better than MP)
-- [ ] C2.1 Leader stats per window: P&L, ROI, max DD, win rate, Sharpe, trades, followers, days active (MP "DSL" explained in plain words) `M`
+- [x] C2.1 Leader stats per window: P&L, ROI, max DD, win rate, Sharpe, trades, followers, days active (MP "DSL" explained in plain words) `M`
 - [x] C2.2 **Risk grade A–E** from max DD, volatility and leverage used; document the formula on the page `M`
-- [ ] C2.3 **Consistency score** (share of profitable weeks) and "% of profit from top 3 trades" `S`
+- [ ] C2.3 **Consistency score** (share of profitable weeks) and "% of profit from top 3 trades" `S` (profitable weeks done; top-3 share needs per-trade USD P&L for leaders)
 - [x] C2.4 Recommended margin calculation (minimum capital to copy 1× without rounding to 0 contracts) `S`
-- [ ] C2.5 Leader stats cached (Redis) and recomputed by the engine reconcile loop `S`
+- [x] C2.5 Leader stats cached (Redis) and recomputed by the engine reconcile loop `S` (cached in leader_stat, recomputed every 5 min; no Redis needed)
 
 ## C3. API: leaders and follows
 - [x] C3.1 Leader routes `M`:
@@ -340,7 +340,7 @@ Legend:
   - cards: avatar, exchange, followers, P&L, ROI, sparkline, recommended margin, max DD, win-rate bar, days active, risk grade
   - sort and range controls
   - search
-- [ ] C4.2 Leaderboard top-3 podium + compare mode (up to 3 leaders side by side). Evidence: MPX `M`
+- [x] C4.2 Leaderboard top-3 podium + compare mode (up to 3 leaders side by side). Evidence: MPX `M`
 - [ ] C4.3 Leader detail `L → split`:
   - [x] C4.3a Header (avatar, exchange, followers, range) + KPIs (live P&L, followers, open trades) `S`
   - [ ] C4.3b Shared analytics stack (equity chart, P&L heatmap, allocation donut, stats grid, ROI card, holding time) as **one component reused from the dashboard** `M`

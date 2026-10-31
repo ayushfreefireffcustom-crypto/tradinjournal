@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { COPY_RISK_VERSION, createFollowSchema, leadersQuerySchema, updateFollowSchema, applyLeaderSchema } from '@tradinjournal/contracts';
-import { byKnown, downsample, recommendedMargin, riskGrade } from '../leaders.service.js';
+import { byKnown, downsample, profitableWeeksPct, recommendedMargin, riskGrade, sharpeRatio } from '../leaders.service.js';
 
 const DAY = 24 * 3600_000;
 
@@ -87,5 +87,45 @@ describe('copy request validation', () => {
     expect(leadersQuerySchema.safeParse({ range: '1y' }).success).toBe(false);
     expect(applyLeaderSchema.safeParse({ connectionId: 'c', displayName: 'A', bio: 'x'.repeat(30) }).success).toBe(false);
     expect(applyLeaderSchema.safeParse({ connectionId: 'c', displayName: 'Alpha', bio: 'short' }).success).toBe(false);
+  });
+});
+
+const day = (i: number, v: number) => ({ t: new Date(Date.UTC(2026, 8, 1 + i, 12)), v });
+
+describe('sharpeRatio', () => {
+  it('needs 14 daily returns', () => {
+    expect(sharpeRatio(Array.from({ length: 14 }, (_, i) => day(i, 100 + i)))).toBeNull();
+  });
+  it('uses one close per day however many samples there are', () => {
+    // Alternating +1% / −0.5% days. Daily mean 0.25%, sd ≈ 0.776% → ≈ 6.15 annualised.
+    let v = 100;
+    const pts = [day(0, v)];
+    for (let i = 1; i <= 20; i++) {
+      v *= i % 2 ? 1.01 : 0.995;
+      pts.push(day(i, v), { t: new Date(day(i, v).t.getTime() - 3600_000), v: 1 }); // an intraday sample that isn't the close
+    }
+    pts.sort((a, b) => a.t.getTime() - b.t.getTime());
+    const s = sharpeRatio(pts)!;
+    expect(s).toBeGreaterThan(6);
+    expect(s).toBeLessThan(6.3);
+  });
+  it('is unknown with no variation, and negative when losing steadily', () => {
+    expect(sharpeRatio(Array.from({ length: 20 }, (_, i) => day(i, 100)))).toBeNull();
+    let v = 100;
+    const pts = Array.from({ length: 20 }, (_, i) => day(i, (v *= i % 2 ? 0.99 : 1.002)));
+    expect(sharpeRatio(pts)!).toBeLessThan(0);
+  });
+});
+
+describe('profitableWeeksPct', () => {
+  it('needs four week-on-week changes', () => {
+    // Sep 1–21 touches four calendar weeks: three changes, not enough.
+    expect(profitableWeeksPct(Array.from({ length: 21 }, (_, i) => day(i, 100 + i)))).toBeNull();
+  });
+  it('counts weeks whose closing equity beat the previous week', () => {
+    // 2026-09-07 is a Monday. Weekly closes: 100, 110, 105, 120, 130, 125 → up, down, up, up, down = 3/5.
+    const closes = [100, 110, 105, 120, 130, 125];
+    const pts = closes.flatMap((c, w) => [{ t: new Date(Date.UTC(2026, 8, 7 + w * 7, 9)), v: c - 3 }, { t: new Date(Date.UTC(2026, 8, 13 + w * 7, 20)), v: c }]);
+    expect(profitableWeeksPct(pts)).toBe(60);
   });
 });

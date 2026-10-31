@@ -15,7 +15,7 @@ async function serve(tradingEnabled: boolean) {
   const { createApp } = await import('../../../app.js');
   const server = createApp().listen(0);
   await new Promise((r) => server.once('listening', r));
-  return { base: `http://127.0.0.1:${(server.address() as AddressInfo).port}`, close: () => new Promise((r) => server.close(r)) };
+  return { base: `http://127.0.0.1:${(server.address() as AddressInfo).port}`, close: () => new Promise((r) => { server.closeAllConnections(); server.close(r); }) };
 }
 
 describe.skipIf(!local)('/api/admin/copy over HTTP', () => {

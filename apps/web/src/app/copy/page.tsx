@@ -6,16 +6,17 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import AppShell from '@/components/app-shell';
-import { ErrorCard, GradeBadge, Monogram, Sparkline, useLoad } from '@/components/v6/copy/parts';
+import { ErrorCard, GradeBadge, Modal, Monogram, Sparkline, useLoad } from '@/components/v6/copy/parts';
 import { IArrowRight, ILeader, ISearch } from '@/components/v3/icons';
 import { TRADING_ENABLED } from '@/lib/features';
-import { leadersApi, followsApi, pct, RANGE_LABEL, signedUsd, toneOf, usd, venueName, type LeaderCard, type LeaderRange, type LeaderSort } from '@/lib/copy-api';
+import { leadersApi, followsApi, pct, RANGE_LABEL, signedUsd, toneOf, usd, venueName, type LeaderCard, type LeaderDetail, type LeaderRange, type LeaderSort } from '@/lib/copy-api';
 
 const SORTS: Array<{ id: LeaderSort; label: string }> = [
   { id: 'roi', label: 'Return' },
   { id: 'pnl', label: 'Profit' },
   { id: 'drawdown', label: 'Lowest drawdown' },
   { id: 'winrate', label: 'Win rate' },
+  { id: 'sharpe', label: 'Risk-adjusted return' },
   { id: 'followers', label: 'Followers' },
   { id: 'newest', label: 'Newest' },
 ];
@@ -37,6 +38,9 @@ export default function LeadersPage() {
   useEffect(() => { const t = setTimeout(() => setQuery(q.trim()), 250); return () => clearTimeout(t); }, [q]);
   const leaders = useLoad(() => leadersApi.list({ sort, range, q: query || undefined }), [sort, range, query]);
   const mine = useLoad(() => followsApi.list(), []);
+  const [picked, setPicked] = useState<string[]>([]);
+  const [comparing, setComparing] = useState(false);
+  const togglePick = (id: string) => setPicked(p => (p.includes(id) ? p.filter(x => x !== id) : p.length >= 3 ? p : [...p, id]));
 
   if (!TRADING_ENABLED) return <AppShell legacy={false} pageTitle="Copy trading"><div className="x-page"><div className="x-card x-empty"><b>Coming soon</b><p>Copy trading isn&rsquo;t available yet.</p></div></div></AppShell>;
 
@@ -80,9 +84,42 @@ export default function LeadersPage() {
             {!query && <Link href="/copy/lead" className="x-btn x-btn--hi">Become a leader</Link>}
           </div>
         ) : (
-          <section className="cp-lb" aria-label="Leaders" data-testid="leaders-list">
-            {list.map((l, i) => <LeaderRow key={l.id} l={l} rank={sort === 'newest' ? null : i + 1} />)}
-          </section>
+          <>
+            {/* Top 3 when ranking by results; a podium for "newest" or a search would mislead. */}
+            {!query && list.length >= 3 && sort !== 'newest' && sort !== 'followers' && list.slice(0, 3).every(l => l.stats.roiPct != null) && (
+              <section className="cp-podium" aria-label="Top leaders" data-testid="leaders-podium">
+                {list.slice(0, 3).map((l, i) => (
+                  <Link key={l.id} href={`/copy/leaders/${l.id}`} className={`x-card cp-pod cp-pod--${i + 1}`}>
+                    <span className="cp-pod-n m">{i + 1}</span>
+                    <Monogram name={l.displayName} />
+                    <b>{l.displayName}</b>
+                    <span className={`cp-pod-v m ${toneOf(l.stats.roiPct)}`}>{pct(l.stats.roiPct, 1, true)}</span>
+                    <small>{RANGE_LABEL[range].toLowerCase()} · max drawdown {pct(l.stats.maxDrawdownPct)}</small>
+                    <Sparkline values={l.sparkline} w={180} h={40} />
+                  </Link>
+                ))}
+              </section>
+            )}
+            <section className="cp-lb" aria-label="Leaders" data-testid="leaders-list">
+              {list.map((l, i) => (
+                <div key={l.id} className="cp-lb-row">
+                  <LeaderRow l={l} rank={sort === 'newest' ? null : i + 1} />
+                  <label className={`cp-pick ${picked.includes(l.id) ? 'on' : ''}`} title={picked.length >= 3 && !picked.includes(l.id) ? 'Compare up to 3 leaders' : 'Compare'}>
+                    <input type="checkbox" className="x-check" checked={picked.includes(l.id)} disabled={picked.length >= 3 && !picked.includes(l.id)} onChange={() => togglePick(l.id)} aria-label={`Compare ${l.displayName}`} data-testid={`leader-pick-${l.id}`} />
+                  </label>
+                </div>
+              ))}
+            </section>
+          </>
+        )}
+        {picked.length > 0 && (
+          <div className="x-card cp-cmpbar" role="region" aria-label="Compare" data-testid="compare-bar">
+            <span><b className="m">{picked.length}</b> of 3 selected{picked.length < 2 ? ': pick one more to compare' : ''}</span>
+            <span className="cp-cmpbar-acts">
+              <button className="x-btn x-btn--sm" onClick={() => setPicked([])}>Clear</button>
+              <button className="x-btn x-btn--sm x-btn--hi" disabled={picked.length < 2} onClick={() => setComparing(true)} data-testid="compare-open">Compare</button>
+            </span>
+          </div>
         )}
 
         <section className="x-card cp-faq" aria-label="Questions">
@@ -95,7 +132,61 @@ export default function LeadersPage() {
           ))}
         </section>
       </div>
+      {comparing && <CompareDialog ids={picked} onClose={() => setComparing(false)} />}
     </AppShell>
+  );
+}
+
+function CompareDialog({ ids, onClose }: { ids: string[]; onClose: () => void }) {
+  const [range, setRange] = useState<LeaderRange>('30d');
+  const data = useLoad(() => Promise.all(ids.map(id => leadersApi.get(id, range))), [ids.join(','), range]);
+  const ls = data.data ?? [];
+  // Best value per row gets a mark; "best" depends on direction.
+  const best = (vals: Array<number | null>, dir: 1 | -1) => {
+    const known = vals.filter((v): v is number => v != null);
+    if (known.length < 2) return null;
+    return dir > 0 ? Math.max(...known) : Math.min(...known);
+  };
+  const rows: Array<[string, (l: LeaderDetail) => number | null, (v: number | null) => string, 1 | -1 | 0]> = [
+    ['Return', l => l.statsByRange[range].roiPct, v => pct(v, 1, true), 1],
+    ['Equity change', l => l.statsByRange[range].pnlUsd, v => signedUsd(v, 0), 1],
+    ['Max drawdown', l => l.statsByRange[range].maxDrawdownPct, v => pct(v), -1],
+    ['Sharpe ratio', l => l.statsByRange[range].sharpe, v => (v == null ? '—' : v.toFixed(2)), 1],
+    ['Profitable weeks', l => l.statsByRange[range].profitableWeeksPct, v => pct(v, 0), 1],
+    ['Win rate of copies', l => l.statsByRange.all.winRatePct, v => pct(v, 0), 1],
+    ['Followers', l => l.followers, v => (v == null ? '—' : String(v)), 0],
+    ['Days active', l => l.daysActive, v => (v == null ? '—' : String(v)), 0],
+    ['Suggested balance', l => l.recommendedMarginUsd, v => usd(v, 0), 0],
+  ];
+  return (
+    <Modal title="Compare leaders" onClose={onClose} wide testId="compare-dialog">
+      <div className="x-seg x-seg--in cp-mb" role="tablist" aria-label="Range">
+        {(['7d', '30d', 'all'] as LeaderRange[]).map(r => <button key={r} role="tab" aria-selected={range === r} className={range === r ? 'on' : ''} onClick={() => setRange(r)}>{RANGE_LABEL[r]}</button>)}
+      </div>
+      {data.error ? <p className="x-muted">{data.error}</p> : !data.data ? <div className="x-skel cp-skel-table" /> : (
+        <div className="x-tblwrap">
+          <table className="x-tbl cp-cmp">
+            <thead>
+              <tr><th />{ls.map(l => <th key={l.id}><Link href={`/copy/leaders/${l.id}`} className="cp-cmp-name">{l.displayName}</Link><GradeBadge grade={l.riskGrade} /></th>)}</tr>
+            </thead>
+            <tbody>
+              {rows.map(([label, get, fmt, dir]) => {
+                const vals = ls.map(get);
+                const top = dir ? best(vals, dir) : null;
+                return (
+                  <tr key={label}>
+                    <td className="x-muted">{label}</td>
+                    {vals.map((v, i) => <td key={ls[i]!.id} className={`m ${top != null && v === top ? 'cp-best' : ''}`}>{fmt(v)}</td>)}
+                  </tr>
+                );
+              })}
+              <tr><td className="x-muted">Curve</td>{ls.map(l => <td key={l.id}><Sparkline values={l.sparkline} w={140} h={34} /></td>)}</tr>
+            </tbody>
+          </table>
+        </div>
+      )}
+      <p className="cp-fine">Past results don&rsquo;t predict future ones. The marked value is the best in each row.</p>
+    </Modal>
   );
 }
 

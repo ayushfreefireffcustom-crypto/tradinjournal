@@ -9,7 +9,7 @@ export const COPY_RISK_VERSION = '2026-10-31';
 
 export type ExchangeEnvironment = 'TESTNET' | 'LIVE';
 export type LeaderRange = '7d' | '30d' | 'all';
-export type LeaderSort = 'roi' | 'pnl' | 'drawdown' | 'followers' | 'winrate' | 'newest';
+export type LeaderSort = 'roi' | 'pnl' | 'drawdown' | 'followers' | 'winrate' | 'sharpe' | 'newest';
 export type SizingMode = 'PROPORTIONAL' | 'FIXED_NOTIONAL' | 'MULTIPLIER';
 export type RiskGrade = 'A' | 'B' | 'C' | 'D' | 'E';
 export type FollowStatus = 'ACTIVE' | 'PAUSED' | 'STOPPED';
@@ -48,6 +48,8 @@ export interface LeaderStats {
   maxDrawdownPct: number | null;
   winRatePct: number | null;
   tradeCount: number;
+  sharpe: number | null;
+  profitableWeeksPct: number | null;
 }
 
 export interface LeaderCard {
