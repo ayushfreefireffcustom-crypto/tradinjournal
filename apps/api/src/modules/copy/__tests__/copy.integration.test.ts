@@ -125,12 +125,34 @@ describe.skipIf(!local)('copy trading leaders and follows (integration)', () => 
     expect((await leaders.getLeader(users.pend!.id, pendingLeaderId)).isMine).toBe(true);
   });
 
+  it('shows unknown stats as null, not 0, when the range has under two equity samples', async () => {
+    // Only one point (now) falls inside 7 days.
+    const d = await leaders.getLeader(users.fol!.id, leaderId, '7d');
+    expect(d.stats).toMatchObject({ roiPct: null, maxDrawdownPct: null, pnlUsd: null });
+  });
+
   it('shows a leader page with stats per range and open positions from fills', async () => {
     const d = await leaders.getLeader(users.fol!.id, leaderId, '7d');
     expect(d.statsByRange['30d'].roiPct).toBe(9.09);
     expect(d.statsByRange.all.pnlUsd).toBe(200);
     expect(d.openPositions).toEqual([expect.objectContaining({ symbol: 'BTCUSD', side: 'LONG', size: 4 })]);
     expect(d.lastTradeAt).not.toBeNull();
+  });
+
+  it("prefers the exchange's live positions, and falls back to recorded fills", async () => {
+    const live = { adapterFor: () => ({ getPositions: async () => [{ symbol: 'BTCUSD', size: 4 }, { symbol: 'ETHUSD', size: -3 }, { symbol: 'SOLUSD', size: 0 }] }) as unknown as Exchange, key: () => KEY };
+    const d = await leaders.getLeader(users.fol!.id, leaderId, '30d', new Date(), live);
+    expect(d.openPositions).toEqual([
+      expect.objectContaining({ symbol: 'BTCUSD', side: 'LONG', size: 4, since: expect.any(String) }),
+      // Opened before we watched: no start time to show.
+      { symbol: 'ETHUSD', side: 'SHORT', size: 3, since: null },
+    ]);
+    // Cached for 30 s: a failing exchange right after still shows the cached read.
+    const down = { adapterFor: () => ({ getPositions: async () => { throw new ExchangeError('UNAVAILABLE', 'down'); } }) as unknown as Exchange, key: () => KEY };
+    expect((await leaders.getLeader(users.fol!.id, leaderId, '30d', new Date(), down)).openPositions).toHaveLength(2);
+    // After the cache expires, a failure falls back to fills.
+    const later = new Date(Date.now() + 60_000);
+    expect((await leaders.getLeader(users.fol!.id, leaderId, '30d', later, down)).openPositions).toEqual([expect.objectContaining({ symbol: 'BTCUSD', size: 4 })]);
   });
 
   it('pages leader trades newest first without repeats', async () => {

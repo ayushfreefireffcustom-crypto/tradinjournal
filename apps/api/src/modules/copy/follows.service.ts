@@ -378,5 +378,5 @@ async function closeOne(
   });
   if (filled <= 0) return { symbol: p.symbol, ok: false, qty: 0, message: 'The close order did not fill. Close it on the exchange.' };
   if (filled < qty) return { symbol: p.symbol, ok: false, qty: filled, message: `Closed ${filled} of ${qty}; the rest is left open on your exchange account.` };
-  return { symbol: p.symbol, ok: true, qty: filled, message: `Closed ${filled} at ${avg}.` };
+  return { symbol: p.symbol, ok: true, qty: filled, message: `Closed ${filled} at ${avg != null ? avg.toLocaleString('en-US', { maximumFractionDigits: 2 }) : 'market'}.` };
 }

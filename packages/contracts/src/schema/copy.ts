@@ -99,10 +99,11 @@ export type RiskGrade = 'A' | 'B' | 'C' | 'D' | 'E';
 
 export interface LeaderStatsDto {
   range: LeaderRange;
-  roiPct: number;
+  /** null until the engine has computed stats for this leader. */
+  roiPct: number | null;
   /** Equity change over the range in USD (includes deposits and withdrawals). */
   pnlUsd: number | null;
-  maxDrawdownPct: number;
+  maxDrawdownPct: number | null;
   /** null until the leader has closed copied positions. */
   winRatePct: number | null;
   tradeCount: number;
@@ -134,7 +135,8 @@ export interface LeaderOpenPositionDto {
   symbol: string;
   side: 'LONG' | 'SHORT';
   size: number;
-  since: string;
+  /** When the position opened, if we saw it open; null for ones opened before we watched. */
+  since: string | null;
 }
 
 export interface LeaderDetailDto extends LeaderCardDto {

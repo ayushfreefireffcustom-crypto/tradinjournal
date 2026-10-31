@@ -20,8 +20,19 @@ import type {
   RiskGrade,
   UpdateLeaderInput,
 } from '@tradinjournal/contracts';
+import { requireEncryptionKey } from '@tradinjournal/secrets';
+import { logger } from '@tradinjournal/logger';
 import { ConflictError, NotFoundError } from '../../http/errors.js';
 import { logAdminAction } from '../admin/admin-audit.service.js';
+import { adapterFor } from '../exchanges/exchanges.adapters.js';
+import { credsOf, type ExchangeDeps } from '../exchanges/exchanges.service.js';
+
+export type LeaderDeps = Pick<ExchangeDeps, 'adapterFor' | 'key'>;
+const defaultDeps: LeaderDeps = { adapterFor, key: () => requireEncryptionKey(env.CREDENTIAL_ENCRYPTION_KEY) };
+
+/** Leader positions read from the exchange, cached briefly so page views don't hammer it. */
+const POSITIONS_TTL_MS = 30_000;
+const positionsCache = new Map<string, { at: number; rows: Array<{ symbol: string; size: number }> }>();
 
 const DAY = 24 * 3600_000;
 const RANGE_MS: Record<LeaderRange, number> = { '7d': 7 * DAY, '30d': 30 * DAY, all: 0 };
@@ -78,11 +89,13 @@ function statsFor(l: LeaderRow, range: LeaderRange, curve: Array<{ t: Date; v: n
   const s = l.stats.find((x) => x.window === range);
   const since = RANGE_MS[range] ? nowMs - RANGE_MS[range] : 0;
   const inRange = curve.filter((p) => p.t.getTime() >= since);
+  // One sample (or none) can't show a return or a drawdown: unknown, not 0.
+  const known = !!s && inRange.length >= 2;
   return {
     range,
-    roiPct: s ? Number(s.roiPct) : 0,
+    roiPct: known ? Number(s.roiPct) : null,
     pnlUsd: inRange.length >= 2 ? Math.round((inRange[inRange.length - 1]!.v - inRange[0]!.v) * 100) / 100 : null,
-    maxDrawdownPct: s ? Number(s.maxDrawdownPct) : 0,
+    maxDrawdownPct: known ? Number(s.maxDrawdownPct) : null,
     winRatePct: s?.winRatePct != null ? Number(s.winRatePct) : null,
     tradeCount: s?.tradeCount ?? 0,
   };
@@ -154,12 +167,18 @@ async function extras(leaderIds: string[], userId: string, curveSince: Date | nu
 
 const leaderInclude = { connection: { select: { exchange: true, environment: true } }, stats: true } as const;
 
+/** Compare with unknown (null) values always last, whichever the direction. */
+export function byKnown(a: number | null, b: number | null, dir: 1 | -1): number {
+  if (a == null || b == null) return a == null ? (b == null ? 0 : 1) : -1;
+  return (a - b) * dir;
+}
+
 const SORTS: Record<LeadersQuery['sort'], (a: LeaderCardDto, b: LeaderCardDto) => number> = {
-  roi: (a, b) => b.stats.roiPct - a.stats.roiPct,
-  pnl: (a, b) => (b.stats.pnlUsd ?? -Infinity) - (a.stats.pnlUsd ?? -Infinity),
-  drawdown: (a, b) => a.stats.maxDrawdownPct - b.stats.maxDrawdownPct,
+  roi: (a, b) => byKnown(a.stats.roiPct, b.stats.roiPct, -1),
+  pnl: (a, b) => byKnown(a.stats.pnlUsd, b.stats.pnlUsd, -1),
+  drawdown: (a, b) => byKnown(a.stats.maxDrawdownPct, b.stats.maxDrawdownPct, 1),
   followers: (a, b) => b.followers - a.followers,
-  winrate: (a, b) => (b.stats.winRatePct ?? -1) - (a.stats.winRatePct ?? -1),
+  winrate: (a, b) => byKnown(a.stats.winRatePct, b.stats.winRatePct, -1),
   newest: (a, b) => a.daysActive - b.daysActive,
 };
 
@@ -185,6 +204,36 @@ async function visibleLeader(userId: string, id: string): Promise<LeaderRow> {
   return l;
 }
 
+/**
+ * What the leader holds now. The exchange is the truth (it includes positions
+ * opened before we started watching); fills we recorded are the fallback when
+ * the exchange can't be reached.
+ */
+async function livePositions(l: LeaderRow, deps: LeaderDeps, nowMs: number): Promise<LeaderOpenPositionDto[] | null> {
+  const hit = positionsCache.get(l.id);
+  let rows = hit && nowMs - hit.at < POSITIONS_TTL_MS ? hit.rows : null;
+  if (!rows) {
+    const conn = await prisma.exchangeConnection.findUnique({ where: { id: l.connectionId } });
+    if (!conn || conn.status !== 'ACTIVE') return null;
+    try {
+      rows = (await deps.adapterFor(conn.exchange, conn.environment).getPositions(credsOf(conn, deps.key()))).map((p) => ({ symbol: p.symbol, size: p.size }));
+      positionsCache.set(l.id, { at: nowMs, rows });
+    } catch (err) {
+      logger.debug('[copy] leader positions unavailable; using recorded fills', { leaderId: l.id, err: String(err) });
+      return null;
+    }
+  }
+  const fromFills = await openPositionsOf(l.id);
+  return rows
+    .filter((r) => r.size !== 0)
+    .map((r) => ({
+      symbol: r.symbol,
+      side: r.size > 0 ? ('LONG' as const) : ('SHORT' as const),
+      size: Math.abs(r.size),
+      since: fromFills.find((f) => f.symbol === r.symbol)?.since ?? null,
+    }));
+}
+
 export async function openPositionsOf(leaderId: string): Promise<LeaderOpenPositionDto[]> {
   const latest = await prisma.$queryRaw<Array<{ symbol: string; pos: number; at: Date }>>`
     SELECT DISTINCT ON (symbol) symbol, "positionAfter"::float AS pos, "exchTs" AS at
@@ -205,13 +254,13 @@ export async function openPositionsOf(leaderId: string): Promise<LeaderOpenPosit
   );
 }
 
-export async function getLeader(userId: string, id: string, range: LeaderRange = '30d', now = new Date()): Promise<LeaderDetailDto> {
+export async function getLeader(userId: string, id: string, range: LeaderRange = '30d', now = new Date(), deps: LeaderDeps = defaultDeps): Promise<LeaderDetailDto> {
   const l = await visibleLeader(userId, id);
   const x = await extras([l.id], userId, null);
   const card = toCard(l, range, x, userId, now.getTime());
   const curve = x.curves.get(l.id) ?? [];
   const [openPositions, last] = await Promise.all([
-    openPositionsOf(l.id),
+    livePositions(l, deps, now.getTime()).then((live) => live ?? openPositionsOf(l.id)),
     prisma.leaderFill.findFirst({ where: { leaderId: l.id }, orderBy: { exchTs: 'desc' }, select: { exchTs: true } }),
   ]);
   return {

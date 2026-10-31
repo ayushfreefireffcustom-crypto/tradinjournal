@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { COPY_RISK_VERSION, createFollowSchema, leadersQuerySchema, updateFollowSchema, applyLeaderSchema } from '@tradinjournal/contracts';
-import { downsample, recommendedMargin, riskGrade } from '../leaders.service.js';
+import { byKnown, downsample, recommendedMargin, riskGrade } from '../leaders.service.js';
 
 const DAY = 24 * 3600_000;
 
@@ -28,6 +28,14 @@ describe('recommendedMargin', () => {
     expect(recommendedMargin(0, [1])).toBeNull();
     expect(recommendedMargin(100, [])).toBeNull();
     expect(recommendedMargin(100, [0])).toBeNull();
+  });
+});
+
+describe('byKnown', () => {
+  it('sorts unknown values last in both directions', () => {
+    const xs = [3, null, 1, null, 2];
+    expect([...xs].sort((a, b) => byKnown(a, b, -1))).toEqual([3, 2, 1, null, null]);
+    expect([...xs].sort((a, b) => byKnown(a, b, 1))).toEqual([1, 2, 3, null, null]);
   });
 });
 
