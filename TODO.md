@@ -270,8 +270,8 @@ Legend:
 - [x] B4.4 Decide whether the engine shares Redis with the worker/queue (look at `packages/queue`) `S` (decided: no Redis; the engine owns its loops and a Postgres advisory lock. Live UI updates go through the API's existing pub/sub in C4)
 
 ## B5. Web: exchange connections UI
-- [ ] B5.1 `/exchanges` page (or a tab inside `/brokers`; decide by IA review): catalogue with live/beta/soon, "N connected" `M`
-- [ ] B5.2 Connect wizard in a Sheet `M`:
+- [x] B5.1 `/exchanges` page (or a tab inside `/brokers`; decide by IA review): catalogue with live/beta/soon, "N connected" `M`
+- [x] B5.2 Connect wizard in a Sheet `M` (dialog; how-to video and partner link still to add):
   1. pick exchange
   2. key + secret (+ passphrase for OKX) with paste buttons
   3. verify
@@ -280,8 +280,8 @@ Legend:
   - how-to video
   - partner sign-up link
   - custody notice
-- [ ] B5.3 Connection card: health dot, equity, last checked, Test / Rename / Remove (typed confirm) `S`
-- [ ] B5.4 Empty state with the A5.3 art, and an explanation of what keys can and can't do `S`
+- [x] B5.3 Connection card: health dot, equity, last checked, Test / Rename / Remove (typed confirm) `S`
+- [x] B5.4 Empty state with the A5.3 art, and an explanation of what keys can and can't do `S`
 - [ ] B5.5 Account switcher shows MT5 accounts and exchange connections, grouped `S`
 
 ---
@@ -298,7 +298,7 @@ Legend:
 - [x] C1.7 Dedup on `clientOrderId = tl:{exch}:{followId}:{fillId}` `S`
 - [x] C1.8 Sizing modes: proportional / fixed margin / multiplier, plus max position USD and reverse copy. Port `sizing.ts` with its 10 tests `S`
 - [ ] C1.9 **Real daily loss limit**: today's realised + unrealised P&L per follow (timezone = the user's), auto-pause + notify (MPX gap: it summed all-time) `M` (done with a UTC day on 31 Oct; user timezone still to do)
-- [ ] C1.10 Max profit cap per follow (take-profit for the subscription). Evidence: MP code `S`
+- [x] C1.10 Max profit cap per follow (take-profit for the subscription). Evidence: MP code `S`
 - [ ] C1.11 "Copy current open trades" option at subscribe time (open a matching position at market). Evidence: MP code `M`
 - [x] C1.12 Place the order, then **poll SUBMITTED orders until terminal** (MPX gap) `M`
 - [x] C1.13 Record `leaderPrice`, our fill price and `slippageBps` per copy `S`
@@ -314,52 +314,52 @@ Legend:
 
 ## C2. Leader data and grading (better than MP)
 - [ ] C2.1 Leader stats per window: P&L, ROI, max DD, win rate, Sharpe, trades, followers, days active (MP "DSL" explained in plain words) `M`
-- [ ] C2.2 **Risk grade A–E** from max DD, volatility and leverage used; document the formula on the page `M`
+- [x] C2.2 **Risk grade A–E** from max DD, volatility and leverage used; document the formula on the page `M`
 - [ ] C2.3 **Consistency score** (share of profitable weeks) and "% of profit from top 3 trades" `S`
-- [ ] C2.4 Recommended margin calculation (minimum capital to copy 1× without rounding to 0 contracts) `S`
+- [x] C2.4 Recommended margin calculation (minimum capital to copy 1× without rounding to 0 contracts) `S`
 - [ ] C2.5 Leader stats cached (Redis) and recomputed by the engine reconcile loop `S`
 
 ## C3. API: leaders and follows
-- [ ] C3.1 Leader routes `M`:
+- [x] C3.1 Leader routes `M`:
   - `GET /api/leaders` (sort: profit, ROI, max DD, Sharpe, recommended margin, risk grade; range 1D/1W/1M/1Y/All)
   - `GET /api/leaders/:id`
   - `GET /api/leaders/:id/trades`
   - `GET /api/leaders/:id/equity`
-- [ ] C3.2 `POST /api/leaders/apply` (connection + display name + strategy write-up), creates PENDING + notifies admins `S`
-- [ ] C3.3 Follow routes `M`:
+- [x] C3.2 `POST /api/leaders/apply` (connection + display name + strategy write-up), creates PENDING + notifies admins `S`
+- [x] C3.3 Follow routes `M`:
   - `GET /api/follows`
   - `POST /api/follows` (sizing, invested amount, daily loss cap, max profit cap, copy open trades, risk disclosure accepted)
   - `PATCH /api/follows/:id` (pause/resume/stop, edit multiplier/caps)
-- [ ] C3.4 SSE `GET /api/follows/stream` and `/:id/stream`; push events from the engine (Redis pub/sub) instead of MPX's 3s DB polling `M`
-- [ ] C3.5 Guards: a follower must have a connection on the leader's exchange (MP "connect the required exchange"); can't follow yourself; re-follow resets `startedAt` `S`
-- [ ] C3.6 Risk-disclosure acceptance stored with timestamp + version `S`
-- [ ] C3.7 Tests: auth, IDOR, validation, guard cases `M`
+- [ ] C3.4 (pages poll every 10–15 s for now) SSE `GET /api/follows/stream` and `/:id/stream`; push events from the engine (Redis pub/sub) instead of MPX's 3s DB polling `M`
+- [x] C3.5 Guards: a follower must have a connection on the leader's exchange (MP "connect the required exchange"); can't follow yourself; re-follow resets `startedAt` `S`
+- [x] C3.6 Risk-disclosure acceptance stored with timestamp + version `S`
+- [x] C3.7 Tests: auth, IDOR, validation, guard cases `M`
 
 ## C4. Web: copy trading
-- [ ] C4.1 `/leaders` leaderboard `M`:
+- [x] C4.1 `/copy` leaderboard `M`:
   - cards: avatar, exchange, followers, P&L, ROI, sparkline, recommended margin, max DD, win-rate bar, days active, risk grade
   - sort and range controls
   - search
 - [ ] C4.2 Leaderboard top-3 podium + compare mode (up to 3 leaders side by side). Evidence: MPX `M`
 - [ ] C4.3 Leader detail `L → split`:
-  - [ ] C4.3a Header (avatar, exchange, followers, range) + KPIs (live P&L, followers, open trades) `S`
+  - [x] C4.3a Header (avatar, exchange, followers, range) + KPIs (live P&L, followers, open trades) `S`
   - [ ] C4.3b Shared analytics stack (equity chart, P&L heatmap, allocation donut, stats grid, ROI card, holding time) as **one component reused from the dashboard** `M`
-  - [ ] C4.3c Strategy write-up section `S`
-  - [ ] C4.3d Leader trade history (open/closed, date-grouped) `S`
-  - [ ] C4.3e Mirror box: recommended margin + multiplier stepper + live capital maths + CTA `S`
-  - [ ] C4.3f **"What if you'd copied since X with $Y"** simulation (works before connecting) `M`
-- [ ] C4.4 Follow sheet `M`:
+  - [x] C4.3c Strategy write-up section `S`
+  - [x] C4.3d Leader trade history (open/closed, date-grouped) `S`
+  - [x] C4.3e Mirror box: recommended margin + multiplier stepper + live capital maths + CTA `S`
+  - [x] C4.3f **"What if you'd copied since X with $Y"** simulation (works before connecting) `M`
+- [x] C4.4 Follow sheet `M`:
   - sizing mode, amount, multiplier
   - daily loss cap, max profit cap
   - copy-open-trades toggle
   - mandatory risk disclosure (MP wording points: late/partial fills, outages, liquidation)
   - accept → "You're now copying"
-- [ ] C4.5 My follows (on the dashboard + its own page): status pill, invested, P&L, edit multiplier, pause/resume/stop with honest state copy `M`
-- [ ] C4.6 Follow detail: live SSE updates, copied orders with **leader price vs your fill + slippage**, overall tracking error `M`
-- [ ] C4.7 Become-a-leader page (apply form + status) `S`
-- [ ] C4.8 Leader portal tab: followers count, AUM, consolidated follower P&L (MP has this in a separate app; ours is a tab) `M`
-- [ ] C4.9 FAQ section on `/leaders` (what is a leader, how copying works, can I stop anytime, choosing a leader, no guaranteed profits) `S`
-- [ ] C4.10 Empty/not-connected states that still let users browse everything (beats MP's blank screens) `S`
+- [x] C4.5 My follows (on the dashboard + its own page): status pill, invested, P&L, edit multiplier, pause/resume/stop with honest state copy `M`
+- [x] C4.6 Follow detail: live SSE updates, copied orders with **leader price vs your fill + slippage**, overall tracking error `M`
+- [x] C4.7 Become-a-leader page (apply form + status) `S`
+- [x] C4.8 Leader portal tab: followers count, AUM, consolidated follower P&L (MP has this in a separate app; ours is a tab) `M`
+- [x] C4.9 FAQ section on `/leaders` (what is a leader, how copying works, can I stop anytime, choosing a leader, no guaranteed profits) `S`
+- [x] C4.10 Empty/not-connected states that still let users browse everything (beats MP's blank screens) `S`
 
 ## C5. Admin: copy trading
 - [ ] C5.1 Admin › Leaders: list PENDING/VERIFIED/PAUSED/DELISTED, approve/pause/delist, notifies the leader `M`

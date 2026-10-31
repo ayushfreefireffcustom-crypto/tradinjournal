@@ -9,11 +9,11 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import type { BrokerAccount } from '@/lib/api';
 import NotificationBell from '@/components/notification-bell';
 import Logo from '@/components/logo';
-import { PARTNERS_ENABLED } from '@/lib/features';
+import { PARTNERS_ENABLED, TRADING_ENABLED } from '@/lib/features';
 import { useTheme } from './use-theme';
 import {
   IAdmin, IAnalytics, IBrokers, ICalendar, ICharts, ICheck, IChevronDown, IClose, ICoach, IDashboard, IJournal, ILink, IMacro, IMarkets,
-  IPartner, IPlus, IReplay, ISearch, ISettings, ISignalX, ISync, ITradeLog, IUsers,
+  IPartner, IPlus, IReplay, ISearch, ISettings, ISignalX, ISync, ITradeLog, IUsers, IMirror, IExchange, ILeader,
 } from '@/components/v3/icons';
 import '@/styles/v6/tokens.css';
 import '@/styles/v6/components.css';
@@ -45,6 +45,12 @@ const PARTNER: FrameNavItem[] = [
   { href: '/partner', label: 'Overview', icon: IPartner },
   { href: '/partner/link', label: 'My link', icon: ILink },
   { href: '/partner/clients', label: 'Clients', icon: IUsers },
+];
+/** Copy trading (behind NEXT_PUBLIC_TRADING). */
+export const COPY: FrameNavItem[] = [
+  { href: '/copy', label: 'Leaders', icon: ILeader, badge: 'Beta' },
+  { href: '/copy/following', label: 'My copies', icon: IMirror },
+  { href: '/exchanges', label: 'Exchanges', icon: IExchange },
 ];
 const TABS = ['/dashboard', '/trades', '/journal', '/coach'];
 
@@ -110,6 +116,7 @@ export default function Frame(p: Props) {
 
   const groups = [
     ...NAV,
+    ...(TRADING_ENABLED ? [{ title: 'Copy trading', items: COPY }] : []),
     ...(PARTNERS_ENABLED && p.isPartner ? [{ title: 'Partner', items: PARTNER }] : []),
   ];
   const account: FrameNavItem[] = [

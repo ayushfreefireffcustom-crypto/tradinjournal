@@ -10,10 +10,10 @@ import type { BrokerAccount } from '@/lib/api';
 import { authClient } from '@/lib/auth-client';
 import { LoadingScreen } from '@/components/loader';
 import { usePlatformAccess } from '@/lib/use-platform-access';
-import { PARTNERS_ENABLED } from '@/lib/features';
+import { PARTNERS_ENABLED, TRADING_ENABLED } from '@/lib/features';
 import { UsageTracker } from '@/components/usage-tracker';
 import LocationGate from '@/components/location-gate';
-import Frame, { NAV, type FrameNavItem } from '@/components/v6/frame';
+import Frame, { COPY, NAV, type FrameNavItem } from '@/components/v6/frame';
 import { IAdmin, IBrokers, ILink, IPartner, ISearch, ISettings, IUsers } from '@/components/v3/icons';
 import '@/styles/v6/tokens.css';
 import '@/styles/v6/components.css';
@@ -47,6 +47,8 @@ interface Props {
 type Item = FrameNavItem & { group: string };
 const ALL: Item[] = [
   ...NAV.flatMap(g => g.items.map(i => ({ ...i, group: g.title }))),
+  ...(TRADING_ENABLED ? COPY.map(i => ({ ...i, group: 'Copy trading' })) : []),
+  ...(TRADING_ENABLED ? [{ href: '/copy/lead', label: 'Become a leader', icon: COPY[0]!.icon, group: 'Copy trading' }] : []),
   { href: '/partner', label: 'Partner overview', icon: IPartner, group: 'Partner' },
   { href: '/partner/link', label: 'My link', icon: ILink, group: 'Partner' },
   { href: '/partner/clients', label: 'Clients', icon: IUsers, group: 'Partner' },

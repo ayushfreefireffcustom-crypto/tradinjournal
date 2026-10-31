@@ -44,3 +44,9 @@ export const IPartner = mk(<><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20a6.
 export const ILink = mk(<><path d="M10 14a4.5 4.5 0 006.4 0l3.2-3.2a4.5 4.5 0 00-6.4-6.4L12 5.6" /><path d="M14 10a4.5 4.5 0 00-6.4 0l-3.2 3.2a4.5 4.5 0 006.4 6.4l1.2-1.2" /></>);
 export const IUsers = mk(<><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0116 0" /></>);
 export const ICopy = mk(<><rect x="8" y="8" width="12" height="12" rx="2.5" /><path d="M16 8V6a2 2 0 00-2-2H6a2 2 0 00-2 2v8a2 2 0 002 2h2" /></>);
+export const IMirror = mk(<><path d="M7 7h11l-3-3M17 17H6l3 3" /></>);
+export const IExchange = mk(<><rect x="3" y="6" width="18" height="13" rx="2" /><path d="M3 10h18M7 15h4" /></>);
+export const ILeader = mk(<><path d="M5 18l2-9 5 4 5-4 2 9z" /><path d="M5 21h14" /></>);
+export const IPause = mk(<path d="M9 5v14M15 5v14" />);
+export const IPlay = mk(<path d="M7 5l12 7-12 7z" />);
+export const IStop = mk(<rect x="6" y="6" width="12" height="12" rx="1.5" />);
