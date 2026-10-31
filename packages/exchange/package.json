@@ -1,0 +1,21 @@
+{
+  "name": "@tradinjournal/exchange",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:testnet": "DELTA_CONTRACT_TEST=1 vitest run src/__tests__/delta.testnet.test.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "vitest": "^2.1.8"
+  }
+}

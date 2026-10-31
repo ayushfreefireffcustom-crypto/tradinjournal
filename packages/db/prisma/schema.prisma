@@ -44,6 +44,11 @@ model User {
   partner        Partner?
   referral       Referral?
 
+  exchangeConnections ExchangeConnection[]
+  copyLeaders         CopyLeader[]
+  copyFollows         CopyFollow[]
+  exchangeOrders      ExchangeOrder[]
+
   @@map("user")
 }
 
@@ -1111,4 +1116,340 @@ model ReservedPartnerCode {
   createdAt      DateTime @default(now())
 
   @@map("reserved_partner_code")
+}
+
+// ─── Trading platform (Part B): exchange connections, copy trading, orders ──
+// Ported from MirrorPip-X and generalised; see reports/mpx-port-notes.md.
+// Exchange API keys are stored with apps/api/src/lib/secrets.ts ("enc:v1:").
+
+enum ExchangeVenue {
+  DELTA_INDIA
+}
+
+/// Testnet and live keys are different keys on different hosts; never mixed.
+enum ExchangeEnvironment {
+  TESTNET
+  LIVE
+}
+
+enum ExchangeConnectionStatus {
+  ACTIVE
+  INVALID // the exchange rejected the key; user must reconnect
+  REVOKED // removed by the user; secrets wiped
+}
+
+enum CopyLeaderStatus {
+  PENDING // applied, awaiting admin review
+  VERIFIED // live and followable
+  PAUSED // temporarily not copying
+  DELISTED // hidden
+}
+
+enum CopyFollowStatus {
+  ACTIVE
+  PAUSED
+  STOPPED
+}
+
+enum CopySizingMode {
+  PROPORTIONAL // leader qty × (follower equity / leader equity) × value
+  FIXED_NOTIONAL // value USD of notional per leader entry
+  MULTIPLIER // leader qty × value
+}
+
+enum ExchangeOrderSide {
+  BUY
+  SELL
+}
+
+enum ExchangeOrderType {
+  MARKET
+  LIMIT
+  STOP_MARKET
+  STOP_LIMIT
+  TAKE_PROFIT_MARKET
+  TAKE_PROFIT_LIMIT
+}
+
+enum ExchangeOrderStatus {
+  PENDING // claimed by us, not yet sent
+  SUBMITTED // sent, outcome unknown
+  OPEN
+  PARTIAL
+  FILLED
+  CANCELLED
+  REJECTED
+  SKIPPED // never sent: risk limit, kill switch, size rounded to zero
+  EXPIRED
+}
+
+enum ExchangeOrderSource {
+  MANUAL
+  COPY
+  STRATEGY
+  WEBHOOK
+}
+
+enum PositionDirection {
+  LONG
+  SHORT
+}
+
+model ExchangeConnection {
+  id          String              @id @default(cuid())
+  userId      String
+  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exchange    ExchangeVenue
+  environment ExchangeEnvironment
+  label       String
+
+  apiKeyEnc      String
+  apiSecretEnc   String
+  passphraseEnc  String?
+  /// Last 4 characters of the public key, for display.
+  keyLast4       String
+  /// HMAC of the key (see @tradinjournal/exchange fingerprintApiKey); detects duplicates without decrypting.
+  keyFingerprint String
+  /// The exchange's own account id, the same across every key of one account.
+  accountRef     String?
+  canTrade       Boolean                  @default(false)
+  status         ExchangeConnectionStatus @default(ACTIVE)
+  lastError      String?
+  lastCheckedAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  leader    CopyLeader?
+  follows   CopyFollow[]
+  orders    ExchangeOrder[]
+  positions ExchangePosition[]
+  fills     ExchangeFill[]
+
+  @@index([userId, status])
+  @@index([exchange, environment, keyFingerprint])
+  @@index([exchange, environment, accountRef])
+  @@map("exchange_connection")
+}
+
+model CopyLeader {
+  id           String             @id @default(cuid())
+  userId       String
+  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// The account we watch for this leader's fills.
+  connectionId String             @unique
+  connection   ExchangeConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  displayName  String
+  bio          String?
+  status       CopyLeaderStatus   @default(PENDING)
+  /// Leader opts in to appearing on the public leaderboard.
+  listed       Boolean            @default(true)
+  maxFollowers Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  follows      CopyFollow[]
+  fills        LeaderFill[]
+  equityPoints LeaderEquityPoint[]
+  stats        LeaderStat[]
+
+  @@index([status, listed])
+  @@map("copy_leader")
+}
+
+/// Leader account equity over time. Written at most every 5 minutes per leader.
+model LeaderEquityPoint {
+  id        String     @id @default(cuid())
+  leaderId  String
+  leader    CopyLeader @relation(fields: [leaderId], references: [id], onDelete: Cascade)
+  equityUsd Decimal    @db.Decimal(20, 2)
+  ts        DateTime   @default(now())
+
+  @@index([leaderId, ts])
+  @@map("leader_equity_point")
+}
+
+model LeaderStat {
+  id             String     @id @default(cuid())
+  leaderId       String
+  leader         CopyLeader @relation(fields: [leaderId], references: [id], onDelete: Cascade)
+  window         String // "7d" | "30d" | "all"
+  roiPct         Decimal    @default(0) @db.Decimal(12, 4)
+  winRatePct     Decimal?   @db.Decimal(6, 2)
+  maxDrawdownPct Decimal    @default(0) @db.Decimal(6, 2)
+  totalCopiedUsd Decimal    @default(0) @db.Decimal(20, 2)
+  tradeCount     Int        @default(0)
+  followerCount  Int        @default(0)
+  updatedAt      DateTime   @updatedAt
+
+  @@unique([leaderId, window])
+  @@map("leader_stat")
+}
+
+model CopyFollow {
+  id           String             @id @default(cuid())
+  userId       String
+  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  leaderId     String
+  leader       CopyLeader         @relation(fields: [leaderId], references: [id], onDelete: Cascade)
+  /// The follower's own account that copies are placed on.
+  connectionId String
+  connection   ExchangeConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  sizingMode        CopySizingMode @default(PROPORTIONAL)
+  sizingValue       Decimal        @default(1) @db.Decimal(20, 8)
+  /// Leverage set on the follower's contracts before copying; null keeps the account's.
+  leverage          Int?
+  maxPositionUsd    Decimal?       @db.Decimal(20, 2)
+  /// Realized + unrealized loss since the start of the day that pauses this follow.
+  dailyLossLimitUsd Decimal?       @db.Decimal(20, 2)
+  copyReverse       Boolean        @default(false)
+  /// Per-symbol unsent size in venue units, carried between fills ({"BTCUSD": 0.4}).
+  residuals         Json           @default("{}")
+
+  status      CopyFollowStatus @default(ACTIVE)
+  /// Copy-from-now: fills before this are never copied.
+  startedAt   DateTime         @default(now())
+  pausedAt    DateTime?
+  pauseReason String?
+  stoppedAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orders    ExchangeOrder[]
+  positions ExchangePosition[]
+
+  @@unique([userId, leaderId])
+  @@index([leaderId, status])
+  @@index([connectionId])
+  @@map("copy_follow")
+}
+
+model LeaderFill {
+  id            String            @id @default(cuid())
+  leaderId      String
+  leader        CopyLeader        @relation(fields: [leaderId], references: [id], onDelete: Cascade)
+  /// Exchange fill id; makes ingestion idempotent.
+  externalId    String
+  symbol        String
+  side          ExchangeOrderSide
+  qty           Decimal           @db.Decimal(30, 10)
+  price         Decimal           @db.Decimal(30, 10)
+  reduceOnly    Boolean           @default(false)
+  /// Leader's signed position on the symbol after this fill, when the venue reports it.
+  positionAfter Decimal?          @db.Decimal(30, 10)
+  exchTs        DateTime
+  ingestedAt    DateTime          @default(now())
+
+  orders ExchangeOrder[]
+
+  @@unique([leaderId, externalId])
+  @@index([leaderId, exchTs])
+  @@index([exchTs])
+  @@map("leader_fill")
+}
+
+/// Every order we send (or decide not to send) on a user's exchange account.
+model ExchangeOrder {
+  id           String              @id @default(cuid())
+  userId       String
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  connectionId String
+  connection   ExchangeConnection  @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  source       ExchangeOrderSource
+  followId     String?
+  follow       CopyFollow?         @relation(fields: [followId], references: [id], onDelete: SetNull)
+  leaderFillId String?
+  leaderFill   LeaderFill?         @relation(fields: [leaderFillId], references: [id], onDelete: SetNull)
+
+  /// Our idempotency key; one order per (follow, leader fill) for copies.
+  clientOrderId   String              @unique
+  exchangeOrderId String?
+  symbol          String
+  side            ExchangeOrderSide
+  type            ExchangeOrderType
+  timeInForce     String?
+  reduceOnly      Boolean             @default(false)
+  qty             Decimal             @db.Decimal(30, 10)
+  limitPrice      Decimal?            @db.Decimal(30, 10)
+  stopPrice       Decimal?            @db.Decimal(30, 10)
+  status          ExchangeOrderStatus @default(PENDING)
+  filledQty       Decimal             @default(0) @db.Decimal(30, 10)
+  avgFillPrice    Decimal?            @db.Decimal(30, 10)
+  /// Leader's fill price, for slippage on copies.
+  leaderPrice     Decimal?            @db.Decimal(30, 10)
+  slippageBps     Decimal?            @db.Decimal(12, 4)
+  fees            Decimal?            @db.Decimal(20, 8)
+  errorCode       String?
+  error           String?
+
+  requestedAt DateTime  @default(now())
+  submittedAt DateTime?
+  filledAt    DateTime?
+  updatedAt   DateTime  @updatedAt
+
+  fills ExchangeFill[]
+
+  @@unique([connectionId, exchangeOrderId])
+  @@index([followId, requestedAt])
+  @@index([connectionId, status])
+  @@index([leaderFillId])
+  @@index([userId, requestedAt])
+  @@map("exchange_order")
+}
+
+/// Net position per account, symbol and owner (a follow, or "manual").
+model ExchangePosition {
+  id              String              @id @default(cuid())
+  connectionId    String
+  connection      ExchangeConnection  @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  followId        String?
+  follow          CopyFollow?         @relation(fields: [followId], references: [id], onDelete: SetNull)
+  /// followId, or "manual"; keeps the unique key non-null.
+  positionKey     String
+  source          ExchangeOrderSource
+  symbol          String
+  side            PositionDirection
+  qty             Decimal             @db.Decimal(30, 10)
+  avgEntry        Decimal             @db.Decimal(30, 10)
+  markPrice       Decimal?            @db.Decimal(30, 10)
+  unrealizedPnl   Decimal             @default(0) @db.Decimal(20, 2)
+  realizedPnl     Decimal             @default(0) @db.Decimal(20, 2)
+  /// Size the exchange reports, for drift checks against qty.
+  exchangeQty     Decimal?            @db.Decimal(30, 10)
+  driftDetectedAt DateTime?
+
+  openedAt  DateTime  @default(now())
+  closedAt  DateTime?
+  updatedAt DateTime  @updatedAt
+
+  @@unique([connectionId, symbol, positionKey])
+  @@index([followId])
+  @@index([closedAt])
+  @@map("exchange_position")
+}
+
+/// Executions on a connected account (ours and the user's own), for history and the journal.
+model ExchangeFill {
+  id              String             @id @default(cuid())
+  connectionId    String
+  connection      ExchangeConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  externalId      String
+  orderId         String?
+  order           ExchangeOrder?     @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  exchangeOrderId String?
+  symbol          String
+  side            ExchangeOrderSide
+  qty             Decimal            @db.Decimal(30, 10)
+  price           Decimal            @db.Decimal(30, 10)
+  fee             Decimal?           @db.Decimal(20, 8)
+  exchTs          DateTime
+  ingestedAt      DateTime           @default(now())
+
+  @@unique([connectionId, externalId])
+  @@index([connectionId, exchTs])
+  @@index([orderId])
+  @@map("exchange_fill")
 }

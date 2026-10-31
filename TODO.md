@@ -187,20 +187,20 @@ Legend:
 # PART B — Trading platform foundation (Phase 0)
 
 ## B0. Research spikes (before writing code; record findings in `reports/`)
-- [ ] B0.1 Read the MPX `packages/exchange/src/{types,delta,crypto,registry,index}.ts` line by line; write `reports/mpx-port-notes.md` `S`
-- [ ] B0.2 Read the MPX engine `apps/engine/src/{main,watchers,fanout,sizing,position,reconcile,stats,killswitch}.ts`; add to the port notes `S`
-- [ ] B0.3 Read the MPX web API routes (`apps/web/src/app/api/**`) and `lib/services/copy.ts`; map each to an Express route in our API `S`
-- [ ] B0.4 Delta India API docs: orders (market/limit/stop), cancel, leverage, positions, `/v2/orders/{id}`, WS channels (`user_trades`, `orders`, `positions`, `margins`), rate limits, testnet differences. Note the exact endpoints `M`
-- [ ] B0.5 Same API research for the Binance USDⓈ-M futures API `M`
-- [ ] B0.6 Same API research for the Bybit v5 API `M`
-- [ ] B0.7 Same API research for the OKX v5 API `M`
-- [ ] B0.8 Same API research for CoinDCX futures, KuCoin futures, Shark, Pi42, Mudrex, CoinSwitch (the venues MP and CM list). Mark which have public trading APIs `M`
-- [ ] B0.9 Static egress IP options on Railway (or a proxy) for IP-whitelisted keys; costs; decide with the user `S`
-- [ ] B0.10 Legal: write a 1-page question list for a SEBI/algo-trading opinion (copy trading, strategy execution, paid leaders later) and send it to the user `S`
-- [ ] B0.11 Check `packages/core` / `lib/market/providers/binance.ts` for reusable candle/WS code for the indicator engine `S`
+- [x] B0.1 Read the MPX `packages/exchange/src/{types,delta,crypto,registry,index}.ts` line by line; write `reports/mpx-port-notes.md` `S`
+- [x] B0.2 Read the MPX engine `apps/engine/src/{main,watchers,fanout,sizing,position,reconcile,stats,killswitch}.ts`; add to the port notes `S`
+- [x] B0.3 Read the MPX web API routes (`apps/web/src/app/api/**`) and `lib/services/copy.ts`; map each to an Express route in our API `S`
+- [x] B0.4 Delta India API docs: orders (market/limit/stop), cancel, leverage, positions, `/v2/orders/{id}`, WS channels (`user_trades`, `orders`, `positions`, `margins`), rate limits, testnet differences. Note the exact endpoints `M`
+- [x] B0.5 Same API research for the Binance USDⓈ-M futures API `M`
+- [x] B0.6 Same API research for the Bybit v5 API `M`
+- [x] B0.7 Same API research for the OKX v5 API `M`
+- [x] B0.8 Same API research for CoinDCX futures, KuCoin futures, Shark, Pi42, Mudrex, CoinSwitch (the venues MP and CM list). Mark which have public trading APIs `M`
+- [x] B0.9 Static egress IP options on Railway (or a proxy) for IP-whitelisted keys; costs; decide with the user `S`
+- [x] B0.10 Legal: write a 1-page question list for a SEBI/algo-trading opinion (copy trading, strategy execution, paid leaders later) and send it to the user `S`
+- [x] B0.11 Check `packages/core` / `lib/market/providers/binance.ts` for reusable candle/WS code for the indicator engine `S`
 
 ## B1. Database (local test DB first)
-- [ ] B1.1 Design the Prisma models with FKs to `user`. Write the schema diff for review `M`:
+- [x] B1.1 Design the Prisma models with FKs to `user`. Write the schema diff for review `M`:
   - `ExchangeConnection` (exchange enum, label, apiKeyEnc, apiSecretEnc, passphraseEnc?, keyLast4, keyFingerprint, accountRef, env testnet|live, status, lastError, lastCheckedAt, permissions JSON)
   - `Leader`, `LeaderEquityPoint`, `LeaderStat`
   - `Follow`
@@ -208,15 +208,15 @@ Legend:
   - `Order` (generalised from MPX `CopyOrder`: source manual|copy|strategy|webhook; type market/limit/stop; tif; reduceOnly; status incl. SUBMITTED/OPEN/PARTIAL/FILLED/CANCELLED/REJECTED/SKIPPED/EXPIRED; exchangeOrderId; clientOrderId unique; slippageBps; leaderPrice; error)
   - `Position` (per connection + symbol: qty, avgEntry, mark, uPnL, rPnL, source)
   - `ExchangeFill` (our own fills, for history + journal)
-- [ ] B1.2 Enums: `Exchange` (DELTA_INDIA, BINANCE, BYBIT, OKX, COINDCX, KUCOIN… only those that have adapters), `ConnectionStatus`, `LeaderStatus`, `FollowStatus`, `SizingMode`, `OrderStatus`, `OrderType`, `OrderSource` `S`
-- [ ] B1.3 Indexes for the hot paths: fills by leader+time, orders by follow+status, positions by connection `S`
-- [ ] B1.4 Create the migration on the local test DB (`prisma migrate dev` with `DATABASE_URL` set to the test DB **only**) `S`
-- [ ] B1.5 Seed script for the test DB: one leader + two followers (fake users, no real keys) `S`
-- [ ] B1.6 Review the SQL; confirm it is additive only (no DROP or ALTER of existing tables) `S`
+- [x] B1.2 Enums: `Exchange` (DELTA_INDIA, BINANCE, BYBIT, OKX, COINDCX, KUCOIN… only those that have adapters), `ConnectionStatus`, `LeaderStatus`, `FollowStatus`, `SizingMode`, `OrderStatus`, `OrderType`, `OrderSource` `S`
+- [x] B1.3 Indexes for the hot paths: fills by leader+time, orders by follow+status, positions by connection `S`
+- [x] B1.4 Create the migration on the local test DB (`prisma migrate dev` with `DATABASE_URL` set to the test DB **only**) `S`
+- [x] B1.5 Seed script for the test DB: one leader + two followers (fake users, no real keys) `S`
+- [x] B1.6 Review the SQL; confirm it is additive only (no DROP or ALTER of existing tables) `S`
 
 ## B2. `packages/exchange`
-- [ ] B2.1 Create the package (raw TS like the other packages, so it runs under tsx) `S`
-- [ ] B2.2 Port the `Exchange` interface from MPX `types.ts`, then extend it `M`:
+- [x] B2.1 Create the package (raw TS like the other packages, so it runs under tsx) `S`
+- [x] B2.2 Port the `Exchange` interface from MPX `types.ts`, then extend it `M`:
   - `placeOrder` (market/limit/stop, tif, reduceOnly)
   - `cancelOrder`
   - `getOrder`
@@ -226,17 +226,17 @@ Legend:
   - `closePosition`
   - `streamOrders`
   - `streamPositions`
-- [ ] B2.3 Port the Delta adapter (REST HMAC signing, products cache, tickers, wallet, positions, fills, market order) `M`
-- [ ] B2.4 Port the Delta WS (auth → subscribe after auth, heartbeat, 25s ping, 40s idle → reconnect) `M`
-- [ ] B2.5 Add to Delta: limit orders, stop orders, cancel, order status, leverage, open orders, the `orders`/`positions` WS channels `M`
-- [ ] B2.6 Environment explicit and **required**: `DELTA_ENV=testnet|live`, no silent prod default. Fail fast on startup `S`
+- [x] B2.3 Port the Delta adapter (REST HMAC signing, products cache, tickers, wallet, positions, fills, market order) `M`
+- [x] B2.4 Port the Delta WS (auth → subscribe after auth, heartbeat, 25s ping, 40s idle → reconnect) `M`
+- [ ] B2.5 Add to Delta: limit orders, stop orders, cancel, order status, leverage, open orders, the `orders`/`positions` WS channels `M` (REST parts done 31 Oct; `orders`/`positions` WS channels left)
+- [x] B2.6 Environment explicit and **required**: `DELTA_ENV=testnet|live`, no silent prod default. Fail fast on startup `S`
 - [ ] B2.7 Use our `lib/secrets.ts` for keys (move the shared crypto into a package if the engine needs it). No second vault `S`
-- [ ] B2.8 Key fingerprint (HMAC) for duplicate detection, without decrypting stored keys `S`
-- [ ] B2.9 Error taxonomy: `ExchangeAuthError`, `ExchangeRateLimitError`, `ExchangeRequestError`, `InsufficientMarginError`, `InstrumentError` `S`
-- [ ] B2.10 Rate limiter per exchange + key (token bucket; reuse `lib/market` token-bucket if it fits) `S`
-- [ ] B2.11 Unit tests: signing (known vectors), size rounding (0.997 → 1 regression from MPX), instrument mapping, error mapping `M`
-- [ ] B2.12 Contract test against Delta testnet behind an env flag (verify → account → products → place tiny order → cancel) `M`
-- [ ] B2.13 Exchange registry for the UI: status live/beta/soon, required permissions, whitelist IPs, how-to video URL, partner sign-up URL `S`
+- [x] B2.8 Key fingerprint (HMAC) for duplicate detection, without decrypting stored keys `S`
+- [x] B2.9 Error taxonomy: `ExchangeAuthError`, `ExchangeRateLimitError`, `ExchangeRequestError`, `InsufficientMarginError`, `InstrumentError` `S`
+- [x] B2.10 Rate limiter per exchange + key (token bucket; reuse `lib/market` token-bucket if it fits) `S`
+- [x] B2.11 Unit tests: signing (known vectors), size rounding (0.997 → 1 regression from MPX), instrument mapping, error mapping `M`
+- [ ] B2.12 Contract test against Delta testnet behind an env flag (verify → account → products → place tiny order → cancel) `M` (written: `pnpm --filter @tradinjournal/exchange test:testnet`; waiting on testnet keys)
+- [x] B2.13 Exchange registry for the UI: status live/beta/soon, required permissions, whitelist IPs, how-to video URL, partner sign-up URL `S`
 
 ## B3. API: exchange connections (`apps/api/src/modules/exchanges/`)
 - [ ] B3.1 Routes `M`:

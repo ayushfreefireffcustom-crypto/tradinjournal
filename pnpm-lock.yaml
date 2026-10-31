@@ -261,6 +261,15 @@ importers:
         specifier: ^6.1.0
         version: 6.19.3(typescript@5.9.3)
 
+  packages/exchange:
+    devDependencies:
+      '@types/node':
+        specifier: ^22.10.2
+        version: 22.19.21
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@22.19.21)(lightningcss@1.32.0)
+
   packages/logger:
     dependencies:
       winston:
