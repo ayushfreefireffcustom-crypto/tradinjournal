@@ -73,7 +73,7 @@ export default function SourcePicker({
         ))}
       </div>
       <div className="mk-dfoot mk-dfoot--split">
-        {error ? <span className="mk-err" role="alert" data-testid="source-picker-error">{error}</span> : <span className="x-muted">{sel.size} selected</span>}
+        {error ? <span className="mk-err" role="alert" data-testid="source-picker-error">{error}</span> : <span className="x-muted">{sel.size ? `${sel.size} selected` : 'None chosen: every outlet is shown'}</span>}
         {sel.size > 0 && <button onClick={() => setSel(new Set())} className="x-btn x-btn--sm x-btn--ghost">Clear</button>}
         <button onClick={() => onSave([...sel])} disabled={saving} data-testid="source-picker-save" className="x-btn x-btn--hi mk-push">{saving ? 'Saving…' : 'Save'}</button>
       </div>

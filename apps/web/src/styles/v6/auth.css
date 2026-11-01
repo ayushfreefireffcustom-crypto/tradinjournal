@@ -80,7 +80,7 @@ html[data-theme=light]:has(.v6.au-root), html[data-theme=light] body:has(.v6.au-
 .v6 .au-ok, .v6 .au-lock { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); pointer-events: none; }
 .v6 .au-ok { color: var(--g); }
 .v6 .au-lock { color: var(--dim); }
-.v6 .au-flag { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-size: 18px; line-height: 1; pointer-events: none; }
+.v6 .au-flag { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-size: 12px; line-height: 1; color: var(--mut); pointer-events: none; } /* ISO code, not a flag emoji (A0.21) */
 .v6 .au-reveal {
   position: absolute; right: 5px; top: 50%; transform: translateY(-50%); width: 34px; height: 34px; border-radius: 9px;
   border: 0; background: none; color: var(--dim); display: grid; place-items: center; cursor: pointer;

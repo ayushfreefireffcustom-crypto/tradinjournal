@@ -29,7 +29,8 @@ export default function DayDialog({ date, trades, accountId, onClose }: { date: 
   const sorted = [...trades].sort((a, b) => +new Date(a.closeTime!) - +new Date(b.closeTime!));
   const total = sorted.reduce((s, t) => s + t.netPnl, 0);
   const wins = sorted.filter(t => t.netPnl > 0).length;
-  const dateLabel = date.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  // One line even on a phone: "Fri 23 Oct" (with the year only when it isn't this year).
+  const dateLabel = date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', ...(date.getFullYear() !== new Date().getFullYear() ? { year: 'numeric' } : {}) });
 
   if (!mounted) return null;
   return createPortal(

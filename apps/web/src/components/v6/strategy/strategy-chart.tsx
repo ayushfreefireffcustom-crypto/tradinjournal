@@ -10,6 +10,7 @@ import { useToast } from '@/components/toast';
 import { ApiError } from '@/lib/copy-api';
 import { fmtPrice } from '@/lib/hub-api';
 import { strategiesApi, tone, usd, type ChartGroup, type ChartPreview, type ChartThreshold, type SignalGroup, type StrategyCondition, type StrategySpec } from '@/lib/strategies-api';
+import { IClose } from '@/components/v3/icons';
 
 const OPS: Record<string, string> = { gt: '>', gte: '≥', lt: '<', lte: '≤', eq: '=', crosses_above: 'crosses above', crosses_below: 'crosses below' };
 const GROUP_TEXT: Record<ChartGroup, string> = { long: 'Long entry', short: 'Short entry', exitLong: 'Exit long', exitShort: 'Exit short' };
@@ -386,7 +387,7 @@ export default function StrategyChart({ spec, set }: { spec: StrategySpec; set: 
         )}
         {level && d && (
           <div className="sc-pop" style={{ left: Math.min(Math.max(8, level.x - 120), Math.max(8, plotW - 250)), top: Math.min(level.y + 12, PRICE_H - 40) }} role="dialog" aria-label="Add a price level" data-testid="sc-level">
-            <div className="sc-pop-h"><b className="m">{fmtPrice(sig(level.price, 6))}</b><button type="button" className="x-btn x-btn--sm x-btn--ghost" onClick={() => setLevel(null)} aria-label="Cancel">✕</button></div>
+            <div className="sc-pop-h"><b className="m">{fmtPrice(sig(level.price, 6))}</b><button type="button" className="x-btn x-btn--sm x-btn--ghost" onClick={() => setLevel(null)} aria-label="Cancel"><IClose size={14} /></button></div>
             {(['long', 'short', 'exitLong', 'exitShort'] as ChartGroup[]).filter(canDraw).map(g => (
               <div key={g} className="sc-pop-r">
                 <span>{GROUP_TEXT[g]} when the close</span>

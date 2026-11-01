@@ -373,8 +373,8 @@ export default function NewsFeed({ userSymbols = EMPTY_SYMBOLS, symbolsReady = t
             {updatedAt ? <span>Updated {timeAgo(updatedAt)}</span> : loading ? <span>Loading…</span> : null}
           </span>
           <div className="x-r">
-            <button onClick={() => setPickerOpen(true)} data-testid="news-customize-btn" className="x-btn x-btn--sm" aria-pressed={prefs.length > 0} title="Choose your outlets">
-              Sources{prefs.length > 0 ? <span className="mk-count m">{prefs.length}</span> : catalog.length ? <span className="x-dim m">{catalog.length}</span> : null}
+            <button onClick={() => setPickerOpen(true)} data-testid="news-customize-btn" className="x-btn x-btn--sm" aria-pressed={prefs.length > 0} title={prefs.length > 0 ? `${prefs.length} chosen outlets` : 'Showing every outlet. Choose yours'}>
+              Sources{prefs.length > 0 && <span className="mk-count m">{prefs.length}</span>}
             </button>
             <button onClick={runBrief} data-testid="news-brief-btn" className="x-btn x-btn--sm x-btn--hi">Brief</button>
           </div>

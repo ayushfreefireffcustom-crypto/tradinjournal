@@ -20,9 +20,12 @@ export interface PaperFill {
 export default function PaperBlotter({
   fills,
   onClear,
+  onOpenSignals,
 }: {
   fills: PaperFill[];
   onClear: () => void;
+  /** Shown as the empty state's action. */
+  onOpenSignals?: () => void;
 }) {
   const [marks, setMarks] = useState<Record<string, string>>({});
 
@@ -41,7 +44,8 @@ export default function PaperBlotter({
       <section className="x-card x-empty mc-paper-empty" data-testid="macro-paper-empty">
         <span className="x-ic"><INote /></span>
         <b>Paper blotter is empty</b>
-        <p>Fill a signal from the SignalX signals section (approved members) to track a simulated position here. It is a practice ledger only, with no real money at risk.</p>
+        <p>Fill a signal from SignalX signals (approved members) to track a simulated position here. It is a practice ledger only, with no real money at risk.</p>
+        {onOpenSignals && <button type="button" className="x-btn x-btn--sm" onClick={onOpenSignals} data-testid="macro-paper-open-signals">Open SignalX signals</button>}
       </section>
     );
   }

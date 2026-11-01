@@ -3,11 +3,12 @@
 // Account cards (H6–H8): editing the profile, the activity log, downloading
 // your data and deleting the account.
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ComponentType } from 'react';
 import { useToast } from '@/components/toast';
 import { Modal } from '@/components/v6/copy/parts';
 import { accountApi, shownIp, type ActivityGroup, type ActivityItem, type PlanSummary, type Profile } from '@/lib/account-api';
 import { ApiError } from '@/lib/copy-api';
+import { IAlert, IArrowRight, ICheck, IClose, IDownload, IExchange, ILock, IPlay, IPlus, IStop } from '@/components/v3/icons';
 
 // ── Profile ──
 const zones = (): string[] => {
@@ -59,7 +60,15 @@ export function ProfileEditCard({ profile, onSaved }: { profile: Profile | null;
 
 // ── Activity ──
 const GROUPS: Array<[ActivityGroup, string]> = [['all', 'All'], ['security', 'Sign-ins and security'], ['trading', 'Trading changes'], ['orders', 'Orders']];
-const ICON: Record<string, string> = { sign_in: '→', sessions_revoked: '⎋', password_changed: '•', two_factor_on: '✓', two_factor_off: '!', backup_codes_new: '•', profile_updated: '•', data_exported: '↓', delete_requested: '!', exchange_connected: '+', exchange_removed: '−', follow_started: '+', follow_stopped: '−', api_key_created: '+', api_key_revoked: '−', deployment_started: '▶', deployment_stopped: '■', deployment_changed: '•', subscription_changed: '•', follow_changed: '•', leader_changed: '•', webhook_changed: '•', protection_changed: '•', order_cancelled: '×', order: '◆' };
+// Line icons per activity kind; anything else gets a dot.
+type Ic = ComponentType<{ size?: number }>;
+const IMinus: Ic = ({ size = 12 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden><path d="M6 12h12" /></svg>;
+const IDot: Ic = () => <svg width="6" height="6" viewBox="0 0 6 6" aria-hidden><circle cx="3" cy="3" r="3" fill="currentColor" /></svg>;
+const ICON: Record<string, Ic> = {
+  sign_in: IArrowRight, sessions_revoked: ILock, two_factor_on: ICheck, two_factor_off: IAlert, data_exported: IDownload, delete_requested: IAlert,
+  exchange_connected: IPlus, exchange_removed: IMinus, follow_started: IPlus, follow_stopped: IMinus, api_key_created: IPlus, api_key_revoked: IMinus,
+  deployment_started: IPlay, deployment_stopped: IStop, order_cancelled: IClose, order: IExchange,
+};
 
 export function ActivityList() {
   const [group, setGroup] = useState<ActivityGroup>('all');
@@ -101,7 +110,7 @@ export function ActivityList() {
               <ul className="ac-act">
                 {d.rows.map((it) => (
                   <li key={it.id} className={`ac-act-${it.group}`} data-testid="act-row">
-                    <span className="ac-act-ic" aria-hidden>{ICON[it.kind] ?? '•'}</span>
+                    <span className="ac-act-ic" aria-hidden>{(() => { const Icon = ICON[it.kind] ?? IDot; return <Icon size={12} />; })()}</span>
                     <div><b>{it.summary}</b><span className="x-muted">{new Date(it.at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}{it.device ? ` · ${it.device}` : ''}{shownIp(it.ip) ? ` · ${shownIp(it.ip)}` : ''}</span></div>
                   </li>
                 ))}

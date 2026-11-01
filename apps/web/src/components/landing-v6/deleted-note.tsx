@@ -2,6 +2,7 @@
 
 // Shown once on the landing page after someone deletes their account (H6).
 import { useEffect, useState } from 'react';
+import { IClose } from '@/components/v3/icons';
 
 export default function DeletedNote() {
   const [show, setShow] = useState(false);
@@ -16,7 +17,7 @@ export default function DeletedNote() {
   return (
     <div role="status" className="lp6-deleted" data-testid="deleted-note">
       Your account and its data have been deleted. Thanks for trying TRADElogs.
-      <button type="button" onClick={() => setShow(false)} aria-label="Dismiss">✕</button>
+      <button type="button" onClick={() => setShow(false)} aria-label="Dismiss"><IClose size={14} /></button>
     </div>
   );
 }

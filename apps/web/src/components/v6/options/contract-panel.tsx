@@ -9,6 +9,7 @@ import { useToast } from '@/components/toast';
 import { useLoad, usePoll } from '@/components/v6/copy/parts';
 import { LineChart } from './charts';
 import { addLeg, daysLabel, expiryLabel, fmtCompact, fmtNum, fmtUsd, ivPct, optionsApi, type CandleKind, type OptionsCtx, type Resolution } from '@/lib/options-api';
+import { IClose } from '@/components/v3/icons';
 
 const KINDS: Array<[CandleKind, string]> = [['mark', 'Mark'], ['price', 'Traded'], ['iv', 'IV'], ['oi', 'Open interest']];
 const RANGES: Array<[Resolution, number, string]> = [['15m', 1, '1D'], ['1h', 3, '3D'], ['1h', 7, '7D'], ['4h', 30, '30D']];
@@ -44,7 +45,7 @@ export default function ContractPanel({ ctx, symbol, onClose }: { ctx: OptionsCt
           <h2 className="m">{symbol}</h2>
           {q && <span className="x-muted">{q.kind === 'call' ? 'Call' : 'Put'} · strike {fmtNum(q.strike, 2)} · expires {expiryLabel(q.expiry)} ({daysLabel(d!.days)})</span>}
         </div>
-        <button type="button" className="x-btn x-btn--ghost x-btn--sm" onClick={onClose} aria-label="Close contract" data-testid="op-panel-close">✕</button>
+        <button type="button" className="x-btn x-btn--ghost x-btn--sm" onClick={onClose} aria-label="Close contract" data-testid="op-panel-close"><IClose size={14} /></button>
       </div>
       {c.error && !d ? <p className="cp-err">{c.error}</p> : !q ? <div className="x-skel" style={{ height: 300 }} /> : (
         <>

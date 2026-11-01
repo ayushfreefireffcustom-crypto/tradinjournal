@@ -173,7 +173,7 @@ export default function MacroPage() {
                   <MacroAssistant />
                 </div>
               )}
-              {panel === 'paper' && <PaperBlotter fills={fills} onClear={() => setFills([])} />}
+              {panel === 'paper' && <PaperBlotter fills={fills} onClear={() => setFills([])} onOpenSignals={() => setPanel('signals')} />}
               {panel === 'access' && <MembershipPanel />}
             </div>
           </div>

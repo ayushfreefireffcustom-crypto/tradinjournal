@@ -14,6 +14,7 @@ import { fmtPrice } from '@/lib/hub-api';
 import { STATUS_TEXT, deploymentsApi, pct, tone, usd, type DeployAction, type DeploymentDetail } from '@/lib/strategies-api';
 import '@/styles/v6/copy.css';
 import '@/styles/v6/markets.css';
+import { ICheck, IClose } from '@/components/v3/icons';
 
 type Feed = 'all' | 'actions' | 'checks';
 const ACTIONS = new Set(['started', 'filled', 'closed', 'stop_moved', 'paused', 'resumed', 'stopping', 'stopped', 'settled', 'emergency', 'size', 'error', 'killed', 'skipped']);
@@ -107,7 +108,7 @@ export default function DeploymentPage() {
             {lastCheck && feed !== 'actions' && (
               <div className="dp-last" data-testid="dp-last-check">
                 <div className="x-muted">Last check · {new Date(lastCheck.at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}{lastCheck.symbol ? ` · ${lastCheck.symbol}` : ''}</div>
-                <ul>{lastCheck.data!.conditions!.map((c, k) => <li key={k} className={c.met ? 'pos' : 'neg'}><span aria-hidden>{c.met ? '✓' : '✗'}</span> {c.text}</li>)}</ul>
+                <ul>{lastCheck.data!.conditions!.map((c, k) => <li key={k} className={c.met ? 'pos' : 'neg'}><span aria-hidden>{c.met ? <ICheck size={13} /> : <IClose size={13} />}</span> {c.text}</li>)}</ul>
               </div>
             )}
             {!events.length ? <p className="x-muted">Nothing yet.</p> : (

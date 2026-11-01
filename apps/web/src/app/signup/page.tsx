@@ -94,7 +94,6 @@ export default function SignupPage() {
 
   const ok = (v: boolean) => v && <span className="au-ok" aria-hidden>{I_CHECK}</span>;
   const nameOk = name.trim().length > 1, emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  const flagOf = (cc: string) => (/^[A-Z]{2}$/.test(cc) ? String.fromCodePoint(...[...cc].map(ch => 0x1f1e6 + ch.charCodeAt(0) - 65)) : '');
   return (
     <AuthShell variant="signup" testId="signup-page" wide top={<>Already journaling? <Link href="/login" data-testid="signup-to-login">Sign in</Link></>}>
       <form onSubmit={submit} data-testid="signup-form">
@@ -122,7 +121,7 @@ export default function SignupPage() {
           </div>
           <div className="x-field"><label htmlFor="su-country">Country</label>
             <div className="au-inw">
-              {country && <span className="au-flag" aria-hidden>{flagOf(country)}</span>}
+              {country && <span className="au-flag m" aria-hidden>{country}</span>}
               <select id="su-country" className="x-select" required value={country} onChange={e => setCountry(e.target.value)} data-testid="signup-country" style={country ? { paddingLeft: 44 } : undefined}>
                 <option value="">Select country…</option>
                 {COUNTRIES.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}

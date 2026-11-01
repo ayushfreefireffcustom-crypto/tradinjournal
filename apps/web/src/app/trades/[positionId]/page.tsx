@@ -157,7 +157,7 @@ function TradeDetail() {
                 <span className="x-mk">{tickerMark(trade.symbol)}</span>
                 <div style={{ minWidth: 0 }}>
                   <h2>{trade.symbol}<SideChip dir={trade.direction} /><span className={`x-tag ${trade.status === 'OPEN' ? 'x-tag--g' : ''}`}>{trade.status === 'OPEN' ? 'Open' : 'Closed'}</span></h2>
-                  <p>{kind ? `${kind} · ` : ''}<span className="m tr-nw">{when(trade)}</span> · <span className="tr-nw">held <span className="m">{fmtHold(trade.durationSecs)}</span></span></p>
+                  <p>{kind ? `${kind} · ` : ''}<span className="tr-nw">{when(trade)}</span> · <span className="tr-nw">held <span className="m">{fmtHold(trade.durationSecs)}</span></span></p>
                 </div>
               </div>
               <div className="tr-net">
@@ -234,7 +234,7 @@ function TradeDetail() {
                                 <td className="n m">{parseFloat(d.volume).toFixed(2)}</td>
                                 <td className="n m">{fmtPrice(parseFloat(d.price))}</td>
                                 <td className={`n m ${r.noPnl ? 'x-muted' : tone(r.p)}`}>{r.noPnl ? '—' : fmtUsd(r.p)}</td>
-                                <td className={`n m ${r.c < 0 ? 'neg' : 'x-muted'}`}>{r.c ? fmtUsd(r.c) : '—'}</td>
+                                <td className="n m x-muted">{r.c ? fmtUsd(r.c) : '—'}</td>
                               </tr>
                             );
                           })}

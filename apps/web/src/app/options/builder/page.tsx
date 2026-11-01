@@ -19,6 +19,7 @@ import {
 import '@/styles/v6/copy.css';
 import '@/styles/v6/markets.css';
 import '@/styles/v6/options.css';
+import { IClose } from '@/components/v3/icons';
 
 const CATS: Array<[TemplateInfo['categories'][number], string]> = [['popular', 'Popular'], ['bullish', 'Bullish'], ['bearish', 'Bearish'], ['neutral', 'Neutral'], ['hedging', 'Hedging']];
 const FILL: Record<string, string> = { easy: 'Easy', ok: 'Fair', hard: 'Thin', no_quote: 'No quote' };
@@ -166,7 +167,7 @@ export default function OptionsBuilderPage() {
                       ) : <span className="x-muted op-leg-fut">at the index</span>}
                       <input className="x-input m op-qty" type="number" min={1} value={l.qty} onChange={(e) => setLeg(i, { qty: Math.max(1, Math.floor(Number(e.target.value) || 1)) })} aria-label="Contracts" data-testid={`op-leg-${i}-qty`} />
                       <input className="x-input m op-price" type="number" min={0} step="any" placeholder={res ? fmtNum(res.mark ?? res.price, 1) : 'mark'} value={l.price ?? ''} onChange={(e) => setLeg(i, { price: e.target.value === '' ? undefined : Math.max(0, Number(e.target.value)) })} aria-label="Price (blank = mark)" data-testid={`op-leg-${i}-price`} />
-                      <button type="button" className="x-btn x-btn--sm x-btn--ghost" onClick={() => setLegs((ls) => ls.filter((_, k) => k !== i))} aria-label={`Remove leg ${i + 1}`} data-testid={`op-leg-${i}-rm`}>✕</button>
+                      <button type="button" className="x-btn x-btn--sm x-btn--ghost" onClick={() => setLegs((ls) => ls.filter((_, k) => k !== i))} aria-label={`Remove leg ${i + 1}`} data-testid={`op-leg-${i}-rm`}><IClose size={14} /></button>
                       {res && <span className="op-leg-info x-muted m">{res.symbol ?? 'Future'} · {fmtNum(res.price, 1)}{res.iv != null ? ` · IV ${ivPct(res.iv)}` : ''}</span>}
                     </div>
                   );
