@@ -143,22 +143,22 @@ describe.skipIf(!local)('marketplace', () => {
   });
 
   it('pauses, resizes, resumes and cancels a subscription', async () => {
-    let s = await svc.manageSubscription(u.sub!, subId, 'pause');
+    let s = await svc.manageSubscription(u.sub!, subId, 'pause', deps);
     expect(s.status).toBe('paused');
     expect(s.deployment!.status).toBe('paused');
     s = await svc.resizeSubscription(u.sub!, subId, 0.5);
     expect(s.deployment!.multiplier).toBe(0.5);
-    s = await svc.manageSubscription(u.sub!, subId, 'resume');
+    s = await svc.manageSubscription(u.sub!, subId, 'resume', deps);
     expect(s.status).toBe('active');
     expect(s.params).toEqual([{ key: 'p1', label: 'Stop (%)', value: 3 }]);
-    s = await svc.manageSubscription(u.sub!, subId, 'cancel');
+    s = await svc.manageSubscription(u.sub!, subId, 'cancel', deps);
     expect(s.status).toBe('cancelled');
     expect(s.deployment!.status).toBe('stopping');
     await expect(svc.manageSubscription(u.sub!, subId, 'pause')).rejects.toThrow(/cancelled/);
     // Cancelled frees the slot: subscribing again works.
     const again = await svc.subscribe(u.sub!, templateId, { mode: 'paper' });
     expect(again.id).not.toBe(subId);
-    await svc.manageSubscription(u.sub!, again.id, 'cancel_settle');
+    await svc.manageSubscription(u.sub!, again.id, 'cancel_settle', deps);
     expect((await deploys.getDeployment(u.sub!, again.deploymentId)).status).toBe('stopped');
   });
 

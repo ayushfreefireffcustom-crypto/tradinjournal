@@ -421,14 +421,14 @@ async function ownSub(userId: string, id: string) {
 }
 
 /** H3: pause / resume / cancel (stop or settle now) / size. The run is the subscriber's own deployment. */
-export async function manageSubscription(userId: string, id: string, action: 'pause' | 'resume' | 'cancel' | 'cancel_settle') {
+export async function manageSubscription(userId: string, id: string, action: 'pause' | 'resume' | 'cancel' | 'cancel_settle', deps: StrategyDeps = defaultStrategyDeps) {
   const s = await ownSub(userId, id);
   if (action === 'pause' || action === 'resume') {
-    await controlDeployment(userId, s.deploymentId, action);
+    await controlDeployment(userId, s.deploymentId, action, {}, deps);
     await prisma.templateSubscription.update({ where: { id }, data: { status: action === 'pause' ? 'paused' : 'active' } });
   } else {
     // Stop lets open trades finish on their own exits; settle closes them now.
-    await controlDeployment(userId, s.deploymentId, action === 'cancel' ? 'stop' : 'settle');
+    await controlDeployment(userId, s.deploymentId, action === 'cancel' ? 'stop' : 'settle', {}, deps);
     await prisma.templateSubscription.update({ where: { id }, data: { status: 'cancelled', cancelledAt: new Date() } });
   }
   return (await mySubscriptions(userId)).find((x) => x.id === id)!;
