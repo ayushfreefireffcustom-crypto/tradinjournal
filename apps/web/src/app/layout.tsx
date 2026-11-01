@@ -4,6 +4,7 @@ import './globals.css';
 import ClickBurstEffect from '@/components/click-burst-effect';
 import CursorGlow from '@/components/cursor-glow';
 import { ToastProvider } from '@/components/toast';
+import PwaSetup from '@/components/pwa-setup';
 
 // Inter is the sole brand typeface (Black 900 for display/logo, Bold 700 for
 // headings, SemiBold 600 for UI labels, Regular 400 for body). Self-hosted via
@@ -25,6 +26,10 @@ const THEME_SCRIPT = `(function(){var t='dark';try{var q=new URLSearchParams(loc
 export const metadata: Metadata = {
   title: 'TRADElogs // Tactical Trade Journal',
   description: 'Behavioural analytics & trade journaling for MT5 forex traders. Read your edge in raw, technical clarity.',
+  // Installable app (H14).
+  applicationName: 'TRADElogs',
+  appleWebApp: { capable: true, title: 'TRADElogs', statusBarStyle: 'black-translucent' },
+  icons: { icon: [{ url: '/favicon.ico' }, { url: '/icon-192.png', sizes: '192x192', type: 'image/png' }], apple: [{ url: '/apple-touch-icon.png', sizes: '180x180' }] },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
@@ -42,6 +47,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <ClickBurstEffect />
         <CursorGlow />
         <ToastProvider>{children}</ToastProvider>
+        <PwaSetup />
       </body>
     </html>
   );

@@ -202,3 +202,44 @@ export function PlanCard() {
     </section>
   );
 }
+
+// ── Tour (H9) ──
+export function TourCard() {
+  const [done, setDone] = useState(false);
+  return (
+    <section className="x-card ac-st-card" aria-labelledby="ac-tour" data-testid="tour-card">
+      <div className="x-ch"><h2 id="ac-tour">Product tour</h2></div>
+      <p className="x-muted">A short card on the dashboard, analytics, the coach, strategies and copy trading the first time you open each.</p>
+      <button className="x-btn" disabled={done} onClick={async () => { const { restartTour } = await import('@/components/v6/tour'); await restartTour(); setDone(true); }} data-testid="tour-restart">{done ? 'It starts on the dashboard' : 'Take the tour again'}</button>
+    </section>
+  );
+}
+
+// ── Install the app (H14) ──
+export function InstallCard() {
+  const [state, setState] = useState<'installed' | 'ready' | 'ios' | 'other' | null>(null);
+  useEffect(() => {
+    const read = () => {
+      const standalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as Navigator & { standalone?: boolean }).standalone === true;
+      const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
+      setState(standalone ? 'installed' : window.__tlInstall ? 'ready' : ios ? 'ios' : 'other');
+    };
+    read();
+    window.addEventListener('tl-install-ready', read);
+    return () => window.removeEventListener('tl-install-ready', read);
+  }, []);
+  if (!state) return null;
+  return (
+    <section className="x-card ac-st-card" aria-labelledby="ac-pwa" data-testid="install-card">
+      <div className="x-ch"><h2 id="ac-pwa">Install TRADElogs</h2>{state === 'installed' && <span className="x-tag x-tag--g">Installed</span>}</div>
+      {state === 'installed' ? <p className="x-muted">You’re using the installed app.</p>
+        : state === 'ready' ? (
+          <>
+            <p className="x-muted">Add TRADElogs to your home screen or dock. It opens in its own window, with notifications.</p>
+            <button className="x-btn" onClick={async () => { const { promptInstall } = await import('@/components/pwa-setup'); const r = await promptInstall(); if (r === 'accepted') setState('installed'); }} data-testid="install-btn">Install</button>
+          </>
+        ) : state === 'ios' ? <p className="x-muted" data-testid="install-ios">On iPhone or iPad: open this page in Safari, tap the Share button, then <b>Add to Home Screen</b>.</p>
+        : <p className="x-muted" data-testid="install-other">Use your browser’s menu and choose <b>Install TRADElogs</b> or <b>Add to Home Screen</b>. In Chrome and Edge it’s also the install icon at the right of the address bar.</p>}
+    </section>
+  );
+}

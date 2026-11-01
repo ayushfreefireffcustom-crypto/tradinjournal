@@ -4,7 +4,7 @@
 // opt-in weekly review email — nothing is sent until the trader turns it on).
 import AppShell from '@/components/app-shell';
 import { LocationSection, NotificationsSection, ProfileSection, SettingsAside } from '@/components/v6/account/settings';
-import { PlanCard, ProfileEditCard } from '@/components/v6/account/account-cards';
+import { InstallCard, PlanCard, ProfileEditCard, TourCard } from '@/components/v6/account/account-cards';
 import { useProfile } from '@/components/v6/account/security';
 import SettingsNav from '@/components/v6/account/settings-nav';
 import { useAccounts } from '@/lib/use-accounts';
@@ -23,6 +23,8 @@ export default function SettingsPage() {
           <ProfileSection accountCount={accounts.length} />
           <ProfileEditCard profile={profile} onSaved={setProfile} />
           <PlanCard />
+          <TourCard />
+          <InstallCard />
           <LocationSection />
           <NotificationsSection />
         </div>

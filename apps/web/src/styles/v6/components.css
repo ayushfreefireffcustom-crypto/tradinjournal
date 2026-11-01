@@ -183,3 +183,11 @@ html[data-theme=light] .v6 .x-dialog-scrim { background: rgba(17, 17, 19, .35); 
   .v6 .x-dialog-scrim { place-items: end center; padding: 0; }
   .v6 .x-dialog { width: 100%; border-radius: 24px 24px 0 0; max-height: 92dvh; padding: 22px 18px calc(22px + env(safe-area-inset-bottom)); }
 }
+/* Guided tour (H9) */
+.v6 .tour { position: fixed; z-index: 70; right: 20px; bottom: 20px; width: min(340px, calc(100vw - 32px)); background: var(--pop); box-shadow: var(--pop-shadow); border-radius: var(--r-inset); padding: 14px 16px; display: grid; gap: 6px; color: var(--tx); }
+.v6 .tour-step { font-size: 11.5px; color: var(--mut); }
+.v6 .tour b { font-weight: 500; font-size: 14.5px; }
+.v6 .tour p { margin: 0; font-size: 13px; line-height: 1.5; color: var(--mut); }
+.v6 .tour-act { display: flex; gap: 8px; align-items: center; justify-content: flex-end; margin-top: 6px; flex-wrap: wrap; }
+.v6 .tour-skip { margin-right: auto; background: none; border: 0; color: var(--mut); font: inherit; font-size: 12.5px; cursor: pointer; padding: 0; text-decoration: underline; text-underline-offset: 3px; }
+@media (max-width: 760px) { .v6 .tour { right: 16px; bottom: 76px; } }

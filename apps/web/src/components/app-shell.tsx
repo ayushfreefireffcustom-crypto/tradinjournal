@@ -17,6 +17,7 @@ import Frame, { COPY, NAV, type FrameNavItem } from '@/components/v6/frame';
 import { IAdmin, IBell, IBrokers, ILink, IPartner, ISearch, ISettings, IUsers } from '@/components/v3/icons';
 import '@/styles/v6/tokens.css';
 import '@/styles/v6/components.css';
+import Tour from '@/components/v6/tour';
 
 interface Props {
   children: ReactNode;
@@ -135,6 +136,7 @@ export default function AppShell({
       >
         {children}
       </Frame>
+      <Tour />
       {cmdk && <CommandPalette onClose={() => setCmdk(false)} onGo={href => { setCmdk(false); router.push(href); }} isAdmin={isAdmin} isPartner={isPartner} />}
     </>
   );
