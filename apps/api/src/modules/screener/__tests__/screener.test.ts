@@ -38,7 +38,7 @@ const path: Record<string, (i: number) => number> = { AAAUSDT: (i) => 100 - i, B
 const loads: string[] = [];
 const deps: ScreenerDeps = {
   universe: async (n) => universe.slice(0, n),
-  funding: async () => ({ source: 'bybit', rates: new Map([['AAAUSDT', -0.05], ['BBBUSDT', 0.03]]) }),
+  funding: async () => ({ source: 'bybit', rates: new Map([['AAAUSDT', -0.05], ['BBBUSDT', 0.03]]), oi: new Map([['AAAUSDT', 5e8], ['1000BBBUSDT', 2e9]]) }),
   loadCandles: async (symbol, _tf, limit) => {
     loads.push(symbol);
     if (!path[symbol]) return [];
@@ -89,6 +89,13 @@ describe('runScreen', () => {
     // Unknown funding sorts last either way.
     const asc = await runScreen(def({ sort: { by: 'funding', dir: 'asc' } }), deps);
     expect(asc.rows.map((x) => x.funding)).toEqual([-0.05, 0.03, null, null]);
+  });
+
+  it('filters and sorts by open interest, unknown last', async () => {
+    const r = await runScreen(def({ groups: [[{ type: 'field', field: 'openInterest', operator: 'gt', value: 1e9 }]] }), deps);
+    expect(r.rows.map((x) => [x.symbol, x.openInterest])).toEqual([['BBBUSDT', 2e9]]); // listed per 1000 on Bybit
+    const s = await runScreen(def({ sort: { by: 'openInterest', dir: 'desc' } }), deps);
+    expect(s.rows.map((x) => x.openInterest)).toEqual([2e9, 5e8, null, null]);
   });
 
   it('sorts by an indicator column', async () => {

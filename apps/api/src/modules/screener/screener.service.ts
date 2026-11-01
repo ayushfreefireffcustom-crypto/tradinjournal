@@ -53,6 +53,8 @@ export interface ScreenRow {
   change24h: number;
   volume24h: number;
   funding: number | null;
+  /** Open interest in USDT on the perpetual (Bybit), when there is one. */
+  openInterest: number | null;
   /** One value per indicator column, at the last closed bar. */
   values: Array<number | null>;
 }
@@ -121,6 +123,7 @@ const FIELD_OPS: Record<string, (a: number, b: number) => boolean> = { gt: (a, b
 
 /** Funding for a Binance symbol; Bybit lists some small coins per 1000 (1000PEPEUSDT). */
 export const fundingFor = (f: FundingMap, symbol: string) => f.rates.get(symbol) ?? f.rates.get(`1000${symbol}`) ?? null;
+export const oiFor = (f: FundingMap, symbol: string) => f.oi?.get(symbol) ?? f.oi?.get(`1000${symbol}`) ?? null;
 
 async function pool<T, R>(items: T[], n: number, fn: (t: T) => Promise<R>): Promise<R[]> {
   const out = new Array<R>(items.length);
@@ -135,7 +138,7 @@ async function pool<T, R>(items: T[], n: number, fn: (t: T) => Promise<R>): Prom
 }
 
 const SORTS: Record<string, (r: ScreenRow) => number | string | null> = {
-  symbol: (r) => r.symbol, price: (r) => r.price, change24h: (r) => r.change24h, volume24h: (r) => r.volume24h, funding: (r) => r.funding,
+  symbol: (r) => r.symbol, price: (r) => r.price, change24h: (r) => r.change24h, volume24h: (r) => r.volume24h, funding: (r) => r.funding, openInterest: (r) => r.openInterest,
 };
 
 export async function runScreen(def: ScreenDefinition, deps = defaultScreenerDeps): Promise<ScreenResult> {
@@ -159,6 +162,7 @@ export async function runScreen(def: ScreenDefinition, deps = defaultScreenerDep
   let barTime: number | null = null;
   const evaluated = await pool(universe, CONCURRENCY, async (u): Promise<ScreenRow | null> => {
     const fund = fundingFor(funding, u.symbol);
+    const oi = oiFor(funding, u.symbol);
     let closed: Candle[] = [];
     if (usesIndicators) {
       try {
@@ -181,7 +185,7 @@ export async function runScreen(def: ScreenDefinition, deps = defaultScreenerDep
       }
       return series.get(k)!.at(-1) ?? null;
     };
-    const fieldValue = (f: ScreenerFilter & { type: 'field' }) => (f.field === 'funding' ? fund : f.field === 'price' ? u.price : f.field === 'change24h' ? u.change24h : u.volume24h);
+    const fieldValue = (f: ScreenerFilter & { type: 'field' }) => (f.field === 'funding' ? fund : f.field === 'openInterest' ? oi : f.field === 'price' ? u.price : f.field === 'change24h' ? u.change24h : u.volume24h);
     const passes = (g: ScreenerFilter[]) => g.every((f) => {
       if (f.type === 'field') {
         const v = fieldValue(f);
@@ -192,7 +196,7 @@ export async function runScreen(def: ScreenDefinition, deps = defaultScreenerDep
     // No groups = everything matches (a plain ranking such as top gainers).
     const nonEmpty = def.groups.filter((g) => g.length > 0);
     if (nonEmpty.length && !nonEmpty.some(passes)) return null;
-    return { symbol: u.symbol, base: u.base, price: u.price, change24h: u.change24h, volume24h: u.volume24h, funding: fund, values: cols.map((c) => valueOf(c.operand)) };
+    return { symbol: u.symbol, base: u.base, price: u.price, change24h: u.change24h, volume24h: u.volume24h, funding: fund, openInterest: oi, values: cols.map((c) => valueOf(c.operand)) };
   });
   const rows = evaluated.filter((r): r is ScreenRow => r !== null);
 

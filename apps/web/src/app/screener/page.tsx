@@ -100,8 +100,8 @@ function sortRows(rows: ScreenRow[], sort: ScreenDefinition['sort']): ScreenRow[
 
 function csv(res: ScreenResult, rows: ScreenRow[]): string {
   const cell = (v: unknown) => { const s = v == null ? '' : String(v); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
-  const head = ['Symbol', 'Price', '24h change %', '24h volume USDT', 'Funding %', ...res.columns.map(c => c.label)];
-  return [head, ...rows.map(r => [r.symbol, r.price, r.change24h, r.volume24h, r.funding ?? '', ...r.values.map(v => v ?? '')])].map(l => l.map(cell).join(',')).join('\n');
+  const head = ['Symbol', 'Price', '24h change %', '24h volume USDT', 'Funding %', 'Open interest USDT', ...res.columns.map(c => c.label)];
+  return [head, ...rows.map(r => [r.symbol, r.price, r.change24h, r.volume24h, r.funding ?? '', r.openInterest ?? '', ...r.values.map(v => v ?? '')])].map(l => l.map(cell).join(',')).join('\n');
 }
 
 export default function ScreenerPage() {
@@ -274,7 +274,7 @@ export default function ScreenerPage() {
               <div className="x-tblwrap">
                 <table className="x-tbl trd-tbl sc-tbl" data-testid="sc-table">
                   <thead><tr>
-                    {sortHead('symbol', 'Pair')}{sortHead('price', 'Price', 'r')}{sortHead('change24h', '24h', 'r')}{sortHead('volume24h', 'Volume 24h', 'r')}{sortHead('funding', 'Funding', 'r')}
+                    {sortHead('symbol', 'Pair')}{sortHead('price', 'Price', 'r')}{sortHead('change24h', '24h', 'r')}{sortHead('volume24h', 'Volume 24h', 'r')}{sortHead('funding', 'Funding', 'r')}{sortHead('openInterest', 'Open interest', 'r')}
                     {res.columns.map((c, k) => sortHead(`col:${k}`, c.label, 'r'))}
                     <th />
                   </tr></thead>
@@ -286,6 +286,7 @@ export default function ScreenerPage() {
                         <td className={`r m ${tone(r.change24h)}`} data-label="24h">{pctS(r.change24h)}</td>
                         <td className="r m" data-label="Volume 24h">{vol(r.volume24h)}</td>
                         <td className={`r m ${tone(r.funding)}`} data-label="Funding">{pctS(r.funding, 4)}</td>
+                        <td className="r m" data-label="Open interest">{r.openInterest == null ? '—' : vol(r.openInterest)}</td>
                         {r.values.map((v, k) => <td key={k} className="r m" data-label={res.columns[k]!.label}>{num(v)}</td>)}
                         <td className="trd-acts">
                           <Link className="x-btn x-btn--sm" href={`/charts?symbol=${r.symbol}&tf=${res.timeframe}`}>Chart</Link>
@@ -330,7 +331,7 @@ function FilterRow({ row, catalogue, onChange, onRemove }: { row: Row; catalogue
   const allowRight = (it: CatalogueItem, out: CatalogueItem['outputs'][number]) => comparable(leftKey, { id: it.id, scale: out.scale });
   const ops: RowOp[] = row.subject === 'indicator' ? [...IA_OPERATORS, 'between'] : FIELD_OPS;
   const opLabel = (o: RowOp) => (o === 'between' ? 'is between' : OPERATOR_LABEL[o]);
-  const setSubject = (s: Subject) => onChange({ subject: s, operator: s === 'indicator' ? 'lt' : 'gt', right: val(s === 'funding' ? 0.01 : s === 'change24h' ? 5 : s === 'volume24h' ? 50_000_000 : s === 'indicator' ? 30 : 1) });
+  const setSubject = (s: Subject) => onChange({ subject: s, operator: s === 'indicator' ? 'lt' : 'gt', right: val(s === 'funding' ? 0.01 : s === 'change24h' ? 5 : s === 'volume24h' || s === 'openInterest' ? 50_000_000 : s === 'indicator' ? 30 : 1) });
   // A new left line that can't be compared with the right one: compare with a number instead.
   const setLeft = (left: IndicatorOperand) => {
     const s = scaleOf(left);

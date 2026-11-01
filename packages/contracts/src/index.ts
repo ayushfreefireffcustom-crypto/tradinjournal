@@ -340,7 +340,7 @@ export type UpdateIndicatorAlertInput = z.infer<typeof updateIndicatorAlertSchem
 
 export const SCREENER_TIMEFRAMES = ['15m', '1h', '4h', '1d'] as const;
 export const SCREENER_UNIVERSES = [50, 100, 200] as const;
-export const SCREENER_FIELDS = ['price', 'change24h', 'volume24h', 'funding'] as const;
+export const SCREENER_FIELDS = ['price', 'change24h', 'volume24h', 'funding', 'openInterest'] as const;
 export type ScreenerField = (typeof SCREENER_FIELDS)[number];
 const screenerIndicatorFilter = z.object({
   type: z.literal('indicator'),

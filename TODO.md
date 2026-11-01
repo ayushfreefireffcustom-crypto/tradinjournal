@@ -431,7 +431,7 @@ Legend:
   - [x] E1d Oscillators: RSI, Stoch RSI, CCI, Williams %R, MFI, ROC, Momentum, Stoch %K/%D, Awesome, Ultimate `M` (done 1 Nov)
   - [x] E1e Volatility: ATR, BB width/upper/middle/lower, Keltner U/L, StdDev `M` (done 1 Nov)
   - [x] E1f Volume: Volume, Volume SMA, VWAP, OBV, CMF, A/D `M` (done 1 Nov)
-  - [ ] E1g Meta: funding rate, open interest (from Binance/Bybit/Delta public data) `M` (needs a funding/OI data feed; with E11/E17)
+  - [x] E1g Meta: funding rate, open interest (from Binance/Bybit/Delta public data) `M` (done 1 Nov: Bybit feed, Binance futures fallback for funding; screener fields and /derivatives. Not yet usable inside indicator alerts, which run on candles.)
   - [x] E1h Price refs: O/H/L/C, highest high N, lowest low N `S` (done 1 Nov)
 - [x] E2 Candle types: Heikin-Ashi, Renko (box %/ATR/fixed), Kagi, Point & Figure `M` (done 1 Nov: chart-type menu on /charts, per pane; close-based Renko/Kagi/P&F on the last 1000 bars)
 - [x] E3 Indicator alerts `M` (done 1 Nov: new `indicator_alert` table instead of widening PriceAlert; change24h is ROC on the right bar count; funding/OI wait for E1g):

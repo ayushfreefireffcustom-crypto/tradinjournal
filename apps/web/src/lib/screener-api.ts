@@ -7,8 +7,8 @@ const API = process.env.NEXT_PUBLIC_API_URL || '';
 export const SCREENER_TIMEFRAMES = ['15m', '1h', '4h', '1d'] as const;
 export type ScreenerTimeframe = (typeof SCREENER_TIMEFRAMES)[number];
 export const SCREENER_UNIVERSES = [50, 100, 200] as const;
-export type ScreenerField = 'price' | 'change24h' | 'volume24h' | 'funding';
-export const FIELD_LABEL: Record<ScreenerField, string> = { price: 'Price', change24h: '24h change %', volume24h: '24h volume (USDT)', funding: 'Funding rate %' };
+export type ScreenerField = 'price' | 'change24h' | 'volume24h' | 'funding' | 'openInterest';
+export const FIELD_LABEL: Record<ScreenerField, string> = { price: 'Price', change24h: '24h change %', volume24h: '24h volume (USDT)', funding: 'Funding rate %', openInterest: 'Open interest (USDT)' };
 
 export type ScreenerFilter =
   | { type: 'indicator'; left: IndicatorOperand; operator: IaOperator; right: Operand }
@@ -20,7 +20,7 @@ export interface ScreenDefinition {
   columns?: IndicatorOperand[];
   sort?: { by: string; dir: 'asc' | 'desc' };
 }
-export interface ScreenRow { symbol: string; base: string; price: number; change24h: number; volume24h: number; funding: number | null; values: Array<number | null> }
+export interface ScreenRow { symbol: string; base: string; price: number; change24h: number; volume24h: number; funding: number | null; openInterest: number | null; values: Array<number | null> }
 export interface ScreenResult {
   timeframe: string;
   asOf: string;

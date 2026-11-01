@@ -17,7 +17,8 @@ export interface UniverseRow {
   high24h: number;
   low24h: number;
 }
-export interface FundingMap { source: 'bybit' | 'binance' | null; rates: Map<string, number> }
+/** Funding (% per period) and, from Bybit, open interest in USDT, keyed by symbol. */
+export interface FundingMap { source: 'bybit' | 'binance' | null; rates: Map<string, number>; oi?: Map<string, number> }
 
 const TICKER_TTL = 60;
 // Stablecoins and wrapped dollars, and leveraged tokens, aren't worth screening.
@@ -68,14 +69,15 @@ export async function loadUniverse(size: number): Promise<UniverseRow[]> {
 /** Funding as a percentage per funding period, keyed by Binance-style symbol (BTCUSDT). */
 export async function loadFunding(): Promise<FundingMap> {
   const key = 'screener:funding';
-  const cached = await cacheGet<{ source: FundingMap['source']; rates: Array<[string, number]> }>(key);
-  if (cached) return { source: cached.source, rates: new Map(cached.rates) };
+  const cached = await cacheGet<{ source: FundingMap['source']; rates: Array<[string, number]>; oi?: Array<[string, number]> }>(key);
+  if (cached) return { source: cached.source, rates: new Map(cached.rates), oi: new Map(cached.oi ?? []) };
   let out: FundingMap = { source: null, rates: new Map() };
   try {
-    const r = await fetchJson<{ retCode: number; result?: { list?: Array<{ symbol: string; fundingRate: string }> } }>('https://api.bybit.com/v5/market/tickers?category=linear');
+    const r = await fetchJson<{ retCode: number; result?: { list?: Array<{ symbol: string; fundingRate: string; openInterestValue?: string }> } }>('https://api.bybit.com/v5/market/tickers?category=linear');
     const list = r.retCode === 0 ? r.result?.list ?? [] : [];
     const rates = new Map(list.filter((x) => x.fundingRate !== '' && Number.isFinite(Number(x.fundingRate))).map((x) => [x.symbol, Number(x.fundingRate) * 100] as [string, number]));
-    if (rates.size) out = { source: 'bybit', rates };
+    const oi = new Map(list.filter((x) => x.openInterestValue && Number(x.openInterestValue) > 0).map((x) => [x.symbol, Number(x.openInterestValue)] as [string, number]));
+    if (rates.size) out = { source: 'bybit', rates, oi };
   } catch (err) {
     logger.warn(`[screener] Bybit funding unavailable: ${(err as Error).message}`);
   }
@@ -89,6 +91,6 @@ export async function loadFunding(): Promise<FundingMap> {
     }
   }
   // A failed lookup is cached briefly too, so a blocked host isn't hit on every run.
-  await cacheSet(key, { source: out.source, rates: [...out.rates] }, out.source ? TICKER_TTL : 300);
+  await cacheSet(key, { source: out.source, rates: [...out.rates], oi: [...(out.oi ?? [])] }, out.source ? TICKER_TTL : 300);
   return out;
 }
