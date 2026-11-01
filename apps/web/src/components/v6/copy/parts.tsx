@@ -92,21 +92,6 @@ export function Modal({ title, sub, onClose, children, footer, busy, wide, testI
   );
 }
 
-export function Sparkline({ values, w = 120, h = 36 }: { values: number[]; w?: number; h?: number }) {
-  if (values.length < 2) return <span className="cp-spark cp-spark--empty" style={{ width: w, height: h }} aria-label="Not enough history yet" />;
-  let mn = Math.min(...values), mx = Math.max(...values);
-  if (mx - mn < 1e-9) { mn -= 1; mx += 1; }
-  const X = (i: number) => (i / (values.length - 1)) * (w - 2) + 1;
-  const Y = (v: number) => h - 3 - ((v - mn) / (mx - mn)) * (h - 6);
-  const d = values.map((v, i) => `${i ? 'L' : 'M'}${X(i).toFixed(1)} ${Y(v).toFixed(1)}`).join(' ');
-  const up = values[values.length - 1]! >= values[0]!;
-  return (
-    <svg className="cp-spark" width={w} height={h} viewBox={`0 0 ${w} ${h}`} aria-hidden>
-      <path d={d} fill="none" stroke={up ? 'var(--g)' : 'var(--r)'} strokeWidth="1.6" strokeLinejoin="round" strokeLinecap="round" />
-    </svg>
-  );
-}
-
 function useSize<T extends HTMLElement>() {
   const ref = useRef<T>(null);
   const [size, setSize] = useState({ w: 0, h: 0 });

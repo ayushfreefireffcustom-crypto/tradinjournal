@@ -182,6 +182,8 @@ html[data-theme=light] .v6 .x-dialog-scrim { background: rgba(17, 17, 19, .35); 
   .v6 .x-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .v6 .x-strip > div:nth-child(odd)::before { display: none; }
   .v6 .x-strip > div:nth-child(n+3) { border-top: 1px solid var(--line); }
+  /* an odd last tile takes the full row instead of sitting alone (A0.31) */
+  .v6 .x-strip > div:last-child:nth-child(odd) { grid-column: 1 / -1; }
   .v6 .x-dialog-scrim { place-items: end center; padding: 0; }
   .v6 .x-dialog { width: 100%; border-radius: 24px 24px 0 0; max-height: 92dvh; padding: 22px 18px calc(22px + env(safe-area-inset-bottom)); }
 }
@@ -204,6 +206,14 @@ html[data-theme=light] .v6 .x-dialog-scrim { background: rgba(17, 17, 19, .35); 
   display: grid; gap: 4px; text-align: left; letter-spacing: 0; text-transform: none;
 }
 .v6 .x-info-pop.below { transform: none; }
+/* Number inputs: no native spinner anywhere (type a value or use the field's own controls). */
+.v6 input[type=number].x-input { -moz-appearance: textfield; appearance: textfield; }
+.v6 input[type=number].x-input::-webkit-outer-spin-button, .v6 input[type=number].x-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+/* Sparkline (components/v6/ui/sparkline.tsx). */
+.v6 .x-spark { display: block; overflow: visible; flex: none; }
+.v6 .x-spark.fluid { width: 100%; height: 100%; }
+.v6 .x-spark--empty { border-bottom: 1px dashed var(--line-2); }
+.v6 .x-spark--empty.fluid { height: auto; min-height: 1px; align-self: center; }
 /* Tooltip (components/v6/ui/tooltip.tsx): one dark label, positioned by script. */
 .v6.x-tip-layer { position: fixed; top: 0; left: 0; width: 0; height: 0; z-index: 90; pointer-events: none; }
 .v6 .x-tip {

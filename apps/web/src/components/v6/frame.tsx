@@ -5,7 +5,7 @@
 // an all-pages sheet on phones. Auth gating, ⌘K and the location gate stay in
 // AppShell; this only draws the chrome.
 import Link from 'next/link';
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import type { BrokerAccount } from '@/lib/api';
 import NotificationBell from '@/components/notification-bell';
 import Logo from '@/components/logo';
@@ -21,6 +21,8 @@ import {
 import '@/styles/v6/tokens.css';
 import '@/styles/v6/components.css';
 import '@/styles/v6/frame.css';
+import { useMenu } from './ui/use-menu';
+import IconButton from './ui/icon-button';
 
 type Icon = (p: { size?: number }) => ReactNode;
 export type FrameNavItem = { href: string; label: string; icon: Icon; badge?: string };
@@ -92,19 +94,6 @@ interface Props {
 }
 
 /** Close a popover on outside click or Escape. */
-function useDismiss(open: boolean, close: () => void) {
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const onDown = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) close(); };
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') close(); };
-    document.addEventListener('mousedown', onDown);
-    document.addEventListener('keydown', onKey);
-    return () => { document.removeEventListener('mousedown', onDown); document.removeEventListener('keydown', onKey); };
-  }, [open, close]);
-  return ref;
-}
-
 /** True below the phone breakpoint (so phone-only and desktop-only widgets mount once). */
 function usePhone() {
   const [phone, setPhone] = useState(false);
@@ -122,9 +111,9 @@ export default function Frame(p: Props) {
   const [theme, toggleTheme] = useTheme();
   const [moneyHidden, toggleMoney] = useHideMoney();
   const moneyBtn = (cls: string, testId?: string) => (
-    <button className={cls} onClick={toggleMoney} aria-pressed={moneyHidden} aria-label={moneyHidden ? 'Show balances' : 'Hide balances'} title={moneyHidden ? 'Show balances' : 'Hide balances'} data-testid={testId}>
+    <IconButton className={cls} onClick={toggleMoney} aria-pressed={moneyHidden} label={moneyHidden ? 'Show balances' : 'Hide balances'} data-testid={testId}>
       {moneyHidden ? <IEyeOff /> : <IEye />}
-    </button>
+    </IconButton>
   );
   const phone = usePhone();
   const [more, setMore] = useState(false);
@@ -185,9 +174,9 @@ export default function Frame(p: Props) {
             </div>
             <div className="f-mtools">
               {moneyBtn('f-ib')}
-              <button className="f-ib" onClick={toggleTheme} aria-label={theme === 'light' ? 'Switch to dark theme' : 'Switch to light theme'}>
+              <IconButton className="f-ib" onClick={toggleTheme} label={theme === 'light' ? 'Switch to dark theme' : 'Switch to light theme'}>
                 {theme === 'light' ? <ISunIcon /> : <IMoonIcon />}
-              </button>
+              </IconButton>
               {phone && <span className="f-bell"><NotificationBell /></span>}
             </div>
           </div>
@@ -200,9 +189,9 @@ export default function Frame(p: Props) {
               </button>
             )}
             {moneyBtn('f-ib f-dtool', 'hide-money-toggle')}
-            <button className="f-ib f-dtool" onClick={toggleTheme} aria-label={theme === 'light' ? 'Switch to dark theme' : 'Switch to light theme'} data-testid="theme-toggle">
+            <IconButton className="f-ib f-dtool" onClick={toggleTheme} label={theme === 'light' ? 'Switch to dark theme' : 'Switch to light theme'} data-testid="theme-toggle">
               {theme === 'light' ? <ISunIcon /> : <IMoonIcon />}
-            </button>
+            </IconButton>
             {!phone && <span className="f-bell f-dtool"><NotificationBell /></span>}
           </div>
         </header>
@@ -265,7 +254,7 @@ function NavLink({ item, active }: { item: FrameNavItem; active: boolean }) {
 function AccountPill({ accounts, selected, onSelectAccount, onConnectClick, syncedLabel }: Props) {
   const [open, setOpen] = useState(false);
   const close = useCallback(() => setOpen(false), []);
-  const ref = useDismiss(open, close);
+  const ref = useMenu(open, close);
   const exchanges = useExchangeConnections();
   if (!selected && exchanges.length) {
     // Exchange-only user: the pill shows their first exchange account instead of a Connect MT5 call.
@@ -283,8 +272,8 @@ function AccountPill({ accounts, selected, onSelectAccount, onConnectClick, sync
             <ExchangeGroup rows={exchanges} onPick={close} />
             <hr />
             {onConnectClick
-              ? <button onClick={() => { setOpen(false); onConnectClick(); }} data-testid="header-add-broker"><IPlus size={16} /><span className="f-pop-main"><b>Connect MT5</b><small>Journal your MT5 trades too</small></span></button>
-              : <Link href="/brokers" onClick={() => setOpen(false)}><IPlus size={16} /><span className="f-pop-main"><b>Connect MT5</b><small>Journal your MT5 trades too</small></span></Link>}
+              ? <button role="menuitem" onClick={() => { setOpen(false); onConnectClick(); }} data-testid="header-add-broker"><IPlus size={16} /><span className="f-pop-main"><b>Connect MT5</b><small>Journal your MT5 trades too</small></span></button>
+              : <Link role="menuitem" href="/brokers" onClick={() => setOpen(false)}><IPlus size={16} /><span className="f-pop-main"><b>Connect MT5</b><small>Journal your MT5 trades too</small></span></Link>}
           </div>
         )}
       </div>
@@ -320,8 +309,8 @@ function AccountPill({ accounts, selected, onSelectAccount, onConnectClick, sync
           {!ok && <div className="f-pop-note">MT5 status: {selected.status.toLowerCase()}. Check the password in Brokers.</div>}
           {syncedLabel && ok && <div className="f-pop-note">{syncedLabel}</div>}
           {onConnectClick && !atLimit
-            ? <button onClick={() => { setOpen(false); onConnectClick(); }} data-testid="header-add-broker"><IPlus size={16} /><span className="f-pop-main"><b>Add broker</b></span></button>
-            : <Link href="/brokers" onClick={() => setOpen(false)}><IBrokers size={16} /><span className="f-pop-main"><b>Manage brokers</b>{atLimit && <small>2 of 2 accounts connected</small>}</span></Link>}
+            ? <button role="menuitem" onClick={() => { setOpen(false); onConnectClick(); }} data-testid="header-add-broker"><IPlus size={16} /><span className="f-pop-main"><b>Add broker</b></span></button>
+            : <Link role="menuitem" href="/brokers" onClick={() => setOpen(false)}><IBrokers size={16} /><span className="f-pop-main"><b>Manage brokers</b>{atLimit && <small>2 of 2 accounts connected</small>}</span></Link>}
         </div>
       )}
     </div>
@@ -352,7 +341,7 @@ function UserCard({ user, theme, onToggleTheme, onSignOut }: {
 }) {
   const [open, setOpen] = useState(false);
   const close = useCallback(() => setOpen(false), []);
-  const ref = useDismiss(open, close);
+  const ref = useMenu(open, close);
   const name = user?.name?.trim() || 'Trader';
   return (
     <div className="f-popwrap f-me-wrap" ref={ref}>
@@ -363,10 +352,10 @@ function UserCard({ user, theme, onToggleTheme, onSignOut }: {
       {open && (
         <div className="x-pop f-pop f-pop--me" role="menu">
           {user?.email && <div className="f-pop-note">{user.email}</div>}
-          <button onClick={onToggleTheme}>{theme === 'light' ? <IMoonIcon /> : <ISunIcon />}<span className="f-pop-main"><b>{theme === 'light' ? 'Dark theme' : 'Light theme'}</b></span></button>
-          <Link href="/settings" onClick={close}><ISettings size={16} /><span className="f-pop-main"><b>Settings</b></span></Link>
+          <button role="menuitem" onClick={onToggleTheme}>{theme === 'light' ? <IMoonIcon /> : <ISunIcon />}<span className="f-pop-main"><b>{theme === 'light' ? 'Dark theme' : 'Light theme'}</b></span></button>
+          <Link role="menuitem" href="/settings" onClick={close}><ISettings size={16} /><span className="f-pop-main"><b>Settings</b></span></Link>
           <hr />
-          <button onClick={onSignOut} data-testid="signout-btn"><span className="f-pop-main"><b>Sign out</b></span></button>
+          <button role="menuitem" onClick={onSignOut} data-testid="signout-btn"><span className="f-pop-main"><b>Sign out</b></span></button>
         </div>
       )}
     </div>

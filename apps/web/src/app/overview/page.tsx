@@ -6,7 +6,8 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import AppShell from '@/components/app-shell';
-import { ErrorCard, Sparkline, useLoad, usePoll } from '@/components/v6/copy/parts';
+import { ErrorCard, useLoad, usePoll } from '@/components/v6/copy/parts';
+import Sparkline from '@/components/v6/ui/sparkline';
 import { fmtPct, fmtPrice, fmtUsd, hubApi, toneOf, type MarketBrief, type Overview, type SectorRow } from '@/lib/hub-api';
 import { squarify } from '@/lib/treemap';
 import '@/styles/v6/copy.css';
@@ -99,7 +100,7 @@ function KpiStrip({ o }: { o: Overview }) {
           <>
             <div className="ov-kpi-v"><b className="m">{fg.value}</b> {fg.label}</div>
             <div className="ov-gauge"><i style={{ left: `${fg.value}%` }} /></div>
-            <div className="ov-kpi-s">30 days <Sparkline values={fg.history.map(h => h.value)} w={110} h={22} /></div>
+            <div className="ov-kpi-s">30 days <Sparkline values={fg.history.map(h => h.value)} width={110} height={22} /></div>
           </>
         ) : <div className="x-muted">Unavailable right now</div>}
       </div>
@@ -129,7 +130,7 @@ function MacroTiles({ o }: { o: Overview }) {
             {o.macro.filter(m => m.group === g).map(m => (
               <Link key={m.symbol} href={`/charts?symbol=${m.symbol}&tf=1d`} className="ov-mt">
                 <span>{m.name}</span>
-                {m.spark.length > 2 ? <Sparkline values={m.spark} w={64} h={18} /> : <span />}
+                {m.spark.length > 2 ? <Sparkline values={m.spark} width={64} height={18} /> : <span />}
                 <span className="m">{fmtPrice(m.price)}</span>
                 <span className={`m ${toneOf(m.change1d)}`}>{fmtPct(m.change1d)}</span>
               </Link>

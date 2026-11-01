@@ -18,6 +18,7 @@ import { IChevronDown, ISync } from '@/components/v3/icons';
 import '@/styles/v6/desk.css';
 import InfoTip from '@/components/v6/ui/info-tip';
 import { METRIC_HELP, type MetricKey } from '@/lib/metric-help';
+import Sparkline from '@/components/v6/ui/sparkline';
 
 const MONO = { fontFamily: 'var(--mono)' } as const;
 
@@ -192,7 +193,7 @@ export function KpiColumn({ view, trades }: { view: AccountStats; trades: Trade[
       </div>
       <div className="x-card dk-kpi">
         <div className="x-stat"><span>Expectancy<Help k="expectancy" /></span><b className={`mny ${exp == null ? '' : exp >= 0 ? 'pos' : 'neg'}`}>{exp == null ? '—' : `${fmtUsd(exp, 0)}`}<em> / trade</em></b><small>Max drawdown {n ? fmtPct(view.maxDrawdownPct) : '—'}</small></div>
-        {roll.length > 2 && <Spark vals={roll.map(r => r.expectancy)} />}
+        {roll.length > 2 && <Sparkline values={roll.map(r => r.expectancy)} width={96} height={40} zero className="dk-spark" label="Expectancy trend" />}
       </div>
     </div>
   );
@@ -217,18 +218,6 @@ function Gauge({ value }: { value: number }) {
     </svg>
   );
 }
-function Spark({ vals }: { vals: number[] }) {
-  const mn = Math.min(0, ...vals), mx = Math.max(0, ...vals), span = mx - mn || 1;
-  const Y = (v: number) => 36 - ((v - mn) / span) * 32;
-  const d = vals.map((v, i) => `${i ? 'L' : 'M'}${((i / (vals.length - 1)) * 94 + 1).toFixed(1)} ${Y(v).toFixed(1)}`).join(' ');
-  return (
-    <svg width="96" height="40" viewBox="0 0 96 40" aria-hidden className="dk-spark">
-      <line x1="0" x2="96" y1={Y(0)} y2={Y(0)} stroke="var(--grid)" />
-      <path d={d} fill="none" stroke={vals[vals.length - 1]! >= 0 ? 'var(--g)' : 'var(--r)'} strokeWidth="1.6" />
-    </svg>
-  );
-}
-
 // ─── daily P&L ───────────────────────────────────────────────────────────────
 
 export function DailyCard({ trades }: { trades: Trade[] }) {

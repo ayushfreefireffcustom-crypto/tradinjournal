@@ -3,7 +3,8 @@
 import { useCountUp } from '@/hooks/use-count-up';
 import type { MacroState } from '@/lib/macro-api';
 import { deltaPct, formatIndicatorValue, formatSignedPct } from '@/lib/macro-format';
-import { PanelHead, Spark } from '@/components/v6/macro/ui';
+import { PanelHead } from '@/components/v6/macro/ui';
+import Sparkline from '@/components/v6/ui/sparkline';
 
 function pick(macro: MacroState['macro'], key: string) {
   return macro.find(m => m.key === key) ?? null;
@@ -23,7 +24,7 @@ function Metric({ label, row, hint }: { label: string; row: MacroState['macro'][
         <b>{row ? <AnimatedValue value={row.value} unit={row.unit} /> : '—'}</b>
         <small className="mc-lq-h"><span>{hint ?? row?.label ?? '—'}</span>{d != null && <span className={`m ${d > 0 ? 'pos' : d < 0 ? 'neg' : ''}`}>{formatSignedPct(d, 1)}</span>}</small>
       </div>
-      {row?.history && row.history.length >= 2 && <div className="mc-lq-s"><Spark values={row.history} width={120} height={32} fluid /></div>}
+      {row?.history && row.history.length >= 2 && <div className="mc-lq-s"><Sparkline values={row.history} width={120} height={32} fluid /></div>}
     </article>
   );
 }

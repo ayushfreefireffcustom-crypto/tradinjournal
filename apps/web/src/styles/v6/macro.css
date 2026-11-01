@@ -91,9 +91,6 @@
 .v6 .mc-meter i { position: absolute; top: 0; height: 100%; background: var(--mut); }
 .v6 .mc-meter.bull i { background: var(--g); }
 .v6 .mc-meter.bear i { background: var(--r); }
-.v6 .mc-spark { display: block; overflow: visible; }
-.v6 .mc-spark.fluid { width: 100%; height: 100%; }
-.v6 .mc-spark-empty { display: block; }
 .v6 .mc-sc-r .x-tag:not(.x-tag--g):not(.x-tag--r), .v6 .mc-ab-t .x-tag:not(.x-tag--g):not(.x-tag--r) { background: var(--s3); }
 .v6 .mc-sc-r .mc-meter, .v6 .mc-ab-t .mc-trk { background: var(--s4); }
 .v6 .mc-ab-t .mc-trk { --ring: var(--s2); }

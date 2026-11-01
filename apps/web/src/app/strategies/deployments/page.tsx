@@ -6,7 +6,8 @@ import Link from 'next/link';
 import { Fragment, useMemo, useState } from 'react';
 import AppShell from '@/components/app-shell';
 import { useToast } from '@/components/toast';
-import { ErrorCard, Sparkline, ago, useLoad, usePoll } from '@/components/v6/copy/parts';
+import { ErrorCard, ago, useLoad, usePoll } from '@/components/v6/copy/parts';
+import Sparkline from '@/components/v6/ui/sparkline';
 import { ApiError } from '@/lib/copy-api';
 import { STATUS_TEXT, deploymentsApi, tone, usd, type DeploymentRow } from '@/lib/strategies-api';
 import '@/styles/v6/copy.css';
@@ -55,7 +56,7 @@ export default function DeploymentsPage() {
                         <td><Link className="x-link" href={`/strategies/deployments/${d.id}`}><b>{d.name}</b></Link><span className="x-muted sc-quote"> v{d.version}</span></td>
                         <td data-label="Mode"><span className={`x-tag ${d.mode === 'live' ? 'x-tag--r' : ''}`}>{d.mode === 'live' ? 'Live' : 'Paper'}</span></td>
                         <td data-label="Status"><span className={`x-tag ${statusTag(d.status)}`}>{STATUS_TEXT[d.status]}</span>{d.killed && <span className="x-tag x-tag--r">Streak stop</span>}</td>
-                        <td data-label="Equity">{d.spark.length > 2 ? <Sparkline values={d.spark} w={90} h={24} /> : <span className="x-muted">—</span>}</td>
+                        <td data-label="Equity">{d.spark.length > 2 ? <Sparkline values={d.spark} width={90} height={24} label="Equity curve" /> : <span className="x-muted">—</span>}</td>
                         <td className={`r m ${tone(d.closedPnl)}`} data-label="Closed P&L">{usd(d.closedPnl)}</td>
                         <td className={`r m ${tone(d.openPnl)}`} data-label="Open P&L">{d.open.length ? usd(d.openPnl) : '—'}</td>
                         <td className="r m" data-label="Trades">{d.tradeCount}</td>

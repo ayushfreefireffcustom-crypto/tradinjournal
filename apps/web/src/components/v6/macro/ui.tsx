@@ -1,6 +1,6 @@
 'use client';
 
-// Shared pieces for the v6 macro pages: bias tags, meters, sparklines, line icons
+// Shared pieces for the v6 macro pages: bias tags, meters, line icons
 // and the group icon set that replaces the old unicode glyphs.
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import type { GroupIconName } from '@/lib/macro-meta';
@@ -50,28 +50,6 @@ export function ScoreTrack({ score, tone }: { score: number; tone: Tone }) {
     <span className={`mc-trk ${tone}`} aria-hidden>
       <i style={{ left: `${Math.max(2, Math.min(98, score))}%` }} />
     </span>
-  );
-}
-
-/** Small decorative sparkline; colour follows the given tone or net direction. */
-export function Spark({ values, tone, width = 64, height = 22, fluid = false, area = false }: {
-  values: number[]; tone?: Tone; width?: number; height?: number; fluid?: boolean; area?: boolean;
-}) {
-  const clean = values.filter(v => Number.isFinite(v));
-  if (clean.length < 2) return <span className="mc-spark-empty" style={fluid ? undefined : { width, height }} aria-hidden />;
-  const mn = Math.min(...clean), mx = Math.max(...clean), sp = mx - mn || 1;
-  const pad = 2;
-  const x = (i: number) => pad + (i / (clean.length - 1)) * (width - pad * 2);
-  const y = (v: number) => pad + (height - pad * 2) * (1 - (v - mn) / sp);
-  const d = clean.map((v, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join(' ');
-  const t: Tone = tone ?? (clean[clean.length - 1]! >= clean[0]! ? 'bull' : 'bear');
-  const col = t === 'bull' ? 'var(--g)' : t === 'bear' ? 'var(--r)' : 'var(--mut)';
-  return (
-    <svg className={`mc-spark ${fluid ? 'fluid' : ''}`} width={fluid ? undefined : width} height={fluid ? undefined : height}
-      viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" aria-hidden>
-      {area && <path d={`${d} L${x(clean.length - 1)} ${height} L${x(0)} ${height}Z`} fill={col} fillOpacity=".1" />}
-      <path d={d} fill="none" stroke={col} strokeWidth="1.6" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
-    </svg>
   );
 }
 

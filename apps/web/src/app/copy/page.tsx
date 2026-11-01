@@ -6,7 +6,8 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import AppShell from '@/components/app-shell';
-import { ErrorCard, GradeBadge, Modal, Monogram, Sparkline, useLoad } from '@/components/v6/copy/parts';
+import { ErrorCard, GradeBadge, Modal, Monogram, useLoad } from '@/components/v6/copy/parts';
+import Sparkline from '@/components/v6/ui/sparkline';
 import { IArrowRight, ILeader, ISearch } from '@/components/v3/icons';
 import { TRADING_ENABLED } from '@/lib/features';
 import { leadersApi, followsApi, pct, RANGE_LABEL, signedUsd, toneOf, usd, venueName, type LeaderCard, type LeaderDetail, type LeaderRange, type LeaderSort } from '@/lib/copy-api';
@@ -95,7 +96,7 @@ export default function LeadersPage() {
                     <b>{l.displayName}</b>
                     <span className={`cp-pod-v m ${toneOf(l.stats.roiPct)}`}>{pct(l.stats.roiPct, 1, true)}</span>
                     <small>{RANGE_LABEL[range].toLowerCase()} · max drawdown {pct(l.stats.maxDrawdownPct)}</small>
-                    <Sparkline values={l.sparkline} w={180} h={40} />
+                    <Sparkline values={l.sparkline} width={180} height={40} label="Equity curve" />
                   </Link>
                 ))}
               </section>
@@ -181,7 +182,7 @@ function CompareDialog({ ids, onClose }: { ids: string[]; onClose: () => void })
                   </tr>
                 );
               })}
-              <tr><td className="x-muted">Curve</td>{ls.map(l => <td key={l.id}><Sparkline values={l.sparkline} w={140} h={34} /></td>)}</tr>
+              <tr><td className="x-muted">Curve</td>{ls.map(l => <td key={l.id}><Sparkline values={l.sparkline} width={140} height={34} label="Equity curve" /></td>)}</tr>
             </tbody>
           </table>
         </div>
@@ -208,7 +209,7 @@ function LeaderRow({ l, rank }: { l: LeaderCard; rank: number | null }) {
         <b className={`m ${toneOf(s.roiPct)}`}>{pct(s.roiPct, 1, true)}</b>
         <small className={`m ${toneOf(s.pnlUsd)}`}>{signedUsd(s.pnlUsd, 0)}</small>
       </div>
-      <div className="cp-leader-spark"><Sparkline values={l.sparkline} /></div>
+      <div className="cp-leader-spark"><Sparkline values={l.sparkline} label="Equity curve" /></div>
       <div className="cp-leader-k"><span>Max drawdown</span><b className="m">{pct(s.maxDrawdownPct)}</b></div>
       <div className="cp-leader-k">
         <span>Win rate</span>

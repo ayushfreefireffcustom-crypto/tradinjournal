@@ -3,7 +3,8 @@
 import type { MacroState } from '@/lib/macro-api';
 import { formatIndicatorValue, indicatorDelta } from '@/lib/macro-format';
 import { groupIndicators, blurbFor, formatObsDate, sourceLabel, type IndicatorGroup } from '@/lib/macro-meta';
-import { GroupIcon, Spark, groupTitle } from '@/components/v6/macro/ui';
+import { GroupIcon, groupTitle } from '@/components/v6/macro/ui';
+import Sparkline from '@/components/v6/ui/sparkline';
 import InfoTip from './info-tip';
 
 function Panel({ g }: { g: IndicatorGroup }) {
@@ -20,7 +21,7 @@ function Panel({ g }: { g: IndicatorGroup }) {
                 <span className="mc-ig-t"><span>{m.label}</span>{blurb && <InfoTip text={blurb} label={m.label} />}</span>
                 <small>{sourceLabel(m.source)} · {formatObsDate(m.asOf)}</small>
               </div>
-              {m.history && m.history.length >= 2 && <span className="mc-ig-s"><Spark values={m.history} width={56} height={20} /></span>}
+              {m.history && m.history.length >= 2 && <span className="mc-ig-s"><Sparkline values={m.history} width={56} height={20} /></span>}
               <div className="mc-ig-v">
                 <b className="m">{formatIndicatorValue(m.value, m.unit)}</b>
                 <small className={`m ${d ? (d.dir > 0 ? 'pos' : d.dir < 0 ? 'neg' : 'x-dim') : 'x-dim'}`}>{d ? d.text : '—'}</small>

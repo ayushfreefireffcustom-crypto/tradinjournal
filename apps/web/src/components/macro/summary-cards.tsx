@@ -3,7 +3,8 @@
 import { useCountUp } from '@/hooks/use-count-up';
 import type { MacroState } from '@/lib/macro-api';
 import { formatIndicatorValue, deltaPct } from '@/lib/macro-format';
-import { Spark, type Tone } from '@/components/v6/macro/ui';
+import { type Tone } from '@/components/v6/macro/ui';
+import Sparkline from '@/components/v6/ui/sparkline';
 
 type CardKey = 'inflation' | 'rates' | 'gdp' | 'labour';
 
@@ -100,7 +101,7 @@ export default function SummaryCards({ macro }: { macro: MacroState['macro'] }) 
               <b>{row ? <AnimatedValue value={row.value} unit={row.unit} /> : '—'}</b>
               {row && <small className={tone === 'bull' ? 'pos' : tone === 'bear' ? 'neg' : ''}>{dirWord[0]!.toUpperCase() + dirWord.slice(1)}{row.label ? <span className="x-dim"> · {row.label}</span> : null}</small>}
             </div>
-            <div className="mc-sum-s"><Spark values={row?.history ?? []} tone={tone} width={120} height={36} fluid area /></div>
+            <div className="mc-sum-s"><Sparkline values={row?.history ?? []} tone={tone === 'bull' ? 'up' : tone === 'bear' ? 'down' : 'flat'} width={120} height={36} fluid area /></div>
           </article>
         );
       })}

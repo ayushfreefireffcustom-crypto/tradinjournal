@@ -75,8 +75,6 @@
 .v6 .cp-can li.no svg { color: var(--mut); }
 
 /* ── charts and badges ──────────────────────────────────────────────────── */
-.v6 .cp-spark { display: block; }
-.v6 .cp-spark--empty { display: block; border-bottom: 1px dashed var(--line-2); }
 .v6 .cp-chart { position: relative; height: 260px; margin-top: 16px; touch-action: pan-y; }
 .v6 .cp-chart--empty { display: grid; place-items: center; color: var(--mut); font-size: 13px; text-align: center; background: var(--s2); border-radius: var(--r-inset); padding: 20px; }
 .v6 .cp-tip { position: absolute; pointer-events: none; background: var(--tip); color: #EDEDED; border-radius: 10px; padding: 8px 10px; display: grid; gap: 2px; font-size: 11.5px; min-width: 120px; }
@@ -227,7 +225,7 @@
 .v6 .cp-pod b { font-weight: 500; font-size: 15px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .v6 .cp-pod-v { font-size: 22px; font-weight: 500; }
 .v6 .cp-pod small { color: var(--mut); font-size: 12px; }
-.v6 .cp-pod .cp-spark { margin-top: 4px; max-width: 100%; }
+.v6 .cp-pod .x-spark { margin-top: 4px; max-width: 100%; }
 .v6 .cp-lb-row { position: relative; }
 .v6 .cp-lb-row .cp-leader { padding-right: 56px; }
 .v6 .cp-pick { position: absolute; right: 18px; top: 50%; transform: translateY(-50%); display: grid; place-items: center; width: 30px; height: 30px; border-radius: 8px; cursor: pointer; }
@@ -402,7 +400,7 @@
 .v6 .sc-editor { display: grid; gap: 14px; }
 .v6 .sc-top { display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; }
 .v6 .sc-group { display: grid; gap: 8px; padding: 12px; border-radius: 12px; background: var(--s2); position: relative; }
-.v6 .sc-or { position: absolute; top: -14px; left: 12px; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; background: var(--s1); color: var(--mut); padding: 2px 8px; border-radius: 999px; }
+.v6 .sc-or { position: absolute; top: -14px; left: 12px; font-size: 12px; background: var(--s1); color: var(--mut); padding: 2px 8px; border-radius: 999px; }
 .v6 .sc-group + .sc-group { margin-top: 10px; }
 .v6 .sc-ghead { font-size: 12.5px; color: var(--mut); }
 .v6 .sc-ghead b { font-weight: 500; }
@@ -510,7 +508,7 @@
 
 /* Market overview (E10/E14/E15) */
 .v6 .ov-brief { display: grid; gap: 8px; }
-.v6 .ov-brief-k { font-size: 11.5px; text-transform: uppercase; letter-spacing: .08em; color: var(--g); }
+.v6 .ov-brief-k { font-size: 12px; color: var(--g); }
 .v6 .ov-brief h2 { margin: 0; font-size: 19px; font-weight: 500; }
 .v6 .ov-brief p { margin: 0; font-size: 14px; line-height: 1.6; }
 .v6 .ov-brief ul { margin: 0; padding-left: 18px; font-size: 14px; line-height: 1.65; }
@@ -640,7 +638,7 @@
 .v6 .sb-flow-nav { display: flex; justify-content: space-between; }
 .v6 .sb-rb p { margin: 0 0 8px; font-size: 13.5px; line-height: 1.55; }
 .v6 .sb-issues { display: grid; gap: 4px; margin-bottom: 10px; }
-.v6 .sb-issues-h { font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em; }
+.v6 .sb-issues-h { font-size: 12px; }
 .v6 .sb-issues p { margin: 0; font-size: 13px; line-height: 1.5; }
 .v6 .sb-issues-h.neg, .v6 .sb-side .neg, .v6 .sb-metric .neg, .v6 .bt-cells .neg, .v6 .st-card .neg, .v6 .sb-field .neg { color: var(--r); }
 .v6 .sb-metric .pos, .v6 .bt-cells .pos, .v6 .st-card .pos, .v6 .sb-run .pos { color: var(--g); }
@@ -783,7 +781,7 @@
 .v6 .sc-dn line { stroke: var(--r); }
 .v6 .sc-dn rect { fill: var(--r); }
 .v6 .sc-pane-l { font-size: 11px; fill: var(--mut); }
-.v6 .sc-x { font-size: 15px; font-weight: 600; }
+.v6 .sc-x { font-size: 15px; font-weight: 500; }
 .v6 .sc-hl { font-family: var(--mono); font-size: 10.5px; fill: #fff; pointer-events: none; }
 .v6 .sc-line [role=slider] { outline: none; touch-action: none; }
 .v6 .sc-line [role=slider]:focus-visible rect { stroke: var(--tx); stroke-width: 2; }
