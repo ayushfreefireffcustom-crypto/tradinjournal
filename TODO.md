@@ -773,7 +773,7 @@ Legend:
 - [x] H: news card ≤ 2 chips (sentiment + source/time); relevance bar labelled or removed; no amber ticker tiles (SymbolMark) `M` — "Your market" is text in the meta line; one sentiment chip; relevance bar labelled; ticker tiles are SymbolMarks (2 Nov)
 - [x] M: lead thumbnail: real image when available; otherwise no art (not the generic green chart) `S`
 - [x] M: headlines not truncated mid-word; body clamped with "Read more" `S` — verified in code (2 Nov)
-- [x] M: calendar rail: — values labelled Actual/Forecast/Prior with a real minus, times sans-free mono only on numbers, watched star neutral, country codes. Impact stays a dot (red only for High) with a spoken label: a text chip doesn't fit the rail
+- [x] M: calendar rail: — values labelled Actual/Forecast/Prior with a real minus, mono only on numbers, watched star neutral, country codes. Impact stays a dot (red only for High) with a spoken label: a text chip doesn't fit the rail
   - sans times
   - impact as text chip (High/Med/Low, red only for High)
   - no flag emoji (country code)
