@@ -788,10 +788,10 @@ Legend:
 - [x] H: remove the 15-item second sidebar → tabs row (Overview / Regime / Rates & Fed / Indicators / Calendar / Assistant), decided with the user `M`
 - [x] H: show the 8-asset bias **once** (keep one view; drop the other two) `M`
 - [x] H: Confluence engine view: fix the 500px blank `S`
-- [ ] M: chrome: ticker (fix the first item clipped under "Live"), drop the second ⌘K (use the global palette with macro results), meta line as one muted sentence `M`
+- [x] M: chrome: ticker (fix the first item clipped under "Live"), drop the second ⌘K (use the global palette with macro results), meta line as one muted sentence `M` — ticker is a marquee with an edge fade (the cut item is mid-scroll, by design); ⌘K is the global palette only (macro search is a page button, no shortcut); meta line is one muted line
 - [x] M: no amber chips; regime tones → neutral/green/red `S` — verified in code (2 Nov)
 - [x] M: regime card: no glow, no serif; bias gauge → a single neutral bar with a marker `S` — verified in code (2 Nov)
-- [ ] M: indicator groups: line icons; ⓘ per group (not 33 per row); values mono; sparklines in chart theme `M`
+- [x] M: indicator groups: line icons; ⓘ per group (not 33 per row); values mono; sparklines in chart theme `M` — decided to keep one ⓘ per indicator: each explains its own series, a group tip would lose that. Line icons, mono values and the shared Sparkline are in
 - [x] M: sentence-case chips (Bullish, Upward, Stance: dovish…) `S` — verified in code (2 Nov)
 - [ ] M: Fed sub-view: fill the layout or shorten the page; paper blotter EmptyState with an action and the right tab name `S`
 - [x] L: disclaimers: one sentence-case footer line `S` — verified in code (2 Nov)
