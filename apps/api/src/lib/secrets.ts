@@ -7,7 +7,7 @@
 // the key makes every encrypted value unreadable — users would have to re-enter
 // their investor passwords.
 import { env } from '@tradinjournal/config';
-import { logger } from '@tradinjournal/logger';
+import { logger, registerSecret } from '@tradinjournal/logger';
 import { decryptWithKey, encryptWithKey, isEncrypted, parseEncryptionKey, SecretKeyError } from '@tradinjournal/secrets';
 
 export { isEncrypted, SecretKeyError };
@@ -25,6 +25,7 @@ export function encryptionKey(raw: string | undefined = env.CREDENTIAL_ENCRYPTIO
  * breaking account connections.
  */
 export function encryptSecret(plain: string, key: Buffer | null = encryptionKey()): string {
+  registerSecret(plain);
   if (!key) {
     if (!warned) {
       logger.warn('[secrets] CREDENTIAL_ENCRYPTION_KEY is missing or not 64 hex chars — broker passwords are being stored unencrypted');
@@ -37,7 +38,9 @@ export function encryptSecret(plain: string, key: Buffer | null = encryptionKey(
 
 /** Plaintext for a stored value; legacy plaintext passes through untouched. */
 export function decryptSecret(stored: string, key: Buffer | null = encryptionKey()): string {
-  if (!isEncrypted(stored)) return stored;
+  if (!isEncrypted(stored)) { registerSecret(stored); return stored; }
   if (!key) throw new SecretKeyError('Stored credential is encrypted but CREDENTIAL_ENCRYPTION_KEY is not configured');
-  return decryptWithKey(stored, key);
+  const plain = decryptWithKey(stored, key);
+  registerSecret(plain);
+  return plain;
 }

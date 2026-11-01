@@ -12,6 +12,7 @@ import { ConflictError, NotFoundError } from '../../http/errors.js';
 import { syncQueue, requestSyncWithin } from '../sync/sync.queue.js';
 import { prisma } from '@tradinjournal/db';
 import { assertWithinLimit } from '../../lib/plans.js';
+import { registerSecret } from '@tradinjournal/logger';
 
 
 // Prettify a broker name from an MT5 server string, e.g.
@@ -28,6 +29,7 @@ function brokerNameFromServer(server: string): string {
 }
 
 export async function connectAccount(userId: string, input: ConnectAccountInput): Promise<BrokerAccount> {
+  registerSecret(input.password); // masked in logs from here on, bridge errors included
   // Enforce the per-user account cap. Re-connecting an account the user already
   // has (same login+server) is always allowed — it just refreshes credentials —
   // so only brand-new accounts count against the limit.
@@ -70,6 +72,7 @@ export async function updateAccountCredentials(
   id: string,
   password: string,
 ): Promise<BrokerAccount> {
+  registerSecret(password);
   const account = await findAccountById(id, userId);
   if (!account) throw new NotFoundError('Broker account not found');
 

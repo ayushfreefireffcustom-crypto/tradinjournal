@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 
 vi.mock('@tradinjournal/config', () => ({ env: {} })); // no REDIS_URL → in-process counters
-vi.mock('@tradinjournal/logger', () => ({ logger: { warn: vi.fn() } }));
+vi.mock('@tradinjournal/logger', () => ({ logger: { warn: vi.fn() }, registerSecret: vi.fn(), redactText: (s: string) => s }));
 const { perUserRateLimit } = await import('../rate-limit.js');
 
 const run = async (mw: ReturnType<typeof perUserRateLimit>, userId?: string) => {

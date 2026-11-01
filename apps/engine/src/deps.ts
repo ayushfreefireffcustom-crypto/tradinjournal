@@ -4,6 +4,7 @@ import { env } from '@tradinjournal/config';
 import type { ExchangeConnection } from '@tradinjournal/db';
 import { adapterFor, type ApiCredentials, type Exchange } from '@tradinjournal/exchange';
 import { decryptWithKey, requireEncryptionKey } from '@tradinjournal/secrets';
+import { registerSecret } from '@tradinjournal/logger';
 
 export interface EngineDeps {
   exchangeFor(conn: Pick<ExchangeConnection, 'exchange' | 'environment'>): Exchange;
@@ -26,11 +27,16 @@ export function productionDeps(): EngineDeps {
   const key = requireEncryptionKey(env.CREDENTIAL_ENCRYPTION_KEY);
   return {
     exchangeFor: (c) => adapterFor(c.exchange, c.environment, { liveEnabled: env.EXCHANGE_LIVE_ENABLED }),
-    credsFor: (c) => ({
-      apiKey: decryptWithKey(c.apiKeyEnc, key),
-      apiSecret: decryptWithKey(c.apiSecretEnc, key),
-      passphrase: c.passphraseEnc ? decryptWithKey(c.passphraseEnc, key) : undefined,
-    }),
+    credsFor: (c) => {
+      const creds = {
+        apiKey: decryptWithKey(c.apiKeyEnc, key),
+        apiSecret: decryptWithKey(c.apiSecretEnc, key),
+        passphrase: c.passphraseEnc ? decryptWithKey(c.passphraseEnc, key) : undefined,
+      };
+      // In memory only; the logger masks them if one ever turns up in a line.
+      registerSecret(creds.apiKey, creds.apiSecret, creds.passphrase);
+      return creds;
+    },
     now: () => new Date(),
     sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
   };

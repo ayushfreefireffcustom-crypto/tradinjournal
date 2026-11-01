@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 
 vi.mock('@tradinjournal/config', () => ({ env: { CREDENTIAL_ENCRYPTION_KEY: 'a'.repeat(64) } }));
-vi.mock('@tradinjournal/logger', () => ({ logger: { warn: vi.fn(), info: vi.fn(), error: vi.fn() } }));
+vi.mock('@tradinjournal/logger', () => ({ logger: { warn: vi.fn(), info: vi.fn(), error: vi.fn() }, registerSecret: vi.fn(), redactText: (s: string) => s }));
 
 const { encryptSecret, decryptSecret, encryptionKey, isEncrypted, SecretKeyError } = await import('../secrets.js');
 

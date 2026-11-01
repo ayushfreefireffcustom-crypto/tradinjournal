@@ -7,6 +7,7 @@ import { prisma, type ExchangeConnection, type ExchangeEnvironment, type Exchang
 import type { ConnectExchangeInput, ExchangeCatalogItemDto, ExchangeConnectionDto } from '@tradinjournal/contracts';
 import { ExchangeError, exchangeRegistry, fingerprintApiKey, keyLast4, type AccountInfo, type ApiCredentials, type Exchange } from '@tradinjournal/exchange';
 import { decryptWithKey, encryptWithKey, requireEncryptionKey } from '@tradinjournal/secrets';
+import { registerSecret } from '@tradinjournal/logger';
 import { AppError, ConflictError, NotFoundError } from '../../http/errors.js';
 import { logAdminAction } from '../admin/admin-audit.service.js';
 import { adapterFor } from './exchanges.adapters.js';
@@ -84,11 +85,14 @@ async function ownConnection(userId: string, id: string): Promise<WithCounts> {
 }
 
 export function credsOf(c: Pick<ExchangeConnection, 'apiKeyEnc' | 'apiSecretEnc' | 'passphraseEnc'>, key: Buffer): ApiCredentials {
-  return {
+  const creds = {
     apiKey: decryptWithKey(c.apiKeyEnc, key),
     apiSecret: decryptWithKey(c.apiSecretEnc, key),
     passphrase: c.passphraseEnc ? decryptWithKey(c.passphraseEnc, key) : undefined,
   };
+  // Decrypted keys exist only in memory; the logger masks them if one ever turns up in a line.
+  registerSecret(creds.apiKey, creds.apiSecret, creds.passphrase);
+  return creds;
 }
 
 export async function connectExchange(
@@ -96,6 +100,7 @@ export async function connectExchange(
   input: ConnectExchangeInput,
   deps: ExchangeDeps = defaultDeps,
 ): Promise<ExchangeConnectionDto> {
+  registerSecret(input.apiKey, input.apiSecret, input.passphrase);
   const key = deps.key();
   const adapter = deps.adapterFor(input.exchange, input.environment);
 

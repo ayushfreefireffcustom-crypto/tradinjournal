@@ -69,6 +69,15 @@ async function main(): Promise<void> {
   process.on('SIGTERM', () => void shutdown('SIGTERM'));
 }
 
+// Anything unexpected ends the engine as before (it restarts with clean watchers),
+// but is written through the logger, which masks keys, instead of raw to stderr.
+for (const event of ['unhandledRejection', 'uncaughtException'] as const) {
+  process.on(event, (err) => {
+    logger.error(`[engine] ${event}`, { err });
+    setTimeout(() => process.exit(1), 200);
+  });
+}
+
 main().catch((err) => {
   logger.error('[engine] fatal', { err: String(err) });
   process.exit(1);

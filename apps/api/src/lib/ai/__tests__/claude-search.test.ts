@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 
 vi.mock('@tradinjournal/config', () => ({ env: {} }));
-vi.mock('@tradinjournal/logger', () => ({ logger: { info: vi.fn(), warn: vi.fn(), debug: vi.fn() } }));
+vi.mock('@tradinjournal/logger', () => ({ logger: { info: vi.fn(), warn: vi.fn(), debug: vi.fn() }, registerSecret: vi.fn(), redactText: (s: string) => s }));
 
 const { claudeSearchResults } = await import('../search.js');
 

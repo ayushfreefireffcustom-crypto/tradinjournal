@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
-import { logger } from '@tradinjournal/logger';
+import { logger, redactText } from '@tradinjournal/logger';
 import {
   AppError,
   ValidationError,
@@ -17,7 +17,7 @@ export function errorHandler(
     res.status(err.statusCode).json({
       error: {
         code: err.code,
-        message: err.message,
+        message: redactText(err.message),
         ...(err.fields ? { fields: err.fields } : {}),
       },
     });
@@ -36,7 +36,7 @@ export function errorHandler(
       extra.maintenanceMessage = err.maintenanceMessage;
     }
     res.status(err.statusCode).json({
-      error: { code: err.code, message: err.message, ...extra },
+      error: { code: err.code, message: redactText(err.message), ...extra },
     });
     return;
   }

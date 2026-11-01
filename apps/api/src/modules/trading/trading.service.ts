@@ -73,9 +73,10 @@ export async function deskOverview(userId: string, now = new Date(), deps: Tradi
   ]);
   const out: DeskOverviewDto = { positions: [], pending: [], closed: [], counts: { open: 0, pending: 0, closed: 0, rejected }, errors: [] };
   await Promise.all(conns.map(async (c) => {
-    const ex = deps.adapterFor(c.exchange, c.environment);
-    const creds = credsOf(c, deps.key());
     try {
+      // Inside the try: one account whose keys can't be read mustn't take the whole desk down.
+      const ex = deps.adapterFor(c.exchange, c.environment);
+      const creds = credsOf(c, deps.key());
       const [positions, orders] = await Promise.all([withTimeout(ex.getPositions(creds), ms), withTimeout(ex.getOpenOrders(creds), ms)]);
       const closed = await withTimeout(closedHistory(c, ex, creds, positions, now), ms);
       for (const p of positions) {

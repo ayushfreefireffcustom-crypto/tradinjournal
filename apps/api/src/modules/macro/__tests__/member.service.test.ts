@@ -22,6 +22,8 @@ vi.mock('@tradinjournal/config', () => ({
 
 vi.mock('@tradinjournal/logger', () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+  registerSecret: vi.fn(),
+  redactText: (s: string) => s,
 }));
 
 const {

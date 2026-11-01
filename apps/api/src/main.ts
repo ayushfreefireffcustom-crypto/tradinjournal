@@ -24,3 +24,11 @@ function shutdown(signal: string): void {
 
 process.on('SIGINT', () => shutdown('SIGINT'));
 process.on('SIGTERM', () => shutdown('SIGTERM'));
+// Stray errors go through the logger (which masks secrets), not Node's raw stderr
+// dump. A stray rejection is logged and the API carries on; a thrown exception
+// still ends the process (the platform restarts it).
+process.on('unhandledRejection', (err) => logger.error('[process] unhandled rejection', { err }));
+process.on('uncaughtException', (err) => {
+  logger.error('[process] uncaught exception', { err });
+  setTimeout(() => process.exit(1), 200);
+});
