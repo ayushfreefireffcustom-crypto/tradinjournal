@@ -86,9 +86,9 @@ Legend:
 - [x] A2.19 `EmptyState`: art slot + one sentence + one button. Replace `components/empty-state.tsx` `S` — `x-empty`
 - [x] A2.20 `Skeleton` set (text, stat, chart, table rows), shaped like the real content `S` — `x-skel`
 - [x] A2.21 `ErrorState` with retry, plus an inline `Banner` (info/warn/error), replacing ad-hoc red boxes (e.g. the dashboard "Broker bridge unavailable" box) `S` — `x-banner` --err/--ok
-- [ ] A2.22 `Toast`: unify `components/toast.tsx` styling to the tokens `S`
-- [ ] A2.23 `Avatar` + `AccountPill` (exchange/broker badge + name + last-4) `S`
-- [ ] A2.24 `Pagination`/"Load more" `S`
+- [x] A2.22 `Toast`: unify `components/toast.tsx` styling to the tokens `S` — `au-toast` inside a `.v6` toaster: tokens, both themes
+- [x] A2.23 `Avatar` + `AccountPill` (exchange/broker badge + name + last-4) `S` — frame `f-av` + the top-bar account pill (broker, last 4, exchange rows)
+- [x] A2.24 `Pagination`/"Load more" `S` — "Show more" + "Showing N of M" on the trade log; other lists are short
 - [x] A2.25 `DateRangePicker` with presets: today, yesterday, this week, last week, this month, last month, YTD, last year, custom. Evidence: MP seen `M` — components/v6/ui/date-range.tsx + lib/date-presets.ts (2 Nov)
 - [ ] A2.26 Chart kit: one `ChartTheme` (axes `--dim`, grid `--line`, tooltip card, crosshair) applied to equity, drawdown, bars, scatter, rolling, heatmap, kline `M`
 - [x] A2.27 `Sparkline` (single shared one; remove the duplicates in `macro/sparkline.tsx` etc.) `S` — components/v6/ui/sparkline.tsx + lib/sparkline.ts (tested); the macro, copy and desk copies are gone
@@ -99,7 +99,7 @@ Legend:
 - [x] A3.0 v6 frame (`components/v6/frame.tsx`) behind `AppShell frame="v6"`: icon rail in a pill, top-bar pills, phone tab bar. Dashboard uses it (30 Oct) `M`
 - [x] A3.0b Frame is the default for every page; pages not yet rebuilt render inside the old style scope (`legacy`) `M`
 - [ ] A3.0d Rebuild each page on the v6 components (`legacy={false}`): trades, analytics, calendar, journal, notebook, charts, markets, macro, SignalX, coach, brokers, settings, admin, partner, auth/status/legal `L` (in progress 31 Oct)
-- [ ] A3.0c Light theme for portalled UI (connect-broker modal, toasts, ⌘K palette still render dark) `S`
+- [x] A3.0c Light theme for portalled UI (connect-broker modal, toasts, ⌘K palette still render dark) `S` — all three portal into a `.v6` wrapper, so the light tokens apply (palette checked in light 2 Nov)
 - [x] A3.1 Rebuild `components/app-shell.tsx` on the new primitives. Keep the props API (`accounts`, `selectedAccount`, `pageTitle`, `actions`…) `M` — v6 frame (`components/v6/frame.tsx`) is now the only shell; props API kept (31 Oct)
 - [x] A3.2 Sidebar `M`: — labelled groups, green active edge, icon rail with tooltips at ≤1180px
   - groups (Journal / Markets / AI / Account)
@@ -123,7 +123,7 @@ Legend:
 - [x] A3.7 Page container: max width, gutters 32/16, consistent vertical rhythm between sections `S` — frame pads the content; `x-page` / `x-row` grids
 - [x] A3.8 Page header pattern: H1 + subline + right-side actions, used by every page `S` — title + subtitle + actions in the frame top bar via AppShell props
 - [x] A3.9 Global ⌘K palette: pages + symbols + recent trades + actions, keyboard nav. Extends the existing implementation (find it via grep `cmdk|CommandPalette`) `M` — components/v6/command-palette.tsx + lib/palette.ts (tested): pages, actions (sync, theme, hide balances, day note, connect broker, sign out), 4 recent trades, symbols → `/trades?symbol=`, ticket search; arrows wrap, Home/End, combobox aria (2 Nov)
-- [ ] A3.10 Notification bell dropdown restyled. Channel tabs come later (C1) `S`
+- [x] A3.10 Notification bell dropdown restyled. Channel tabs come later (C1) `S` — line icons, Mark all read, inbox link (A4.1)
 - [x] A3.11 Remove `app-v5-auto.css` once all pages are migrated (blocked by A4) `S` — gone; only styles/v6 remains
 
 ## A4. Pages (filled from `reports/ui-audit.md`; see the bottom of this file)
@@ -148,11 +148,11 @@ Legend:
 - [x] A5.10 Check the hero WebGL silk: keep it or replace it with a calmer glass object (decide with the user using screenshots) `S`
 
 ## A6. Auth and system pages
-- [ ] A6.1 `/login`, `/signup`, `/forgot`, `/verify` on the new primitives (see the audit for specifics) `M`
-- [ ] A6.2 `/maintenance`, `/access/elefin`, `/access/inactive`, `/unsubscribe` `S`
-- [ ] A6.3 `/privacy`, `/terms` legal layout (`components/v3/legal-page.tsx`) `S`
+- [x] A6.1 `/login`, `/signup`, `/forgot`, `/verify` on the new primitives (see the audit for specifics) `M` — all on v6 AuthShell
+- [x] A6.2 `/maintenance`, `/access/elefin`, `/access/inactive`, `/unsubscribe` `S` — all on v6 StatusCard
+- [x] A6.3 `/privacy`, `/terms` legal layout (`components/v3/legal-page.tsx`) `S` — v6 LegalPage
 - [x] A6.4 404 and error pages (`not-found.tsx`, `error.tsx`, `global-error.tsx`); check whether they exist `S` — all three exist on the v6 StatusCard; global-error now loads Satoshi itself
-- [ ] A6.5 Loading states (`loading.tsx`) per route group `S`
+- [x] A6.5 Loading states (`loading.tsx`) per route group `S` — root `loading.tsx`; each page draws `x-skel` blocks shaped like its content
 
 ## A7. UI QA pass
 - [ ] A7.1 Screenshot every route at 1440/1024/390 before and after; keep them in `design/ui-v6/` `S`
