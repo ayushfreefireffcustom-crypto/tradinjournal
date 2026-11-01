@@ -15,6 +15,7 @@ import { logger } from '@tradinjournal/logger';
 import { findAccountsByUser } from '../accounts/accounts.repository.js';
 import { sendEmail } from '../../lib/email/client.js';
 import { weeklyReviewEmail, type WeeklyReviewAccountSection } from '../../lib/email/templates.js';
+import { weeklyMarketBrief } from '../overview/brief.service.js';
 import { getReport } from './ai.report.service.js';
 
 export interface WeeklyReviewSubscriptionView {
@@ -159,11 +160,17 @@ export async function sendWeeklyReview(params: { userId: string; sentAfter: Date
 
   const now = new Date();
   const url = unsubscribeUrl(sub.unsubscribeToken);
+  // The market brief rides along when it's available; it never holds up the review.
+  const market = await weeklyMarketBrief().catch((err: Error) => {
+    logger.warn(`Weekly review: no market brief — ${err.message}`);
+    return null;
+  });
   const { subject, html } = weeklyReviewEmail({
     name: user.name,
     weekLabel: weekLabel(now),
     sections,
     unsubscribeUrl: url,
+    market,
   });
 
   await sendEmail({

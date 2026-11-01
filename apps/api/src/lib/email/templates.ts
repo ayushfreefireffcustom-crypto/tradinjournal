@@ -164,8 +164,10 @@ export function weeklyReviewEmail(params: {
   weekLabel: string;
   sections: WeeklyReviewAccountSection[];
   unsubscribeUrl: string;
+  /** The weekly market brief, shown after the personal review when available. */
+  market?: { headline: string; summary: string; bullets: string[] } | null;
 }): { subject: string; html: string } {
-  const { name, weekLabel, sections, unsubscribeUrl } = params;
+  const { name, weekLabel, sections, unsubscribeUrl, market } = params;
   const first = name?.trim().split(' ')[0] || 'trader';
 
   const body = sections
@@ -180,10 +182,21 @@ export function weeklyReviewEmail(params: {
     )
     .join('');
 
+  const marketHtml = market
+    ? `
+      <div style="border-top:1px solid ${BORDER};margin-top:28px;padding-top:28px;">
+        <div style="color:${BRAND};font-size:11px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;margin:0 0 14px;">This week in markets</div>
+        <p style="color:${FG};font-size:15px;font-weight:700;line-height:1.5;margin:0 0 8px;">${escapeHtml(market.headline)}</p>
+        <p style="color:${FG};font-size:14px;line-height:1.6;margin:0 0 10px;">${escapeHtml(market.summary)}</p>
+        <ul style="color:${FG};font-size:14px;line-height:1.6;margin:0;padding-left:18px;">${market.bullets.map((b) => `<li>${escapeHtml(b)}</li>`).join('')}</ul>
+      </div>`
+    : '';
+
   const inner = `
     <h1 style="color:${FG};font-size:20px;font-weight:700;margin:0 0 6px;">Your week in review, ${escapeHtml(first)}</h1>
     <p style="color:${MUTED};font-size:13px;line-height:1.6;margin:0 0 4px;">${escapeHtml(weekLabel)}</p>
     ${body}
+    ${marketHtml}
     <a href="${env.APP_URL}/dashboard"
        style="display:inline-block;background:${BRAND};color:${BG};font-size:14px;font-weight:700;text-decoration:none;padding:12px 22px;border-radius:10px;margin-top:28px;">
       Open your dashboard →
