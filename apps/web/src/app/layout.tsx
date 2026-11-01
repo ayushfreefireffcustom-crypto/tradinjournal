@@ -1,24 +1,13 @@
 import type { Metadata } from 'next';
-import { Inter, Instrument_Serif, JetBrains_Mono } from 'next/font/google';
+import { JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 import ClickBurstEffect from '@/components/click-burst-effect';
 import CursorGlow from '@/components/cursor-glow';
 import { ToastProvider } from '@/components/toast';
 import PwaSetup from '@/components/pwa-setup';
 
-// Inter is the sole brand typeface (Black 900 for display/logo, Bold 700 for
-// headings, SemiBold 600 for UI labels, Regular 400 for body). Self-hosted via
-// next/font, so there's no external request and no flash-of-unstyled-text.
-const inter = Inter({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700', '800', '900'],
-  variable: '--font-inter',
-  display: 'swap',
-});
-
-// v5 premium theme: a serif italic for the one accent word per heading, and a
-// mono for prices/tables. Self-hosted by next/font like Inter.
-const serif = Instrument_Serif({ subsets: ['latin'], weight: '400', style: ['normal', 'italic'], variable: '--font-v5-serif', display: 'swap' });
+// Type (A0.14–A0.16): Satoshi 400/500 for all text (Fontshare stylesheet below)
+// and JetBrains Mono 400/500 for numbers, self-hosted by next/font.
 const mono = JetBrains_Mono({ subsets: ['latin'], weight: ['400', '500'], variable: '--font-v5-mono', display: 'swap' });
 
 const THEME_SCRIPT = `(function(){var t='dark';try{var q=new URLSearchParams(location.search).get('theme');var s=localStorage.getItem('tl-theme');t=q==='light'||q==='dark'?q:s==='light'?'light':'dark';}catch(e){}document.documentElement.dataset.theme=t;try{if(localStorage.getItem('tl-hide-money')==='1')document.documentElement.dataset.hideMoney='1'}catch(e){}})();`;
@@ -34,14 +23,14 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`dark ${inter.variable} ${serif.variable} ${mono.variable}`} suppressHydrationWarning>
+    <html lang="en" className={`dark ${mono.variable}`} suppressHydrationWarning>
       <head>
         {/* v6 theme before first paint: ?theme= wins, then the saved choice, else dark. */}
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
-        {/* Satoshi — the v3 product typeface (Fontshare, free for commercial use). */}
+        {/* Satoshi, the product typeface (Fontshare, free for commercial use). Only the two weights the UI uses. */}
         <link rel="preconnect" href="https://api.fontshare.com" />
         <link rel="preconnect" href="https://cdn.fontshare.com" crossOrigin="" />
-        <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700,400i,500i&display=swap" />
+        <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500&display=swap" />
       </head>
       <body className="min-h-screen bg-app text-fg antialiased">
         <ClickBurstEffect />

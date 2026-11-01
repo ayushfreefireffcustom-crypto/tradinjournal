@@ -8,7 +8,10 @@ const THEME = `(function(){var t='dark';try{t=localStorage.getItem('tl-theme')==
 export default function GlobalError({ reset }: { error: Error & { digest?: string }; reset: () => void }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head><script dangerouslySetInnerHTML={{ __html: THEME }} /></head>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME }} />
+        <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500&display=swap" />
+      </head>
       <body style={{ margin: 0 }}>
         <StatusCard testId="global-error-page" tone="r" icon={SC_ICONS.warn} kicker="Something went wrong" title="TRADElogs couldn’t load"
           body="Your data is safe. Reload to try again.">
