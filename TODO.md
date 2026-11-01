@@ -425,14 +425,14 @@ Legend:
 
 # PART E — Analytics engine (Phase 3)
 - [ ] E1 Shared indicator engine in `packages/core` with typed params, min/max, a "comparable" flag, and unit tests per indicator. Covers the full CM catalogue of 52, in batches below `L → split`:
-  - [ ] E1a Trend: EMA, SMA, WMA, VWMA, Hull, DEMA, TEMA `M`
-  - [ ] E1b Trend: MACD, MACD hist, ADX, Supertrend, PSAR, Donchian U/L `M`
-  - [ ] E1c Ichimoku (Tenkan, Kijun, Span A/B, Chikou) `S`
-  - [ ] E1d Oscillators: RSI, Stoch RSI, CCI, Williams %R, MFI, ROC, Momentum, Stoch %K/%D, Awesome, Ultimate `M`
-  - [ ] E1e Volatility: ATR, BB width/upper/middle/lower, Keltner U/L, StdDev `M`
-  - [ ] E1f Volume: Volume, Volume SMA, VWAP, OBV, CMF, A/D `M`
-  - [ ] E1g Meta: funding rate, open interest (from Binance/Bybit/Delta public data) `M`
-  - [ ] E1h Price refs: O/H/L/C, highest high N, lowest low N `S`
+  - [x] E1a Trend: EMA, SMA, WMA, VWMA, Hull, DEMA, TEMA `M` (done 1 Nov)
+  - [x] E1b Trend: MACD, MACD hist, ADX, Supertrend, PSAR, Donchian U/L `M` (done 1 Nov)
+  - [x] E1c Ichimoku (Tenkan, Kijun, Span A/B, Chikou) `S` (done 1 Nov)
+  - [x] E1d Oscillators: RSI, Stoch RSI, CCI, Williams %R, MFI, ROC, Momentum, Stoch %K/%D, Awesome, Ultimate `M` (done 1 Nov)
+  - [x] E1e Volatility: ATR, BB width/upper/middle/lower, Keltner U/L, StdDev `M` (done 1 Nov)
+  - [x] E1f Volume: Volume, Volume SMA, VWAP, OBV, CMF, A/D `M` (done 1 Nov)
+  - [ ] E1g Meta: funding rate, open interest (from Binance/Bybit/Delta public data) `M` (needs a funding/OI data feed; with E11/E17)
+  - [x] E1h Price refs: O/H/L/C, highest high N, lowest low N `S` (done 1 Nov)
 - [ ] E2 Candle types: Heikin-Ashi, Renko (box %/ATR/fixed), Kagi, Point & Figure `M`
 - [ ] E3 Indicator alerts `M`:
   - extend `PriceAlert` → `Alert`: kind price/indicator/change24h/funding/OI
