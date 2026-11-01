@@ -20,6 +20,7 @@ import AlertsPanel from '@/components/charts/alerts-panel';
 import AlertDialog from '@/components/charts/alert-dialog';
 import ChartTypeMenu from '@/components/charts/chart-type-menu';
 import PatternsPanel from '@/components/charts/patterns-panel';
+import StatsPanel from '@/components/charts/stats-panel';
 import { PATTERN_TFS, patternsApi, type PatternsResult } from '@/lib/patterns-api';
 import '@/styles/v6/markets.css';
 
@@ -194,6 +195,7 @@ export default function ChartsPage() {
               state={pat.key === patKey ? pat : { data: null, error: null, loading: true }}
               unsupported={patternTfOk ? undefined : `Patterns work on ${PATTERN_TFS.join(', ')} charts.`} />
           )}
+          <StatsPanel symbol={active.symbol} />
           <Watchlist activeSymbol={active.symbol} onPick={symbol => patchActive({ symbol })} />
           <AlertsPanel activeSymbol={active.symbol} reloadToken={alertsReload} onNew={openAlert} />
         </div>

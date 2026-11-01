@@ -433,3 +433,13 @@
 .v6 .mk-pt-exp { display: grid; gap: 14px; }
 .v6 .mk-pt-exp h3 { margin: 0 0 4px; font-size: 13px; font-weight: 500; color: var(--mut); }
 .v6 .mk-pt-exp p { margin: 0; font-size: 14px; line-height: 1.55; }
+
+/* Symbol stats (E12) */
+.v6 .mk-st { display: grid; gap: 6px; }
+.v6 .mk-st-ret { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 4px; }
+.v6 .mk-st-ret > div { display: grid; gap: 2px; background: var(--s2); border-radius: 8px; padding: 6px 8px; font-size: 11px; }
+.v6 .mk-st-ret b { font-size: 13px; font-weight: 500; }
+.v6 .mk-st-ret .pos, .v6 .mk-st .pos { color: var(--g); }
+.v6 .mk-st-ret .neg, .v6 .mk-st .neg { color: var(--r); }
+.v6 .mk-st-row { display: flex; justify-content: space-between; gap: 10px; font-size: 12.5px; padding: 4px 0; border-top: 1px solid var(--line); }
+.v6 .mk-st-row > span:first-child { color: var(--mut); }

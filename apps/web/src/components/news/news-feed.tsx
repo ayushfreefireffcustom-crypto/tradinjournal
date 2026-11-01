@@ -118,6 +118,7 @@ export default function NewsFeed({ userSymbols = EMPTY_SYMBOLS, symbolsReady = t
   const [error, setError] = useState('');
   const [category, setCategory] = useState<NewsCategory | null>(null);
   const [highOnly, setHighOnly] = useState(false);
+  const [sentiment, setSentiment] = useState<Sentiment | null>(null);
   const [symbolFilter, setSymbolFilter] = useState<string | null>(null);
   const [live, setLive] = useState(false);
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
@@ -142,7 +143,7 @@ export default function NewsFeed({ userSymbols = EMPTY_SYMBOLS, symbolsReady = t
 
   // Two-section mode: preferences set, and no category/impact/symbol filter
   // narrowing the view (filters collapse back to a single list to stay legible).
-  const personalized = prefsLoaded && prefs.length > 0 && !category && !highOnly && !symbolFilter;
+  const personalized = prefsLoaded && prefs.length > 0 && !category && !highOnly && !sentiment && !symbolFilter;
 
   // Load the picker catalog + saved preferences once.
   useEffect(() => {
@@ -164,7 +165,7 @@ export default function NewsFeed({ userSymbols = EMPTY_SYMBOLS, symbolsReady = t
   // "On your radar" — items touching a symbol the user trades. Hero when they have
   // symbols and aren't otherwise filtering. Wait for stats (symbolsReady) so the
   // band doesn't pop in after the lead already rendered.
-  const radarActive = symbolsReady && hasSymbols && !category && !highOnly && !symbolFilter;
+  const radarActive = symbolsReady && hasSymbols && !category && !highOnly && !sentiment && !symbolFilter;
   const radar = useMemo(
     () => (radarActive ? allLoaded.filter(it => matchOf(it).length > 0).slice(0, 6) : []),
     [radarActive, allLoaded, matchOf],
@@ -180,7 +181,7 @@ export default function NewsFeed({ userSymbols = EMPTY_SYMBOLS, symbolsReady = t
   // Featured lead story: only on the plain feed (no personalization, no symbols,
   // no filter) — otherwise a band above is the hero instead. Gated on symbolsReady
   // so it doesn't flash in then vanish once traded symbols resolve.
-  const showLead = symbolsReady && !category && !highOnly && !personalized && !symbolFilter;
+  const showLead = symbolsReady && !category && !highOnly && !sentiment && !personalized && !symbolFilter;
   const lead = useMemo(() => {
     if (!showLead || items.length === 0) return null;
     return [...items.slice(0, 12)].sort(
@@ -211,9 +212,10 @@ export default function NewsFeed({ userSymbols = EMPTY_SYMBOLS, symbolsReady = t
     () => ({
       ...(category ? { category } : {}),
       ...(highOnly ? { impact: 'HIGH' as EventImpact } : {}),
+      ...(sentiment ? { sentiment } : {}),
       ...(personalized ? { excludeSources: prefs } : {}),
     }),
-    [category, highOnly, personalized, prefs],
+    [category, highOnly, sentiment, personalized, prefs],
   );
 
   // The bottom feed ("more headlines" when personalized, else the whole feed).
@@ -283,7 +285,7 @@ export default function NewsFeed({ userSymbols = EMPTY_SYMBOLS, symbolsReady = t
       } catch { /* ignore */ }
     }, POLL_MS);
     return () => { controller.abort(); clearInterval(poll); setLive(false); };
-  }, [category, highOnly, personalized, prefs]);
+  }, [category, highOnly, sentiment, personalized, prefs]);
 
   // Infinite scroll (bottom feed). The feed scrolls inside an inner
   // overflow-y-auto container, so we watch THAT element's scroll position. (An
@@ -367,7 +369,7 @@ export default function NewsFeed({ userSymbols = EMPTY_SYMBOLS, symbolsReady = t
         <div className="x-ch mk-news-hd">
           <h2 id="mk-news-t">Headlines</h2>
           <span className="x-sub mk-fresh">
-            {live && !category && !highOnly && <span className="mk-onair"><i className="x-dot" aria-hidden />Live</span>}
+            {live && !category && !highOnly && !sentiment && <span className="mk-onair"><i className="x-dot" aria-hidden />Live</span>}
             {updatedAt ? <span>Updated {timeAgo(updatedAt)}</span> : loading ? <span>Loading…</span> : null}
           </span>
           <div className="x-r">
@@ -386,6 +388,11 @@ export default function NewsFeed({ userSymbols = EMPTY_SYMBOLS, symbolsReady = t
             ))}
           </div>
           <button aria-pressed={highOnly} className="mk-tog" onClick={() => setHighOnly(v => !v)} data-testid="news-high"><i className="x-dot x-dot--r" aria-hidden />High impact</button>
+          <div className="x-seg x-seg--in x-seg--sm" role="group" aria-label="Sentiment">
+            {(['BULLISH', 'BEARISH', 'NEUTRAL'] as const).map(v => (
+              <button key={v} aria-pressed={sentiment === v} onClick={() => setSentiment(sentiment === v ? null : v)} data-testid={`news-sent-${v.toLowerCase()}`}>{SENT_LABEL[v]}</button>
+            ))}
+          </div>
         </div>
 
         {hasSymbols && (
