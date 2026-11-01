@@ -93,16 +93,6 @@
 .v6 .mc-sft { display: flex; justify-content: space-between; gap: 12px; padding: 10px 16px; border-top: 1px solid var(--line); font-size: 12px; color: var(--dim); flex-wrap: wrap; }
 
 /* info tip */
-.v6 .mc-info { display: inline-flex; align-items: center; flex: none; }
-.v6 .mc-info-b { width: 20px; height: 20px; border-radius: 50%; border: 0; background: none; color: var(--dim); display: grid; place-items: center; cursor: pointer; padding: 0; }
-.v6 .mc-info-b:hover, .v6 .mc-info-b[aria-expanded=true] { color: var(--tx); }
-.v6 .mc-info-pop {
-  position: fixed; z-index: 80; transform: translateY(-100%); pointer-events: none; background: var(--tip); color: var(--tx);
-  border-radius: 10px; padding: 9px 12px; font: 400 12.5px/1.45 var(--sans); box-shadow: 0 10px 24px rgba(0, 0, 0, .3); animation: x-fade .12s;
-}
-.v6 .mc-info-pop.below { transform: none; }
-html[data-theme=light] .v6 .mc-info-pop { color: var(--inv); }
-
 /* score track / meter / sparkline */
 .v6 .mc-trk { --ring: var(--s1); position: relative; display: block; height: 6px; border-radius: 3px; background: var(--track); min-width: 40px; }
 .v6 .mc-trk::before { content: ""; position: absolute; left: 45%; width: 10%; top: 0; bottom: 0; background: var(--line-2); }

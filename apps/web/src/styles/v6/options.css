@@ -1,6 +1,6 @@
 /* ── Options (Part G) ── */
-.v6 .op-page { --sc-1: #F5A524; --sc-2: #4D8DFF; --sc-3: #A374FF; --sc-4: #22C3D6; display: grid; gap: 14px; }
-.v6 .op-panel { --sc-1: #F5A524; --sc-2: #4D8DFF; --sc-3: #A374FF; --sc-4: #22C3D6; }
+.v6 .op-page { --sc-1: var(--series-3); --sc-2: var(--series-2); --sc-3: var(--series-4); --sc-4: var(--series-5); display: grid; gap: 14px; }
+.v6 .op-panel { --sc-1: var(--series-3); --sc-2: var(--series-2); --sc-3: var(--series-4); --sc-4: var(--series-5); }
 .v6 .op-head { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; justify-content: space-between; }
 .v6 .op-sections a { padding: 6px 12px; border-radius: 999px; color: var(--mut); text-decoration: none; font-size: 12.5px; }
 .v6 .op-sections a.is-on { background: var(--hi); color: var(--inv); }

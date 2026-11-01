@@ -112,7 +112,7 @@ export default function MacroAssetPage() {
                 <div className="mc-ah-c">
                   <span className="x-label">Bias score</span>
                   <div className="mc-big">
-                    <b className={tone === 'bull' ? 'pos' : tone === 'bear' ? 'neg' : ''}><CountUp value={Math.round(bias.score)} suffix="%" duration={1000} /></b>
+                    <b className={tone === 'bull' ? 'pos' : tone === 'bear' ? 'neg' : ''}><CountUp value={Math.round(bias.score)} suffix="/100" duration={1000} /></b>
                     <BiasTag tone={tone} />
                   </div>
                   <p className="mc-ah-s">{strength(bias.score)}</p>

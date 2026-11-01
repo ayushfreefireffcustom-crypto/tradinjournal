@@ -30,7 +30,7 @@
 .v6 .dk-kpi .x-stat b { white-space: nowrap; }
 .v6 .dk-kpi .x-stat b.pos { color: var(--g); } .v6 .dk-kpi .x-stat b.neg { color: var(--r); }
 .v6 .dk-kpi .x-stat b em { font-style: normal; font-size: 14px; color: var(--mut); font-weight: 400; letter-spacing: 0; }
-.v6 .dk-kpi svg { flex: none; }
+.v6 .dk-kpi > svg { flex: none; }
 .v6 .dk-wl { width: 112px; display: grid; gap: 7px; flex: none; }
 .v6 .dk-wl div { display: flex; align-items: center; gap: 8px; }
 .v6 .dk-wl i { display: block; height: 6px; border-radius: 3px; min-width: 4px; max-width: 64px; }
@@ -132,7 +132,7 @@
   .v6 .dk-legend { display: none; }
   .v6 .dk-kpis { gap: 10px; }
   .v6 .dk-kpi { padding: 14px; flex-direction: column; align-items: flex-start; gap: 6px; }
-  .v6 .dk-kpi svg, .v6 .dk-wl { display: none; }
+  .v6 .dk-kpi > svg, .v6 .dk-wl { display: none; }
   .v6 .dk-kpi .x-stat b { font-size: 20px; }
   .v6 .dk-kpi .x-stat b em { font-size: 12px; }
   .v6 .dk-kpi .x-stat small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

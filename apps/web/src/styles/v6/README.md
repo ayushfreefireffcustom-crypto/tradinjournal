@@ -25,6 +25,8 @@ Approved mock: `design/dashboard-v8/a-desk-v2/` (dark + light screenshots in tha
    `#` hex colours and inline `style={{ color`. None should remain.
 4. Colours only through tokens: `var(--g)` profit/brand, `var(--r)` loss/risk, `var(--tx|mut|dim)`
    text, `var(--s1)` card, `var(--s2)` inset, `var(--line)` hairlines. No amber, violet or blue.
+   The one exception is a chart with several series (compare, option legs): its lines and legend
+   keys use `var(--series-1…6)`; never for state, text or buttons.
    Charts: grid `var(--grid)`, axis text `var(--axis)`, tooltips `var(--tip)` with light text.
 5. Typography: Satoshi 400/500 only (never 600/700/900, never `font-bold`/`font-black`), JetBrains
    Mono (`.m`) for numbers only (prices, P&L, counts, times); labels, dates and headings stay sans.

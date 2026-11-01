@@ -747,7 +747,7 @@
 .v6 .rp-hcol { display: grid; justify-items: center; gap: 4px; font-size: 11px; }
 .v6 .rp-hcol i { display: block; width: 100%; border-radius: 4px 4px 0 0; }
 .v6 .rp-hcol i.g { background: var(--g); } .v6 .rp-hcol i.r { background: var(--r); }
-.v6 .rp-hl { font-size: 9.5px; color: var(--mut); text-align: center; line-height: 1.2; }
+.v6 .rp-hl { font-size: 10.5px; color: var(--mut); text-align: center; line-height: 1.2; }
 @media (max-width: 900px) {
   .v6 .dp-cols { grid-template-columns: 1fr; }
   .v6 .dp-ev { grid-template-columns: 1fr; gap: 2px; }
@@ -769,7 +769,7 @@
 @media (max-width: 760px) { .v6 .dk-strat-row { grid-template-columns: 1fr 1fr; } }
 
 /* ── Strategy builder: Chart layout (F11) ── */
-.v6 .sc-card { --sc-1: #F5A524; --sc-2: #4D8DFF; --sc-3: #A374FF; --sc-4: #22C3D6; display: grid; gap: 10px; }
+.v6 .sc-card { --sc-1: var(--series-3); --sc-2: var(--series-2); --sc-3: var(--series-4); --sc-4: var(--series-5); display: grid; gap: 10px; }
 .v6 .sc-top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
 .v6 .sc-sym { width: auto; min-width: 130px; }
 .v6 .sc-symb { font-weight: 500; }

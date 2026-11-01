@@ -24,6 +24,11 @@
   --hi: #EDEDED;          /* primary button / active chip background */
   --inv: #0A0A0A;         /* text on --hi */
   --tip: #262626;         /* chart tooltip (dark in both themes) */
+  /* Categorical palette for charts with several series (compare, option legs,
+     screener columns): lines and their legend keys only, never UI state, text
+     or buttons. Red is left out because it means loss. */
+  --series-1: #08C465; --series-2: #5B8DEF; --series-3: #F5A524;
+  --series-4: #C26BF0; --series-5: #2EC4C4; --series-6: #D8D8D8;
   --g-tip: #2BD47E;       /* green and red tints that read on --tip */
   --r-tip: #FF6A62;
   --grid: rgba(255, 255, 255, .06);

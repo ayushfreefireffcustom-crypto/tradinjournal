@@ -16,6 +16,8 @@ import {
 import MarkdownMessage from '@/components/coach/markdown-message';
 import { IChevronDown, ISync } from '@/components/v3/icons';
 import '@/styles/v6/desk.css';
+import InfoTip from '@/components/v6/ui/info-tip';
+import { METRIC_HELP, type MetricKey } from '@/lib/metric-help';
 
 const MONO = { fontFamily: 'var(--mono)' } as const;
 
@@ -153,6 +155,11 @@ function EquityChart({ pts }: { pts: ReturnType<typeof withDrawdown> }) {
 
 // ─── KPI column ──────────────────────────────────────────────────────────────
 
+/** ⓘ with the shared explanation of a metric (QW.8). */
+function Help({ k }: { k: MetricKey }) {
+  return <InfoTip {...METRIC_HELP[k]} />;
+}
+
 export function KpiColumn({ view, trades }: { view: AccountStats; trades: Trade[] }) {
   const n = view.totalTrades;
   const pfInf = view.profitFactor >= 999;
@@ -162,15 +169,15 @@ export function KpiColumn({ view, trades }: { view: AccountStats; trades: Trade[
   return (
     <div className="dk-kpis" data-testid="dash-kpis">
       <div className="x-card dk-kpi">
-        <div className="x-stat"><span>Win rate</span><b>{n ? fmtPct(view.winRate) : '—'}</b><small>{n ? `${view.totalWins} won · ${view.totalLosses} lost` : 'No closed trades'}</small></div>
+        <div className="x-stat"><span>Win rate<Help k="winRate" /></span><b>{n ? fmtPct(view.winRate) : '—'}</b><small>{n ? `${view.totalWins} won · ${view.totalLosses} lost` : 'No closed trades'}</small></div>
         <Ring value={n ? view.winRate : 0} />
       </div>
       <div className="x-card dk-kpi">
-        <div className="x-stat"><span>Profit factor</span><b>{!n ? '—' : pfInf ? '∞' : view.profitFactor.toFixed(2)}</b><small>{pfInf ? 'No losing trades yet' : 'Gross win ÷ gross loss'}</small></div>
+        <div className="x-stat"><span>Profit factor<Help k="profitFactor" /></span><b>{!n ? '—' : pfInf ? '∞' : view.profitFactor.toFixed(2)}</b><small>{pfInf ? 'No losing trades yet' : 'Gross win ÷ gross loss'}</small></div>
         <Gauge value={!n ? 0 : pfInf ? 1 : Math.min(view.profitFactor / 3, 1)} />
       </div>
       <div className="x-card dk-kpi">
-        <div className="x-stat"><span>Avg win / loss</span><b>{rr == null ? '—' : `1 : ${rr.toFixed(2)}`}</b><small>Reward to risk</small></div>
+        <div className="x-stat"><span>Avg win / loss<Help k="avgWinLoss" /></span><b>{rr == null ? '—' : `1 : ${rr.toFixed(2)}`}</b><small>Reward to risk</small></div>
         <div className="dk-wl" aria-hidden>
           {(() => {
             const m = Math.max(view.avgWin, Math.abs(view.avgLoss), 1);
@@ -184,7 +191,7 @@ export function KpiColumn({ view, trades }: { view: AccountStats; trades: Trade[
         </div>
       </div>
       <div className="x-card dk-kpi">
-        <div className="x-stat"><span>Expectancy</span><b className={exp == null ? '' : exp >= 0 ? 'pos' : 'neg'}>{exp == null ? '—' : `${fmtUsd(exp, 0)}`}<em> / trade</em></b><small>Max drawdown {n ? fmtPct(view.maxDrawdownPct) : '—'}</small></div>
+        <div className="x-stat"><span>Expectancy<Help k="expectancy" /></span><b className={exp == null ? '' : exp >= 0 ? 'pos' : 'neg'}>{exp == null ? '—' : `${fmtUsd(exp, 0)}`}<em> / trade</em></b><small>Max drawdown {n ? fmtPct(view.maxDrawdownPct) : '—'}</small></div>
         {roll.length > 2 && <Spark vals={roll.map(r => r.expectancy)} />}
       </div>
     </div>
@@ -238,10 +245,10 @@ export function DailyCard({ trades }: { trades: Trade[] }) {
       </div>
       <DailyChart days={days} />
       <div className="x-strip dk-dstats">
-        <div><span>Avg green day</span><b className="m pos">{st.avgGreen == null ? '—' : fmtUsd(st.avgGreen, 0)}</b></div>
-        <div><span>Avg red day</span><b className="m neg">{st.avgRed == null ? '—' : fmtUsd(st.avgRed, 0)}</b></div>
-        <div><span>Best green streak</span><b>{st.bestStreak ? `${st.bestStreak} day${st.bestStreak === 1 ? '' : 's'}` : '—'}</b></div>
-        <div><span>Trades per day</span><b>{st.perDay == null ? '—' : st.perDay.toFixed(1)}</b></div>
+        <div><span>Avg green day<Help k="avgGreenDay" /></span><b className="m pos">{st.avgGreen == null ? '—' : fmtUsd(st.avgGreen, 0)}</b></div>
+        <div><span>Avg red day<Help k="avgRedDay" /></span><b className="m neg">{st.avgRed == null ? '—' : fmtUsd(st.avgRed, 0)}</b></div>
+        <div><span>Best green streak<Help k="bestStreak" /></span><b>{st.bestStreak ? `${st.bestStreak} day${st.bestStreak === 1 ? '' : 's'}` : '—'}</b></div>
+        <div><span>Trades per day<Help k="tradesPerDay" /></span><b>{st.perDay == null ? '—' : st.perDay.toFixed(1)}</b></div>
       </div>
     </section>
   );

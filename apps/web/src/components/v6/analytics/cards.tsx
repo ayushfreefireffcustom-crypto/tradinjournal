@@ -9,6 +9,8 @@ import { fmtHold, fmtPct, fmtUsd, fmtUsdCompact } from '@/lib/dashboard-v6';
 import { tickerMark } from '@/lib/desk';
 import { SideChip } from '@/components/v6/desk';
 import { ACard, Empty, Facts, MONO, Tip, ticks, useSize } from './kit';
+import InfoTip from '@/components/v6/ui/info-tip';
+import { METRIC_HELP } from '@/lib/metric-help';
 
 const tone = (v: number) => (v > 0 ? 'pos' : v < 0 ? 'neg' : '');
 /** "+$1.2k" / "−$340" / "$0". */
@@ -33,15 +35,15 @@ export function KpiStrip({ view }: { view: AccountStats }) {
   const ddAbs = view.maxDrawdownPct * peak;
   const pfInf = view.profitFactor >= 999;
   const k = [
-    { id: 'netpl', l: 'Net P&L', v: n ? fmtUsd(view.netPnl) : '—', c: tone(view.netPnl), s: plural(n, 'trade') },
-    { id: 'profitfactor', l: 'Profit factor', v: !n ? '—' : pfInf ? '∞' : view.profitFactor.toFixed(2), c: '', s: !n ? 'No closed trades' : pfInf ? 'No losers yet' : `$${view.profitFactor.toFixed(2)} won per $1 lost` },
-    { id: 'grossprofit', l: 'Gross profit', v: n ? fmtUsd(view.grossProfit) : '—', c: view.grossProfit ? 'pos' : '', s: plural(view.totalWins, 'winner') },
-    { id: 'grossloss', l: 'Gross loss', v: n ? fmtUsd(-Math.abs(view.grossLoss)) : '—', c: view.grossLoss ? 'neg' : '', s: plural(view.totalLosses, 'loser') },
-    { id: 'maxdrawdown', l: 'Max drawdown', v: n ? fmtPct(view.maxDrawdownPct) : '—', c: view.maxDrawdownPct ? 'neg' : '', s: ddAbs > 0 ? `${fmtUsd(-ddAbs, 0)}${recovered ? ' · recovered' : ''}` : 'No drawdown yet' },
+    { id: 'netpl', h: 'netPnl' as const, l: 'Net P&L', v: n ? fmtUsd(view.netPnl) : '—', c: tone(view.netPnl), s: plural(n, 'trade') },
+    { id: 'profitfactor', h: 'profitFactor' as const, l: 'Profit factor', v: !n ? '—' : pfInf ? '∞' : view.profitFactor.toFixed(2), c: '', s: !n ? 'No closed trades' : pfInf ? 'No losers yet' : `$${view.profitFactor.toFixed(2)} won per $1 lost` },
+    { id: 'grossprofit', h: 'grossProfit' as const, l: 'Gross profit', v: n ? fmtUsd(view.grossProfit) : '—', c: view.grossProfit ? 'pos' : '', s: plural(view.totalWins, 'winner') },
+    { id: 'grossloss', h: 'grossLoss' as const, l: 'Gross loss', v: n ? fmtUsd(-Math.abs(view.grossLoss)) : '—', c: view.grossLoss ? 'neg' : '', s: plural(view.totalLosses, 'loser') },
+    { id: 'maxdrawdown', h: 'maxDrawdown' as const, l: 'Max drawdown', v: n ? fmtPct(view.maxDrawdownPct) : '—', c: view.maxDrawdownPct ? 'neg' : '', s: ddAbs > 0 ? `${fmtUsd(-ddAbs, 0)}${recovered ? ' · recovered' : ''}` : 'No drawdown yet' },
   ];
   return (
     <section className="x-strip x-strip--card an-kpis" style={{ ['--n' as string]: 5 }} aria-label="Summary">
-      {k.map(x => <div key={x.id} data-testid={`kpi-${x.id}`}><span>{x.l}</span><b className={`m ${x.c}`}>{x.v}</b><small>{x.s}</small></div>)}
+      {k.map(x => <div key={x.id} data-testid={`kpi-${x.id}`}><span>{x.l}<InfoTip {...METRIC_HELP[x.h]} /></span><b className={`m ${x.c}`}>{x.v}</b><small>{x.s}</small></div>)}
     </section>
   );
 }
@@ -70,7 +72,7 @@ export function Strike({ view }: { view: AccountStats }) {
         </dl>
       </div>
       <Facts items={[
-        { l: 'Avg win', v: total ? fmtUsd(view.avgWin) : '—', c: view.avgWin ? 'pos' : '' },
+        { l: 'Avg win', h: 'avgWinLoss', v: total ? fmtUsd(view.avgWin) : '—', c: view.avgWin ? 'pos' : '' },
         { l: 'Avg loss', v: total ? fmtUsd(-Math.abs(view.avgLoss)) : '—', c: view.avgLoss ? 'neg' : '' },
         { l: 'Best', v: total ? fmtUsd(view.bestTrade) : '—', c: tone(view.bestTrade) },
         { l: 'Worst', v: total ? fmtUsd(view.worstTrade) : '—', c: tone(view.worstTrade) },
@@ -92,8 +94,8 @@ export function Dist({ trades }: { trades: Trade[] }) {
     <ACard title="P&L per trade" sub="trades per P&L range" testId="r-distribution">
       <DistChart buckets={buckets} total={pnls.length} />
       <Facts items={[
-        { l: 'Expectancy', v: fmtUsd(exp), c: tone(exp) },
-        { l: 'Std dev', v: `$${stdev(pnls).toLocaleString('en-US', { maximumFractionDigits: 0 })}` },
+        { l: 'Expectancy', h: 'expectancy', v: fmtUsd(exp), c: tone(exp) },
+        { l: 'Std dev', h: 'stdDev', v: `$${stdev(pnls).toLocaleString('en-US', { maximumFractionDigits: 0 })}` },
         { l: 'Best', v: sc(Math.max(...pnls)), c: tone(Math.max(...pnls)) },
         { l: 'Worst', v: sc(Math.min(...pnls)), c: tone(Math.min(...pnls)) },
       ]} />

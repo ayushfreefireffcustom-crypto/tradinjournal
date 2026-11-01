@@ -17,7 +17,8 @@ const RANGES: Array<{ id: string; label: string; tf: MarketTimeframe; bars: numb
   { id: '90d', label: '90D', tf: '1d', bars: 90 },
   { id: '1y', label: '1Y', tf: '1d', bars: 365 },
 ];
-const COLORS = ['var(--g)', '#5B8DEF', '#F5A524', '#C26BF0', '#FE3A31', '#2EC4C4'];
+// The categorical series palette (tokens.css); red is kept for losses.
+const COLORS = [1, 2, 3, 4, 5, 6].map((i) => `var(--series-${i})`);
 const DEFAULT = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT'];
 const MAX = 6;
 
