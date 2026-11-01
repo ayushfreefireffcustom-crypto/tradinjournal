@@ -158,7 +158,7 @@ Legend:
 - [ ] A7.1 Screenshot every route at 1440/1024/390 before and after; keep them in `design/ui-v6/` `S`
 - [x] A7.2 Contrast check: text ≥ 4.5:1, muted ≥ 3:1 on its surfaces — automated audit over every route (scratchpad audit.cjs); --dim raised in both themes, landing fine print fixed (2 Nov) `S`
 - [ ] A7.3 Keyboard pass: tab order, focus rings, Esc closes sheets, ⌘K `S`
-- [ ] A7.4 Delete dead CSS (`app-v3.css` rules no longer referenced), dead components and `v3/` leftovers `M`
+- [ ] A7.4 Delete dead CSS (`app-v3.css` rules no longer referenced), dead components and `v3/` leftovers `M` — partial 2 Nov: app-v3.css and the dead components are gone, globals.css cleared of 85 unused rules; `components/v3/icons.tsx` and the `useTradeCandles` hook in `components/v3/` are still live and should move to v6
 - [ ] A7.5 Bundle check: no page ships CSS from other pages unnecessarily `S` — checked 2 Nov. (1) FIXED: dialog rules moved from account.css to `styles/v6/dialogs.css`, so a page with a confirm dialog no longer ships settings CSS. Was: `components/confirm-dialog.tsx` and `location-form.tsx` import all of account.css (33 KB) for ~20 `ac-dlg`/`ac-loc` rules, so every page with a dialog ships it: (2) still open: `components/v6/copy/parts.tsx` (useLoad, usePoll, ErrorCard, ago) and `strategy/strategies-card.tsx` pull copy.css (60 KB, which also holds strategy/overview styles) into /overview, /strategies/deployments and the dashboard: move the generic helpers to components/v6/ui and split copy.css by page
 - [ ] A7.6 User review checkpoint: show the screenshots and get sign-off before Part B `S`
 
@@ -586,22 +586,22 @@ Legend:
 - [x] A0.3 One green: replace `#2EE58A`, `#7DF2B6`, `#19C37D` with `--green` `#08C465` (one tint allowed for fills) `S` — no stray greens left
 - [x] A0.4 One red: replace `#FF6A62` with `--red` `#FE3A31` (one tint allowed) `S` — tooltip tints are tokens (--g-tip/--r-tip)
 - [x] A0.5 **Remove amber everywhere** `M`: — none left; --color-warning is neutral
-  - [ ] `--amber`, `--color-warning`, `.v3-pill.a`
-  - [ ] 45% win-rate chip
-  - [ ] SignalX "Open" chip
-  - [ ] `/access/inactive` card
-  - [ ] macro "Key tension" / MEDIUM chips
-  - [ ] calendar impact dots, watch stars, "M" filter
-  - [ ] landing "Timing" bar
-  - [ ] `notification-bell.tsx:32` `border-warning`
-  - [ ] news ticker tiles
+  - [x] `--amber`, `--color-warning`, `.v3-pill.a`
+  - [x] 45% win-rate chip
+  - [x] SignalX "Open" chip
+  - [x] `/access/inactive` card
+  - [x] macro "Key tension" / MEDIUM chips
+  - [x] calendar impact dots, watch stars, "M" filter
+  - [x] landing "Timing" bar
+  - [x] `notification-bell.tsx:32` `border-warning`
+  - [x] news ticker tiles
   - Neutral or red (risk) instead
 - [x] A0.6 **Remove violet** `S`: — none left outside the validated chart series palette
-  - [ ] `#6E4BFF` fallbacks in `v3/analytics-parts.tsx:131,134` and `v3/trade-candles.tsx:115` (plus `--tc-zone`, `--tc-grid`)
-  - [ ] `v3/partner-parts.tsx:25`
-  - [ ] `tone:'purple'|'blue'` in `macro/regime-narrative.tsx:45-50` and its CSS mask `app-v5.css:574`
-  - [ ] `.v3-pill.v` usage (`settings/settings-aside.tsx:21`)
-  - [ ] `StatusCard tone="v"` (`app/maintenance/page.tsx:20`)
+  - [x] `#6E4BFF` fallbacks in `v3/analytics-parts.tsx:131,134` and `v3/trade-candles.tsx:115` (plus `--tc-zone`, `--tc-grid`)
+  - [x] `v3/partner-parts.tsx:25`
+  - [x] `tone:'purple'|'blue'` in `macro/regime-narrative.tsx:45-50` and its CSS mask `app-v5.css:574`
+  - [x] `.v3-pill.v` usage (`settings/settings-aside.tsx:21`)
+  - [x] `StatusCard tone="v"` (`app/maintenance/page.tsx:20`)
 - [x] A0.7 One **dark** tooltip/popover style. Replace white `.a-tip`, `.pt-toast` (`app-v5.css:576`), the white chart value pills and the candle `.tc-pill.x` `S` — chart tip and account toast fixed; all tips use --tip (2 Nov)
 - [x] A0.8 Kill decorative glows, radial dot-grid hero cards (`.mr`, `.br-hero`, `.st-priv`) and card gradients + rings (`--surface` gradient) `M` — none in the app; the landing keeps its own art
 - [ ] A0.9 Normalise radii to tokens (24/16/12/999); the audit counted 21 values in `app-v3.css` `M`
