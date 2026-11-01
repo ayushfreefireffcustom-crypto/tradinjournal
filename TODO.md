@@ -807,9 +807,9 @@ Legend:
 - [x] M: "Analyze" = standard primary (no gradient/glow/emoji); "Compile" secondary; no serif "X" `S` — verified in code (2 Nov)
 - [x] M: status chips: Open neutral, Hit = green, Stopped = red (no amber) `S` — verified in code (2 Nov)
 - [x] M: "72%" confidence on every row: check whether this is real or mock; label it if mock `S` — real: the API's model score (heuristic/meta). 72/61 are preview mock constants only
-- [ ] M: balance the columns (track record + strategies below on desktop, or tabs) `M`
+- [x] M: balance the columns (track record + strategies below on desktop, or tabs) `M` — checked 2 Nov with data: analysis + calls left, track record + strategies right, similar heights
 - [x] M: strategy card: ≤ 3 chips, one-line rule summary, one action + menu `S` — three rule chips + "+N"; one test action plus promote/stop (2 Nov)
-- [ ] L: mobile rows not truncated `S`
+- [x] L: mobile rows not truncated `S` — checked at 390; call meta reads "1h · Oct 29 · 72% confidence" with mono only on numbers
 
 ### A4.13 `/coach`: `app/coach/page.tsx`, `components/coach/*`
 - [x] M: page header pattern (title + new chat action); history pane on surface-1, no border `S` — verified in code (2 Nov)

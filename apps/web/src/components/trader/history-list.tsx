@@ -53,7 +53,7 @@ export default function AnalysisHistory({
             <li key={a.id ?? `${a.symbol}-${a.asOf}`}>
               <button type="button" className="ai-call" onClick={() => onSelect?.(a)}>
                 <span className="x-mk">{tickerMark(a.symbol)}</span>
-                <span className="x-sym"><span className="ai-ell"><b>{a.symbol}</b><small>{a.timeframes.join('/')} · {new Date(a.asOf).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · {a.confidence}%</small></span></span>
+                <span className="x-sym"><span className="ai-ell"><b>{a.symbol}</b><small><span className="m">{a.timeframes.join('/')}</span> · {new Date(a.asOf).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · <span className="m">{a.confidence}%</span> confidence</small></span></span>
                 <DirChip dir={a.direction} />
                 <OutcomeBadge outcome={a.outcome} hitLevel={a.hitLevel} pending={!a.outcome} className="ai-call-o" />
               </button>
