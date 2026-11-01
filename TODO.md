@@ -797,9 +797,9 @@ Legend:
 - [x] L: disclaimers: one sentence-case footer line `S` — verified in code (2 Nov)
 
 ### A4.11 `/macro/assets/[symbol]`: `app/macro/assets/[symbol]/page.tsx`
-- [ ] H: **price mismatch**. Header price (2,387) vs TradingView (≈4,025). Use the same source for both, or label the mock clearly. Check the real (non-mock) path too `M`
-- [ ] H: mobile TradingView embed blank (≈800px). Fix sizing or fall back to our own chart `M`
-- [ ] M: TradingView theme colours invalid (console errors). Pass hex values, our candle colours, dark theme `S`
+- [x] H: **price mismatch**. Header price (2,387) vs TradingView (≈4,025). Use the same source for both, or label the mock clearly. Check the real (non-mock) path too `M` — real path: the API quote (or "Quote pending"); preview builds now say the price is sample data (2 Nov)
+- [x] H: mobile TradingView embed blank (≈800px). Fix sizing or fall back to our own chart `M` — renders at 390 (checked 2 Nov)
+- [x] M: TradingView theme colours invalid (console errors). Pass hex values, our candle colours, dark theme `S` — no colour errors now; the one console error is TradingView's own support-portal fetch inside the iframe. Candle colours can't be set through widgetembed (needs the paid tv.js overrides)
 - [x] M: one hero number (price); "Bias score 71/100" not 71% `S`
 - [x] L: duplicate breadcrumb `S` — verified in code (2 Nov)
 

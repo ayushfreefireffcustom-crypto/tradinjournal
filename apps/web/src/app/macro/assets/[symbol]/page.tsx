@@ -43,6 +43,8 @@ const TICK: Record<string, string> = { XAU: 'XAUUSD', XAG: 'XAGUSD', BTC: 'BTCUS
 const REF_NOTE: Record<string, string> = { SPX: 'Ref SPY', NDX: 'Ref QQQ', OIL: 'Ref USO', UST: 'Ref TLT', DXY: 'Ref ICE' };
 // TradingView embed palette per app theme (matches the card surface tokens).
 const TV_BG = { dark: 'rgba(19,19,19,1)', light: 'rgba(255,255,255,1)' } as const;
+// Preview builds serve canned macro data, so the quote won't match the live chart below.
+const SAMPLE_QUOTES = process.env.NEXT_PUBLIC_USE_MOCKS === 'true';
 function strength(score: number): string {
   if (score >= 70) return 'Strongly bullish';
   if (score >= 60) return 'Moderately bullish';
@@ -127,7 +129,9 @@ export default function MacroAssetPage() {
                         <b>{fmtPrice(quote.price)}</b>
                         {quote.changePct != null && <span className={`x-tag x-tag--m ${quote.changePct > 0 ? 'x-tag--g' : quote.changePct < 0 ? 'x-tag--r' : ''}`}>{formatSignedPct(quote.changePct)}</span>}
                       </div>
-                      <p className="mc-ah-s">Updated <span className="m">{new Date(quote.asOf).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' })}</span> UTC</p>
+                      <p className="mc-ah-s">{SAMPLE_QUOTES
+                        ? <span data-testid="macro-asset-sample">Sample price (preview data), not the live quote in the chart</span>
+                        : <>Updated <span className="m">{new Date(quote.asOf).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' })}</span> UTC</>}</p>
                     </>
                   ) : <div className="mc-big"><b className="x-dim">—</b><span className="x-muted">Quote pending</span></div>}
                 </div>
