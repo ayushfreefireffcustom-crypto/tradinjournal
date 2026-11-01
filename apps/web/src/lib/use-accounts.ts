@@ -68,9 +68,10 @@ export function useAccounts(initialIdOverride?: string | null) {
 
   // The journal requires at least one connected broker: zero-broker users are kept
   // on /brokers (the only place they can fix that) until they connect one. The
-  // partner portal and admin pages work without a broker — many partners don't trade.
+  // partner portal and admin pages work without a broker — many partners don't trade —
+  // and settings and notifications must stay reachable for exchange-only copy traders.
   useEffect(() => {
-    const brokerFree = pathname === '/brokers' || pathname.startsWith('/partner') || pathname.startsWith('/admin');
+    const brokerFree = pathname === '/brokers' || pathname === '/settings' || pathname === '/notifications' || pathname.startsWith('/partner') || pathname.startsWith('/admin');
     if (loaded && !loading && accounts.length === 0 && !brokerFree) {
       router.replace('/brokers');
     }

@@ -7,7 +7,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react
 import { authClient } from '@/lib/auth-client';
 import { countryName } from '@/lib/countries';
 import { locationApi, type UserLocationDto } from '@/lib/location-api';
-import { api, type EventImpact, type NotificationPrefs } from '@/lib/api';
+import { api, NOTIFICATION_GROUPS, NOTIFICATION_GROUP_LABELS, type EventImpact, type NotificationGroup, type NotificationGroupPrefs, type NotificationPrefs } from '@/lib/api';
 import { enablePush, disablePush } from '@/lib/push-client';
 import LocationForm from '@/components/location-form';
 import { ICheck, ILock } from '@/components/v3/icons';
@@ -99,6 +99,7 @@ const BLOCKED = 'Notifications are blocked for this site. Click the site icon at
 export function NotificationsSection() {
   const [prefs, setPrefs] = useState<NotificationPrefs | null>(null);
   const [draft, setDraft] = useState<Editable | null>(null);
+  const [groupsDraft, setGroupsDraft] = useState<NotificationGroupPrefs>({});
   const [weekly, setWeekly] = useState<{ enabled: boolean; lastSentAt: string | null } | null>(null);
   const [weeklyDraft, setWeeklyDraft] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -120,6 +121,7 @@ export function NotificationsSection() {
         }
         setPrefs(v);
         setDraft(pick(v));
+        setGroupsDraft(v.groups ?? {});
       }
       if (w.status === 'fulfilled') { setWeekly(w.value); setWeeklyDraft(w.value.enabled); }
       if (p.status === 'rejected') setError('Could not load notification preferences.');
@@ -142,7 +144,12 @@ export function NotificationsSection() {
     return out;
   }, [prefs, draft]);
   const weeklyChanged = !!weekly && weeklyDraft !== weekly.enabled;
-  const dirty = Object.keys(changes).length > 0 || weeklyChanged;
+  const groupsChanged = !!prefs && NOTIFICATION_GROUPS.some(g => (['email', 'push'] as const).some(ch => groupOn(groupsDraft, g, ch) !== groupOn(prefs.groups ?? {}, g, ch)));
+  const dirty = Object.keys(changes).length > 0 || weeklyChanged || groupsChanged;
+  const toggleGroup = (g: NotificationGroup, ch: 'email' | 'push') => {
+    setGroupsDraft(d => ({ ...d, [g]: { ...d[g], [ch]: !groupOn(d, g, ch) } }));
+    setError('');
+  };
 
   const set = <K extends keyof Editable>(k: K, v: Editable[K]) => { setDraft(d => (d ? { ...d, [k]: v } : d)); setError(''); };
 
@@ -161,9 +168,9 @@ export function NotificationsSection() {
       } else if (changes.push === false) {
         await disablePush().catch(() => {});
       }
-      if (Object.keys(changes).length) {
-        const updated = await api.notifications.setPreferences(changes);
-        setPrefs(updated); setDraft(pick(updated));
+      if (Object.keys(changes).length || groupsChanged) {
+        const updated = await api.notifications.setPreferences({ ...changes, ...(groupsChanged ? { groups: fullGroups(groupsDraft) } : {}) });
+        setPrefs(updated); setDraft(pick(updated)); setGroupsDraft(updated.groups ?? {});
       }
       if (weeklyChanged) {
         const w = await api.ai.setWeeklyReview(weeklyDraft);
@@ -179,13 +186,13 @@ export function NotificationsSection() {
   }
 
   function discard() {
-    if (prefs) setDraft(pick(prefs));
+    if (prefs) { setDraft(pick(prefs)); setGroupsDraft(prefs.groups ?? {}); }
     if (weekly) setWeeklyDraft(weekly.enabled);
     setError('');
   }
 
   return (
-    <section className="x-card ac-st-card" data-testid="notification-settings" aria-labelledby="ac-st-al">
+    <section className="x-card ac-st-card" id="notifications" data-testid="notification-settings" aria-labelledby="ac-st-al">
       <div className="x-ch">
         <h2 id="ac-st-al">Notifications</h2>
         <span className="x-sub">Events, news and the weekly review</span>
@@ -202,6 +209,27 @@ export function NotificationsSection() {
               {prefs.pushAvailable && (
                 <Row title="Browser push" desc="Real-time alerts, even when the tab is closed"><Switch on={draft.push} onClick={() => set('push', !draft.push)} label="Push alerts" /></Row>
               )}
+            </div>
+          )}
+          {draft && prefs && (
+            <div className="ac-st-grp" data-testid="notification-groups">
+              <h3>By type</h3>
+              <p className="ac-st-note">Turn email or push off for one kind of notification. Everything always lands in your <a className="x-link" href="/notifications">inbox</a>.</p>
+              <div className="x-tblwrap">
+                <table className="x-tbl ac-st-grid">
+                  <thead><tr><th>Type</th><th className="c">Email</th>{prefs.pushAvailable && <th className="c">Push</th>}</tr></thead>
+                  <tbody>
+                    {NOTIFICATION_GROUPS.map(g => (
+                      <tr key={g}>
+                        <td><b>{NOTIFICATION_GROUP_LABELS[g].label}</b><span>{NOTIFICATION_GROUP_LABELS[g].hint}</span></td>
+                        <td className="c"><Switch on={draft.email && groupOn(groupsDraft, g, 'email')} disabled={!draft.email} onClick={() => toggleGroup(g, 'email')} label={`${NOTIFICATION_GROUP_LABELS[g].label} by email`} testId={`group-${g}-email`} /></td>
+                        {prefs.pushAvailable && <td className="c"><Switch on={draft.push && groupOn(groupsDraft, g, 'push')} disabled={!draft.push} onClick={() => toggleGroup(g, 'push')} label={`${NOTIFICATION_GROUP_LABELS[g].label} by push`} testId={`group-${g}-push`} /></td>}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {(!draft.email || (prefs.pushAvailable && !draft.push)) && <p className="ac-st-note x-dim">Columns are greyed out while that channel is off under Channels.</p>}
             </div>
           )}
           {weekly && (
@@ -244,6 +272,16 @@ export function NotificationsSection() {
       )}
     </section>
   );
+}
+
+/** A group's channel is on unless explicitly switched off. */
+function groupOn(groups: NotificationGroupPrefs, g: NotificationGroup, ch: 'email' | 'push'): boolean {
+  return groups[g]?.[ch] !== false;
+}
+
+/** Every group with both channels spelled out, so a save fully replaces the old overrides. */
+function fullGroups(groups: NotificationGroupPrefs): NotificationGroupPrefs {
+  return Object.fromEntries(NOTIFICATION_GROUPS.map(g => [g, { email: groupOn(groups, g, 'email'), push: groupOn(groups, g, 'push') }]));
 }
 
 function pick(p: NotificationPrefs): Editable {

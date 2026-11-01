@@ -9,7 +9,7 @@
 // instead (see digest.service.ts).
 import { mapLimit } from '../../lib/map-limit.js';
 import { prisma } from '@tradinjournal/db';
-import type { EventImpact } from '@tradinjournal/contracts';
+import { deliveryAllowed, type EventImpact } from '@tradinjournal/contracts';
 import { sendPush } from '../../lib/push.js';
 import { claimDelivery } from '../../lib/notifications/claim.js';
 
@@ -21,7 +21,7 @@ const SCAN_MINUTES = 1440;
 interface Prefs {
   inApp: boolean; email: boolean; push: boolean;
   minImpact: EventImpact; currencies: string[]; categories: string[];
-  leadMinutes: number; timezone: string;
+  leadMinutes: number; timezone: string; groups?: unknown;
 }
 const DEFAULT_PREFS: Prefs = {
   inApp: true, email: false, push: false, minImpact: 'HIGH', currencies: [], categories: [], leadMinutes: 15, timezone: 'UTC',
@@ -109,7 +109,7 @@ export async function dispatchReminders(): Promise<{ events: number; delivered: 
       delivered += 1;
     }
 
-    if (prefs.push) {
+    if (deliveryAllowed('event_reminder', 'push', prefs.push, prefs.groups)) {
       const subs = subsByUser.get(userId) ?? [];
       if (subs.length && (await claimDelivery(userId, dedupKey, 'push'))) {
         for (const sub of subs) {

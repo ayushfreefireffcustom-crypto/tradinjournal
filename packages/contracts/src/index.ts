@@ -201,8 +201,11 @@ export const notificationPrefsSchema = z.object({
   leadMinutes: z.coerce.number().int().min(0).max(1440).optional(),
   newsAlerts: z.boolean().optional(),
   priceAlerts: z.boolean().optional(),
+  groups: notificationGroupPrefsSchema.optional(),
 });
 export type NotificationPrefsInput = z.infer<typeof notificationPrefsSchema>;
+
+import { notificationGroupPrefsSchema } from './schema/inbox.js';
 
 // Web Push subscription registration (the browser's PushSubscription shape).
 export const pushSubscribeSchema = z.object({
@@ -773,3 +776,5 @@ export {
   type EngineHealthDto,
   type AdminUserCopyDto,
 } from './schema/copy.js';
+
+export * from './schema/inbox.js';

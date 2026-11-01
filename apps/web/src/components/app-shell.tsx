@@ -14,7 +14,7 @@ import { PARTNERS_ENABLED, TRADING_ENABLED } from '@/lib/features';
 import { UsageTracker } from '@/components/usage-tracker';
 import LocationGate from '@/components/location-gate';
 import Frame, { COPY, NAV, type FrameNavItem } from '@/components/v6/frame';
-import { IAdmin, IBrokers, ILink, IPartner, ISearch, ISettings, IUsers } from '@/components/v3/icons';
+import { IAdmin, IBell, IBrokers, ILink, IPartner, ISearch, ISettings, IUsers } from '@/components/v3/icons';
 import '@/styles/v6/tokens.css';
 import '@/styles/v6/components.css';
 
@@ -56,6 +56,7 @@ const ALL: Item[] = [
   ...(PARTNERS_ENABLED ? [{ href: '/admin/partners', label: 'Partners', icon: IPartner, group: 'Admin' }] : []),
   ...(TRADING_ENABLED ? [{ href: '/admin/copy', label: 'Copy trading admin', icon: IAdmin, group: 'Admin' }] : []),
   { href: '/brokers', label: 'Brokers', icon: IBrokers, group: 'Account' },
+  { href: '/notifications', label: 'Notifications', icon: IBell, group: 'Account' },
   { href: '/settings', label: 'Settings', icon: ISettings, group: 'Account' },
 ];
 

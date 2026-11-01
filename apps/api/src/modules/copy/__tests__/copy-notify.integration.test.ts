@@ -86,4 +86,16 @@ describe.skipIf(!local)('copy notifications to push and email', () => {
     expect(mine().email.some((e) => e.subject.endsWith('exchange.invalid'))).toBe(true);
     pushResult = 'sent';
   });
+  it('respects a per-group override: risk email off, trade-fill push off', async () => {
+    const u = await prisma.user.create({ data: { name: 'grp', email: `${tag}-grp@trading.test` } });
+    await prisma.notificationPreference.create({ data: { userId: u.id, email: true, push: true, groups: { risk: { email: false }, trades: { push: false } } } });
+    await prisma.pushSubscription.create({ data: { userId: u.id, endpoint: `https://push.test/${tag}/grp`, p256dh: 'k', auth: 'a' } });
+    await note(u.id, 'copy.loss_limit', { title: `${tag} grp-risk` });
+    await note(u.id, 'copy.rejected', { title: `${tag} grp-fill` });
+    await svc.dispatchCopyNotifications(new Date(), deps);
+    const m = mine();
+    // Risk: push yes, email no. Trade fill: email yes, push no.
+    expect(m.push.filter((p) => p.title.includes('grp')).map((p) => p.title)).toEqual([`${tag} grp-risk`]);
+    expect(m.email.filter((e) => e.subject.includes('grp')).map((e) => e.subject)).toEqual([`${tag} grp-fill`]);
+  });
 });

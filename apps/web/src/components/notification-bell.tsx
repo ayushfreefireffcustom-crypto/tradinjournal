@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { api, type AppNotification } from '@/lib/api';
+import { getSoundOn, playChime } from '@/lib/notification-sound';
 
 const POLL_MS = 60_000;
 
@@ -34,12 +35,17 @@ export default function NotificationBell() {
   const [unread, setUnread] = useState(0);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  // Newest notification seen so far; a newer one chimes if sound is on. Null until the first load.
+  const newest = useRef<string | null>(null);
 
   const load = useCallback(async () => {
     try {
       const res = await api.notifications.list();
       setItems(res.items);
       setUnread(res.unread);
+      const top = res.items[0]?.createdAt ?? '';
+      if (newest.current !== null && top > newest.current && res.items.some(i => !i.read && i.createdAt > newest.current!) && getSoundOn()) playChime();
+      newest.current = top;
     } catch {
       // Keep the bell on a transient failure; the next poll retries.
     }
@@ -107,6 +113,7 @@ export default function NotificationBell() {
               })}
             </ul>
           )}
+          <Link href="/notifications" className="nb-all" onClick={() => setOpen(false)} data-testid="notif-view-all">View all</Link>
         </div>
       )}
     </div>

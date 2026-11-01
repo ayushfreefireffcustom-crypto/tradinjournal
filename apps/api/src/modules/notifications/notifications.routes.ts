@@ -2,13 +2,15 @@ import { Router, type IRouter } from 'express';
 import { requireAuth } from '../../http/middleware/require-auth.js';
 import { requirePlatformAccess } from '../../http/middleware/require-platform-access.js';
 import { requireInternalToken } from '../../http/middleware/require-internal-token.js';
-import { validateBody } from '../../http/middleware/validate.js';
-import { notificationPrefsSchema, pushSubscribeSchema, notificationsDispatchSchema } from '@tradinjournal/contracts';
+import { validateBody, validateQuery } from '../../http/middleware/validate.js';
+import { inboxActionSchema, inboxQuerySchema, notificationPrefsSchema, pushSubscribeSchema, notificationsDispatchSchema } from '@tradinjournal/contracts';
 import {
   handleGetPrefs,
   handleSetPrefs,
   handleListNotifications,
   handleMarkRead,
+  handleInbox,
+  handleInboxAction,
   handlePushSubscribe,
   handlePushUnsubscribe,
   handleDispatch,
@@ -22,6 +24,8 @@ notificationsRouter.get('/preferences', handleGetPrefs);
 notificationsRouter.patch('/preferences', validateBody(notificationPrefsSchema), handleSetPrefs);
 notificationsRouter.get('/', handleListNotifications);
 notificationsRouter.post('/read', handleMarkRead);
+notificationsRouter.get('/inbox', validateQuery(inboxQuerySchema), handleInbox);
+notificationsRouter.post('/inbox', validateBody(inboxActionSchema), handleInboxAction);
 
 // Web Push subscribe/unsubscribe (mounted under /api/push).
 export const pushRouter: IRouter = Router();

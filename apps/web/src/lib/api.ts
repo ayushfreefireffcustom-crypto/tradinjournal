@@ -449,13 +449,47 @@ export interface NotificationPrefs {
   leadMinutes: number;
   newsAlerts: boolean;
   priceAlerts: boolean;
+  /** Per-group email/push overrides; a missing entry means on. */
+  groups: NotificationGroupPrefs;
   pushAvailable: boolean;
   vapidPublicKey: string | null;
+}
+
+// Notification groups: mirrors packages/contracts/src/schema/inbox.ts.
+export const NOTIFICATION_GROUPS = ['trades', 'risk', 'ai', 'news', 'reports', 'system'] as const;
+export type NotificationGroup = (typeof NOTIFICATION_GROUPS)[number];
+export const NOTIFICATION_GROUP_LABELS: Record<NotificationGroup, { label: string; hint: string }> = {
+  trades: { label: 'Trade fills', hint: 'Copied orders, fills and orders that could not be copied' },
+  risk: { label: 'Risk', hint: 'Loss limits, profit targets, paused leaders, broken exchange keys' },
+  ai: { label: 'AI', hint: 'SignalX and paper-strategy signals' },
+  news: { label: 'News & alerts', hint: 'Economic events, news and your price alerts' },
+  reports: { label: 'Reports', hint: 'Summaries and reports' },
+  system: { label: 'System', hint: 'Account, leader applications and everything else' },
+};
+export type NotificationGroupPrefs = Partial<Record<NotificationGroup, { email?: boolean; push?: boolean }>>;
+export type InboxStatus = 'all' | 'unread' | 'archived';
+export interface InboxItem {
+  id: string;
+  kind: string;
+  group: NotificationGroup;
+  title: string;
+  body: string | null;
+  href: string | null;
+  read: boolean;
+  archived: boolean;
+  createdAt: string;
+}
+export interface Inbox {
+  items: InboxItem[];
+  nextCursor: string | null;
+  unread: Record<NotificationGroup, number>;
+  total: Record<NotificationGroup, number>;
 }
 
 export interface AppNotification {
   id: string;
   kind: string;
+  group?: NotificationGroup;
   title: string;
   body: string | null;
   href: string | null;
@@ -553,6 +587,16 @@ export const api = {
       apiFetch<NotificationPrefs>(`${PREFIX}/notifications/preferences`, { method: 'PATCH', body: JSON.stringify(body) }),
     list: () => apiFetch<{ items: AppNotification[]; unread: number }>(`${PREFIX}/notifications`),
     markRead: () => apiFetch<{ ok: boolean }>(`${PREFIX}/notifications/read`, { method: 'POST' }),
+    inbox: (q: { group?: NotificationGroup; status?: InboxStatus; cursor?: string | null }) => {
+      const p = new URLSearchParams();
+      if (q.group) p.set('group', q.group);
+      if (q.status && q.status !== 'all') p.set('status', q.status);
+      if (q.cursor) p.set('cursor', q.cursor);
+      const qs = p.toString();
+      return apiFetch<Inbox>(`${PREFIX}/notifications/inbox${qs ? `?${qs}` : ''}`);
+    },
+    inboxAction: (body: { action: 'read' | 'archive' | 'unarchive'; ids?: string[]; group?: NotificationGroup }) =>
+      apiFetch<{ updated: number }>(`${PREFIX}/notifications/inbox`, { method: 'POST', body: JSON.stringify(body) }),
   },
   push: {
     subscribe: (sub: { endpoint: string; keys: { p256dh: string; auth: string }; userAgent?: string }) =>

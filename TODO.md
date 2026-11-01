@@ -382,8 +382,8 @@ Legend:
 - [ ] C6.2 **Telegram** channel: bot, link account via `/start <code>`, per-type toggles. Evidence: MP code `M`
 - [x] C6.3 Email channel for trading events (Resend, via the existing `lib/email`) `S`
 - [x] C6.4 Push via the existing push stack `S`
-- [ ] C6.5 Inbox with channels and counts (Trade fills / Risk / AI / System / Reports / News); empty channels dimmed; Unread/Archived; mark all read; sound toggle. Evidence: CM seen `M`
-- [ ] C6.6 Per-type, per-channel preferences page `S`
+- [x] C6.5 Inbox with channels and counts (Trade fills / Risk / AI / System / Reports / News); empty channels dimmed; Unread/Archived; mark all read; sound toggle. Evidence: CM seen `M` (done 1 Nov: /notifications, group tabs, archive, sound per device)
+- [x] C6.6 Per-type, per-channel preferences page `S` (done 1 Nov: Settings → By type, email/push per group)
 
 ---
 

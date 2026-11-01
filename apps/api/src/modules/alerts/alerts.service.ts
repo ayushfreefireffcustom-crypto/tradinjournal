@@ -9,6 +9,7 @@ import type { CreateAlertInput, UpdateAlertInput } from '@tradinjournal/contract
 import { getLatestPrice } from '../market/market.service.js';
 import { claimDelivery } from '../../lib/notifications/claim.js';
 import { sendPush } from '../../lib/push.js';
+import { deliveryAllowed } from '@tradinjournal/contracts';
 
 // Read degrades gracefully if the table is missing (migration lagging a deploy)
 // so the chart page's alerts panel shows empty instead of 500ing.
@@ -116,7 +117,7 @@ export async function dispatchPriceAlerts(): Promise<{ checked: number; fired: n
       const prefs = prefsByUser.get(alert.userId);
       const priceAlertsOn = prefs?.priceAlerts ?? true;
       const inApp = prefs?.inApp ?? true;
-      const push = prefs?.push ?? false;
+      const push = deliveryAllowed('price_alert', 'push', prefs?.push ?? false, prefs?.groups);
 
       const word = alert.direction === 'above' ? 'above' : 'below';
       const title = `${alert.symbol} ${word} ${threshold}`;

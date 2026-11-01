@@ -27,11 +27,12 @@ accounts. Nothing here is live until you set `TRADING_ENABLED=true`.
 
 ## Database
 
-Four additive migrations, applied with `prisma migrate deploy` after `migrate status` and your OK:
+Five additive migrations, applied with `prisma migrate deploy` after `migrate status` and your OK:
 - `20261031071652_trading_platform`: new tables only
 - `20261031072510_exchange_order_realized_pnl`: one nullable column and an index on `exchange_order`
 - `20261031120000_copy_follow_risk_and_profit_cap`: three nullable columns on `copy_follow`
 - `20261031130000_copy_follow_copy_open`: one nullable column on `copy_follow`
+- `20261101090000_notification_inbox_and_groups`: a nullable `archivedAt` on `notification` and a `groups` JSON column (default `{}`) on `notification_preference`. Not trading-only: the inbox and per-type settings need it whether or not trading is on
 
 ## Operations
 

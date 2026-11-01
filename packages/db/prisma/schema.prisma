@@ -529,6 +529,8 @@ model NotificationPreference {
   leadMinutes Int         @default(15)
   newsAlerts  Boolean     @default(false)
   priceAlerts Boolean     @default(true)
+  /// Per-group email/push overrides, e.g. {"news":{"push":false}} (C6.6). Missing means on.
+  groups      Json        @default("{}")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -590,6 +592,8 @@ model Notification {
   eventId String?
   newsId  String?
   readAt  DateTime?
+  /// Hidden from the inbox's main view; kept for the Archived tab (C6.5).
+  archivedAt DateTime?
 
   createdAt DateTime @default(now())
 

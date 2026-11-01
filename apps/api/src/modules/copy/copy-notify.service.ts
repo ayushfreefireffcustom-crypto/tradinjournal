@@ -4,6 +4,7 @@
 // their notification settings. The delivery ledger makes every send once-only,
 // so a retry or a second API instance never repeats one.
 import { env } from '@tradinjournal/config';
+import { deliveryAllowed } from '@tradinjournal/contracts';
 import { prisma } from '@tradinjournal/db';
 import { logger } from '@tradinjournal/logger';
 import { sendEmail } from '../../lib/email/client.js';
@@ -53,7 +54,7 @@ ${n.body ? `<p style="margin:0 0 16px">${esc(n.body)}</p>` : ''}
 export async function dispatchCopyNotifications(now = new Date(), deps: NotifyDeps = defaultDeps): Promise<{ push: number; email: number }> {
   // Users who want more than the bell first, then their recent trading events:
   // that query rides the (userId, createdAt) index instead of scanning the table.
-  const prefs = await prisma.notificationPreference.findMany({ where: { OR: [{ email: true }, { push: true }] }, select: { userId: true, email: true, push: true } });
+  const prefs = await prisma.notificationPreference.findMany({ where: { OR: [{ email: true }, { push: true }] }, select: { userId: true, email: true, push: true, groups: true } });
   if (!prefs.length) return { push: 0, email: 0 };
   const byUser = new Map(prefs.map((p) => [p.userId, p]));
   const recent = await prisma.notification.findMany({
@@ -73,7 +74,7 @@ export async function dispatchCopyNotifications(now = new Date(), deps: NotifyDe
     if (!p) continue;
     const key = `notif:${n.id}`;
     const mySubs = subs.filter((s) => s.userId === n.userId);
-    if (p.push && mySubs.length && (await claimDelivery(n.userId, key, 'push'))) {
+    if (deliveryAllowed(n.kind, 'push', p.push, p.groups) && mySubs.length && (await claimDelivery(n.userId, key, 'push'))) {
       for (const s of mySubs) {
         const res = await deps.sendPush(s, { title: n.title, body: n.body ?? '', url: n.href ?? '/copy/following' }).catch(() => 'failed' as const);
         if (res === 'sent') push++;
@@ -81,7 +82,7 @@ export async function dispatchCopyNotifications(now = new Date(), deps: NotifyDe
       }
     }
     const to = users.find((u) => u.id === n.userId)?.email;
-    if (p.email && to && EMAIL_KINDS.has(n.kind) && (await claimDelivery(n.userId, key, 'email'))) {
+    if (deliveryAllowed(n.kind, 'email', p.email, p.groups) && to && EMAIL_KINDS.has(n.kind) && (await claimDelivery(n.userId, key, 'email'))) {
       const mail = tradingEmail(n);
       await deps.sendEmail({ to, subject: mail.subject, html: mail.html, devNote: `[copy] ${n.kind}` }).then(() => email++).catch((err) => logger.warn('[copy-notify] email failed', { kind: n.kind, err: String(err) }));
     }

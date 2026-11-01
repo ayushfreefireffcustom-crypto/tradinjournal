@@ -1,5 +1,6 @@
 // Paper-book alerts. Inbox always (promoting is the opt-in). Email only when
 // the user has email notifications on. Educational — never an order.
+import { deliveryAllowed } from '@tradinjournal/contracts';
 import { prisma } from '@tradinjournal/db';
 import { env } from '@tradinjournal/config';
 import { logger } from '@tradinjournal/logger';
@@ -68,9 +69,9 @@ ${text[2] && a.event === 'close' ? `<p>${text[2]}</p>` : ''}
 export async function userEmailEnabled(userId: string): Promise<boolean> {
   const prefs = await prisma.notificationPreference.findUnique({
     where: { userId },
-    select: { email: true },
+    select: { email: true, groups: true },
   });
-  return prefs?.email === true;
+  return deliveryAllowed('strategy_signal', 'email', prefs?.email === true, prefs?.groups);
 }
 
 export async function notifyPaperEvent(alert: PaperAlert): Promise<void> {

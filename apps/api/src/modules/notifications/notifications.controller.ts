@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
-import type { NotificationPrefsInput, PushSubscribeInput } from '@tradinjournal/contracts';
+import type { InboxActionInput, InboxQuery, NotificationPrefsInput, PushSubscribeInput } from '@tradinjournal/contracts';
 import { env } from '@tradinjournal/config';
 import { ok } from '../../http/response.js';
 import {
@@ -7,6 +7,8 @@ import {
   setPreferences,
   listNotifications,
   markAllRead,
+  listInbox,
+  inboxAction,
   savePushSubscription,
   removePushSubscription,
 } from './notifications.service.js';
@@ -50,6 +52,24 @@ export async function handleMarkRead(req: Request, res: Response, next: NextFunc
     const userId = res.locals.user.id as string;
     await markAllRead(userId);
     ok(res, { ok: true });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// GET /api/notifications/inbox — group tabs, unread/archived filter, cursor paging.
+export async function handleInbox(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    ok(res, await listInbox(res.locals.user.id as string, req.query as unknown as InboxQuery));
+  } catch (err) {
+    next(err);
+  }
+}
+
+// POST /api/notifications/inbox — read / archive / unarchive.
+export async function handleInboxAction(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    ok(res, await inboxAction(res.locals.user.id as string, req.body as InboxActionInput));
   } catch (err) {
     next(err);
   }
