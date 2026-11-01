@@ -116,18 +116,32 @@ export async function fanOut(leader: LeaderRow, row: LeaderFill, fill: FillEvent
     });
   }
 
-  for (const follow of follows) {
+  // Followers are copied side by side: each is its own account, key and rate
+  // budget, and a connection copies one leader only, so no two of these touch
+  // the same rows. One by one, 100 followers would take 100 round trips (Z10).
+  await eachLimit(follows, FANOUT_CONCURRENCY, async (follow) => {
     try {
-      if (await alreadyHandled(follow.id, row.id)) continue;
+      if (await alreadyHandled(follow.id, row.id)) return;
       if (halt) {
         await recordSkip(follow, row, fill, halt);
-        continue;
+        return;
       }
       await copyToFollow(follow, row, fill, leaderUsd, deps, leaderPaused);
     } catch (err) {
       logger.error('[engine] copy to follow failed', { followId: follow.id, leaderFillId: row.id, err: String(err) });
     }
-  }
+  });
+}
+
+/** Copies in flight at once for one leader fill; bounded so the database pool isn't swamped. */
+export const FANOUT_CONCURRENCY = 32;
+
+async function eachLimit<T>(items: T[], limit: number, fn: (item: T) => Promise<void>): Promise<void> {
+  let next = 0;
+  const worker = async () => {
+    while (next < items.length) await fn(items[next++]!);
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
 }
 
 async function alreadyHandled(followId: string, leaderFillId: string): Promise<boolean> {
