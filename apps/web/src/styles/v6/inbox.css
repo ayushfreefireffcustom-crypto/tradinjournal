@@ -16,9 +16,10 @@
 .v6 .ib-new .ib-dot { box-shadow: 0 0 0 3px var(--g-soft); }
 .v6 .ib-dot--trades { background: var(--g); }
 .v6 .ib-dot--risk { background: var(--r); }
-.v6 .ib-dot--ai { background: #8b7cf6; }
-.v6 .ib-dot--news { background: #e0a43a; }
-.v6 .ib-dot--reports { background: #4aa3df; }
+/* Only green and red carry meaning; the other groups are told apart by their label. */
+.v6 .ib-dot--ai { background: var(--tx); }
+.v6 .ib-dot--news { background: var(--mut); }
+.v6 .ib-dot--reports { background: var(--mut); }
 .v6 .ib-dot--system { background: var(--mut); }
 .v6 .ib-txt { display: grid; gap: 2px; min-width: 0; color: var(--tx); text-decoration: none; }
 .v6 a.ib-txt:hover b { text-decoration: underline; text-underline-offset: 3px; }

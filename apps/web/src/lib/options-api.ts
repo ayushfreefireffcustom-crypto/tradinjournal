@@ -1,6 +1,7 @@
 // Client for options (Part G). Types mirror @tradinjournal/core/options and
 // apps/api/src/modules/options.
 import { ApiError } from '@/lib/copy-api';
+import { fmtNum as num, fmtUsd as usd } from './format';
 
 const API = process.env.NEXT_PUBLIC_API_URL || '';
 
@@ -127,8 +128,8 @@ export function addLeg(ctx: OptionsCtx, leg: LegInput) {
 
 // ── Formatting ──
 export const ivPct = (v: number | null | undefined, d = 1) => (v == null ? '—' : `${(v * 100).toFixed(d)}%`);
-export const fmtNum = (v: number | null | undefined, d = 2) => (v == null ? '—' : `${v < 0 && Math.abs(v) >= 0.5 * 10 ** -d ? '−' : ''}${Math.abs(v).toLocaleString('en-US', { maximumFractionDigits: d, minimumFractionDigits: 0 })}`);
-export const fmtUsd = (v: number | null | undefined, d = 2) => (v == null ? '—' : `${v <= -0.005 ? '−' : ''}$${Math.abs(v).toLocaleString('en-US', { maximumFractionDigits: d })}`);
-export const fmtCompact = (v: number | null | undefined) => (v == null ? '—' : Math.abs(v) >= 1e9 ? `${(v / 1e9).toFixed(2)}B` : Math.abs(v) >= 1e6 ? `${(v / 1e6).toFixed(2)}M` : Math.abs(v) >= 1e3 ? `${(v / 1e3).toFixed(1)}K` : v.toFixed(0));
+export const fmtNum = (v: number | null | undefined, d = 2) => num(v, { digits: d });
+export const fmtUsd = (v: number | null | undefined, d = 2) => usd(v, { digits: d, minDigits: 0 });
+export { fmtCompact } from './format';
 export const expiryLabel = (ms: number) => new Date(ms).toLocaleDateString(undefined, { day: 'numeric', month: 'short', timeZone: 'UTC' });
 export const daysLabel = (d: number) => (d < 1 ? `${Math.max(0, Math.round(d * 24))}h` : `${Math.round(d)}d`);

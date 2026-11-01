@@ -10,7 +10,10 @@ import { useAccounts } from '@/lib/use-accounts';
 import { toCsv, downloadCsv, dateStamp } from '@/lib/csv';
 import { useToast } from '@/components/toast';
 import { IDownload, ISearch, IClose } from '@/components/v3/icons';
-import { money, moneyShort } from '@/components/v3/format';
+import { fmtUsd, fmtUsdCompact } from '@/lib/format';
+
+const money = (v: number) => fmtUsd(v, { signed: true });
+const moneyShort = (v: number) => fmtUsdCompact(v, { signed: true });
 import { notesByTrade } from '@/lib/desk';
 import { TradeLog, type SortKey } from '@/components/v6/trades/trade-log';
 

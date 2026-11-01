@@ -2,6 +2,7 @@
 // leaderboard and leader pages, and the user's follows. Types are declared
 // locally (like partner-api.ts) and kept in lockstep with
 // packages/contracts/src/schema/exchange.ts and copy.ts.
+import { fmtUsd } from './format';
 const API = process.env.NEXT_PUBLIC_API_URL || '';
 
 /** Bump with COPY_RISK_VERSION in packages/contracts/src/schema/copy.ts. */
@@ -254,12 +255,10 @@ export const VENUE: Record<string, string> = { DELTA_INDIA: 'Delta Exchange Indi
 export const venueName = (id: string) => VENUE[id] ?? id;
 
 export function usd(v: number | null | undefined, digits = 2): string {
-  if (v == null || !Number.isFinite(v)) return '—';
-  return `${v < 0 ? '−' : ''}$${Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits })}`;
+  return fmtUsd(v, { digits });
 }
 export function signedUsd(v: number | null | undefined, digits = 2): string {
-  if (v == null || !Number.isFinite(v)) return '—';
-  return `${v > 0 ? '+' : v < 0 ? '−' : ''}$${Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits })}`;
+  return fmtUsd(v, { digits, signed: true });
 }
 export function pct(v: number | null | undefined, digits = 1, signed = false): string {
   if (v == null || !Number.isFinite(v)) return '—';

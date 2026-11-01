@@ -108,18 +108,19 @@ export function dayKey(iso: string): string {
 }
 
 // Impact → Tailwind class fragments, shared so page and rail look identical.
+// Red is kept for high impact only; medium and low are neutral (no amber, A0.5).
 export const impactAccent: Record<EventImpact, string> = {
   HIGH: 'border-l-loss',
-  MEDIUM: 'border-l-warning',
+  MEDIUM: 'border-l-fg-3',
   LOW: 'border-l-border-strong',
 };
 export const impactPill: Record<EventImpact, string> = {
   HIGH: 'bg-loss/15 text-loss',
-  MEDIUM: 'bg-warning/15 text-warning',
+  MEDIUM: 'bg-surface text-fg-2',
   LOW: 'bg-surface text-fg-3',
 };
 export const impactDot: Record<EventImpact, string> = {
   HIGH: 'bg-loss',
-  MEDIUM: 'bg-warning',
+  MEDIUM: 'bg-fg-2',
   LOW: 'bg-fg-3',
 };

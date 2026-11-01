@@ -2,6 +2,7 @@
 // @tradinjournal/core/strategy.
 import { ApiError } from '@/lib/copy-api';
 import type { IndicatorOperand, Operand, IaOperator } from '@/lib/indicator-alerts-api';
+import { fmtPct, fmtUsd, pnlClass } from './format';
 
 const API = process.env.NEXT_PUBLIC_API_URL || '';
 
@@ -103,10 +104,10 @@ export const strategiesApi = {
 };
 
 // ── Small helpers shared by the builder ───────────────────────────────────────
-export const pct = (v: number | null | undefined, d = 1) => (v == null ? '—' : `${v >= 0.5 * 10 ** -d ? '+' : v <= -0.5 * 10 ** -d ? '−' : ''}${Math.abs(v).toFixed(d)}%`);
+export const pct = (v: number | null | undefined, d = 1) => fmtPct(v, { digits: d, signed: true });
 export const num = (v: number | null | undefined, d = 2) => (v == null ? '—' : v.toFixed(d));
-export const usd = (v: number | null | undefined) => (v == null ? '—' : `${v <= -0.005 ? '−' : ''}$${Math.abs(v).toLocaleString('en-US', { maximumFractionDigits: 2 })}`);
-export const tone = (v: number | null | undefined) => (v == null || Math.abs(v) < 1e-9 ? '' : v > 0 ? 'pos' : 'neg');
+export const usd = (v: number | null | undefined) => fmtUsd(v, { digits: 2, minDigits: 0 });
+export const tone = (v: number | null | undefined) => { const c = pnlClass(v); return c === 'flat' ? '' : c; };
 export const RANGE_PRESETS = [
   { id: '30d', label: '30 days', days: 30 }, { id: '90d', label: '90 days', days: 90 }, { id: '180d', label: '6 months', days: 180 }, { id: '365d', label: '1 year', days: 365 },
 ] as const;

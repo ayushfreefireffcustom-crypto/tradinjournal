@@ -16,7 +16,7 @@
 
   --color-profit: #08C465;
   --color-loss: #FE3A31;
-  --color-warning: #FF9F0A;
+  --color-warning: #A1A1AA; /* was amber; the system has no amber (A0.5), so warnings read neutral */
 
   /* Inter is the single brand typeface (self-hosted via next/font as
      --font-inter). Used for display/headings/UI/body; numeric data uses the

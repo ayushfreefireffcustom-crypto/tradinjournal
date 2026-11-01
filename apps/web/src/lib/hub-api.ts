@@ -1,6 +1,7 @@
 // Client for the market hub: overview (E10), correlation (E14), symbol stats
 // (E12), weekly market brief (E15) and derivatives (E11/E17).
 import { ApiError } from '@/lib/copy-api';
+import { fmtPct as pct, fmtUsdCompact, pnlClass } from './format';
 
 const API = process.env.NEXT_PUBLIC_API_URL || '';
 
@@ -52,6 +53,6 @@ export const hubApi = {
 
 // ── Formatting shared by the hub pages ────────────────────────────────────────
 export const fmtPrice = (v: number | null | undefined) => (v == null ? '—' : v >= 1000 ? v.toLocaleString('en-US', { maximumFractionDigits: 2 }) : v.toLocaleString('en-US', { maximumSignificantDigits: 6 }));
-export const fmtPct = (v: number | null | undefined, d = 2) => (v == null ? '—' : `${v > 0 ? '+' : ''}${v.toFixed(d)}%`);
-export const fmtUsd = (v: number | null | undefined) => (v == null ? '—' : v >= 1e9 ? `$${(v / 1e9).toFixed(2)}B` : v >= 1e6 ? `$${(v / 1e6).toFixed(1)}M` : v >= 1e3 ? `$${(v / 1e3).toFixed(0)}K` : `$${v.toFixed(0)}`);
-export const toneOf = (v: number | null | undefined) => (v == null || Math.abs(v) < 1e-12 ? '' : v > 0 ? 'pos' : 'neg');
+export const fmtPct = (v: number | null | undefined, d = 2) => pct(v, { digits: d, signed: true });
+export const fmtUsd = (v: number | null | undefined) => fmtUsdCompact(v);
+export const toneOf = (v: number | null | undefined) => { const c = pnlClass(v, 1e-12); return c === 'flat' ? '' : c; };

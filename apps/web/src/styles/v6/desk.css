@@ -21,7 +21,7 @@
 }
 .v6 .dk-tip span { color: #A0A0A0; }
 .v6 .dk-tip b { font-size: 13px; font-weight: 500; color: #F2F2F2; }
-.v6 .dk-tip .pos { color: #2BD47E; } .v6 .dk-tip .neg { color: #FF6A62; }
+.v6 .dk-tip .pos { color: var(--g-tip); } .v6 .dk-tip .neg { color: var(--r-tip); }
 
 /* kpis */
 .v6 .dk-kpis { display: grid; gap: 12px; grid-auto-rows: 1fr; }

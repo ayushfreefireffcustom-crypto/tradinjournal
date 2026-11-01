@@ -15,7 +15,7 @@
   --line-2: rgba(255, 255, 255, .13);
   --tx: #EDEDED;
   --mut: #9A9A9A;
-  --dim: #5E5E5E;
+  --dim: #6E6E6E;         /* ≥ 3:1 on bg, s1, s2 and s3 (A7.2) */
   --g: #08C465;
   --r: #FE3A31;
   --g-soft: rgba(8, 196, 101, .13);
@@ -23,7 +23,9 @@
   --on-g: #06150C;
   --hi: #EDEDED;          /* primary button / active chip background */
   --inv: #0A0A0A;         /* text on --hi */
-  --tip: #262626;         /* chart tooltip */
+  --tip: #262626;         /* chart tooltip (dark in both themes) */
+  --g-tip: #2BD47E;       /* green and red tints that read on --tip */
+  --r-tip: #FF6A62;
   --grid: rgba(255, 255, 255, .06);
   --axis: #666666;
   --track: #262626;
@@ -41,6 +43,12 @@
   --mono: var(--font-v5-mono), "JetBrains Mono", ui-monospace, monospace;
   --ease: cubic-bezier(.2, .7, .2, 1);
 
+  /* Type scale (A1.3). Headings tighten: -.02em from 22px, -.03em from 32px. */
+  --fs-12: 12px; --fs-13: 13px; --fs-14: 14px; --fs-15: 15px; --fs-18: 18px;
+  --fs-22: 22px; --fs-32: 32px; --fs-44: 44px; --fs-56: 56px;
+  --lh-tight: 1.1; --lh-snug: 1.3; --lh-body: 1.5;
+  --ls-h: -.02em; --ls-display: -.03em;
+
   color-scheme: dark;
 }
 
@@ -54,7 +62,7 @@ html[data-theme=light] .v6 {
   --line-2: rgba(0, 0, 0, .13);
   --tx: #111113;
   --mut: #64646B;
-  --dim: #9C9CA3;
+  --dim: #8A8A91;         /* ≥ 3:1 on s1 and s2 */
   --g: #05A656;
   --r: #E0342B;
   --g-soft: rgba(5, 166, 86, .11);
@@ -64,7 +72,7 @@ html[data-theme=light] .v6 {
   --inv: #FFFFFF;
   --tip: #111113;
   --grid: rgba(0, 0, 0, .06);
-  --axis: #9C9CA3;
+  --axis: #8A8A91;
   --track: #ECECEF;
   --shadow: 0 1px 2px rgba(0, 0, 0, .04), 0 0 0 1px rgba(0, 0, 0, .045);
   --pop: #FFFFFF;
@@ -74,8 +82,11 @@ html[data-theme=light] .v6 {
 }
 
 .v6 .m, .v6 .num { font-family: var(--mono); font-feature-settings: "tnum"; letter-spacing: -.01em; }
+/* Satoshi 400/500 only: the browser's bold for these would be 700. Zero specificity, so any rule wins. */
+.v6 :where(b, strong, h1, h2, h3, h4, h5, h6, th, dt, legend, optgroup) { font-weight: 500; }
 .v6 .pos { color: var(--g); }
 .v6 .neg { color: var(--r); }
+.v6 .flat { color: var(--mut); }   /* zero or unknown P&L (lib/format pnlClass) */
 .v6 ::selection { background: var(--g); color: var(--on-g); }
 .v6 :focus-visible { outline: none; box-shadow: var(--focus); }
 .v6 * { scrollbar-color: var(--s4) transparent; scrollbar-width: thin; }

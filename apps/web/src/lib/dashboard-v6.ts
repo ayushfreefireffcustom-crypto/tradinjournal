@@ -2,6 +2,7 @@
 // trader's own closed trades and journal — no invented numbers. Week maths uses
 // the viewer's local time with Monday as the first day.
 import type { JournalEntry, Trade } from './api';
+import { fmtDuration, fmtPct as pct, fmtUsd as usd, fmtUsdCompact as usdCompact } from './format';
 
 const DAY_MS = 86400000;
 const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -231,35 +232,15 @@ export function sessionStudy(trades: Trade[]): SessionStudy {
 
 // ─── formatting ────────────────────────────────────────────────────────────────
 
-const MINUS = '−';
 
 /** Signed money: "+$1,284", "−$118.20". */
-export function fmtUsd(v: number, digits = 2): string {
-  const abs = Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits });
-  // Anything that rounds to zero at this precision is plain "$0", never "−$0".
-  if (Number(Math.abs(v).toFixed(digits)) === 0) return `$${abs}`;
-  return `${v > 0 ? '+' : MINUS}$${abs}`;
-}
+export const fmtUsd = (v: number, digits = 2): string => usd(v, { digits, signed: true });
 
 /** Compact money for axis labels: "$25k", "$1.2M". */
-export function fmtUsdCompact(v: number): string {
-  const a = Math.abs(v);
-  // Round before picking the unit, so 999.6 reads "$1.0k" and 999,600 reads "$1.0M".
-  const unit = (n: number, u: string) => `${n.toFixed(n >= 9.95 ? 0 : 1)}${u}`;
-  const body = a >= 999_500 ? unit(a / 1e6, 'M') : a >= 999.5 ? unit(a / 1e3, 'k') : String(Math.round(a));
-  return `${v < 0 && body !== '0' ? MINUS : ''}$${body}`;
-}
+export const fmtUsdCompact = (v: number): string => usdCompact(v);
 
 /** "48m", "2h 10m", "3d 4h". */
-export function fmtHold(secs: number | null | undefined): string {
-  if (secs == null) return '—';
-  if (secs < 60) return `${Math.round(secs)}s`;
-  const m = Math.round(secs / 60);
-  if (m < 60) return `${m}m`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return m % 60 ? `${h}h ${String(m % 60).padStart(2, '0')}m` : `${h}h`;
-  const d = Math.floor(h / 24);
-  return h % 24 ? `${d}d ${h % 24}h` : `${d}d`;
-}
+export const fmtHold = fmtDuration;
 
-export const fmtPct = (v: number, digits = 1) => `${(v * 100).toFixed(digits)}%`;
+/** A 0–1 ratio as a percent: 0.512 → "51.2%". */
+export const fmtPct = (v: number, digits = 1) => pct(v, { digits, ratio: true });
