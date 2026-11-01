@@ -13,6 +13,10 @@ describe('universe', () => {
     const u = rankUniverse([t('BTCUSDT', 900), t('ETHUSDT', 800), t('USDCUSDT', 9999), t('FDUSDUSDT', 5000), t('BTCUPUSDT', 700), t('ETHBTC', 99999), t('DEADUSDT', 600, 0, { count: 0 }), t('ZEROUSDT', 650, 0, { lastPrice: '0' }), t('SOLUSDT', 500, -3.2)], 2);
     expect(u.map((r) => r.symbol)).toEqual(['BTCUSDT', 'ETHUSDT']);
     expect(rankUniverse([t('BTCUSDT', 900), t('TONUSDT', 850), t('ETHUSDT', 800)], 5, new Set(['BTCUSDT', 'ETHUSDT'])).map((r) => r.symbol)).toEqual(['BTCUSDT', 'ETHUSDT']);
+    // Pegged near $1 all day = a stablecoin, whatever it's called; a coin that merely trades near $1 stays.
+    const peg = { symbol: 'RWUSDUSDT', lastPrice: '0.9999', priceChangePercent: '0', quoteVolume: '800', highPrice: '1.0003', lowPrice: '0.9995', count: 50 };
+    const near = { symbol: 'ARBUSDT', lastPrice: '1.002', priceChangePercent: '3', quoteVolume: '700', highPrice: '1.05', lowPrice: '0.96', count: 50 };
+    expect(rankUniverse([peg, near], 5).map((r) => r.symbol)).toEqual(['ARBUSDT']);
     expect(rankUniverse([t('SOLUSDT', 500, -3.2)], 5)[0]).toMatchObject({ base: 'SOL', change24h: -3.2, volume24h: 500, price: 10 });
   });
   it('finds funding for coins Bybit lists per 1000', () => {

@@ -4,3 +4,5 @@ export { INDICATORS, indicatorById, resolveParams, computeIndicator, warmup } fr
 export type { IndicatorSpec, IndicatorGroup, OutputScale, OutputSpec, ParamSpec } from './registry.js';
 export { OPERATORS, validateCondition, evaluateCondition, conditionWarmup, describeCondition, describeOperand, formatValue } from './conditions.js';
 export type { Condition, Operand, Operator, Evaluation } from './conditions.js';
+export { rateCandles, ratingLabel, RATING_LABELS, RATING_BARS } from './rating.js';
+export type { Rating, RatingGroup, RatingComponent, RatingLabel, Vote } from './rating.js';

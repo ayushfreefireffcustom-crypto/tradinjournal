@@ -40,6 +40,9 @@ export function rankUniverse(tickers: Ticker24[], size: number, trading?: Set<st
     const price = Number(t.lastPrice);
     const volume24h = Number(t.quoteVolume);
     if (!(price > 0) || !(volume24h > 0) || t.count === 0) continue; // delisted or halted
+    // New dollar stablecoins appear all the time: anything pinned near $1 all day is one.
+    const range = (Number(t.highPrice) - Number(t.lowPrice)) / price;
+    if (Math.abs(price - 1) < 0.01 && range < 0.01) continue;
     rows.push({ symbol: t.symbol, base, price, change24h: Number(t.priceChangePercent), volume24h, high24h: Number(t.highPrice), low24h: Number(t.lowPrice) });
   }
   return rows.sort((a, b) => b.volume24h - a.volume24h).slice(0, size);

@@ -28,6 +28,7 @@ import { traderRouter, traderInternalRouter } from './modules/trader/trader.rout
 import { alertsRouter, alertsInternalRouter } from './modules/alerts/alerts.routes.js';
 import { indicatorAlertsRouter } from './modules/alerts/indicator-alerts.routes.js';
 import { screenerRouter } from './modules/screener/screener.routes.js';
+import { signalsRouter } from './modules/signals/signals.routes.js';
 import { adminRouter } from './modules/admin/admin.routes.js';
 import { accessRouter } from './modules/admin/access.routes.js';
 import { usageRouter } from './modules/usage/usage.routes.js';
@@ -137,6 +138,7 @@ export function createApp(): Express {
   app.use('/api/alerts', alertsRouter);
   app.use('/api/indicator-alerts', indicatorAlertsRouter);
   app.use('/api/screener', screenerRouter);
+  app.use('/api/signals', signalsRouter);
   app.use('/api/macro', macroRouter);
   app.use('/api/trader', traderRouter);
   // Worker-to-API routes. Not under /api: no session, no CORS use case — the
