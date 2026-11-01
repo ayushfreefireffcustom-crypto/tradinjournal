@@ -183,9 +183,14 @@
 .v6 .mk-hi { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500; color: var(--r); white-space: nowrap; }
 .v6 .mk-hi .x-dot { width: 6px; height: 6px; }
 .v6 .mk-relv { display: inline-flex; align-items: center; gap: 8px; }
-.v6 .mk-relv .x-bar { width: 56px; height: 4px; }
+.v6 .mk-relv .x-bar { width: 40px; height: 4px; }
 .v6 .mk-relv .x-bar i { background: var(--mut); }
-.v6 .mk-relv small { font-size: 11px; color: var(--dim); width: 18px; text-align: right; }
+.v6 .mk-relv small { font-size: 11px; color: var(--mut); }
+.v6 .mk-relv small.m { width: 18px; text-align: right; }
+.v6 .mk-mine { font-weight: 500; color: var(--tx); }
+.v6 .mk-brief-sk { display: grid; gap: 8px; padding: 4px 0; }
+.v6 .mk-brief-sk .x-skel { height: 12px; border-radius: 6px; }
+.v6 .mk-brief-sk .x-skel:nth-child(2) { width: 92%; } .v6 .mk-brief-sk .x-skel:nth-child(3) { width: 84%; } .v6 .mk-brief-sk .x-skel:nth-child(4) { width: 60%; }
 
 .v6 .mk-top {
   display: grid; grid-template-columns: minmax(0, 1fr) 240px; gap: 22px; width: 100%; padding: 18px; margin: 2px 0 6px;
@@ -265,7 +270,7 @@
 .v6 .mk-ev-a.fresh { background: var(--g-soft); border-radius: 4px; padding: 0 4px; margin: 0 -4px; }
 .v6 .mk-star { width: 32px; height: 32px; border-radius: 50%; border: 0; background: none; color: var(--dim); display: grid; place-items: center; cursor: pointer; flex: none; }
 .v6 .mk-star:hover { color: var(--tx); background: var(--s2); }
-.v6 .mk-star.on { color: var(--g); }
+.v6 .mk-star.on { color: var(--tx); } /* watched: filled, neutral (green means profit) */
 .v6 .mk-now { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--g); margin: 2px 0; padding: 4px 0; border-bottom: 1px solid var(--line); }
 .v6 .mk-now span { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
 .v6 .mk-now .x-dot { width: 6px; height: 6px; }

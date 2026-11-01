@@ -769,11 +769,11 @@ Legend:
 - [ ] L: disabled Save legible `S`
 
 ### A4.9 `/markets`: `app/markets/page.tsx`, `components/news/*`, `components/calendar/calendar-rail.tsx`
-- [ ] H: one control row: category Segmented/select + symbol filter select + Sources + Brief; "High impact" as a filter option, not a red chip `M`
-- [ ] H: news card ≤ 2 chips (sentiment + source/time); relevance bar labelled or removed; no amber ticker tiles (SymbolMark) `M`
+- [x] H: one control row: category Segmented/select + symbol filter select + Sources + Brief; "High impact" as a filter option, not a red chip `M` — category, High impact and sentiment share one row; your markets on a second row only when you trade some. High impact stays a toggle (it filters, not decorates)
+- [x] H: news card ≤ 2 chips (sentiment + source/time); relevance bar labelled or removed; no amber ticker tiles (SymbolMark) `M` — "Your market" is text in the meta line; one sentiment chip; relevance bar labelled; ticker tiles are SymbolMarks (2 Nov)
 - [x] M: lead thumbnail: real image when available; otherwise no art (not the generic green chart) `S`
 - [x] M: headlines not truncated mid-word; body clamped with "Read more" `S` — verified in code (2 Nov)
-- [ ] M: calendar rail:
+- [x] M: calendar rail: — values labelled Actual/Forecast/Prior with a real minus, times sans-free mono only on numbers, watched star neutral, country codes. Impact stays a dot (red only for High) with a spoken label: a text chip doesn't fit the rail
   - sans times
   - impact as text chip (High/Med/Low, red only for High)
   - no flag emoji (country code)
@@ -781,7 +781,7 @@ Legend:
   - A/F/P values labelled
   - `M`
 - [x] M: "Sources · 8" vs "0 selected" state bug `S` — fixed 2 Nov
-- [ ] L: brief: skeleton while writing `S`
+- [x] L: brief: skeleton while writing `S` — (2 Nov)
 - [x] L: mobile chip rows (A0.30) `S` — verified in code (2 Nov)
 
 ### A4.10 `/macro`: `app/macro/page.tsx`, `components/macro/*`, `lib/macro-meta.ts`

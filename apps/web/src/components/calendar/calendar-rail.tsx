@@ -20,6 +20,9 @@ import { api, type CalendarEvent, type EventImpact } from '@/lib/api';
 import { timeAgo } from '@/components/app-shell';
 import '@/styles/v6/markets.css';
 
+/** Feed values are strings; show a leading hyphen as a real minus. */
+const minus = (v: string | null | undefined) => (v == null ? v : v.replace(/^-(?=\d|\.)/, '−'));
+
 const IMPACTS: EventImpact[] = ['HIGH', 'MEDIUM', 'LOW'];
 const REFRESH_MS = 45_000;
 const FILTERS = ['upcoming', 'today', 'week', 'all'] as const;
@@ -147,11 +150,11 @@ export default function CalendarRail() {
           <i className={`mk-imp mk-imp--${ev.impact.toLowerCase()}`} title={`${IMPACT_LABEL[ev.impact]} impact`} aria-label={`${IMPACT_LABEL[ev.impact]} impact`} />
           <span className="mk-ev-b">
             <span className="mk-ev-n"><span className="mk-cc m" title={`Country: ${ev.country}`}>{cc}</span><span className="mk-ell">{ev.title}</span></span>
-            <span className="mk-ev-v m">
-              <span>{ev.currency}</span>
+            <span className="mk-ev-v">
+              <span className="m">{ev.currency}</span>
               {hasData && <>
-                {ev.actual != null && <span className={`mk-ev-a ${fresh ? 'fresh' : ''} ${dir === 'up' ? 'pos' : dir === 'down' ? 'neg' : ''}`}>A {ev.actual}{dir === 'up' ? ' ▲' : dir === 'down' ? ' ▼' : ''}</span>}
-                <span>F {ev.forecast ?? '—'}</span><span>P {ev.previous ?? '—'}</span>
+                {ev.actual != null && <span className={`mk-ev-a ${fresh ? 'fresh' : ''} ${dir === 'up' ? 'pos' : dir === 'down' ? 'neg' : ''}`}>Actual <span className="m">{minus(ev.actual)}{dir === 'up' ? ' ▲' : dir === 'down' ? ' ▼' : ''}</span></span>}
+                <span>Forecast <span className="m">{minus(ev.forecast) ?? '—'}</span></span><span>Prior <span className="m">{minus(ev.previous) ?? '—'}</span></span>
               </>}
             </span>
           </span>

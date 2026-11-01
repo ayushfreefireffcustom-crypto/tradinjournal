@@ -76,8 +76,7 @@ function NewsCardBase({ it, onOpen, matched = [] }: { it: NewsItem; onOpen: (i: 
       <span className="x-mk mk-item-mk" aria-hidden>{tileFor(it, matched)}</span>
       <span className="mk-item-m">
         <span className="mk-item-meta">
-          {mine && <span className="x-tag x-tag--g" data-testid="news-your-market">Your market</span>}
-          <span className="mk-ell">{it.source} · {timeAgo(it.publishedAt)}{it.category ? ` · ${CAT_LABEL[it.category]}` : ''}</span>
+          <span className="mk-ell">{mine && <b className="mk-mine" data-testid="news-your-market">Your market · </b>}{it.source} · {timeAgo(it.publishedAt)}{it.category ? ` · ${CAT_LABEL[it.category]}` : ''}</span>
         </span>
         <b className="mk-item-t">{it.title}</b>
         {it.summary ? <span className="mk-item-s">{it.summary}</span> : <span className="mk-item-s x-dim">Open to read at {it.source}.</span>}
@@ -86,7 +85,7 @@ function NewsCardBase({ it, onOpen, matched = [] }: { it: NewsItem; onOpen: (i: 
       <span className="mk-item-r">
         <span className="mk-item-tags"><Tags it={it} /></span>
         {typeof it.relevance === 'number' && (
-          <span className="mk-relv" title={`Relevance to traders ${it.relevance}/100`}><span className="x-bar"><i style={{ width: `${it.relevance}%` }} /></span><small className="m">{it.relevance}</small></span>
+          <span className="mk-relv" title={`How much this matters to traders: ${it.relevance} of 100`}><small>Relevance</small><span className="x-bar"><i style={{ width: `${it.relevance}%` }} /></span><small className="m">{it.relevance}</small></span>
         )}
       </span>
       {it.imageUrl && <NewsThumb src={it.imageUrl} className="mk-item-img" />}
@@ -414,7 +413,11 @@ export default function NewsFeed({ userSymbols = EMPTY_SYMBOLS, symbolsReady = t
                 <button className="x-btn x-btn--sm x-btn--ghost" onClick={() => setBriefOpen(false)}>Close</button>
               </div>
               <div className="mk-md">
-                {brief ? <MarkdownMessage content={brief} /> : briefLoading ? <p className="x-muted">Writing your brief…</p> : <p className="x-muted">The brief isn’t available right now.</p>}
+                {brief ? <MarkdownMessage content={brief} /> : briefLoading ? (
+                  <div className="mk-brief-sk" role="status" aria-label="Writing your brief">
+                    <span className="x-skel" /><span className="x-skel" /><span className="x-skel" /><span className="x-skel" />
+                  </div>
+                ) : <p className="x-muted">The brief isn’t available right now.</p>}
               </div>
             </section>
           )}
