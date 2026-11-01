@@ -410,3 +410,26 @@
 .v6 .mk-pc-info { position: absolute; top: 2px; left: 6px; font-size: 11.5px; color: var(--mut); pointer-events: none; z-index: 1; }
 .v6 .mk-pc-empty { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 24px; color: var(--mut); font-size: 13px; }
 .v6 .mk-pc-tip { position: absolute; left: 6px; bottom: 26px; background: var(--tip); color: var(--tx); font-size: 12px; padding: 6px 9px; border-radius: 8px; pointer-events: none; max-width: calc(100% - 80px); }
+
+/* Chart patterns (E8/E9) */
+.v6 .mk-pt-toggle.on { background: var(--hi); color: var(--inv); }
+.v6 .mk-pt { display: grid; gap: 10px; }
+.v6 .mk-pt-hd { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.v6 .mk-pt-hd b { font-weight: 500; }
+.v6 .mk-pt-hd .x-muted { font-size: 12px; }
+.v6 .mk-pt-msg { margin: 0; font-size: 13px; line-height: 1.5; }
+.v6 .mk-pt-sub { font-size: 11.5px; color: var(--mut); text-transform: uppercase; letter-spacing: .05em; margin-top: 4px; }
+.v6 .mk-pt-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.v6 .mk-pt-row { display: flex; align-items: center; gap: 6px; border-radius: 10px; padding: 2px 2px 2px 0; }
+.v6 .mk-pt-row.on { background: var(--s2); }
+.v6 .mk-pt-main { flex: 1; min-width: 0; display: grid; grid-template-columns: 10px 1fr auto; grid-template-areas: "dot name tag" ". lv lv"; column-gap: 8px; row-gap: 2px; align-items: center; text-align: left; background: none; border: 0; color: inherit; font: inherit; padding: 6px 8px; cursor: pointer; border-radius: 10px; }
+.v6 .mk-pt-dot { grid-area: dot; width: 8px; height: 8px; border-radius: 50%; background: var(--mut); }
+.v6 .mk-pt-dot.g { background: var(--g); }
+.v6 .mk-pt-dot.r { background: var(--r); }
+.v6 .mk-pt-name { grid-area: name; font-size: 13.5px; }
+.v6 .mk-pt-main .x-tag { grid-area: tag; }
+.v6 .mk-pt-lv { grid-area: lv; font-size: 11.5px; color: var(--mut); overflow-wrap: anywhere; }
+.v6 .mk-pt-note { margin: 0; font-size: 11.5px; color: var(--dim); line-height: 1.5; }
+.v6 .mk-pt-exp { display: grid; gap: 14px; }
+.v6 .mk-pt-exp h3 { margin: 0 0 4px; font-size: 13px; font-weight: 500; color: var(--mut); }
+.v6 .mk-pt-exp p { margin: 0; font-size: 14px; line-height: 1.55; }

@@ -11,12 +11,15 @@ import type { Chart, KLineData, DataLoader, Period } from 'klinecharts';
 import { marketApi, streamCandles, type Candle, type MarketTimeframe } from '@/lib/market-api';
 import { chartDate, chartStyles, chartXTicks, onThemeChange } from '@/components/v6/markets/chart-theme';
 import { heikinAshi, heikinBar } from '@/lib/chart-types';
+import type { ChartPattern } from '@/lib/patterns-api';
 
 export interface KlineChartHandle {
   createIndicator: (name: string) => void;
   createOverlay: (name: string) => void;
   removeIndicators: () => void;
   removeOverlays: () => void;
+  /** Draw detected patterns (E8); redrawn after every reload. `selected` is drawn heavier. */
+  setPatterns: (patterns: ChartPattern[], selected?: string | null) => void;
 }
 
 interface Props {
@@ -91,11 +94,64 @@ const KlineChart = forwardRef<KlineChartHandle, Props>(function KlineChart({ sym
   symbolRef.current = symbol;
   tfRef.current = tf;
 
+  // Patterns to draw; kept so they come back after the chart reloads its bars.
+  const patternsRef = useRef<{ list: ChartPattern[]; selected: string | null }>({ list: [], selected: null });
+  const drawPatterns = () => {
+    const chart = chartRef.current;
+    const el = containerRef.current;
+    if (!chart || !el) return;
+    chart.removeOverlay({ groupId: 'patterns' });
+    const cs = getComputedStyle(el);
+    const col = (v: string, f: string) => cs.getPropertyValue(v).trim() || f;
+    const g = col('--g', '#08C465');
+    const r = col('--r', '#FE3A31');
+    const mut = col('--mut', '#9A9A9A');
+    const { list, selected } = patternsRef.current;
+    for (const p of list) {
+      const on = p.id === selected;
+      const tone = p.family === 'level' ? (p.kind === 'support' ? g : r) : p.bias === 'bullish' ? g : p.bias === 'bearish' ? r : mut;
+      for (const l of p.lines) {
+        chart.createOverlay({
+          name: 'segment', groupId: 'patterns', lock: true,
+          points: [{ timestamp: l.a.time, value: l.a.price }, { timestamp: l.b.time, value: l.b.price }],
+          styles: { line: { color: tone, size: on ? 2.2 : 1.3, style: l.role === 'pole' || p.family === 'level' ? 'dashed' : 'solid', dashedValue: [4, 4] }, point: { radius: 0, activeRadius: 0, borderSize: 0, activeBorderSize: 0, color: 'transparent', activeColor: 'transparent', borderColor: 'transparent', activeBorderColor: 'transparent' } },
+          zLevel: on ? 2 : 1,
+        });
+      }
+      // The measured-move target, drawn short and dashed at the end of the selected pattern.
+      if (on && p.target != null) {
+        const span = Math.max(p.endTime - p.startTime, 1);
+        chart.createOverlay({
+          name: 'segment', groupId: 'patterns', lock: true,
+          points: [{ timestamp: p.endTime - span * 0.25, value: p.target }, { timestamp: p.endTime, value: p.target }],
+          styles: { line: { color: tone, size: 1.4, style: 'dashed', dashedValue: [2, 3] }, point: { radius: 0, activeRadius: 0, borderSize: 0, activeBorderSize: 0, color: 'transparent', activeColor: 'transparent', borderColor: 'transparent', activeBorderColor: 'transparent' } },
+        });
+      }
+    }
+  };
+
   useImperativeHandle(ref, () => ({
     createIndicator: name => { chartRef.current?.createIndicator(name); },
     createOverlay: name => { chartRef.current?.createOverlay(name); },
     removeIndicators: () => { chartRef.current?.removeIndicator(); },
-    removeOverlays: () => { chartRef.current?.removeOverlay(); },
+    // Clearing drawings leaves the detected patterns in place.
+    removeOverlays: () => { chartRef.current?.removeOverlay(); drawPatterns(); },
+    setPatterns: (list, selected = null) => {
+      const changed = selected !== patternsRef.current.selected;
+      patternsRef.current = { list, selected };
+      drawPatterns();
+      // Bring a newly selected pattern into view: zoom out until its start fits.
+      const chart = chartRef.current;
+      const p = list.find(x => x.id === selected);
+      if (!changed || !chart || !p || !containerRef.current) return;
+      const data = chart.getDataList();
+      const start = data.findIndex(d => d.timestamp >= p.startTime);
+      if (start < 0 || start >= chart.getVisibleRange().from) return;
+      const bars = data.length - start + 12;
+      chart.setBarSpace(Math.max(2, (containerRef.current.clientWidth - 90) / bars));
+      chart.scrollToRealTime();
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }), []);
 
   // Mount: create the chart + wire the data loader once.
@@ -152,6 +208,7 @@ const KlineChart = forwardRef<KlineChartHandle, Props>(function KlineChart({ sym
             } else callback(candles.map(toKLine), more);
             if (type === 'init') {
               setReady(true);
+              setTimeout(drawPatterns, 0); // a reload clears overlays
               if (last) {
                 const dayAgo = last.openTime - 86_400_000;
                 const refBar = [...candles].reverse().find(c => c.openTime <= dayAgo) ?? (candles.length > 1 ? candles[candles.length - 2] : undefined);

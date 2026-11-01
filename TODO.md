@@ -451,8 +451,8 @@ Legend:
   - row "Trade" button
 - [x] E6 Scanner folded into the screener (OR groups, `between`) `S` (done 1 Nov)
 - [x] E7 Signals table: composite rating on 1h/4h/1d (Strong Buy → Strong Sell) with components shown; reuse SignalX where possible `M` (done 1 Nov: /signals; 16 moving-average + 10 oscillator votes, SignalX's EMA 20/50 trend is one vote; cached per closed bar)
-- [ ] E8 Chart-pattern detection (S/R, range, double top/bottom, channels, triangles, flags, wedges), drawn on candles `L → split by pattern family`
-- [ ] E9 Pattern explanations via Claude ("what it is / why it matters / where it's wrong / measured move") `S`
+- [x] E8 Chart-pattern detection (S/R, range, double top/bottom, channels, triangles, flags, wedges), drawn on candles `L → split by pattern family` (done 1 Nov: core detectPatterns on ATR-scaled ZigZag pivots; Patterns toggle + panel on /charts)
+- [x] E9 Pattern explanations via Claude ("what it is / why it matters / where it's wrong / measured move") `S` (done 1 Nov: Claude when AI is configured, template fallback; cached 6h per pattern and status, 20 an hour per user)
 - [ ] E10 Market overview `M`:
   - breadth, gainers/losers, volume heatmap, sectors, bubble map
   - Fear & Greed (source TBD, research), altcoin season

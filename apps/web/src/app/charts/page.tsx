@@ -19,6 +19,8 @@ import Watchlist from '@/components/charts/watchlist';
 import AlertsPanel from '@/components/charts/alerts-panel';
 import AlertDialog from '@/components/charts/alert-dialog';
 import ChartTypeMenu from '@/components/charts/chart-type-menu';
+import PatternsPanel from '@/components/charts/patterns-panel';
+import { PATTERN_TFS, patternsApi, type PatternsResult } from '@/lib/patterns-api';
 import '@/styles/v6/markets.css';
 
 const DEFAULT_SYMBOLS = ['BTCUSDT', 'ETHUSDT', 'XAUUSD', 'EURUSD'];
@@ -39,6 +41,39 @@ export default function ChartsPage() {
 
   const active = panes.find(p => p.id === activeId) ?? panes[0]!;
   const activeChart = () => chartRefs.current.get(activeId);
+  const timeBased = (active.chartType ?? 'candles') === 'candles' || active.chartType === 'heikin';
+
+  // Chart patterns (E8): fetched for the active pane and drawn on it.
+  const [patternsOn, setPatternsOn] = useState(false);
+  useEffect(() => { try { setPatternsOn(localStorage.getItem('tradelogs.charts.patterns') === '1'); } catch { /* ignore */ } }, []);
+  const [pat, setPat] = useState<{ key: string; data: PatternsResult | null; error: string | null; loading: boolean }>({ key: '', data: null, error: null, loading: false });
+  const [selectedPattern, setSelectedPattern] = useState<string | null>(null);
+  const patternTfOk = (PATTERN_TFS as readonly string[]).includes(active.tf);
+  const patKey = `${active.symbol}:${active.tf}`;
+  useEffect(() => {
+    if (!patternsOn || !timeBased || !patternTfOk) return;
+    let alive = true;
+    const load = () => {
+      setPat(s => ({ key: patKey, data: s.key === patKey ? s.data : null, error: null, loading: true }));
+      patternsApi.find(active.symbol, active.tf)
+        .then(d => { if (alive) setPat({ key: patKey, data: d, error: null, loading: false }); })
+        .catch(e => { if (alive) setPat({ key: patKey, data: null, error: e instanceof Error ? e.message : 'Could not find patterns', loading: false }); });
+    };
+    load();
+    const t = setInterval(() => { if (document.visibilityState === 'visible') load(); }, 5 * 60_000);
+    return () => { alive = false; clearInterval(t); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [patternsOn, timeBased, patternTfOk, patKey]);
+  useEffect(() => { setSelectedPattern(null); }, [patKey]);
+  // Draw on the active pane only; clear the pane it was on before.
+  const drawnOn = useRef<string | null>(null);
+  useEffect(() => {
+    const list = patternsOn && timeBased && pat.key === patKey ? pat.data?.patterns ?? [] : [];
+    if (drawnOn.current && drawnOn.current !== activeId) chartRefs.current.get(drawnOn.current)?.setPatterns([]);
+    chartRefs.current.get(activeId)?.setPatterns(list, selectedPattern);
+    drawnOn.current = activeId;
+  }, [patternsOn, timeBased, pat, patKey, activeId, selectedPattern]);
+  const togglePatterns = () => setPatternsOn(v => { try { localStorage.setItem('tradelogs.charts.patterns', v ? '0' : '1'); } catch { /* ignore */ } return !v; });
 
   // Price alerts.
   const [alertOpen, setAlertOpen] = useState(false);
@@ -145,6 +180,7 @@ export default function ChartsPage() {
             {/* Indicators and drawings live on time-based charts only. */}
             {(active.chartType ?? 'candles') === 'candles' || active.chartType === 'heikin' ? (
               <div className="mk-tools-r">
+                <button type="button" className={`x-btn mk-pt-toggle ${patternsOn ? 'on' : ''}`} aria-pressed={patternsOn} onClick={togglePatterns} data-testid="patterns-toggle">Patterns</button>
                 <IndicatorMenu onAdd={name => activeChart()?.createIndicator(name)} onClear={() => activeChart()?.removeIndicators()} />
                 <DrawingToolbar onDraw={name => activeChart()?.createOverlay(name)} onClear={() => activeChart()?.removeOverlays()} />
               </div>
@@ -153,6 +189,11 @@ export default function ChartsPage() {
           <LayoutGrid panes={panes} activeId={activeId} onActivate={setActiveId} onClose={closePane} registerRef={registerRef} />
         </div>
         <div className="mk-crail">
+          {patternsOn && timeBased && (
+            <PatternsPanel symbol={active.symbol} tf={active.tf} selected={selectedPattern} onSelect={setSelectedPattern}
+              state={pat.key === patKey ? pat : { data: null, error: null, loading: true }}
+              unsupported={patternTfOk ? undefined : `Patterns work on ${PATTERN_TFS.join(', ')} charts.`} />
+          )}
           <Watchlist activeSymbol={active.symbol} onPick={symbol => patchActive({ symbol })} />
           <AlertsPanel activeSymbol={active.symbol} reloadToken={alertsReload} onNew={openAlert} />
         </div>

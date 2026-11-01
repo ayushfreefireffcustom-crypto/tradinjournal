@@ -111,3 +111,4 @@ export type {
 } from './trader/index.js';
 
 export * from './indicators/index.js';
+export * from './patterns/index.js';
