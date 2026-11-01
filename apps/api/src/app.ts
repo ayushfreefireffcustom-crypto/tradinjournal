@@ -19,7 +19,7 @@ import { aiRouter, aiInternalRouter } from './modules/ai/ai.routes.js';
 import { calendarRouter, calendarInternalRouter } from './modules/calendar/calendar.routes.js';
 import { macroRouter, macroInternalRouter } from './modules/macro/macro.routes.js';
 import { newsRouter, newsInternalRouter } from './modules/news/news.routes.js';
-import { notificationsRouter, pushRouter, notificationsInternalRouter } from './modules/notifications/notifications.routes.js';
+import { notificationsRouter, pushRouter, notificationsInternalRouter, telegramWebhookRouter } from './modules/notifications/notifications.routes.js';
 import { marketRouter, marketInternalRouter } from './modules/market/market.routes.js';
 import { traderRouter, traderInternalRouter } from './modules/trader/trader.routes.js';
 import { alertsRouter, alertsInternalRouter } from './modules/alerts/alerts.routes.js';
@@ -122,6 +122,7 @@ export function createApp(): Express {
   app.use('/api/news', newsRouter);
   app.use('/api/notifications', notificationsRouter);
   app.use('/api/push', pushRouter);
+  if (env.TELEGRAM_ENABLED) app.use('/api/telegram', telegramWebhookRouter);
   app.use('/api/market', marketRouter);
   app.use('/api/alerts', alertsRouter);
   app.use('/api/macro', macroRouter);

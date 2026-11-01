@@ -126,6 +126,15 @@ const envSchema = z.object({
   VAPID_PRIVATE_KEY: z.string().optional(),
   VAPID_SUBJECT: z.string().default('mailto:hello@tradelogs.com'),
 
+  // ── Telegram alerts (C6.2) ────────────────────────────────────────────────
+  // A bot from @BotFather. All three set → Telegram is offered; otherwise it
+  // simply isn't (TELEGRAM_ENABLED=false). The secret is any random string; it
+  // is sent to Telegram with setWebhook and checked on every webhook call
+  // (16+ characters, or Telegram stays off).
+  TELEGRAM_BOT_TOKEN: z.string().optional(),
+  TELEGRAM_BOT_USERNAME: z.string().optional(),
+  TELEGRAM_WEBHOOK_SECRET: z.string().optional(),
+
   // Daily email digest — one compilation email/user/day. Default 07:00 UTC.
   NOTIFICATIONS_DIGEST_CRON: z.string().default('0 7 * * *'),
 
@@ -288,6 +297,8 @@ export type Env = z.infer<typeof envSchema> & {
   NEWS_ENRICH_ENABLED: boolean;
   /** True when Web Push is fully configured (both VAPID keys present). */
   PUSH_ENABLED: boolean;
+  /** True when the Telegram bot token, username and webhook secret are all set. */
+  TELEGRAM_ENABLED: boolean;
   /** True when charting can run — Binance is keyless, so effectively always on. */
   MARKET_ENABLED: boolean;
   /** True when the Twelve Data stock/forex provider is configured. */
@@ -380,6 +391,7 @@ function loadEnv(): Env {
   const NEWS_ENABLED = true; // RSS baseline requires no key
   const NEWS_ENRICH_ENABLED = NEWS_ENABLED && AI_ENABLED;
   const PUSH_ENABLED = !!parsed.data.VAPID_PUBLIC_KEY && !!parsed.data.VAPID_PRIVATE_KEY;
+  const TELEGRAM_ENABLED = !!parsed.data.TELEGRAM_BOT_TOKEN && !!parsed.data.TELEGRAM_BOT_USERNAME && (parsed.data.TELEGRAM_WEBHOOK_SECRET?.length ?? 0) >= 16;
 
   const MARKET_ENABLED = true; // Binance market data needs no key
   const TWELVEDATA_ENABLED = !!parsed.data.TWELVEDATA_API_KEY;
@@ -421,6 +433,7 @@ function loadEnv(): Env {
     NEWS_ENABLED,
     NEWS_ENRICH_ENABLED,
     PUSH_ENABLED,
+    TELEGRAM_ENABLED,
     MARKET_ENABLED,
     TWELVEDATA_ENABLED,
     MARKET_WARM_SYMBOLS_LIST,

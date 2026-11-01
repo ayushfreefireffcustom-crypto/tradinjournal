@@ -48,15 +48,17 @@ export function notificationKindFilter(group: NotificationGroup): { in?: string[
   }
 }
 
-/** Per-group overrides of the global email/push switches. Missing means on. */
-const groupChannelSchema = z.object({ email: z.boolean().optional(), push: z.boolean().optional() }).strict();
+/** Per-group overrides of the global email/push/Telegram switches. Missing means on. */
+const groupChannelSchema = z.object({ email: z.boolean().optional(), push: z.boolean().optional(), telegram: z.boolean().optional() }).strict();
 export const notificationGroupPrefsSchema = z.object(
   Object.fromEntries(notificationGroups.map((g) => [g, groupChannelSchema.optional()])) as Record<NotificationGroup, z.ZodOptional<typeof groupChannelSchema>>,
 ).strict();
 export type NotificationGroupPrefs = z.infer<typeof notificationGroupPrefsSchema>;
 
+export type DeliveryChannel = 'email' | 'push' | 'telegram';
+
 /** Whether a kind should go out on a channel, given the global switch and the group override. */
-export function deliveryAllowed(kind: string, channel: 'email' | 'push', global: boolean, groups: unknown): boolean {
+export function deliveryAllowed(kind: string, channel: DeliveryChannel, global: boolean, groups: unknown): boolean {
   if (!global) return false;
   const parsed = notificationGroupPrefsSchema.safeParse(groups ?? {});
   if (!parsed.success) return true;
@@ -99,4 +101,18 @@ export interface InboxDto {
   unread: Record<NotificationGroup, number>;
   /** Everything not archived, per group; 0 dims the tab. */
   total: Record<NotificationGroup, number>;
+}
+
+export interface TelegramStatusDto {
+  /** False when the server has no bot configured: the option is hidden. */
+  available: boolean;
+  linked: boolean;
+  username: string | null;
+  linkedAt: string | null;
+}
+
+export interface TelegramLinkDto {
+  /** Open this on the phone; Telegram starts the bot with the one-time code. */
+  url: string;
+  expiresAt: string;
 }

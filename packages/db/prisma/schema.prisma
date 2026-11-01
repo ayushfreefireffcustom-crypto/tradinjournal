@@ -49,6 +49,9 @@ model User {
   copyFollows         CopyFollow[]
   exchangeOrders      ExchangeOrder[]
 
+  telegramLink      TelegramLink?
+  telegramLinkCodes TelegramLinkCode[]
+
   @@map("user")
 }
 
@@ -579,6 +582,30 @@ model PushSubscription {
 
   @@index([userId])
   @@map("push_subscription")
+}
+
+/// A user's Telegram chat for alerts (C6.2). One chat per user, one user per chat.
+model TelegramLink {
+  id       String   @id @default(cuid())
+  userId   String   @unique
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chatId   String   @unique
+  username String?
+  linkedAt DateTime @default(now())
+
+  @@map("telegram_link")
+}
+
+/// One-time code behind the t.me/<bot>?start=<code> link; expires after 15 minutes.
+model TelegramLinkCode {
+  code      String   @id
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("telegram_link_code")
 }
 
 /// The in-app notification-center inbox.

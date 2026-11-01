@@ -11,6 +11,10 @@ import {
   handleMarkRead,
   handleInbox,
   handleInboxAction,
+  handleTelegramStatus,
+  handleTelegramLink,
+  handleTelegramUnlink,
+  handleTelegramWebhook,
   handlePushSubscribe,
   handlePushUnsubscribe,
   handleDispatch,
@@ -26,6 +30,14 @@ notificationsRouter.get('/', handleListNotifications);
 notificationsRouter.post('/read', handleMarkRead);
 notificationsRouter.get('/inbox', validateQuery(inboxQuerySchema), handleInbox);
 notificationsRouter.post('/inbox', validateBody(inboxActionSchema), handleInboxAction);
+notificationsRouter.get('/telegram', handleTelegramStatus);
+notificationsRouter.post('/telegram/link', handleTelegramLink);
+notificationsRouter.delete('/telegram', handleTelegramUnlink);
+
+// Telegram's webhook (mounted under /api/telegram only when a bot is configured).
+// No session: the secret header is the only way in.
+export const telegramWebhookRouter: IRouter = Router();
+telegramWebhookRouter.post('/webhook', handleTelegramWebhook);
 
 // Web Push subscribe/unsubscribe (mounted under /api/push).
 export const pushRouter: IRouter = Router();

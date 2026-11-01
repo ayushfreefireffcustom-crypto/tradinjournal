@@ -13,6 +13,8 @@ import {
   removePushSubscription,
 } from './notifications.service.js';
 import { dispatchReminders } from './dispatch.service.js';
+import { createTelegramLink, handleTelegramUpdate, telegramStatus, unlinkTelegram, webhookSecretOk } from './telegram.service.js';
+import { logger } from '@tradinjournal/logger';
 import { sendDailyDigests } from './digest.service.js';
 
 // GET /api/notifications/preferences — includes whether push is even available.
@@ -73,6 +75,54 @@ export async function handleInboxAction(req: Request, res: Response, next: NextF
   } catch (err) {
     next(err);
   }
+}
+
+// GET /api/notifications/telegram — is a bot configured, and is this user linked?
+export async function handleTelegramStatus(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    ok(res, await telegramStatus(res.locals.user.id as string));
+  } catch (err) {
+    next(err);
+  }
+}
+
+// POST /api/notifications/telegram/link — a one-time t.me link (404 when no bot is configured).
+export async function handleTelegramLink(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const link = await createTelegramLink(res.locals.user.id as string);
+    if (!link) {
+      res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Telegram alerts aren’t available.' } });
+      return;
+    }
+    ok(res, link);
+  } catch (err) {
+    next(err);
+  }
+}
+
+// DELETE /api/notifications/telegram
+export async function handleTelegramUnlink(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    await unlinkTelegram(res.locals.user.id as string);
+    ok(res, { ok: true });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// POST /api/telegram/webhook — Telegram's calls, checked by the secret header.
+// Always 200 once the secret matches, so Telegram doesn't retry a bad update forever.
+export async function handleTelegramWebhook(req: Request, res: Response): Promise<void> {
+  if (!webhookSecretOk(req.get('x-telegram-bot-api-secret-token'))) {
+    res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Bad secret' } });
+    return;
+  }
+  try {
+    await handleTelegramUpdate(req.body ?? {});
+  } catch (err) {
+    logger.warn('[telegram] update failed', { err: String(err) });
+  }
+  res.json({ ok: true });
 }
 
 // POST /internal/notifications/dispatch — worker-only reminder sweep.

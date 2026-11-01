@@ -7,7 +7,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react
 import { authClient } from '@/lib/auth-client';
 import { countryName } from '@/lib/countries';
 import { locationApi, type UserLocationDto } from '@/lib/location-api';
-import { api, NOTIFICATION_GROUPS, NOTIFICATION_GROUP_LABELS, type EventImpact, type NotificationGroup, type NotificationGroupPrefs, type NotificationPrefs } from '@/lib/api';
+import { api, NOTIFICATION_GROUPS, NOTIFICATION_GROUP_LABELS, type EventImpact, type NotificationChannel, type NotificationGroup, type NotificationGroupPrefs, type NotificationPrefs, type TelegramStatus } from '@/lib/api';
 import { enablePush, disablePush } from '@/lib/push-client';
 import LocationForm from '@/components/location-form';
 import { ICheck, ILock } from '@/components/v3/icons';
@@ -100,6 +100,7 @@ export function NotificationsSection() {
   const [prefs, setPrefs] = useState<NotificationPrefs | null>(null);
   const [draft, setDraft] = useState<Editable | null>(null);
   const [groupsDraft, setGroupsDraft] = useState<NotificationGroupPrefs>({});
+  const [tg, setTg] = useState<TelegramStatus | null>(null);
   const [weekly, setWeekly] = useState<{ enabled: boolean; lastSentAt: string | null } | null>(null);
   const [weeklyDraft, setWeeklyDraft] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -110,8 +111,9 @@ export function NotificationsSection() {
   useEffect(() => {
     let alive = true;
     (async () => {
-      const [p, w] = await Promise.allSettled([api.notifications.preferences(), api.ai.weeklyReview()]);
+      const [p, w, t] = await Promise.allSettled([api.notifications.preferences(), api.ai.weeklyReview(), api.notifications.telegram()]);
       if (!alive) return;
+      if (t.status === 'fulfilled') setTg(t.value);
       if (p.status === 'fulfilled') {
         const v = p.value;
         // Adopt the browser's timezone on first visit if still the UTC default.
@@ -144,9 +146,9 @@ export function NotificationsSection() {
     return out;
   }, [prefs, draft]);
   const weeklyChanged = !!weekly && weeklyDraft !== weekly.enabled;
-  const groupsChanged = !!prefs && NOTIFICATION_GROUPS.some(g => (['email', 'push'] as const).some(ch => groupOn(groupsDraft, g, ch) !== groupOn(prefs.groups ?? {}, g, ch)));
+  const groupsChanged = !!prefs && NOTIFICATION_GROUPS.some(g => (['email', 'push', 'telegram'] as const).some(ch => groupOn(groupsDraft, g, ch) !== groupOn(prefs.groups ?? {}, g, ch)));
   const dirty = Object.keys(changes).length > 0 || weeklyChanged || groupsChanged;
-  const toggleGroup = (g: NotificationGroup, ch: 'email' | 'push') => {
+  const toggleGroup = (g: NotificationGroup, ch: NotificationChannel) => {
     setGroupsDraft(d => ({ ...d, [g]: { ...d[g], [ch]: !groupOn(d, g, ch) } }));
     setError('');
   };
@@ -209,21 +211,23 @@ export function NotificationsSection() {
               {prefs.pushAvailable && (
                 <Row title="Browser push" desc="Real-time alerts, even when the tab is closed"><Switch on={draft.push} onClick={() => set('push', !draft.push)} label="Push alerts" /></Row>
               )}
+              {tg?.available && <TelegramRow status={tg} onChange={setTg} />}
             </div>
           )}
           {draft && prefs && (
             <div className="ac-st-grp" data-testid="notification-groups">
               <h3>By type</h3>
-              <p className="ac-st-note">Turn email or push off for one kind of notification. Everything always lands in your <a className="x-link" href="/notifications">inbox</a>.</p>
+              <p className="ac-st-note">Turn a channel off for one kind of notification. Everything still lands in your <a className="x-link" href="/notifications">inbox</a>.</p>
               <div className="x-tblwrap">
                 <table className="x-tbl ac-st-grid">
-                  <thead><tr><th>Type</th><th className="c">Email</th>{prefs.pushAvailable && <th className="c">Push</th>}</tr></thead>
+                  <thead><tr><th>Type</th><th className="c">Email</th>{prefs.pushAvailable && <th className="c">Push</th>}{tg?.linked && <th className="c">Telegram</th>}</tr></thead>
                   <tbody>
                     {NOTIFICATION_GROUPS.map(g => (
                       <tr key={g}>
                         <td><b>{NOTIFICATION_GROUP_LABELS[g].label}</b><span>{NOTIFICATION_GROUP_LABELS[g].hint}</span></td>
                         <td className="c"><Switch on={draft.email && groupOn(groupsDraft, g, 'email')} disabled={!draft.email} onClick={() => toggleGroup(g, 'email')} label={`${NOTIFICATION_GROUP_LABELS[g].label} by email`} testId={`group-${g}-email`} /></td>
                         {prefs.pushAvailable && <td className="c"><Switch on={draft.push && groupOn(groupsDraft, g, 'push')} disabled={!draft.push} onClick={() => toggleGroup(g, 'push')} label={`${NOTIFICATION_GROUP_LABELS[g].label} by push`} testId={`group-${g}-push`} /></td>}
+                        {tg?.linked && <td className="c"><Switch on={groupOn(groupsDraft, g, 'telegram')} onClick={() => toggleGroup(g, 'telegram')} label={`${NOTIFICATION_GROUP_LABELS[g].label} on Telegram`} testId={`group-${g}-telegram`} /></td>}
                       </tr>
                     ))}
                   </tbody>
@@ -275,13 +279,76 @@ export function NotificationsSection() {
 }
 
 /** A group's channel is on unless explicitly switched off. */
-function groupOn(groups: NotificationGroupPrefs, g: NotificationGroup, ch: 'email' | 'push'): boolean {
+function groupOn(groups: NotificationGroupPrefs, g: NotificationGroup, ch: NotificationChannel): boolean {
   return groups[g]?.[ch] !== false;
 }
 
 /** Every group with both channels spelled out, so a save fully replaces the old overrides. */
 function fullGroups(groups: NotificationGroupPrefs): NotificationGroupPrefs {
-  return Object.fromEntries(NOTIFICATION_GROUPS.map(g => [g, { email: groupOn(groups, g, 'email'), push: groupOn(groups, g, 'push') }]));
+  return Object.fromEntries(NOTIFICATION_GROUPS.map(g => [g, { email: groupOn(groups, g, 'email'), push: groupOn(groups, g, 'push'), telegram: groupOn(groups, g, 'telegram') }]));
+}
+
+/**
+ * Connect / disconnect Telegram. Connecting opens the bot with a one-time code
+ * in a new tab (or the Telegram app on a phone); this row then checks every few
+ * seconds, for as long as the code lasts, until the bot reports the link.
+ */
+function TelegramRow({ status, onChange }: { status: TelegramStatus; onChange: (s: TelegramStatus) => void }) {
+  const [busy, setBusy] = useState(false);
+  const [waiting, setWaiting] = useState<string | null>(null);
+  const [err, setErr] = useState('');
+
+  useEffect(() => {
+    if (!waiting) return;
+    const until = new Date(waiting).getTime();
+    const t = setInterval(async () => {
+      if (Date.now() > until) { setWaiting(null); return; }
+      try {
+        const s = await api.notifications.telegram();
+        if (s.linked) { onChange(s); setWaiting(null); }
+      } catch { /* keep trying until the code expires */ }
+    }, 3000);
+    return () => clearInterval(t);
+  }, [waiting, onChange]);
+
+  async function connect() {
+    setBusy(true); setErr('');
+    // Open the tab synchronously so pop-up blockers allow it, then point it at the bot.
+    const tab = window.open('about:blank', '_blank');
+    try {
+      const l = await api.notifications.telegramLink();
+      if (tab) tab.location.href = l.url; else window.location.href = l.url;
+      setWaiting(l.expiresAt);
+    } catch {
+      tab?.close();
+      setErr('Could not start the Telegram connection. Please try again.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function disconnect() {
+    setBusy(true); setErr('');
+    try {
+      await api.notifications.telegramUnlink();
+      onChange({ ...status, linked: false, username: null, linkedAt: null });
+    } catch {
+      setErr('Could not disconnect. Please try again.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const desc = status.linked
+    ? <>Connected{status.username ? <> as <b className="m">@{status.username}</b></> : null}. Every alert type below can be turned off for Telegram.</>
+    : waiting ? 'Waiting for Telegram: press Start in the chat that opened.' : 'Alerts in a Telegram chat with the TRADElogs bot';
+  return (
+    <Row title="Telegram" desc={<>{desc}{err && <span className="x-dim ac-st-meta" role="alert"> {err}</span>}</>}>
+      {status.linked
+        ? <button type="button" className="x-btn x-btn--sm x-btn--ghost" onClick={() => void disconnect()} disabled={busy} data-testid="telegram-disconnect">Disconnect</button>
+        : <button type="button" className="x-btn x-btn--sm" onClick={() => void connect()} disabled={busy} data-testid="telegram-connect">{waiting ? 'Open again' : 'Connect'}</button>}
+    </Row>
+  );
 }
 
 function pick(p: NotificationPrefs): Editable {

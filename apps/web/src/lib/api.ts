@@ -466,7 +466,9 @@ export const NOTIFICATION_GROUP_LABELS: Record<NotificationGroup, { label: strin
   reports: { label: 'Reports', hint: 'Summaries and reports' },
   system: { label: 'System', hint: 'Account, leader applications and everything else' },
 };
-export type NotificationGroupPrefs = Partial<Record<NotificationGroup, { email?: boolean; push?: boolean }>>;
+export type NotificationChannel = 'email' | 'push' | 'telegram';
+export type NotificationGroupPrefs = Partial<Record<NotificationGroup, Partial<Record<NotificationChannel, boolean>>>>;
+export interface TelegramStatus { available: boolean; linked: boolean; username: string | null; linkedAt: string | null }
 export type InboxStatus = 'all' | 'unread' | 'archived';
 export interface InboxItem {
   id: string;
@@ -595,6 +597,9 @@ export const api = {
       const qs = p.toString();
       return apiFetch<Inbox>(`${PREFIX}/notifications/inbox${qs ? `?${qs}` : ''}`);
     },
+    telegram: () => apiFetch<TelegramStatus>(`${PREFIX}/notifications/telegram`),
+    telegramLink: () => apiFetch<{ url: string; expiresAt: string }>(`${PREFIX}/notifications/telegram/link`, { method: 'POST' }),
+    telegramUnlink: () => apiFetch<{ ok: boolean }>(`${PREFIX}/notifications/telegram`, { method: 'DELETE' }),
     inboxAction: (body: { action: 'read' | 'archive' | 'unarchive'; ids?: string[]; group?: NotificationGroup }) =>
       apiFetch<{ updated: number }>(`${PREFIX}/notifications/inbox`, { method: 'POST', body: JSON.stringify(body) }),
   },
