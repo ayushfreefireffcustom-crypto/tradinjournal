@@ -139,6 +139,8 @@ function statsFor(l: LeaderRow, range: LeaderRange, curve: Array<{ t: Date; v: n
     tradeCount: s?.tradeCount ?? 0,
     sharpe: sharpeRatio(inRange),
     profitableWeeksPct: profitableWeeksPct(inRange),
+    top3ProfitSharePct: s?.top3ProfitSharePct != null ? Number(s.top3ProfitSharePct) : null,
+    closedTradeCount: s?.closedTradeCount ?? null,
   };
 }
 

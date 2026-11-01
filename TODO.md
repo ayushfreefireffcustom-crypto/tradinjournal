@@ -315,7 +315,7 @@ Legend:
 ## C2. Leader data and grading (better than MP)
 - [x] C2.1 Leader stats per window: P&L, ROI, max DD, win rate, Sharpe, trades, followers, days active (MP "DSL" explained in plain words) `M`
 - [x] C2.2 **Risk grade A–E** from max DD, volatility and leverage used; document the formula on the page `M`
-- [ ] C2.3 **Consistency score** (share of profitable weeks) and "% of profit from top 3 trades" `S` (profitable weeks done; top-3 share needs per-trade USD P&L for leaders)
+- [x] C2.3 **Consistency score** (share of profitable weeks) and "% of profit from top 3 trades" `S` (done 1 Nov: leader round trips rebuilt from fills in USD; share of winning profit from the best 3; needs 5 closed trades)
 - [x] C2.4 Recommended margin calculation (minimum capital to copy 1× without rounding to 0 contracts) `S`
 - [x] C2.5 Leader stats cached (Redis) and recomputed by the engine reconcile loop `S` (cached in leader_stat, recomputed every 5 min; no Redis needed)
 

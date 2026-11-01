@@ -47,6 +47,8 @@ export interface LeaderStats {
   pnlUsd: number | null;
   maxDrawdownPct: number | null;
   winRatePct: number | null;
+  top3ProfitSharePct: number | null;
+  closedTradeCount: number | null;
   tradeCount: number;
   sharpe: number | null;
   profitableWeeksPct: number | null;

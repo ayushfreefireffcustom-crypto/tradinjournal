@@ -1281,6 +1281,10 @@ model LeaderStat {
   window         String // "7d" | "30d" | "all"
   roiPct         Decimal    @default(0) @db.Decimal(12, 4)
   winRatePct     Decimal?   @db.Decimal(6, 2)
+  /// Share of winning-trade profit from the 3 best closed trades in the window; null under 5 trades (C2.3).
+  top3ProfitSharePct Decimal? @db.Decimal(6, 2)
+  /// Leader round trips closed in the window, rebuilt from fills.
+  closedTradeCount   Int?
   maxDrawdownPct Decimal    @default(0) @db.Decimal(6, 2)
   totalCopiedUsd Decimal    @default(0) @db.Decimal(20, 2)
   tradeCount     Int        @default(0)

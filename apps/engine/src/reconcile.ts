@@ -10,6 +10,7 @@ import { fanOut, rememberLeaderEquity } from './copy.js';
 import { markConnectionInvalid, notify } from './guards.js';
 import { inScope, type EngineDeps } from './deps.js';
 import { curveStats, WINDOWS } from './stats.js';
+import { closedTrades, top3ProfitSharePct } from './leader-trades.js';
 
 const EQUITY_POINT_MS = 5 * 60_000;
 const STATS_MS = 5 * 60_000;
@@ -127,12 +128,21 @@ async function refreshLeaders(deps: EngineDeps): Promise<void> {
   }
   if (nowMs - lastStatsAt >= STATS_MS) {
     lastStatsAt = nowMs;
-    for (const leader of leaders) await recomputeStats(leader.id, nowMs).catch((err) => logger.warn('[engine] stats failed', { leaderId: leader.id, err: String(err) }));
+    for (const leader of leaders) {
+      const ex = deps.exchangeFor(leader.connection);
+      const multiplierOf = async (symbol: string) => (await ex.getInstrument(symbol).catch(() => null))?.contractMultiplier ?? null;
+      await recomputeStats(leader.id, nowMs, multiplierOf).catch((err) => logger.warn('[engine] stats failed', { leaderId: leader.id, err: String(err) }));
+    }
   }
 }
 
-export async function recomputeStats(leaderId: string, nowMs: number): Promise<void> {
-  const [followerCount, tradeCount, copied, closedPositions, points] = await Promise.all([
+/**
+ * Leaderboard stats per window. `multiplierOf` gives each symbol's contract
+ * multiplier, needed to price the leader's own round trips in USD; without it
+ * the top-3 share stays unknown.
+ */
+export async function recomputeStats(leaderId: string, nowMs: number, multiplierOf?: (symbol: string) => Promise<number | null>): Promise<void> {
+  const [followerCount, tradeCount, copied, closedPositions, points, fills] = await Promise.all([
     prisma.copyFollow.count({ where: { leaderId, status: 'ACTIVE' } }),
     prisma.leaderFill.count({ where: { leaderId } }),
     prisma.$queryRaw<Array<{ usd: number | null }>>`
@@ -141,13 +151,27 @@ export async function recomputeStats(leaderId: string, nowMs: number): Promise<v
       WHERE f."leaderId" = ${leaderId} AND o."filledQty" > 0`,
     prisma.exchangePosition.findMany({ where: { follow: { leaderId }, closedAt: { not: null } }, select: { realizedPnl: true } }),
     prisma.leaderEquityPoint.findMany({ where: { leaderId }, orderBy: { ts: 'asc' }, select: { equityUsd: true, ts: true } }),
+    multiplierOf
+      ? prisma.leaderFill.findMany({ where: { leaderId }, orderBy: [{ exchTs: 'asc' }, { ingestedAt: 'asc' }], select: { symbol: true, side: true, qty: true, price: true, positionAfter: true, exchTs: true } })
+      : Promise.resolve(null),
   ]);
+  let trades: ReturnType<typeof closedTrades> | null = null;
+  if (fills && multiplierOf) {
+    const mults = new Map<string, number | null>();
+    for (const sym of new Set(fills.map((f) => f.symbol))) mults.set(sym, await multiplierOf(sym));
+    trades = closedTrades(
+      fills.map((f) => ({ symbol: f.symbol, side: f.side, qty: Number(f.qty), price: Number(f.price), positionAfter: f.positionAfter != null ? Number(f.positionAfter) : null, ts: f.exchTs })),
+      (sym) => mults.get(sym) ?? null,
+    );
+  }
   // Win rate needs closed positions; with none it is unknown, not 0%.
   const winRatePct = closedPositions.length ? (closedPositions.filter((p) => Number(p.realizedPnl) > 0).length / closedPositions.length) * 100 : null;
   const curve = points.map((p) => ({ equityUsd: Number(p.equityUsd), ts: p.ts }));
   for (const [window, span] of Object.entries(WINDOWS)) {
     const { roiPct, maxDrawdownPct } = curveStats(curve, span ? nowMs - span : 0);
-    const data = { followerCount, tradeCount, totalCopiedUsd: copied[0]?.usd ?? 0, winRatePct, roiPct, maxDrawdownPct };
+    const inWindow = trades?.filter((t) => !span || t.closedAt.getTime() >= nowMs - span) ?? null;
+    const top3 = inWindow ? { top3ProfitSharePct: top3ProfitSharePct(inWindow), closedTradeCount: inWindow.length } : {};
+    const data = { followerCount, tradeCount, totalCopiedUsd: copied[0]?.usd ?? 0, winRatePct, roiPct, maxDrawdownPct, ...top3 };
     await prisma.leaderStat.upsert({ where: { leaderId_window: { leaderId, window } }, update: data, create: { leaderId, window, ...data } });
   }
 }

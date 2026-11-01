@@ -153,6 +153,7 @@ function CompareDialog({ ids, onClose }: { ids: string[]; onClose: () => void })
     ['Max drawdown', l => l.statsByRange[range].maxDrawdownPct, v => pct(v), -1],
     ['Sharpe ratio', l => l.statsByRange[range].sharpe, v => (v == null ? '—' : v.toFixed(2)), 1],
     ['Profitable weeks', l => l.statsByRange[range].profitableWeeksPct, v => pct(v, 0), 1],
+    ['Profit from top 3 trades', l => l.statsByRange[range].top3ProfitSharePct, v => pct(v, 0), -1],
     ['Win rate of copies', l => l.statsByRange.all.winRatePct, v => pct(v, 0), 1],
     ['Followers', l => l.followers, v => (v == null ? '—' : String(v)), 0],
     ['Days active', l => l.daysActive, v => (v == null ? '—' : String(v)), 0],

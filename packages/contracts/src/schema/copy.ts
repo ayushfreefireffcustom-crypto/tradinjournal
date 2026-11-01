@@ -115,6 +115,10 @@ export interface LeaderStatsDto {
   sharpe: number | null;
   /** Share of weeks equity rose; null under 4 weeks of history. */
   profitableWeeksPct: number | null;
+  /** Share of winning-trade profit from the 3 best closed trades; null under 5 trades. */
+  top3ProfitSharePct: number | null;
+  /** Leader round trips closed in the range; null until the engine has rebuilt them. */
+  closedTradeCount: number | null;
 }
 
 export interface LeaderCardDto {

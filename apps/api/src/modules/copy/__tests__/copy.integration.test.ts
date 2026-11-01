@@ -81,7 +81,7 @@ describe.skipIf(!local)('copy trading leaders and follows (integration)', () => 
       data: [
         { leaderId, window: '7d', roiPct: 2, maxDrawdownPct: 1 },
         { leaderId, window: '30d', roiPct: 9.09, maxDrawdownPct: 18.18, winRatePct: 60, tradeCount: 12 },
-        { leaderId, window: 'all', roiPct: 20, maxDrawdownPct: 18.18, winRatePct: 60, tradeCount: 12 },
+        { leaderId, window: 'all', roiPct: 20, maxDrawdownPct: 18.18, winRatePct: 60, tradeCount: 12, top3ProfitSharePct: 72.5, closedTradeCount: 9 },
       ],
     });
     // Entries of 2, 4, 4 contracts → median 4; leader long 4 BTCUSD now; flat on ETHUSD.
@@ -107,6 +107,8 @@ describe.skipIf(!local)('copy trading leaders and follows (integration)', () => 
     const [a] = list;
     expect(a).toMatchObject({ followers: 0, following: false, isMine: false, riskGrade: 'B', exchange: 'DELTA_INDIA', environment: 'TESTNET', equityUsd: 1200 });
     expect(a!.stats).toMatchObject({ range: '30d', roiPct: 9.09, maxDrawdownPct: 18.18, winRatePct: 60, tradeCount: 12 });
+    // Not computed for 30d: unknown, not 0.
+    expect(a!.stats).toMatchObject({ top3ProfitSharePct: null, closedTradeCount: null });
     // 30 d window holds the last 4 points: 1100 → 1200.
     expect(a!.stats.pnlUsd).toBe(100);
     expect(a!.sparkline).toEqual([1100, 900, 1000, 1200]);
@@ -135,6 +137,7 @@ describe.skipIf(!local)('copy trading leaders and follows (integration)', () => 
     const d = await leaders.getLeader(users.fol!.id, leaderId, '7d');
     expect(d.statsByRange['30d'].roiPct).toBe(9.09);
     expect(d.statsByRange.all.pnlUsd).toBe(200);
+    expect(d.statsByRange.all).toMatchObject({ top3ProfitSharePct: 72.5, closedTradeCount: 9 });
     expect(d.openPositions).toEqual([expect.objectContaining({ symbol: 'BTCUSD', side: 'LONG', size: 4 })]);
     expect(d.lastTradeAt).not.toBeNull();
   });

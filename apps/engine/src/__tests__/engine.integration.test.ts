@@ -550,4 +550,34 @@ describe.skipIf(!local)('copy engine (integration)', () => {
     expect(stat).toMatchObject({ followerCount: 1 });
     expect(stat!.tradeCount).toBeGreaterThan(5);
   });
+  it("rebuilds the leader's own trades for the top-3 profit share, per window", async () => {
+    const lu = await newUser('top3');
+    const lc = await conn(lu.id, 'TOP3');
+    const l = await prisma.copyLeader.create({ data: { userId: lu.id, connectionId: lc.id, displayName: 'Top3 IT', status: 'VERIFIED' } });
+    const day = 24 * 3600_000;
+    const base = now.getTime();
+    // Six BTCUSD round trips of 1000 contracts × 0.001 = 1 BTC, so P&L in USD = price move.
+    // The +50 one closed 10 days ago: in "all" and "30d", not in "7d".
+    const moves: Array<[number, number]> = [[50, 10 * day], [30, 3 * day], [10, 2 * day], [5, 2 * day - 120_000], [5, day], [-40, 3600_000]];
+    let i = 0;
+    for (const [d, ago] of moves) {
+      const t0 = new Date(base - ago - 60_000);
+      const t1 = new Date(base - ago);
+      await prisma.leaderFill.create({ data: { leaderId: l.id, externalId: `${tag}-t3-${i++}`, symbol: 'BTCUSD', side: 'BUY', qty: 1000, price: 60_000, positionAfter: 1000, exchTs: t0 } });
+      await prisma.leaderFill.create({ data: { leaderId: l.id, externalId: `${tag}-t3-${i++}`, symbol: 'BTCUSD', side: 'SELL', qty: 1000, price: 60_000 + d, positionAfter: 0, exchTs: t1 } });
+    }
+    await reconcile.recomputeStats(l.id, base, async (sym) => (sym === 'BTCUSD' ? 0.001 : null));
+    const stats = Object.fromEntries((await prisma.leaderStat.findMany({ where: { leaderId: l.id } })).map((x) => [x.window, x]));
+    // all: wins 50+30+10+5+5 = 100, top 3 = 90.
+    expect(Number(stats.all!.top3ProfitSharePct)).toBeCloseTo(90);
+    expect(stats.all!.closedTradeCount).toBe(6);
+    expect(Number(stats['30d']!.top3ProfitSharePct)).toBeCloseTo(90);
+    // 7d: 30, 10, 5, 5, -40 → 45 of 50.
+    expect(stats['7d']!.closedTradeCount).toBe(5);
+    expect(Number(stats['7d']!.top3ProfitSharePct)).toBeCloseTo(90);
+    // Without instrument data it stays unknown rather than guessing.
+    await prisma.leaderStat.deleteMany({ where: { leaderId: l.id } });
+    await reconcile.recomputeStats(l.id, base);
+    expect((await prisma.leaderStat.findFirst({ where: { leaderId: l.id, window: 'all' } }))!.top3ProfitSharePct).toBeNull();
+  });
 });
