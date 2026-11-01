@@ -113,3 +113,4 @@ export type {
 export * from './indicators/index.js';
 export * from './patterns/index.js';
 export * from './markets/index.js';
+export * from './strategy/index.js';

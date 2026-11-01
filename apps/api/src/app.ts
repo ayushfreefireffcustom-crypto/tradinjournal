@@ -32,6 +32,7 @@ import { signalsRouter } from './modules/signals/signals.routes.js';
 import { patternsRouter } from './modules/patterns/patterns.routes.js';
 import { overviewRouter } from './modules/overview/overview.routes.js';
 import { derivativesRouter } from './modules/derivatives/derivatives.routes.js';
+import { strategiesRouter } from './modules/strategies/strategies.routes.js';
 import { adminRouter } from './modules/admin/admin.routes.js';
 import { accessRouter } from './modules/admin/access.routes.js';
 import { usageRouter } from './modules/usage/usage.routes.js';
@@ -145,6 +146,7 @@ export function createApp(): Express {
   app.use('/api/patterns', patternsRouter);
   app.use('/api/overview', overviewRouter);
   app.use('/api/derivatives', derivativesRouter);
+  app.use('/api/strategies', strategiesRouter);
   app.use('/api/macro', macroRouter);
   app.use('/api/trader', traderRouter);
   // Worker-to-API routes. Not under /api: no session, no CORS use case — the

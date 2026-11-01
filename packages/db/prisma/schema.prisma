@@ -55,6 +55,7 @@ model User {
   apiKeys           ApiKey[]
   indicatorAlerts   IndicatorAlert[]
   savedScreens      SavedScreen[]
+  strategies        Strategy[]   
 
   @@map("user")
 }
@@ -1633,4 +1634,62 @@ model SavedScreen {
 
   @@index([userId])
   @@map("saved_screen")
+}
+
+/// A strategy in the v2 spec (F1): builder, backtests and deployments read the
+/// same document. Trader Master strategies are imported once (legacyId).
+model Strategy {
+  id                 String   @id @default(cuid())
+  userId             String
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name               String
+  description        String?
+  spec               Json
+  /// draft | paper | live | paused | archived
+  status             String   @default("draft")
+  /// manual | ai | legacy
+  source             String   @default("manual")
+  legacyId           String?  @unique
+  version            Int      @default(1)
+  baselineBacktestId String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  versions  StrategyVersion[]
+  backtests StrategyBacktest[]
+
+  @@index([userId, updatedAt(sort: Desc)])
+  @@map("strategy")
+}
+
+/// Every saved edit of a strategy's rules (F19).
+model StrategyVersion {
+  id         String   @id @default(cuid())
+  strategyId String
+  strategy   Strategy @relation(fields: [strategyId], references: [id], onDelete: Cascade)
+  version    Int
+  spec       Json
+  note       String?
+  createdAt  DateTime @default(now())
+
+  @@unique([strategyId, version])
+  @@map("strategy_version")
+}
+
+/// A backtest run (F12-F14). `hash` covers the spec, parameters and data range.
+model StrategyBacktest {
+  id         String   @id @default(cuid())
+  strategyId String
+  strategy   Strategy @relation(fields: [strategyId], references: [id], onDelete: Cascade)
+  userId     String
+  version    Int
+  params     Json
+  metrics    Json
+  result     Json
+  hash       String
+  createdAt  DateTime @default(now())
+
+  @@index([strategyId, createdAt(sort: Desc)])
+  @@index([hash])
+  @@map("strategy_backtest")
 }
