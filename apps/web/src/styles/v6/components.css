@@ -57,8 +57,8 @@
   font: 500 12.5px/1 var(--sans); cursor: pointer; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; flex: none;
 }
 .v6 .x-seg button:hover, .v6 .x-seg a:hover { color: var(--tx); }
-.v6 .x-seg [aria-pressed=true], .v6 .x-seg [aria-selected=true], .v6 .x-seg .on { background: var(--hi); color: var(--inv); }
-.v6 .x-seg [aria-pressed=true]:hover, .v6 .x-seg [aria-selected=true]:hover, .v6 .x-seg .on:hover { color: var(--inv); }
+.v6 .x-seg [aria-pressed=true], .v6 .x-seg [aria-selected=true], .v6 .x-seg [aria-checked=true], .v6 .x-seg .on { background: var(--hi); color: var(--inv); }
+.v6 .x-seg [aria-pressed=true]:hover, .v6 .x-seg [aria-selected=true]:hover, .v6 .x-seg [aria-checked=true]:hover, .v6 .x-seg .on:hover { color: var(--inv); }
 .v6 .x-seg--sm button, .v6 .x-seg--sm a { height: 26px; padding: 0 11px; font-size: 12px; }
 .v6 .x-tabs { display: flex; gap: 20px; border-bottom: 1px solid var(--line); overflow-x: auto; scrollbar-width: none; }
 .v6 .x-tabs::-webkit-scrollbar { display: none; }

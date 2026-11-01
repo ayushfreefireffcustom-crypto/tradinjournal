@@ -397,7 +397,7 @@ Legend:
 - [x] D7 Bulk select + close selected `S` (done 1 Nov)
 - [x] D8 Square off all (typed confirm) `S` (done 1 Nov: typed CLOSE ALL)
 - [x] D9 Trade details sheet: type, entry, mark, time, order ID, trade ID, copy buttons `S` (done 1 Nov)
-- [ ] D10 Quick-trade floating button `M`:
+- [x] D10 Quick-trade floating button `M`: (done 1 Nov: Quick trade button + review + outcomes, tested on testnet)
   1. symbol
   2. side
   3. size (qty / USD / risk %)
@@ -406,9 +406,9 @@ Legend:
   6. confirm
   - instrument-spec checks (lot/tick)
   - clear outcomes: credential / position locked / rejected / unconfirmed
-- [ ] D11 Order ticket (market/limit/stop, tif, reduce-only, TP/SL) used by quick trade and the chart `M`
+- [x] D11 Order ticket (market/limit/stop, tif, reduce-only, TP/SL) used by quick trade and the chart `M` (done 1 Nov: market/limit/stop/stop-limit, GTC/IOC, post-only, reduce-only, TP/SL on market entries, cancel from Pending)
 - [x] D12 Manual-orders log: what we sent and what the exchange replied; KPIs (placed, filled, rejected, in flight, notional). Evidence: CM seen `M` (done 1 Nov: log, Rejected tab, KPI strip incl. filled value)
-- [ ] D13 Set leverage and margin mode per symbol `S`
+- [ ] D13 Set leverage and margin mode per symbol `S` (leverage per symbol done 1 Nov in the ticket; margin mode left)
 - [ ] D14 TradingView webhook bot `M`:
   - per-user secret + regenerate (warning)
   - webhook URL

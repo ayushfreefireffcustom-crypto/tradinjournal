@@ -289,3 +289,30 @@
   .v6 .trd-filters--log > * { flex: 1 1 100%; }
   .v6 .trd-export { margin-left: 0; }
 }
+
+/* Order ticket (D10, D11). Prefix tk-. */
+.v6 .tk { display: grid; gap: 14px; }
+.v6 .tk-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; align-items: start; }
+.v6 .tk-quote { font-size: 12.5px; margin: -4px 0 0; }
+.v6 .tk-side { width: 100%; }
+.v6 .tk-side button { flex: 1; justify-content: center; height: 36px; font-size: 13.5px; }
+.v6 .tk-side .tk-buy { background: var(--g); color: #04130a; }
+.v6 .tk-side .tk-sell { background: var(--r); color: #fff; }
+.v6 .tk-size { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.v6 .tk-size .x-input { flex: 1; min-width: 120px; }
+.v6 .tk-more summary { cursor: pointer; font-size: 13px; color: var(--mut); margin-bottom: 8px; }
+.v6 .tk-more[open] { display: grid; gap: 10px; }
+.v6 .tk-sum { display: grid; gap: 2px; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); }
+.v6 .tk-sum b { font-size: 16px; font-weight: 500; }
+.v6 .tk-sum span { font-size: 12.5px; color: var(--mut); }
+.v6 .tk-sum--buy { border-color: var(--g); background: var(--g-soft); }
+.v6 .tk-sum--sell { border-color: var(--r); background: var(--r-soft); }
+.v6 .tk-msgs { margin: 0; padding-left: 18px; font-size: 13px; color: var(--mut); display: grid; gap: 4px; }
+.v6 .tk-msgs--err { color: var(--r); }
+.v6 .tk-out { font-size: 15px; margin: 0; }
+.v6 .tk-out--filled, .v6 .tk-out--resting { color: var(--g); }
+.v6 .tk-out--rejected { color: var(--r); }
+.v6 .x-btn.trd-buy { background: var(--g); color: #04130a; }
+.v6 .x-btn.trd-sell { background: var(--r); color: #fff; }
+.v6 .trd-fab { position: fixed; right: 24px; bottom: 24px; z-index: 40; height: 48px; padding: 0 20px; border-radius: 999px; border: 0; background: var(--hi); color: var(--inv); font: 500 14px var(--sans); box-shadow: 0 8px 24px rgba(0,0,0,.35); cursor: pointer; }
+@media (max-width: 720px) { .v6 .trd-fab { bottom: calc(96px + env(safe-area-inset-bottom)); right: 16px; } }

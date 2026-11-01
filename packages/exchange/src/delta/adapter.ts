@@ -486,6 +486,13 @@ export class DeltaIndiaExchange implements Exchange {
     return (env.result ?? []).map(mapDeltaOrder);
   }
 
+  async getLeverage(creds: ApiCredentials, symbol: string): Promise<number | null> {
+    const p = await this.product(symbol);
+    const env = await this.rest.signed<{ leverage?: string | number }>(creds, 'GET', `/v2/products/${p.id}/orders/leverage`);
+    const v = Number(env.result?.leverage);
+    return Number.isFinite(v) && v > 0 ? v : null;
+  }
+
   async setLeverage(creds: ApiCredentials, symbol: string, leverage: number): Promise<number> {
     if (!(leverage > 0)) throw new ExchangeError('REQUEST', 'Leverage must be above zero.');
     const p = await this.product(symbol);

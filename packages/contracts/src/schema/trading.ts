@@ -140,3 +140,99 @@ export interface DeskOrdersSummaryDto {
 export interface CloseManyResultDto {
   results: Array<{ connectionId: string; symbol: string; ok: boolean; message: string; order: DeskOrderDto | null }>;
 }
+
+// ── Order ticket (D10, D11, D13) ────────────────────────────────────────────
+
+export const ticketTypes = ['MARKET', 'LIMIT', 'STOP_MARKET', 'STOP_LIMIT'] as const;
+export const orderTicketSchema = z.object({
+  connectionId: z.string().min(1).max(64),
+  symbol: z.string().trim().min(1).max(40).transform((s) => s.toUpperCase()),
+  side: z.enum(['BUY', 'SELL']),
+  type: z.enum(ticketTypes),
+  /** Contracts, a USD amount, or a share of equity to risk down to the stop-loss. */
+  size: z.discriminatedUnion('mode', [
+    z.object({ mode: z.literal('contracts'), value: z.number().positive().max(1e9) }),
+    z.object({ mode: z.literal('usd'), value: z.number().positive().max(1e9) }),
+    z.object({ mode: z.literal('risk'), value: z.number().positive().max(10) }),
+  ]),
+  limitPrice: z.number().positive().optional(),
+  stopPrice: z.number().positive().optional(),
+  tif: z.enum(['GTC', 'IOC']).optional(),
+  postOnly: z.boolean().optional(),
+  reduceOnly: z.boolean().optional(),
+  leverage: z.number().int().min(1).max(200).optional(),
+  takeProfit: z.number().positive().optional(),
+  stopLoss: z.number().positive().optional(),
+  /** Required for a real-money account. */
+  confirmLive: z.boolean().optional(),
+  /** Set once per ticket by the client; a repeat with the same id is the same order, never a second one. */
+  requestId: z.string().regex(/^[A-Za-z0-9-]{8,64}$/),
+});
+export type OrderTicketInput = z.infer<typeof orderTicketSchema>;
+
+export const ticketQuoteQuerySchema = z.object({ connectionId: z.string().min(1).max(64), symbol: z.string().trim().min(1).max(40).transform((s) => s.toUpperCase()) });
+
+/** What the ticket needs to size and check an order before it's built. */
+export interface TicketQuoteDto {
+  symbol: string;
+  live: boolean;
+  markPrice: number | null;
+  contractMultiplier: number;
+  qtyStep: number;
+  minQty: number;
+  tickSize: number;
+  maxLeverage: number | null;
+  currentLeverage: number | null;
+  equityUsd: number;
+  availableUsd: number | null;
+  /** Signed contracts held now. */
+  position: number;
+  environment: 'TESTNET' | 'LIVE';
+}
+
+export interface TicketPreviewDto {
+  ok: boolean;
+  /** Blocking problems; the order can't be sent until they're fixed. */
+  errors: string[];
+  /** Worth knowing, not blocking. */
+  warnings: string[];
+  symbol: string;
+  side: 'BUY' | 'SELL';
+  type: (typeof ticketTypes)[number];
+  /** Whole contracts after rounding to the venue's step. */
+  qty: number;
+  limitPrice: number | null;
+  stopPrice: number | null;
+  tif: 'GTC' | 'IOC' | null;
+  postOnly: boolean;
+  reduceOnly: boolean;
+  takeProfit: number | null;
+  stopLoss: number | null;
+  leverage: number | null;
+  currentLeverage: number | null;
+  /** The price the estimates use: limit, stop, or mark. */
+  refPrice: number | null;
+  notionalUsd: number | null;
+  marginUsd: number | null;
+  /** Loss at the stop-loss, when one is set. */
+  riskUsd: number | null;
+  availableUsd: number | null;
+  environment: 'TESTNET' | 'LIVE';
+}
+
+export type TicketOutcome = 'filled' | 'partial' | 'resting' | 'unconfirmed' | 'rejected';
+export interface PlaceTicketResultDto {
+  outcome: TicketOutcome;
+  message: string;
+  order: DeskOrderDto | null;
+  /** Take-profit and stop-loss orders placed after a market entry filled. */
+  protective: Array<{ kind: 'TP' | 'SL'; ok: boolean; message: string; order: DeskOrderDto | null }>;
+}
+
+/** Cancel one order that is still waiting on the exchange. */
+export const cancelOrderSchema = z.object({
+  connectionId: z.string().min(1).max(64),
+  symbol: z.string().trim().min(1).max(40).transform((s) => s.toUpperCase()),
+  exchangeOrderId: z.string().regex(/^[A-Za-z0-9_-]{1,64}$/),
+});
+export type CancelOrderInput = z.infer<typeof cancelOrderSchema>;

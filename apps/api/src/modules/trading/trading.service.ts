@@ -7,6 +7,7 @@ import { randomBytes } from 'node:crypto';
 import { env } from '@tradinjournal/config';
 import { prisma, type ExchangeConnection, type Prisma } from '@tradinjournal/db';
 import type {
+  CancelOrderInput,
   CloseManyInput,
   CloseManyResultDto,
   DeskOrderFilters,
@@ -27,7 +28,7 @@ import { adapterFor } from '../exchanges/exchanges.adapters.js';
 import { credsOf, ExchangeRejectedError, type ExchangeDeps } from '../exchanges/exchanges.service.js';
 
 export type TradingDeps = Pick<ExchangeDeps, 'adapterFor' | 'key'> & { sleep: (ms: number) => Promise<void>; timeoutMs?: number };
-const defaultDeps: TradingDeps = {
+export const defaultTradingDeps: TradingDeps = {
   adapterFor,
   key: () => requireEncryptionKey(env.CREDENTIAL_ENCRYPTION_KEY),
   sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
@@ -60,7 +61,7 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
 }
 
 /** Positions, open orders and recent closed trades from every active connection, read in parallel. */
-export async function deskOverview(userId: string, now = new Date(), deps: TradingDeps = defaultDeps): Promise<DeskOverviewDto> {
+export async function deskOverview(userId: string, now = new Date(), deps: TradingDeps = defaultTradingDeps): Promise<DeskOverviewDto> {
   const conns = await prisma.exchangeConnection.findMany({ where: { userId, status: 'ACTIVE' }, orderBy: { createdAt: 'asc' } });
   const ms = deps.timeoutMs ?? 8000;
   const [copied, rejected] = await Promise.all([
@@ -201,6 +202,12 @@ function orderWhere(userId: string, f: DeskOrderFilters): Prisma.ExchangeOrderWh
   };
 }
 
+/** One order as a log row; null if it isn't there. */
+export async function orderDtoById(id: string): Promise<DeskOrderDto | null> {
+  const o = await prisma.exchangeOrder.findUnique({ where: { id }, include: orderInclude });
+  return o ? orderDto(o) : null;
+}
+
 /** Everything we sent (or decided not to send), newest first (D12). */
 export async function deskOrders(userId: string, q: DeskOrdersQuery): Promise<{ items: DeskOrderDto[]; nextCursor: string | null }> {
   const rows = await prisma.exchangeOrder.findMany({
@@ -215,7 +222,7 @@ export async function deskOrders(userId: string, q: DeskOrdersQuery): Promise<{ 
 }
 
 /** Counts and filled notional for the same filters as the log (D12 KPIs). */
-export async function deskOrdersSummary(userId: string, f: DeskOrderFilters, deps: TradingDeps = defaultDeps): Promise<DeskOrdersSummaryDto> {
+export async function deskOrdersSummary(userId: string, f: DeskOrderFilters, deps: TradingDeps = defaultTradingDeps): Promise<DeskOrdersSummaryDto> {
   const where = orderWhere(userId, f);
   const [byStatus, filled] = await Promise.all([
     prisma.exchangeOrder.groupBy({ by: ['status'], where, _count: { _all: true } }),
@@ -274,7 +281,7 @@ export async function deskOrdersCsv(userId: string, f: DeskOrderFilters): Promis
  * Close several positions, one after another (D7, D8). Each result stands on its
  * own: one failure doesn't stop the rest, and nothing is retried.
  */
-export async function closeMany(userId: string, input: CloseManyInput, now = new Date(), deps: TradingDeps = defaultDeps): Promise<CloseManyResultDto> {
+export async function closeMany(userId: string, input: CloseManyInput, now = new Date(), deps: TradingDeps = defaultTradingDeps): Promise<CloseManyResultDto> {
   const seen = new Set<string>();
   const results: CloseManyResultDto['results'] = [];
   for (const it of input.items) {
@@ -292,8 +299,53 @@ export async function closeMany(userId: string, input: CloseManyInput, now = new
   return { results };
 }
 
+const PROTECTIVE_TYPES = ['STOP_MARKET', 'STOP_LIMIT', 'TAKE_PROFIT_MARKET', 'TAKE_PROFIT_LIMIT'] as const;
+
+/** Cancel the reduce-only take-profit / stop-loss orders we placed on a symbol that is now flat. */
+async function cancelProtective(userId: string, c: ExchangeConnection, ex: Exchange, creds: ReturnType<typeof credsOf>, symbol: string): Promise<{ cancelled: number; failed: number }> {
+  const rows = await prisma.exchangeOrder.findMany({
+    where: { userId, connectionId: c.id, symbol, reduceOnly: true, type: { in: [...PROTECTIVE_TYPES] }, status: { in: ['OPEN', 'PENDING', 'SUBMITTED'] }, exchangeOrderId: { not: null } },
+  });
+  let cancelled = 0;
+  let failed = 0;
+  for (const o of rows) {
+    try {
+      await ex.cancelOrder(creds, { symbol, exchangeOrderId: o.exchangeOrderId! });
+      await prisma.exchangeOrder.update({ where: { id: o.id }, data: { status: 'CANCELLED' } });
+      cancelled++;
+    } catch (err) {
+      // Already gone on the exchange (triggered or cancelled there): mark it so it isn't retried forever.
+      if (err instanceof ExchangeError && err.code === 'ORDER_NOT_FOUND') {
+        await prisma.exchangeOrder.update({ where: { id: o.id }, data: { status: 'CANCELLED' } });
+      } else failed++;
+    }
+  }
+  return { cancelled, failed };
+}
+
+/** Cancel a waiting order. Our log is updated when the order is one we sent. */
+export async function cancelOrder(userId: string, input: CancelOrderInput, deps: TradingDeps = defaultTradingDeps): Promise<{ message: string; status: string }> {
+  const c = await prisma.exchangeConnection.findFirst({ where: { id: input.connectionId, userId } });
+  if (!c) throw new NotFoundError('Exchange account not found');
+  if (c.status !== 'ACTIVE') throw new ConflictError('This exchange key stopped working. Reconnect it on the Exchanges page first.');
+  if (!c.canTrade) throw new ConflictError('This exchange key is read-only, so it can’t cancel orders.');
+  const ex = deps.adapterFor(c.exchange, c.environment);
+  let o: OrderInfo;
+  try {
+    o = await ex.cancelOrder(credsOf(c, deps.key()), { symbol: input.symbol, exchangeOrderId: input.exchangeOrderId });
+  } catch (err) {
+    throw err instanceof ExchangeError ? new ExchangeRejectedError(err) : err;
+  }
+  await prisma.exchangeOrder.updateMany({
+    where: { connectionId: c.id, exchangeOrderId: input.exchangeOrderId, userId },
+    data: { status: o.filledQty > 0 ? 'PARTIAL' : 'CANCELLED', filledQty: o.filledQty, ...(o.avgFillPrice != null ? { avgFillPrice: o.avgFillPrice } : {}) },
+  });
+  historyCache.delete(c.id);
+  return { status: o.status, message: o.filledQty > 0 ? `Cancelled; ${o.filledQty} had already filled.` : 'Order cancelled.' };
+}
+
 /** Close all or part of a position with a reduce-only market order (D3, D4). */
-export async function closePosition(userId: string, input: ClosePositionInput, now = new Date(), deps: TradingDeps = defaultDeps): Promise<ClosePositionResultDto> {
+export async function closePosition(userId: string, input: ClosePositionInput, now = new Date(), deps: TradingDeps = defaultTradingDeps): Promise<ClosePositionResultDto> {
   const c = await prisma.exchangeConnection.findFirst({ where: { id: input.connectionId, userId } });
   if (!c) throw new NotFoundError('Exchange account not found');
   if (c.status !== 'ACTIVE') throw new ConflictError('This exchange key stopped working. Reconnect it on the Exchanges page first.');
@@ -354,9 +406,15 @@ export async function closePosition(userId: string, input: ClosePositionInput, n
     include: orderInclude,
   });
   forgetHistory(c.id, now);
+  // A fully closed position mustn't leave its take-profit / stop-loss behind: a stale stop
+  // could close a position opened later. Only orders TRADElogs placed are touched.
+  const flat = filled >= Math.abs(size);
+  const cleaned = flat ? await cancelProtective(userId, c, ex, creds, input.symbol) : { cancelled: 0, failed: 0 };
+  const tail = cleaned.cancelled ? ` Its ${cleaned.cancelled === 1 ? 'take-profit/stop-loss order was' : `${cleaned.cancelled} take-profit/stop-loss orders were`} cancelled.` : '';
+  const warn = cleaned.failed ? ` ${cleaned.failed === 1 ? 'One take-profit/stop-loss order' : `${cleaned.failed} take-profit/stop-loss orders`} couldn't be cancelled: check the Pending tab.` : '';
   const price = result.avgFillPrice != null ? ` at ${result.avgFillPrice}` : '';
   const message =
-    status === 'FILLED' ? `Closed ${filled} ${input.symbol}${price}.`
+    status === 'FILLED' ? `Closed ${filled} ${input.symbol}${price}.${tail}${warn}`
     : status === 'PARTIAL' ? `Closed ${filled} of ${qty} ${input.symbol}${price}; the rest didn't fill.`
     : status === 'SUBMITTED' ? 'Sent to the exchange; it hasn’t confirmed yet. Check Open in a moment.'
     : 'The exchange didn’t fill the close. Nothing changed.';

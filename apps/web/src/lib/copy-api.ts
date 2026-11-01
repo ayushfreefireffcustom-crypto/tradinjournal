@@ -379,7 +379,33 @@ function filterQuery(f: DeskOrderFilters): Record<string, string | undefined> {
   return { status: f.status, source: f.source, side: f.side, symbol: f.symbol?.trim() || undefined, connectionId: f.connectionId, from: day(f.from, false), to: day(f.to, true), q: f.q?.trim() || undefined };
 }
 
+// Order ticket (D10, D11, D13): mirrors orderTicketSchema and its DTOs.
+export type TicketType = 'MARKET' | 'LIMIT' | 'STOP_MARKET' | 'STOP_LIMIT';
+export interface OrderTicket {
+  connectionId: string; symbol: string; side: 'BUY' | 'SELL'; type: TicketType;
+  size: { mode: 'contracts' | 'usd' | 'risk'; value: number };
+  limitPrice?: number; stopPrice?: number; tif?: 'GTC' | 'IOC'; postOnly?: boolean; reduceOnly?: boolean;
+  leverage?: number; takeProfit?: number; stopLoss?: number; confirmLive?: boolean; requestId: string;
+}
+export interface TicketQuote {
+  symbol: string; live: boolean; markPrice: number | null; contractMultiplier: number; qtyStep: number; minQty: number; tickSize: number;
+  maxLeverage: number | null; currentLeverage: number | null; equityUsd: number; availableUsd: number | null; position: number; environment: ExchangeEnvironment;
+}
+export interface TicketPreview {
+  ok: boolean; errors: string[]; warnings: string[]; symbol: string; side: 'BUY' | 'SELL'; type: TicketType; qty: number;
+  limitPrice: number | null; stopPrice: number | null; tif: 'GTC' | 'IOC' | null; postOnly: boolean; reduceOnly: boolean;
+  takeProfit: number | null; stopLoss: number | null; leverage: number | null; currentLeverage: number | null; refPrice: number | null;
+  notionalUsd: number | null; marginUsd: number | null; riskUsd: number | null; availableUsd: number | null; environment: ExchangeEnvironment;
+}
+export interface PlaceTicketResult {
+  outcome: 'filled' | 'partial' | 'resting' | 'unconfirmed' | 'rejected'; message: string; order: DeskOrder | null;
+  protective: Array<{ kind: 'TP' | 'SL'; ok: boolean; message: string; order: DeskOrder | null }>;
+}
+
 export const tradingApi = {
+  quote: (connectionId: string, symbol: string) => call<TicketQuote>(`/trading/quote${qs({ connectionId, symbol })}`),
+  preview: (t: OrderTicket) => call<TicketPreview>('/trading/orders/preview', { method: 'POST', ...body(t) }),
+  place: (t: OrderTicket) => call<PlaceTicketResult>('/trading/orders', { method: 'POST', ...body(t) }),
   overview: () => call<DeskOverview>('/trading/overview'),
   orders: (q: DeskOrderFilters & { cursor?: string | null }) =>
     call<Page<DeskOrder>>(`/trading/orders${qs({ ...filterQuery(q), cursor: q.cursor ?? undefined })}`),
@@ -399,6 +425,7 @@ export const tradingApi = {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
     return { rows: Number(res.headers.get('x-rows') ?? 0), truncated: res.headers.get('x-truncated') === 'true' };
   },
+  cancel: (b: { connectionId: string; symbol: string; exchangeOrderId: string }) => call<{ message: string; status: string }>('/trading/orders/cancel', { method: 'POST', ...body(b) }),
   closeMany: (b: { items: Array<{ connectionId: string; symbol: string }>; confirmCopied?: boolean }) =>
     call<CloseManyResult>('/trading/positions/close-many', { method: 'POST', ...body(b) }),
   close: (b: { connectionId: string; symbol: string; qty?: number; confirmCopied?: boolean }) =>

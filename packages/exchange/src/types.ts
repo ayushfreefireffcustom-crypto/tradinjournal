@@ -177,6 +177,8 @@ export interface Exchange {
   getOrder(creds: ApiCredentials, ref: { exchangeOrderId?: string; clientOrderId?: string }): Promise<OrderInfo | null>;
   getOpenOrders(creds: ApiCredentials, symbol?: string): Promise<OrderInfo[]>;
   setLeverage(creds: ApiCredentials, symbol: string, leverage: number): Promise<number>;
+  /** The leverage the account uses for a symbol now, where the venue reports it. */
+  getLeverage?(creds: ApiCredentials, symbol: string): Promise<number | null>;
   /** Market-close the whole position (reduce-only). Null when already flat. */
   closePosition(creds: ApiCredentials, symbol: string, clientOrderId: string): Promise<OrderInfo | null>;
 

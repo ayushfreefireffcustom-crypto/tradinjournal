@@ -10,6 +10,7 @@ import Link from 'next/link';
 import AppShell from '@/components/app-shell';
 import { useToast } from '@/components/toast';
 import { ErrorCard, Modal, useLoad, usePoll } from '@/components/v6/copy/parts';
+import OrderTicketDialog from '@/components/v6/trading/order-ticket';
 import { ApiError, exchangesApi, price, signedUsd, toneOf, tradingApi, usd, venueName, type CloseManyResult, type DeskClosedTrade, type DeskOrder, type DeskOrderFilters, type DeskOrderStatus, type DeskPendingOrder, type DeskPosition } from '@/lib/copy-api';
 import '@/styles/v6/copy.css';
 
@@ -39,6 +40,8 @@ export default function TradingPage() {
   const [bulk, setBulk] = useState<{ rows: DeskPosition[]; all: boolean } | null>(null);
   const [detail, setDetail] = useState<Detail | null>(null);
   const [quick, setQuick] = useState<Quick>({ symbol: '', side: '' });
+  const [ticket, setTicket] = useState(false);
+  const [cancelling, setCancelling] = useState<DeskPendingOrder | null>(null);
 
   const d = desk.data;
   const tabs: Array<{ id: Tab; label: string; n?: number }> = [
@@ -57,7 +60,10 @@ export default function TradingPage() {
 
   return (
     <AppShell legacy={false} pageTitle="Positions" pageSubtitle="Your exchange accounts: what's open, waiting and done"
-      actions={<button className="x-btn" onClick={() => void desk.reload()} disabled={desk.loading} data-testid="desk-refresh">{desk.loading ? 'Refreshing…' : 'Refresh'}</button>}>
+      actions={<>
+        <button className="x-btn" onClick={() => void desk.reload()} disabled={desk.loading} data-testid="desk-refresh">{desk.loading ? 'Refreshing…' : 'Refresh'}</button>
+        <button className="x-btn x-btn--hi" onClick={() => setTicket(true)} data-testid="desk-new-order">New order</button>
+      </>}>
       <div className="x-page" data-testid="desk-page">
         <div className="x-strip x-strip--card trd-strip" style={{ ['--n' as string]: 3 }}>
           <div><span>Open P&amp;L</span><b className={`m ${toneOf(upnl ?? 0)}`}>{upnl == null ? '—' : signedUsd(upnl)}</b></div>
@@ -95,7 +101,7 @@ export default function TradingPage() {
           filtering && !positions.length && d!.positions.length ? <Empty testId="desk-filter-empty" title="Nothing matches" body="No open position matches this filter." /> :
           <OpenTable rows={positions} onClose={setClosing} onDetail={setDetail} onBulk={(rows, all) => setBulk({ rows, all })} />
         ) : tab === 'pending' ? (
-          <PendingTable rows={pending} onDetail={setDetail} />
+          <PendingTable rows={pending} onDetail={setDetail} onCancel={setCancelling} />
         ) : tab === 'closed' ? (
           <ClosedTable rows={closed} onDetail={setDetail} />
         ) : (
@@ -108,10 +114,13 @@ export default function TradingPage() {
         <CloseDialog p={closing} onClose={() => setClosing(null)}
           onDone={(msg, ok) => { setClosing(null); (ok ? toast.success : toast.error)(msg); void desk.reload(); }} />
       )}
+      {!ticket && <button className="trd-fab" onClick={() => setTicket(true)} aria-label="Quick trade" data-testid="desk-quick-trade">Quick trade</button>}
+      {ticket && <OrderTicketDialog onClose={() => setTicket(false)} onPlaced={() => void desk.reload()} />}
       {bulk && (
         <BulkCloseDialog rows={bulk.rows} all={bulk.all} onClose={() => setBulk(null)}
           onDone={() => { setBulk(null); void desk.reload(); }} />
       )}
+      {cancelling && <CancelDialog o={cancelling} onClose={() => setCancelling(null)} onDone={(msg, ok) => { setCancelling(null); (ok ? toast.success : toast.error)(msg); void desk.reload(); }} />}
       {detail && <DetailSheet d={detail} onClose={() => setDetail(null)} />}
     </AppShell>
   );
@@ -163,7 +172,7 @@ function OpenTable({ rows, onClose, onDetail, onBulk }: { rows: DeskPosition[]; 
   );
 }
 
-function PendingTable({ rows, onDetail }: { rows: DeskPendingOrder[]; onDetail: (d: Detail) => void }) {
+function PendingTable({ rows, onDetail, onCancel }: { rows: DeskPendingOrder[]; onDetail: (d: Detail) => void; onCancel: (o: DeskPendingOrder) => void }) {
   if (!rows.length) return <Empty testId="desk-pending-empty" title="No pending orders" body="Limit and stop orders waiting on the exchange show up here." />;
   return (
     <section className="x-card" aria-label="Pending orders">
@@ -181,7 +190,7 @@ function PendingTable({ rows, onDetail }: { rows: DeskPendingOrder[]; onDetail: 
                 <td className="n m">{o.qty}</td>
                 <td className="n m">{o.filledQty}</td>
                 <td className="n m">{price(o.limitPrice ?? o.stopPrice)}</td>
-                <td className="trd-acts"><button className="x-btn x-btn--sm x-btn--ghost" onClick={() => onDetail({ title: `${o.symbol} order`, rows: [['Account', acct(o)], ['Type', o.type], ['Side', o.side], ['Size', String(o.qty)], ['Filled', String(o.filledQty)], ['Limit price', o.limitPrice != null ? price(o.limitPrice) : null], ['Stop price', o.stopPrice != null ? price(o.stopPrice) : null], ['Placed', when(o.createdAt)], ['Order ID', o.exchangeOrderId], ['Client order ID', o.clientOrderId]] })}>Details</button></td>
+                <td className="trd-acts"><button className="x-btn x-btn--sm" onClick={() => onCancel(o)} data-testid={`desk-cancel-${o.exchangeOrderId}`}>Cancel</button><button className="x-btn x-btn--sm x-btn--ghost" onClick={() => onDetail({ title: `${o.symbol} order`, rows: [['Account', acct(o)], ['Type', o.type], ['Side', o.side], ['Size', String(o.qty)], ['Filled', String(o.filledQty)], ['Limit price', o.limitPrice != null ? price(o.limitPrice) : null], ['Stop price', o.stopPrice != null ? price(o.stopPrice) : null], ['Placed', when(o.createdAt)], ['Order ID', o.exchangeOrderId], ['Client order ID', o.clientOrderId]] })}>Details</button></td>
               </tr>
             ))}
           </tbody>
@@ -450,6 +459,26 @@ function CloseDialog({ p, onClose, onDone }: { p: DeskPosition; onClose: () => v
       )}
       {err && <p className="cp-err" role="alert" data-testid="desk-close-error">{err}</p>}
       <p className="x-muted trd-fine">Mark {price(p.markPrice)} · open P&amp;L {signedUsd(p.unrealizedPnl)}</p>
+    </Modal>
+  );
+}
+
+function CancelDialog({ o, onClose, onDone }: { o: DeskPendingOrder; onClose: () => void; onDone: (msg: string, ok: boolean) => void }) {
+  const [busy, setBusy] = useState(false);
+  async function go() {
+    setBusy(true);
+    try {
+      const r = await tradingApi.cancel({ connectionId: o.connectionId, symbol: o.symbol, exchangeOrderId: o.exchangeOrderId });
+      onDone(r.message, true);
+    } catch (e) {
+      onDone(e instanceof Error ? e.message : 'Could not cancel', false);
+    }
+  }
+  const what = `${o.side === 'BUY' ? 'Buy' : 'Sell'} ${o.qty} ${o.symbol} ${o.type.replace(/_/g, ' ').toLowerCase()}${o.limitPrice != null ? ` at ${price(o.limitPrice)}` : o.stopPrice != null ? ` triggering at ${price(o.stopPrice)}` : ''}`;
+  return (
+    <Modal title="Cancel order?" sub={what} onClose={onClose} busy={busy} testId="desk-cancel-dialog"
+      footer={<><button className="x-btn x-btn--ghost" onClick={onClose} disabled={busy}>Keep it</button><button className="x-btn x-btn--hi cp-del" onClick={() => void go()} disabled={busy} data-testid="desk-cancel-confirm">{busy ? 'Cancelling…' : 'Cancel order'}</button></>}>
+      <p className="cp-fine">{o.reduceOnly && (o.type.startsWith('STOP') || o.type.startsWith('TAKE')) ? 'This is a take-profit or stop-loss: cancelling it leaves the position without that protection.' : 'Anything already filled stays filled.'}</p>
     </Modal>
   );
 }

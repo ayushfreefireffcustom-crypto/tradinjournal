@@ -21,6 +21,8 @@ class FakeVenue {
   fillRatio = 1;
   reject: ExchangeError | null = null;
   slow = false;
+  cancelled: string[] = [];
+  goneIds = new Set<string>();
   asExchange(): Exchange {
     return {
       getPositions: async () => { if (this.slow) await new Promise((r) => setTimeout(r, 300)); return this.positions; },
@@ -34,6 +36,11 @@ class FakeVenue {
         return { exchangeOrderId: `x${Date.now()}-${randomBytes(3).toString("hex")}`, clientOrderId: o.clientOrderId ?? null, symbol: o.symbol, side: o.side, type: 'MARKET', status: filled >= o.qty ? 'FILLED' : filled > 0 ? 'CANCELLED' : 'CANCELLED', qty: o.qty, filledQty: filled, avgFillPrice: filled ? 70_100 : null, limitPrice: null, stopPrice: null, reduceOnly: true, createdAt: new Date() } as OrderInfo;
       },
       getOrder: async () => null,
+      cancelOrder: async (_c: unknown, ref: { exchangeOrderId: string }) => {
+        if (this.goneIds.has(ref.exchangeOrderId)) throw new ExchangeError('ORDER_NOT_FOUND', 'The exchange has no such order.');
+        this.cancelled.push(ref.exchangeOrderId);
+        return { exchangeOrderId: ref.exchangeOrderId, status: 'CANCELLED', filledQty: 0 };
+      },
     } as unknown as Exchange;
   }
 }
@@ -98,7 +105,7 @@ describe.skipIf(!local)('trading desk', () => {
   });
 
   beforeEach(() => {
-    for (const v of Object.values(venues)) Object.assign(v, { positions: [], open: [], fills: [], placed: [], fillRatio: 1, reject: null, slow: false });
+    for (const v of Object.values(venues)) Object.assign(v, { positions: [], open: [], fills: [], placed: [], fillRatio: 1, reject: null, slow: false, cancelled: [], goneIds: new Set() });
   });
 
   afterAll(async () => {
@@ -303,5 +310,39 @@ describe.skipIf(!local)('trading desk', () => {
     const again = await svc.closeMany(me, { items: [items[0]!], confirmCopied: true }, new Date(), depsFor());
     expect(again.results[0]!.ok).toBe(true);
     expect(venues.main!.placed.map((o) => [o.symbol, o.side, o.qty])).toEqual([['BTCUSD', 'SELL', 3]]);
+  });
+  it('cancels a waiting order, updates our log, and refuses other users or read-only keys', async () => {
+    const ex = venues.second!;
+    const cancelled: string[] = [];
+    (ex as unknown as { asExchange: () => Exchange }).asExchange = ((orig) => () => ({ ...orig(), cancelOrder: async (_c: unknown, ref: { exchangeOrderId: string }) => { cancelled.push(ref.exchangeOrderId); return { exchangeOrderId: ref.exchangeOrderId, clientOrderId: null, symbol: 'ETHUSD', side: 'BUY', type: 'LIMIT', status: 'CANCELLED', qty: 1, filledQty: 0, avgFillPrice: null, limitPrice: 2000, stopPrice: null, reduceOnly: false, createdAt: null } as OrderInfo; } }) as unknown as Exchange)(FakeVenue.prototype.asExchange.bind(ex));
+    await prisma.exchangeOrder.create({ data: { userId: me, connectionId: conns.second!, source: 'MANUAL', clientOrderId: `${tag}-cx`, exchangeOrderId: `${tag}-ox`, symbol: 'ETHUSD', side: 'BUY', type: 'LIMIT', qty: 1, limitPrice: 2000, status: 'OPEN' } });
+    const r = await svc.cancelOrder(me, { connectionId: conns.second!, symbol: 'ETHUSD', exchangeOrderId: `${tag}-ox` }, depsFor());
+    expect(r.message).toBe('Order cancelled.');
+    expect(cancelled).toEqual([`${tag}-ox`]);
+    expect((await prisma.exchangeOrder.findUniqueOrThrow({ where: { clientOrderId: `${tag}-cx` } })).status).toBe('CANCELLED');
+    await expect(svc.cancelOrder(me, { connectionId: conns.theirs!, symbol: 'ETHUSD', exchangeOrderId: 'x' }, depsFor())).rejects.toThrow(/not found/i);
+    await expect(svc.cancelOrder(me, { connectionId: conns.readonly!, symbol: 'ETHUSD', exchangeOrderId: 'x' }, depsFor())).rejects.toThrow(/read-only/);
+    await expect(svc.cancelOrder(me, { connectionId: conns.broken!, symbol: 'ETHUSD', exchangeOrderId: 'x' }, depsFor())).rejects.toThrow(/stopped working/);
+    expect(cancelled.length).toBe(1);
+  });
+
+  it('a full close cancels the take-profit / stop-loss we placed; a partial close keeps them', async () => {
+    // The cancel test above swapped this account's exchange for a stand-in; put the fake back.
+    delete (venues.second as unknown as { asExchange?: unknown }).asExchange;
+    const prot = (i: number, symbol: string, type: 'STOP_MARKET' | 'TAKE_PROFIT_MARKET', status = 'OPEN' as const) =>
+      prisma.exchangeOrder.create({ data: { userId: me, connectionId: conns.second!, source: 'MANUAL', clientOrderId: `${tag}-p${i}`, exchangeOrderId: `${tag}-px${i}`, symbol, side: 'SELL', type, reduceOnly: true, qty: 2, stopPrice: 1, status } });
+    await prot(1, 'ETHUSD', 'STOP_MARKET');
+    await prot(2, 'ETHUSD', 'TAKE_PROFIT_MARKET');
+    await prot(3, 'XRPUSD', 'STOP_MARKET'); // another symbol: untouched
+    venues.second!.positions = [{ symbol: 'ETHUSD', size: 4, avgEntry: 3000, markPrice: null, unrealizedPnl: 0, liquidationPrice: null, leverage: null }];
+    const part = await svc.closePosition(me, { connectionId: conns.second!, symbol: 'ETHUSD', qty: 1 }, new Date(), depsFor());
+    expect(part.message).not.toMatch(/cancelled/);
+    expect(venues.second!.cancelled).toEqual([]);
+    venues.second!.goneIds.add(`${tag}-px2`); // the TP already went away on the exchange
+    const full = await svc.closePosition(me, { connectionId: conns.second!, symbol: 'ETHUSD' }, new Date(), depsFor());
+    expect(venues.second!.cancelled).toEqual([`${tag}-px1`]);
+    expect(full.message).toMatch(/Closed 4 ETHUSD at 70100\. Its take-profit\/stop-loss order was cancelled\./);
+    const st = Object.fromEntries((await prisma.exchangeOrder.findMany({ where: { clientOrderId: { in: [`${tag}-p1`, `${tag}-p2`, `${tag}-p3`] } } })).map((o) => [o.clientOrderId, o.status]));
+    expect(st).toEqual({ [`${tag}-p1`]: 'CANCELLED', [`${tag}-p2`]: 'CANCELLED', [`${tag}-p3`]: 'OPEN' });
   });
 });

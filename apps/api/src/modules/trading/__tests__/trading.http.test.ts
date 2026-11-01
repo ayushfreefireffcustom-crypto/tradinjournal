@@ -80,6 +80,32 @@ describe.skipIf(!local)('/api/trading over HTTP', () => {
     expect((await csv.text()).trim()).toMatch(/^sent_at_utc,/);
     expect(((await (await fetch(`${s.base}/api/trading/orders/summary`, { headers: { cookie } })).json()) as { data: unknown }).data).toMatchObject({ placed: 0, filledNotionalUsd: 0 });
 
+    // Order ticket routes.
+    const ticket = { connectionId: 'nope', symbol: 'btcusd', side: 'BUY', type: 'MARKET', size: { mode: 'contracts', value: 1 }, requestId: 'abcd-1234-efgh' };
+    const postT = (path: string, body: unknown, withCookie = true) => fetch(`${s.base}${path}`, { method: 'POST', headers: { 'content-type': 'application/json', origin: origin(), ...(withCookie ? { cookie } : {}) }, body: JSON.stringify(body) });
+    expect((await postT('/api/trading/orders', ticket, false)).status).toBe(401);
+    expect((await postT('/api/trading/orders/preview', ticket, false)).status).toBe(401);
+    expect((await fetch(`${s.base}/api/trading/quote?connectionId=x&symbol=BTCUSD`)).status).toBe(401);
+    for (const bad of [
+      { ...ticket, requestId: undefined },
+      { ...ticket, requestId: 'short' },
+      { ...ticket, requestId: '../../etc/passwd!!' },
+      { ...ticket, size: { mode: 'lots', value: 1 } },
+      { ...ticket, size: { mode: 'risk', value: 25 } },
+      { ...ticket, size: { mode: 'contracts', value: -1 } },
+      { ...ticket, type: 'TRAILING' },
+      { ...ticket, tif: 'FOK' },
+      { ...ticket, leverage: 0 },
+      { ...ticket, leverage: 2.5 },
+      { ...ticket, side: 'LONG' },
+    ]) expect((await postT('/api/trading/orders', bad)).status, JSON.stringify(bad)).toBe(422);
+    expect((await fetch(`${s.base}/api/trading/quote?symbol=BTCUSD`, { headers: { cookie } })).status).toBe(422);
+    // Valid shape, someone else's / no account: 404 and nothing sent.
+    expect((await postT('/api/trading/orders', ticket)).status).toBe(404);
+    expect((await postT('/api/trading/orders/preview', ticket)).status).toBe(404);
+    expect((await fetch(`${s.base}/api/trading/quote?connectionId=nope&symbol=BTCUSD`, { headers: { cookie } })).status).toBe(404);
+    expect((await postT('/api/trading/orders', ticket, true).then(async () => fetch(`${s.base}/api/trading/orders`, { method: 'POST', headers: { 'content-type': 'application/json', origin: 'https://evil.example', cookie }, body: JSON.stringify(ticket) }))).status).toBe(403);
+
     const orders = await fetch(`${s.base}/api/trading/orders?status=rejected&source=MANUAL`, { headers: { cookie } });
     expect(((await orders.json()) as { data: unknown }).data).toEqual({ items: [], nextCursor: null });
   });
