@@ -7,6 +7,7 @@ import { useLayoutEffect, useMemo, useState } from 'react';
 import type { Trade } from '@/lib/api';
 import { aggregateByCloseDate, buildYearView, dayKey } from '@/lib/calendar';
 import { fmtUsd } from '@/lib/dashboard-v6';
+import { fmtUsd as plainUsd } from '@/lib/format';
 import DayDialog from '@/components/v6/calendar/day-dialog';
 import { ACard, Facts, useSize } from './kit';
 
@@ -61,6 +62,20 @@ export default function YearHeatmap({ trades, accountId }: { trades: Trade[]; ac
     return { green, best, worst, longest };
   }, [weeks]);
 
+  // Net P&L per calendar month in view (QW.6), oldest first; months without a trade show "—".
+  const months = useMemo(() => {
+    const m = new Map<string, { label: string; net: number; days: number }>();
+    for (const week of weeks) for (const c of week) {
+      if (!c) continue;
+      const k = `${c.date.getFullYear()}-${c.date.getMonth()}`;
+      if (!m.has(k)) m.set(k, { label: c.date.toLocaleDateString('en-US', { month: 'short', ...(c.date.getFullYear() !== new Date().getFullYear() ? { year: '2-digit' } : {}) }), net: 0, days: 0 });
+      if (c.agg) { const e = m.get(k)!; e.net += c.agg.netPnl; e.days++; }
+    }
+    const list = [...m.values()];
+    const first = list.findIndex(x => x.days > 0); // the grid's first week can start in the month before
+    return first < 0 ? [] : list.slice(first);
+  }, [weeks]);
+
   const cols = weeks.length;
   const gap = cw && (cw - RAIL) / cols < 12 ? 2 : 3;
   const cell = cw === 0 ? 12 : Math.max(MIN_CELL, Math.min(MAX_CELL, Math.floor((cw - RAIL - (cols - 1) * gap) / cols)));
@@ -104,6 +119,16 @@ export default function YearHeatmap({ trades, accountId }: { trades: Trade[]; ac
           </div>
         )}
       </div>
+      {tradingDays > 0 && (
+        <ul className="an-yh-months" aria-label="Net P&L by month" data-testid="year-months">
+          {months.map(mo => (
+            <li key={mo.label}>
+              <span>{mo.label}</span>
+              <b className={`m mny ${mo.days ? (mo.net > 0 ? 'pos' : mo.net < 0 ? 'neg' : '') : 'x-dim'}`}>{mo.days ? plainUsd(mo.net, { digits: 0, signed: true }) : '—'}</b>
+            </li>
+          ))}
+        </ul>
+      )}
       <div className="an-yh-ft">
         {tradingDays > 0 ? (
           <div data-testid="year-heatmap-stats" style={{ minWidth: 0, flex: 1 }}>

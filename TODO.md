@@ -170,7 +170,7 @@ Legend:
 - [x] QW.3 Sharpe ratio from the daily equity series in `lib/stats.ts` + an API equivalent; unit test `S` — lib/risk.ts, tested; shown under the analytics equity curve (API side not added)
 - [x] QW.4 Sortino ratio; unit test `S` — lib/risk.ts
 - [x] QW.5 CAGR and recovery factor; unit tests `S` — lib/risk.ts (CAGR only after 90 days)
-- [ ] QW.6 Year P&L heatmap (12 month blocks, monthly totals under each). Extends `components/year-heatmap.tsx`. Evidence: MP seen `S`
+- [x] QW.6 Year P&L heatmap (12 month blocks, monthly totals under each). Extends `components/year-heatmap.tsx`. Evidence: MP seen `S` — monthly net P&L under the consistency grid, whole dollars, adds up to the total (2 Nov)
 - [x] QW.7 Asset-allocation donut (top 6 + Others, P&L on hover). Evidence: MP seen `S` — analytics Allocation card, top 5 + Others (the 6th series colour is too close to the 1st in a ring)
 - [x] QW.8 ⓘ explanation on every dashboard/analytics metric (A2.11), with copy written for each metric `M` — lib/metric-help.ts (2 Nov)
 - [ ] QW.9 "Unknown ≠ 0" sweep: every metric with no data renders "—" with a reason tooltip. Evidence: CM seen `S`
