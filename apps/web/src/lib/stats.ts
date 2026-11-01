@@ -23,13 +23,38 @@ export function rangeStart(range: RangeKey, now = Date.now()): number | null {
   }
 }
 
+/** A custom window of local calendar days, both ends included (QW.1). */
+export interface CustomRange { from: string; to: string }
+/** A preset range or a custom window. */
+export type Span = RangeKey | CustomRange;
+export const isCustom = (s: Span): s is CustomRange => typeof s === 'object';
+
+/** Start and end (ms) of a span; null is open-ended. A custom window ends at the last moment of its "to" day. */
+export function spanBounds(span: Span, now = Date.now()): { start: number | null; end: number | null } {
+  if (!isCustom(span)) return { start: rangeStart(span, now), end: null };
+  const [fy, fm, fd] = span.from.split('-').map(Number);
+  const [ty, tm, td] = span.to.split('-').map(Number);
+  return { start: new Date(fy!, fm! - 1, fd!).getTime(), end: new Date(ty!, tm! - 1, td! + 1).getTime() - 1 };
+}
+
+/** Closed trades that closed inside a span. */
+export function closedInSpan(trades: Trade[], span: Span, now = Date.now()): Trade[] {
+  const { start, end } = spanBounds(span, now);
+  return trades.filter(t => {
+    if (t.status !== 'CLOSED' || !t.closeTime) return false;
+    const c = new Date(t.closeTime).getTime();
+    return (start === null || c >= start) && (end === null || c <= end);
+  });
+}
+
 /**
  * Filter trades to a range and compute stats as if starting from the balance
- * at the range's start. Open trades are always kept (they are "current").
+ * at the range's start. Open trades are kept while the range runs to today
+ * (they are "current"); a custom window in the past leaves them out.
  * accountStartingBalance is the all-time starting balance from the API.
  */
-export function statsForRange(trades: Trade[], accountStartingBalance: number, range: RangeKey): AccountStats {
-  const start = rangeStart(range);
+export function statsForRange(trades: Trade[], accountStartingBalance: number, range: Span, now = Date.now()): AccountStats {
+  const { start, end } = spanBounds(range, now);
   const closed = trades.filter(t => t.status === 'CLOSED' && t.closeTime);
 
   // Balance carried into the range = starting balance + P&L realised before it.
@@ -40,12 +65,8 @@ export function statsForRange(trades: Trade[], accountStartingBalance: number, r
     }
   }
 
-  const inRange = trades.filter(t => {
-    if (t.status === 'OPEN') return true;
-    if (!t.closeTime) return false;
-    return start === null || new Date(t.closeTime).getTime() >= start;
-  });
-
+  const reachesNow = end === null || end >= now;
+  const inRange = [...(reachesNow ? trades.filter(t => t.status === 'OPEN') : []), ...closedInSpan(trades, range, now)];
   return computeStats(inRange, baseBalance);
 }
 

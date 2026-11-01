@@ -9,7 +9,7 @@ import {
   SortableContext, sortableKeyboardCoordinates, arrayMove, rectSortingStrategy,
 } from '@dnd-kit/sortable';
 import { api, type BrokerAccount, type AccountStats, type Trade, type JournalEntry } from '@/lib/api';
-import { statsForRange, rangeStart, RANGES, type RangeKey } from '@/lib/stats';
+import { closedInSpan, isCustom, statsForRange, RANGES, type RangeKey, type Span } from '@/lib/stats';
 import { useAccounts } from '@/lib/use-accounts';
 import AppShell from '@/components/app-shell';
 import ConnectBrokerModal from '@/components/connect-broker-modal';
@@ -19,6 +19,8 @@ import YearHeatmap from '@/components/v6/analytics/year-heatmap';
 import {
   KpiStrip, Strike, Dist, Equity, Sessions, Rolling, SymbolTable, Allocation, GroupBars, Hours, Scatter, DayBars, Direction, type Group,
 } from '@/components/v6/analytics/cards';
+import DateRangePicker from '@/components/v6/ui/date-range';
+import { rangeText } from '@/lib/date-presets';
 
 // Rearrangeable analytics blocks. Order is persisted per-account in localStorage.
 // Spans tile the 12-col grid in the default order; on reorder CSS grid
@@ -45,7 +47,7 @@ export default function AnalyticsPage() {
   const [stats, setStats] = useState<AccountStats | null>(null);
   const [trades, setTrades] = useState<Trade[]>([]);
   const [journal, setJournal] = useState<JournalEntry[]>([]);
-  const [range, setRange] = useState<RangeKey>('ALL');
+  const [range, setRange] = useState<Span>('ALL');
   // Drag handles only show while arranging (A4.4), so the cards stay calm the rest of the time.
   const [arranging, setArranging] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -117,10 +119,7 @@ export default function AnalyticsPage() {
   );
 
   // Closed trades within the selected range (for distribution / heatmap / tags).
-  const rangedTrades = useMemo(() => {
-    const start = rangeStart(range);
-    return trades.filter(t => t.status === 'CLOSED' && t.closeTime && (start === null || new Date(t.closeTime).getTime() >= start));
-  }, [trades, range]);
+  const rangedTrades = useMemo(() => closedInSpan(trades, range), [trades, range]);
 
   // Group closed-trade P&L by the tags / emotion logged for each trade's
   // journal entry (joined by tradeId → positionId), within the selected range.
@@ -179,17 +178,21 @@ export default function AnalyticsPage() {
     }
   }
 
+  const rangeName = isCustom(range) ? rangeText(range) : RANGE_LABEL[range].toLowerCase();
   const subtitle = selected
-    ? <>{selected.broker} <span className="m">·{selected.mt5Login.slice(-4)}</span> · {RANGE_LABEL[range].toLowerCase()}</>
-    : RANGE_LABEL[range];
+    ? <>{selected.broker} <span className="m">·{selected.mt5Login.slice(-4)}</span> · {rangeName}</>
+    : rangeName;
 
   return (
     <AppShell legacy={false} accounts={accounts} selectedAccount={selected} onSelectAccount={select} onConnectClick={() => setShowConnect(true)}
       pageTitle="Analytics" pageSubtitle={subtitle}
       actions={(
-        <div className="x-seg" role="group" aria-label="Date range" data-testid="range-selector">
-          {RANGES.map(r => <button key={r} aria-pressed={range === r} onClick={() => setRange(r)} title={RANGE_LABEL[r]} data-testid={`range-${r}`}>{RANGE_SHORT[r]}</button>)}
-        </div>
+        <>
+          <div className="x-seg" role="group" aria-label="Date range" data-testid="range-selector">
+            {RANGES.map(r => <button key={r} aria-pressed={range === r} onClick={() => setRange(r)} title={RANGE_LABEL[r]} data-testid={`range-${r}`}>{RANGE_SHORT[r]}</button>)}
+          </div>
+          <DateRangePicker value={isCustom(range) ? range : null} onChange={setRange} />
+        </>
       )}>
       <div className="x-page an-page" data-testid="analytics-page">
         {error && !loading ? (

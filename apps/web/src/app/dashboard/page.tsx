@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { api, type BrokerAccount, type AccountStats, type Trade, type JournalEntry } from '@/lib/api';
-import { statsForRange, rangeStart, type RangeKey } from '@/lib/stats';
+import { closedInSpan, isCustom, statsForRange, type RangeKey, type Span } from '@/lib/stats';
 import { useAccounts } from '@/lib/use-accounts';
 import { authClient } from '@/lib/auth-client';
 import AppShell, { timeAgo } from '@/components/app-shell';
@@ -13,6 +13,8 @@ import StrategiesCard from '@/components/v6/strategy/strategies-card';
 import {
   BreakdownCard, CoachReview, DailyCard, DeskSkeleton, EquityCard, KpiColumn, RecentTrades,
 } from '@/components/v6/desk';
+import DateRangePicker from '@/components/v6/ui/date-range';
+import { rangeText } from '@/lib/date-presets';
 
 const RANGES: { key: RangeKey; short: string; label: string }[] = [
   { key: '1W', short: '7D', label: 'Last 7 days' },
@@ -28,7 +30,7 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<AccountStats | null>(null);
   const [trades, setTrades] = useState<Trade[]>([]);
   const [journal, setJournal] = useState<JournalEntry[]>([]);
-  const [range, setRange] = useState<RangeKey>('3M');
+  const [range, setRange] = useState<Span>('3M');
   const [loading, setLoading] = useState(true);
   const [syncedAt, setSyncedAt] = useState<string | null>(null);
   const [, tick] = useState(0);
@@ -38,10 +40,7 @@ export default function DashboardPage() {
   const toast = useToast();
 
   const view = useMemo(() => (stats ? statsForRange(trades, stats.startingBalance, range) : null), [stats, trades, range]);
-  const rangedTrades = useMemo(() => {
-    const start = rangeStart(range);
-    return trades.filter(t => t.status === 'CLOSED' && t.closeTime && (start === null || new Date(t.closeTime).getTime() >= start));
-  }, [trades, range]);
+  const rangedTrades = useMemo(() => closedInSpan(trades, range), [trades, range]);
 
   const loadStats = useCallback(async (acc: BrokerAccount, notify = false) => {
     setLoading(true);
@@ -82,7 +81,7 @@ export default function DashboardPage() {
     setShowConnect(false);
   }
 
-  const rangeLabel = RANGES.find(o => o.key === range)!.label;
+  const rangeLabel = isCustom(range) ? rangeText(range) : RANGES.find(o => o.key === range)!.label;
   const first = (session?.user?.name ?? '').trim().split(/\s+/)[0] || 'trader';
   const everTraded = trades.some(t => t.status === 'CLOSED');
   const subtitle = selected
@@ -93,9 +92,12 @@ export default function DashboardPage() {
     <AppShell legacy={false} accounts={accounts} selectedAccount={selected} onSelectAccount={select} onConnectClick={() => setShowConnect(true)}
       pageTitle="Dashboard" pageSubtitle={subtitle} onSync={() => selected && loadStats(selected, true)} syncing={syncing} syncedAt={syncedAt}
       actions={selected ? (
-        <div className="x-seg" role="group" aria-label="Date range" data-testid="range-selector">
-          {RANGES.map(r => <button key={r.key} aria-pressed={range === r.key} onClick={() => setRange(r.key)} title={r.label} data-testid={`range-${r.key}`}>{r.short}</button>)}
-        </div>
+        <>
+          <div className="x-seg" role="group" aria-label="Date range" data-testid="range-selector">
+            {RANGES.map(r => <button key={r.key} aria-pressed={range === r.key} onClick={() => setRange(r.key)} title={r.label} data-testid={`range-${r.key}`}>{r.short}</button>)}
+          </div>
+          <DateRangePicker value={isCustom(range) ? range : null} onChange={setRange} />
+        </>
       ) : null}>
       <div className="dk-grid" data-testid="dashboard-page">
         {error && (
