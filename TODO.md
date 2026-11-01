@@ -228,7 +228,7 @@ Legend:
   - `streamPositions`
 - [x] B2.3 Port the Delta adapter (REST HMAC signing, products cache, tickers, wallet, positions, fills, market order) `M`
 - [x] B2.4 Port the Delta WS (auth → subscribe after auth, heartbeat, 25s ping, 40s idle → reconnect) `M`
-- [ ] B2.5 Add to Delta: limit orders, stop orders, cancel, order status, leverage, open orders, the `orders`/`positions` WS channels `M` (REST parts done 31 Oct; `orders`/`positions` stream added 1 Nov as `streamAccount`, unit-tested; the live testnet check waits on the API key IP whitelist)
+- [x] B2.5 Add to Delta: limit orders, stop orders, cancel, order status, leverage, open orders, the `orders`/`positions` WS channels `M` (REST parts done 31 Oct; `orders`/`positions` stream added 1 Nov as `streamAccount`, unit-tested and passed on Delta testnet)
 - [x] B2.6 Environment explicit and **required**: `DELTA_ENV=testnet|live`, no silent prod default. Fail fast on startup `S`
 - [x] B2.7 Use our `lib/secrets.ts` for keys (move the shared crypto into a package if the engine needs it). No second vault `S`
 - [x] B2.8 Key fingerprint (HMAC) for duplicate detection, without decrypting stored keys `S`
