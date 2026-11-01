@@ -6,3 +6,5 @@ export { OPERATORS, validateCondition, evaluateCondition, conditionWarmup, descr
 export type { Condition, Operand, Operator, Evaluation } from './conditions.js';
 export { rateCandles, ratingLabel, RATING_LABELS, RATING_BARS } from './rating.js';
 export type { Rating, RatingGroup, RatingComponent, RatingLabel, Vote } from './rating.js';
+export { WATCH_RULES, watchRuleFor, explainCondition } from './watch-rules.js';
+export type { WatchRule, WatchCategory, Explanation as WatchExplanation } from './watch-rules.js';

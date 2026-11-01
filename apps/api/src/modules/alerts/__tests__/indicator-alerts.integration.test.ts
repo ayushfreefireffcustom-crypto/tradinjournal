@@ -50,6 +50,27 @@ describe.skipIf(!local)('indicator alerts', () => {
     await prisma?.$disconnect();
   });
 
+  it('a watch rule from the catalogue says why it matters when it fires (H12)', async () => {
+    closes = [...new Array(30).fill(100), ...Array.from({ length: 6 }, (_, i) => 101 + i * 3)];
+    // The Bollinger break-up rule, watched on a market.
+    const a = await svc.watchRule(me, { ruleId: 'bb-break-up', symbol: 'BTCUSDT', timeframe: '1h' }, deps);
+    expect(a.rule).toEqual({ id: 'bb-break-up', name: 'Close above the upper Bollinger Band' });
+    expect(a.explanation.why).toMatch(/unusually strong move/);
+    expect(a.cooldownSec).toBe(4 * 3600);
+    await expect(svc.watchRule(me, { ruleId: 'nope', symbol: 'BTCUSDT' }, deps)).rejects.toThrow(/Unknown rule/);
+    closedThrough(30);
+    await run();
+    closedThrough(31);
+    expect(await run()).toMatchObject({ fired: 1 });
+    const n = await prisma.notification.findMany({ where: { userId: me } });
+    expect(n[0]!.body).toMatch(/^Close crossed above Bollinger Bands Upper\(20, 2\) \(now 101\.00 vs .+\) · An unusually strong move/);
+    // A custom rule gets an explanation built from its indicator, and no catalogue name.
+    const c = await svc.createIndicatorAlert(me, { symbol: 'BTCUSDT', timeframe: '1h', left: price, operator: 'gt', right: value(1) }, deps);
+    expect(c.rule).toBeNull();
+    expect(c.explanation.what).toBe('Fires on whenever Close is above 1, checked at each bar close.');
+    expect(svc.watchRules().length).toBeGreaterThanOrEqual(15);
+  });
+
   it('fires a cross once, on the closed bar where it happens, and never on the forming bar', async () => {
     closes = [...new Array(20).fill(100), 110, 111, 112];
     const a = await svc.createIndicatorAlert(me, { symbol: 'btcusdt', timeframe: '1h', left: price, operator: 'crosses_above', right: ema5 }, deps);

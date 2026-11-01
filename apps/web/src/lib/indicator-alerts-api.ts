@@ -44,7 +44,11 @@ export interface IndicatorAlert extends Required<Omit<RuleBody, 'note'>> {
   lastFiredAt: string | null;
   fireCount: number;
   createdAt: string;
+  /** H12: the catalogue rule it is, and what it means in plain English. */
+  rule: { id: string; name: string } | null;
+  explanation: { what: string; why: string; caution: string };
 }
+export interface WatchRule { id: string; name: string; category: 'momentum' | 'trend' | 'volatility' | 'volume'; bias: 'bullish' | 'bearish' | 'neutral'; timeframe: string; cooldownSec: number; condition: string; explain: { what: string; why: string; caution: string } }
 export interface Firing { id: string; alertId: string; symbol: string; timeframe: string; description: string; firedAt: string; barTime: string; leftValue: number; rightValue: number }
 export interface Preview { symbol: string; timeframe: string; barTime: string; bars: number; enoughData: boolean; met: boolean | null; left: number | null; right: number | null; leftLabel: string; rightLabel: string; description: string }
 
@@ -76,4 +80,6 @@ export const indicatorAlertsApi = {
   create: (b: RuleBody) => call<IndicatorAlert>('', post(b)),
   update: (id: string, b: { status?: 'active' | 'paused'; cooldownSec?: number; recurring?: boolean; note?: string | null }) => call<IndicatorAlert>(`/${id}`, { method: 'PATCH', body: JSON.stringify(b) }),
   remove: (id: string) => call<{ ok: boolean }>(`/${id}`, { method: 'DELETE' }),
+  watchRules: () => call<WatchRule[]>('/watch-rules'),
+  watch: (b: { ruleId: string; symbol: string; timeframe?: string }) => call<IndicatorAlert>('/watch', post(b)),
 };

@@ -13,6 +13,9 @@ import {
   describeOperand,
   evaluateCondition,
   validateCondition,
+  explainCondition,
+  watchRuleFor,
+  WATCH_RULES,
   type TraderCandle as Candle,
   type Condition,
 } from '@tradinjournal/core';
@@ -78,6 +81,9 @@ const dto = (a: IndicatorAlert & { firings?: Array<{ firedAt: Date }> }) => ({
   operator: a.operator,
   right: a.right,
   description: describeCondition(conditionOf(a)),
+  // H12: what the rule means, in plain English (the catalogue's own words for its rules).
+  rule: ((r) => (r ? { id: r.id, name: r.name } : null))(watchRuleFor(conditionOf(a))),
+  explanation: explainCondition(conditionOf(a)),
   cooldownSec: a.cooldownSec,
   recurring: a.recurring,
   status: a.status,
@@ -270,7 +276,9 @@ export async function dispatchIndicatorAlerts(deps = defaultIndicatorAlertDeps, 
       fired += 1;
       const p = prefs.get(a.userId);
       const title = `${a.symbol} ${a.timeframe}: ${describeCondition(conditionOf(a))}`;
-      const body = describeCondition(conditionOf(a), e) + (a.note ? ` · ${a.note}` : '');
+      // A catalogue rule says why it matters, not just the numbers (H12).
+      const rule = watchRuleFor(conditionOf(a));
+      const body = describeCondition(conditionOf(a), e) + (a.note ? ` · ${a.note}` : '') + (rule ? ` · ${rule.explain.why}` : '');
       const href = `/charts?symbol=${encodeURIComponent(a.symbol)}&tf=${a.timeframe}`;
       const key = `indalert:${a.id}:${a.fireSeq}`;
       if ((p?.inApp ?? true) && (await claimDelivery(a.userId, key, 'in_app'))) {
@@ -288,4 +296,18 @@ export async function dispatchIndicatorAlerts(deps = defaultIndicatorAlertDeps, 
     }
   }
   return { groups: groups.size, checked, fired };
+}
+
+// ── Watch rules (H12) ──
+export function watchRules() {
+  return WATCH_RULES.map((r) => ({ id: r.id, name: r.name, category: r.category, bias: r.bias, timeframe: r.timeframe, cooldownSec: r.cooldownSec, condition: describeCondition(r.condition), explain: r.explain }));
+}
+
+/** Watch a catalogue rule on a market: an ordinary indicator alert with the rule's condition. */
+export async function watchRule(userId: string, input: { ruleId: string; symbol: string; timeframe?: string }, deps = defaultIndicatorAlertDeps) {
+  const r = WATCH_RULES.find((x) => x.id === input.ruleId);
+  if (!r) throw new NotFoundError('Unknown rule');
+  const timeframe = (input.timeframe ?? r.timeframe) as CreateIndicatorAlertInput['timeframe'];
+  if (!['5m', '15m', '1h', '4h', '1d'].includes(timeframe)) throw new ValidationError('Pick a timeframe: 5m, 15m, 1h, 4h or 1d.');
+  return createIndicatorAlert(userId, { symbol: input.symbol, timeframe, left: r.condition.left as CreateIndicatorAlertInput['left'], operator: r.condition.operator as CreateIndicatorAlertInput['operator'], right: r.condition.right as CreateIndicatorAlertInput['right'], cooldownSec: r.cooldownSec, recurring: true }, deps);
 }

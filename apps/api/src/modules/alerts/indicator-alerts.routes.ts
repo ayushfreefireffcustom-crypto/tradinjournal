@@ -12,7 +12,10 @@ import {
   previewIndicatorAlert,
   recentFirings,
   updateIndicatorAlert,
+  watchRule,
+  watchRules,
 } from './indicator-alerts.service.js';
+import { ValidationError } from '../../http/errors.js';
 
 const uid = (res: Response) => res.locals.user.id as string;
 const wrap = (fn: (req: Request, res: Response) => Promise<void>) => (req: Request, res: Response, next: NextFunction) => fn(req, res).catch(next);
@@ -21,6 +24,13 @@ const wrap = (fn: (req: Request, res: Response) => Promise<void>) => (req: Reque
 export const indicatorAlertsRouter: IRouter = Router();
 indicatorAlertsRouter.use(requireAuth, requirePlatformAccess);
 indicatorAlertsRouter.get('/catalogue', (_req, res) => ok(res, indicatorCatalogue()));
+// H12: the watch-rule catalogue, and watching one on a market.
+indicatorAlertsRouter.get('/watch-rules', (_req, res) => ok(res, watchRules()));
+indicatorAlertsRouter.post('/watch', wrap(async (req, res) => {
+  const b = (req.body ?? {}) as { ruleId?: unknown; symbol?: unknown; timeframe?: unknown };
+  if (typeof b.ruleId !== 'string' || typeof b.symbol !== 'string' || !/^[A-Za-z0-9]{2,30}$/.test(b.symbol) || (b.timeframe != null && typeof b.timeframe !== 'string')) throw new ValidationError('ruleId and a market symbol are required.');
+  created(res, await watchRule(uid(res), { ruleId: b.ruleId.slice(0, 60), symbol: b.symbol.toUpperCase(), timeframe: b.timeframe as string | undefined }));
+}));
 indicatorAlertsRouter.get('/', wrap(async (_req, res) => ok(res, await listIndicatorAlerts(uid(res)))));
 indicatorAlertsRouter.get('/firings', wrap(async (req, res) => ok(res, await recentFirings(uid(res), Number(req.query.limit) || 50))));
 indicatorAlertsRouter.post('/preview', validateBody(createIndicatorAlertSchema), wrap(async (req, res) => ok(res, await previewIndicatorAlert(req.body as CreateIndicatorAlertInput))));

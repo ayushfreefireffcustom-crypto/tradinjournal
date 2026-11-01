@@ -806,3 +806,17 @@
 .v6 .sc-lv { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px; }
 .v6 .sc-lv-in { width: 120px; }
 .v6 .sc-lv-n { margin: 0; font-size: 12px; }
+/* Watch rules (H12) */
+.v6 .ia-rulename { display: block; font-weight: 500; font-size: 13px; }
+.v6 .ia-why { margin-top: 4px; font-size: 12.5px; }
+.v6 .ia-why summary { cursor: pointer; color: var(--mut); font-size: 12px; }
+.v6 .ia-why p { margin: 6px 0 0; line-height: 1.5; max-width: 520px; }
+.v6 .ia-watch-cats { margin-bottom: 12px; overflow-x: auto; max-width: 100%; }
+.v6 .ia-watch-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+.v6 .ia-wr { display: grid; gap: 6px; align-content: start; padding: 12px; border-radius: var(--r-inset); background: var(--s2); }
+.v6 .ia-wr-h { display: flex; justify-content: space-between; gap: 8px; align-items: start; }
+.v6 .ia-wr-h b { font-weight: 500; font-size: 13.5px; }
+.v6 .ia-wr p { margin: 0; font-size: 12.5px; line-height: 1.5; }
+.v6 .ia-wr .x-btn { justify-self: start; }
+.v6 .ia-watch-form { display: grid; gap: 12px; }
+.v6 .ia-watch-form p { margin: 0; font-size: 12.5px; }

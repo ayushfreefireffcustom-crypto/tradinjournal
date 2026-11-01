@@ -14,6 +14,7 @@ import OperandPicker from '@/components/v6/indicators/operand-picker';
 import {
   IA_OPERATORS, IA_TIMEFRAMES, OPERATOR_LABEL, comparable, indicatorAlertsApi,
   type CatalogueItem, type IaOperator, type IaTimeframe, type IndicatorAlert, type IndicatorOperand, type Operand, type Preview, type RuleBody,
+  type WatchRule,
 } from '@/lib/indicator-alerts-api';
 import '@/styles/v6/copy.css';
 import '@/styles/v6/markets.css';
@@ -82,7 +83,8 @@ export default function AlertsPage() {
                   {rules.data.map(r => (
                     <tr key={r.id} className={r.status === 'active' ? '' : 'ak-off'} data-testid={`ia-row-${r.id}`}>
                       <td><Link className="x-link" href={`/charts?symbol=${encodeURIComponent(r.symbol)}&tf=${r.timeframe}`}><b>{r.symbol}</b></Link> <span className="x-tag x-tag--m">{r.timeframe}</span></td>
-                      <td><span data-testid="ia-desc">{r.description}</span>{r.note && <div className="x-muted ia-note">{r.note}</div>}<div className="x-muted ia-note">{repeatLabel(r)}</div></td>
+                      <td>{r.rule && <b className="ia-rulename">{r.rule.name}</b>}<span data-testid="ia-desc">{r.description}</span>{r.note && <div className="x-muted ia-note">{r.note}</div>}<div className="x-muted ia-note">{repeatLabel(r)}</div>
+                        <details className="ia-why" data-testid="ia-why"><summary>What it means</summary><p>{r.explanation.what}</p><p><b>Why it matters.</b> {r.explanation.why}</p><p><b>Where it misleads.</b> {r.explanation.caution}</p></details></td>
                       <td>{r.lastBarTime ? <span className="m">{fmt(r.lastLeft)}{r.right.kind === 'indicator' && <> vs {fmt(r.lastRight)}</>}</span> : <span className="x-muted">Waiting for a bar close</span>}</td>
                       <td>{r.lastFiredAt ? ago(r.lastFiredAt) : <span className="x-muted">Never</span>}</td>
                       <td><span className={`x-tag ${r.status === 'active' ? 'x-tag--g' : r.status === 'triggered' ? 'x-tag--r' : ''}`} data-testid="ia-status">{r.status === 'active' ? 'Active' : r.status === 'paused' ? 'Paused' : 'Triggered'}</span></td>
@@ -100,6 +102,7 @@ export default function AlertsPage() {
           </section>
         )}
 
+        <WatchRules onCreated={(a) => { rules.setData((rs) => [a, ...(rs ?? [])]); toast.success(`Watching ${a.rule?.name ?? 'it'} on ${a.symbol}`); }} />
         <section className="x-card" aria-label="Recent alerts">
           <div className="x-ch"><h2>Recent alerts</h2><span className="x-sub">Last 30</span></div>
           {firings.error ? <p className="cp-err">{firings.error}</p> : !firings.data ? <div className="x-skel cp-skel-table" /> : !firings.data.length ? (
@@ -271,5 +274,52 @@ function RuleBuilder({ catalogue, onClose, onCreated }: { catalogue: CatalogueIt
       <div className="x-field"><label htmlFor="ia-note">Note <span className="x-muted">(optional)</span></label><input id="ia-note" className="x-input" maxLength={200} placeholder="e.g. Look for a long at support" value={note} onChange={e => setNote(e.target.value)} data-testid="ia-note" /></div>
       </div>
     </Modal>
+  );
+}
+
+// ── Watch rules (H12): well-known conditions, explained, one click to watch ──
+const CATS: Array<['all' | WatchRule['category'], string]> = [['all', 'All'], ['trend', 'Trend'], ['momentum', 'Momentum'], ['volatility', 'Volatility'], ['volume', 'Volume']];
+function WatchRules({ onCreated }: { onCreated: (a: IndicatorAlert) => void }) {
+  const toast = useToast();
+  const list = useLoad(() => indicatorAlertsApi.watchRules(), []);
+  const [cat, setCat] = useState<'all' | WatchRule['category']>('all');
+  const [pick, setPick] = useState<WatchRule | null>(null);
+  const [symbol, setSymbol] = useState('BTCUSDT');
+  const [tf, setTf] = useState('4h');
+  const [busy, setBusy] = useState(false);
+  async function watch() {
+    if (!pick) return;
+    setBusy(true);
+    try { onCreated(await indicatorAlertsApi.watch({ ruleId: pick.id, symbol: symbol.trim().toUpperCase(), timeframe: tf })); setPick(null); }
+    catch (e) { toast.error(e instanceof Error ? e.message : 'Could not watch it'); }
+    finally { setBusy(false); }
+  }
+  if (!list.data?.length) return null;
+  const shown = list.data.filter((r) => cat === 'all' || r.category === cat);
+  return (
+    <section className="x-card" aria-label="Watch rules" data-testid="ia-watch">
+      <div className="x-ch"><h2>Watch rules</h2><span className="x-sub">Well-known signals, explained. Pick one and a market.</span></div>
+      <div className="x-seg x-seg--in x-seg--sm ia-watch-cats" role="radiogroup" aria-label="Kind">{CATS.map(([c, l]) => <button key={c} type="button" role="radio" aria-checked={cat === c} onClick={() => setCat(c)} data-testid={`ia-wcat-${c}`}>{l}</button>)}</div>
+      <div className="ia-watch-grid">
+        {shown.map((r) => (
+          <article key={r.id} className="ia-wr" data-testid={`ia-wr-${r.id}`}>
+            <div className="ia-wr-h"><b>{r.name}</b><span className={`x-tag ${r.bias === 'bullish' ? 'x-tag--g' : r.bias === 'bearish' ? 'x-tag--r' : ''}`}>{r.bias === 'neutral' ? 'Either way' : r.bias === 'bullish' ? 'Bullish' : 'Bearish'}</span></div>
+            <p>{r.explain.what} {r.explain.why}</p>
+            <p className="x-muted">{r.explain.caution}</p>
+            <button type="button" className="x-btn x-btn--sm" onClick={() => { setPick(r); setTf(r.timeframe); }} data-testid={`ia-wr-watch-${r.id}`}>Watch</button>
+          </article>
+        ))}
+      </div>
+      {pick && (
+        <Modal title={`Watch: ${pick.name}`} sub={pick.condition} onClose={() => setPick(null)} busy={busy} testId="ia-watch-dialog"
+          footer={<><button className="x-btn x-btn--ghost" onClick={() => setPick(null)} disabled={busy}>Cancel</button><button className="x-btn x-btn--hi" onClick={() => void watch()} disabled={busy || !/^[A-Za-z0-9]{2,30}$/.test(symbol.trim())} data-testid="ia-watch-go">{busy ? 'Saving…' : 'Watch it'}</button></>}>
+          <div className="ia-watch-form">
+            <div className="x-field"><label htmlFor="ia-w-sym">Market</label><input id="ia-w-sym" className="x-input m" value={symbol} onChange={(e) => setSymbol(e.target.value.toUpperCase())} data-testid="ia-watch-symbol" /></div>
+            <div className="x-field"><label htmlFor="ia-w-tf">Bar size</label><select id="ia-w-tf" className="x-select" value={tf} onChange={(e) => setTf(e.target.value)} data-testid="ia-watch-tf">{['15m', '1h', '4h', '1d'].map((t) => <option key={t}>{t}</option>)}</select></div>
+            <p className="x-muted">Checked at each bar close; you’re told at most once every {pick.cooldownSec >= 86_400 ? `${pick.cooldownSec / 86_400} day` : `${pick.cooldownSec / 3600} hours`}. The alert explains what it means when it fires.</p>
+          </div>
+        </Modal>
+      )}
+    </section>
   );
 }
