@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useToast } from '@/components/toast';
 import { Modal } from '@/components/v6/copy/parts';
-import { accountApi, shownIp, type ActivityGroup, type ActivityItem, type Profile } from '@/lib/account-api';
+import { accountApi, shownIp, type ActivityGroup, type ActivityItem, type PlanSummary, type Profile } from '@/lib/account-api';
 import { ApiError } from '@/lib/copy-api';
 
 // ── Profile ──
@@ -177,6 +177,28 @@ export function DeleteCard({ email }: { email: string | null }) {
           {err && <p className="cp-err" data-testid="data-delete-error">{err}</p>}
         </Modal>
       )}
+    </section>
+  );
+}
+
+// ── Plan (H15) ──
+export function PlanCard() {
+  const [p, setP] = useState<PlanSummary | null>(null);
+  useEffect(() => { accountApi.plan().then(setP, () => setP(null)); }, []);
+  if (!p) return null;
+  return (
+    <section className="x-card ac-st-card" aria-labelledby="ac-plan" data-testid="plan-card">
+      <div className="x-ch"><h2 id="ac-plan">Plan</h2><span className="x-tag x-tag--g" data-testid="plan-label">{p.label}</span></div>
+      <p className="x-muted">{p.plansEnabled ? 'What your plan includes, and how much of it you use.' : 'Everything is free while TRADElogs is new. These are the limits everyone has.'}</p>
+      <ul className="ac-limits">
+        {p.limits.map((l) => (
+          <li key={l.key} data-testid={`plan-${l.key}`}>
+            <span>{l.label}</span>
+            <i aria-hidden><b style={{ width: `${Math.min(100, (l.used / Math.max(1, l.limit)) * 100)}%` }} className={l.used >= l.limit ? 'is-full' : ''} /></i>
+            <span className="m">{l.used} / {l.limit}</span>
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }

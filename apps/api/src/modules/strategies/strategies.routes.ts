@@ -2,12 +2,13 @@ import { Router, type IRouter, type Request, type Response, type NextFunction } 
 import { backtestParamsSchema, chartPreviewSchema, createStrategySchema, generateStrategySchema, previewBacktestSchema, strategySpecSchema, updateStrategySchema, type BacktestParamsDto } from '@tradinjournal/contracts';
 import type { StrategySpec } from '@tradinjournal/core';
 import { requireAuth } from '../../http/middleware/require-auth.js';
+import { ValidationError } from '../../http/errors.js';
 import { requirePlatformAccess } from '../../http/middleware/require-platform-access.js';
 import { validateBody } from '../../http/middleware/validate.js';
 import { ok, created } from '../../http/response.js';
 import { perUserRateLimit } from '../../lib/rate-limit.js';
 import {
-  backtestSpec, backtestStrategy, chartSpec, createStrategy, duplicateStrategy, generateStrategy, getBacktest, getStrategy, inspect,
+  backtestSpec, backtestStrategy, chartSpec, tuneStrategy, createStrategy, duplicateStrategy, generateStrategy, getBacktest, getStrategy, inspect,
   listStrategies, restoreVersion, updateStrategy,
 } from './strategies.service.js';
 import { mountStrategyDeployments } from './deployments.routes.js';
@@ -40,6 +41,12 @@ strategiesRouter.post('/chart', chartLimit, validateBody(chartPreviewSchema), wr
 strategiesRouter.post('/generate', aiLimit, validateBody(generateStrategySchema), wrap(async (req, res) => created(res, await generateStrategy(uid(res), req.body))));
 strategiesRouter.get('/:id', wrap(async (req, res) => ok(res, await getStrategy(uid(res), p(req)))));
 strategiesRouter.patch('/:id', validateBody(updateStrategySchema), wrap(async (req, res) => ok(res, await updateStrategy(uid(res), p(req), req.body))));
+// H11: AI-proposed changes for a goal, with before/after backtests. Saving is a normal PATCH.
+strategiesRouter.post('/:id/tune', aiLimit, wrap(async (req, res) => {
+  const goal = String((req.body as { goal?: unknown })?.goal ?? '').trim();
+  if (goal.length < 5 || goal.length > 300) throw new ValidationError('Say what you want to improve, in 5 to 300 characters.');
+  ok(res, await tuneStrategy(uid(res), p(req), goal));
+}));
 strategiesRouter.post('/:id/duplicate', wrap(async (req, res) => created(res, await duplicateStrategy(uid(res), p(req)))));
 strategiesRouter.post('/:id/versions/:version/restore', wrap(async (req, res) => ok(res, await restoreVersion(uid(res), p(req), Number(req.params.version)))));
 strategiesRouter.post('/:id/backtests', btLimit, validateBody(backtestParamsSchema), wrap(async (req, res) => created(res, await backtestStrategy(uid(res), p(req), req.body as BacktestParamsDto))));

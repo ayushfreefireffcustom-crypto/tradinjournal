@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from 'express';
 import { logger } from '@tradinjournal/logger';
 import type {
   AiChatInput,
+  AiToolTurnInput,
   AiReportQuery,
   WeeklyReviewPrefInput,
   WeeklyReviewRecipientsQuery,
@@ -24,6 +25,7 @@ import {
   deleteConversation,
 } from './ai.service.js';
 import { getReport } from './ai.report.service.js';
+import { availableChips, chipContext } from './context-chips.service.js';
 import {
   getSubscription,
   setSubscription,
@@ -127,6 +129,11 @@ export async function handleChat(req: Request, res: Response, next: NextFunction
       // 3) Build the grounded prompt (+ web results when present). When web was
       //    wanted but produced nothing, add a soft note so the model says so.
       const messages = buildMessages(context, input.messages, sources);
+      // Context chips the user picked for this question (H11).
+      if (input.context?.length) {
+        const extra = await chipContext(userId, input.context);
+        if (extra) messages.splice(2, 0, { role: 'system', content: extra });
+      }
       if (wantsWeb && sources.length === 0) {
         messages.push({
           role: 'system',
@@ -287,4 +294,18 @@ export async function handleDeleteConversation(req: Request, res: Response, next
   } catch (err) {
     next(err);
   }
+}
+
+// GET /api/ai/context-chips: what the user could hand the coach (H11).
+export async function handleContextChips(_req: Request, res: Response, next: NextFunction): Promise<void> {
+  try { ok(res, await availableChips(res.locals.user.id as string)); } catch (err) { next(err); }
+}
+
+// POST /api/ai/tool-turn: keep a tool's result in the conversation (H11).
+export async function handleToolTurn(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const b = req.body as AiToolTurnInput;
+    const conversationId = await persistTurn({ userId: res.locals.user.id as string, brokerAccountId: b.accountId, conversationId: b.conversationId, userContent: b.user, assistantContent: b.assistant, lane: 'personal' });
+    ok(res, { conversationId });
+  } catch (err) { next(err); }
 }

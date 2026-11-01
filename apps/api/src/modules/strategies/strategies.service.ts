@@ -24,12 +24,15 @@ export interface StrategyDeps {
   now: () => number;
   ai: () => boolean;
   generate: (messages: ChatMessage[]) => Promise<unknown>;
+  /** The tuning assistant (H11); defaults to the provider's JSON mode. */
+  tune?: (messages: ChatMessage[]) => Promise<unknown>;
 }
 export const defaultStrategyDeps: StrategyDeps = {
   candles: (s, tf, f, t, limit) => loadPublicCandlesWindow(s, tf as never, f, t, limit),
   now: () => Date.now(),
   ai: isAiEnabled,
   generate: (m) => getProvider().json(m, GENERATE_SCHEMA, { effort: 'medium', maxTokens: 6000 }),
+  tune: (m) => getProvider().json(m, TUNE_SCHEMA, { effort: 'medium', maxTokens: 6000 }),
 };
 
 const specOf = (s: Pick<Strategy, 'spec'>) => s.spec as unknown as StrategySpec;
@@ -311,4 +314,65 @@ export async function generateStrategy(userId: string, input: { prompt: string; 
     }
   }
   throw new ValidationError(`The AI couldn’t turn that into a valid strategy: ${lastError} Try describing the entry and exit more plainly.`);
+}
+
+// ── Tuning with AI (H11) ─────────────────────────────────────────────────────
+
+const TUNE_SCHEMA = {
+  type: 'object',
+  properties: {
+    spec: { type: 'object', description: 'The whole strategy, changed only where the goal needs it.' },
+    changes: { type: 'array', items: { type: 'string' }, description: 'Each change in one plain sentence, e.g. "Stop loss from 2% to 1.5%".' },
+  },
+  required: ['spec', 'changes'],
+} as const;
+
+const PICK = ['totalReturnPct', 'maxDrawdownPct', 'winRatePct', 'profitFactor', 'trades', 'sharpe'] as const;
+
+/**
+ * Propose changes to a strategy for a goal ("smaller drawdowns", "fewer
+ * trades"), then backtest the current and the proposed rules on the same
+ * window so the comparison is real. Nothing is saved: the user confirms by
+ * saving the proposal as a new version.
+ */
+export async function tuneStrategy(userId: string, id: string, goal: string, deps = defaultStrategyDeps) {
+  if (!deps.ai()) throw new AiUnavailableError('Tuning with AI needs AI switched on for this server.');
+  const s = await own(userId, id);
+  const current = specOf(s);
+  const v0 = validateStrategy(current);
+  if (v0.blockers.length) throw new ValidationError(`Fix this first: ${v0.blockers[0]!.message}`);
+  const symbol = current.market.symbols[0]?.symbol ?? 'BTCUSDT';
+  const messages: ChatMessage[] = [
+    { role: 'system', content: `${generatorPrompt(symbol, current.session.interval)}\n\nNow you tune an existing strategy for the trader's goal. Reply with JSON {spec, changes}. Keep the markets, venue, bar size and the core idea; change as little as the goal needs (usually 1-3 things). Never remove the stop loss. Each change is one plain sentence with the old and new value.` },
+    { role: 'user', content: `Goal: ${goal}\n\nCurrent strategy:\n${JSON.stringify(current)}` },
+  ];
+  const tune = deps.tune ?? defaultStrategyDeps.tune!;
+  let lastError = '';
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const j = (await tune(attempt ? [...messages, { role: 'user', content: `That was rejected: ${lastError}. Return the corrected JSON.` }] : messages)) as { spec?: unknown; changes?: unknown };
+    try {
+      const spec = parseSpec(j?.spec);
+      // The things a tune may not touch.
+      spec.market.symbols = current.market.symbols;
+      spec.market.venue = current.market.venue;
+      spec.session.interval = current.session.interval;
+      if (!spec.risk.stopLoss && current.risk.stopLoss) throw new ValidationError('The stop loss can’t be removed.');
+      const v = validateStrategy(spec);
+      if (v.blockers.length) throw new ValidationError(v.blockers.map((b) => b.message).join(' '));
+      if (sameSpec(spec, current)) throw new ValidationError('Nothing was changed.');
+      const changes = Array.isArray(j.changes) ? j.changes.filter((c): c is string => typeof c === 'string' && !!c.trim()).map((c) => c.trim().slice(0, 200)).slice(0, 8) : [];
+      // Same window for both, like the marketplace check: 180 days or fewer on fast bars.
+      const ms = INTERVAL_MS[current.session.interval];
+      const days = Math.max(7, Math.min(180, Math.floor((8000 * ms) / 86_400_000)));
+      const to = Math.floor(deps.now() / 3_600_000) * 3_600_000;
+      const params = { from: new Date(to - days * 86_400_000).toISOString(), to: new Date(to).toISOString(), capital: 10_000, slippageBps: 5 };
+      const [before, after] = await Promise.all([backtestSpec(current, params, deps), backtestSpec(spec, params, deps)]);
+      const pick = (m: BacktestResult['metrics']) => Object.fromEntries(PICK.map((k) => [k, (m as unknown as Record<string, number | null>)[k] ?? null])) as Record<(typeof PICK)[number], number | null>;
+      return { goal, changes, proposal: spec, readback: describeStrategy(spec), window: { from: params.from, to: params.to, days }, before: pick(before.result.metrics), after: pick(after.result.metrics), version: s.version };
+    } catch (err) {
+      if (err instanceof AiUnavailableError) throw err;
+      lastError = (err as Error).message;
+    }
+  }
+  throw new ValidationError(`The AI couldn’t make a valid change for that goal: ${lastError} Try a more specific goal.`);
 }

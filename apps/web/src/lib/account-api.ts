@@ -24,7 +24,10 @@ export interface ActivityItem { id: string; at: string; kind: string; summary: s
 export interface FeedbackRow { id: string; kind: 'bug' | 'feedback' | 'question'; message: string; status: 'new' | 'read' | 'done'; createdAt: string }
 export interface AdminFeedbackRow extends FeedbackRow { page: string | null; userAgent: string | null; readAt: string | null; user: { email: string; name: string } }
 
+export interface PlanSummary { plan: string; label: string; plansEnabled: boolean; features: Record<string, boolean>; limits: Array<{ key: string; label: string; limit: number; used: number }> }
+
 export const accountApi = {
+  plan: () => call<PlanSummary>('/me/plan'),
   profile: () => call<Profile>('/me/profile'),
   updateProfile: (b: { name?: string; phone?: string | null; timezone?: string }) => call<Profile>('/me/profile', body('PATCH', b)),
   tour: () => call<TourState>('/me/tour'),

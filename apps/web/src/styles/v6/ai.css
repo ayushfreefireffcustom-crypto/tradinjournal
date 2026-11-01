@@ -320,3 +320,25 @@
   .v6 .ai-hello h2 { font-size: 20px; }
   .v6 .ai-hello p { font-size: 13.5px; }
 }
+/* Context chips and tools (H11) */
+.v6 .ai-extras { max-width: 760px; margin: 0 auto 8px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
+.v6 .ai-chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 12px; }
+.v6 .ai-chip { border: 1px solid var(--line); background: var(--s1); color: var(--mut); border-radius: 999px; padding: 4px 10px; font: inherit; font-size: 12px; cursor: pointer; }
+.v6 .ai-chip.is-on { background: var(--hi); color: var(--inv); border-color: var(--hi); }
+.v6 .ai-chip:disabled { opacity: .5; cursor: default; }
+.v6 .ai-tools { position: relative; margin-left: auto; }
+.v6 .ai-tools-menu { position: absolute; right: 0; bottom: calc(100% + 6px); z-index: 20; width: 280px; background: var(--pop); box-shadow: var(--pop-shadow); border-radius: var(--r-inset); padding: 6px; display: grid; }
+.v6 .ai-tools-menu button { display: grid; gap: 2px; text-align: left; background: none; border: 0; color: var(--tx); font: inherit; padding: 8px 10px; border-radius: var(--r-ctl); cursor: pointer; }
+.v6 .ai-tools-menu button:hover, .v6 .ai-tools-menu button:focus-visible { background: var(--s2); }
+.v6 .ai-tools-menu b { font-weight: 500; font-size: 13px; }
+.v6 .ai-tools-menu span { font-size: 12px; color: var(--mut); }
+.v6 .ai-tool-form { display: grid; gap: 12px; }
+.v6 .ai-tool-form .x-field { display: grid; gap: 6px; }
+.v6 .ai-tool-form .x-field > span { font-size: 12.5px; color: var(--mut); }
+.v6 .ai-tool-row { display: grid; grid-template-columns: 1fr 140px; gap: 10px; }
+.v6 .ai-tool-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.v6 .ai-tool-list button { width: 100%; display: flex; justify-content: space-between; gap: 10px; text-align: left; background: var(--s2); border: 1px solid var(--line); color: var(--tx); font: inherit; font-size: 13px; padding: 9px 12px; border-radius: var(--r-ctl); cursor: pointer; }
+.v6 .ai-tool-list button:hover { border-color: var(--line-2); }
+.v6 .ai-tune { display: grid; gap: 8px; font-size: 13px; }
+.v6 .ai-tune ul { margin: 0; padding-left: 18px; }
+.v6 .ai-fine2 { font-size: 12px; margin: 0; }

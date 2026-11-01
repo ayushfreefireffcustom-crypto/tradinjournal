@@ -5,6 +5,7 @@ import { requireInternalToken } from '../../http/middleware/require-internal-tok
 import { validateBody, validateQuery } from '../../http/middleware/validate.js';
 import {
   aiChatSchema,
+  aiToolTurnSchema,
   aiReportQuerySchema,
   weeklyReviewPrefSchema,
   weeklyReviewRecipientsQuerySchema,
@@ -14,6 +15,8 @@ import {
 import { aiRateLimit } from './ai.rate-limit.js';
 import {
   handleChat,
+  handleContextChips,
+  handleToolTurn,
   handleListConversations,
   handleGetConversation,
   handleDeleteConversation,
@@ -40,6 +43,8 @@ aiRouter.post(
 aiRouter.use(requireAuth, requirePlatformAccess);
 
 aiRouter.post('/chat', aiRateLimit, validateBody(aiChatSchema), handleChat);
+aiRouter.get('/context-chips', handleContextChips);
+aiRouter.post('/tool-turn', validateBody(aiToolTurnSchema), handleToolTurn);
 // Rate-limited alongside chat: a cache miss (or ?force=1) costs a model call.
 aiRouter.get('/report', aiRateLimit, validateQuery(aiReportQuerySchema), handleGetReport);
 aiRouter.get('/conversations', handleListConversations);

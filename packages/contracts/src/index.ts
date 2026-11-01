@@ -48,12 +48,23 @@ export const aiChatSchema = z.object({
     )
     .min(1)
     .max(20),
+  // Context chips (H11): extra account data handed to the coach for this question.
+  context: z.array(z.enum(['positions', 'fills7d', 'strategies', 'follows'])).max(4).optional(),
   // Retry of the last turn: the superseded user→assistant pair is replaced rather
   // than appended, so a retried thread doesn't accumulate duplicate questions.
   regenerate: z.boolean().optional(),
 });
 
 export type AiChatInput = z.infer<typeof aiChatSchema>;
+
+// A tool's result (H11) saved into the coach conversation as one turn.
+export const aiToolTurnSchema = z.object({
+  accountId: z.string().min(1),
+  conversationId: z.string().min(1).optional(),
+  user: z.string().trim().min(1).max(4000),
+  assistant: z.string().trim().min(1).max(12000),
+}).strict();
+export type AiToolTurnInput = z.infer<typeof aiToolTurnSchema>;
 
 // Query for the cached AI performance narrative. `force` bypasses the data-hash
 // cache and rewrites the review; it arrives as a query string, hence the literals.

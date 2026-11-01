@@ -5,6 +5,7 @@
 // token-by-token over SSE, shows a "searching/thinking" state, renders markdown,
 // cites web sources, and keeps every conversation in a switchable thread list.
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { ContextChips, ToolsMenu, type ChipId, type ToolResult } from '@/components/coach/coach-tools';
 import Link from 'next/link';
 import AppShell from '@/components/app-shell';
 import MarkdownMessage from '@/components/coach/markdown-message';
@@ -37,6 +38,8 @@ export default function CoachPage() {
   const [listLoading, setListLoading] = useState(false);
   const [threadLoading, setThreadLoading] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  // H11: data the user hands the coach for the next questions.
+  const [chips, setChips] = useState<ChipId[]>([]);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -159,7 +162,7 @@ export default function CoachPage() {
 
       try {
         const result = await api.ai.chat(
-          { accountId, conversationId, messages: history, ...(regenerate ? { regenerate: true } : {}) },
+          { accountId, conversationId, messages: history, ...(regenerate ? { regenerate: true } : {}), ...(chips.length ? { context: chips } : {}) },
           appendToAssistant,
           {
             onError: msg => setError(msg),
@@ -210,8 +213,20 @@ export default function CoachPage() {
         setPhase(null);
       }
     },
-    [accountId, sending, conversationId, loadThreads],
+    [accountId, sending, conversationId, loadThreads, chips],
   );
+
+  // A tool's result joins the conversation and is saved with it.
+  const addToolResult = useCallback(async (r: ToolResult) => {
+    if (!accountId) return;
+    setMessages(prev => [...prev, { role: 'user', content: r.user }, { role: 'assistant', content: r.assistant }]);
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/ai/tool-turn`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accountId, conversationId, user: r.user, assistant: r.assistant }) });
+      const j = (await res.json()) as { data?: { conversationId: string } };
+      if (j.data?.conversationId) setConversationId(j.data.conversationId);
+      void loadThreads();
+    } catch { /* shown already; saving is best-effort */ }
+  }, [accountId, conversationId, loadThreads]);
 
   const send = useCallback(
     (text: string) => {
@@ -377,6 +392,12 @@ export default function CoachPage() {
           )}
 
           <form onSubmit={e => { e.preventDefault(); send(input); }} className="ai-form" data-testid="coach-form">
+            {accountId && (
+              <div className="ai-extras">
+                <ContextChips selected={chips} onChange={setChips} disabled={sending} />
+                <ToolsMenu disabled={sending} onResult={r => void addToolResult(r)} />
+              </div>
+            )}
             <div className="ai-comp">
               <textarea ref={inputRef} value={input} onChange={e => setInput(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); send(input); } }}

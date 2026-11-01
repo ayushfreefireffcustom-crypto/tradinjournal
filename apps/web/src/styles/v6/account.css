@@ -454,3 +454,10 @@
 .v6 .ac-fb header { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; font-size: 13px; }
 .v6 .ac-fb p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; }
 .v6 .ac-fb footer { font-size: 12px; }
+/* Plan (H15) */
+.v6 .ac-limits { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 8px; }
+.v6 .ac-limits li { display: grid; grid-template-columns: minmax(130px, 1fr) minmax(80px, 2fr) 64px; gap: 12px; align-items: center; font-size: 13px; }
+.v6 .ac-limits i { height: 6px; border-radius: 3px; background: var(--track); overflow: hidden; display: block; }
+.v6 .ac-limits i b { display: block; height: 100%; background: var(--tx); border-radius: 3px; }
+.v6 .ac-limits i b.is-full { background: var(--r); }
+.v6 .ac-limits .m { text-align: right; color: var(--mut); }
