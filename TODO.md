@@ -392,7 +392,7 @@ Legend:
 - [x] D2 Filters: symbol, side, source, dates; search by order/trade ID; CSV export `S` (done 1 Nov: quick filters on open/pending/closed; order log filters, exact ID search, CSV with formula guard)
 - [x] D3 Close position (market) with confirm `S` (done 1 Nov: reduce-only market, asks first for copy-managed positions)
 - [x] D4 Partial close (qty/lots, rounding explained) `S` (done 1 Nov: rounds down to the contract step, never past the position)
-- [ ] D5 Edit SL / TP on an open position (exchange-native orders where supported) `M`
+- [x] D5 Edit SL / TP on an open position (exchange-native orders where supported) `M` (done 1 Nov: TP/SL per position, new-before-old replace, reads ones placed on the exchange too)
 - [ ] D6 Trailing stop (arm at +X, trail distance) `M`
 - [x] D7 Bulk select + close selected `S` (done 1 Nov)
 - [x] D8 Square off all (typed confirm) `S` (done 1 Nov: typed CLOSE ALL)

@@ -1,11 +1,12 @@
 // Trading desk routes (/api/trading). Mounted only when TRADING_ENABLED.
 import { Router, type NextFunction, type Request, type Response, type Router as ExpressRouter } from 'express';
-import { cancelOrderSchema, type CancelOrderInput, closeManySchema, closePositionSchema, deskOrderFiltersSchema, deskOrdersQuerySchema, orderTicketSchema, ticketQuoteQuerySchema, type OrderTicketInput, type CloseManyInput, type ClosePositionInput, type DeskOrderFilters, type DeskOrdersQuery } from '@tradinjournal/contracts';
+import { protectionQuerySchema, setProtectionSchema, type SetProtectionInput, cancelOrderSchema, type CancelOrderInput, closeManySchema, closePositionSchema, deskOrderFiltersSchema, deskOrdersQuerySchema, orderTicketSchema, ticketQuoteQuerySchema, type OrderTicketInput, type CloseManyInput, type ClosePositionInput, type DeskOrderFilters, type DeskOrdersQuery } from '@tradinjournal/contracts';
 import { requireAuth } from '../../http/middleware/require-auth.js';
 import { requirePlatformAccess } from '../../http/middleware/require-platform-access.js';
 import { validateBody, validateQuery } from '../../http/middleware/validate.js';
 import { perUserRateLimit } from '../../lib/rate-limit.js';
 import { placeTicket, previewTicket, ticketQuote } from './ticket.service.js';
+import { getProtection, setProtection } from './protection.service.js';
 import { cancelOrder, closeMany, closePosition, deskOrders, deskOrdersCsv, deskOrdersSummary, deskOverview } from './trading.service.js';
 
 const uid = (res: Response) => res.locals.user.id as string;
@@ -43,6 +44,12 @@ tradingRouter.get('/quote', readLimit, validateQuery(ticketQuoteQuerySchema), wr
 }));
 tradingRouter.post('/orders/preview', readLimit, validateBody(orderTicketSchema), wrap(async (req, res) => res.json({ data: await previewTicket(uid(res), req.body as OrderTicketInput) })));
 tradingRouter.post('/orders', closeLimit, validateBody(orderTicketSchema), wrap(async (req, res) => res.json({ data: await placeTicket(uid(res), req.body as OrderTicketInput) })));
+// Take-profit / stop-loss on an open position (D5).
+tradingRouter.get('/protection', readLimit, validateQuery(protectionQuerySchema), wrap(async (req, res) => {
+  const q = req.query as unknown as { connectionId: string; symbol: string };
+  res.json({ data: await getProtection(uid(res), q.connectionId, q.symbol) });
+}));
+tradingRouter.post('/protection', closeLimit, validateBody(setProtectionSchema), wrap(async (req, res) => res.json({ data: await setProtection(uid(res), req.body as SetProtectionInput) })));
 tradingRouter.post('/orders/cancel', closeLimit, validateBody(cancelOrderSchema), wrap(async (req, res) => res.json({ data: await cancelOrder(uid(res), req.body as CancelOrderInput) })));
 tradingRouter.post('/positions/close-many', closeLimit, validateBody(closeManySchema), wrap(async (req, res) => res.json({ data: await closeMany(uid(res), req.body as CloseManyInput) })));
 tradingRouter.post('/positions/close', closeLimit, validateBody(closePositionSchema), wrap(async (req, res) => res.json({ data: await closePosition(uid(res), req.body as ClosePositionInput) })));

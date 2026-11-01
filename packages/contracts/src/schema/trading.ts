@@ -236,3 +236,40 @@ export const cancelOrderSchema = z.object({
   exchangeOrderId: z.string().regex(/^[A-Za-z0-9_-]{1,64}$/),
 });
 export type CancelOrderInput = z.infer<typeof cancelOrderSchema>;
+
+// ── Position protection: edit take-profit / stop-loss on an open position (D5) ──
+
+export const protectionQuerySchema = z.object({ connectionId: z.string().min(1).max(64), symbol: z.string().trim().min(1).max(40).transform((s) => s.toUpperCase()) });
+
+export const setProtectionSchema = z.object({
+  connectionId: z.string().min(1).max(64),
+  symbol: z.string().trim().min(1).max(40).transform((s) => s.toUpperCase()),
+  /** New trigger price; null removes it; omitted leaves it as it is. */
+  takeProfit: z.number().positive().nullable().optional(),
+  stopLoss: z.number().positive().nullable().optional(),
+}).refine((b) => b.takeProfit !== undefined || b.stopLoss !== undefined, { message: 'Nothing to change' });
+export type SetProtectionInput = z.infer<typeof setProtectionSchema>;
+
+export interface ProtectionOrderDto {
+  exchangeOrderId: string;
+  price: number;
+  qty: number;
+  /** Placed through TRADElogs (vs. directly on the exchange). */
+  ours: boolean;
+}
+
+export interface ProtectionDto {
+  symbol: string;
+  /** Signed contracts. */
+  position: number;
+  avgEntry: number | null;
+  markPrice: number | null;
+  tickSize: number;
+  takeProfit: ProtectionOrderDto[];
+  stopLoss: ProtectionOrderDto[];
+}
+
+export interface SetProtectionResultDto {
+  protection: ProtectionDto;
+  changes: Array<{ kind: 'TP' | 'SL'; action: 'placed' | 'removed' | 'replaced' | 'kept'; ok: boolean; message: string }>;
+}

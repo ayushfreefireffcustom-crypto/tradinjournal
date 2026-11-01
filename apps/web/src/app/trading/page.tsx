@@ -11,7 +11,7 @@ import AppShell from '@/components/app-shell';
 import { useToast } from '@/components/toast';
 import { ErrorCard, Modal, useLoad, usePoll } from '@/components/v6/copy/parts';
 import OrderTicketDialog from '@/components/v6/trading/order-ticket';
-import { ApiError, exchangesApi, price, signedUsd, toneOf, tradingApi, usd, venueName, type CloseManyResult, type DeskClosedTrade, type DeskOrder, type DeskOrderFilters, type DeskOrderStatus, type DeskPendingOrder, type DeskPosition } from '@/lib/copy-api';
+import { ApiError, exchangesApi, price, signedUsd, toneOf, tradingApi, usd, venueName, type CloseManyResult, type Protection, type SetProtectionResult, type DeskClosedTrade, type DeskOrder, type DeskOrderFilters, type DeskOrderStatus, type DeskPendingOrder, type DeskPosition } from '@/lib/copy-api';
 import '@/styles/v6/copy.css';
 
 type Tab = 'open' | 'pending' | 'closed' | 'rejected' | 'log';
@@ -42,6 +42,7 @@ export default function TradingPage() {
   const [quick, setQuick] = useState<Quick>({ symbol: '', side: '' });
   const [ticket, setTicket] = useState(false);
   const [cancelling, setCancelling] = useState<DeskPendingOrder | null>(null);
+  const [protecting, setProtecting] = useState<DeskPosition | null>(null);
 
   const d = desk.data;
   const tabs: Array<{ id: Tab; label: string; n?: number }> = [
@@ -99,7 +100,7 @@ export default function TradingPage() {
           <div className="x-skel cp-skel-table" />
         ) : tab === 'open' ? (
           filtering && !positions.length && d!.positions.length ? <Empty testId="desk-filter-empty" title="Nothing matches" body="No open position matches this filter." /> :
-          <OpenTable rows={positions} onClose={setClosing} onDetail={setDetail} onBulk={(rows, all) => setBulk({ rows, all })} />
+          <OpenTable rows={positions} onClose={setClosing} onDetail={setDetail} onBulk={(rows, all) => setBulk({ rows, all })} onProtect={setProtecting} />
         ) : tab === 'pending' ? (
           <PendingTable rows={pending} onDetail={setDetail} onCancel={setCancelling} />
         ) : tab === 'closed' ? (
@@ -120,6 +121,7 @@ export default function TradingPage() {
         <BulkCloseDialog rows={bulk.rows} all={bulk.all} onClose={() => setBulk(null)}
           onDone={() => { setBulk(null); void desk.reload(); }} />
       )}
+      {protecting && <ProtectionDialog p={protecting} onClose={() => setProtecting(null)} onChanged={() => void desk.reload()} />}
       {cancelling && <CancelDialog o={cancelling} onClose={() => setCancelling(null)} onDone={(msg, ok) => { setCancelling(null); (ok ? toast.success : toast.error)(msg); void desk.reload(); }} />}
       {detail && <DetailSheet d={detail} onClose={() => setDetail(null)} />}
     </AppShell>
@@ -130,7 +132,7 @@ function Empty({ title, body, testId }: { title: string; body: React.ReactNode; 
   return <div className="x-card x-empty" data-testid={testId}><b>{title}</b><p>{body}</p></div>;
 }
 
-function OpenTable({ rows, onClose, onDetail, onBulk }: { rows: DeskPosition[]; onClose: (p: DeskPosition) => void; onDetail: (d: Detail) => void; onBulk: (rows: DeskPosition[], all: boolean) => void }) {
+function OpenTable({ rows, onClose, onDetail, onBulk, onProtect }: { rows: DeskPosition[]; onClose: (p: DeskPosition) => void; onDetail: (d: Detail) => void; onBulk: (rows: DeskPosition[], all: boolean) => void; onProtect: (p: DeskPosition) => void }) {
   const [sel, setSel] = useState<Set<string>>(new Set());
   // Only rows still on screen count as selected (a refresh can close or filter some away).
   const picked = rows.filter(p => sel.has(posKey(p)));
@@ -161,6 +163,7 @@ function OpenTable({ rows, onClose, onDetail, onBulk }: { rows: DeskPosition[]; 
                 <td className="n m">{price(p.liquidationPrice)}</td>
                 <td className="trd-acts">
                   <button className="x-btn x-btn--sm x-btn--ghost" onClick={() => onDetail({ title: `${p.symbol} position`, rows: [['Account', `${acct(p)} (${venueName(p.exchange)})`], ['Side', p.side], ['Size', `${p.size} contracts`], ['Entry', price(p.avgEntry)], ['Mark', price(p.markPrice)], ['Open P&L', signedUsd(p.unrealizedPnl)], ['Liquidation', price(p.liquidationPrice)], ['Copied from', p.copiedFrom?.leaderName ?? null]] })}>Details</button>
+                  <button className="x-btn x-btn--sm x-btn--ghost" onClick={() => onProtect(p)} data-testid={`desk-protect-${p.symbol}`}>TP/SL</button>
                   <button className="x-btn x-btn--sm" onClick={() => onClose(p)} data-testid={`desk-close-${p.symbol}`}>Close</button>
                 </td>
               </tr>
@@ -459,6 +462,69 @@ function CloseDialog({ p, onClose, onDone }: { p: DeskPosition; onClose: () => v
       )}
       {err && <p className="cp-err" role="alert" data-testid="desk-close-error">{err}</p>}
       <p className="x-muted trd-fine">Mark {price(p.markPrice)} · open P&amp;L {signedUsd(p.unrealizedPnl)}</p>
+    </Modal>
+  );
+}
+
+/** Edit the take-profit and stop-loss of one open position (D5). */
+function ProtectionDialog({ p, onClose, onChanged }: { p: DeskPosition; onClose: () => void; onChanged: () => void }) {
+  const cur = useLoad(() => tradingApi.protection(p.connectionId, p.symbol), [p.connectionId, p.symbol]);
+  const [tp, setTp] = useState<string | null>(null);
+  const [sl, setSl] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const [res, setRes] = useState<SetProtectionResult | null>(null);
+  const pr: Protection | null = res?.protection ?? cur.data ?? null;
+  const first = (o: Protection['takeProfit']) => (o[0] ? String(o[0].price) : '');
+  const tpVal = tp ?? (pr ? first(pr.takeProfit) : '');
+  const slVal = sl ?? (pr ? first(pr.stopLoss) : '');
+  const long = p.side === 'LONG';
+  // Only what changed is sent: an empty box removes it, a new number replaces it.
+  const change = (val: string, orders: Protection['takeProfit']): number | null | undefined => {
+    const now = first(orders);
+    if (val.trim() === now && orders.length <= 1) return undefined;
+    return val.trim() === '' ? (orders.length ? null : undefined) : Number(val);
+  };
+  const body = pr ? { takeProfit: change(tpVal, pr.takeProfit), stopLoss: change(slVal, pr.stopLoss) } : { takeProfit: undefined, stopLoss: undefined };
+  const dirty = body.takeProfit !== undefined || body.stopLoss !== undefined;
+  const bad = [body.takeProfit, body.stopLoss].some(v => typeof v === 'number' && !(v > 0));
+  async function save() {
+    setBusy(true); setErr('');
+    try {
+      const r = await tradingApi.setProtection({ connectionId: p.connectionId, symbol: p.symbol, ...body });
+      setRes(r); setTp(null); setSl(null);
+      onChanged();
+    } catch (e) {
+      setErr(e instanceof ApiError ? e.message : 'Could not reach the server. Nothing was changed.');
+    } finally {
+      setBusy(false);
+    }
+  }
+  const lossAt = (v: string) => (pr?.avgEntry && Number(v) > 0 ? (long ? Number(v) - pr.avgEntry : pr.avgEntry - Number(v)) : null);
+  return (
+    <Modal title={`${p.symbol} take-profit / stop-loss`} sub={`${long ? 'Long' : 'Short'} ${p.size} on ${acct(p)}${pr?.markPrice ? ` · mark ${price(pr.markPrice)}` : ''}`} onClose={onClose} busy={busy} testId="desk-protect-dialog"
+      footer={<><button className="x-btn x-btn--ghost" onClick={onClose} disabled={busy}>{res ? 'Done' : 'Cancel'}</button><button className="x-btn x-btn--hi" onClick={() => void save()} disabled={busy || !dirty || bad || !pr} data-testid="desk-protect-save">{busy ? 'Saving…' : 'Save'}</button></>}>
+      {cur.error ? <p className="cp-err">{cur.error}</p> : !pr ? <div className="x-skel cp-skel-table" /> : <>
+        {(['TP', 'SL'] as const).map(k => {
+          const orders = k === 'TP' ? pr.takeProfit : pr.stopLoss;
+          const val = k === 'TP' ? tpVal : slVal;
+          const move = lossAt(val);
+          return (
+            <div className="x-field" key={k}>
+              <label htmlFor={`prot-${k}`}>{k === 'TP' ? 'Take-profit' : 'Stop-loss'} <span className="x-dim">{k === 'TP' ? (long ? 'above the mark' : 'below the mark') : (long ? 'below the mark' : 'above the mark')}</span></label>
+              <input id={`prot-${k}`} className="x-input m" inputMode="decimal" placeholder="None" value={val} onChange={e => (k === 'TP' ? setTp : setSl)(e.target.value.replace(/[^0-9.]/g, ''))} data-testid={`desk-protect-${k}`} />
+              <span className="x-help">
+                {orders.length === 0 ? 'Not set.' : orders.length > 1 ? `${orders.length} orders set; saving replaces them with one.` : `Set at ${price(orders[0]!.price)} for ${orders[0]!.qty}${orders[0]!.ours ? '' : ' (placed on the exchange directly)'}.`}
+                {move != null && pr.avgEntry ? ` That's ${move >= 0 ? '+' : ''}${price(move)} from your entry.` : ''}
+                {' '}Leave empty to remove it.
+              </span>
+            </div>
+          );
+        })}
+        <p className="cp-fine">Both cover the whole position as closing market orders. A new one is placed before the old one is cancelled, so the position is never left unprotected.</p>
+        {res && <ul className="tk-msgs" data-testid="desk-protect-result">{res.changes.map(c => <li key={c.kind} className={c.ok ? 'pos' : 'neg'}>{c.message}</li>)}</ul>}
+        {err && <p className="cp-err" role="alert" data-testid="desk-protect-error">{err}</p>}
+      </>}
     </Modal>
   );
 }
