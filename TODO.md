@@ -476,44 +476,44 @@ Legend:
 ---
 
 # PART F — Strategy builder, backtest, deploy (Phase 4)
-- [ ] F1 Strategy spec v2 (typed JSON schema) that supersedes Trader Master's 5 `StrategyRuleKind`s; migrate the existing `TraderStrategy` rows `M`
-- [ ] F2 Market zone `M`:
+- [x] F1 Strategy spec v2 (typed JSON schema) that supersedes Trader Master's 5 `StrategyRuleKind`s; migrate the existing `TraderStrategy` rows `M`
+- [x] F2 Market zone `M` (instrument: perpetuals only for now; options wait for Part G):
   - instrument (perps/options)
   - exchange
   - multi-coin with per-coin overrides
   - direction
   - margin mode
   - leverage with an over-leverage check
-- [ ] F3 Session: interval 1m–1D, 24/7 or timezone + entry windows (incl. London/NY/Tokyo forex sessions); exits always run `S`
-- [ ] F4 Signal zone: entry trigger (indicator/time), conditions `[ind(params)] [op] [value|ind|price]`, "N bars ago", per-condition timeframe, groups ALL/ANY, short mirrored or separate, exit on signal / on reversal `L → split`
-- [ ] F5 Risk zone `M`:
+- [x] F3 Session: interval 1m–1D, 24/7 or timezone + entry windows (incl. London/NY/Tokyo forex sessions); exits always run `S`
+- [x] F4 Signal zone: entry trigger (indicator/time), conditions `[ind(params)] [op] [value|ind|price]`, "N bars ago", per-condition timeframe, groups ALL/ANY, short mirrored or separate, exit on signal / on reversal `L → split`
+- [x] F5 Risk zone `M`:
   - TP % / pts / price / R:R
   - SL % / ATR / pts / price
   - trailing stop
   - time stop
   - partial exits with break-even move
   - live safety (a stop is required for live)
-- [ ] F6 Sizing: risk % from stop, % equity, lots, qty, ATR, Kelly fraction; shows estimated margin and max loss `M`
-- [ ] F7 Advanced: limit-entry offset + expiry bars, pullback entry, re-entry rules, max trades/day, OCO `M`
-- [ ] F8 Limits: daily loss cap → auto-pause; N consecutive losses → kill switch `S`
-- [ ] F9 **Plain-English read-back**, live `S`
-- [ ] F10 Validation split: "blocks deploy" vs "worth knowing" `S`
-- [ ] F11 Three layouts: Cockpit (all at once), Flow (step by step), Chart (draw on chart, drag thresholds) `L → split per layout`
-- [ ] F12 Backtest engine v2 `L → split`:
+- [x] F6 Sizing: risk % from stop, % equity, lots, qty, ATR, Kelly fraction; shows estimated margin and max loss `M`
+- [x] F7 Advanced (OCO: stop and target cancel each other by design): limit-entry offset + expiry bars, pullback entry, re-entry rules, max trades/day, OCO `M`
+- [x] F8 Limits: daily loss cap → auto-pause; N consecutive losses → kill switch `S`
+- [x] F9 **Plain-English read-back**, live `S`
+- [x] F10 Validation split: "blocks deploy" vs "worth knowing" `S`
+- [ ] F11 Three layouts (Cockpit and Flow done 1 Nov; Chart layout to do): Cockpit (all at once), Flow (step by step), Chart (draw on chart, drag thresholds) `L → split per layout`
+- [x] F12 Backtest engine v2 `L → split`:
   - multi-symbol
   - fee models per venue
   - slippage bps
   - deterministic cache
   - metrics: return, CAGR, win rate, PF, max DD, Sharpe, Sortino, trades, avg slippage, fees
-- [ ] F13 **Auto-backtest on edit (debounced) + pinned baseline comparison** `M`
-- [ ] F14 Backtest page: saved strategy, dates, capital, fee model, slippage; run history with full stats `M`
+- [x] F13 **Auto-backtest on edit (debounced) + pinned baseline comparison** `M`
+- [x] F14 Backtest page: saved strategy, dates, capital, fee model, slippage; run history with full stats `M`
 - [ ] F15 Paper deployments (generalise `TraderPaperPosition` / `/trader/paper/tick`) with live P&L `M`
 - [ ] F16 Live deployments through the engine: start/pause/resume/stop/settle/emergency close; honest state copy `L → split`
 - [ ] F17 Deployment list: tabs All/Live/Paused/Errored/Stopped/Archived, sparklines, inline trades, size multiplier `M`
 - [ ] F18 Strategy activity feed (each evaluation, why it did or didn't enter) + last evaluation `M`
-- [ ] F19 Strategy version history; rule edits don't touch open trades `S`
-- [ ] F20 My strategies page: stat strip (closed P&L 30D, open P&L, trades, best, worst, AI strategies), filters (All/Live/Paused/Draft/AI/Marketplace/Archived), sort `M`
-- [ ] F21 **AI strategy generator** (text + symbol + TF → spec → quick backtest → open in builder) on Claude; live, not "coming soon" `M`
+- [x] F19 Strategy version history; rule edits don't touch open trades `S`
+- [x] F20 My strategies page (P&L figures wait for deployments): stat strip (closed P&L 30D, open P&L, trades, best, worst, AI strategies), filters (All/Live/Paused/Draft/AI/Marketplace/Archived), sort `M`
+- [x] F21 **AI strategy generator** (text + symbol + TF → spec → quick backtest → open in builder) on Claude; live, not "coming soon" `M`
 - [ ] F22 Paper/Live toggle on the dashboard and reports `S`
 - [ ] F23 Reports & P&L page: KPIs, equity, drawdown, distribution, per-pair attribution; **PDF export** `M`
 
