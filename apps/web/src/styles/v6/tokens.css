@@ -25,10 +25,14 @@
   --inv: #0A0A0A;         /* text on --hi */
   --tip: #262626;         /* chart tooltip (dark in both themes) */
   /* Categorical palette for charts with several series (compare, option legs,
-     screener columns): lines and their legend keys only, never UI state, text
-     or buttons. Red is left out because it means loss. */
-  --series-1: #08C465; --series-2: #5B8DEF; --series-3: #F5A524;
-  --series-4: #C26BF0; --series-5: #2EC4C4; --series-6: #D8D8D8;
+     screener columns, allocation): marks and their legend keys only, never UI
+     state, text or buttons. Green and red are left out (they mean profit and
+     loss). Checked with the dataviz validator against --s1 in each theme:
+     lightness band, chroma, adjacent CVD ΔE ≥ 8.4 and normal-vision ΔE ≥ 19.
+     --series-other is the neutral for "Others". In a ring (donut) don't put
+     slot 6 next to slot 1: those two are too close; use five + Others. */
+  --series-1: #3987E5; --series-2: #D95926; --series-3: #199E70;
+  --series-4: #C98500; --series-5: #D55181; --series-6: #9085E9; --series-other: #5A5A5E;
   --g-tip: #2BD47E;       /* green and red tints that read on --tip */
   --r-tip: #FF6A62;
   --grid: rgba(255, 255, 255, .06);
@@ -83,6 +87,8 @@ html[data-theme=light] .v6 {
   --pop: #FFFFFF;
   --pop-shadow: 0 18px 40px -14px rgba(0, 0, 0, .2), 0 0 0 1px rgba(0, 0, 0, .06);
   --logo-fg: #111113;
+  --series-1: #2A78D6; --series-2: #EB6834; --series-3: #1BAF7A;
+  --series-4: #EDA100; --series-5: #E87BA4; --series-6: #6250D6; --series-other: #C4C4CA;
   color-scheme: light;
 }
 

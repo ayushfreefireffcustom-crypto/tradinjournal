@@ -11,6 +11,7 @@ import { SideChip } from '@/components/v6/desk';
 import { ACard, Empty, Facts, MONO, Tip, ticks, useSize } from './kit';
 import InfoTip from '@/components/v6/ui/info-tip';
 import { METRIC_HELP } from '@/lib/metric-help';
+import { allocationSlices } from '@/lib/allocation';
 
 const tone = (v: number) => (v > 0 ? 'pos' : v < 0 ? 'neg' : '');
 /** "+$1.2k" / "−$340" / "$0". */
@@ -415,6 +416,55 @@ export function SymbolTable({ rows }: { rows: AccountStats['bySymbol'] }) {
               </tr>
             ))}</tbody>
           </table>
+        </div>
+      )}
+    </ACard>
+  );
+}
+
+// ─── allocation (QW.7) ──────────────────────────────────────────────────────
+
+export function Allocation({ rows }: { rows: AccountStats['bySymbol'] }) {
+  const { total, slices } = useMemo(() => allocationSlices(rows), [rows]);
+  const [hov, setHov] = useState<string | null>(null);
+  const R = 58, SW = 18, C = 2 * Math.PI * R;
+  // A 2px gap in the card colour between slices, so neighbours never touch.
+  const gap = slices.length > 1 ? 2 : 0;
+  let at = 0;
+  const arcs = slices.map(x => {
+    const len = (x.trades / total) * C;
+    const a = { ...x, dash: `${Math.max(0, len - gap)} ${C}`, offset: -at };
+    at += len;
+    return a;
+  });
+  const h = slices.find(x => x.key === hov) ?? null;
+  return (
+    <ACard title="Allocation" sub="share of closed trades" testId="allocation-card">
+      {!total ? <Empty h={200}>No closed trades in this range.</Empty> : (
+        <div className="an-alloc">
+          <div className="an-alloc-ring">
+            <svg viewBox="0 0 140 140" role="img" aria-label={`Trades by symbol: ${slices.map(x => `${x.label} ${Math.round((x.trades / total) * 100)}%`).join(', ')}`}>
+              <circle cx="70" cy="70" r={R} fill="none" stroke="var(--track)" strokeWidth={SW} />
+              {arcs.map(a => (
+                <circle key={a.key} cx="70" cy="70" r={R} fill="none" stroke={a.color} strokeWidth={hov === a.key ? SW + 4 : SW} strokeDasharray={a.dash} strokeDashoffset={a.offset}
+                  transform="rotate(-90 70 70)" opacity={hov && hov !== a.key ? 0.45 : 1} onMouseEnter={() => setHov(a.key)} onMouseLeave={() => setHov(null)} style={{ transition: 'opacity .15s, stroke-width .15s' }} />
+              ))}
+            </svg>
+            <div className="an-alloc-c">
+              {h ? (<><b>{h.label}</b><span className="m">{Math.round((h.trades / total) * 100)}% · {plural(h.trades, 'trade')}</span><span className={`m mny ${tone(h.netPnl)}`}>{fmtUsd(h.netPnl)}</span></>)
+                : (<><b className="m">{total}</b><span>closed trades</span></>)}
+            </div>
+          </div>
+          <ul className="an-alloc-l">
+            {slices.map(x => (
+              <li key={x.key} onMouseEnter={() => setHov(x.key)} onMouseLeave={() => setHov(null)} className={hov === x.key ? 'on' : ''}>
+                <i style={{ background: x.color }} aria-hidden />
+                <span className="an-alloc-n">{x.label}</span>
+                <span className="m">{Math.round((x.trades / total) * 100)}%</span>
+                <span className={`m mny ${tone(x.netPnl)}`}>{fmtUsd(x.netPnl, 0)}</span>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
     </ACard>

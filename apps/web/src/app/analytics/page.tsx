@@ -17,18 +17,18 @@ import { useToast } from '@/components/toast';
 import { SortableCard } from '@/components/v6/analytics/kit';
 import YearHeatmap from '@/components/v6/analytics/year-heatmap';
 import {
-  KpiStrip, Strike, Dist, Equity, Sessions, Rolling, SymbolTable, GroupBars, Hours, Scatter, DayBars, Direction, type Group,
+  KpiStrip, Strike, Dist, Equity, Sessions, Rolling, SymbolTable, Allocation, GroupBars, Hours, Scatter, DayBars, Direction, type Group,
 } from '@/components/v6/analytics/cards';
 
 // Rearrangeable analytics blocks. Order is persisted per-account in localStorage.
 // Spans tile the 12-col grid in the default order; on reorder CSS grid
 // auto-flow keeps rows filled left-to-right.
-const BLOCK_IDS = ['donut', 'pnldist', 'heatmap', 'timeofday', 'equity', 'rolling', 'scatter', 'yearheat', 'bysymbol', 'tag', 'emotion', 'byday', 'direction'] as const;
+const BLOCK_IDS = ['donut', 'pnldist', 'heatmap', 'timeofday', 'equity', 'rolling', 'scatter', 'yearheat', 'bysymbol', 'allocation', 'tag', 'emotion', 'byday', 'direction'] as const;
 type BlockId = (typeof BLOCK_IDS)[number];
-const DEFAULT_ORDER: BlockId[] = ['equity', 'donut', 'pnldist', 'rolling', 'heatmap', 'bysymbol', 'direction', 'timeofday', 'byday', 'emotion', 'tag', 'scatter', 'yearheat'];
+const DEFAULT_ORDER: BlockId[] = ['equity', 'donut', 'pnldist', 'rolling', 'heatmap', 'allocation', 'bysymbol', 'timeofday', 'direction', 'byday', 'emotion', 'tag', 'scatter', 'yearheat'];
 const SPANS: Record<BlockId, string> = {
   equity: 'an-s12', donut: 'an-s5', pnldist: 'an-s7', rolling: 'an-s7', heatmap: 'an-s5',
-  bysymbol: 'an-s7', direction: 'an-s5', timeofday: 'an-s7', byday: 'an-s5', emotion: 'an-s6', tag: 'an-s6', scatter: 'an-s12', yearheat: 'an-s12',
+  allocation: 'an-s5', bysymbol: 'an-s7', timeofday: 'an-s12', direction: 'an-s6', byday: 'an-s6', emotion: 'an-s6', tag: 'an-s6', scatter: 'an-s12', yearheat: 'an-s12',
 };
 const orderKey = (accountId: string) => `tradelogs.analytics.order.${accountId}`;
 function sameOrder(a: BlockId[], b: BlockId[]) { return a.length === b.length && a.every((x, i) => x === b[i]); }
@@ -168,6 +168,7 @@ export default function AnalyticsPage() {
       case 'heatmap': return <Sessions trades={rangedTrades} />;
       case 'rolling': return <Rolling trades={rangedTrades} />;
       case 'bysymbol': return <SymbolTable rows={view.bySymbol} />;
+      case 'allocation': return <Allocation rows={view.bySymbol} />;
       case 'emotion': return <GroupBars testId="perf-by-emotion" title="Psychology edge" sub="net P&L by emotion" rows={emotionStats} order={EMOTION_ORDER} empty="Log how you felt on a trade in Journal › Trade review to see which states pay." />;
       case 'tag': return <GroupBars testId="perf-by-tag" title="Setup edge" sub="net P&L by tag" rows={tagStats.slice(0, 8)} empty="Tag your setups in the Journal to see which ones carry your edge." />;
       case 'timeofday': return <Hours trades={rangedTrades} />;
