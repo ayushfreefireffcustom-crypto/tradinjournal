@@ -7,6 +7,7 @@ import { Redis } from 'ioredis';
 import { env } from '@tradinjournal/config';
 import { logger } from '@tradinjournal/logger';
 import { AiRateLimitError } from '../../http/errors.js';
+import { markRateLimit } from '../../lib/rate-limit.js';
 
 const WINDOW_SECONDS = 60;
 const MAX_REQUESTS = 20; // per user, per window
@@ -74,3 +75,4 @@ export async function aiRateLimit(_req: Request, res: Response, next: NextFuncti
     next();
   }
 }
+markRateLimit(aiRateLimit, 'ai');

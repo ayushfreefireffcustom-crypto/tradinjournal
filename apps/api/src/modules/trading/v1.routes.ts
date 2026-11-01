@@ -9,6 +9,7 @@ import { AppError, ForbiddenError, UnauthorizedError } from '../../http/errors.j
 import { requirePlatformAccess } from '../../http/middleware/require-platform-access.js';
 import { validateBody, validateQuery } from '../../http/middleware/validate.js';
 import { cacheIncr } from '../../lib/cache.js';
+import { markRateLimit } from '../../lib/rate-limit.js';
 import { authenticateApiKey } from './api-keys.service.js';
 import { placeTicket } from './ticket.service.js';
 import { cancelOrder, closePosition, deskOrders, deskOverview } from './trading.service.js';
@@ -34,6 +35,8 @@ async function requireApiKey(req: Request, res: Response, next: NextFunction): P
     next(err);
   }
 }
+
+markRateLimit(requireApiKey, 'apikey');
 
 const needTrade = (_req: Request, res: Response, next: NextFunction) =>
   (res.locals.apiKey as { scope: string }).scope === 'trade' ? next() : next(new ForbiddenError('This key is read-only. Create a key with trade access to place or close orders.'));

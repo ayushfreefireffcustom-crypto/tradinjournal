@@ -244,7 +244,7 @@ describe.skipIf(!local)('access-control matrix', () => {
     });
     vi.doMock('../lib/email/client.js', () => ({ sendEmail: async () => undefined }));
     // Per-user limits are checked on their own (Z2); here they'd only cut the probes short.
-    vi.doMock('../lib/rate-limit.js', () => ({ perUserRateLimit: () => (_req: unknown, _res: unknown, next: () => void) => next() }));
+    vi.doMock('../lib/rate-limit.js', async (orig) => ({ ...(await orig<typeof import('../lib/rate-limit.js')>()), perUserRateLimit: () => (_req: unknown, _res: unknown, next: () => void) => next() }));
     // A stand-in model: any call means a probe got past an ownership check.
     vi.doMock('../lib/ai/provider.js', async (orig) => {
       const real = await orig<typeof import('../lib/ai/provider.js')>();

@@ -6,8 +6,13 @@ import { logger } from '@tradinjournal/logger';
 import { AppError } from '../http/errors.js';
 import { cacheIncr } from './cache.js';
 
+/** Tags a middleware as a rate limit so the route audit (Z2) can see which routes have one. */
+export function markRateLimit<T extends object>(handler: T, name: string): T {
+  return Object.assign(handler, { rateLimit: name });
+}
+
 export function perUserRateLimit(opts: { name: string; max: number; windowSeconds: number; message: string }): RequestHandler {
-  return async (_req: Request, res: Response, next: NextFunction) => {
+  return markRateLimit(async (_req: Request, res: Response, next: NextFunction) => {
     const userId = res.locals.user?.id as string | undefined;
     if (!userId) return next();
     let count: number;
@@ -22,5 +27,5 @@ export function perUserRateLimit(opts: { name: string; max: number; windowSecond
       return next(new AppError(429, 'RATE_LIMITED', opts.message));
     }
     next();
-  };
+  }, opts.name);
 }

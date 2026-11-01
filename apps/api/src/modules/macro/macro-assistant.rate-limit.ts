@@ -4,6 +4,7 @@ import { Redis } from 'ioredis';
 import { env } from '@tradinjournal/config';
 import { logger } from '@tradinjournal/logger';
 import { AiRateLimitError } from '../../http/errors.js';
+import { markRateLimit } from '../../lib/rate-limit.js';
 
 const WINDOW_SECONDS = 60;
 const MAX_REQUESTS = 10;
@@ -62,3 +63,4 @@ export async function macroAssistantRateLimit(
     next();
   }
 }
+markRateLimit(macroAssistantRateLimit, 'macro-assistant');
