@@ -16,6 +16,7 @@ const money = (v: number) => fmtUsd(v, { signed: true });
 const moneyShort = (v: number) => fmtUsdCompact(v, { signed: true });
 import { notesByTrade } from '@/lib/desk';
 import { TradeLog, type SortKey } from '@/components/v6/trades/trade-log';
+import { EXIT_LABEL, exitReasonOf, type ExitReason } from '@/lib/exit-reason';
 
 type Filter = 'ALL' | 'LONG' | 'SHORT' | 'WIN' | 'LOSS';
 const FILTERS: [Filter, string][] = [['ALL', 'All'], ['LONG', 'Long'], ['SHORT', 'Short'], ['WIN', 'Win'], ['LOSS', 'Loss']];
@@ -36,6 +37,8 @@ export default function TradesPage() {
   const [tab, setTab] = useState<'trades' | 'deals'>('trades');
   const [filter, setFilter] = useState<Filter>('ALL');
   const [symbolFilter, setSymbolFilter] = useState('ALL');
+  // How the trade ended (QW.10), from the closing deal's MT5 comment.
+  const [exitFilter, setExitFilter] = useState<'ALL' | ExitReason>('ALL');
   const [search, setSearch] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('open');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
@@ -64,7 +67,7 @@ export default function TradesPage() {
     if (selected) loadTrades(selected);
     else if (!accountsLoading) setLoading(false); // zero brokers: don’t load forever
   }, [selected, accountsLoading, loadTrades]);
-  useEffect(() => setShown(PAGE), [filter, symbolFilter, search, sortKey, sortDir, tab]);
+  useEffect(() => setShown(PAGE), [filter, symbolFilter, exitFilter, search, sortKey, sortDir, tab]);
 
   const symbols = useMemo(() => Array.from(new Set(trades.map(t => t.symbol))).sort(), [trades]);
   const counts = useMemo(() => ({
@@ -83,6 +86,7 @@ export default function TradesPage() {
       if (filter === 'WIN' && t.netPnl <= 0) return false;
       if (filter === 'LOSS' && t.netPnl > 0) return false;
       if (symbolFilter !== 'ALL' && t.symbol !== symbolFilter) return false;
+      if (exitFilter !== 'ALL' && exitReasonOf(t) !== exitFilter) return false;
       if (q && !t.symbol.toLowerCase().includes(q) && !(t.tags ?? []).some(g => g.toLowerCase().includes(q))) return false;
       return true;
     });
@@ -95,7 +99,7 @@ export default function TradesPage() {
       const c = typeof va === 'string' ? va.localeCompare(vb as string) : (va as number) - (vb as number);
       return sortDir === 'asc' ? c : -c;
     });
-  }, [trades, filter, symbolFilter, search, sortKey, sortDir]);
+  }, [trades, filter, symbolFilter, exitFilter, search, sortKey, sortDir]);
   const filteredPnl = useMemo(() => sorted.reduce((s, t) => s + t.netPnl, 0), [sorted]);
   // Live summary of whatever is currently filtered — answers "how did this slice do?"
   const slice = useMemo(() => {
@@ -137,8 +141,8 @@ export default function TradesPage() {
 
   const open = (t: Trade) => selected && router.push(`/trades/${t.positionId}?account=${encodeURIComponent(selected.id)}`);
   const exportDisabled = (tab === 'deals' ? deals.length : sorted.length) === 0;
-  const filtersOn = filter !== 'ALL' || symbolFilter !== 'ALL' || search.trim() !== '';
-  const clearFilters = () => { setFilter('ALL'); setSymbolFilter('ALL'); setSearch(''); };
+  const filtersOn = filter !== 'ALL' || symbolFilter !== 'ALL' || exitFilter !== 'ALL' || search.trim() !== '';
+  const clearFilters = () => { setFilter('ALL'); setSymbolFilter('ALL'); setExitFilter('ALL'); setSearch(''); };
   const notes = useMemo(() => notesByTrade(journal), [journal]);
   const pnlTone = (v: number) => (v > 0 ? 'pos' : v < 0 ? 'neg' : '');
   const noData = (loading || !!error) && !trades.length;
@@ -205,6 +209,10 @@ export default function TradesPage() {
                 <select className="x-select tr-sel" value={symbolFilter} onChange={e => setSymbolFilter(e.target.value)} data-testid="symbol-filter" aria-label="Symbol">
                   <option value="ALL">All symbols</option>
                   {symbols.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+                <select className="x-select tr-sel" value={exitFilter} onChange={e => setExitFilter(e.target.value as 'ALL' | ExitReason)} data-testid="exit-filter" aria-label="How it closed">
+                  <option value="ALL">Any exit</option>
+                  {(Object.keys(EXIT_LABEL) as ExitReason[]).map(r => <option key={r} value={r}>{EXIT_LABEL[r]}</option>)}
                 </select>
                 <label className="x-search tr-search">
                   <ISearch size={15} />

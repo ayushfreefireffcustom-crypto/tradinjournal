@@ -176,3 +176,9 @@
   .v6 .tr-back span { display: none; }
 }
 .v6 .tr-nav button { flex: 1 1 0; justify-content: center; padding: 0 12px; }
+
+/* How the trade closed (QW.10): a small sans marker after the exit price. */
+.v6 .tr-exit { margin-left: 6px; padding: 1px 5px; border-radius: 5px; background: var(--s3); color: var(--mut); font: 500 10.5px/1.4 var(--sans); vertical-align: 1px; }
+.v6 .tr-exit--tp { color: var(--g); background: var(--g-soft); }
+.v6 .tr-exit--sl, .v6 .tr-exit--stopout { color: var(--r); background: var(--r-soft); }
+

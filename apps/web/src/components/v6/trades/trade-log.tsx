@@ -10,6 +10,7 @@ import { fmtHold, fmtUsd } from '@/lib/dashboard-v6';
 import { dayLabel, fmtPrice, marketKind, tickerMark, type TradeNote } from '@/lib/desk';
 import { SideChip } from '@/components/v6/desk';
 import '@/styles/v6/trades.css';
+import { EXIT_LABEL, EXIT_SHORT, exitReasonOf } from '@/lib/exit-reason';
 
 export type SortKey = 'open' | 'net' | 'held' | 'symbol';
 
@@ -111,7 +112,11 @@ export function TradeLog({ rows, shown, sortKey, sortDir, onSort, notes, balance
   const pl = (t: Trade) => (
     <span className="tr-pl"><b className={`m ${plTone(t.netPnl)}`}>{fmtUsd(t.netPnl)}</b>{pctOfBalance(t.netPnl, balance) && <small className="m">{pctOfBalance(t.netPnl, balance)}</small>}</span>
   );
-  const exit = (t: Trade) => (t.status === 'OPEN' ? 'open' : fmtPrice(t.exitPrice, t.entryPrice));
+  const exit = (t: Trade) => {
+    if (t.status === 'OPEN') return 'open';
+    const r = exitReasonOf(t);
+    return <>{fmtPrice(t.exitPrice, t.entryPrice)}{r && EXIT_SHORT[r] && <span className={`tr-exit tr-exit--${r}`} title={EXIT_LABEL[r]}>{EXIT_SHORT[r]}</span>}</>;
+  };
   const keyOpen = (t: Trade) => (e: React.KeyboardEvent) => { if (e.key === 'Enter') onOpen(t); };
 
   return (

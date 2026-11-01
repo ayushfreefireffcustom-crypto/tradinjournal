@@ -188,9 +188,12 @@ function buildTrades(seed: number, count: number, opts: { winBias?: number; star
       swap: swap.toFixed(2),
       fee: '0.00',
       dealTime: closeTime.toISOString(),
-      comment: '',
+      // About half the closes hit a bracket, as MT5 marks them; a rare loser is a stop-out.
+      comment: i % 2 === 0 ? (grossPnl > 0 ? `[tp ${exitPrice.toFixed(5)}]` : i % 13 === 0 ? 'so: 48.2%/120.00/57.83' : `[sl ${exitPrice.toFixed(5)}]`) : '',
     };
     deals.push(dealOpen, dealClose);
+    // Each position carries its own deals, as the real API's trades do.
+    trades[trades.length - 1]!.deals = [dealOpen, dealClose];
   }
   return { trades, deals };
 }
