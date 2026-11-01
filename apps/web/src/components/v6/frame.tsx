@@ -11,6 +11,8 @@ import NotificationBell from '@/components/notification-bell';
 import Logo from '@/components/logo';
 import { PARTNERS_ENABLED, TRADING_ENABLED } from '@/lib/features';
 import { useTheme } from './use-theme';
+import { useExchangeConnections } from '@/lib/use-exchange-connections';
+import { venueName, type ExchangeConnection } from '@/lib/copy-api';
 import {
   IAdmin, IAnalytics, IBrokers, ICalendar, ICharts, ICheck, IChevronDown, IClose, ICoach, IDashboard, IJournal, ILink, IMacro, IMarkets,
   IPartner, IPlus, IReplay, ISearch, ISettings, ISignalX, ISync, ITradeLog, IUsers, IMirror, IExchange, ILeader,
@@ -240,6 +242,30 @@ function AccountPill({ accounts, selected, onSelectAccount, onConnectClick, sync
   const [open, setOpen] = useState(false);
   const close = useCallback(() => setOpen(false), []);
   const ref = useDismiss(open, close);
+  const exchanges = useExchangeConnections();
+  if (!selected && exchanges.length) {
+    // Exchange-only user: the pill shows their first exchange account instead of a Connect MT5 call.
+    const x = exchanges[0]!;
+    return (
+      <div className="f-popwrap" ref={ref}>
+        <button className="x-btn f-acct" onClick={() => setOpen(o => !o)} aria-haspopup="menu" aria-expanded={open} data-testid="account-switcher">
+          <span className={`x-dot ${x.status === 'ACTIVE' ? '' : 'x-dot--r'}`} aria-hidden />
+          <b>{x.label}</b>
+          <span className="m f-acct-id">·{x.keyLast4}</span>
+          <IChevronDown size={14} />
+        </button>
+        {open && (
+          <div className="x-pop f-pop" role="menu">
+            <ExchangeGroup rows={exchanges} onPick={close} />
+            <hr />
+            {onConnectClick
+              ? <button onClick={() => { setOpen(false); onConnectClick(); }} data-testid="header-add-broker"><IPlus size={16} /><span className="f-pop-main"><b>Connect MT5</b><small>Journal your MT5 trades too</small></span></button>
+              : <Link href="/brokers" onClick={() => setOpen(false)}><IPlus size={16} /><span className="f-pop-main"><b>Connect MT5</b><small>Journal your MT5 trades too</small></span></Link>}
+          </div>
+        )}
+      </div>
+    );
+  }
   if (!selected) {
     return onConnectClick
       ? <button className="x-btn x-btn--hi f-acct-cta" onClick={onConnectClick} data-testid="account-connect"><IPlus size={15} />Connect MT5</button>
@@ -257,7 +283,7 @@ function AccountPill({ accounts, selected, onSelectAccount, onConnectClick, sync
       </button>
       {open && (
         <div className="x-pop f-pop" role="menu">
-          <div className="f-pop-lbl">Accounts</div>
+          <div className="f-pop-lbl">{exchanges.length ? 'MT5 accounts' : 'Accounts'}</div>
           {accounts.map(a => (
             <button key={a.id} role="menuitemradio" aria-checked={a.id === selected.id} data-testid={`account-tab-${a.mt5Login}`}
               onClick={() => { onSelectAccount?.(a); setOpen(false); }}>
@@ -265,6 +291,7 @@ function AccountPill({ accounts, selected, onSelectAccount, onConnectClick, sync
               {a.id === selected.id && <span className="f-pop-ok"><ICheck size={16} /></span>}
             </button>
           ))}
+          {exchanges.length > 0 && <><hr /><ExchangeGroup rows={exchanges} onPick={close} /></>}
           <hr />
           {!ok && <div className="f-pop-note">MT5 status: {selected.status.toLowerCase()}. Check the password in Brokers.</div>}
           {syncedLabel && ok && <div className="f-pop-note">{syncedLabel}</div>}
@@ -274,6 +301,25 @@ function AccountPill({ accounts, selected, onSelectAccount, onConnectClick, sync
         </div>
       )}
     </div>
+  );
+}
+
+/** Exchange connections in the switcher. They power copy trading, not the journal, so they link out instead of switching. */
+function ExchangeGroup({ rows, onPick }: { rows: ExchangeConnection[]; onPick: () => void }) {
+  return (
+    <>
+      <div className="f-pop-lbl">Exchange accounts</div>
+      {rows.map(x => (
+        <Link key={x.id} href={x.isLeader ? '/copy/lead' : x.activeFollows ? '/copy/following' : '/exchanges'} role="menuitem" onClick={onPick} data-testid={`account-exchange-${x.id}`}>
+          <IExchange size={16} />
+          <span className="f-pop-main">
+            <b>{x.label}</b>
+            <small className="m">{venueName(x.exchange)}{x.environment === 'TESTNET' ? ' testnet' : ''} · key …{x.keyLast4}{x.isLeader ? ' · leader' : x.activeFollows ? ` · copying ${x.activeFollows}` : ''}</small>
+          </span>
+          {x.status !== 'ACTIVE' && <span className="x-tag x-tag--r">Key error</span>}
+        </Link>
+      ))}
+    </>
   );
 }
 

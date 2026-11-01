@@ -11,6 +11,7 @@ import { ErrorCard, Modal, ago, useLoad } from '@/components/v6/copy/parts';
 import { ICheck, ICopy, IExchange, ILock, IPlus, ISync } from '@/components/v3/icons';
 import { TRADING_ENABLED } from '@/lib/features';
 import { exchangesApi, usd, venueName, type ExchangeCatalogItem, type ExchangeConnection, type ExchangeEnvironment } from '@/lib/copy-api';
+import { invalidateExchangeConnections } from '@/lib/use-exchange-connections';
 
 export default function ExchangesPage() {
   const toast = useToast();
@@ -169,7 +170,9 @@ function ConnectDialog({ item, onClose, onDone }: { item: ExchangeCatalogItem; o
     setBusy(true);
     setError(null);
     try {
-      onDone(await exchangesApi.connect({ exchange: item.id as 'DELTA_INDIA', environment: env, label: label.trim() || undefined, apiKey: apiKey.trim(), apiSecret: apiSecret.trim() }));
+      const conn = await exchangesApi.connect({ exchange: item.id as 'DELTA_INDIA', environment: env, label: label.trim() || undefined, apiKey: apiKey.trim(), apiSecret: apiSecret.trim() });
+      invalidateExchangeConnections();
+      onDone(conn);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not connect');
     } finally {
@@ -271,7 +274,7 @@ function RemoveDialog({ c, onClose, onDone }: { c: ExchangeConnection; onClose: 
         <form className="cp-form" onSubmit={async e => {
           e.preventDefault();
           setBusy(true);
-          try { await exchangesApi.remove(c.id); onDone(); } catch (err) { setError(err instanceof Error ? err.message : 'Could not remove'); } finally { setBusy(false); }
+          try { await exchangesApi.remove(c.id); invalidateExchangeConnections(); onDone(); } catch (err) { setError(err instanceof Error ? err.message : 'Could not remove'); } finally { setBusy(false); }
         }}>
           <div className="x-field">
             <label htmlFor="ex-rm">Type <b>remove</b> to confirm</label>

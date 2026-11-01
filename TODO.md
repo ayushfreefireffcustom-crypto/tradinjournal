@@ -282,7 +282,7 @@ Legend:
   - custody notice
 - [x] B5.3 Connection card: health dot, equity, last checked, Test / Rename / Remove (typed confirm) `S`
 - [x] B5.4 Empty state with the A5.3 art, and an explanation of what keys can and can't do `S`
-- [ ] B5.5 Account switcher shows MT5 accounts and exchange connections, grouped `S`
+- [x] B5.5 Account switcher shows MT5 accounts and exchange connections, grouped `S` (done 1 Nov: MT5 and exchange groups; exchange-only users get an exchange pill)
 
 ---
 
