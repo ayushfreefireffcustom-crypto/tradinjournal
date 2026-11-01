@@ -780,3 +780,4 @@ export {
 } from './schema/copy.js';
 
 export * from './schema/inbox.js';
+export * from './schema/trading.js';

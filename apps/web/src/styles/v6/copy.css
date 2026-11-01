@@ -251,3 +251,21 @@
 /* Leader analytics (C4.3b): the dashboard cards under a section header. */
 .v6 .cp-an { display: grid; gap: 16px; min-width: 0; }
 .v6 .cp-an > .x-ch { margin: 4px 0 0; }
+
+/* Trading desk (/trading). Prefix trd-. */
+.v6 .trd-badge { color: var(--mut); background: var(--s2); }
+.v6 .trd-badge--r { color: var(--r); background: var(--r-soft); }
+.v6 .trd-tbl td { vertical-align: middle; }
+.v6 .trd-tbl td b { font-weight: 500; }
+.v6 .trd-copied { margin-left: 8px; text-decoration: none; }
+.v6 .trd-acts { text-align: right; white-space: nowrap; }
+.v6 .trd-acts .x-btn + .x-btn { margin-left: 6px; }
+.v6 .trd-why { display: block; color: var(--r); font-size: 11.5px; max-width: 240px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.v6 .trd-quick { display: flex; gap: 6px; margin: 8px 0 4px; }
+.v6 .trd-fine { font-size: 12px; margin: 8px 0 0; }
+.v6 .trd-dl { display: grid; gap: 0; margin: 0; }
+.v6 .trd-dl > div { display: flex; justify-content: space-between; gap: 16px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.v6 .trd-dl > div:last-child { border-bottom: 0; }
+.v6 .trd-dl dt { color: var(--mut); font-size: 13px; }
+.v6 .trd-dl dd { margin: 0; font-size: 13px; text-align: right; display: flex; align-items: center; gap: 8px; overflow-wrap: anywhere; }
+.v6 .trd-strip small { display: block; font-size: 11.5px; color: var(--dim); margin-top: 2px; }

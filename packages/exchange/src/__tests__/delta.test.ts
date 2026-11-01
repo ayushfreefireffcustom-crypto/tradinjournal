@@ -253,6 +253,15 @@ describe('DeltaIndiaExchange (fake REST)', () => {
     expect(fillCalls[0]!.url).toContain(`start_time=${Date.parse('2026-10-30T00:00:00Z') * 1000}`);
   });
 
+  it('carries the position after each fill when Delta reports it', async () => {
+    const mk = (id: string, side: string, size: number, np?: unknown) => ({ id, side, size, price: '70000', product_symbol: 'BTCUSD', created_at: '2026-10-30T00:00:00Z', ...(np !== undefined ? { meta_data: { new_position: np } } : {}) });
+    const { ex } = fakeDelta({
+      'GET /v2/fills': () => ({ body: { success: true, result: [mk('f1', 'buy', 2, '5'), mk('f2', 'sell', 5, 0), mk('f3', 'sell', 1, 'n/a'), mk('f4', 'sell', 1)], meta: { after: null } } }),
+    });
+    const fills = await ex.getFills(CREDS, { limit: 10 });
+    expect(fills.map((f) => f.positionAfter)).toEqual([5, 0, undefined, undefined]);
+  });
+
   it('resolves cross-venue fills to live perpetuals only', async () => {
     const { ex } = fakeDelta({});
     expect((await ex.resolveInstrument({ symbol: 'BTCUSDT', baseAsset: 'BTC', quoteAsset: 'USDT' }))?.symbol).toBe('BTCUSD');

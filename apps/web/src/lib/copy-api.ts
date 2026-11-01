@@ -333,3 +333,37 @@ export const adminCopyApi = {
   user: (id: string) => call<AdminUserCopy>(`/admin/copy/users/${id}`),
   stopFollow: (id: string, reason: string) => call<StopResult>(`/admin/copy/follows/${id}/stop`, { method: 'POST', ...body({ reason }) }),
 };
+
+// ── Trading desk (Part D): mirrors packages/contracts/src/schema/trading.ts ──
+
+interface DeskAccountRef { connectionId: string; connectionLabel: string; exchange: string; environment: ExchangeEnvironment }
+export interface DeskPosition extends DeskAccountRef {
+  symbol: string; side: 'LONG' | 'SHORT'; size: number; avgEntry: number; markPrice: number | null; unrealizedPnl: number; liquidationPrice: number | null;
+  copiedFrom: { followId: string; leaderName: string } | null;
+}
+export interface DeskPendingOrder extends DeskAccountRef {
+  exchangeOrderId: string; clientOrderId: string | null; symbol: string; side: 'BUY' | 'SELL'; type: string; qty: number; filledQty: number;
+  limitPrice: number | null; stopPrice: number | null; reduceOnly: boolean; createdAt: string | null;
+}
+export interface DeskClosedTrade extends DeskAccountRef {
+  symbol: string; side: 'LONG' | 'SHORT'; qty: number; avgEntry: number; avgExit: number; pnlUsd: number; openedAt: string; closedAt: string;
+}
+export interface DeskOverview {
+  positions: DeskPosition[]; pending: DeskPendingOrder[]; closed: DeskClosedTrade[];
+  counts: { open: number; pending: number; closed: number; rejected: number };
+  errors: Array<{ connectionId: string; connectionLabel: string; message: string }>;
+}
+export interface DeskOrder extends DeskAccountRef {
+  id: string; source: 'MANUAL' | 'COPY' | 'STRATEGY' | 'WEBHOOK'; leaderName: string | null; symbol: string; side: 'BUY' | 'SELL'; type: string; reduceOnly: boolean;
+  qty: number; filledQty: number; avgFillPrice: number | null; status: string; error: string | null; exchangeOrderId: string | null; clientOrderId: string;
+  requestedAt: string; filledAt: string | null;
+}
+export type DeskOrderStatus = 'all' | 'rejected' | 'filled' | 'open';
+
+export const tradingApi = {
+  overview: () => call<DeskOverview>('/trading/overview'),
+  orders: (q: { status?: DeskOrderStatus; source?: DeskOrder['source']; cursor?: string | null }) =>
+    call<Page<DeskOrder>>(`/trading/orders${qs({ status: q.status, source: q.source, cursor: q.cursor ?? undefined })}`),
+  close: (b: { connectionId: string; symbol: string; qty?: number; confirmCopied?: boolean }) =>
+    call<{ order: DeskOrder; message: string }>('/trading/positions/close', { method: 'POST', ...body(b) }),
+};

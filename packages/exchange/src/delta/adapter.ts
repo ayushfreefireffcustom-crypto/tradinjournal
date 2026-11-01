@@ -426,6 +426,10 @@ export class DeltaIndiaExchange implements Exchange {
         const side = String(f.side ?? '').toUpperCase();
         const qty = num(f.size);
         if (!f.id || !f.product_symbol || (side !== 'BUY' && side !== 'SELL') || qty <= 0) continue;
+        // Signed position after the fill, when Delta includes it; it lets a history rebuild spot
+        // positions that were already open before the window it read.
+        const np = f.meta_data?.new_position;
+        const positionAfter = np != null && np !== '' && Number.isFinite(Number(np)) ? Number(np) : undefined;
         out.push({
           externalId: String(f.id),
           symbol: f.product_symbol,
@@ -436,6 +440,7 @@ export class DeltaIndiaExchange implements Exchange {
           timestamp: deltaTime(f.created_at) ?? new Date(0),
           exchangeOrderId: f.order_id != null ? String(f.order_id) : undefined,
           fee: f.commission != null ? num(f.commission) : undefined,
+          positionAfter,
           ...productMeta(products.get(f.product_symbol)),
         });
         if (out.length >= limit) break;
