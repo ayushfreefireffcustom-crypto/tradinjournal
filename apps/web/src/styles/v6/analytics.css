@@ -68,7 +68,6 @@
 .v6 .an-hm .c.l { background: color-mix(in srgb, var(--r) var(--p), var(--s2)); }
 .v6 .an-hm .c.z { color: var(--dim); }
 .v6 .an-hm .c.tot { background: none; box-shadow: inset 0 0 0 1px var(--line); }
-.v6 .an-hm .c.tot.pos { color: var(--g); } .v6 .an-hm .c.tot.neg { color: var(--r); }
 .v6 .an-hm-lg { display: flex; align-items: center; gap: 4px; font-size: 11.5px; color: var(--mut); margin-top: 12px; }
 .v6 .an-hm-lg span:first-child { margin-right: 4px; } .v6 .an-hm-lg span:last-child { margin-left: 4px; }
 .v6 .an-hm-lg i { width: 16px; height: 10px; border-radius: 3px; display: inline-block; background: var(--s2); }
@@ -77,6 +76,9 @@
 .v6 .an-hm-lg i.g2 { background: color-mix(in srgb, var(--g) 20%, var(--s2)); }
 .v6 .an-hm-lg i.g { background: color-mix(in srgb, var(--g) 50%, var(--s2)); }
 .v6 .an-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.v6 .an-hm-note { display: flex; flex-wrap: wrap; gap: 4px 18px; margin: 12px 0 0; font-size: 13px; color: var(--mut); }
+.v6 .an-hm-note b { font-weight: 500; color: var(--tx); } .v6 .an-hm-note b.pos { color: var(--g); } .v6 .an-hm-note b.neg { color: var(--r); }
+.v6 .an-peak b { color: var(--tx); font-weight: 500; }
 
 /* instruments */
 .v6 .an-sym th button { color: inherit; }

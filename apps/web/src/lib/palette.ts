@@ -42,7 +42,7 @@ function rank(list: PaletteEntry[], q: string): PaletteEntry[] {
     .map((x) => x.e);
 }
 
-const day = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+const day = (iso: string) => { const d = new Date(iso); return `${d.getDate()} ${d.toLocaleDateString('en-US', { month: 'short' })}`; };
 
 /** Closed trades newest first, as palette entries that open the trade. */
 export function tradeEntries(trades: Trade[]): PaletteEntry[] {

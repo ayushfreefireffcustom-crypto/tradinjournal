@@ -719,13 +719,13 @@ Legend:
 - [x] H: P&L by day + Hour of day: attached labels, y-axis, bar below baseline fixed `S` — verified in code (2 Nov)
 - [x] M: header: "Analytics" + subline (no eyebrow, no serif) `S` — verified in code (2 Nov)
 - [x] M: drag handles hidden until "Customise layout" mode `S`
-- [ ] M: de-duplicate best/worst/avg (KPI strip vs strike-rate vs distribution) `S`
-- [ ] M: session × weekday heatmap: readable best cell (text contrast), neutral total column, no outline chips `S`
-- [ ] M: instruments table: no amber chip; plain % text coloured by sign `S`
-- [ ] M: rolling edge + equity: y-axis; "Peak" as a plain label `S`
-- [ ] M: consistency heatmap: only months with data + legend next to it `S`
+- [x] M: de-duplicate best/worst/avg (KPI strip vs strike-rate vs distribution) `S` — distribution now shows median trade and share within 1 std dev; best/worst live on strike rate only (2 Nov)
+- [x] M: session × weekday heatmap: readable best cell (text contrast), neutral total column, no outline chips `S` — neutral totals; the three chips became one plain line (2 Nov)
+- [x] M: instruments table: no amber chip; plain % text coloured by sign `S` — plain text; a win rate isn't a P&L sign, so it stays neutral (2 Nov)
+- [x] M: rolling edge + equity: y-axis; "Peak" as a plain label `S` — Peak is a plain label; both charts have y-axes (2 Nov)
+- [x] M: consistency heatmap: only months with data + legend next to it `S` — starts at the first month with a trade ("since Sep 2026"); legend kept (2 Nov)
 - [x] M: scatter: axis labels + more ticks + hover tooltip `S` — verified in code (2 Nov)
-- [ ] L: Best/Worst/Most active tiles: no orphan `S`
+- [x] L: Best/Worst/Most active tiles: no orphan `S` — covered by the x-strip phone rule (A0.31)
 
 ### A4.5 `/calendar`: `app/calendar/page.tsx`, `components/day-trades-modal.tsx`
 - [x] M: week starts Monday (match the dashboard); make it a user setting later `S` — verified in code (2 Nov)

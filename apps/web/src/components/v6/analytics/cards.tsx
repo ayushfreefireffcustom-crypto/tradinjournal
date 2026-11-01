@@ -6,6 +6,7 @@ import { Fragment, useId, useMemo, useState, type ReactNode } from 'react';
 import type { AccountStats, Trade } from '@/lib/api';
 import { rollingSeries } from '@/lib/stats';
 import { fmtHold, fmtPct, fmtUsd, fmtUsdCompact } from '@/lib/dashboard-v6';
+import { fmtUsd as plainUsd } from '@/lib/format'; // unsigned amounts (std dev, peak)
 import { tickerMark } from '@/lib/desk';
 import { SideChip } from '@/components/v6/desk';
 import { ACard, Empty, Facts, MONO, Tip, ticks, useSize } from './kit';
@@ -91,14 +92,19 @@ export function Dist({ trades }: { trades: Trade[] }) {
   const buckets = Array.from({ length: N }, (_, i) => ({ lo: -absMax + i * width, hi: -absMax + (i + 1) * width, n: 0 }));
   for (const v of pnls) buckets[Math.min(N - 1, Math.max(0, Math.floor((v + absMax) / width)))]!.n++;
   const exp = pnls.reduce((s, v) => s + v, 0) / pnls.length;
+  // Best and worst trade are on the strike-rate card; this one describes the shape.
+  const sorted = [...pnls].sort((a, b) => a - b), mid = sorted.length >> 1;
+  const median = sorted.length % 2 ? sorted[mid]! : (sorted[mid - 1]! + sorted[mid]!) / 2;
+  const sd = stdev(pnls);
+  const within = pnls.filter(v => Math.abs(v - exp) <= sd).length / pnls.length;
   return (
     <ACard title="P&L per trade" sub="trades per P&L range" testId="r-distribution">
       <DistChart buckets={buckets} total={pnls.length} />
       <Facts items={[
         { l: 'Expectancy', h: 'expectancy', v: fmtUsd(exp), c: tone(exp) },
-        { l: 'Std dev', h: 'stdDev', v: `$${stdev(pnls).toLocaleString('en-US', { maximumFractionDigits: 0 })}` },
-        { l: 'Best', v: sc(Math.max(...pnls)), c: tone(Math.max(...pnls)) },
-        { l: 'Worst', v: sc(Math.min(...pnls)), c: tone(Math.min(...pnls)) },
+        { l: 'Std dev', h: 'stdDev', v: plainUsd(sd, { digits: 0 }) },
+        { l: 'Median trade', h: 'median', v: fmtUsd(median), c: tone(median) },
+        { l: 'Within 1 std dev', h: 'withinSd', v: pnls.length > 1 ? `${Math.round(within * 100)}%` : '—' },
       ]} />
     </ACard>
   );
@@ -163,7 +169,7 @@ export function Equity({ view }: { view: AccountStats }) {
   const peak = Math.max(...pts.map(p => p.equity), view.startingBalance);
   return (
     <ACard title="Equity curve" sub="realised, vs starting balance" testId="dd-card"
-      right={<span className="x-tag x-tag--m">Peak ${peak.toLocaleString('en-US', { maximumFractionDigits: 0 })}</span>}>
+      right={<span className="x-sub an-peak">Peak <b className="m mny">{plainUsd(peak, { digits: 0 })}</b></span>}>
       <EquityChart pts={pts} base={view.startingBalance} />
       {view.risk && (
         <Facts items={[
@@ -261,7 +267,7 @@ function EquityChart({ pts, base }: { pts: EqPt[]; base: number }) {
 
 const SESS = ['Asia', 'London', 'NY'] as const;
 const WDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'] as const;
-const compact = (v: number) => { const a = Math.abs(v); return `${v > 0 ? '+' : v < 0 ? '−' : ''}${a >= 1000 ? `${(a / 1000).toFixed(1)}k` : Math.round(a)}`; };
+const compact = (v: number) => { const a = Math.abs(v), body = a >= 1000 ? `${(a / 1000).toFixed(1)}k` : `${Math.round(a)}`; return body === '0' ? '0' : `${v > 0 ? '+' : '−'}${body}`; }; // no sign on what rounds to 0
 const tint = (v: number, max: number) => `${Math.round(10 + Math.min(1, Math.abs(v) / max) * 40)}%`;
 
 export function Sessions({ trades }: { trades: Trade[] }) {
@@ -293,16 +299,18 @@ export function Sessions({ trades }: { trades: Trade[] }) {
                 {c.n ? compact(c.v) : '—'}
               </div>
             ))}
-            <div className={`c m tot ${tone(totals[i]!)}`}>{compact(totals[i]!)}</div>
+            <div className="c m tot">{compact(totals[i]!)}</div>
           </Fragment>
         ))}
       </div>
       <div className="an-hm-lg"><span>Loss</span><i className="l" /><i className="l2" /><i className="z" /><i className="g2" /><i className="g" /><span>Profit</span></div>
-      <div className="an-chips">
-        {totals[bestSess]! > 0 && <span className="x-tag x-tag--g">Best session · {SESS[bestSess]}</span>}
-        {worst.d >= 0 && worst.v < 0 && <span className="x-tag x-tag--r">Worst · {SESS[worst.s]} {WDAYS[worst.d]}</span>}
-        {best.d >= 0 && best.v > 0 && <span className="x-tag">Best cell · {SESS[best.s]} {WDAYS[best.d]} <span className="m">{sc(best.v)}</span></span>}
-      </div>
+      {(totals[bestSess]! > 0 || (worst.d >= 0 && worst.v < 0)) && (
+        <p className="an-hm-note" data-testid="session-note">
+          {totals[bestSess]! > 0 && <span>Best session <b>{SESS[bestSess]}</b></span>}
+          {best.d >= 0 && best.v > 0 && <span>Best cell <b>{SESS[best.s]} {WDAYS[best.d]}</b> <b className="m pos">{sc(best.v)}</b></span>}
+          {worst.d >= 0 && worst.v < 0 && <span>Worst cell <b>{SESS[worst.s]} {WDAYS[worst.d]}</b> <b className="m neg">{sc(worst.v)}</b></span>}
+        </p>
+      )}
     </ACard>
   );
 }
@@ -410,7 +418,7 @@ export function SymbolTable({ rows }: { rows: AccountStats['bySymbol'] }) {
               <tr key={s.symbol}>
                 <td><span className="x-sym"><span className="x-mk">{tickerMark(s.symbol)}</span><span><b>{s.symbol}</b><small className="an-show">{plural(s.trades, 'trade')}</small></span></span></td>
                 <td className="n m an-hide">{s.trades}</td>
-                <td className="n"><span className={`x-tag x-tag--m ${s.winRate >= 0.5 ? 'x-tag--g' : 'x-tag--r'}`}>{fmtPct(s.winRate, 0)}</span></td>
+                <td className="n m">{fmtPct(s.winRate, 0)}</td>
                 <td className={`n m ${tone(s.netPnl)}`}>{fmtUsd(s.netPnl)}</td>
                 <td className={`n m an-hide ${tone(s.avgPnl)}`}>{fmtUsd(s.avgPnl)}</td>
               </tr>

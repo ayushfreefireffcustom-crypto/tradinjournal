@@ -23,6 +23,8 @@ export const METRIC_HELP = {
   stdDev: { label: 'Std dev', what: 'How far a typical trade’s result is from the average trade.', why: 'High spread means results swing a lot from trade to trade; size positions with that in mind.' },
   cagr: { label: 'CAGR', what: 'The yearly growth rate that would turn your starting balance into today’s, compounded.', why: 'It lets you compare periods of different lengths. It is only shown after 90 days, since a few good weeks annualise into silly numbers.' },
   recoveryFactor: { label: 'Recovery factor', what: 'Net profit divided by the biggest fall from a high point, in money.', why: 'Above 2 means you made well over what you had to sit through. Below 1, the worst stretch cost more than you have made.' },
+  median: { label: 'Median trade', what: 'The middle trade when every result is lined up from worst to best.', why: 'If it sits well below the average trade, a few big winners carry your results.' },
+  withinSd: { label: 'Within 1 std dev', what: 'The share of trades whose result is within one standard deviation of the average.', why: 'Around two thirds is normal. Much less means fat tails: rare big wins or losses decide the month.' },
   largestLoss: { label: 'Largest loss', what: 'Your single worst closed trade.', why: 'It should be close to your planned risk per trade. Much bigger means a stop was moved or missing.' },
 } satisfies Record<string, MetricHelp>;
 

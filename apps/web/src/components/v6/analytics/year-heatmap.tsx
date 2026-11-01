@@ -1,6 +1,7 @@
 'use client';
 
-// Trailing-year consistency grid: one cell per day, tinted by that day's net P&L.
+// Consistency grid: one cell per day, tinted by that day's net P&L, over the
+// trailing year or from the first month with a trade, whichever is shorter.
 // Cells scale to the card width; on phones the grid scrolls, starting at today.
 import { useLayoutEffect, useMemo, useState } from 'react';
 import type { Trade } from '@/lib/api';
@@ -22,7 +23,23 @@ export default function YearHeatmap({ trades, accountId }: { trades: Trade[]; ac
   const [hover, setHover] = useState<{ x: number; y: number; date: Date; v: number | null; n: number } | null>(null);
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
 
-  const { weeks, monthLabels, maxAbs, totalNet, tradingDays } = useMemo(() => buildYearView(aggregateByCloseDate(trades)), [trades]);
+  const { weeks, monthLabels, maxAbs, totalNet, tradingDays, since } = useMemo(() => {
+    const v = buildYearView(aggregateByCloseDate(trades));
+    // Start at the first month with a trade, so a young account isn't mostly empty squares.
+    const firstCol = v.weeks.findIndex(w => w.some(c => c?.agg));
+    if (firstCol < 0) return { ...v, since: null };
+    const first = v.weeks[firstCol]!.find(c => c?.agg)!.date;
+    const monthStart = new Date(first.getFullYear(), first.getMonth(), 1);
+    let from = firstCol;
+    while (from > 0 && v.weeks[from - 1]!.some(c => c && c.date >= monthStart)) from--;
+    if (from === 0) return { ...v, since: null };
+    return {
+      ...v,
+      weeks: v.weeks.slice(from),
+      monthLabels: v.monthLabels.map(m => ({ ...m, col: m.col - from })).filter(m => m.col >= 0),
+      since: monthStart,
+    };
+  }, [trades]);
   const dayTrades = useMemo(() => {
     if (!selectedDay) return [];
     const key = dayKey(selectedDay.getFullYear(), selectedDay.getMonth(), selectedDay.getDate());
@@ -61,7 +78,7 @@ export default function YearHeatmap({ trades, accountId }: { trades: Trade[]; ac
   const fmtDay = (d: Date) => d.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
 
   return (
-    <ACard title="Consistency" sub="trailing 12 months" testId="year-heatmap"
+    <ACard title="Consistency" sub={since ? `since ${since.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}` : 'trailing 12 months'} testId="year-heatmap"
       right={<span className="an-yh-sum"><b className={`m ${totalNet > 0 ? 'pos' : totalNet < 0 ? 'neg' : ''}`}>{tradingDays ? fmtUsd(totalNet, 0) : '—'}</b> · {tradingDays} trading days</span>}>
       <div className="an-yh" ref={ref} onPointerLeave={() => setHover(null)}>
         <svg width={gridW} height={gridH} role="img" aria-label={`Daily net P&L heatmap, ${tradingDays} trading days`}>
