@@ -8,6 +8,7 @@ import { LoadingScreen } from '@/components/loader';
 import { api, type BrokerAccount, type Deal, type Trade, type JournalEntry } from '@/lib/api';
 import { persistSelectedAccountId } from '@/lib/use-accounts';
 import { IArrowLeft, IArrowRight } from '@/components/v3/icons';
+import IconButton from '@/components/v6/ui/icon-button';
 import { useTradeCandles } from '@/components/v3/trade-candles';
 import { TradeCandles } from '@/components/v6/trades/trade-candles';
 import { pctOfBalance } from '@/components/v6/trades/trade-log';
@@ -109,8 +110,8 @@ function TradeDetail() {
       <Link href="/trades" className="x-btn tr-back" data-testid="back-to-trades" aria-label="Back to trade log"><IArrowLeft size={15} /><span>Trade log</span></Link>
       {trade && (
         <div className="x-seg tr-nav" role="group" aria-label="Browse trades">
-          <button disabled={!newer} onClick={() => newer && router.push(href(newer))} aria-label="Newer trade" title="Newer trade (←)"><IArrowLeft size={14} /></button>
-          <button disabled={!older} onClick={() => older && router.push(href(older))} aria-label="Older trade" title="Older trade (→)"><IArrowRight size={14} /></button>
+          <IconButton className="" disabled={!newer} onClick={() => newer && router.push(href(newer))} label="Newer trade (←)"><IArrowLeft size={14} /></IconButton>
+          <IconButton className="" disabled={!older} onClick={() => older && router.push(href(older))} label="Older trade (→)"><IArrowRight size={14} /></IconButton>
         </div>
       )}
     </>

@@ -178,7 +178,16 @@ export default function StrategyBuilder() {
             return (
               <li key={s.id} className="x-inset ai-strat">
                 <div className="ai-strat-t"><b>{s.name}</b><span className={`x-tag ${s.status === 'paper' ? 'x-tag--g' : ''}`}>{s.status === 'paper' ? 'Paper' : 'Draft'}</span></div>
-                <div className="ai-chips">{ruleChips(s.rules).map(c => <span key={c} className="x-tag">{c}</span>)}</div>
+                {(() => {
+                  // Three rule chips at most; the rest are named in the "+N" tooltip.
+                  const chips = ruleChips(s.rules);
+                  return (
+                    <div className="ai-chips">
+                      {chips.slice(0, 3).map(c => <span key={c} className="x-tag">{c}</span>)}
+                      {chips.length > 3 && <span className="x-muted" title={chips.slice(3).join(', ')}>+{chips.length - 3}</span>}
+                    </div>
+                  );
+                })()}
                 {bt ? (
                   <>
                     <p className="ai-bt">

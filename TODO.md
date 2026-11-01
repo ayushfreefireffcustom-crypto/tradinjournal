@@ -710,9 +710,9 @@ Legend:
 - [x] H: synthetic candles. Make "Illustrative path, not tick data" prominent, or show real candles from the `Candle` table when available (check coverage) `M`
 - [x] M: net P&L once (header only) `S` — fixed 2 Nov
 - [x] M: stat grid → `StatStrip`, mono numbers; commission/swap neutral (they're fees, not losses) `S`
-- [ ] M: chart: price axis; entry/exit markers in the shared chart theme (no green zone box) `S`
+- [x] M: chart: price axis; entry/exit markers in the shared chart theme (no green zone box) `S` — price axis and entry/exit lines kept; the tinted zone box removed (2 Nov)
 - [x] M: executions table: no clipped header ("COMM."); journal empty → EmptyState `S` — verified in code (2 Nov)
-- [ ] L: prev/next arrows with labels; drop the duplicate back link `S`
+- [x] L: prev/next arrows with labels; drop the duplicate back link `S` — arrows have tooltips (IconButton); one back link (2 Nov)
 
 ### A4.4 `/analytics`: `app/analytics/page.tsx`, `components/v3/analytics-parts.tsx`, `components/sortable-card.tsx`, `components/year-heatmap.tsx`
 - [x] H: "Psychology edge" / "Setup edge" 450px dashed boxes → compact EmptyState explaining how to fill them (tag trades / journal emotions) `S` — verified in code (2 Nov)
@@ -806,9 +806,9 @@ Legend:
 ### A4.12 `/trader` (SignalX): `app/trader/page.tsx`, `components/trader/*`
 - [x] M: "Analyze" = standard primary (no gradient/glow/emoji); "Compile" secondary; no serif "X" `S` — verified in code (2 Nov)
 - [x] M: status chips: Open neutral, Hit = green, Stopped = red (no amber) `S` — verified in code (2 Nov)
-- [ ] M: "72%" confidence on every row: check whether this is real or mock; label it if mock `S`
+- [x] M: "72%" confidence on every row: check whether this is real or mock; label it if mock `S` — real: the API's model score (heuristic/meta). 72/61 are preview mock constants only
 - [ ] M: balance the columns (track record + strategies below on desktop, or tabs) `M`
-- [ ] M: strategy card: ≤ 3 chips, one-line rule summary, one action + menu `S`
+- [x] M: strategy card: ≤ 3 chips, one-line rule summary, one action + menu `S` — three rule chips + "+N"; one test action plus promote/stop (2 Nov)
 - [ ] L: mobile rows not truncated `S`
 
 ### A4.13 `/coach`: `app/coach/page.tsx`, `components/coach/*`

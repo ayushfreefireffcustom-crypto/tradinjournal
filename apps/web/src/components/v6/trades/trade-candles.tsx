@@ -52,7 +52,7 @@ export function TradeCandles({ trade, real }: { trade: Trade; real?: Candle[] | 
   const open = trade.status === 'OPEN';
   const exitPx = trade.exitPrice ?? trade.entryPrice;
   const ey = y(trade.entryPrice), xy = y(exitPx);
-  const zx = cx(entryIdx), zx2 = Math.max(cx(exitIdx), zx + slot);
+  const zx = cx(entryIdx);
   const win = trade.netPnl >= 0;
   const ticks = [0.15, 0.38, 0.62, 0.85].map(f => lo + span * f);
   const timeTicks = times ? [0.12, 0.37, 0.62, 0.87].map(f => Math.min(n - 1, Math.round(f * (n - 1)))) : [];
@@ -82,7 +82,6 @@ export function TradeCandles({ trade, real }: { trade: Trade; real?: Candle[] | 
               </g>
             ))}
             {timeTicks.map(i => <text key={i} x={cx(i)} y={H - 6} textAnchor="middle" fill="var(--axis)" fontSize="10.5" fontFamily="var(--sans)">{fmtT(times![i]!)}</text>)}
-            <rect x={zx} y={Math.min(ey, xy)} width={zx2 - zx} height={Math.max(Math.abs(ey - xy), 2)} fill={win ? 'var(--g-soft)' : 'var(--r-soft)'} />
             <line x1={zx} x2={plotW} y1={ey} y2={ey} stroke="var(--tx)" strokeOpacity={0.55} strokeDasharray="4 4" />
             {!open && <line x1={cx(exitIdx)} x2={plotW} y1={xy} y2={xy} stroke={win ? 'var(--g)' : 'var(--r)'} strokeDasharray="4 4" />}
             {candles.map((c, i) => {

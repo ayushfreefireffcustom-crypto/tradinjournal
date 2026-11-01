@@ -163,7 +163,8 @@
 .v6 .ai-strat { display: grid; gap: 10px; }
 .v6 .ai-strat-t { display: flex; align-items: flex-start; gap: 10px; justify-content: space-between; }
 .v6 .ai-strat-t b { font-weight: 500; font-size: 14px; min-width: 0; }
-.v6 .ai-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.v6 .ai-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
+.v6 .ai-chips > .x-muted { font-size: 12px; }
 .v6 .ai-chips .x-tag { background: var(--s3); font-size: 11px; padding: 4px 8px; }
 .v6 .ai-bt { font-size: 12.5px; color: var(--mut); margin: 0; line-height: 1.5; }
 .v6 .ai-bt b { font-weight: 500; }
