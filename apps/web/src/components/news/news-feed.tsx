@@ -432,7 +432,7 @@ export default function NewsFeed({ userSymbols = EMPTY_SYMBOLS, symbolsReady = t
           ) : (
             <>
               {lead && (
-                <button type="button" onClick={() => setSelectedItem(lead)} data-testid="news-lead" className="mk-top">
+                <button type="button" onClick={() => setSelectedItem(lead)} data-testid="news-lead" className={`mk-top ${lead.imageUrl ? '' : 'mk-top--text'}`}>
                   <span className="mk-top-m">
                     <span className="mk-item-meta">
                       <span className="x-tag x-tag--solid">Top story</span>
@@ -446,11 +446,12 @@ export default function NewsFeed({ userSymbols = EMPTY_SYMBOLS, symbolsReady = t
                       <span className="mk-top-go">Read more <ArrowNE /></span>
                     </span>
                   </span>
-                  <span className={`mk-top-art ${lead.sentiment === 'BEARISH' ? 'down' : ''}`} aria-hidden>
-                    {lead.imageUrl ? <NewsThumb src={lead.imageUrl} className="mk-top-img" /> : (
-                      <svg viewBox="0 0 400 240" preserveAspectRatio="none"><path vectorEffect="non-scaling-stroke" d={lead.sentiment === 'BEARISH' ? 'M0 60 L60 76 L100 66 L160 110 L200 102 L260 150 L300 140 L360 184 L400 192' : 'M0 186 L60 174 L100 182 L160 128 L200 138 L260 86 L300 98 L360 48 L400 40'} /></svg>
-                    )}
-                  </span>
+                  {/* Only a real picture; a drawn chart would suggest a price move the story may not be about (A4.9). */}
+                  {lead.imageUrl && (
+                    <span className="mk-top-art" aria-hidden>
+                      <NewsThumb src={lead.imageUrl} className="mk-top-img" />
+                    </span>
+                  )}
                 </button>
               )}
 

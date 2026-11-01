@@ -46,6 +46,8 @@ export default function AnalyticsPage() {
   const [trades, setTrades] = useState<Trade[]>([]);
   const [journal, setJournal] = useState<JournalEntry[]>([]);
   const [range, setRange] = useState<RangeKey>('ALL');
+  // Drag handles only show while arranging (A4.4), so the cards stay calm the rest of the time.
+  const [arranging, setArranging] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showConnect, setShowConnect] = useState(false);
@@ -209,13 +211,20 @@ export default function AnalyticsPage() {
           <>
             <KpiStrip view={view} />
             <div className="an-bar" data-testid="analytics-arrange-bar">
-              <svg width="10" height="14" viewBox="0 0 10 14" fill="currentColor" aria-hidden><circle cx="2" cy="2" r="1.3" /><circle cx="8" cy="2" r="1.3" /><circle cx="2" cy="7" r="1.3" /><circle cx="8" cy="7" r="1.3" /><circle cx="2" cy="12" r="1.3" /><circle cx="8" cy="12" r="1.3" /></svg>
-              <span>Drag a card by its handle to rearrange</span>
-              {!isDefaultOrder && <button className="x-btn x-btn--sm" onClick={() => { persistOrder(DEFAULT_ORDER); toast.info('Layout reset'); }} data-testid="analytics-reset-layout">Reset layout</button>}
+              {arranging ? (
+                <>
+                  <svg width="10" height="14" viewBox="0 0 10 14" fill="currentColor" aria-hidden><circle cx="2" cy="2" r="1.3" /><circle cx="8" cy="2" r="1.3" /><circle cx="2" cy="7" r="1.3" /><circle cx="8" cy="7" r="1.3" /><circle cx="2" cy="12" r="1.3" /><circle cx="8" cy="12" r="1.3" /></svg>
+                  <span>Drag a card by its handle to move it</span>
+                  {!isDefaultOrder && <button className="x-btn x-btn--sm" onClick={() => { persistOrder(DEFAULT_ORDER); toast.info('Layout reset'); }} data-testid="analytics-reset-layout">Reset layout</button>}
+                  <button className="x-btn x-btn--sm x-btn--hi" onClick={() => setArranging(false)} data-testid="analytics-arrange-done">Done</button>
+                </>
+              ) : (
+                <button className="x-btn x-btn--sm x-btn--ghost" onClick={() => setArranging(true)} data-testid="analytics-arrange">Customise layout</button>
+              )}
             </div>
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
               <SortableContext items={order} strategy={rectSortingStrategy}>
-                <div className="an-grid" data-testid="analytics-grid">
+                <div className={`an-grid ${arranging ? 'is-arranging' : ''}`} data-testid="analytics-grid">
                   {order.map(id => (
                     <SortableCard key={id} id={id} className={SPANS[id]}>
                       {renderBlock(id)}

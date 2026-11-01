@@ -204,9 +204,7 @@
   position: relative; border-radius: 12px; overflow: hidden; min-height: 168px; background-color: var(--s1);
   background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px); background-size: 28px 28px;
 }
-.v6 .mk-top-art svg { position: absolute; inset: 14% 0 10%; width: 100%; height: 76%; overflow: visible; }
-.v6 .mk-top-art path { fill: none; stroke: var(--g); stroke-width: 2.25; stroke-linejoin: round; stroke-linecap: round; }
-.v6 .mk-top-art.down path { stroke: var(--r); }
+.v6 .mk-top--text { grid-template-columns: minmax(0, 1fr); } /* no picture: the story gets the full width */
 .v6 .mk-top-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 
 .v6 .mk-briefbox { margin: 2px 0 10px; padding: 16px 18px; }

@@ -2,7 +2,9 @@
 .v6 .mc { display: grid; gap: 16px; min-width: 0; }
 .v6 .mc > *, .v6 .mc-stack > *, .v6 .mc-main > * { min-width: 0; }
 .v6 .mc-stack { display: grid; gap: 16px; min-width: 0; }
-.v6 .mc-body { display: grid; grid-template-columns: 212px minmax(0, 1fr); gap: 16px; align-items: start; min-width: 0; padding: 0; }
+.v6 .mc-body { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; min-width: 0; padding: 0; }
+.v6 .mc-tabs { display: grid; gap: 12px; min-width: 0; }
+.v6 .mc-views { justify-self: start; }
 .v6 .mc-main { display: grid; gap: 16px; min-width: 0; container: mc / inline-size; }
 .v6 .mc-p { margin: 0; font-size: 13.5px; line-height: 1.55; }
 .v6 .mc-mt { margin-top: 14px; }
@@ -55,21 +57,6 @@
 }
 
 /* section rail + phone section picker */
-.v6 .mc-rail { padding: 10px; position: sticky; top: 16px; }
-.v6 .mc-nav-sec + .mc-nav-sec { margin-top: 8px; }
-.v6 .mc-nav small { display: block; font-size: 11.5px; color: var(--dim); padding: 8px 10px 4px; }
-.v6 .mc-nav button {
-  display: flex; align-items: center; width: 100%; min-height: 34px; padding: 6px 10px; border-radius: 10px; border: 0; background: none;
-  color: var(--mut); font: 400 13.5px/1.25 var(--sans); text-align: left; cursor: pointer;
-}
-.v6 .mc-nav button:hover { color: var(--tx); background: var(--s2); }
-.v6 .mc-nav button.on { color: var(--tx); background: var(--s2); font-weight: 500; box-shadow: inset 2px 0 0 var(--g); }
-.v6 .mc-secbtn { display: none; justify-self: start; max-width: 100%; }
-.v6 .mc-secbtn b { font-weight: 500; overflow: hidden; text-overflow: ellipsis; }
-.v6 .mc-navdlg { width: min(420px, 100%); padding: 18px; }
-.v6 .mc-navdlg .mc-nav { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 8px; }
-.v6 .mc-navdlg .mc-nav-sec + .mc-nav-sec { margin-top: 0; }
-.v6 .mc-navdlg .mc-nav button.on { background: var(--s2); }
 .v6 .mc-dlg-hd { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
 .v6 .mc-dlg-hd h2 { margin: 0; }
 
@@ -473,8 +460,6 @@
 /* rail goes away; a section button opens the picker */
 @media (max-width: 1100px) {
   .v6 .mc-body { grid-template-columns: minmax(0, 1fr); }
-  .v6 .mc-rail { display: none; }
-  .v6 .mc-secbtn { display: inline-flex; }
 }
 @media (max-width: 760px) {
   .v6 .mc-tbl-only { display: none; }
@@ -484,8 +469,6 @@
   .v6 .mc-tk { height: 42px; padding-left: 14px; }
   .v6 .mc-strig kbd { display: none; }
   .v6 .mc-sscrim { padding: 12px; }
-  .v6 .mc-navdlg .mc-nav { grid-template-columns: minmax(0, 1fr); }
-  .v6 .mc-navdlg .mc-nav button { min-height: 40px; }
   .v6 .mc-yc-chart { height: 200px; }
   .v6 .mc-ev li { grid-template-columns: minmax(0, 1fr) auto; }
   .v6 .mc-ev .mc-imp { grid-column: 1 / -1; }

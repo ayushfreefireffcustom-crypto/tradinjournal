@@ -43,7 +43,7 @@ describe('formatMacroNumber', () => {
 describe('formatSignedPct / formatScore / formatBiasLabel', () => {
   it('formats signed pct and clamps score', () => {
     expect(formatSignedPct(1.234)).toBe('+1.23%');
-    expect(formatSignedPct(-0.5)).toBe('-0.50%');
+    expect(formatSignedPct(-0.5)).toBe('−0.50%'); // a real minus, like every number in the app
     expect(formatSignedPct(null)).toBe('—');
     expect(formatScore(72.4)).toBe('72');
     expect(formatScore(150)).toBe('100');
@@ -78,15 +78,15 @@ describe('formatIndicatorValue', () => {
 describe('indicatorDelta', () => {
   it('shows rate moves in basis points', () => {
     expect(indicatorDelta(4.69, 4.63, '%')).toEqual({ text: '+6bp', dir: 1 });
-    expect(indicatorDelta(4.1, 4.2, '%')).toEqual({ text: '-10bp', dir: -1 });
+    expect(indicatorDelta(4.1, 4.2, '%')).toEqual({ text: '−10bp', dir: -1 });
     expect(indicatorDelta(3.63, 3.63, '%')).toEqual({ text: '0bp', dir: 0 });
   });
   it('shows large %-moves in percentage points, not bp', () => {
     expect(indicatorDelta(5.83, 1.5, '%')).toEqual({ text: '+4.3pp', dir: 1 }); // GDP nowcast swing
-    expect(indicatorDelta(1.0, 3.0, '%')).toEqual({ text: '-2.0pp', dir: -1 });
+    expect(indicatorDelta(1.0, 3.0, '%')).toEqual({ text: '−2.0pp', dir: -1 });
   });
   it('shows non-rate moves as signed percent', () => {
-    expect(indicatorDelta(332.568, 333.979, 'index')).toEqual({ text: '-0.42%', dir: -1 });
+    expect(indicatorDelta(332.568, 333.979, 'index')).toEqual({ text: '−0.42%', dir: -1 });
     expect(indicatorDelta(100, null, 'index')).toBeNull();
   });
 });

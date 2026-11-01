@@ -1,4 +1,5 @@
 // Pure formatters for the macro terminal — unit-tested, no React.
+import { fmtNum, fmtPct } from './format';
 
 export type BiasTone = 'bull' | 'bear' | 'neutral';
 
@@ -29,9 +30,7 @@ export function formatMacroNumber(n: number, digits = 2): string {
 }
 
 export function formatSignedPct(n: number | null | undefined, digits = 2): string {
-  if (n == null || !Number.isFinite(n)) return '—';
-  const sign = n > 0 ? '+' : '';
-  return `${sign}${n.toFixed(digits)}%`;
+  return fmtPct(n, { digits, signed: true });
 }
 
 export function formatScore(score: number): string {
@@ -110,9 +109,9 @@ export function indicatorDelta(
   if (u.includes('%')) {
     // Rate/yield moves are tiny → basis points; a large swing (e.g. a GDP nowcast
     // jumping several points) reads better as percentage points.
-    if (Math.abs(diff) >= 1) return { text: `${diff > 0 ? '+' : ''}${diff.toFixed(1)}pp`, dir };
+    if (Math.abs(diff) >= 1) return { text: `${fmtNum(diff, { digits: 1, minDigits: 1, signed: true })}pp`, dir };
     const bp = Math.round(diff * 100);
-    return { text: `${bp > 0 ? '+' : ''}${bp}bp`, dir };
+    return { text: `${fmtNum(bp, { digits: 0, signed: true })}bp`, dir };
   }
   const pct = deltaPct(value, prev);
   return { text: pct == null ? '—' : formatSignedPct(pct), dir };

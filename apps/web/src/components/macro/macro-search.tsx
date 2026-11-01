@@ -21,15 +21,9 @@ export default function MacroSearch({ open, onClose, state, onNavigate }: Props)
     if (!open) setQ('');
   }, [open]);
 
-  // Capture phase so on this page ⌘K opens the macro search instead of the app-wide page switcher.
+  // ⌘K is the app-wide palette on every page, this one included; the macro search opens from its button.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault();
-        e.stopPropagation();
-        if (open) onClose();
-        else document.dispatchEvent(new CustomEvent('macro-search-open'));
-      }
       if (e.key === 'Escape' && open) onClose();
     }
     window.addEventListener('keydown', onKey, true);

@@ -10,10 +10,9 @@ import YieldCurve from './yield-curve';
 import PolicyRates from './policy-rates';
 import IndicatorGroups from './indicator-groups';
 import MacroEventsHeadlines from './events-headlines';
-import ConfluencePanel from './confluence-panel';
-import RegimeQuadrant from './regime-quadrant';
 
-/** Macro dashboard: bias and regime first, then trends, markets, rates and the deep data. */
+/** Macro dashboard: bias and regime first, then trends, markets, rates and the deep data.
+ *  The confluence engine and the regime matrix live in their own views. */
 export default function MacroDashboard({ state }: { state: MacroState }) {
   return (
     <div className="mc-stack" data-testid="macro-dashboard">
@@ -24,11 +23,6 @@ export default function MacroDashboard({ state }: { state: MacroState }) {
 
       <AssetBiasGrid bias={state.bias} />
       <SummaryCards macro={state.macro} />
-
-      <div className="mc-2">
-        <RegimeQuadrant regime={state.regime} />
-        <ConfluencePanel bias={state.bias} />
-      </div>
 
       <MarketTiles markets={state.markets} bias={state.bias} />
 

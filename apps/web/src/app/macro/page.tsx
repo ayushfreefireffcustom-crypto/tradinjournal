@@ -12,8 +12,8 @@ import SignalBoard from '@/components/macro/signal-board';
 import MacroAssistant from '@/components/macro/macro-assistant';
 import PaperBlotter, { paperFillFromSignal, type PaperFill } from '@/components/macro/paper-blotter';
 import MacroCompliance from '@/components/v6/macro/compliance';
-import MacroSideNav, { macroPanelLabel, type MacroPanel } from '@/components/macro/macro-side-nav';
-import { IChevronD, IRefresh, ISearch } from '@/components/v6/macro/ui';
+import { MACRO_NAV, type MacroPanel } from '@/components/macro/macro-side-nav';
+import { IRefresh, ISearch } from '@/components/v6/macro/ui';
 import MacroSearch from '@/components/macro/macro-search';
 import LiquidityConsole from '@/components/macro/liquidity-console';
 import FedDesk from '@/components/macro/fed-desk';
@@ -36,7 +36,6 @@ export default function MacroPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [fills, setFills] = useState<PaperFill[]>([]);
-  const [navOpen, setNavOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
 
   const load = useCallback(async (opts?: { soft?: boolean }) => {
@@ -71,6 +70,7 @@ export default function MacroPage() {
     setPanel('paper');
   }
 
+  const section = MACRO_NAV.find(s => s.items.some(i => i.id === panel)) ?? MACRO_NAV[0]!;
   const asOf = state ? new Date(state.asOf).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }) : '';
   const subtitle = state ? (
     <span className="mc-state" data-testid="macro-state-line">
@@ -80,7 +80,7 @@ export default function MacroPage() {
   const actions = (
     <>
       <button type="button" onClick={() => setSearchOpen(true)} className="x-btn mc-strig" data-testid="macro-search-trigger" aria-label="Search indicators, assets and events">
-        <ISearch /><span>Search</span><kbd>⌘K</kbd>
+        <ISearch /><span>Search macro</span>
       </button>
       {state && (
         <button type="button" onClick={() => void load({ soft: true })} disabled={refreshing} aria-busy={refreshing} className="x-btn x-btn--icon"
@@ -109,18 +109,23 @@ export default function MacroPage() {
         <div className="mc" data-testid="macro-page">
           <MacroTicker markets={state?.markets ?? []} />
 
-          <div className="mc-body">
-            <MacroSideNav
-              active={panel}
-              onSelect={setPanel}
-              mobileOpen={navOpen}
-              onMobileClose={() => setNavOpen(false)}
-            />
+          {/* Sections as tabs, then the section's views (A4.10): no second sidebar, and on phones
+              both rows scroll sideways instead of hiding behind a menu. */}
+          <div className="mc-tabs" data-testid="macro-side-nav">
+            <nav className="x-tabs" role="tablist" aria-label="Macro sections">
+              {MACRO_NAV.map(s => (
+                <button key={s.section} type="button" role="tab" aria-selected={s === section} onClick={() => setPanel(s.items[0]!.id)} data-testid={`macro-sec-${s.section.toLowerCase().replace(/[^a-z]+/g, '-')}`}>{s.section}</button>
+              ))}
+            </nav>
+            <div className="x-seg x-seg--sm mc-views" role="tablist" aria-label={`${section.section} views`}>
+              {section.items.map(it => (
+                <button key={it.id} type="button" role="tab" aria-selected={panel === it.id} onClick={() => setPanel(it.id)} data-testid={`macro-nav-${it.id}`} data-active={panel === it.id}>{it.label}</button>
+              ))}
+            </div>
+          </div>
 
+          <div className="mc-body">
             <div className="mc-main">
-              <button type="button" className="x-btn mc-secbtn" onClick={() => setNavOpen(true)} aria-haspopup="dialog" data-testid="macro-nav-open">
-                <span className="x-muted">Section</span><b>{macroPanelLabel(panel)}</b><IChevronD />
-              </button>
 
               {error && (
                 <div className="x-banner x-banner--err" data-testid="macro-error" role="alert">
@@ -133,7 +138,8 @@ export default function MacroPage() {
                 <div className="x-card x-empty" data-testid="macro-empty"><b>No macro data yet</b><p>Indicators appear after the first data ingest.</p></div>
               )}
 
-              {panel === 'dashboard' && state && <MacroDashboard state={state} />}
+              {/* No data yet: just say so, rather than a page of neutral 50s that were never measured. */}
+              {panel === 'dashboard' && state && state.macro.length > 0 && <MacroDashboard state={state} />}
               {panel === 'confluence' && state && (
                 <div className="mc-stack">
                   <ConfluencePanel bias={state.bias} />
