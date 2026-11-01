@@ -129,7 +129,7 @@ export default function BrokersPage() {
       <div className="x-page" data-testid="brokers-page">
         <div className="x-strip x-strip--card ac-br-sum" data-testid="brokers-summary">
           <div><span>Broker slots</span><b className="m">{accounts.length} / {MAX_ACCOUNTS}</b></div>
-          <div><span>Total balance</span><b className="m">{accounts.length === 0 || allFailed ? '—' : figuresReady ? fmtMoney(totalBalance) : <i className="x-skel x-skel--in ac-skel-num" />}</b></div>
+          <div><span>Total balance</span><b className="m mny">{accounts.length === 0 || allFailed ? '—' : figuresReady ? fmtMoney(totalBalance) : <i className="x-skel x-skel--in ac-skel-num" />}</b></div>
           <div><span>Connections</span>
             <b className="ac-br-state">{accounts.length === 0 ? <><i className="x-dot x-dot--off" />None yet</> : allOk ? <><i className="x-dot" />All connected</> : <><i className="x-dot x-dot--r" />Needs attention</>}</b>
           </div>

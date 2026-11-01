@@ -141,10 +141,10 @@ export default function CalendarPage() {
         )}
 
         <section className="x-strip x-strip--card cl-sum" data-testid="calendar-summary" aria-label="Month summary">
-          <div><span>Month net P&amp;L</span><b className={`m ${has ? tone(monthStats.net) : ''}`}>{has ? fmtUsd(monthStats.net) : '—'}</b><small>{error && !has ? '—' : plural(monthStats.tradeCount, 'trade')}</small></div>
+          <div><span>Month net P&amp;L</span><b className={`m mny ${has ? tone(monthStats.net) : ''}`}>{has ? fmtUsd(monthStats.net) : '—'}</b><small>{error && !has ? '—' : plural(monthStats.tradeCount, 'trade')}</small></div>
           <div><span>Trading days</span><b className="m">{error && !has ? '—' : monthStats.tradingDays}</b><small>{has ? `${facts.green} green · ${facts.red} red` : error ? 'Couldn’t load trades' : 'No trades this month'}</small></div>
-          <div><span>Best day</span><b className={`m ${has && monthStats.best > 0 ? 'pos' : ''}`}>{has && monthStats.best > 0 ? fmtUsd(monthStats.best) : '—'}</b><small>{has && monthStats.best > 0 ? facts.best : '—'}</small></div>
-          <div><span>Worst day</span><b className={`m ${has && monthStats.worst < 0 ? 'neg' : ''}`}>{has && monthStats.worst < 0 ? fmtUsd(monthStats.worst) : '—'}</b><small>{has && monthStats.worst < 0 ? facts.worst : has ? 'No red days' : '—'}</small></div>
+          <div><span>Best day</span><b className={`m mny ${has && monthStats.best > 0 ? 'pos' : ''}`}>{has && monthStats.best > 0 ? fmtUsd(monthStats.best) : '—'}</b><small>{has && monthStats.best > 0 ? facts.best : '—'}</small></div>
+          <div><span>Worst day</span><b className={`m mny ${has && monthStats.worst < 0 ? 'neg' : ''}`}>{has && monthStats.worst < 0 ? fmtUsd(monthStats.worst) : '—'}</b><small>{has && monthStats.worst < 0 ? facts.worst : has ? 'No red days' : '—'}</small></div>
         </section>
 
         <div className="cl-row">

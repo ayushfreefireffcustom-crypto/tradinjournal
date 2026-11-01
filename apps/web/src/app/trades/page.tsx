@@ -183,11 +183,11 @@ export default function TradesPage() {
 
         {tab === 'trades' && slice.n > 0 && (
           <dl className="x-strip x-strip--card tr-strip" data-testid="trades-summary" aria-label="Summary of the trades shown">
-            <div><dt><span>Net P&amp;L{filtersOn ? ' · filtered' : ''}</span></dt><dd><b className={`m tr-full ${pnlTone(filteredPnl)}`}>{money(filteredPnl)}</b><b className={`m tr-short ${pnlTone(filteredPnl)}`}>{moneyShort(filteredPnl)}</b></dd></div>
+            <div><dt><span>Net P&amp;L{filtersOn ? ' · filtered' : ''}</span></dt><dd><b className={`m mny tr-full ${pnlTone(filteredPnl)}`}>{money(filteredPnl)}</b><b className={`m mny tr-short ${pnlTone(filteredPnl)}`}>{moneyShort(filteredPnl)}</b></dd></div>
             <div><dt><span>Win rate</span></dt><dd><b className="m">{(slice.win * 100).toFixed(1)}%</b></dd></div>
-            <div><dt><span>Avg trade</span></dt><dd><b className={`m tr-full ${pnlTone(slice.avg)}`}>{money(slice.avg)}</b><b className={`m tr-short ${pnlTone(slice.avg)}`}>{moneyShort(slice.avg)}</b></dd></div>
-            <div><dt><span>Best</span></dt><dd><b className={`m ${Number.isFinite(slice.best) ? pnlTone(slice.best) : ''}`}>{Number.isFinite(slice.best) ? money(slice.best) : '—'}</b></dd></div>
-            <div><dt><span>Worst</span></dt><dd><b className={`m ${Number.isFinite(slice.worst) ? pnlTone(slice.worst) : ''}`}>{Number.isFinite(slice.worst) ? money(slice.worst) : '—'}</b></dd></div>
+            <div><dt><span>Avg trade</span></dt><dd><b className={`m mny tr-full ${pnlTone(slice.avg)}`}>{money(slice.avg)}</b><b className={`m mny tr-short ${pnlTone(slice.avg)}`}>{moneyShort(slice.avg)}</b></dd></div>
+            <div><dt><span>Best</span></dt><dd><b className={`m mny ${Number.isFinite(slice.best) ? pnlTone(slice.best) : ''}`}>{Number.isFinite(slice.best) ? money(slice.best) : '—'}</b></dd></div>
+            <div><dt><span>Worst</span></dt><dd><b className={`m mny ${Number.isFinite(slice.worst) ? pnlTone(slice.worst) : ''}`}>{Number.isFinite(slice.worst) ? money(slice.worst) : '—'}</b></dd></div>
           </dl>
         )}
 

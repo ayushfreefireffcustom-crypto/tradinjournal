@@ -11,6 +11,7 @@ import NotificationBell from '@/components/notification-bell';
 import Logo from '@/components/logo';
 import { PARTNERS_ENABLED, TRADING_ENABLED } from '@/lib/features';
 import { useTheme } from './use-theme';
+import { useHideMoney } from './use-hide-money';
 import { useExchangeConnections } from '@/lib/use-exchange-connections';
 import { venueName, type ExchangeConnection } from '@/lib/copy-api';
 import {
@@ -119,6 +120,12 @@ function usePhone() {
 
 export default function Frame(p: Props) {
   const [theme, toggleTheme] = useTheme();
+  const [moneyHidden, toggleMoney] = useHideMoney();
+  const moneyBtn = (cls: string, testId?: string) => (
+    <button className={cls} onClick={toggleMoney} aria-pressed={moneyHidden} aria-label={moneyHidden ? 'Show balances' : 'Hide balances'} title={moneyHidden ? 'Show balances' : 'Hide balances'} data-testid={testId}>
+      {moneyHidden ? <IEyeOff /> : <IEye />}
+    </button>
+  );
   const phone = usePhone();
   const [more, setMore] = useState(false);
   const closeMore = useCallback(() => setMore(false), []);
@@ -177,6 +184,7 @@ export default function Frame(p: Props) {
               {p.subtitle && <p>{p.subtitle}</p>}
             </div>
             <div className="f-mtools">
+              {moneyBtn('f-ib')}
               <button className="f-ib" onClick={toggleTheme} aria-label={theme === 'light' ? 'Switch to dark theme' : 'Switch to light theme'}>
                 {theme === 'light' ? <ISunIcon /> : <IMoonIcon />}
               </button>
@@ -191,6 +199,7 @@ export default function Frame(p: Props) {
                 <ISync size={15} className={p.syncing ? 'x-spin' : undefined} /><span>{p.syncing ? 'Syncing' : 'Sync'}</span>
               </button>
             )}
+            {moneyBtn('f-ib f-dtool', 'hide-money-toggle')}
             <button className="f-ib f-dtool" onClick={toggleTheme} aria-label={theme === 'light' ? 'Switch to dark theme' : 'Switch to light theme'} data-testid="theme-toggle">
               {theme === 'light' ? <ISunIcon /> : <IMoonIcon />}
             </button>
@@ -370,3 +379,11 @@ function ISunIcon() {
 function IMoonIcon() {
   return <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M19.5 14.5A8 8 0 0 1 9.5 4.5a8 8 0 1 0 10 10Z" /></svg>;
 }
+
+function IEye() {
+  return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z" /><circle cx="12" cy="12" r="3" /></svg>;
+}
+function IEyeOff() {
+  return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M3 3l18 18" /><path d="M10.6 5.6A9.6 9.6 0 0 1 12 5.5C18 5.5 21.5 12 21.5 12a17 17 0 0 1-3.2 4M6.6 6.6C3.9 8.4 2.5 12 2.5 12S6 18.5 12 18.5c1.6 0 3-.4 4.2-1" /><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" /></svg>;
+}
+

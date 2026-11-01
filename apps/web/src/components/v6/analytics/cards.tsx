@@ -43,7 +43,7 @@ export function KpiStrip({ view }: { view: AccountStats }) {
   ];
   return (
     <section className="x-strip x-strip--card an-kpis" style={{ ['--n' as string]: 5 }} aria-label="Summary">
-      {k.map(x => <div key={x.id} data-testid={`kpi-${x.id}`}><span>{x.l}<InfoTip {...METRIC_HELP[x.h]} /></span><b className={`m ${x.c}`}>{x.v}</b><small>{x.s}</small></div>)}
+      {k.map(x => <div key={x.id} data-testid={`kpi-${x.id}`}><span>{x.l}<InfoTip {...METRIC_HELP[x.h]} /></span><b className={`m ${x.c} ${['netpl', 'grossprofit', 'grossloss'].includes(x.id) ? 'mny' : ''}`}>{x.v}</b><small className={x.id === 'maxdrawdown' ? 'mny' : ''}>{x.s}</small></div>)}
     </section>
   );
 }
@@ -217,7 +217,7 @@ function EquityChart({ pts, base }: { pts: EqPt[]; base: number }) {
           {yt.map(v => (
             <g key={v}>
               <line x1={L} x2={w - R} y1={Y(v)} y2={Y(v)} stroke="var(--grid)" />
-              <text x={L - 8} y={Y(v) + 3.5} textAnchor="end" fontSize="10.5" fill="var(--axis)" style={MONO}>{ax(v)}</text>
+              <text className="mny" x={L - 8} y={Y(v) + 3.5} textAnchor="end" fontSize="10.5" fill="var(--axis)" style={MONO}>{ax(v)}</text>
             </g>
           ))}
           <path d={area} fill={`url(#${uid}g)`} clipPath={`url(#${uid}a)`} />
@@ -513,7 +513,7 @@ export function VBars({ bars, labelEvery = 1, values = false, tipLabel, height }
           {yt.map(v => (
             <g key={v}>
               <line x1={L} x2={w - R} y1={Y(v)} y2={Y(v)} stroke={v === 0 ? 'var(--line-2)' : 'var(--grid)'} />
-              <text x={L - 8} y={Y(v) + 3.5} textAnchor="end" fontSize="10.5" fill="var(--axis)" style={MONO}>{ax(v)}</text>
+              <text className="mny" x={L - 8} y={Y(v) + 3.5} textAnchor="end" fontSize="10.5" fill="var(--axis)" style={MONO}>{ax(v)}</text>
             </g>
           ))}
           {bars.map((b, i) => {
@@ -614,7 +614,7 @@ function ScatterChart({ pts }: { pts: Trade[] }) {
           {yt.map(v => (
             <g key={v}>
               <line x1={L} x2={w - R} y1={Y(v)} y2={Y(v)} stroke={v === 0 ? 'var(--line-2)' : 'var(--grid)'} />
-              <text x={L - 8} y={Y(v) + 3.5} textAnchor="end" fontSize="10.5" fill="var(--axis)" style={MONO}>{ax(v)}</text>
+              <text className="mny" x={L - 8} y={Y(v) + 3.5} textAnchor="end" fontSize="10.5" fill="var(--axis)" style={MONO}>{ax(v)}</text>
             </g>
           ))}
           {shownX.map(s => (

@@ -69,10 +69,10 @@ export function EquityCard({ view, trades, rangeLabel }: { view: AccountStats; t
         {pct != null && view.totalTrades > 0 && <span className={`x-tag x-tag--m ${view.netPnl >= 0 ? 'x-tag--g' : 'x-tag--r'}`}>{view.netPnl >= 0 ? '+' : '−'}{fmtPct(Math.abs(pct))}</span>}
       </div>
       <div className="dk-meta">
-        <span>Balance <b className="m">${view.currentEquity.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</b></span>
+        <span>Balance <b className="m mny">${view.currentEquity.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</b></span>
         <span>Trades <b className="m">{view.totalTrades}</b></span>
-        {best != null && <span>Best day <b className={`m ${best > 0 ? 'pos' : ''}`}>{fmtUsd(best, 0)}</b></span>}
-        {worst != null && <span>Worst day <b className={`m ${worst < 0 ? 'neg' : ''}`}>{fmtUsd(worst, 0)}</b></span>}
+        {best != null && <span>Best day <b className={`m mny ${best > 0 ? 'pos' : ''}`}>{fmtUsd(best, 0)}</b></span>}
+        {worst != null && <span>Worst day <b className={`m mny ${worst < 0 ? 'neg' : ''}`}>{fmtUsd(worst, 0)}</b></span>}
       </div>
       <EquityChart pts={pts} />
     </section>
@@ -118,7 +118,7 @@ function EquityChart({ pts }: { pts: ReturnType<typeof withDrawdown> }) {
             return (
               <g key={f}>
                 <line x1={L} x2={w - R} y1={Y(v)} y2={Y(v)} stroke="var(--grid)" />
-                <text x={w - R + 8} y={Y(v) + 3.5} fontSize="10.5" fill="var(--axis)" style={MONO}>{fmtUsdCompact(v)}</text>
+                <text className="mny" x={w - R + 8} y={Y(v) + 3.5} fontSize="10.5" fill="var(--axis)" style={MONO}>{fmtUsdCompact(v)}</text>
               </g>
             );
           })}
@@ -191,7 +191,7 @@ export function KpiColumn({ view, trades }: { view: AccountStats; trades: Trade[
         </div>
       </div>
       <div className="x-card dk-kpi">
-        <div className="x-stat"><span>Expectancy<Help k="expectancy" /></span><b className={exp == null ? '' : exp >= 0 ? 'pos' : 'neg'}>{exp == null ? '—' : `${fmtUsd(exp, 0)}`}<em> / trade</em></b><small>Max drawdown {n ? fmtPct(view.maxDrawdownPct) : '—'}</small></div>
+        <div className="x-stat"><span>Expectancy<Help k="expectancy" /></span><b className={`mny ${exp == null ? '' : exp >= 0 ? 'pos' : 'neg'}`}>{exp == null ? '—' : `${fmtUsd(exp, 0)}`}<em> / trade</em></b><small>Max drawdown {n ? fmtPct(view.maxDrawdownPct) : '—'}</small></div>
         {roll.length > 2 && <Spark vals={roll.map(r => r.expectancy)} />}
       </div>
     </div>
@@ -245,8 +245,8 @@ export function DailyCard({ trades }: { trades: Trade[] }) {
       </div>
       <DailyChart days={days} />
       <div className="x-strip dk-dstats">
-        <div><span>Avg green day<Help k="avgGreenDay" /></span><b className="m pos">{st.avgGreen == null ? '—' : fmtUsd(st.avgGreen, 0)}</b></div>
-        <div><span>Avg red day<Help k="avgRedDay" /></span><b className="m neg">{st.avgRed == null ? '—' : fmtUsd(st.avgRed, 0)}</b></div>
+        <div><span>Avg green day<Help k="avgGreenDay" /></span><b className="m mny pos">{st.avgGreen == null ? '—' : fmtUsd(st.avgGreen, 0)}</b></div>
+        <div><span>Avg red day<Help k="avgRedDay" /></span><b className="m mny neg">{st.avgRed == null ? '—' : fmtUsd(st.avgRed, 0)}</b></div>
         <div><span>Best green streak<Help k="bestStreak" /></span><b>{st.bestStreak ? `${st.bestStreak} day${st.bestStreak === 1 ? '' : 's'}` : '—'}</b></div>
         <div><span>Trades per day<Help k="tradesPerDay" /></span><b>{st.perDay == null ? '—' : st.perDay.toFixed(1)}</b></div>
       </div>
@@ -301,7 +301,7 @@ function DailyChart({ days }: { days: DayBucket[] }) {
           {[top, top / 2, 0, -bot / 2, -bot].map((v, k) => (
             <g key={k}>
               <line x1={L} x2={w - R} y1={yOf(v)} y2={yOf(v)} stroke={v === 0 ? 'var(--line-2)' : 'var(--grid)'} strokeDasharray={k === 1 || k === 3 ? '2 4' : undefined} />
-              <text x={L - 8} y={yOf(v) + 3.5} textAnchor="end" fontSize="10" fill="var(--axis)" style={MONO}>{v === 0 ? '$0' : fmtUsdCompact(v)}</text>
+              <text className="mny" x={L - 8} y={yOf(v) + 3.5} textAnchor="end" fontSize="10" fill="var(--axis)" style={MONO}>{v === 0 ? '$0' : fmtUsdCompact(v)}</text>
             </g>
           ))}
           {days.map((d, i) => {
@@ -316,7 +316,7 @@ function DailyChart({ days }: { days: DayBucket[] }) {
           <path d={runs.map((v, i) => `${i ? 'L' : 'M'}${(bx(i) + bw / 2).toFixed(1)} ${rY(v).toFixed(1)}`).join(' ')} fill="none" stroke="var(--tx)" strokeOpacity=".7" strokeWidth="1.5" strokeLinejoin="round" pointerEvents="none" />
           <circle cx={bx(days.length - 1) + bw / 2} cy={rY(runs[runs.length - 1]!)} r="3.5" fill="var(--tx)" pointerEvents="none" />
           {hover == null && (
-            <text x={Math.max(L + 40, bx(days.length - 1) + bw / 2 - 8)} y={Math.max(12, rY(runs[runs.length - 1]!) - 9)} textAnchor="end" fontSize="10.5" fill="var(--tx)" style={MONO} pointerEvents="none">{fmtUsd(runs[runs.length - 1]!, 0)}</text>
+            <text className="mny" x={Math.max(L + 40, bx(days.length - 1) + bw / 2 - 8)} y={Math.max(12, rY(runs[runs.length - 1]!) - 9)} textAnchor="end" fontSize="10.5" fill="var(--tx)" style={MONO} pointerEvents="none">{fmtUsd(runs[runs.length - 1]!, 0)}</text>
           )}
           {days.map((d, i) => labels.has(i) ? (
             <text key={d.key} x={bx(i) + bw / 2} y={h - 5} fontSize="10.5" fill="var(--axis)" textAnchor={i === 0 ? 'start' : i === days.length - 1 ? 'end' : 'middle'}>{shortDate(d.date)}</text>

@@ -212,3 +212,9 @@ html[data-theme=light] .v6 .x-dialog-scrim { background: rgba(17, 17, 19, .35); 
 .v6 span.x-info-pop span { display: block; white-space: normal; overflow: visible; font-size: inherit; }
 .v6 span.x-info-pop .x-info-why { color: #A0A0A0; }
 
+/* Hide balances (QW.2, components/v6/use-hide-money.ts): money figures blur everywhere;
+   counts, percentages and prices stay readable. Add `.mny` to any other money figure. */
+html[data-hide-money] .v6 :is(.mny, [data-testid=net-pnl], .dk-wl span, .dk-gl-l, .dk-bd-net b, .ac-figs b, .tr-pl b, .cl-amt, .dk-tip, .an-tip) {
+  filter: blur(7px); user-select: none; transition: filter .15s;
+}
+
