@@ -557,10 +557,10 @@ Legend:
 ---
 
 # PART Z — Cross-cutting (every phase)
-- [ ] Z1 Access-control matrix test covers every new route (anon / user / other user / admin) `M`
-- [ ] Z2 Rate limits on every write route that touches an exchange `S`
-- [ ] Z3 Audit log for every trading-affecting action `S`
-- [ ] Z4 Secrets: exchange keys only in the engine/API memory; never logged; error messages scrubbed `S`
+- [x] Z1 Access-control matrix test covers every new route (anon / user / other user / admin) `M` — `apps/api/src/__tests__/access-matrix.test.ts` (c6ee367): every route checked anon/admin/other-user, plus refs in bodies and queries; fixed alerts + coach tool-turn accepting another user's account, pending-leader follow oracle, two 200s for others' records
+- [x] Z2 Rate limits on every write route that touches an exchange `S` — limiters tagged, `rate-limits.test.ts` reads them off the router (77510cf)
+- [x] Z3 Audit log for every trading-affecting action `S` — activity log with IP/device/app-or-API-key for orders, cancels, closes, TP/SL, webhook, copy, leader, runs, subscriptions; `trade-audit.test.ts` (8303516)
+- [x] Z4 Secrets: exchange keys only in the engine/API memory; never logged; error messages scrubbed `S` — logger redaction by field, pattern and registered value; `secrets-in-logs.test.ts` (4b0347b)
 - [ ] Z5 Postman collection for each new module (repo `apps/api/postman/`), run via `postman` CLI `M`
 - [ ] Z6 Docs: `DEPLOY.md` for the engine service + new env vars (names only) `S`
 - [ ] Z7 Railway: engine service, static egress IP decision (B0.9), env vars; **user does the push** `S`
