@@ -173,7 +173,7 @@ Legend:
 - [x] QW.6 Year P&L heatmap (12 month blocks, monthly totals under each). Extends `components/year-heatmap.tsx`. Evidence: MP seen `S` — monthly net P&L under the consistency grid, whole dollars, adds up to the total (2 Nov)
 - [x] QW.7 Asset-allocation donut (top 6 + Others, P&L on hover). Evidence: MP seen `S` — analytics Allocation card, top 5 + Others (the 6th series colour is too close to the 1st in a ring)
 - [x] QW.8 ⓘ explanation on every dashboard/analytics metric (A2.11), with copy written for each metric `M` — lib/metric-help.ts (2 Nov)
-- [ ] QW.9 "Unknown ≠ 0" sweep: every metric with no data renders "—" with a reason tooltip. Evidence: CM seen `S`
+- [ ] QW.9 "Unknown ≠ 0" sweep: every metric with no data renders "—" with a reason tooltip. Evidence: CM seen `S` — partial: unknowns show "—" across dashboard, analytics, trades, calendar, brokers, macro (checked with the empty-account run); reason tooltips not added
 - [x] QW.10 Exit-reason inference from MT5 deal comments (`[tp]`, `[sl]`, `so:`). Filter on `/trades` `M` — lib/exit-reason.ts + /trades filter and TP/SL markers (2 Nov)
 - [ ] QW.11 Source column/filter on trades — exchange orders already show it on /trading (D2); MT5 deals carry no source, so nothing to show on /trades yet. (Manual / Copied / Strategy), ready for Part B `S`
 - [ ] QW.12 Multiple watchlists (up to 8, unique names, rename/delete, at least 1 kept). Migrate the `Watchlist` model from one row per user to lists. Evidence: MP seen + code `M` — deferred: needs a Watchlist schema change, which would add a production migration for Ayush to run
@@ -661,7 +661,7 @@ Legend:
 - [ ] A0.27 Candle colours: brand green/red everywhere incl. klinecharts + TradingView overrides `S`
 
 **States:**
-- [ ] A0.28 One `EmptyState` used everywhere. Replace the six ad-hoc versions (analytics dashed boxes, notebook, paper blotter, dashboard text, brokers dashed card, admin red bar) `M`
+- [x] A0.28 One `EmptyState` used everywhere. Replace the six ad-hoc versions (analytics dashed boxes, notebook, paper blotter, dashboard text, brokers dashed card, admin red bar) `M` — the dashed boxes, red bars and "+$0.00" empties are gone. Page and card empties use `x-empty`; charts keep a compact empty-grid (`an-empty`, `dk-chart-empty`) and lists a muted line (`jn-none`, `mk-none`, `cl-empty`, `tr-jnone`): same tone, sized for where they sit. Decided not to force those into the big page style
 - [x] A0.29 Zero-data rule: when there's no data, show the EmptyState instead of "+$0.00 ▲0.00%" or rows of "—" `S` — verified in code (2 Nov)
 - [x] A0.30 Mobile chip rows: edge fade + scroll snap, so chips never cut mid-word unannounced `S`
 - [x] A0.31 Mobile: no orphan full-width KPI tile (use even counts or a 2-col span rule) `S` — an odd last `x-strip` tile spans the row on phones (2 Nov)
