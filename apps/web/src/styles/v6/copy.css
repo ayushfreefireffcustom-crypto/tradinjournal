@@ -269,3 +269,23 @@
 .v6 .trd-dl dt { color: var(--mut); font-size: 13px; }
 .v6 .trd-dl dd { margin: 0; font-size: 13px; text-align: right; display: flex; align-items: center; gap: 8px; overflow-wrap: anywhere; }
 .v6 .trd-strip small { display: block; font-size: 11.5px; color: var(--dim); margin-top: 2px; }
+.v6 .trd-filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.v6 .trd-filters .x-input { height: 34px; width: auto; min-width: 0; }
+.v6 .trd-filters > input.x-input { width: 160px; }
+.v6 .trd-filters--log select.x-input { width: 140px; }
+.v6 .trd-date { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--mut); }
+.v6 .trd-date .x-input { width: 150px; }
+.v6 .trd-export { margin-left: auto; }
+.v6 .trd-bulkbar { display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+.v6 .trd-bulkbar > span { margin-right: auto; font-size: 13px; }
+.v6 .trd-ck { width: 36px; }
+.v6 tr.trd-on td { background: var(--s2); }
+.v6 .trd-bulklist { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 0; max-height: 300px; overflow: auto; }
+.v6 .trd-bulklist li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 12px; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+.v6 .trd-bulklist li > span:first-child { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+@media (max-width: 720px) {
+  .v6 .trd-filters > input.x-input, .v6 .trd-filters--log select.x-input, .v6 .trd-date .x-input { width: 100%; }
+  .v6 .trd-date { width: 100%; }
+  .v6 .trd-filters--log > * { flex: 1 1 100%; }
+  .v6 .trd-export { margin-left: 0; }
+}

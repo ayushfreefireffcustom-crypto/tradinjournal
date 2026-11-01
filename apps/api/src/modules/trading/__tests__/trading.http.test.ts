@@ -60,6 +60,26 @@ describe.skipIf(!local)('/api/trading over HTTP', () => {
     const ov = await fetch(`${s.base}/api/trading/overview`, { headers: { cookie } });
     expect(ov.status).toBe(200);
     expect(((await ov.json()) as { data: unknown }).data).toEqual({ positions: [], pending: [], closed: [], counts: { open: 0, pending: 0, closed: 0, rejected: 0 }, errors: [] });
+    // New routes: sign-in, validation, CSV headers.
+    for (const path of ['/api/trading/orders/summary', '/api/trading/orders/export.csv']) expect((await fetch(`${s.base}${path}`)).status, path).toBe(401);
+    expect((await fetch(`${s.base}/api/trading/positions/close-many`, { method: 'POST', headers: { 'content-type': 'application/json', origin: origin() }, body: '{"items":[]}' })).status).toBe(401);
+    expect((await fetch(`${s.base}/api/trading/orders?from=2026-06-02&to=2026-06-01`, { headers: { cookie } })).status).toBe(422);
+    expect((await fetch(`${s.base}/api/trading/orders?from=not-a-date`, { headers: { cookie } })).status).toBe(422);
+    expect((await fetch(`${s.base}/api/trading/orders/summary?side=HOLD`, { headers: { cookie } })).status).toBe(422);
+    const many = (items: unknown) => fetch(`${s.base}/api/trading/positions/close-many`, { method: 'POST', headers: { 'content-type': 'application/json', origin: origin(), cookie }, body: JSON.stringify({ items }) });
+    expect((await many([])).status).toBe(422);
+    expect((await many(Array.from({ length: 51 }, () => ({ connectionId: 'x', symbol: 'BTCUSD' })))).status).toBe(422);
+    const okMany = await many([{ connectionId: 'nope', symbol: 'BTCUSD' }]);
+    expect(okMany.status).toBe(200);
+    expect(((await okMany.json()) as { data: { results: Array<{ ok: boolean }> } }).data.results).toEqual([expect.objectContaining({ ok: false, symbol: 'BTCUSD' })]);
+    const csv = await fetch(`${s.base}/api/trading/orders/export.csv?symbol=btcusd`, { headers: { cookie } });
+    expect(csv.status).toBe(200);
+    expect(csv.headers.get('content-type')).toMatch(/^text\/csv/);
+    expect(csv.headers.get('content-disposition')).toMatch(/attachment; filename="tradelogs-orders-\d{4}-\d{2}-\d{2}\.csv"/);
+    expect(csv.headers.get('x-rows')).toBe('0');
+    expect((await csv.text()).trim()).toMatch(/^sent_at_utc,/);
+    expect(((await (await fetch(`${s.base}/api/trading/orders/summary`, { headers: { cookie } })).json()) as { data: unknown }).data).toMatchObject({ placed: 0, filledNotionalUsd: 0 });
+
     const orders = await fetch(`${s.base}/api/trading/orders?status=rejected&source=MANUAL`, { headers: { cookie } });
     expect(((await orders.json()) as { data: unknown }).data).toEqual({ items: [], nextCursor: null });
   });

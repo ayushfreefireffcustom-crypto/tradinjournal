@@ -228,4 +228,80 @@ describe.skipIf(!local)('trading desk', () => {
     const later = await svc.deskOverview(me, new Date(t0.getTime() + 5000), depsFor());
     expect(later.closed.filter((c) => c.connectionLabel === 'Main').map((c) => [c.symbol, c.qty, c.pnlUsd])).toEqual([['BTCUSD', 2, 1]]);
   });
+  it('filters the log by symbol, side, source, account, dates and exact ID', async () => {
+    // A known set on Second: three orders at fixed times.
+    const base = new Date('2026-06-01T00:00:00Z');
+    const mk = (i: number, over: Record<string, unknown>) => prisma.exchangeOrder.create({ data: { userId: me, connectionId: conns.second!, source: 'MANUAL', clientOrderId: `${tag}-f${i}`, symbol: 'ETHUSD', side: 'BUY', type: 'MARKET', qty: 1, status: 'FILLED', filledQty: 1, avgFillPrice: 3000, requestedAt: new Date(base.getTime() + i * 3600_000), ...over } });
+    await mk(1, { exchangeOrderId: `${tag}-ex1` });
+    await mk(2, { side: 'SELL', status: 'REJECTED', filledQty: 0, avgFillPrice: null, error: 'Not enough margin.' });
+    await mk(3, { symbol: 'XRPUSD', source: 'COPY' });
+    const q = (f: Record<string, unknown>) => svc.deskOrders(me, { status: 'all', limit: 100, ...f } as never).then((r) => r.items.map((o) => o.clientOrderId).filter((c) => c.startsWith(`${tag}-f`)).sort());
+    expect(await q({ connectionId: conns.second })).toEqual([`${tag}-f1`, `${tag}-f2`, `${tag}-f3`]);
+    expect(await q({ connectionId: conns.second, symbol: 'ETHUSD' })).toEqual([`${tag}-f1`, `${tag}-f2`]);
+    expect(await q({ connectionId: conns.second, side: 'SELL' })).toEqual([`${tag}-f2`]);
+    expect(await q({ connectionId: conns.second, source: 'COPY' })).toEqual([`${tag}-f3`]);
+    expect(await q({ from: new Date(base.getTime() + 2 * 3600_000), to: new Date(base.getTime() + 3 * 3600_000) })).toEqual([`${tag}-f2`, `${tag}-f3`]);
+    expect(await q({ q: `${tag}-ex1` })).toEqual([`${tag}-f1`]);
+    expect(await q({ q: `${tag}-f3` })).toEqual([`${tag}-f3`]);
+    // Partial IDs don't match: search is exact, so it can't fish through other rows.
+    expect(await q({ q: `${tag}-ex` })).toEqual([]);
+    // Another user's filters see none of it.
+    expect((await svc.deskOrders(other, { status: 'all', limit: 100, connectionId: conns.second } as never)).items).toEqual([]);
+  });
+
+  it('summarises counts and filled notional for the same filters', async () => {
+    const s = await svc.deskOrdersSummary(me, { status: 'all', connectionId: conns.second } as never, depsFor());
+    // On Second: the partial-close test's 2 fills (ETHUSD 1 and 3 @ 70100 × 0.01) plus f1 and f3 above.
+    expect(s.rejected).toBe(1);
+    expect(s.filled).toBe(4);
+    expect(s.placed).toBe(5);
+    expect(s.inFlight).toBe(0);
+    // ETHUSD 1×70100×0.01 + 3×70100×0.01 + f1 1×3000×0.01 + f3 XRPUSD 1×3000×0.01 = 2804 + 30 + 30.
+    expect(s.filledNotionalUsd).toBeCloseTo(2864, 2);
+    // A contract whose size can't be read makes the notional unknown, not a smaller number.
+    const noInst = { ...depsFor(), adapterFor: () => ({ getInstrument: async () => null }) as unknown as Exchange };
+    expect((await svc.deskOrdersSummary(me, { status: 'all', connectionId: conns.second } as never, noInst)).filledNotionalUsd).toBeNull();
+    expect(await svc.deskOrdersSummary(other, { status: 'all' } as never, depsFor())).toMatchObject({ placed: 0, filledNotionalUsd: 0 });
+  });
+
+  it('exports CSV that a spreadsheet cannot run as a formula', async () => {
+    expect(svc.csvCell('=HYPERLINK("http://x")')).toBe(`"'=HYPERLINK(""http://x"")"`);
+    expect(svc.csvCell('+1')).toBe(`"'+1"`);
+    expect(svc.csvCell('@SUM(A1)')).toBe(`"'@SUM(A1)"`);
+    expect(svc.csvCell('a,b')).toBe('"a,b"');
+    expect(svc.csvCell(null)).toBe('');
+    expect(svc.csvCell(70100)).toBe('70100');
+    await prisma.exchangeOrder.create({ data: { userId: me, connectionId: conns.second!, source: 'MANUAL', clientOrderId: `${tag}-csv`, symbol: 'ETHUSD', side: 'BUY', type: 'MARKET', qty: 1, status: 'REJECTED', error: '=cmd|calc', requestedAt: new Date('2026-06-02T00:00:00Z') } });
+    const out = await svc.deskOrdersCsv(me, { status: 'rejected', connectionId: conns.second } as never);
+    const lines = out.csv.trim().split('\r\n');
+    expect(lines[0]).toMatch(/^sent_at_utc,account,environment,source,leader,symbol,side,type,reduce_only,qty,filled_qty,avg_fill_price,status,error,exchange_order_id,client_order_id,filled_at_utc$/);
+    expect(out.rows).toBe(lines.length - 1);
+    expect(out.truncated).toBe(false);
+    expect(lines.find((l) => l.includes(`${tag}-csv`))).toContain(`"'=cmd|calc"`);
+    expect((await svc.deskOrdersCsv(other, { status: 'all' } as never)).rows).toBe(0);
+  });
+
+  it('closes many positions independently: one failing never stops the rest', async () => {
+    venues.main!.positions = [{ symbol: 'BTCUSD', size: 3, avgEntry: 70_000, markPrice: null, unrealizedPnl: 0, liquidationPrice: null, leverage: null }];
+    venues.second!.positions = [{ symbol: 'ETHUSD', size: -2, avgEntry: 3000, markPrice: null, unrealizedPnl: 0, liquidationPrice: null, leverage: null }];
+    const items = [
+      { connectionId: conns.main!, symbol: 'BTCUSD' }, // copy-managed (earlier test): refused without confirmation
+      { connectionId: conns.second!, symbol: 'ETHUSD' },
+      { connectionId: conns.second!, symbol: 'ETHUSD' }, // duplicate: ignored
+      { connectionId: conns.second!, symbol: 'SOLUSD' }, // nothing open
+      { connectionId: conns.theirs!, symbol: 'BTCUSD' }, // not this user's
+    ];
+    const r = await svc.closeMany(me, { items }, new Date(), depsFor());
+    expect(r.results.map((x) => [x.symbol, x.ok])).toEqual([['BTCUSD', false], ['ETHUSD', true], ['SOLUSD', false], ['BTCUSD', false]]);
+    expect(r.results[0]!.message).toMatch(/copied from/);
+    expect(r.results[2]!.message).toMatch(/no open SOLUSD/);
+    expect(r.results[3]!.message).toMatch(/not found/i);
+    expect(venues.second!.placed.map((o) => [o.symbol, o.side, o.qty])).toEqual([['ETHUSD', 'BUY', 2]]);
+    expect(venues.main!.placed).toEqual([]);
+    expect(venues.theirs!.placed).toEqual([]);
+    // With the confirmation the copied one closes too.
+    const again = await svc.closeMany(me, { items: [items[0]!], confirmCopied: true }, new Date(), depsFor());
+    expect(again.results[0]!.ok).toBe(true);
+    expect(venues.main!.placed.map((o) => [o.symbol, o.side, o.qty])).toEqual([['BTCUSD', 'SELL', 3]]);
+  });
 });

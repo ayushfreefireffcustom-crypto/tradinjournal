@@ -389,13 +389,13 @@ Legend:
 
 # PART D — Trading desk (Phase 2)
 - [x] D1 Positions page tabs: Open / Closed / Pending / Rejected, with counts. Evidence: MP seen `M` (done 1 Nov: /trading, live on testnet)
-- [ ] D2 Filters: symbol, side, source, dates; search by order/trade ID; CSV export `S`
+- [x] D2 Filters: symbol, side, source, dates; search by order/trade ID; CSV export `S` (done 1 Nov: quick filters on open/pending/closed; order log filters, exact ID search, CSV with formula guard)
 - [x] D3 Close position (market) with confirm `S` (done 1 Nov: reduce-only market, asks first for copy-managed positions)
 - [x] D4 Partial close (qty/lots, rounding explained) `S` (done 1 Nov: rounds down to the contract step, never past the position)
 - [ ] D5 Edit SL / TP on an open position (exchange-native orders where supported) `M`
 - [ ] D6 Trailing stop (arm at +X, trail distance) `M`
-- [ ] D7 Bulk select + close selected `S`
-- [ ] D8 Square off all (typed confirm) `S`
+- [x] D7 Bulk select + close selected `S` (done 1 Nov)
+- [x] D8 Square off all (typed confirm) `S` (done 1 Nov: typed CLOSE ALL)
 - [x] D9 Trade details sheet: type, entry, mark, time, order ID, trade ID, copy buttons `S` (done 1 Nov)
 - [ ] D10 Quick-trade floating button `M`:
   1. symbol
@@ -407,7 +407,7 @@ Legend:
   - instrument-spec checks (lot/tick)
   - clear outcomes: credential / position locked / rejected / unconfirmed
 - [ ] D11 Order ticket (market/limit/stop, tif, reduce-only, TP/SL) used by quick trade and the chart `M`
-- [ ] D12 Manual-orders log: what we sent and what the exchange replied; KPIs (placed, filled, rejected, in flight, notional). Evidence: CM seen `M` (log + Rejected tab done 1 Nov; KPI strip left)
+- [x] D12 Manual-orders log: what we sent and what the exchange replied; KPIs (placed, filled, rejected, in flight, notional). Evidence: CM seen `M` (done 1 Nov: log, Rejected tab, KPI strip incl. filled value)
 - [ ] D13 Set leverage and margin mode per symbol `S`
 - [ ] D14 TradingView webhook bot `M`:
   - per-user secret + regenerate (warning)

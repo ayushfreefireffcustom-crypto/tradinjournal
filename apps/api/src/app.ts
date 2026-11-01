@@ -40,6 +40,8 @@ export function createApp(): Express {
     cors({
       origin: env.CORS_ORIGIN,
       credentials: true,
+      // The order-log CSV download reads its file name and row count from these.
+      exposedHeaders: ['Content-Disposition', 'X-Rows', 'X-Truncated'],
     }),
   );
 

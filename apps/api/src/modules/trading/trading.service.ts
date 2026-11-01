@@ -7,6 +7,10 @@ import { randomBytes } from 'node:crypto';
 import { env } from '@tradinjournal/config';
 import { prisma, type ExchangeConnection, type Prisma } from '@tradinjournal/db';
 import type {
+  CloseManyInput,
+  CloseManyResultDto,
+  DeskOrderFilters,
+  DeskOrdersSummaryDto,
   ClosePositionInput,
   ClosePositionResultDto,
   DeskClosedTradeDto,
@@ -181,12 +185,26 @@ function orderDto(o: OrderRow): DeskOrderDto {
   };
 }
 
+/** The order-log filters as a query, always scoped to the user (D2). */
+function orderWhere(userId: string, f: DeskOrderFilters): Prisma.ExchangeOrderWhereInput {
+  const status: Prisma.ExchangeOrderWhereInput['status'] =
+    f.status === 'rejected' ? 'REJECTED' : f.status === 'filled' ? { in: ['FILLED', 'PARTIAL'] } : f.status === 'open' ? { in: ['PENDING', 'SUBMITTED', 'OPEN'] } : undefined;
+  return {
+    userId,
+    ...(status ? { status } : {}),
+    ...(f.source ? { source: f.source } : {}),
+    ...(f.side ? { side: f.side } : {}),
+    ...(f.symbol ? { symbol: f.symbol } : {}),
+    ...(f.connectionId ? { connectionId: f.connectionId } : {}),
+    ...(f.from || f.to ? { requestedAt: { ...(f.from ? { gte: f.from } : {}), ...(f.to ? { lte: f.to } : {}) } } : {}),
+    ...(f.q ? { OR: [{ exchangeOrderId: f.q }, { clientOrderId: f.q }, { id: f.q }] } : {}),
+  };
+}
+
 /** Everything we sent (or decided not to send), newest first (D12). */
 export async function deskOrders(userId: string, q: DeskOrdersQuery): Promise<{ items: DeskOrderDto[]; nextCursor: string | null }> {
-  const status: Prisma.ExchangeOrderWhereInput['status'] =
-    q.status === 'rejected' ? 'REJECTED' : q.status === 'filled' ? { in: ['FILLED', 'PARTIAL'] } : q.status === 'open' ? { in: ['PENDING', 'SUBMITTED', 'OPEN'] } : undefined;
   const rows = await prisma.exchangeOrder.findMany({
-    where: { userId, ...(status ? { status } : {}), ...(q.source ? { source: q.source } : {}) },
+    where: orderWhere(userId, q),
     include: orderInclude,
     orderBy: [{ requestedAt: 'desc' }, { id: 'desc' }],
     take: q.limit + 1,
@@ -194,6 +212,84 @@ export async function deskOrders(userId: string, q: DeskOrdersQuery): Promise<{ 
   });
   const page = rows.slice(0, q.limit);
   return { items: page.map(orderDto), nextCursor: rows.length > q.limit ? page[page.length - 1]!.id : null };
+}
+
+/** Counts and filled notional for the same filters as the log (D12 KPIs). */
+export async function deskOrdersSummary(userId: string, f: DeskOrderFilters, deps: TradingDeps = defaultDeps): Promise<DeskOrdersSummaryDto> {
+  const where = orderWhere(userId, f);
+  const [byStatus, filled] = await Promise.all([
+    prisma.exchangeOrder.groupBy({ by: ['status'], where, _count: { _all: true } }),
+    prisma.exchangeOrder.findMany({
+      where: { ...where, filledQty: { gt: 0 }, avgFillPrice: { not: null } },
+      select: { symbol: true, filledQty: true, avgFillPrice: true, connection: { select: { exchange: true, environment: true } } },
+      take: 20_000,
+    }),
+  ]);
+  const n = (...st: string[]) => byStatus.filter((r) => st.includes(r.status)).reduce((a, r) => a + r._count._all, 0);
+  // Notional = contracts × price × contract size, so it needs each contract's size.
+  const mults = new Map<string, number | null>();
+  let notional: number | null = 0;
+  for (const o of filled) {
+    const key = `${o.connection.exchange}:${o.connection.environment}:${o.symbol}`;
+    if (!mults.has(key)) {
+      const inst = await deps.adapterFor(o.connection.exchange, o.connection.environment).getInstrument(o.symbol).catch(() => null);
+      mults.set(key, inst?.contractMultiplier ?? null);
+    }
+    const m = mults.get(key);
+    if (m == null) { notional = null; break; }
+    notional += Number(o.filledQty) * Number(o.avgFillPrice) * m;
+  }
+  return {
+    placed: n('PENDING', 'SUBMITTED', 'OPEN', 'PARTIAL', 'FILLED', 'CANCELLED', 'REJECTED', 'EXPIRED'),
+    filled: n('FILLED'),
+    partial: n('PARTIAL'),
+    rejected: n('REJECTED'),
+    inFlight: n('PENDING', 'SUBMITTED', 'OPEN'),
+    skipped: n('SKIPPED'),
+    cancelled: n('CANCELLED', 'EXPIRED'),
+    filledNotionalUsd: notional == null ? null : Math.round(notional * 100) / 100,
+  };
+}
+
+const CSV_MAX = 5000;
+/** A cell for a spreadsheet: quoted, and never read as a formula (=, +, -, @ lead to code in Excel/Sheets). */
+export function csvCell(v: unknown): string {
+  let s = v == null ? '' : String(v);
+  if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
+  return /[",\n\r']/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+/** The filtered log as CSV, newest first, at most 5000 rows (D2). */
+export async function deskOrdersCsv(userId: string, f: DeskOrderFilters): Promise<{ csv: string; rows: number; truncated: boolean }> {
+  const rows = await prisma.exchangeOrder.findMany({ where: orderWhere(userId, f), include: orderInclude, orderBy: [{ requestedAt: 'desc' }, { id: 'desc' }], take: CSV_MAX + 1 });
+  const head = ['sent_at_utc', 'account', 'environment', 'source', 'leader', 'symbol', 'side', 'type', 'reduce_only', 'qty', 'filled_qty', 'avg_fill_price', 'status', 'error', 'exchange_order_id', 'client_order_id', 'filled_at_utc'];
+  const lines = rows.slice(0, CSV_MAX).map((r) => {
+    const o = orderDto(r);
+    return [o.requestedAt, o.connectionLabel, o.environment, o.source, o.leaderName, o.symbol, o.side, o.type, o.reduceOnly, o.qty, o.filledQty, o.avgFillPrice, o.status, o.error, o.exchangeOrderId, o.clientOrderId, o.filledAt].map(csvCell).join(',');
+  });
+  return { csv: [head.join(','), ...lines].join('\r\n') + '\r\n', rows: lines.length, truncated: rows.length > CSV_MAX };
+}
+
+/**
+ * Close several positions, one after another (D7, D8). Each result stands on its
+ * own: one failure doesn't stop the rest, and nothing is retried.
+ */
+export async function closeMany(userId: string, input: CloseManyInput, now = new Date(), deps: TradingDeps = defaultDeps): Promise<CloseManyResultDto> {
+  const seen = new Set<string>();
+  const results: CloseManyResultDto['results'] = [];
+  for (const it of input.items) {
+    const key = `${it.connectionId}:${it.symbol}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    try {
+      const r = await closePosition(userId, { connectionId: it.connectionId, symbol: it.symbol, confirmCopied: input.confirmCopied }, now, deps);
+      const ok = ['FILLED', 'PARTIAL', 'SUBMITTED'].includes(r.order.status);
+      results.push({ ...it, ok, message: r.message, order: r.order });
+    } catch (err) {
+      results.push({ ...it, ok: false, message: err instanceof Error ? err.message : 'Could not close this one.', order: null });
+    }
+  }
+  return { results };
 }
 
 /** Close all or part of a position with a reduce-only market order (D3, D4). */

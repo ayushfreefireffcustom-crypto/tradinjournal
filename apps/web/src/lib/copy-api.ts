@@ -360,10 +360,47 @@ export interface DeskOrder extends DeskAccountRef {
 }
 export type DeskOrderStatus = 'all' | 'rejected' | 'filled' | 'open';
 
+/** Order-log filters (D2). Dates are yyyy-mm-dd in the user's own time zone. */
+export interface DeskOrderFilters {
+  status?: DeskOrderStatus; source?: DeskOrder['source']; side?: 'BUY' | 'SELL'; symbol?: string; connectionId?: string; from?: string; to?: string; q?: string;
+}
+export interface DeskOrdersSummary { placed: number; filled: number; partial: number; rejected: number; inFlight: number; skipped: number; cancelled: number; filledNotionalUsd: number | null }
+export interface CloseManyResult { results: Array<{ connectionId: string; symbol: string; ok: boolean; message: string; order: DeskOrder | null }> }
+
+/** Local calendar days to the API's instant range: from the start of `from` to the end of `to`. */
+function filterQuery(f: DeskOrderFilters): Record<string, string | undefined> {
+  const day = (d: string | undefined, end: boolean) => {
+    if (!d) return undefined;
+    const t = new Date(`${d}T00:00:00`);
+    if (Number.isNaN(t.getTime())) return undefined;
+    if (end) t.setDate(t.getDate() + 1), t.setMilliseconds(-1);
+    return t.toISOString();
+  };
+  return { status: f.status, source: f.source, side: f.side, symbol: f.symbol?.trim() || undefined, connectionId: f.connectionId, from: day(f.from, false), to: day(f.to, true), q: f.q?.trim() || undefined };
+}
+
 export const tradingApi = {
   overview: () => call<DeskOverview>('/trading/overview'),
-  orders: (q: { status?: DeskOrderStatus; source?: DeskOrder['source']; cursor?: string | null }) =>
-    call<Page<DeskOrder>>(`/trading/orders${qs({ status: q.status, source: q.source, cursor: q.cursor ?? undefined })}`),
+  orders: (q: DeskOrderFilters & { cursor?: string | null }) =>
+    call<Page<DeskOrder>>(`/trading/orders${qs({ ...filterQuery(q), cursor: q.cursor ?? undefined })}`),
+  summary: (f: DeskOrderFilters) => call<DeskOrdersSummary>(`/trading/orders/summary${qs(filterQuery(f))}`),
+  /** Downloads the filtered log as a CSV file; returns how many rows it held. */
+  exportCsv: async (f: DeskOrderFilters): Promise<{ rows: number; truncated: boolean }> => {
+    const res = await fetch(`${API}/api/trading/orders/export.csv${qs(filterQuery(f))}`, { credentials: 'include' });
+    if (!res.ok) {
+      const j = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
+      throw new ApiError(j?.error?.message ?? `Export failed (${res.status})`, res.status);
+    }
+    const blob = await res.blob();
+    const name = /filename="([^"]+)"/.exec(res.headers.get('content-disposition') ?? '')?.[1] ?? 'tradelogs-orders.csv';
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    return { rows: Number(res.headers.get('x-rows') ?? 0), truncated: res.headers.get('x-truncated') === 'true' };
+  },
+  closeMany: (b: { items: Array<{ connectionId: string; symbol: string }>; confirmCopied?: boolean }) =>
+    call<CloseManyResult>('/trading/positions/close-many', { method: 'POST', ...body(b) }),
   close: (b: { connectionId: string; symbol: string; qty?: number; confirmCopied?: boolean }) =>
     call<{ order: DeskOrder; message: string }>('/trading/positions/close', { method: 'POST', ...body(b) }),
 };
