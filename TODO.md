@@ -561,13 +561,13 @@ Legend:
 - [x] Z2 Rate limits on every write route that touches an exchange `S` — limiters tagged, `rate-limits.test.ts` reads them off the router (77510cf)
 - [x] Z3 Audit log for every trading-affecting action `S` — activity log with IP/device/app-or-API-key for orders, cancels, closes, TP/SL, webhook, copy, leader, runs, subscriptions; `trade-audit.test.ts` (8303516)
 - [x] Z4 Secrets: exchange keys only in the engine/API memory; never logged; error messages scrubbed `S` — logger redaction by field, pattern and registered value; `secrets-in-logs.test.ts` (4b0347b)
-- [ ] Z5 Postman collection for each new module (repo `apps/api/postman/`), run via `postman` CLI `M`
-- [ ] Z6 Docs: `DEPLOY.md` for the engine service + new env vars (names only) `S`
-- [ ] Z7 Railway: engine service, static egress IP decision (B0.9), env vars; **user does the push** `S`
-- [ ] Z8 Production migrations per phase: migrate status → SQL review → user OK → `migrate deploy` → verify row counts `S` (each)
+- [x] Z5 Postman collection for each new module (repo `apps/api/postman/`), run via `postman` CLI `M` — `trading-platform.postman_collection.json`, 113 requests / 160 assertions, `run-trading.sh` (062919a)
+- [x] Z6 Docs: `DEPLOY.md` for the engine service + new env vars (names only) `S` — root `DEPLOY.md` (37e01ad)
+- [ ] Z7 Railway: engine service, static egress IP decision (B0.9), env vars; **user does the push** `S` — needs Ayush: steps written in `DEPLOY.md` and `docs/trading-engine-deploy.md`
+- [ ] Z8 Production migrations per phase: migrate status → SQL review → user OK → `migrate deploy` → verify row counts `S` (each) — needs Ayush's OK: 9 pending, SQL reviewed (additive only), checklist in `DEPLOY.md`
 - [x] Z9 ~~SEBI/legal opinion~~ Not pursued (Ayush, 31 Oct 2026). Live stays behind `EXCHANGE_LIVE_ENABLED`, switched on by Ayush only `S`
-- [ ] Z10 Load test: 100 followers × 1 leader fill; fan-out latency < 1s on testnet `M`
-- [ ] Z11 Update the Google Sheet tracker after each work session `S`
+- [x] Z10 Load test: 100 followers × 1 leader fill; fan-out latency < 1s on testnet `M` — simulated 60 ms exchange (100 testnet accounts don't exist): 13.9 s → 0.65 s after concurrent fan-out; `fanout.load.test.ts`
+- [ ] Z11 Update the Google Sheet tracker after each work session `S` — needs Ayush (no sheet access from here)
 
 ---
 
