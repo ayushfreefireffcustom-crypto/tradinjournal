@@ -866,3 +866,4 @@ export * from './schema/inbox.js';
 export * from './schema/trading.js';
 export * from './schema/strategy.js';
 export * from './schema/options.js';
+export * from './schema/account.js';

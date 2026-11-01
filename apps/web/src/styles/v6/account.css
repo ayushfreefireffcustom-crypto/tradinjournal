@@ -397,3 +397,60 @@
 .v6 .ac-st-grid td span { display: block; font-size: 12px; color: var(--mut); margin-top: 2px; }
 .v6 .ac-st-grid .c { text-align: center; width: 80px; }
 .v6 .ac-st-grid .x-switch:disabled { opacity: .4; cursor: not-allowed; }
+
+/* ── Settings sections (Part H) ── */
+.v6 .ac-st-nav { margin-bottom: 14px; overflow-x: auto; max-width: 100%; }
+.v6 .ac-st-nav a { padding: 6px 12px; border-radius: 999px; color: var(--mut); text-decoration: none; font-size: 12.5px; white-space: nowrap; }
+.v6 .ac-st-nav a.is-on { background: var(--hi); color: var(--inv); }
+.v6 .ac-st1 { display: grid; gap: 16px; max-width: 760px; }
+.v6 .ac-form { display: grid; gap: 14px; max-width: 460px; }
+.v6 .ac-form .x-field { display: grid; gap: 6px; }
+.v6 .ac-form .x-field > span { font-size: 12.5px; color: var(--mut); }
+.v6 .ac-form .x-field em { font-style: normal; }
+.v6 .ac-form small { font-size: 12px; line-height: 1.45; }
+.v6 .ac-check { display: inline-flex; gap: 8px; align-items: center; font-size: 13px; }
+.v6 .ac-linkbtn { background: none; border: 0; padding: 0; color: var(--tx); font: inherit; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.v6 .ac-row-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.v6 .ac-2fa-scan { display: grid; grid-template-columns: auto 1fr; gap: 18px; align-items: start; }
+.v6 .ac-qr { background: #fff; padding: 8px; border-radius: 12px; line-height: 0; }
+.v6 .ac-secret { display: block; font-size: 12.5px; word-break: break-all; background: var(--s2); padding: 8px 10px; border-radius: var(--r-ctl); margin: 4px 0 12px; }
+.v6 .ac-codes ol { columns: 2; padding-left: 22px; font-size: 14px; line-height: 1.9; margin: 10px 0; }
+.v6 .ac-codes p { margin: 0; font-size: 13px; color: var(--mut); }
+.v6 .ac-codes-act { display: flex; gap: 8px; }
+.v6 .ac-devs { list-style: none; margin: 0; padding: 0; }
+.v6 .ac-devs li { display: flex; gap: 12px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.v6 .ac-devs li:last-child { border-bottom: 0; }
+.v6 .ac-devs li > div { display: grid; gap: 3px; flex: 1; min-width: 0; }
+.v6 .ac-devs b { font-weight: 500; font-size: 14px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.v6 .ac-devs .x-muted { font-size: 12px; line-height: 1.5; }
+.v6 .ac-act-tabs { overflow-x: auto; max-width: 100%; margin-bottom: 8px; }
+.v6 .ac-act-day h3 { font-size: 12px; font-weight: 400; color: var(--mut); margin: 14px 0 4px; }
+.v6 .ac-act { list-style: none; margin: 0; padding: 0; }
+.v6 .ac-act li { display: flex; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--line); }
+.v6 .ac-act li > div { display: grid; gap: 2px; min-width: 0; }
+.v6 .ac-act b { font-weight: 400; font-size: 13.5px; overflow-wrap: anywhere; }
+.v6 .ac-act .x-muted { font-size: 12px; }
+.v6 .ac-act-ic { width: 24px; height: 24px; flex: none; border-radius: 50%; background: var(--s2); display: grid; place-items: center; font-size: 11px; color: var(--mut); }
+.v6 .ac-act-orders .ac-act-ic { color: var(--tx); }
+.v6 .ac-danger { box-shadow: inset 0 0 0 1px var(--r-soft); }
+.v6 .ac-btn-danger { background: var(--r); color: #fff; border-color: var(--r); }
+.v6 .ac-btn-danger:disabled { opacity: .45; }
+.v6 .ac-blockers { background: var(--r-soft); border-radius: var(--r-inset); padding: 12px 14px; margin: 10px 0 14px; font-size: 13px; }
+.v6 .ac-blockers ul { margin: 6px 0; padding-left: 18px; }
+@media (max-width: 760px) { .v6 .ac-2fa-scan { grid-template-columns: 1fr; justify-items: start; } .v6 .ac-codes ol { columns: 1; } }
+.v6 .ac-fine { font-size: 12px; margin: 10px 0 0; line-height: 1.5; }
+/* Help (H10) */
+.v6 .ac-help { display: grid; gap: 16px; max-width: 860px; }
+.v6 .ac-help-ways { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.v6 .ac-help-way { display: grid; gap: 4px; text-decoration: none; color: var(--tx); }
+.v6 .ac-help-way:hover { box-shadow: inset 0 0 0 1px var(--line-2); }
+.v6 .ac-help-way b { font-weight: 500; }
+.v6 .ac-help-way small { font-size: 12px; }
+.v6 .ac-form--wide { max-width: none; }
+.v6 .ac-form textarea { resize: vertical; min-height: 120px; font: inherit; }
+.v6 .ac-help-sent { display: grid; gap: 6px; justify-items: start; }
+.v6 .ac-help-sent p { margin: 0; }
+.v6 .ac-fb { display: grid; gap: 8px; }
+.v6 .ac-fb header { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; font-size: 13px; }
+.v6 .ac-fb p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; }
+.v6 .ac-fb footer { font-size: 12px; }

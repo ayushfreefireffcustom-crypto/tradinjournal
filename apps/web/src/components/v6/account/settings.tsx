@@ -383,7 +383,7 @@ export function SettingsAside() {
       </section>
       <section className="x-card ac-st-card ac-st-priv">
         <span className="ac-st-ic"><ILock size={16} /></span>
-        <div><b>Private and read-only</b><p>TRADElogs only ever reads your MT5 history. It never places trades or touches your funds.</p></div>
+        <div><b>Your MT5 stays read-only</b><p>TRADElogs only reads your MT5 history; it never trades on your broker account. Exchange trading happens only on accounts you connect with trading keys.</p></div>
       </section>
     </aside>
   );

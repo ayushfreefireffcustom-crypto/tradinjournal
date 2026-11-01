@@ -83,6 +83,42 @@ export function resetPasswordEmail(otp: string): { subject: string; html: string
   return { subject: 'Reset your TRADElogs password', html: shell(inner) };
 }
 
+const ACCOUNT_FOOTER = 'You\'re receiving this because of a change to your TRADElogs account. If it wasn\'t you, sign in and change your password, or reply to this email.';
+
+export function deleteAccountOtpEmail(otp: string): { subject: string; html: string } {
+  const inner = `
+    <h1 style="color:${FG};font-size:20px;font-weight:700;margin:0 0 12px;">Confirm deleting your account</h1>
+    <p style="color:${MUTED};font-size:14px;line-height:1.6;margin:0 0 24px;">
+      Enter this code in the app to permanently delete your TRADElogs account and everything in it. If you didn't ask for this, ignore this email and change your password.
+    </p>
+    <div style="background:${BG};border:1px solid ${BORDER};border-radius:12px;padding:20px;text-align:center;margin:0 0 20px;">
+      <span style="color:#FE3A31;font-size:34px;font-weight:800;letter-spacing:10px;">${otp}</span>
+    </div>
+    <p style="color:${MUTED};font-size:13px;line-height:1.6;margin:0;">
+      This code expires in 10 minutes. Don't share it with anyone.
+    </p>`;
+  return { subject: 'Your code to delete your TRADElogs account', html: shell(inner, { footer: ACCOUNT_FOOTER }) };
+}
+
+export function accountDeletedEmail(name: string): { subject: string; html: string } {
+  const first = name?.trim().split(' ')[0] || 'there';
+  const inner = `
+    <h1 style="color:${FG};font-size:20px;font-weight:700;margin:0 0 12px;">Your account is deleted</h1>
+    <p style="color:${MUTED};font-size:14px;line-height:1.6;margin:0;">
+      Hi ${first}, your TRADElogs account and its data have been deleted, and your exchange keys were removed from our servers. Revoke the keys on your exchange too if you haven't. You can sign up again any time.
+    </p>`;
+  return { subject: 'Your TRADElogs account was deleted', html: shell(inner, { footer: 'This is the last email we\'ll send to this address.' }) };
+}
+
+export function feedbackAlertEmail(p: { kind: string; from: string; message: string; page: string | null }): { subject: string; html: string } {
+  const esc = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const inner = `
+    <h1 style="color:${FG};font-size:18px;font-weight:700;margin:0 0 12px;">New ${esc(p.kind)} from ${esc(p.from)}</h1>
+    ${p.page ? `<p style="color:${MUTED};font-size:13px;margin:0 0 12px;">Page: ${esc(p.page)}</p>` : ''}
+    <p style="color:${FG};font-size:14px;line-height:1.6;margin:0;white-space:pre-wrap;">${esc(p.message)}</p>`;
+  return { subject: `TRADElogs ${p.kind}: ${p.message.slice(0, 60)}`, html: shell(inner, { footer: 'Sent to TRADElogs admins. Reply from the admin feedback page.' }) };
+}
+
 export function welcomeEmail(name: string): { subject: string; html: string } {
   const first = name?.trim().split(' ')[0] || 'trader';
   const inner = `

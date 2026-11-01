@@ -6,6 +6,7 @@ import { requireInternalToken } from '../../http/middleware/require-internal-tok
 import { validateBody } from '../../http/middleware/validate.js';
 import { ok, created } from '../../http/response.js';
 import { perUserRateLimit } from '../../lib/rate-limit.js';
+import { contextOf, recordActivity } from '../me/activity.service.js';
 import { controlDeployment, createDeployment, deploymentReport, getDeployment, listDeployments, setMultiplier, tickDeployments, type DeployAction } from './deployments.service.js';
 
 const uid = (res: Response) => res.locals.user.id as string;
@@ -24,7 +25,11 @@ const actions = ['pause', 'resume', 'stop', 'settle', 'emergency_close', 'archiv
 
 /** POST /api/strategies/:id/deployments, GET /api/strategies/:id/deployments */
 export function mountStrategyDeployments(r: IRouter) {
-  r.post('/:id/deployments', limit, validateBody(deploySchema), wrap(async (req, res) => created(res, await createDeployment(uid(res), p(req), req.body))));
+  r.post('/:id/deployments', limit, validateBody(deploySchema), wrap(async (req, res) => {
+    const d = await createDeployment(uid(res), p(req), req.body);
+    await recordActivity(uid(res), 'deployment_started', `Started “${d.name}” on ${d.mode === 'live' ? 'a live account' : 'paper'}`, contextOf(req), { deploymentId: d.id });
+    created(res, d);
+  }));
   r.get('/:id/deployments', wrap(async (req, res) => ok(res, await listDeployments(uid(res), p(req)))));
 }
 
@@ -42,7 +47,9 @@ deploymentsRouter.post('/:id/size', limit, validateBody(z.object({ multiplier: z
 deploymentsRouter.post('/:id/:action', limit, wrap(async (req, res) => {
   const a = String(req.params.action);
   if (!(actions as readonly string[]).includes(a)) { res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Unknown action' } }); return; }
-  ok(res, await controlDeployment(uid(res), p(req), a as DeployAction));
+  const d = await controlDeployment(uid(res), p(req), a as DeployAction);
+  if (['stop', 'settle', 'emergency_close'].includes(a)) await recordActivity(uid(res), 'deployment_stopped', `${a === 'stop' ? 'Stopped' : a === 'settle' ? 'Settled' : 'Emergency-closed'} a strategy run`, contextOf(req), { deploymentId: p(req) });
+  ok(res, d);
 }));
 
 // Worker-driven ticks (when the in-process scheduler is off).

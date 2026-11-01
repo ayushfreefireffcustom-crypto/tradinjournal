@@ -9,6 +9,7 @@ import { placeTicket, previewTicket, ticketQuote, tradableInstruments } from './
 import { getProtection, setProtection } from './protection.service.js';
 import { exchangeJournal, importHistory } from './history.service.js';
 import { createApiKey, listApiKeys, revokeApiKey } from './api-keys.service.js';
+import { contextOf, recordActivity } from '../me/activity.service.js';
 import { deleteWebhook, getWebhook, setupWebhook, updateWebhook, webhookEvents } from './webhook.service.js';
 import { cancelOrder, closeMany, closePosition, deskOrders, deskOrdersCsv, deskOrdersSummary, deskOverview } from './trading.service.js';
 
@@ -50,8 +51,16 @@ tradingRouter.post('/orders/preview', readLimit, validateBody(orderTicketSchema)
 tradingRouter.post('/orders', closeLimit, validateBody(orderTicketSchema), wrap(async (req, res) => res.json({ data: await placeTicket(uid(res), req.body as OrderTicketInput) })));
 // Personal API keys for /api/v1 (D16).
 tradingRouter.get('/api-keys', wrap(async (_req, res) => res.json({ data: await listApiKeys(uid(res)) })));
-tradingRouter.post('/api-keys', closeLimit, validateBody(createApiKeySchema), wrap(async (req, res) => res.status(201).json({ data: await createApiKey(uid(res), req.body as CreateApiKeyInput) })));
-tradingRouter.post('/api-keys/:id/revoke', closeLimit, wrap(async (req, res) => res.json({ data: await revokeApiKey(uid(res), String(req.params.id).slice(0, 64)) })));
+tradingRouter.post('/api-keys', closeLimit, validateBody(createApiKeySchema), wrap(async (req, res) => {
+  const k = await createApiKey(uid(res), req.body as CreateApiKeyInput);
+  await recordActivity(uid(res), 'api_key_created', `Created API key “${k.name}” (${k.scope}, …${k.last4})`, contextOf(req));
+  res.status(201).json({ data: k });
+}));
+tradingRouter.post('/api-keys/:id/revoke', closeLimit, wrap(async (req, res) => {
+  const k = await revokeApiKey(uid(res), String(req.params.id).slice(0, 64));
+  await recordActivity(uid(res), 'api_key_revoked', `Revoked API key “${k.name}” (…${k.last4})`, contextOf(req));
+  res.json({ data: k });
+}));
 
 // Exchange trade history and journal (D17, D18).
 tradingRouter.get('/history', validateQuery(historyQuerySchema), wrap(async (req, res) => res.json({ data: await exchangeJournal(uid(res), (req.query as unknown as { connectionId: string }).connectionId) })));

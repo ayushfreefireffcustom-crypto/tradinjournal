@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import '@/components/landing-v6/landing-v6.css';
 import { IconSprite } from '@/components/landing-v6/icons';
+import DeletedNote from '@/components/landing-v6/deleted-note';
 import { Closing, FaqSection, Features, Footer, Hero, How, Integrations, Nav, Next } from '@/components/landing-v6/sections';
 
 export const metadata: Metadata = {
@@ -24,6 +25,7 @@ export default function LandingPage() {
     <div className="lp6">
       <a href="#main" className="skip">Skip to content</a>
       <IconSprite />
+      <DeletedNote />
       <Nav />
       <main id="main">
         <Hero />

@@ -38,6 +38,13 @@ model User {
   /// lives on Referral; this is kept for audit.
   referralCode String?
 
+  /// Optional contact number (H8), as typed in E.164 form.
+  phone            String?
+  /// better-auth two-factor plugin (H5).
+  twoFactorEnabled Boolean? @default(false)
+  /// Product tour progress (H9): { seen: string[], dismissed: boolean }.
+  tour             Json?
+
   sessions       Session[]
   accounts       Account[]
   brokerAccounts BrokerAccount[]
@@ -57,6 +64,9 @@ model User {
   savedScreens      SavedScreen[]
   strategies        Strategy[]   
   deployments       StrategyDeployment[]
+  twoFactors        TwoFactor[]
+  activity          ActivityEvent[]
+  feedback          Feedback[]
 
   @@map("user")
 }
@@ -75,6 +85,55 @@ model Session {
 
   @@index([userId])
   @@map("session")
+}
+
+/// TOTP secret and hashed backup codes for two-factor sign-in (better-auth plugin, H5).
+model TwoFactor {
+  id          String   @id @default(cuid())
+  secret      String
+  backupCodes String
+  verified    Boolean? @default(true)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([secret])
+  @@index([userId])
+  @@map("two_factor")
+}
+
+/// The account's own activity log (H7): sign-ins, security changes, exchange
+/// connections, follows. Orders are read from exchange_order alongside it.
+model ActivityEvent {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind      String
+  summary   String
+  ip        String?
+  userAgent String?
+  data      Json?
+  at        DateTime @default(now())
+
+  @@index([userId, at(sort: Desc)])
+  @@map("activity_event")
+}
+
+/// Bug reports and feedback from the help page (H10). A person reads every one.
+model Feedback {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind      String
+  message   String
+  page      String?
+  userAgent String?
+  status    String    @default("new")
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([status, createdAt])
+  @@index([userId, createdAt])
+  @@map("feedback")
 }
 
 model Account {

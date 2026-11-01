@@ -17,6 +17,10 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  // Two-factor step (H5): after the password, a code from the authenticator app or a backup code.
+  const [step, setStep] = useState<'password' | 'code'>('password');
+  const [code, setCode] = useState('');
+  const [backup, setBackup] = useState(false);
 
   // Google sends failures back here as ?error=…; say so instead of a silent reload.
   useEffect(() => {
@@ -44,6 +48,29 @@ export default function LoginPage() {
         if (status === 429) throw new Error('Too many attempts. Wait a minute, then try again.');
         throw new Error(msg || 'Invalid email or password');
       }
+      if (res?.data?.twoFactorRedirect) { setStep('code'); setLoading(false); return; }
+      resetUserCaches();
+      router.replace(safeNext());
+    } catch (err: unknown) {
+      setError(err instanceof TypeError ? 'Can’t reach TRADElogs right now. Check your connection and try again.' : err instanceof Error ? err.message : 'Sign in failed');
+      setLoading(false);
+    }
+  }
+
+  async function submitCode(e: React.FormEvent) {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    try {
+      const c = code.trim().replace(/\s+/g, '');
+      const res = backup ? await authClient.twoFactor.verifyBackupCode({ code: c }) : await authClient.twoFactor.verifyTotp({ code: c });
+      if (res?.error) {
+        if (res.error.status === 429) throw new Error('Too many attempts. Wait a minute, then try again.');
+        // The sign-in window is 10 minutes; after that the password step starts again.
+        if (res.error.code === 'INVALID_TWO_FACTOR_COOKIE') { setStep('password'); setCode(''); throw new Error('That took too long. Sign in again.'); }
+        if (res.error.code === 'TOO_MANY_ATTEMPTS_REQUEST_NEW_CODE') { setStep('password'); setCode(''); throw new Error('Too many wrong codes. Sign in again.'); }
+        throw new Error(backup ? 'That backup code didn’t work. Each one works once.' : 'That code didn’t work. Use the newest one in your app.');
+      }
       resetUserCaches();
       router.replace(safeNext());
     } catch (err: unknown) {
@@ -53,6 +80,30 @@ export default function LoginPage() {
   }
 
   const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+  if (step === 'code') {
+    return (
+      <AuthShell variant="signin" testId="login-page" top={<>No account yet? <Link href="/signup" data-testid="login-to-signup">Create one</Link></>}>
+        <form onSubmit={submitCode} data-testid="login-2fa-form">
+          <h1 className="au-t">Two-factor sign-in</h1>
+          <p className="au-lead">{backup ? 'Enter one of the backup codes you saved when you turned this on.' : 'Enter the 6-digit code from your authenticator app.'}</p>
+          <div className="au-stack">
+            <div className="x-field">
+              <label htmlFor="login-code">{backup ? 'Backup code' : 'Code'}</label>
+              <input id="login-code" className="x-input m" inputMode={backup ? 'text' : 'numeric'} autoComplete="one-time-code" autoFocus required value={code} maxLength={backup ? 24 : 6}
+                onChange={e => setCode(backup ? e.target.value : e.target.value.replace(/\D/g, ''))} data-testid="login-code" placeholder={backup ? 'xxxxx-xxxxx' : '123456'} />
+              {error && <AuthError testId="login-error">{error}</AuthError>}
+            </div>
+            <AuthSubmit loading={loading} testId="login-code-submit">{loading ? 'Checking…' : 'Sign in'}</AuthSubmit>
+          </div>
+          <p className="au-small">
+            <button type="button" className="au-linkbtn" onClick={() => { setBackup(b => !b); setCode(''); setError(''); }} data-testid="login-use-backup">{backup ? 'Use the authenticator app instead' : 'Lost your phone? Use a backup code'}</button>
+            {' · '}
+            <button type="button" className="au-linkbtn" onClick={() => { setStep('password'); setCode(''); setError(''); }}>Start over</button>
+          </p>
+        </form>
+      </AuthShell>
+    );
+  }
   return (
     <AuthShell variant="signin" testId="login-page" top={<>No account yet? <Link href="/signup" data-testid="login-to-signup">Create one</Link></>}>
       <form onSubmit={submit} data-testid="login-form" noValidate={false}>

@@ -15,7 +15,7 @@ import { useExchangeConnections } from '@/lib/use-exchange-connections';
 import { venueName, type ExchangeConnection } from '@/lib/copy-api';
 import {
   IAdmin, IAnalytics, IBell, IBrokers, ICalendar, ICharts, ICheck, IChevronDown, IClose, ICoach, IDashboard, IJournal, ILink, IMacro, IMarkets, IPlay,
-  IPartner, IPlus, IReplay, ISearch, ISettings, ISignalX, ISync, ITradeLog, ITrendUp, IUsers, IMirror, IExchange, ILeader,
+  IPartner, IPlus, IReplay, ISearch, ISettings, ISignalX, ISync, ITradeLog, ITrendUp, IUsers, IMirror, IExchange, ILeader, IMail,
 } from '@/components/v3/icons';
 import '@/styles/v6/tokens.css';
 import '@/styles/v6/components.css';
@@ -138,6 +138,7 @@ export default function Frame(p: Props) {
   const account: FrameNavItem[] = [
     { href: '/brokers', label: 'Brokers', icon: IBrokers },
     { href: '/settings', label: 'Settings', icon: ISettings },
+    { href: '/help', label: 'Help', icon: IMail },
     ...(p.isAdmin ? [{ href: '/admin', label: 'Admin', icon: IAdmin }] : []),
   ];
   const all = [...groups.flatMap(g => g.items), ...account];

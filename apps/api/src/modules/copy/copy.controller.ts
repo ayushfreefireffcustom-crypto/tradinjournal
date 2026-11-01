@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from 'express';
 import type { ApplyLeaderInput, CreateFollowInput, CursorQuery, LeaderRange, LeadersQuery, StopFollowInput, UpdateFollowInput, UpdateLeaderInput } from '@tradinjournal/contracts';
 import { applyAsLeader, getLeader, getMyLeader, leaderEquity, leaderRoundTrips, leaderTrades, listLeaders, updateMyLeader } from './leaders.service.js';
 import { subscribeCopy } from './copy-stream.js';
+import { contextOf, recordActivity } from '../me/activity.service.js';
 import { createFollow, followOrders, getFollow, listFollows, stopFollow, updateFollow } from './follows.service.js';
 
 const uid = (res: Response) => res.locals.user.id as string;
@@ -27,11 +28,20 @@ export const handleLeaderRoundTrips = wrap(async (req, res) => res.json({ data: 
 export const handleLeaderEquity = wrap(async (req, res) => res.json({ data: await leaderEquity(uid(res), String(req.params.id), rangeOf(req)) }));
 
 export const handleListFollows = wrap(async (req, res) => res.json({ data: await listFollows(uid(res), { includeStopped: req.query.all === '1' }) }));
-export const handleCreateFollow = wrap(async (req, res) => res.status(201).json({ data: await createFollow(uid(res), req.body as CreateFollowInput) }));
+export const handleCreateFollow = wrap(async (req, res) => {
+  const f = await createFollow(uid(res), req.body as CreateFollowInput);
+  await recordActivity(uid(res), 'follow_started', `Started copying ${f.leader.displayName} on ${f.connection.label}`, contextOf(req), { followId: f.id });
+  res.status(201).json({ data: f });
+});
 export const handleGetFollow = wrap(async (req, res) => res.json({ data: await getFollow(uid(res), String(req.params.id)) }));
 export const handleFollowOrders = wrap(async (req, res) => res.json({ data: await followOrders(uid(res), String(req.params.id), req.query as unknown as CursorQuery) }));
 export const handleUpdateFollow = wrap(async (req, res) => res.json({ data: await updateFollow(uid(res), String(req.params.id), req.body as UpdateFollowInput) }));
-export const handleStopFollow = wrap(async (req, res) => res.json({ data: await stopFollow(uid(res), String(req.params.id), (req.body as StopFollowInput).closePositions) }));
+export const handleStopFollow = wrap(async (req, res) => {
+  const close = (req.body as StopFollowInput).closePositions;
+  const r = await stopFollow(uid(res), String(req.params.id), close);
+  await recordActivity(uid(res), 'follow_stopped', `Stopped a copy${close ? ' and closed its positions' : ', leaving positions open'}`, contextOf(req), { followId: String(req.params.id) });
+  res.json({ data: r });
+});
 
 /** GET /api/follows/stream: a ping whenever the user's copies change; the page refetches. */
 export function handleFollowStream(req: Request, res: Response): void {

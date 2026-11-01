@@ -253,3 +253,4 @@ html[data-theme=light]:has(.v6.au-root), html[data-theme=light] body:has(.v6.au-
 @media (max-width: 400px) {
   .v6 .au-lghd .au-hide-xs { display: none; }
 }
+.v6 .au-small .au-linkbtn { background: none; border: 0; padding: 0; font: inherit; cursor: pointer; }
