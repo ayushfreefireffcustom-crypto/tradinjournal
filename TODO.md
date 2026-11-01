@@ -159,7 +159,7 @@ Legend:
 - [x] A7.2 Contrast check: text ≥ 4.5:1, muted ≥ 3:1 on its surfaces — automated audit over every route (scratchpad audit.cjs); --dim raised in both themes, landing fine print fixed (2 Nov) `S`
 - [ ] A7.3 Keyboard pass: tab order, focus rings, Esc closes sheets, ⌘K `S`
 - [ ] A7.4 Delete dead CSS (`app-v3.css` rules no longer referenced), dead components and `v3/` leftovers `M`
-- [ ] A7.5 Bundle check: no page ships CSS from other pages unnecessarily `S`
+- [ ] A7.5 Bundle check: no page ships CSS from other pages unnecessarily `S` — checked 2 Nov, two leaks to fix next: (1) `components/confirm-dialog.tsx` and `location-form.tsx` import all of account.css (33 KB) for ~20 `ac-dlg`/`ac-loc` rules, so every page with a dialog ships it: move those rules to a `styles/v6/dialogs.css`; (2) `components/v6/copy/parts.tsx` (useLoad, usePoll, ErrorCard, ago) and `strategy/strategies-card.tsx` pull copy.css (60 KB, which also holds strategy/overview styles) into /overview, /strategies/deployments and the dashboard: move the generic helpers to components/v6/ui and split copy.css by page
 - [ ] A7.6 User review checkpoint: show the screenshots and get sign-off before Part B `S`
 
 ---
