@@ -582,7 +582,7 @@ Legend:
 
 **CSS architecture:**
 - [x] A0.1 Stop importing `app-v3.css` + `app-v5-auto.css` + `app-v5.css` stacked in `components/app-shell.tsx:18-20`. Replace with `tokens.css` + `components.css` once pages are migrated (the order is a blocker for A3.11) `M` — app-shell imports tokens.css + components.css only
-- [ ] A0.2 Remove the old "Obsidian" tokens in `app/globals.css` (radius 10, `--color-profit #2EE58A`, `--color-warning`), or map them to v6 tokens so Tailwind users (admin, macro, bell) inherit the new system `M`
+- [x] A0.2 Remove the old "Obsidian" tokens in `app/globals.css` (radius 10, `--color-profit #2EE58A`, `--color-warning`), or map them to v6 tokens so Tailwind users (admin, macro, bell) inherit the new system `M` — 85 unused global rules, 11 keyframes and 6 variables removed (2 Nov); the @theme colours stay, mapped to v6 values, for the body and the few Tailwind helpers left. Full route audit clean afterwards
 - [x] A0.3 One green: replace `#2EE58A`, `#7DF2B6`, `#19C37D` with `--green` `#08C465` (one tint allowed for fills) `S` — no stray greens left
 - [x] A0.4 One red: replace `#FF6A62` with `--red` `#FE3A31` (one tint allowed) `S` — tooltip tints are tokens (--g-tip/--r-tip)
 - [x] A0.5 **Remove amber everywhere** `M`: — none left; --color-warning is neutral

@@ -25,9 +25,8 @@
   --font-mono: var(--font-v5-mono), "JetBrains Mono", ui-monospace, monospace;
 }
 
-/* Design tokens for radius, motion and elevation (direct-use CSS vars). */
+/* Motion and the few radius/shadow values the remaining global helpers use. */
 :root {
-  --radius-card: 10px;
   --radius-btn: 8px;
   --radius-pill: 999px;
 
@@ -37,15 +36,8 @@
   --dur-press: 90ms;
   --dur-select: 260ms;
 
-  --shadow-card: 0 1px 2px rgba(0, 0, 0, .35);
   --shadow-hover: 0 8px 24px rgba(0, 0, 0, .5);
   --shadow-focus: 0 0 0 2px var(--color-app), 0 0 0 3px var(--color-border-strong);
-
-  /* Elevation scale — real, layered depth (replaces the anemic 1px card shadow). */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, .4);
-  --shadow-md: 0 8px 24px -6px rgba(0, 0, 0, .55), 0 2px 6px rgba(0, 0, 0, .4);
-  --shadow-lg: 0 30px 60px -15px rgba(0, 0, 0, .65), 0 10px 24px -8px rgba(0, 0, 0, .5);
-  --shadow-glow-green: 0 0 0 1px rgba(8, 196, 101, .18), 0 20px 60px -20px rgba(8, 196, 101, .22);
 }
 
 * {
@@ -66,103 +58,17 @@ html, body {
    Sections then alternate between `base` (transparent, shows this) and `raised`
    (a subtly lifted charcoal panel) to give the page rhythm instead of a flat
    black wall. */
-.page-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background:
-    radial-gradient(1200px 600px at 50% -10%, rgba(8, 196, 101, .06), transparent 60%),
-    #000000;
-}
-.page-backdrop::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background-image:
-    linear-gradient(to right, rgba(255, 255, 255, .035) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, .035) 1px, transparent 1px);
-  background-size: 64px 64px;
-  -webkit-mask-image: linear-gradient(to bottom, #000 0%, transparent 55%);
-  mask-image: linear-gradient(to bottom, #000 0%, transparent 55%);
-  opacity: .5;
-}
 
 /* Section tones. `base` is transparent. `raised` lifts a charcoal panel with a
    hairline top highlight; `edge` is a lighter transition variant. */
-.section-base { background: transparent; }
-.section-raised {
-  background: linear-gradient(to bottom, #0B0B0B, #060606);
-  border-top: 1px solid var(--color-border-soft);
-  border-bottom: 1px solid var(--color-border-soft);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .03);
-}
-.section-edge {
-  border-top: 1px solid var(--color-border-soft);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .03);
-}
 
 /* Very subtle grain overlay for texture on raised sections. Inline SVG noise. */
-.section-grain::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  opacity: .035;
-  mix-blend-mode: overlay;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-}
 
 /* Soft green glow blob — position absolutely behind a card/screenshot. */
-.glow-blob {
-  position: absolute;
-  border-radius: 999px;
-  background: radial-gradient(closest-side, rgba(8, 196, 101, .18), rgba(8, 196, 101, .04) 60%, transparent 80%);
-  filter: blur(8px);
-  pointer-events: none;
-}
 
 /* Atmospheric grid background, used on landing */
-.bg-grid {
-  background-image:
-    linear-gradient(to right, rgba(255,255,255,0.04) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255,255,255,0.04) 1px, transparent 1px);
-  background-size: 56px 56px;
-}
-.bg-grid-fade {
-  -webkit-mask-image: radial-gradient(ellipse at center, #000 50%, transparent 85%);
-  mask-image: radial-gradient(ellipse at center, #000 50%, transparent 85%);
-}
-
-.font-display { font-family: var(--font-display); }
-.font-mono { font-family: var(--font-mono); }
 
 /* ─── Card primitive ─────────────────────────────────────────────────────── */
-.tcard {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-card);
-  box-shadow: var(--shadow-card);
-  position: relative;
-}
-.tcard-hover {
-  cursor: pointer;
-  transition: background-color var(--dur-hover) var(--ease-out),
-              border-color var(--dur-hover) var(--ease-out),
-              box-shadow var(--dur-hover) var(--ease-premium),
-              transform var(--dur-hover) var(--ease-premium);
-}
-.tcard-hover:hover {
-  background: var(--color-surface-hover);
-  border-color: var(--color-border-strong);
-}
-.tcard-hover:focus-visible {
-  outline: 2px solid var(--color-profit);
-  outline-offset: 2px;
-}
-@media (hover: hover) and (pointer: fine) {
-  .tcard-hover:hover { transform: translateY(-2px); box-shadow: var(--shadow-hover); }
-}
 
 /* ─── Buttons ────────────────────────────────────────────────────────────────
    These live in @layer components so Tailwind utilities (which sit in the later
@@ -196,21 +102,6 @@ html, body {
 }
 
 /* ─── Inputs / selects ───────────────────────────────────────────────────── */
-.tinput {
-  background: var(--color-app);
-  border: 1px solid var(--color-border);
-  color: #fff;
-  font-family: var(--font-sans);
-  border-radius: var(--radius-btn);
-  padding: .6rem .8rem;
-  font-size: 13px;
-  width: 100%;
-  outline: none;
-  transition: border-color var(--dur-hover) var(--ease-out), box-shadow var(--dur-hover) var(--ease-out);
-}
-.tinput::placeholder { color: var(--color-border-strong); }
-.tinput:hover { border-color: var(--color-border-strong); }
-.tinput:focus, .tinput:focus-visible { border-color: var(--color-fg-3); box-shadow: 0 0 0 3px rgba(113,113,122,.18); }
 
 /* Native <select> — kill the glossy OS chrome, draw our own chevron. */
 select.tinput, .tselect {
@@ -225,8 +116,6 @@ select.tinput, .tselect {
   background-size: 12px;
 }
 select.tinput:hover, .tselect:hover { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none' stroke='%23FFFFFF' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.5 4.5 6 8l3.5-3.5'/%3E%3C/svg%3E"); }
-select.tinput::-ms-expand { display: none; }
-.tinput option { background: var(--color-app); color: #fff; }
 
 /* ─── Interaction utilities ──────────────────────────────────────────────── */
 /* Pressable tactile feedback */
@@ -240,32 +129,12 @@ select.tinput::-ms-expand { display: none; }
 }
 
 /* Keyboard focus ring */
-.focus-ring:focus-visible { outline: none; box-shadow: var(--shadow-focus); }
 
 /* Interactive list row — bg on hover + a P&L-colored left accent that wipes in.
    Set --row-accent inline (profit/loss/neutral). Works on flex/block rows. */
-.row-interactive { transition: background-color var(--dur-hover) var(--ease-out); }
-.row-interactive::before {
-  content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 2px;
-  background: var(--row-accent, var(--color-border-strong));
-  transform: scaleY(0); transform-origin: center;
-  transition: transform var(--dur-hover) var(--ease-premium);
-}
-@media (hover: hover) and (pointer: fine) {
-  .row-interactive:hover { background: var(--color-surface-hover); }
-  .row-interactive:hover::before { transform: scaleY(1); }
-}
 
 /* Segmented control (pill toggle group, like the reference) */
 .seg { display: inline-flex; gap: 2px; padding: 3px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-pill); }
-.seg-item {
-  border-radius: var(--radius-pill); padding: .3rem .75rem; font-size: 11px; font-weight: 500;
-  color: var(--color-fg-3); cursor: pointer; border: 0; background: transparent;
-  transition: color var(--dur-select) var(--ease-out), background-color var(--dur-select) var(--ease-premium);
-}
-.seg-item:hover { color: var(--color-fg-2); }
-.seg-item[data-active="true"] { background: var(--color-surface-active); color: var(--color-fg); }
-.seg-item:focus-visible { outline: none; box-shadow: var(--shadow-focus); }
 
 /* Bordered chip (filters, tabs, range) */
 .chip {
@@ -278,14 +147,8 @@ select.tinput::-ms-expand { display: none; }
 .chip:focus-visible { outline: none; box-shadow: var(--shadow-focus); }
 
 /* Mini progress bar (KPI cards) */
-.kpi-bar { height: 4px; border-radius: var(--radius-pill); background: var(--color-border-soft); overflow: hidden; }
-.kpi-bar-fill { height: 100%; border-radius: var(--radius-pill); transition: width var(--dur-select) var(--ease-premium); }
 
 /* Value flash-on-change — apply briefly when a number updates */
-@keyframes flash-profit { 0% { color: var(--color-profit); transform: translateY(-1px); } 100% { color: inherit; transform: none; } }
-@keyframes flash-loss { 0% { color: var(--color-loss); transform: translateY(-1px); } 100% { color: inherit; transform: none; } }
-.flash-profit { animation: flash-profit 450ms var(--ease-out); }
-.flash-loss { animation: flash-loss 450ms var(--ease-out); }
 
 /* ─── Scrollbar ──────────────────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 10px; height: 10px; }
@@ -295,60 +158,15 @@ select.tinput::-ms-expand { display: none; }
 
 /* ─── Animations ─────────────────────────────────────────────────────────── */
 @keyframes fade-up { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
-.fade-up { animation: fade-up .35s var(--ease-out) both; }
-
-@keyframes pulse-dot { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
-.pulse-dot { animation: pulse-dot 1.6s ease-in-out infinite; }
 
 @keyframes shake { 0%,100%{transform:translateX(0);} 25%{transform:translateX(-4px);} 75%{transform:translateX(4px);} }
 .shake { animation: shake .35s ease-in-out; }
 
 @keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
-.marquee-track { animation: marquee 40s linear infinite; }
-.macro-marquee-track {
-  animation: marquee var(--marquee-dur, 36s) linear infinite;
-  will-change: transform;
-}
-.macro-marquee-track:hover { animation-play-state: paused; }
-
-@media (prefers-reduced-motion: reduce) {
-  .macro-marquee-track,
-  .marquee-track { animation: none; }
-  .gauge-arc-anim,
-  .bar-grow-x,
-  .pill-in,
-  .rise,
-  .fade-up { animation: none; }
-}
-
-@keyframes gauge-arc {
-  from { stroke-dasharray: 0 999; }
-}
-.gauge-arc-anim {
-  animation: gauge-arc 1.1s var(--ease-premium) both;
-}
-
-@keyframes bar-grow-x {
-  from { transform: scaleX(0); }
-  to { transform: scaleX(1); }
-}
-.bar-grow-x {
-  transform-origin: left center;
-  animation: bar-grow-x .7s var(--ease-premium) both;
-  animation-delay: calc(var(--i, 0) * 40ms);
-}
-
-@keyframes pill-in {
-  from { opacity: 0; transform: translateY(4px) scale(.96); }
-  to { opacity: 1; transform: none; }
-}
-.pill-in {
-  animation: pill-in .4s var(--ease-out) both;
-  animation-delay: calc(var(--i, 0) * 55ms);
-}
 
 /* Staggered rise — set --i on each item (its index) for a cascade entrance */
 .rise { animation: fade-up .5s var(--ease-premium) both; animation-delay: calc(var(--i, 0) * 45ms); }
+@media (prefers-reduced-motion: reduce) { .rise { animation: none; } } /* after .rise, so it wins */
 
 /* SVG line draw-in — requires pathLength="1" on the animated <path> */
 @keyframes draw-in { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
@@ -356,106 +174,9 @@ select.tinput::-ms-expand { display: none; }
 
 /* Generic fade-in (chart areas, dots) */
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
-.fade-in { animation: fade-in var(--fade-dur, .6s) var(--ease-out) both; animation-delay: var(--fade-delay, 0ms); }
-
-/* Bar grow-in (from the baseline) */
-@keyframes grow-y { from { transform: scaleY(0); } to { transform: scaleY(1); } }
-.grow-y { transform-origin: bottom; animation: grow-y .5s var(--ease-premium) both; animation-delay: calc(var(--i, 0) * 30ms); }
-
-/* Toast entrance — slide up + fade */
-@keyframes toast-in { from { opacity: 0; transform: translateY(10px) scale(.98); } to { opacity: 1; transform: none; } }
-.toast-in { animation: toast-in .32s var(--ease-premium) both; }
 
 /* Skeleton shimmer sweep */
 @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
-.shimmer {
-  background: linear-gradient(90deg, var(--color-surface) 25%, var(--color-surface-hover) 50%, var(--color-surface) 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.5s linear infinite;
-  border-radius: var(--radius-btn);
-}
-@media (prefers-reduced-motion: reduce) {
-  .shimmer { animation: none; }
-}
-
-/* Text shimmer for the coach's "Searching / Thinking…" state — a moving
-   highlight sweeps across the label so the wait reads as intentional. */
-.coach-shimmer {
-  background: linear-gradient(90deg, var(--color-fg-3) 30%, var(--color-fg) 50%, var(--color-fg-3) 70%);
-  background-size: 200% 100%;
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  animation: shimmer 2s linear infinite;
-}
-@media (prefers-reduced-motion: reduce) {
-  .coach-shimmer { animation: none; color: var(--color-fg-3); }
-}
-
-/* Auth-page candlestick backdrop. Sits low behind the marketing copy; the trend
-   line draws itself in once on load. Both are neutralised under reduced-motion —
-   the composition is designed to look finished while static. */
-.auth-chart { opacity: 0.62; }
-@keyframes auth-line-draw { to { stroke-dashoffset: 0; } }
-.auth-chart-line {
-  stroke-dasharray: 900;
-  stroke-dashoffset: 900;
-  animation: auth-line-draw 1.9s var(--ease-premium, ease-out) 0.15s forwards;
-}
-@media (prefers-reduced-motion: reduce) {
-  .auth-chart-line { animation: none; stroke-dashoffset: 0; }
-}
-
-/* ─── Scroll-reveal ─────────────────────────────────────────────────────────
-   Starts hidden; JS (useInView via <Reveal>) adds .reveal-visible when the
-   element scrolls into view. Set --reveal-delay for a per-item stagger.
-   Fully neutralised under reduced-motion (see block below). */
-.reveal {
-  opacity: 0;
-  transform: translateY(18px);
-  transition: opacity .6s var(--ease-premium), transform .6s var(--ease-premium);
-  transition-delay: var(--reveal-delay, 0ms);
-  will-change: opacity, transform;
-}
-.reveal-visible { opacity: 1; transform: none; }
-
-/* Brand gradient text — always our greens fading to white (never purple).
-   Applied to accent words in headlines. */
-.text-gradient-brand {
-  background: linear-gradient(100deg, #08C465 0%, #5BE9A0 52%, #FFFFFF 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  color: transparent;
-}
-
-/* Soft green radial glow behind the hero mockup and final CTA. */
-.glow-radial {
-  background: radial-gradient(closest-side, rgba(8,196,101,.20), rgba(8,196,101,.05) 60%, transparent 80%);
-  pointer-events: none;
-}
-
-/* Auto-advance progress bar under the active how-it-works step. */
-@keyframes step-progress { from { width: 0; } to { width: 100%; } }
-.step-progress { width: 0; animation: step-progress 3800ms linear forwards; }
-
-/* Very slow rotation — behavioural-score radar. */
-@keyframes spin-slow { to { transform: rotate(360deg); } }
-.spin-slow { animation: spin-slow 64s linear infinite; transform-origin: center; }
-
-/* New live table row sliding in from the top. */
-@keyframes row-in { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
-.row-in { animation: row-in .45s var(--ease-premium) both; }
-
-/* Newest live-feed row briefly flashes green, then settles. */
-@keyframes row-flash {
-  0% { background-color: rgba(8, 196, 101, .18); }
-  100% { background-color: transparent; }
-}
-.row-flash { animation: row-flash 1.6s var(--ease-out) forwards; }
-
-/* Subtle zebra striping for the live-feed rows (desktop). */
-.feed-zebra:nth-child(even) { background-color: rgba(255, 255, 255, .012); }
 
 /* ─── Click-burst cursor effect (mounted globally; desktop + reduced-motion guarded in JS) */
 .click-burst-line {
@@ -490,16 +211,10 @@ select.tinput::-ms-expand { display: none; }
 ::selection { background: #FFFFFF; color: #000000; }
 
 /* Utility helpers — numbers use the mono family (hybrid: sans UI, mono data). */
-.text-mono { font-family: var(--font-mono); }
+
 .numeric { font-variant-numeric: tabular-nums; font-family: var(--font-mono); }
 
-.no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
-.no-scrollbar::-webkit-scrollbar { display: none; }
-
 /* Prevent iOS Safari font-size auto-zoom on input focus */
-@media (max-width: 640px) {
-  .tinput { font-size: 16px; }
-}
 
 /* ─── Reduced motion — strip transforms/animations, keep colour changes ───── */
 @media (prefers-reduced-motion: reduce) {
@@ -512,5 +227,5 @@ select.tinput::-ms-expand { display: none; }
   .tcard-hover:hover, .lift:hover, .btn:hover, .btn:active, .press:active { transform: none !important; }
   .click-burst-line { display: none !important; }
   /* Show scroll-reveal content immediately — no motion, no hidden content */
-  .reveal { opacity: 1 !important; transform: none !important; }
+  
 }
