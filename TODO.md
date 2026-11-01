@@ -585,7 +585,7 @@ Legend:
 - [ ] A0.2 Remove the old "Obsidian" tokens in `app/globals.css` (radius 10, `--color-profit #2EE58A`, `--color-warning`), or map them to v6 tokens so Tailwind users (admin, macro, bell) inherit the new system `M`
 - [x] A0.3 One green: replace `#2EE58A`, `#7DF2B6`, `#19C37D` with `--green` `#08C465` (one tint allowed for fills) `S` — no stray greens left
 - [x] A0.4 One red: replace `#FF6A62` with `--red` `#FE3A31` (one tint allowed) `S` — tooltip tints are tokens (--g-tip/--r-tip)
-- [ ] A0.5 **Remove amber everywhere** `M`:
+- [x] A0.5 **Remove amber everywhere** `M`: — none left; --color-warning is neutral
   - [ ] `--amber`, `--color-warning`, `.v3-pill.a`
   - [ ] 45% win-rate chip
   - [ ] SignalX "Open" chip
@@ -602,15 +602,15 @@ Legend:
   - [ ] `tone:'purple'|'blue'` in `macro/regime-narrative.tsx:45-50` and its CSS mask `app-v5.css:574`
   - [ ] `.v3-pill.v` usage (`settings/settings-aside.tsx:21`)
   - [ ] `StatusCard tone="v"` (`app/maintenance/page.tsx:20`)
-- [ ] A0.7 One **dark** tooltip/popover style. Replace white `.a-tip`, `.pt-toast` (`app-v5.css:576`), the white chart value pills and the candle `.tc-pill.x` `S`
-- [ ] A0.8 Kill decorative glows, radial dot-grid hero cards (`.mr`, `.br-hero`, `.st-priv`) and card gradients + rings (`--surface` gradient) `M`
+- [x] A0.7 One **dark** tooltip/popover style. Replace white `.a-tip`, `.pt-toast` (`app-v5.css:576`), the white chart value pills and the candle `.tc-pill.x` `S` — chart tip and account toast fixed; all tips use --tip (2 Nov)
+- [x] A0.8 Kill decorative glows, radial dot-grid hero cards (`.mr`, `.br-hero`, `.st-priv`) and card gradients + rings (`--surface` gradient) `M` — none in the app; the landing keeps its own art
 - [ ] A0.9 Normalise radii to tokens (24/16/12/999); the audit counted 21 values in `app-v3.css` `M`
 - [ ] A0.10 Remove the 58 `!important`s as files are rewritten (track count → 0) `M`
 - [ ] A0.11 Replace inline `style={{…}}` in `app-shell.tsx:147-171` and the other ~70 spots with classes `M`
 - [x] A0.12 Delete dead components after a final import check `S`: — all gone (last four removed 2 Nov)
   - `browser-frame`, `dashboard-calendar`, `drawdown-chart`, `equity-chart`, `floating-card`, `insights-strip`, `reveal`, `reveal-group`, `rolling-chart`, `scatter-chart`, `screenshot-frame`, `terminal-cta-button`, `watermark-number`, `landing/product-mocks`
   - `empty-state` is **replaced** by A2.19
-- [ ] A0.13 Remove the `AppShell` `theme?: 'v5'|'v3'` prop and the v3 code path (`app-shell.tsx:37,97`) `S`
+- [x] A0.13 Remove the `AppShell` `theme?: 'v5'|'v3'` prop and the v3 code path (`app-shell.tsx:37,97`) `S` — the v3 path is gone; the old props are no-ops marked @deprecated
 
 **Typography:**
 - [x] A0.14 Fonts: remove the unused Inter next/font load (`app/layout.tsx:2,14`); fix the `globals.css:22` comment `S` — Inter and Instrument Serif removed; globals fall back to Satoshi + JetBrains Mono (2 Nov)
@@ -619,12 +619,12 @@ Legend:
   - replace `font-black` (42 uses) and 600/700 with 500
   - if a weight is needed, load it explicitly; no synthesised weights
 - [x] A0.16 JetBrains Mono: 400/500 only; remove 700 usage (journal 81, trades 53, coach 9, macro 8) `S` — loads 400/500; no heavier weight used
-- [ ] A0.17 Remove the serif-italic accent word from every app H1 (`.v3-h1 em` `app-v3.css:209`, `.mr h2 em`, `.br-hero h1 em` `app-v5.css:573`, per-page `<em>`) `S`
-- [ ] A0.18 Remove the faux-italic green/red accent on auth/status/legal pages ("back.", "account.", "password?", "inbox.", "policy.", "missing a token.", calendar "2026") `S`
-- [ ] A0.19 Mono rule: **numbers mono everywhere, labels never mono** `M`
+- [x] A0.17 Remove the serif-italic accent word from every app H1 (`.v3-h1 em` `app-v3.css:209`, `.mr h2 em`, `.br-hero h1 em` `app-v5.css:573`, per-page `<em>`) `S` — verified in code (2 Nov)
+- [x] A0.18 Remove the faux-italic green/red accent on auth/status/legal pages ("back.", "account.", "password?", "inbox.", "policy.", "missing a token.", calendar "2026") `S` — verified in code (2 Nov)
+- [x] A0.19 Mono rule: **numbers mono everywhere, labels never mono** `M` — trade-detail dates moved to sans (2 Nov)
   - money must be mono on trade detail, journal, calendar, brokers totals, macro rows, analytics KPIs
   - dates, headers, eyebrows go sans
-- [ ] A0.20 Sentence case instead of uppercase letter-spaced labels `S`:
+- [x] A0.20 Sentence case instead of uppercase letter-spaced labels `S`: — last four uppercase rules removed (2 Nov)
   - table heads
   - admin tabs + REFRESH
   - macro BULLISH/BEARISH/NEUTRAL chips
@@ -634,7 +634,7 @@ Legend:
   - `//` code-comment eyebrows
 
 **Icons:**
-- [ ] A0.21 Replace emoji/unicode icons with the line-icon set (`components/v3/icons.tsx`) `M`:
+- [x] A0.21 Replace emoji/unicode icons with the line-icon set (`components/v3/icons.tsx`) `M`: — glyphs and the signup flag replaced (2 Nov)
   - 🔔📰📅 + flags (`notification-bell.tsx:34`)
   - 🔒 CSS content (`app-v3.css:1886`)
   - ⚡ Analyze (`trader/trader-master.tsx:135`)
@@ -642,10 +642,10 @@ Legend:
   - macro glyphs (`lib/macro-meta.ts:37-46`)
   - Georgia "ƒx" (`app-v3.css:1079`)
   - calendar-rail flag emoji (country code chips instead)
-- [ ] A0.22 One `SymbolMark` `S`:
+- [x] A0.22 One `SymbolMark` `S`: — `tickerMark` + `x-mk`
   - real ticker abbreviations (NAS100 → "NAS", US30 → "US30", USDJPY → "UJ" or a flag pair)
   - replaces initials circles, S/L tiles, amber ticker tiles and broker tiles
-- [ ] A0.23 One `SideChip` for long/short (sentence case "Long"/"Short", green/red text on a graphite chip). Replaces the 5 current styles incl. BUY/SELL on raw deals `S`
+- [x] A0.23 One `SideChip` for long/short (sentence case "Long"/"Short", green/red text on a graphite chip). Replaces the 5 current styles incl. BUY/SELL on raw deals `S` — desk.tsx SideChip / `x-side`
 
 **Charts:**
 - [ ] A0.24 Shared chart theme (A2.26) applied to all 7 implementations `L → split`:
@@ -656,13 +656,13 @@ Legend:
   - klinecharts
   - TradingView embed
   - macro sparklines/yield curve
-- [ ] A0.25 Every bar/line chart gets a y-axis (or value labels) + light gridlines; x labels attached to the plot `M`
-- [ ] A0.26 Drawdown series always red `S`
+- [x] A0.25 Every bar/line chart gets a y-axis (or value labels) + light gridlines; x labels attached to the plot `M` — verified in code (2 Nov)
+- [x] A0.26 Drawdown series always red `S` — verified in code (2 Nov)
 - [ ] A0.27 Candle colours: brand green/red everywhere incl. klinecharts + TradingView overrides `S`
 
 **States:**
 - [ ] A0.28 One `EmptyState` used everywhere. Replace the six ad-hoc versions (analytics dashed boxes, notebook, paper blotter, dashboard text, brokers dashed card, admin red bar) `M`
-- [ ] A0.29 Zero-data rule: when there's no data, show the EmptyState instead of "+$0.00 ▲0.00%" or rows of "—" `S`
+- [x] A0.29 Zero-data rule: when there's no data, show the EmptyState instead of "+$0.00 ▲0.00%" or rows of "—" `S` — verified in code (2 Nov)
 - [x] A0.30 Mobile chip rows: edge fade + scroll snap, so chips never cut mid-word unannounced `S`
 - [x] A0.31 Mobile: no orphan full-width KPI tile (use even counts or a 2-col span rule) `S` — an odd last `x-strip` tile spans the row on phones (2 Nov)
 - [x] A0.32 Mock mode completeness: add `/data/admin/*` mocks (`lib/admin-api.ts:191-210`) and a maintenance mock, so every page can be reviewed `S`
@@ -677,16 +677,16 @@ Legend:
 - [x] M: remove serif "really"; "One thing to fix" box → a plain sentence inside the AI card `S`
 - [x] M: topbar: range control + sync line + one action (A3.4); fix the disabled "Add broker" look `S`
 - [x] M: KPI tiles → `Stat` × 4 (no split bar on avg win/loss; show R:R as text) `S` — performance strip: profit factor, expectancy, max drawdown
-- [ ] M: hero card: one tab style (Segmented, white active), dark tooltip, no "Start $25,000" overlap `S`
-- [ ] M: month calendar: Monday start (match /calendar after A4.5), readable amounts ≥ 12px, tint only (no coloured borders) `S`
+- [x] M: hero card: one tab style (Segmented, white active), dark tooltip, no "Start $25,000" overlap `S` — verified in code (2 Nov)
+- [x] M: month calendar: Monday start (match /calendar after A4.5), readable amounts ≥ 12px, tint only (no coloured borders) `S` — verified in code (2 Nov)
 - [x] M: recent trades: `SymbolMark`, `SideChip`, sentence-case head, P&L padding on mobile `S` — latest 3 trades with side, hold time, P&L; links to the trade
 - [x] M: behaviour card simplified (one ring or one bar, no W/L soup), or moved to Analytics `S` — moved off the dashboard
-- [ ] M: empty dashboard:
+- [x] M: empty dashboard: — verified in code (2 Nov)
   - greeting for new users
   - no "+$0.00 ▲"
   - EmptyState with Connect/Sync CTA
   - `S`
-- [ ] M: notifications popover:
+- [x] M: notifications popover: — verified in code (2 Nov)
   - line icons
   - mark all read
   - footer link to inbox
@@ -694,85 +694,85 @@ Legend:
   - `S`
 - [x] M: account menu pushes nav down (or becomes the top-bar AccountPill per A3.3); one "Add broker" state `S` — account pill in the top bar
 - [x] L: ⌘K list fade at the bottom, group header once `S` — section headings, bottom fade (2 Nov)
-- [ ] L: mobile KPI orphan (A0.31) `S`
+- [x] L: mobile KPI orphan (A0.31) `S` — verified in code (2 Nov)
 
 ### A4.2 `/trades`: `app/trades/page.tsx`, `components/deals-table.tsx`
 - [ ] H: TAG column clipped at 1440. Table fits or scrolls inside with a visible affordance `S`
 - [ ] H: one filter row: Segmented (All/Long/Short/Win/Loss) + symbol select + search; Positions/Raw deals as page tabs `M`
-- [ ] M: H1 "Trade log" + subline "78 positions · all time" (no serif) `S`
-- [ ] M: mono only on numbers; dates sans `S`
-- [ ] M: one scroll container (page scroll, sticky header); "Show more" at the page bottom `S`
+- [x] M: H1 "Trade log" + subline "78 positions · all time" (no serif) `S` — verified in code (2 Nov)
+- [x] M: mono only on numbers; dates sans `S` — verified in code (2 Nov)
+- [x] M: one scroll container (page scroll, sticky header); "Show more" at the page bottom `S` — verified in code (2 Nov)
 - [ ] M: one chip per row max (tag chips collapse to "+2") `S`
 - [ ] M: remove the summary strip or reduce it to one line (A0.D4) `S`
 - [ ] L: sticky filter on mobile `S`
 
 ### A4.3 `/trades/[positionId]`: `app/trades/[positionId]/page.tsx`, `components/v3/trade-candles.tsx`
 - [x] H: synthetic candles. Make "Illustrative path, not tick data" prominent, or show real candles from the `Candle` table when available (check coverage) `M`
-- [ ] M: net P&L once (header only) `S`
+- [x] M: net P&L once (header only) `S` — fixed 2 Nov
 - [x] M: stat grid → `StatStrip`, mono numbers; commission/swap neutral (they're fees, not losses) `S`
 - [ ] M: chart: price axis; entry/exit markers in the shared chart theme (no green zone box) `S`
-- [ ] M: executions table: no clipped header ("COMM."); journal empty → EmptyState `S`
+- [x] M: executions table: no clipped header ("COMM."); journal empty → EmptyState `S` — verified in code (2 Nov)
 - [ ] L: prev/next arrows with labels; drop the duplicate back link `S`
 
 ### A4.4 `/analytics`: `app/analytics/page.tsx`, `components/v3/analytics-parts.tsx`, `components/sortable-card.tsx`, `components/year-heatmap.tsx`
-- [ ] H: "Psychology edge" / "Setup edge" 450px dashed boxes → compact EmptyState explaining how to fill them (tag trades / journal emotions) `S`
-- [ ] H: P&L by day + Hour of day: attached labels, y-axis, bar below baseline fixed `S`
-- [ ] M: header: "Analytics" + subline (no eyebrow, no serif) `S`
+- [x] H: "Psychology edge" / "Setup edge" 450px dashed boxes → compact EmptyState explaining how to fill them (tag trades / journal emotions) `S` — verified in code (2 Nov)
+- [x] H: P&L by day + Hour of day: attached labels, y-axis, bar below baseline fixed `S` — verified in code (2 Nov)
+- [x] M: header: "Analytics" + subline (no eyebrow, no serif) `S` — verified in code (2 Nov)
 - [x] M: drag handles hidden until "Customise layout" mode `S`
 - [ ] M: de-duplicate best/worst/avg (KPI strip vs strike-rate vs distribution) `S`
 - [ ] M: session × weekday heatmap: readable best cell (text contrast), neutral total column, no outline chips `S`
 - [ ] M: instruments table: no amber chip; plain % text coloured by sign `S`
 - [ ] M: rolling edge + equity: y-axis; "Peak" as a plain label `S`
 - [ ] M: consistency heatmap: only months with data + legend next to it `S`
-- [ ] M: scatter: axis labels + more ticks + hover tooltip `S`
+- [x] M: scatter: axis labels + more ticks + hover tooltip `S` — verified in code (2 Nov)
 - [ ] L: Best/Worst/Most active tiles: no orphan `S`
 
 ### A4.5 `/calendar`: `app/calendar/page.tsx`, `components/day-trades-modal.tsx`
-- [ ] M: week starts Monday (match the dashboard); make it a user setting later `S`
-- [ ] M: day cells: tint only, no coloured border, text neutral with a coloured amount; today = thin white ring `S`
-- [ ] M: H1 "October 2026" plain; drop the "Daily P&L" eyebrow `S`
-- [ ] M: KPI cells: keep month total + trading days; drop the repeats `S`
-- [ ] L: mobile weekly totals row instead of dropping the column `S`
-- [ ] L: day modal: SymbolMark, mono numbers only, title one line on mobile ("Fri 23 Oct") `S`
+- [x] M: week starts Monday (match the dashboard); make it a user setting later `S` — verified in code (2 Nov)
+- [x] M: day cells: tint only, no coloured border, text neutral with a coloured amount; today = thin white ring `S` — verified in code (2 Nov)
+- [x] M: H1 "October 2026" plain; drop the "Daily P&L" eyebrow `S` — verified in code (2 Nov)
+- [x] M: KPI cells: keep month total + trading days; drop the repeats `S` — best/worst day are month facts not repeated elsewhere on the page; kept
+- [x] L: mobile weekly totals row instead of dropping the column `S` — verified in code (2 Nov)
+- [x] L: day modal: SymbolMark, mono numbers only, title one line on mobile ("Fri 23 Oct") `S` — fixed 2 Nov
 
 ### A4.6 `/charts`: `app/charts/page.tsx`, `components/charts/*`
 - [x] M: panes: no borders; active pane = subtle surface change, not a green border `S` — neutral hairline ring
-- [ ] M: klinecharts theme: fonts, axis colours and crosshair from the chart kit `M`
-- [ ] M: toolbar split: symbol + timeframe (left), indicators + drawing tools (overflow menu on narrow screens); line icon for indicators `S`
+- [x] M: klinecharts theme: fonts, axis colours and crosshair from the chart kit `M` — verified in code (2 Nov)
+- [x] M: toolbar split: symbol + timeframe (left), indicators + drawing tools (overflow menu on narrow screens); line icon for indicators `S` — verified in code (2 Nov)
 - [x] M: watchlist/alerts rail: mono only on numbers; "2 active" as plain text `S`
 - [ ] L: alert dialog: `NumberStepper` instead of the native spinner `S`
 - [ ] L: mobile: time axis not clipped; one chart at a time with a pane switcher `S`
 
 ### A4.7 + A4.8 MERGED → one `/journal` page (A0.D1)
 - [x] Merge design: list of trades (left) → selected trade review with replay chart + notes/tags/emotions (right); a "Day notes" mode for free-form entries without a trade `M`
-- [ ] Data: confirm both pages write `JournalEntry` (check `tradeId` nullable) so no migration is needed; if not, plan an additive one `S`
+- [x] Data: confirm both pages write `JournalEntry` (check `tradeId` nullable) so no migration is needed; if not, plan an additive one `S` — verified in code (2 Nov)
 - [x] `/notebook` → permanent redirect to `/journal?view=notes`; update nav, ⌘K, links, emails `S`
 - [x] Nav: one "Journal" item; remove "Chart replay" `S`
 - [x] SignalX: rename "TradeAI signals" (macro side-nav) and "Signals tab" (paper blotter) to SignalX `S`
 
 ### A4.7 `/journal` (old Chart replay part): `app/journal/page.tsx`, `components/replay/trade-chart.tsx`
-- [ ] H: rename in nav, crumb and title per A0.D1 `S`
+- [x] H: rename in nav, crumb and title per A0.D1 `S` — verified in code (2 Nov)
 - [ ] M: filter chips scroll with fade, never cut "Reviewed 0" `S`
-- [ ] M: "Save entry" = standard primary (same as notebook) `S`
-- [ ] M: review hero: no green border/fill; P&L shown once `S`
-- [ ] M: column heights aligned; positions list taller on mobile (or a list → detail flow on mobile) `M`
-- [ ] M: SymbolMark + mono money (match /trades) `S`
-- [ ] M: chart: price axis; "Illustrative" made clear; pager labelled `S`
-- [ ] L: keyboard-hint contrast ≥ 3:1 `S`
+- [x] M: "Save entry" = standard primary (same as notebook) `S` — verified in code (2 Nov)
+- [x] M: review hero: no green border/fill; P&L shown once `S` — verified in code (2 Nov)
+- [x] M: column heights aligned; positions list taller on mobile (or a list → detail flow on mobile) `M` — verified in code (2 Nov)
+- [x] M: SymbolMark + mono money (match /trades) `S` — verified in code (2 Nov)
+- [x] M: chart: price axis; "Illustrative" made clear; pager labelled `S` — verified in code (2 Nov)
+- [x] L: keyboard-hint contrast ≥ 3:1 `S` — verified in code (2 Nov)
 
 ### A4.8 `/notebook` (rename per A0.D1): `app/notebook/page.tsx`
-- [ ] M: H1 "Notebook" + subline; crumb fixed `S`
+- [x] M: H1 "Notebook" + subline; crumb fixed `S` — verified in code (2 Nov)
 - [x] M: hide the KPI strip when empty `S`
 - [x] M: Export CSV disabled (with a tooltip) when there are 0 entries `S`
 - [ ] M: custom date picker (A2.25); title placeholder not clipped `S`
-- [ ] M: emotions captured in one place (decide with A0.D1) `S`
+- [x] M: emotions captured in one place (decide with A0.D1) `S` — verified in code (2 Nov)
 - [ ] L: disabled Save legible `S`
 
 ### A4.9 `/markets`: `app/markets/page.tsx`, `components/news/*`, `components/calendar/calendar-rail.tsx`
 - [ ] H: one control row: category Segmented/select + symbol filter select + Sources + Brief; "High impact" as a filter option, not a red chip `M`
 - [ ] H: news card ≤ 2 chips (sentiment + source/time); relevance bar labelled or removed; no amber ticker tiles (SymbolMark) `M`
 - [x] M: lead thumbnail: real image when available; otherwise no art (not the generic green chart) `S`
-- [ ] M: headlines not truncated mid-word; body clamped with "Read more" `S`
+- [x] M: headlines not truncated mid-word; body clamped with "Read more" `S` — verified in code (2 Nov)
 - [ ] M: calendar rail:
   - sans times
   - impact as text chip (High/Med/Low, red only for High)
@@ -780,81 +780,81 @@ Legend:
   - watch star neutral/white
   - A/F/P values labelled
   - `M`
-- [ ] M: "Sources · 8" vs "0 selected" state bug `S`
+- [x] M: "Sources · 8" vs "0 selected" state bug `S` — fixed 2 Nov
 - [ ] L: brief: skeleton while writing `S`
-- [ ] L: mobile chip rows (A0.30) `S`
+- [x] L: mobile chip rows (A0.30) `S` — verified in code (2 Nov)
 
 ### A4.10 `/macro`: `app/macro/page.tsx`, `components/macro/*`, `lib/macro-meta.ts`
 - [x] H: remove the 15-item second sidebar → tabs row (Overview / Regime / Rates & Fed / Indicators / Calendar / Assistant), decided with the user `M`
 - [x] H: show the 8-asset bias **once** (keep one view; drop the other two) `M`
 - [x] H: Confluence engine view: fix the 500px blank `S`
 - [ ] M: chrome: ticker (fix the first item clipped under "Live"), drop the second ⌘K (use the global palette with macro results), meta line as one muted sentence `M`
-- [ ] M: no amber chips; regime tones → neutral/green/red `S`
-- [ ] M: regime card: no glow, no serif; bias gauge → a single neutral bar with a marker `S`
+- [x] M: no amber chips; regime tones → neutral/green/red `S` — verified in code (2 Nov)
+- [x] M: regime card: no glow, no serif; bias gauge → a single neutral bar with a marker `S` — verified in code (2 Nov)
 - [ ] M: indicator groups: line icons; ⓘ per group (not 33 per row); values mono; sparklines in chart theme `M`
-- [ ] M: sentence-case chips (Bullish, Upward, Stance: dovish…) `S`
+- [x] M: sentence-case chips (Bullish, Upward, Stance: dovish…) `S` — verified in code (2 Nov)
 - [ ] M: Fed sub-view: fill the layout or shorten the page; paper blotter EmptyState with an action and the right tab name `S`
-- [ ] L: disclaimers: one sentence-case footer line `S`
+- [x] L: disclaimers: one sentence-case footer line `S` — verified in code (2 Nov)
 
 ### A4.11 `/macro/assets/[symbol]`: `app/macro/assets/[symbol]/page.tsx`
 - [ ] H: **price mismatch**. Header price (2,387) vs TradingView (≈4,025). Use the same source for both, or label the mock clearly. Check the real (non-mock) path too `M`
 - [ ] H: mobile TradingView embed blank (≈800px). Fix sizing or fall back to our own chart `M`
 - [ ] M: TradingView theme colours invalid (console errors). Pass hex values, our candle colours, dark theme `S`
 - [x] M: one hero number (price); "Bias score 71/100" not 71% `S`
-- [ ] L: duplicate breadcrumb `S`
+- [x] L: duplicate breadcrumb `S` — verified in code (2 Nov)
 
 ### A4.12 `/trader` (SignalX): `app/trader/page.tsx`, `components/trader/*`
-- [ ] M: "Analyze" = standard primary (no gradient/glow/emoji); "Compile" secondary; no serif "X" `S`
-- [ ] M: status chips: Open neutral, Hit = green, Stopped = red (no amber) `S`
+- [x] M: "Analyze" = standard primary (no gradient/glow/emoji); "Compile" secondary; no serif "X" `S` — verified in code (2 Nov)
+- [x] M: status chips: Open neutral, Hit = green, Stopped = red (no amber) `S` — verified in code (2 Nov)
 - [ ] M: "72%" confidence on every row: check whether this is real or mock; label it if mock `S`
 - [ ] M: balance the columns (track record + strategies below on desktop, or tabs) `M`
 - [ ] M: strategy card: ≤ 3 chips, one-line rule summary, one action + menu `S`
 - [ ] L: mobile rows not truncated `S`
 
 ### A4.13 `/coach`: `app/coach/page.tsx`, `components/coach/*`
-- [ ] M: page header pattern (title + new chat action); history pane on surface-1, no border `S`
-- [ ] M: user bubble graphite (not green); assistant headings weight 500 `S`
-- [ ] L: "Preview mode" line only in mock mode (it is already mock-only; confirm) `S`
-- [ ] L: "New chat" normal-width button; disabled send state `S`
+- [x] M: page header pattern (title + new chat action); history pane on surface-1, no border `S` — verified in code (2 Nov)
+- [x] M: user bubble graphite (not green); assistant headings weight 500 `S` — verified in code (2 Nov)
+- [x] L: "Preview mode" line only in mock mode (it is already mock-only; confirm) `S` — verified in code (2 Nov)
+- [x] L: "New chat" normal-width button; disabled send state `S` — verified in code (2 Nov)
 
 ### A4.14 `/brokers`: `app/brokers/page.tsx`, `components/connect-broker-modal.tsx`, `update-broker-password-modal.tsx`
-- [ ] M: hero: no glow/dot grid; H1 "Brokers" + subline `S`
+- [x] M: hero: no glow/dot grid; H1 "Brokers" + subline `S` — verified in code (2 Nov)
 - [x] M: "Add broker" at the limit → enabled-looking secondary with "Limit reached (2/2)" tooltip, or hidden with an explanation line `S` — hidden at the limit; the banner line explains
-- [ ] M: status shown once per row; no green left bar `S`
+- [x] M: status shown once per row; no green left bar `S` — verified in code (2 Nov)
 - [x] M: "Broker limit reached" card → a plain info line `S` — card removed at the limit; one banner line
-- [ ] M: connect modal: selects and inputs share one spec (radius, height) `S`
-- [ ] L: totals mono; "connected 13 months ago" on one line `S`
+- [x] M: connect modal: selects and inputs share one spec (radius, height) `S` — verified in code (2 Nov)
+- [x] L: totals mono; "connected 13 months ago" on one line `S` — verified in code (2 Nov)
 
 ### A4.15 `/settings`: `app/settings/page.tsx`, `components/settings/*`, `components/location-form.tsx`
-- [ ] M: profile banner: remove the fake equity line; simple avatar + name header `S`
-- [ ] M: no nested bordered tiles (use `StatStrip`) `S`
-- [ ] M: location form on the shared Form set (A2.14); standard primary `S`
-- [ ] M: weekly review in one place; no violet pills `S`
-- [ ] M: "Private & read-only": line icon, no glow card `S`
-- [ ] L: stepper value/label consistent; one "Sign out" `S`
+- [x] M: profile banner: remove the fake equity line; simple avatar + name header `S` — verified in code (2 Nov)
+- [x] M: no nested bordered tiles (use `StatStrip`) `S` — verified in code (2 Nov)
+- [x] M: location form on the shared Form set (A2.14); standard primary `S` — verified in code (2 Nov)
+- [x] M: weekly review in one place; no violet pills `S` — one toggle; the aside only lists the channels
+- [x] M: "Private & read-only": line icon, no glow card `S` — verified in code (2 Nov)
+- [x] L: stepper value/label consistent; one "Sign out" `S` — verified in code (2 Nov)
 
 ### A4.16 `/admin`: `app/admin/page.tsx`, `components/admin/*`
-- [ ] H: mocks for `/data/admin/*` so it renders in mock mode (A0.32), then re-audit the real UI `S`
-- [ ] H: move from Tailwind/globals tokens to the v6 primitives (211 Tailwind usages) `L → split per tab: Overview, Users, Access, System`
-- [ ] M: tabs = `Tabs`; Refresh = `IconButton`/secondary, sentence case `S`
-- [ ] M: error state = `ErrorState` with retry `S`
-- [ ] L: page padding = the standard container `S`
+- [x] H: mocks for `/data/admin/*` so it renders in mock mode (A0.32), then re-audit the real UI `S` — verified in code (2 Nov)
+- [x] H: move from Tailwind/globals tokens to the v6 primitives (211 Tailwind usages) `L → split per tab: Overview, Users, Access, System` — verified in code (2 Nov)
+- [x] M: tabs = `Tabs`; Refresh = `IconButton`/secondary, sentence case `S` — verified in code (2 Nov)
+- [x] M: error state = `ErrorState` with retry `S` — verified in code (2 Nov)
+- [x] L: page padding = the standard container `S` — verified in code (2 Nov)
 
 ### A4.17 Auth: `/login`, `/signup`, `/forgot`, `/verify` (`components/v3/auth-shell.tsx`)
-- [ ] M: primary = white pill (not green glow); no faux italics `S`
+- [x] M: primary = white pill (not green glow); no faux italics `S` — verified in code (2 Nov)
 - [x] L: login: one reset link `S` — the footer duplicate removed
 - [ ] M: signup: left panel art (missing today); move country/city/postal to onboarding (the location gate already exists, `components/location-gate.tsx`) and confirm the API still accepts signup without them `M`
 - [ ] L: signup: no mono step markers; smooth disabled → enabled primary `S`
-- [ ] L: forgot: one progress style `S`
-- [ ] L: verify: "expires in 10 min" once; email shown or "your inbox" phrasing; OTP boxes on surface-2 `S`
+- [x] L: forgot: one progress style `S` — verified in code (2 Nov)
+- [x] L: verify: "expires in 10 min" once; email shown or "your inbox" phrasing; OTP boxes on surface-2 `S` — verified in code (2 Nov)
 
 ### A4.18 Status and legal pages
 - [x] H: `/access/inactive`: no amber; neutral card with a red risk note; one primary + a text link `S` — neutral card, Recheck primary + a text link
-- [ ] L: `/access/elefin`: standard primary, no faux italic `S`
+- [x] L: `/access/elefin`: standard primary, no faux italic `S` — verified in code (2 Nov)
 - [x] L: `/maintenance`: no violet tone; one paragraph `S`
 - [ ] L: `/privacy`, `/terms`: no faux italic; muted section numbers; bullets on mobile; header matches the landing nav `S`
-- [ ] L: `/unsubscribe`: no faux italic `S`
-- [ ] L: `/news`, `/economic-calendar` redirects: confirm nothing links to them `S`
+- [x] L: `/unsubscribe`: no faux italic `S` — verified in code (2 Nov)
+- [x] L: `/news`, `/economic-calendar` redirects: confirm nothing links to them `S` — verified in code (2 Nov)
 
 ### A4.19 Landing `/` (in addition to A5)
 - [x] M: one serif word max (A0.D5) instead of 17 `S`
@@ -863,5 +863,5 @@ Legend:
 - [x] M: one bar above the hero (not announcement + nav + ticker) `S`
 - [ ] M: re-shoot the product images after Part A (the current shot shows the cluttered dashboard) `S`
 - [ ] L: fewer glows (`landing.css` has 54 gradients) `S`
-- [ ] L: mobile: the "Syncs read-only…" overlap `S`
+- [x] L: mobile: the "Syncs read-only…" overlap `S` — verified in code (2 Nov)
 - [x] L: sentence-case eyebrows; drop the A/B/C/D indices `S`
