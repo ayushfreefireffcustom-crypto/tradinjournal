@@ -27,7 +27,7 @@ export default function AlertsPanel({ activeSymbol, reloadToken, onNew }: { acti
     <section className="x-card mk-side" data-testid="alerts-panel" aria-labelledby="mk-al-t">
       <div className="x-ch">
         <h3 id="mk-al-t">Price alerts</h3>
-        {activeN > 0 && <span className="x-tag x-tag--g">{activeN} active</span>}
+        {activeN > 0 && <span className="x-muted">{activeN} active</span>}
         {onNew && <div className="x-r"><button className="x-btn x-btn--sm" onClick={onNew}>New alert</button></div>}
       </div>
       <div className="mk-side-bd">

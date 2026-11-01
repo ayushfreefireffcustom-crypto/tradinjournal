@@ -89,7 +89,7 @@
 .v6 .mk-cgrid.n2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .v6 .mk-cgrid.n4 { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); }
 .v6 .mk-pane { padding: 0; display: flex; flex-direction: column; position: relative; min-height: 0; overflow: hidden; }
-.v6 .mk-pane.on::after { content: ""; position: absolute; inset: 0; border-radius: inherit; box-shadow: inset 0 0 0 1px var(--g); pointer-events: none; z-index: 3; }
+.v6 .mk-pane.on::after { content: ""; position: absolute; inset: 0; border-radius: inherit; box-shadow: inset 0 0 0 1px var(--line-2); pointer-events: none; z-index: 3; } /* active pane: a quiet ring, not a green one */
 .v6 .mk-pane-hd { display: flex; align-items: center; gap: 8px; padding: 10px 10px 2px 16px; min-height: 44px; min-width: 0; flex: none; }
 .v6 .mk-pane-hd > b { font-weight: 500; font-size: 14.5px; white-space: nowrap; }
 .v6 .mk-pane-tf { font-family: var(--mono); padding: 4px 7px; }
@@ -407,7 +407,7 @@
 .v6 .mk-pc-last { fill: var(--inv); }
 .v6 .mk-pc-info { position: absolute; top: 2px; left: 6px; font-size: 11.5px; color: var(--mut); pointer-events: none; z-index: 1; }
 .v6 .mk-pc-empty { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 24px; color: var(--mut); font-size: 13px; }
-.v6 .mk-pc-tip { position: absolute; left: 6px; bottom: 26px; background: var(--tip); color: var(--tx); font-size: 12px; padding: 6px 9px; border-radius: 8px; pointer-events: none; max-width: calc(100% - 80px); }
+.v6 .mk-pc-tip { position: absolute; left: 6px; bottom: 26px; background: var(--tip); color: #EDEDED; font-size: 12px; padding: 6px 9px; border-radius: 8px; pointer-events: none; max-width: calc(100% - 80px); }
 
 /* Chart patterns (E8/E9) */
 .v6 .mk-pt-toggle.on { background: var(--hi); color: var(--inv); }
@@ -416,7 +416,7 @@
 .v6 .mk-pt-hd b { font-weight: 500; }
 .v6 .mk-pt-hd .x-muted { font-size: 12px; }
 .v6 .mk-pt-msg { margin: 0; font-size: 13px; line-height: 1.5; }
-.v6 .mk-pt-sub { font-size: 11.5px; color: var(--mut); text-transform: uppercase; letter-spacing: .05em; margin-top: 4px; }
+.v6 .mk-pt-sub { font-size: 12px; color: var(--mut); margin-top: 4px; }
 .v6 .mk-pt-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
 .v6 .mk-pt-row { display: flex; align-items: center; gap: 6px; border-radius: 10px; padding: 2px 2px 2px 0; }
 .v6 .mk-pt-row.on { background: var(--s2); }

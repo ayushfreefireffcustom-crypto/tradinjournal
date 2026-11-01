@@ -189,7 +189,7 @@ export default function CalendarPage() {
                         })}
                         <div className="cl-day cl-wk">
                           <span>Week {w.index}</span>
-                          {w.days > 0 ? <><b className={`m cl-amt ${tone(w.net)}`}><span className="f">{cell(w.net)}</span><span className="c">{sc(w.net)}</span><span className="t">{compact(w.net)}</span></b><small>{plural(w.trades, 'trade')}</small></> : <><b className="x-dim">—</b><small>No trades</small></>}
+                          {w.days > 0 ? <><b className={`m cl-amt ${tone(w.net)}`}><span className="f">{cell(w.net)}</span><span className="c">{sc(w.net)}</span><span className="t">{compact(w.net)}</span></b><small>{plural(w.trades, 'trade')}</small></> : <><b className="x-muted">—</b><small>No trades</small></>}
                           <span className="cl-mini" aria-hidden>
                             {w.cells.map(c => {
                               const v = c.agg?.netPnl ?? 0;

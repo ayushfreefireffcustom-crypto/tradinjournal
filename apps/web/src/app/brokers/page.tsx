@@ -121,11 +121,11 @@ export default function BrokersPage() {
   return (
     <AppShell legacy={false} accounts={accounts} selectedAccount={selected} onSelectAccount={select} onConnectClick={() => { if (!atLimit) setShowConnect(true); }}
       pageTitle="Brokers" pageSubtitle="Read-only MT5 connections"
-      actions={
-        <button onClick={() => setShowConnect(true)} disabled={atLimit} data-testid="brokers-add" title={atLimit ? 'Account limit reached. Remove one to add another.' : undefined} className="x-btn x-btn--hi">
+      actions={atLimit ? undefined : (
+        <button onClick={() => setShowConnect(true)} data-testid="brokers-add" className="x-btn x-btn--hi">
           <IPlus size={15} />Add broker
         </button>
-      }>
+      )}>
       <div className="x-page" data-testid="brokers-page">
         <div className="x-strip x-strip--card ac-br-sum" data-testid="brokers-summary">
           <div><span>Broker slots</span><b className="m">{accounts.length} / {MAX_ACCOUNTS}</b></div>
@@ -191,11 +191,13 @@ export default function BrokersPage() {
                     </article>
                   );
                 })}
-                <button onClick={() => { if (!atLimit) setShowConnect(true); }} disabled={atLimit} aria-disabled={atLimit} data-testid="brokers-add-card" className={`ac-br-new ${atLimit ? 'full' : ''}`}>
-                  <span className="ac-br-new-ic">{atLimit ? <ILock size={18} /> : <IPlus size={18} />}</span>
-                  <b>{atLimit ? 'Broker limit reached' : accounts.length === 0 ? 'Connect your first broker' : 'Add another broker'}</b>
-                  <small>{atLimit ? `${accounts.length} of ${MAX_ACCOUNTS} slots used` : 'Investor (read-only) credentials. Trades sync within a minute.'}</small>
-                </button>
+                {!atLimit && (
+                  <button onClick={() => setShowConnect(true)} data-testid="brokers-add-card" className="ac-br-new">
+                    <span className="ac-br-new-ic"><IPlus size={18} /></span>
+                    <b>{accounts.length === 0 ? 'Connect your first broker' : 'Add another broker'}</b>
+                    <small>Investor (read-only) credentials. Trades sync within a minute.</small>
+                  </button>
+                )}
               </div>
             </>
           )}

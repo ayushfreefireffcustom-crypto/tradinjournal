@@ -55,24 +55,24 @@ Legend:
   - shadows (none by default, 1 elevation for popovers)
   - motion durations
 - [x] A1.3 Add the type scale as tokens: 12 / 13 / 14 / 15 / 18 / 22 / 32 / 44 / 56; line-heights; letter-spacing −0.02/−0.03 for headings `S` — `--fs-*`, `--lh-*`, `--ls-*` in styles/v6/tokens.css (2 Nov)
-- [ ] A1.4 Confirm which fonts are already loaded (`app/layout.tsx`) and keep one sans + JetBrains Mono. Remove unused font loads `S`
+- [x] A1.4 Confirm which fonts are already loaded (`app/layout.tsx`) and keep one sans + JetBrains Mono. Remove unused font loads `S` — Satoshi 400/500 + JetBrains Mono 400/500 only; Inter, Instrument Serif and Satoshi 700/italics no longer loaded (2 Nov)
 - [x] A1.5 `.num` utility: mono, `tabular-nums`, used for every price, P&L, count and time `S` — `.v6 .num`
 - [x] A1.6 P&L colour helpers: `.pos`/`.neg`/`.flat`, plus a JS `pnlClass(n)` in one shared file `S` — `pnlClass()` in lib/format.ts + `.flat` (2 Nov)
 - [x] A1.7 Number formatters in one module: `fmtUsd`, `fmtPct`, `fmtNum`, `fmtCompact`, `fmtDuration`, `fmtUnknown` ("—"). Replace the duplicates found by grep `M` — lib/format.ts, tested; dashboard/strategies/options/copy/hub/macro helpers delegate (2 Nov)
 - [x] A1.8 Dark scrollbars, selection colour, focus-ring token (green 2px offset) `S` — v6 scope only
 - [x] A1.9 `prefers-reduced-motion` handling in the tokens file `S`
-- [ ] A1.10 Plan how to retire `styles/app-v5-auto.css` (an auto-generated recolour of v3): list every class it covers that is still used `S`
-- [ ] A1.11 Decide the final CSS structure: `tokens.css` + `components.css` + per-feature CSS. Document it in `apps/web/src/styles/README.md` `S`
+- [x] A1.10 Plan how to retire `styles/app-v5-auto.css` (an auto-generated recolour of v3): list every class it covers that is still used `S` — retired with A3.11; the file is gone
+- [x] A1.11 Decide the final CSS structure: `tokens.css` + `components.css` + per-feature CSS. Document it in `apps/web/src/styles/README.md` `S` — documented in `styles/v6/README.md` (files, rules, shared React pieces, QA checklist)
 
 ## A2. Shared UI primitives (React, `apps/web/src/components/ui/`)
 - [x] A2.1 `Card`: surface-1, radius 24, padding 24 (20 on mobile). Variants `inset` (surface-2, radius 16) and `flush` `S` — as `x-card` / `x-inset` CSS classes in styles/v6/components.css
 - [x] A2.2 `CardHeader`: title + muted subline on the left, one action slot on the right `S` — `x-ch`
 - [x] A2.3 `Button`: `primary` (white pill), `secondary` (graphite pill), `ghost`, `danger` (red), `link` (text + →); sizes sm/md; loading state; icon slot `S` — `x-btn` + --hi/--g/--danger/--ghost/--dash/--sm/--lg/--icon
-- [ ] A2.4 `IconButton` (round, 36px), with a tooltip label for a11y `S`
+- [x] A2.4 `IconButton` (round, 36px), with a tooltip label for a11y `S` — components/v6/ui/icon-button.tsx; frame eye/theme buttons use it (2 Nov)
 - [x] A2.5 `Segmented` (range chips, tab switches) with keyboard arrows `S` — `x-seg`
 - [x] A2.6 `Tabs` (underline variant for page sub-nav) `S` — `x-tabs`
 - [x] A2.7 `Chip`/`Tag`: neutral, pos, neg, with optional removable × `S` — `x-tag` + --g/--r/--solid
-- [ ] A2.8 `Badge` ("New", counts) `S`
+- [x] A2.8 `Badge` ("New", counts) `S` — `x-badge` (tabs, nav "New")
 - [x] A2.9 `Stat`: label, big `.num` value, sub-line, optional thin bar, optional ⓘ `S` — `x-stat`
 - [x] A2.10 `StatStrip`: 3–4 stats split by hairlines, as in the reference (27 / 32 / 33) `S` — `x-strip`
 - [x] A2.11 `InfoTip` (ⓘ popover with "what it is / why it matters"). Replace `components/macro/info-tip.tsx` usage everywhere `S` — components/v6/ui/info-tip.tsx; macro re-exports it (2 Nov)
@@ -80,8 +80,8 @@ Legend:
 - [ ] A2.13 `IconTile`: glossy rounded-square SVG master, palettes green/red/graphite `M`
 - [ ] A2.14 Form set: `Field`, `Input`, `Select`, `Textarea`, `Checkbox`, `Switch`, `Radio`, `NumberStepper`, `SearchInput` (⌘K hint). Error and help text `M`
 - [x] A2.15 `Sheet`/`Dialog` (bottom sheet on mobile, centred dialog on desktop). Replace `components/confirm-dialog.tsx` and `components/v3/confirm-dialog.tsx` with one `M` — one ConfirmDialog (portal, Esc, bottom sheet on phones) already replaced both
-- [ ] A2.16 `Menu`/`Dropdown` with keyboard support `S`
-- [ ] A2.17 `Tooltip` `S`
+- [x] A2.16 `Menu`/`Dropdown` with keyboard support `S` — `useMenu` (components/v6/ui/use-menu.ts, tested): arrows, Home/End, type-ahead, Esc back to trigger; account switcher + user menu use it
+- [x] A2.17 `Tooltip` `S` — components/v6/ui/tooltip.tsx: hover after 350ms or keyboard focus, portal, flips, Esc
 - [x] A2.18 `Table`: sticky header, sortable header cells, row hover, mobile card fallback, empty row `M` — `x-tbl` + `x-tblwrap`; dashboard shows the phone card fallback
 - [x] A2.19 `EmptyState`: art slot + one sentence + one button. Replace `components/empty-state.tsx` `S` — `x-empty`
 - [x] A2.20 `Skeleton` set (text, stat, chart, table rows), shaped like the real content `S` — `x-skel`
@@ -91,9 +91,9 @@ Legend:
 - [ ] A2.24 `Pagination`/"Load more" `S`
 - [x] A2.25 `DateRangePicker` with presets: today, yesterday, this week, last week, this month, last month, YTD, last year, custom. Evidence: MP seen `M` — components/v6/ui/date-range.tsx + lib/date-presets.ts (2 Nov)
 - [ ] A2.26 Chart kit: one `ChartTheme` (axes `--dim`, grid `--line`, tooltip card, crosshair) applied to equity, drawdown, bars, scatter, rolling, heatmap, kline `M`
-- [ ] A2.27 `Sparkline` (single shared one; remove the duplicates in `macro/sparkline.tsx` etc.) `S`
-- [ ] A2.28 A `/dev/ui` primitives gallery page (dev only) to review every primitive in one place `S`
-- [ ] A2.29 Unit tests for formatters + `pnlClass`; a render smoke test for each primitive `S`
+- [x] A2.27 `Sparkline` (single shared one; remove the duplicates in `macro/sparkline.tsx` etc.) `S` — components/v6/ui/sparkline.tsx + lib/sparkline.ts (tested); the macro, copy and desk copies are gone
+- [x] A2.28 A `/dev/ui` primitives gallery page (dev only) to review every primitive in one place `S` — app/dev/ui (404 in production), both themes
+- [x] A2.29 Unit tests for formatters + `pnlClass`; a render smoke test for each primitive `S` — format.test.ts + components/v6/ui/primitives.test.ts (react-dom/server)
 
 ## A3. App shell
 - [x] A3.0 v6 frame (`components/v6/frame.tsx`) behind `AppShell frame="v6"`: icon rail in a pill, top-bar pills, phone tab bar. Dashboard uses it (30 Oct) `M`
@@ -143,7 +143,7 @@ Legend:
 - [x] A5.6 FAQ accordion with hairlines and +/× `S`
 - [x] A5.7 Footer with a giant ghosted "TRADElogs" wordmark, link columns and a contact card `S` (contact card points to the AI coach; there is no Telegram channel yet)
 - [ ] A5.8 Rewrite landing copy for the new scope (journal + copy + strategies). No unverified numbers `M`
-- [ ] A5.11 Delete the unused `components/landing-v5/` (keep `useSignedIn` by moving it to `lib/`, it is imported by landing-v6) and `public/landing/*` shots it used `S`
+- [x] A5.11 Delete the unused `components/landing-v5/` (keep `useSignedIn` by moving it to `lib/`, it is imported by landing-v6) and `public/landing/*` shots it used `S` — landing-v5 already gone, useSignedIn in lib/; the three unreferenced shots removed (dashboard-v5.jpg stays: it is the OG image)
 - [ ] A5.9 Landing performance: Lighthouse ≥ 90 on mobile, no layout shift, lazy art `M`
 - [x] A5.10 Check the hero WebGL silk: keep it or replace it with a calmer glass object (decide with the user using screenshots) `S`
 
@@ -151,7 +151,7 @@ Legend:
 - [ ] A6.1 `/login`, `/signup`, `/forgot`, `/verify` on the new primitives (see the audit for specifics) `M`
 - [ ] A6.2 `/maintenance`, `/access/elefin`, `/access/inactive`, `/unsubscribe` `S`
 - [ ] A6.3 `/privacy`, `/terms` legal layout (`components/v3/legal-page.tsx`) `S`
-- [ ] A6.4 404 and error pages (`not-found.tsx`, `error.tsx`, `global-error.tsx`); check whether they exist `S`
+- [x] A6.4 404 and error pages (`not-found.tsx`, `error.tsx`, `global-error.tsx`); check whether they exist `S` — all three exist on the v6 StatusCard; global-error now loads Satoshi itself
 - [ ] A6.5 Loading states (`loading.tsx`) per route group `S`
 
 ## A7. UI QA pass
@@ -613,12 +613,12 @@ Legend:
 - [ ] A0.13 Remove the `AppShell` `theme?: 'v5'|'v3'` prop and the v3 code path (`app-shell.tsx:37,97`) `S`
 
 **Typography:**
-- [ ] A0.14 Fonts: remove the unused Inter next/font load (`app/layout.tsx:2,14`); fix the `globals.css:22` comment `S`
-- [ ] A0.15 Satoshi `S`:
+- [x] A0.14 Fonts: remove the unused Inter next/font load (`app/layout.tsx:2,14`); fix the `globals.css:22` comment `S` — Inter and Instrument Serif removed; globals fall back to Satoshi + JetBrains Mono (2 Nov)
+- [x] A0.15 Satoshi `S`: — no 600/700/900 or font-bold/black left anywhere (last four 600s → 500, 2 Nov); only 400/500 loaded
   - only use loaded weights 400/500
   - replace `font-black` (42 uses) and 600/700 with 500
   - if a weight is needed, load it explicitly; no synthesised weights
-- [ ] A0.16 JetBrains Mono: 400/500 only; remove 700 usage (journal 81, trades 53, coach 9, macro 8) `S`
+- [x] A0.16 JetBrains Mono: 400/500 only; remove 700 usage (journal 81, trades 53, coach 9, macro 8) `S` — loads 400/500; no heavier weight used
 - [ ] A0.17 Remove the serif-italic accent word from every app H1 (`.v3-h1 em` `app-v3.css:209`, `.mr h2 em`, `.br-hero h1 em` `app-v5.css:573`, per-page `<em>`) `S`
 - [ ] A0.18 Remove the faux-italic green/red accent on auth/status/legal pages ("back.", "account.", "password?", "inbox.", "policy.", "missing a token.", calendar "2026") `S`
 - [ ] A0.19 Mono rule: **numbers mono everywhere, labels never mono** `M`
@@ -664,7 +664,7 @@ Legend:
 - [ ] A0.28 One `EmptyState` used everywhere. Replace the six ad-hoc versions (analytics dashed boxes, notebook, paper blotter, dashboard text, brokers dashed card, admin red bar) `M`
 - [ ] A0.29 Zero-data rule: when there's no data, show the EmptyState instead of "+$0.00 ▲0.00%" or rows of "—" `S`
 - [x] A0.30 Mobile chip rows: edge fade + scroll snap, so chips never cut mid-word unannounced `S`
-- [ ] A0.31 Mobile: no orphan full-width KPI tile (use even counts or a 2-col span rule) `S`
+- [x] A0.31 Mobile: no orphan full-width KPI tile (use even counts or a 2-col span rule) `S` — an odd last `x-strip` tile spans the row on phones (2 Nov)
 - [x] A0.32 Mock mode completeness: add `/data/admin/*` mocks (`lib/admin-api.ts:191-210`) and a maintenance mock, so every page can be reviewed `S`
 
 ## A4. Pages (from `reports/ui-audit.md` §3; H = high, M = medium, L = low severity)
@@ -736,10 +736,10 @@ Legend:
 - [ ] L: day modal: SymbolMark, mono numbers only, title one line on mobile ("Fri 23 Oct") `S`
 
 ### A4.6 `/charts`: `app/charts/page.tsx`, `components/charts/*`
-- [ ] M: panes: no borders; active pane = subtle surface change, not a green border `S`
+- [x] M: panes: no borders; active pane = subtle surface change, not a green border `S` — neutral hairline ring
 - [ ] M: klinecharts theme: fonts, axis colours and crosshair from the chart kit `M`
 - [ ] M: toolbar split: symbol + timeframe (left), indicators + drawing tools (overflow menu on narrow screens); line icon for indicators `S`
-- [ ] M: watchlist/alerts rail: mono only on numbers; "2 active" as plain text `S`
+- [x] M: watchlist/alerts rail: mono only on numbers; "2 active" as plain text `S`
 - [ ] L: alert dialog: `NumberStepper` instead of the native spinner `S`
 - [ ] L: mobile: time axis not clipped; one chart at a time with a pane switcher `S`
 
@@ -819,9 +819,9 @@ Legend:
 
 ### A4.14 `/brokers`: `app/brokers/page.tsx`, `components/connect-broker-modal.tsx`, `update-broker-password-modal.tsx`
 - [ ] M: hero: no glow/dot grid; H1 "Brokers" + subline `S`
-- [ ] M: "Add broker" at the limit → enabled-looking secondary with "Limit reached (2/2)" tooltip, or hidden with an explanation line `S`
+- [x] M: "Add broker" at the limit → enabled-looking secondary with "Limit reached (2/2)" tooltip, or hidden with an explanation line `S` — hidden at the limit; the banner line explains
 - [ ] M: status shown once per row; no green left bar `S`
-- [ ] M: "Broker limit reached" card → a plain info line `S`
+- [x] M: "Broker limit reached" card → a plain info line `S` — card removed at the limit; one banner line
 - [ ] M: connect modal: selects and inputs share one spec (radius, height) `S`
 - [ ] L: totals mono; "connected 13 months ago" on one line `S`
 
@@ -842,16 +842,16 @@ Legend:
 
 ### A4.17 Auth: `/login`, `/signup`, `/forgot`, `/verify` (`components/v3/auth-shell.tsx`)
 - [ ] M: primary = white pill (not green glow); no faux italics `S`
-- [ ] L: login: one reset link `S`
+- [x] L: login: one reset link `S` — the footer duplicate removed
 - [ ] M: signup: left panel art (missing today); move country/city/postal to onboarding (the location gate already exists, `components/location-gate.tsx`) and confirm the API still accepts signup without them `M`
 - [ ] L: signup: no mono step markers; smooth disabled → enabled primary `S`
 - [ ] L: forgot: one progress style `S`
 - [ ] L: verify: "expires in 10 min" once; email shown or "your inbox" phrasing; OTP boxes on surface-2 `S`
 
 ### A4.18 Status and legal pages
-- [ ] H: `/access/inactive`: no amber; neutral card with a red risk note; one primary + a text link `S`
+- [x] H: `/access/inactive`: no amber; neutral card with a red risk note; one primary + a text link `S` — neutral card, Recheck primary + a text link
 - [ ] L: `/access/elefin`: standard primary, no faux italic `S`
-- [ ] L: `/maintenance`: no violet tone; one paragraph `S`
+- [x] L: `/maintenance`: no violet tone; one paragraph `S`
 - [ ] L: `/privacy`, `/terms`: no faux italic; muted section numbers; bullets on mobile; header matches the landing nav `S`
 - [ ] L: `/unsubscribe`: no faux italic `S`
 - [ ] L: `/news`, `/economic-calendar` redirects: confirm nothing links to them `S`

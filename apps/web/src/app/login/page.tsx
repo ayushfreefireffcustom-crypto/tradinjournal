@@ -129,7 +129,6 @@ export default function LoginPage() {
           </div>
           <AuthSubmit loading={loading} testId="login-submit">{loading ? 'Signing in…' : 'Sign in'}</AuthSubmit>
         </div>
-        <p className="au-small">Trouble signing in? <Link href="/forgot">Reset your password</Link></p>
       </form>
     </AuthShell>
   );

@@ -67,7 +67,7 @@ export default function InactiveAccessPage() {
   const tradeCount = status?.tradeCount7d ?? 0;
 
   return (
-    <StatusCard testId="access-inactive-page" icon={SC_ICONS.warn} tone="r" kicker="Activity required"
+    <StatusCard testId="access-inactive-page" icon={SC_ICONS.warn} kicker="Activity required"
       title="Keep trading to keep access"
       body={<>Full access needs at least <b>{minTrades}</b> closed trades on your Elefin account in the last <b>{windowDays}</b> days. Trade, then recheck; it updates instantly.</>}
       onSignOut={() => void authClient.signOut().then(() => router.replace('/login'))}>
@@ -78,7 +78,7 @@ export default function InactiveAccessPage() {
       <form className="au-stacts" onSubmit={e => { e.preventDefault(); void recheck(); }}>
         {error && <AuthError>{error}</AuthError>}
         <AuthSubmit loading={busy}>{busy ? 'Checking…' : 'Recheck activity'}</AuthSubmit>
-        <Link href="/brokers" className="x-btn x-btn--lg x-btn--full">Connect or sync broker</Link>
+        <Link href="/brokers" className="x-link au-stlink">Connect or sync your broker</Link>
       </form>
     </StatusCard>
   );

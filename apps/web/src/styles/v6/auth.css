@@ -142,6 +142,7 @@ html[data-theme=light]:has(.v6.au-root), html[data-theme=light] body:has(.v6.au-
 .v6 .au-stbody { font-size: 14px; color: var(--mut); line-height: 1.55; margin: 8px 0 0; }
 .v6 .au-stbody b { color: var(--tx); }
 .v6 .au-stacts { display: grid; gap: 10px; margin-top: 24px; }
+.v6 .au-stacts > .au-stlink { justify-self: center; font-size: 14px; margin-top: 4px; }
 .v6 .au-stcard .x-strip { margin-top: 20px; }
 .v6 .au-stcard .x-strip b { display: block; font-size: 22px; }
 .v6 .au-stcard .x-strip small { display: block; font-size: 12px; color: var(--mut); margin-top: 2px; }
