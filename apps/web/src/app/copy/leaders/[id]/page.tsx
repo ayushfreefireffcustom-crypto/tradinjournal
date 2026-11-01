@@ -9,6 +9,7 @@ import { useParams, useRouter } from 'next/navigation';
 import AppShell from '@/components/app-shell';
 import { useToast } from '@/components/toast';
 import FollowDialog from '@/components/v6/copy/follow-dialog';
+import LeaderAnalytics from '@/components/v6/copy/leader-analytics';
 import { EquityLine, ErrorCard, GradeBadge, Monogram, ago, useLoad } from '@/components/v6/copy/parts';
 import { IArrowLeft } from '@/components/v3/icons';
 import { leadersApi, followsApi, pct, price, RANGE_LABEL, signedUsd, toneOf, usd, venueName, type LeaderDetail, type LeaderRange, type LeaderTrade } from '@/lib/copy-api';
@@ -136,6 +137,8 @@ export default function LeaderPage() {
                 )}
               </section>
             </div>
+
+            <LeaderAnalytics leaderId={id} range={range} />
 
             <section className="x-card" aria-label="Trade history">
               <div className="x-ch"><h2>Trade history</h2><span className="x-sub">every fill on the leader&rsquo;s account</span></div>

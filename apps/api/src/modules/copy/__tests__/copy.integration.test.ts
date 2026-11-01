@@ -169,6 +169,26 @@ describe.skipIf(!local)('copy trading leaders and follows (integration)', () => 
     expect(p3.nextCursor).toBeNull();
   });
 
+  it("rebuilds the leader's closed round trips for the analytics, cached briefly", async () => {
+    let calls = 0;
+    const inst = (mults: Record<string, number>) => ({ adapterFor: () => ({ getInstrument: async (sym: string) => (calls++, mults[sym] != null ? { contractMultiplier: mults[sym] } : null) }) as unknown as Exchange, key: () => KEY });
+    const t0 = new Date(Date.now() + 10 * 60_000);
+    const r = await leaders.leaderRoundTrips(users.fol!.id, leaderId, t0, inst({ BTCUSD: 0.001, ETHUSD: 0.01 }));
+    // BTC long 2 closed, ETH long 4 closed; the open BTC long 4 isn't a trade yet.
+    expect(r.trades.map((t) => [t.symbol, t.side, t.qty, t.pnlUsd])).toEqual([['BTCUSD', 'LONG', 2, 0], ['ETHUSD', 'LONG', 4, 0]]);
+    expect(r.trades[0]).toMatchObject({ avgEntry: 70_000, avgExit: 70_000 });
+    expect(new Date(r.trades[0]!.closedAt).getTime()).toBeGreaterThan(new Date(r.trades[0]!.openedAt).getTime());
+    expect(r.startingEquityUsd).toBe(1000);
+    // Within a minute the cache answers, even with different instrument data.
+    const n = calls;
+    expect(await leaders.leaderRoundTrips(users.fol!.id, leaderId, new Date(t0.getTime() + 30_000), inst({}))).toEqual(r);
+    expect(calls).toBe(n);
+    // After it, a symbol the venue no longer lists is left out rather than guessed.
+    const later = await leaders.leaderRoundTrips(users.fol!.id, leaderId, new Date(t0.getTime() + 120_000), inst({ BTCUSD: 0.001 }));
+    expect(later.trades.map((t) => t.symbol)).toEqual(['BTCUSD']);
+    await expect(leaders.leaderRoundTrips(users.fol!.id, pendingLeaderId)).rejects.toThrow(/not found/i);
+  });
+
   it('returns the equity curve for a range', async () => {
     const pts = await leaders.leaderEquity(users.fol!.id, leaderId, 'all');
     expect(pts.map((p) => p.equityUsd)).toEqual([1000, 1100, 900, 1000, 1200]);

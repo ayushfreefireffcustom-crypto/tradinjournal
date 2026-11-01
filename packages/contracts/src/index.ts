@@ -755,6 +755,8 @@ export {
   type LeaderOpenPositionDto,
   type LeaderDetailDto,
   type LeaderTradeDto,
+  type LeaderRoundTripDto,
+  type LeaderRoundTripsDto,
   type EquityPointDto,
   type MyLeaderDto,
   type FollowDto,

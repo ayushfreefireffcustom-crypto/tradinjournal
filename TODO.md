@@ -341,9 +341,9 @@ Legend:
   - sort and range controls
   - search
 - [x] C4.2 Leaderboard top-3 podium + compare mode (up to 3 leaders side by side). Evidence: MPX `M`
-- [ ] C4.3 Leader detail `L → split`:
+- [x] C4.3 Leader detail `L → split`:
   - [x] C4.3a Header (avatar, exchange, followers, range) + KPIs (live P&L, followers, open trades) `S`
-  - [ ] C4.3b Shared analytics stack (equity chart, P&L heatmap, allocation donut, stats grid, ROI card, holding time) as **one component reused from the dashboard** `M`
+  - [x] C4.3b Shared analytics stack (equity chart, P&L heatmap, allocation donut, stats grid, ROI card, holding time) as **one component reused from the dashboard** `M` (done 1 Nov: leader round trips → the dashboard's analytics cards via computeStats)
   - [x] C4.3c Strategy write-up section `S`
   - [x] C4.3d Leader trade history (open/closed, date-grouped) `S`
   - [x] C4.3e Mirror box: recommended margin + multiplier stepper + live capital maths + CTA `S`

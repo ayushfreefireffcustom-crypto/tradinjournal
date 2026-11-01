@@ -222,11 +222,17 @@ export const exchangesApi = {
   equity: (id: string) => call<{ equityUsd: number; availableUsd: number; baseCurrency: string }>(`/exchanges/${id}/equity`),
 };
 
+export interface LeaderRoundTrips {
+  trades: Array<{ symbol: string; side: 'LONG' | 'SHORT'; qty: number; avgEntry: number; avgExit: number; pnlUsd: number; openedAt: string; closedAt: string }>;
+  startingEquityUsd: number | null;
+}
+
 export const leadersApi = {
   list: (q: { sort?: LeaderSort; range?: LeaderRange; q?: string }) => call<LeaderCard[]>(`/leaders${qs(q)}`),
   get: (id: string, range: LeaderRange) => call<LeaderDetail>(`/leaders/${id}${qs({ range })}`),
   trades: (id: string, cursor?: string) => call<Page<LeaderTrade>>(`/leaders/${id}/trades${qs({ cursor, limit: 25 })}`),
   equity: (id: string, range: LeaderRange) => call<Array<{ t: string; equityUsd: number }>>(`/leaders/${id}/equity${qs({ range })}`),
+  roundTrips: (id: string) => call<LeaderRoundTrips>(`/leaders/${id}/round-trips`),
   me: () => call<MyLeader | null>('/leaders/me'),
   apply: (b: { connectionId: string; displayName: string; bio: string }) => call<MyLeader>('/leaders/apply', { method: 'POST', ...body(b) }),
   updateMe: (b: { displayName?: string; bio?: string; listed?: boolean }) => call<MyLeader>('/leaders/me', { method: 'PATCH', ...body(b) }),

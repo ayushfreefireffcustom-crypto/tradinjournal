@@ -1,6 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
 import type { ApplyLeaderInput, CreateFollowInput, CursorQuery, LeaderRange, LeadersQuery, StopFollowInput, UpdateFollowInput, UpdateLeaderInput } from '@tradinjournal/contracts';
-import { applyAsLeader, getLeader, getMyLeader, leaderEquity, leaderTrades, listLeaders, updateMyLeader } from './leaders.service.js';
+import { applyAsLeader, getLeader, getMyLeader, leaderEquity, leaderRoundTrips, leaderTrades, listLeaders, updateMyLeader } from './leaders.service.js';
 import { subscribeCopy } from './copy-stream.js';
 import { createFollow, followOrders, getFollow, listFollows, stopFollow, updateFollow } from './follows.service.js';
 
@@ -23,6 +23,7 @@ export const handleApplyLeader = wrap(async (req, res) => res.status(201).json({
 export const handleUpdateMyLeader = wrap(async (req, res) => res.json({ data: await updateMyLeader(uid(res), req.body as UpdateLeaderInput) }));
 export const handleGetLeader = wrap(async (req, res) => res.json({ data: await getLeader(uid(res), String(req.params.id), rangeOf(req)) }));
 export const handleLeaderTrades = wrap(async (req, res) => res.json({ data: await leaderTrades(uid(res), String(req.params.id), req.query as unknown as CursorQuery) }));
+export const handleLeaderRoundTrips = wrap(async (req, res) => res.json({ data: await leaderRoundTrips(uid(res), String(req.params.id)) }));
 export const handleLeaderEquity = wrap(async (req, res) => res.json({ data: await leaderEquity(uid(res), String(req.params.id), rangeOf(req)) }));
 
 export const handleListFollows = wrap(async (req, res) => res.json({ data: await listFollows(uid(res), { includeStopped: req.query.all === '1' }) }));

@@ -14,6 +14,7 @@ import type {
   LeaderRange,
   LeaderStatsDto,
   LeaderTradeDto,
+  LeaderRoundTripsDto,
   LeadersQuery,
   MyLeaderDto,
   Page,
@@ -26,6 +27,7 @@ import { ConflictError, NotFoundError } from '../../http/errors.js';
 import { logAdminAction } from '../admin/admin-audit.service.js';
 import { adapterFor } from '../exchanges/exchanges.adapters.js';
 import { credsOf, type ExchangeDeps } from '../exchanges/exchanges.service.js';
+import { closedTrades } from '@tradinjournal/exchange';
 
 export type LeaderDeps = Pick<ExchangeDeps, 'adapterFor' | 'key'>;
 const defaultDeps: LeaderDeps = { adapterFor, key: () => requireEncryptionKey(env.CREDENTIAL_ENCRYPTION_KEY) };
@@ -336,6 +338,41 @@ export async function leaderTrades(userId: string, id: string, q: CursorQuery): 
     at: f.exchTs.toISOString(),
   }));
   return { items, nextCursor: more ? items[items.length - 1]!.id : null };
+}
+
+/** Rebuilt round trips are cached per leader; new fills arrive minutes apart at most. */
+const TRIPS_TTL_MS = 60_000;
+const MAX_TRIPS = 1000;
+const tripsCache = new Map<string, { at: number; data: LeaderRoundTripsDto }>();
+
+/**
+ * The leader's closed round trips, newest last, priced in USD with each
+ * contract's size. The same rebuild the engine uses for the top-3 share, so the
+ * page and the stats agree. Positions opened before tracking began are skipped.
+ */
+export async function leaderRoundTrips(userId: string, id: string, now = new Date(), deps: LeaderDeps = defaultDeps): Promise<LeaderRoundTripsDto> {
+  const l = await visibleLeader(userId, id);
+  const hit = tripsCache.get(l.id);
+  if (hit && now.getTime() - hit.at < TRIPS_TTL_MS) return hit.data;
+  const [fills, first] = await Promise.all([
+    prisma.leaderFill.findMany({ where: { leaderId: l.id }, orderBy: [{ exchTs: 'asc' }, { ingestedAt: 'asc' }], select: { symbol: true, side: true, qty: true, price: true, positionAfter: true, exchTs: true } }),
+    prisma.leaderEquityPoint.findFirst({ where: { leaderId: l.id }, orderBy: { ts: 'asc' }, select: { equityUsd: true } }),
+  ]);
+  const adapter = deps.adapterFor(l.connection.exchange, l.connection.environment);
+  const mults = new Map<string, number | null>();
+  for (const sym of new Set(fills.map((f) => f.symbol))) {
+    mults.set(sym, (await adapter.getInstrument(sym).catch(() => null))?.contractMultiplier ?? null);
+  }
+  const trips = closedTrades(
+    fills.map((f) => ({ symbol: f.symbol, side: f.side, qty: Number(f.qty), price: Number(f.price), positionAfter: f.positionAfter != null ? Number(f.positionAfter) : null, ts: f.exchTs })),
+    (sym) => mults.get(sym) ?? null,
+  ).slice(-MAX_TRIPS);
+  const data: LeaderRoundTripsDto = {
+    trades: trips.map((t) => ({ ...t, pnlUsd: Math.round(t.pnlUsd * 100) / 100, openedAt: t.openedAt.toISOString(), closedAt: t.closedAt.toISOString() })),
+    startingEquityUsd: first ? Number(first.equityUsd) : null,
+  };
+  tripsCache.set(l.id, { at: now.getTime(), data });
+  return data;
 }
 
 export async function leaderEquity(userId: string, id: string, range: LeaderRange, now = new Date()): Promise<EquityPointDto[]> {

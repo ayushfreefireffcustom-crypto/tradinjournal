@@ -247,3 +247,7 @@
   .v6 .cp-pod--1, .v6 .cp-pod--2, .v6 .cp-pod--3 { order: 0; }
   .v6 .cp-cmpbar { bottom: 84px; }
 }
+
+/* Leader analytics (C4.3b): the dashboard cards under a section header. */
+.v6 .cp-an { display: grid; gap: 16px; min-width: 0; }
+.v6 .cp-an > .x-ch { margin: 4px 0 0; }

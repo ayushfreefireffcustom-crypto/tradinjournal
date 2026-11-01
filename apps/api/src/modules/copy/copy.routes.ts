@@ -12,6 +12,7 @@ import {
   handleGetFollow,
   handleGetLeader,
   handleLeaderEquity,
+  handleLeaderRoundTrips,
   handleLeaderTrades,
   handleListFollows,
   handleListLeaders,
@@ -34,6 +35,7 @@ leaders.patch('/me', writeLimit, validateBody(updateLeaderSchema), handleUpdateM
 leaders.get('/:id', validateQuery(leaderRangeQuerySchema), handleGetLeader);
 leaders.get('/:id/trades', validateQuery(cursorQuerySchema), handleLeaderTrades);
 leaders.get('/:id/equity', validateQuery(leaderRangeQuerySchema), handleLeaderEquity);
+leaders.get('/:id/round-trips', handleLeaderRoundTrips);
 
 const follows: ExpressRouter = Router();
 follows.use(requireAuth, requirePlatformAccess);

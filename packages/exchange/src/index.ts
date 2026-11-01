@@ -35,3 +35,5 @@ export function adapterFor(venue: string, environment: 'TESTNET' | 'LIVE', opts:
   adapters.set(key, adapter);
   return adapter;
 }
+export * from './positions.js';
+export * from './round-trips.js';

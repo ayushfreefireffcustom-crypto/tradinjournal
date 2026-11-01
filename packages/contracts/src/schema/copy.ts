@@ -169,6 +169,26 @@ export interface LeaderTradeDto {
   at: string;
 }
 
+/** One leader round trip (flat → flat), rebuilt from their fills (C4.3b). */
+export interface LeaderRoundTripDto {
+  symbol: string;
+  side: 'LONG' | 'SHORT';
+  /** Largest size the position reached, in contracts. */
+  qty: number;
+  avgEntry: number;
+  avgExit: number;
+  /** Price P&L in USD, before fees and funding. */
+  pnlUsd: number;
+  openedAt: string;
+  closedAt: string;
+}
+
+export interface LeaderRoundTripsDto {
+  trades: LeaderRoundTripDto[];
+  /** First recorded equity: the base for the cumulative curve. Null before any sample. */
+  startingEquityUsd: number | null;
+}
+
 export interface EquityPointDto {
   t: string;
   equityUsd: number;
