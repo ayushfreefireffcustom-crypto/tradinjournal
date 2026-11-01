@@ -56,6 +56,7 @@ model User {
   indicatorAlerts   IndicatorAlert[]
   savedScreens      SavedScreen[]
   strategies        Strategy[]   
+  deployments       StrategyDeployment[]
 
   @@map("user")
 }
@@ -1655,8 +1656,9 @@ model Strategy {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
-  versions  StrategyVersion[]
-  backtests StrategyBacktest[]
+  versions    StrategyVersion[]
+  backtests   StrategyBacktest[]
+  deployments StrategyDeployment[]
 
   @@index([userId, updatedAt(sort: Desc)])
   @@map("strategy")
@@ -1692,4 +1694,82 @@ model StrategyBacktest {
   @@index([strategyId, createdAt(sort: Desc)])
   @@index([hash])
   @@map("strategy_backtest")
+}
+
+/// A strategy running on paper or live (F15-F18). The spec is a frozen copy of
+/// one version, so later edits never change what's running.
+model StrategyDeployment {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  strategyId      String
+  strategy        Strategy  @relation(fields: [strategyId], references: [id], onDelete: Cascade)
+  version         Int
+  spec            Json
+  name            String
+  /// paper | live
+  mode            String
+  connectionId    String?
+  /// running | paused | stopped | errored | archived
+  status          String    @default("running")
+  capital         Float
+  /// [{from, multiplier}]: size changes apply from their time on
+  sizeSchedule    Json      @default("[]")
+  /// [{from, to}]: paused periods, no new entries
+  pauses          Json      @default("[]")
+  startedAt       DateTime  @default(now())
+  stoppedAt       DateTime?
+  stopReason      String?
+  lastEvaluatedAt DateTime?
+  lastBarTime     DateTime?
+  error           String?
+  /// Paper: latest replay (metrics, open positions, equity). Live: runner state.
+  snapshot        Json?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  trades DeploymentTrade[]
+  events DeploymentEvent[]
+
+  @@index([userId, status])
+  @@index([status, mode])
+  @@map("strategy_deployment")
+}
+
+model DeploymentTrade {
+  id           String             @id @default(cuid())
+  deploymentId String
+  deployment   StrategyDeployment @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
+  symbol       String
+  side         String
+  qty          Float
+  entryPrice   Float
+  entryTime    DateTime
+  exitPrice    Float
+  exitTime     DateTime
+  pnl          Float
+  pnlPct       Float
+  fees         Float
+  rMultiple    Float?
+  reason       String
+
+  @@unique([deploymentId, symbol, entryTime])
+  @@index([deploymentId, exitTime])
+  @@map("deployment_trade")
+}
+
+/// The activity feed (F18): each evaluation and action, with the reason.
+model DeploymentEvent {
+  id           String             @id @default(cuid())
+  deploymentId String
+  deployment   StrategyDeployment @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
+  at           DateTime
+  symbol       String?
+  kind         String
+  message      String
+  data         Json?
+  createdAt    DateTime           @default(now())
+
+  @@index([deploymentId, at(sort: Desc)])
+  @@map("deployment_event")
 }

@@ -18,6 +18,7 @@ import { ingestWindow } from './modules/calendar/calendar.service.js';
 import { warmSymbols } from './modules/market/market.service.js';
 import { dispatchPriceAlerts } from './modules/alerts/alerts.service.js';
 import { dispatchIndicatorAlerts } from './modules/alerts/indicator-alerts.service.js';
+import { tickDeployments } from './modules/strategies/deployments.service.js';
 import { gradePendingAnalyses } from './modules/trader/trader.grade.service.js';
 import { trainMetaModelFromDb } from './modules/trader/trader.meta.service.js';
 import { trainLgbmChallenger } from './modules/trader/trader.lgbm.service.js';
@@ -77,6 +78,9 @@ export function startInProcessScheduler(): void {
     // Indicator alerts: each rule once per closed bar; fetches only when a bar closed.
     every(1 * MIN, 'indicator-alerts', () => dispatchIndicatorAlerts());
   }
+
+  // Strategy deployments: paper replays and live runners act once per closed bar.
+  if (env.MARKET_ENABLED) every(1 * MIN, 'strategy-deployments', () => tickDeployments());
 
   // Trader Master grading — every 15 min; no-ops when nothing pending.
   every(15 * MIN, 'trader-grade', () => gradePendingAnalyses(env.TRADER_GRADE_BATCH));

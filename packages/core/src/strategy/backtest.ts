@@ -17,7 +17,8 @@
 // close.
 import type { Candle } from '../trader/types.js';
 import { SignalEngine } from './signals.js';
-import { INTERVAL_MS, VENUE_INFO, resolveShort, type SignalGroup, type Sizing, type StrategySpec } from './spec.js';
+import { INTERVAL_MS, VENUE_INFO, resolveShort, type SignalGroup, type StrategySpec } from './spec.js';
+import { planEntry } from './plan.js';
 
 export interface BacktestParams {
   capital: number;
@@ -27,7 +28,19 @@ export interface BacktestParams {
   /** Only trade bars at or after this time (indicators still warm up on earlier bars). */
   from?: number;
   to?: number;
+  /** Deployments: leave positions open at the end and report them, with pending orders. */
+  keepOpen?: boolean;
+  /** Deployments: no new entries for orders that would execute inside these ranges (paused). */
+  blocked?: Array<{ from: number; to: number | null }>;
+  /** Deployments: size multiplier from a time on (later entries win). */
+  sizeSchedule?: Array<{ from: number; multiplier: number }>;
+  /** Record each evaluation from this time on (activity feed). */
+  traceFrom?: number;
 }
+
+export type TraceKind = 'signal' | 'no_signal' | 'blocked' | 'holding' | 'exit_signal' | 'filled' | 'closed' | 'skipped';
+export interface TraceEvent { t: number; symbol: string; kind: TraceKind; message: string; conditions?: Array<{ text: string; met: boolean | null }> }
+export interface OpenPosition { symbol: string; side: 'long' | 'short'; qty: number; entryPrice: number; entryTime: number; stop: number | null; target: number | null; lastPrice: number; unrealized: number; notional: number; fees: number }
 
 export type ExitReason = 'stop' | 'target' | 'trailing' | 'breakeven' | 'time' | 'signal' | 'opposite' | 'liquidation' | 'end';
 export interface BacktestTrade {
@@ -78,6 +91,12 @@ export interface BacktestResult {
   perSymbol: Array<{ symbol: string; trades: number; pnl: number; winRatePct: number | null }>;
   notes: string[];
   range: { from: number | null; to: number | null; bars: number };
+  /** With keepOpen: positions still open, and orders waiting for the next bar. */
+  open?: OpenPosition[];
+  pending?: Array<{ symbol: string; side: 'long' | 'short'; kind: 'market' | 'limit'; limit?: number }>;
+  trace?: TraceEvent[];
+  /** Kill switch tripped (losing streak). */
+  killed?: boolean;
 }
 
 interface Position {
@@ -118,6 +137,7 @@ function zonedParts(t: number, tz: string): { day: number; hm: string; date: str
 }
 
 /** Whether entries are allowed on a bar opening at t. Windows may cross midnight. */
+export { zonedParts };
 export function inSession(spec: StrategySpec, t: number): boolean {
   const s = spec.session;
   if (s.mode === '24_7') return true;
@@ -166,22 +186,15 @@ export function runBacktest(spec: StrategySpec, data: Record<string, Candle[]>, 
   let exposedBars = 0;
   let liquidations = 0;
   const lastClose = new Map<string, number>();
+  const trace: TraceEvent[] = [];
+  const traceOn = params.traceFrom != null;
+  const note = (t: number, symbol: string, kind: TraceKind, message: string, conditions?: TraceEvent['conditions']) => { if (traceOn && t >= params.traceFrom!) trace.push({ t, symbol, kind, message, ...(conditions ? { conditions } : {}) }); };
+  const blockedAt = (t: number) => (params.blocked ?? []).some((b) => t >= b.from && (b.to == null || t < b.to));
+  const multiplierAt = (t: number) => { let m = 1; for (const x of params.sizeSchedule ?? []) if (x.from <= t) m = x.multiplier; return m; };
 
-  const symbolCfg = (s: string) => spec.market.symbols.find((x) => x.symbol === s)!;
-  const levOf = (s: string) => Math.max(1, symbolCfg(s).leverage ?? spec.market.leverage);
-  const sizingOf = (s: string): Sizing => symbolCfg(s).sizing ?? spec.sizing;
   const openPnl = () => [...pos.entries()].reduce((sum, [s, p]) => sum + p.side * p.qty * ((lastClose.get(s) ?? p.entry) - p.entry), 0);
   const equityNow = () => cash + openPnl();
   const marginUsed = () => [...pos.values()].reduce((s, p) => s + (p.qty * p.entry) / p.lev, 0);
-
-  function stopDistance(price: number, atr: number | null): number | null {
-    const sl = spec.risk.stopLoss;
-    if (!sl) return null;
-    if (sl.mode === 'pct') return (price * sl.value) / 100;
-    if (sl.mode === 'points') return sl.value;
-    if (sl.mode === 'atr') return atr != null ? atr * sl.value : null;
-    return null; // 'price' is absolute, handled at entry
-  }
 
   function closePart(s: string, p: Position, qty: number, price: number, t: number, maker: boolean, slipped: number) {
     const fee = (qty * price * (maker ? fees.makerBps : fees.takerBps)) / 1e4;
@@ -206,6 +219,7 @@ export function runBacktest(spec: StrategySpec, data: Record<string, Candle[]>, 
       fees: p.fees, slippage: p.slippage, barsHeld: i - p.entryIdx, reason, partialFills: p.partialFills,
     };
     trades.push(trade);
+    note(t, s, 'closed', `Closed ${trade.side} at ${price.toPrecision(6)} (${reason}): ${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)} USDT.`);
     consecutiveLosses = pnl < 0 ? consecutiveLosses + 1 : 0;
     if (spec.advanced.reentryCooldownBars > 0) cooldownUntil.set(s, i + spec.advanced.reentryCooldownBars);
     if (spec.limits.maxConsecutiveLosses && consecutiveLosses >= spec.limits.maxConsecutiveLosses && !killed) {
@@ -219,61 +233,20 @@ export function runBacktest(spec: StrategySpec, data: Record<string, Candle[]>, 
   }
 
   function open(s: string, side: 1 | -1, price: number, ref: number, t: number, i: number, maker: boolean, atr: number | null) {
-    const lev = levOf(s);
-    const eq = equityNow();
-    const sl = spec.risk.stopLoss;
-    let dist = stopDistance(price, atr);
-    let stop: number | null = null;
-    if (sl?.mode === 'price') { stop = sl.value; dist = Math.abs(price - sl.value); if ((side === 1 && stop >= price) || (side === -1 && stop <= price)) return; }
-    else if (dist != null) stop = price - side * dist;
-    const sz = sizingOf(s);
-    let qty = 0;
-    switch (sz.mode) {
-      case 'risk_pct': if (!dist) return; qty = (eq * sz.value) / 100 / dist; break;
-      case 'equity_pct': qty = ((eq * sz.value) / 100) * lev / price; break;
-      case 'qty': qty = sz.value; break;
-      case 'notional': qty = sz.value / price; break;
-      case 'atr': if (!atr) return; qty = (eq * sz.value) / 100 / atr; break;
-      case 'kelly': {
-        const closed = trades;
-        let f = sz.value / 100;
-        if (closed.length >= 20) {
-          const wins = closed.filter((x) => x.pnl > 0);
-          const losses = closed.filter((x) => x.pnl <= 0);
-          const W = wins.length / closed.length;
-          const avgW = wins.length ? wins.reduce((a, x) => a + x.pnlPct, 0) / wins.length : 0;
-          const avgL = losses.length ? Math.abs(losses.reduce((a, x) => a + x.pnlPct, 0) / losses.length) : 0;
-          const R = avgL ? avgW / avgL : 0;
-          f = R ? Math.max(0, Math.min(0.25, (W - (1 - W) / R) * (sz.kellyFraction ?? 0.5))) : 0;
-        }
-        qty = (eq * f * lev) / price;
-        break;
-      }
-    }
-    // Never more than the margin left allows.
-    const avail = Math.max(0, eq - marginUsed());
-    const maxQty = (avail * lev) / price;
-    if (qty > maxQty) qty = maxQty;
-    if (!(qty > 0) || !Number.isFinite(qty)) { skippedMargin += 1; return; }
+    const plan = planEntry({ spec, symbol: s, side, price, atr, equity: equityNow(), marginUsed: marginUsed(), multiplier: multiplierAt(t), history: trades });
+    if ('skip' in plan) { skippedMargin += 1; note(t, s, 'skipped', `Signal skipped: ${plan.skip}`); return; }
+    const { qty, stop, target, risk: dist, trailDist, leverage: lev } = plan;
+    const tr = spec.risk.trailing;
     const notional = qty * price;
     const fee = (notional * (maker ? fees.makerBps : fees.takerBps)) / 1e4;
     cash -= fee;
-    const tp = spec.risk.takeProfit;
-    let target: number | null = null;
-    if (tp) {
-      if (tp.mode === 'pct') target = price * (1 + (side * tp.value) / 100);
-      else if (tp.mode === 'points') target = price + side * tp.value;
-      else if (tp.mode === 'price') target = tp.value;
-      else if (tp.mode === 'rr' && dist) target = price + side * dist * tp.value;
-    }
-    const tr = spec.risk.trailing;
-    const trailDist = tr ? (tr.mode === 'pct' ? (price * tr.value) / 100 : atr != null ? atr * tr.value : null) : null;
     const partials = dist ? spec.risk.partials.filter((x) => x.atR > 0 && x.closePct > 0).sort((a, b) => a.atR - b.atR).map((x) => ({ price: price + side * dist! * x.atR, qty: (qty * Math.min(100, x.closePct)) / 100 })) : [];
     pos.set(s, {
       side, entry: price, entryTime: t, entryIdx: i, qty, origQty: qty, notional, lev, risk: dist, stop, stopKind: 'stop', target,
       trailDist, trailActive: !!tr && !tr.activateAtR, partials, fees: fee, slippage: Math.abs(price - ref) * qty, realized: 0, partialFills: 0,
     });
     tradesToday += 1;
+    note(t, s, 'filled', `${side === 1 ? 'Bought' : 'Sold short'} ${qty.toPrecision(4)} at ${price.toPrecision(6)}${stop != null ? `, stop ${stop.toPrecision(6)}` : ''}${target != null ? `, target ${target.toPrecision(6)}` : ''}.`);
   }
 
   for (const t of active) {
@@ -362,23 +335,40 @@ export function runBacktest(spec: StrategySpec, data: Record<string, Candle[]>, 
 
       // 4. At the close.
       const r = pos.get(s);
+      const nextOpen = t + INTERVAL_MS[spec.session.interval];
       if (r) {
-        if (spec.risk.timeStopBars && i - r.entryIdx >= spec.risk.timeStopBars) pendingExit.set(s, 'time');
-        else if (eng.group(r.side === 1 ? exitLong : exitShort, i)) pendingExit.set(s, 'signal');
-        else if (spec.exit.onOppositeSignal && eng.group(r.side === 1 ? shortG : longG, i)) pendingExit.set(s, 'opposite');
-      } else if (!pending.has(s) && !killed && !pausedToday && i >= (cooldownUntil.get(s) ?? -1)
-        && (spec.advanced.maxTradesPerDay == null || tradesToday < spec.advanced.maxTradesPerDay)
-        && inSession(spec, t + INTERVAL_MS[spec.session.interval])) {
-        // Orders execute at the next bar's open, so that's the time the session and time trigger check.
-        const nextOpen = t + INTERVAL_MS[spec.session.interval];
+        if (spec.risk.timeStopBars && i - r.entryIdx >= spec.risk.timeStopBars) { pendingExit.set(s, 'time'); note(t, s, 'exit_signal', `Time stop: held ${i - r.entryIdx} bars. Closing at the next open.`); }
+        else if (eng.group(r.side === 1 ? exitLong : exitShort, i)) { pendingExit.set(s, 'signal'); note(t, s, 'exit_signal', 'Exit signal. Closing at the next open.', eng.explain(r.side === 1 ? exitLong : exitShort, i)); }
+        else if (spec.exit.onOppositeSignal && eng.group(r.side === 1 ? shortG : longG, i)) { pendingExit.set(s, 'opposite'); note(t, s, 'exit_signal', 'Opposite signal. Closing at the next open.'); }
+        else note(t, s, 'holding', `Holding ${r.side === 1 ? 'long' : 'short'} from ${r.entry.toPrecision(6)}${r.stop != null ? `, stop ${r.stop.toPrecision(6)}` : ''}; no exit yet.`);
+      } else if (pending.has(s)) {
+        note(t, s, 'holding', 'Limit order waiting to fill.');
+      } else {
+        const why = killed ? 'Stopped by the losing-streak limit.'
+          : pausedToday ? 'Paused for the day: daily loss cap reached.'
+          : blockedAt(nextOpen) ? 'Paused.'
+          : i < (cooldownUntil.get(s) ?? -1) ? 'Waiting out the re-entry cooldown.'
+          : spec.advanced.maxTradesPerDay != null && tradesToday >= spec.advanced.maxTradesPerDay ? 'Reached the maximum trades for the day.'
+          : !inSession(spec, nextOpen) ? 'Outside the entry window.'
+          : null;
         const timeOk = !spec.entry.atTimes?.length || spec.entry.atTimes.includes(zonedParts(nextOpen, spec.session.timezone).hm);
-        const wantLong = timeOk && (longG ? eng.group(longG, i) : !!spec.entry.atTimes?.length && spec.market.direction !== 'short');
-        const wantShort = timeOk && (shortG ? eng.group(shortG, i) : !!spec.entry.atTimes?.length && spec.market.direction === 'short');
-        if (wantLong !== wantShort) {
-          const side: 1 | -1 = wantLong ? 1 : -1;
-          const atr = eng.atr(i, spec.risk.stopLoss?.atrLength ?? spec.risk.trailing?.atrLength ?? (spec.sizing.mode === 'atr' ? spec.sizing.atrLength ?? 14 : 14));
-          if (spec.advanced.entryType === 'limit') pending.set(s, { kind: 'limit', side, placedIdx: i, limit: c.close * (1 - (side * spec.advanced.limitOffsetPct) / 100), expiryIdx: i + Math.max(1, spec.advanced.limitExpiryBars), atr });
-          else pending.set(s, { kind: 'market', side, placedIdx: i, atr });
+        if (why) note(t, s, 'blocked', why);
+        else if (!timeOk) note(t, s, 'blocked', `Waiting for the trigger time (${spec.entry.atTimes!.join(', ')}).`);
+        else {
+          const wantLong = longG ? eng.group(longG, i) : !!spec.entry.atTimes?.length && spec.market.direction !== 'short';
+          const wantShort = shortG ? eng.group(shortG, i) : !!spec.entry.atTimes?.length && spec.market.direction === 'short';
+          if (wantLong !== wantShort) {
+            const side: 1 | -1 = wantLong ? 1 : -1;
+            const atr = eng.atr(i, spec.risk.stopLoss?.atrLength ?? spec.risk.trailing?.atrLength ?? (spec.sizing.mode === 'atr' ? spec.sizing.atrLength ?? 14 : 14));
+            if (spec.advanced.entryType === 'limit') pending.set(s, { kind: 'limit', side, placedIdx: i, limit: c.close * (1 - (side * spec.advanced.limitOffsetPct) / 100), expiryIdx: i + Math.max(1, spec.advanced.limitExpiryBars), atr });
+            else pending.set(s, { kind: 'market', side, placedIdx: i, atr });
+            note(t, s, 'signal', `${side === 1 ? 'Long' : 'Short'} signal: ${spec.advanced.entryType === 'limit' ? 'limit order placed' : 'entering at the next open'}.`, eng.explain(side === 1 ? longG : shortG, i));
+          } else if (wantLong && wantShort) note(t, s, 'no_signal', 'Long and short signals at once: staying out.');
+          else {
+            const conds = [...eng.explain(longG, i), ...(shortG ? eng.explain(shortG, i) : [])];
+            const met = conds.filter((x) => x.met).length;
+            note(t, s, 'no_signal', conds.length ? `No entry: ${met} of ${conds.length} conditions met.` : 'No entry.', conds);
+          }
         }
       }
     }
@@ -386,18 +376,34 @@ export function runBacktest(spec: StrategySpec, data: Record<string, Candle[]>, 
     equity.push({ t, equity: equityNow() });
   }
 
-  // Close what's still open at the last price.
   const lastT = active[active.length - 1];
-  for (const [s, p] of [...pos.entries()]) {
-    const c = data[s]![data[s]!.length - 1]!;
-    finish(s, p, c.close, lastT ?? c.openTime, data[s]!.length - 1, 'end', false, c.close);
+  const openOut: OpenPosition[] = [];
+  if (params.keepOpen) {
+    for (const [s, p] of pos.entries()) {
+      const last = lastClose.get(s) ?? p.entry;
+      openOut.push({ symbol: s, side: p.side === 1 ? 'long' : 'short', qty: p.qty, entryPrice: p.entry, entryTime: p.entryTime, stop: p.stop, target: p.target, lastPrice: last, unrealized: p.side * p.qty * (last - p.entry), notional: p.notional, fees: p.fees });
+    }
+  } else {
+    // Orders waiting for a bar that never came, then what's still open at the last price.
+    for (const [s, p] of pending.entries()) note(lastT ?? 0, s, 'skipped', `${p.side === 1 ? 'Long' : 'Short'} entry cancelled: the run ended before the next open.`);
+    for (const [s, p] of [...pos.entries()]) {
+      const c = data[s]![data[s]!.length - 1]!;
+      finish(s, p, c.close, lastT ?? c.openTime, data[s]!.length - 1, 'end', false, c.close);
+    }
+    if (equity.length) equity[equity.length - 1] = { t: equity[equity.length - 1]!.t, equity: cash };
   }
-  if (equity.length) equity[equity.length - 1] = { t: equity[equity.length - 1]!.t, equity: cash };
   if (pausedDays) notes.push(`Daily loss limit paused new entries on ${pausedDays} day${pausedDays === 1 ? '' : 's'}.`);
   if (skippedMargin) notes.push(`${skippedMargin} signal${skippedMargin === 1 ? ' was' : 's were'} skipped: not enough free margin or no stop to size from.`);
   if (liquidations) notes.push(`${liquidations} position${liquidations === 1 ? ' was' : 's were'} liquidated before the stop. Lower the leverage or tighten the stop.`);
 
-  return { metrics: metricsOf(trades, equity, params.capital, exposedBars, active.length), equity: downsample(equity, 600), trades, perSymbol: perSymbol(trades, symbols), notes, range: { from: active[0] ?? null, to: lastT ?? null, bars: active.length } };
+  const out: BacktestResult = { metrics: metricsOf(trades, equity, params.capital, exposedBars, active.length), equity: downsample(equity, 600), trades, perSymbol: perSymbol(trades, symbols), notes, range: { from: active[0] ?? null, to: lastT ?? null, bars: active.length } };
+  if (params.keepOpen) {
+    out.open = openOut;
+    out.pending = [...pending.entries()].map(([symbol, p]) => ({ symbol, side: p.side === 1 ? 'long' : 'short', kind: p.kind, ...(p.limit != null ? { limit: p.limit } : {}) }));
+    out.killed = killed;
+  }
+  if (traceOn) out.trace = trace;
+  return out;
 }
 
 function downsample<T>(xs: T[], n: number): T[] {

@@ -175,7 +175,7 @@ export async function duplicateStrategy(userId: string, id: string) {
 // ── Backtests ─────────────────────────────────────────────────────────────────
 
 /** Candles for [fromMs, toMs], paged 1000 at a time, oldest first, no repeats. */
-async function loadRange(symbol: string, tf: string, fromMs: number, toMs: number, deps: StrategyDeps): Promise<Candle[]> {
+export async function loadRange(symbol: string, tf: string, fromMs: number, toMs: number, deps: StrategyDeps): Promise<Candle[]> {
   const ms = INTERVAL_MS[tf as keyof typeof INTERVAL_MS];
   const out = new Map<number, Candle>();
   for (let start = fromMs; start <= toMs; start += PAGE * ms) {

@@ -27,7 +27,7 @@ accounts. Nothing here is live until you set `TRADING_ENABLED=true`.
 
 ## Database
 
-Thirteen additive migrations (the first seven applied to Neon on 1 Nov 2026), applied with `prisma migrate deploy` after `migrate status` and your OK:
+Fourteen additive migrations (the first seven applied to Neon on 1 Nov 2026), applied with `prisma migrate deploy` after `migrate status` and your OK:
 - `20261031071652_trading_platform`: new tables only
 - `20261031072510_exchange_order_realized_pnl`: one nullable column and an index on `exchange_order`
 - `20261031120000_copy_follow_risk_and_profit_cap`: three nullable columns on `copy_follow`
@@ -41,6 +41,7 @@ Thirteen additive migrations (the first seven applied to Neon on 1 Nov 2026), ap
 - `20261101150000_indicator_alerts`: two new tables, `indicator_alert` and `indicator_alert_firing`, cascading on user and alert delete. Not trading-only: indicator alerts run wherever price alerts do (`MARKET_ENABLED`). **Not yet on Neon**
 - `20261101160000_saved_screens`: one new table, `saved_screen` (screener saved screens), cascading on user delete. Not trading-only. **Not yet on Neon**
 - `20261101170000_strategies`: three new tables, `strategy`, `strategy_version` and `strategy_backtest` (strategy builder, Part F), cascading on user and strategy delete. Existing `trader_strategy` rows are imported on first visit, not altered. **Not yet on Neon**
+- `20261101180000_strategy_deployments`: three new tables, `strategy_deployment`, `deployment_trade` and `deployment_event` (paper and live strategy runs, their trades and activity feed), cascading on user, strategy and deployment delete. **Not yet on Neon**
 
 ## Telegram alerts (optional)
 
@@ -64,4 +65,5 @@ Thirteen additive migrations (the first seven applied to Neon on 1 Nov 2026), ap
 - **Health:** the engine writes a heartbeat to the `system_setting` row `copy.engineHeartbeat` every minute. The Engine tab on `/admin/copy` shows it as down after 3 minutes without one, with 24 h copy counts, delays, slippage and the top reasons copies didn't go through.
 - **Live updates:** `GET /api/follows/stream` (server-sent events). Each API instance runs one 2 s change check for all open streams. If a proxy buffers responses, pages still refresh every 60 s.
 - **Push and email:** with `TRADING_ENABLED`, the API's in-process scheduler (`IN_PROCESS_SCHEDULER`) sends trading notifications by push and email every 30 s to users who turned those on.
+- **Strategy deployments:** the API's scheduler checks running deployments every minute (`MARKET_ENABLED`); each acts once per closed bar of its interval. Paper runs need nothing else. Live runs need `TRADING_ENABLED` and an active Delta connection, and real-money (non-testnet) accounts also need `EXCHANGE_LIVE_ENABLED`. Live entries go out as market orders with the stop and target attached on the exchange; a failed exchange call puts that run in "Needs attention" until its owner resumes it, rather than retrying every minute; a refused order is logged in its feed. With the scheduler off, `POST /internal/deployments/tick` (internal token) runs one pass.
 - **Logs:** a heartbeat every minute reports the number of live leader streams.

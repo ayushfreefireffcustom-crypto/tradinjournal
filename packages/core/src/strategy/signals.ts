@@ -4,7 +4,7 @@
 // time the base bar closed, so a backtest never peeks at the future.
 import type { Candle } from '../trader/types.js';
 import { indicatorById, resolveParams } from '../indicators/registry.js';
-import type { Operand } from '../indicators/conditions.js';
+import { describeCondition, type Operand } from '../indicators/conditions.js';
 import { INTERVAL_MS, type Interval, type SignalGroup, type StrategyCondition } from './spec.js';
 
 /** Group base candles into higher-timeframe candles on UTC boundaries. */
@@ -114,6 +114,19 @@ export class SignalEngine {
     if (!g || !g.conditions.length) return false;
     const results = g.conditions.map((c) => this.condition(c, i) === true);
     return g.match === 'all' ? results.every(Boolean) : results.some(Boolean);
+  }
+
+  /** Each condition of a group at bar i, with its values, for "why did / didn't it enter". */
+  explain(g: SignalGroup | null, i: number): Array<{ text: string; met: boolean | null }> {
+    if (!g) return [];
+    return g.conditions.map((c) => {
+      const tf = c.timeframe ?? this.interval;
+      const at = tf === this.interval ? i - (c.barsAgo ?? 0) : i;
+      const left = at >= 0 ? this.valueAt(c.left, tf, at) : null;
+      const right = at >= 0 ? this.valueAt(c.right, tf, at - (tf === this.interval ? c.rightBarsAgo ?? 0 : 0)) : null;
+      const base = describeCondition({ left: c.left, operator: c.operator, right: c.right }, left == null ? undefined : { left, right });
+      return { text: `${base}${c.timeframe && c.timeframe !== this.interval ? ` on ${c.timeframe}` : ''}${c.barsAgo ? ` (${c.barsAgo} bars ago)` : ''}`, met: this.condition(c, i) };
+    });
   }
 
   /** Average true range at bar i on the base interval. */

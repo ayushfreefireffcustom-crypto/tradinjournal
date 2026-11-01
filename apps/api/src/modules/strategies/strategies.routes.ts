@@ -10,6 +10,7 @@ import {
   backtestSpec, backtestStrategy, createStrategy, duplicateStrategy, generateStrategy, getBacktest, getStrategy, inspect,
   listStrategies, restoreVersion, updateStrategy,
 } from './strategies.service.js';
+import { mountStrategyDeployments } from './deployments.routes.js';
 
 const uid = (res: Response) => res.locals.user.id as string;
 const wrap = (fn: (req: Request, res: Response) => Promise<void>) => (req: Request, res: Response, next: NextFunction) => fn(req, res).catch(next);
@@ -36,4 +37,5 @@ strategiesRouter.patch('/:id', validateBody(updateStrategySchema), wrap(async (r
 strategiesRouter.post('/:id/duplicate', wrap(async (req, res) => created(res, await duplicateStrategy(uid(res), p(req)))));
 strategiesRouter.post('/:id/versions/:version/restore', wrap(async (req, res) => ok(res, await restoreVersion(uid(res), p(req), Number(req.params.version)))));
 strategiesRouter.post('/:id/backtests', btLimit, validateBody(backtestParamsSchema), wrap(async (req, res) => created(res, await backtestStrategy(uid(res), p(req), req.body as BacktestParamsDto))));
+mountStrategyDeployments(strategiesRouter);
 strategiesRouter.get('/:id/backtests/:bid', wrap(async (req, res) => ok(res, await getBacktest(uid(res), p(req), String(req.params.bid).slice(0, 40)))));

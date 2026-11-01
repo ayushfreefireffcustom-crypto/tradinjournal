@@ -33,6 +33,7 @@ import { patternsRouter } from './modules/patterns/patterns.routes.js';
 import { overviewRouter } from './modules/overview/overview.routes.js';
 import { derivativesRouter } from './modules/derivatives/derivatives.routes.js';
 import { strategiesRouter } from './modules/strategies/strategies.routes.js';
+import { deploymentsInternalRouter, deploymentsRouter } from './modules/strategies/deployments.routes.js';
 import { adminRouter } from './modules/admin/admin.routes.js';
 import { accessRouter } from './modules/admin/access.routes.js';
 import { usageRouter } from './modules/usage/usage.routes.js';
@@ -147,6 +148,7 @@ export function createApp(): Express {
   app.use('/api/overview', overviewRouter);
   app.use('/api/derivatives', derivativesRouter);
   app.use('/api/strategies', strategiesRouter);
+  app.use('/api/deployments', deploymentsRouter);
   app.use('/api/macro', macroRouter);
   app.use('/api/trader', traderRouter);
   // Worker-to-API routes. Not under /api: no session, no CORS use case — the
@@ -157,6 +159,7 @@ export function createApp(): Express {
   app.use('/internal/notifications', notificationsInternalRouter);
   app.use('/internal/market', marketInternalRouter);
   app.use('/internal/alerts', alertsInternalRouter);
+  app.use('/internal/deployments', deploymentsInternalRouter);
   app.use('/internal/macro', macroInternalRouter);
   app.use('/internal/trader', traderInternalRouter);
   if (env.PARTNER_PROGRAM_ENABLED) app.use('/internal/partners', partnersInternalRouter);

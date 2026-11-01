@@ -213,3 +213,40 @@ describe('validation, read-back and legacy', () => {
     expect(r.trades.length).toBe(1);
   });
 });
+
+describe('deployment options', () => {
+  it('keeps positions open and reports pending orders', () => {
+    const open = run(spec((s) => { s.risk.takeProfit = null; }), bars([...flat(20), 101, 102, 103]), { keepOpen: true });
+    expect(open.trades).toHaveLength(0);
+    expect(open.open).toHaveLength(1);
+    // Filled at bar 21's open (102), marked at the last close (103).
+    expect(open.open![0]).toMatchObject({ symbol: 'AAAUSDT', side: 'long', entryPrice: 102, lastPrice: 103 });
+    expect(open.open![0]!.unrealized).toBeCloseTo(1000 / 102);
+    // Equity is marked to the last close, not closed out.
+    expect(open.metrics.endEquity).toBeCloseTo(10_000 + 1000 / 102);
+    const pend = run(spec(), bars([...flat(20), 101]), { keepOpen: true });
+    expect(pend.pending).toEqual([{ symbol: 'AAAUSDT', side: 'long', kind: 'market' }]);
+    // Settling with an order still waiting says so instead of dropping it quietly.
+    const ended = run(spec(), bars([...flat(20), 101]), { traceFrom: T0 + 20 * H });
+    expect(ended.trace!.map((e) => e.kind)).toEqual(['signal', 'skipped']);
+    expect(ended.trace![1]!.message).toBe('Long entry cancelled: the run ended before the next open.');
+  });
+  it('blocks entries while paused and scales size from a time on', () => {
+    const c = bars([...flat(20), 101, 102]);
+    expect(run(spec(), c, { blocked: [{ from: T0 + 21 * H, to: null }] }).trades).toHaveLength(0);
+    expect(run(spec(), c, { blocked: [{ from: T0, to: T0 + 21 * H }] }).trades).toHaveLength(1); // pause ended before the fill
+    const half = run(spec(), c, { sizeSchedule: [{ from: T0, multiplier: 0.5 }] });
+    expect(half.trades[0]!.notional).toBeCloseTo(500);
+    const later = run(spec(), c, { sizeSchedule: [{ from: T0 + 30 * H, multiplier: 0.5 }] });
+    expect(later.trades[0]!.notional).toBeCloseTo(1000);
+  });
+  it('explains every evaluation', () => {
+    const r = run(spec((s) => { s.risk.takeProfit = null; s.risk.timeStopBars = 2; }), bars([...flat(20), 101, 101.5, 102, 102.5, 103]), { traceFrom: T0 + 19 * H });
+    const kinds = r.trace!.map((e) => `${(e.t - T0) / H}:${e.kind}`);
+    expect(kinds).toEqual(['19:no_signal', '20:signal', '21:filled', '21:holding', '22:holding', '23:exit_signal', '24:closed', '24:no_signal']);
+    expect(r.trace![0]!.conditions).toEqual([{ text: 'Close is above 100.5 (now 100.00)'.replace('is above', 'crossed above'), met: false }]);
+    expect(r.trace![1]!.message).toBe('Long signal: entering at the next open.');
+    const sess = run(spec((s) => { s.session.mode = 'windows'; s.session.windows = [{ days: [1], start: '09:00', end: '10:00' }]; }), bars([...flat(20), 101]), { traceFrom: T0 + 20 * H });
+    expect(sess.trace![0]).toMatchObject({ kind: 'blocked', message: 'Outside the entry window.' });
+  });
+});
