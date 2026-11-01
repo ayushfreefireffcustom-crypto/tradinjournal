@@ -461,3 +461,10 @@
 .v6 .ac-limits i b { display: block; height: 100%; background: var(--tx); border-radius: 3px; }
 .v6 .ac-limits i b.is-full { background: var(--r); }
 .v6 .ac-limits .m { text-align: right; color: var(--mut); }
+
+/* Send a test (QW.15) */
+.v6 .ac-test { display: grid; justify-items: end; gap: 6px; max-width: 360px; }
+.v6 .ac-test-out { margin: 0; font-size: 12.5px; line-height: 1.45; color: var(--mut); text-align: right; }
+.v6 .ac-test-out.is-warn { color: var(--tx); }
+@media (max-width: 760px) { .v6 .ac-test { justify-items: start; max-width: none; } .v6 .ac-test-out { text-align: left; } }
+

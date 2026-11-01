@@ -591,6 +591,8 @@ export const api = {
       apiFetch<NotificationPrefs>(`${PREFIX}/notifications/preferences`, { method: 'PATCH', body: JSON.stringify(body) }),
     list: () => apiFetch<{ items: AppNotification[]; unread: number }>(`${PREFIX}/notifications`),
     markRead: () => apiFetch<{ ok: boolean }>(`${PREFIX}/notifications/read`, { method: 'POST' }),
+    /** Settings › Send a test (QW.15): what each channel did. */
+    test: () => apiFetch<{ push: { available: boolean; devices: number; sent: number; failed: number; removed: number }; telegram: 'sent' | 'failed' | 'not_linked' | 'off' }>(`${PREFIX}/notifications/test`, { method: 'POST' }),
     inbox: (q: { group?: NotificationGroup; status?: InboxStatus; cursor?: string | null }) => {
       const p = new URLSearchParams();
       if (q.group) p.set('group', q.group);

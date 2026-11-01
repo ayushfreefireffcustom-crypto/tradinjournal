@@ -35,6 +35,10 @@ self.addEventListener('push', event => {
       badge: '/icon-192.png',
       data: { url: data.url || '/' },
       tag: data.url || 'tradelogs',
+    }).then(() => {
+      // A test from Settings: tell the open page this device really showed it.
+      if (!data.test) return;
+      return self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(cs => cs.forEach(c => c.postMessage({ type: 'tl-test-push' })));
     }),
   );
 });

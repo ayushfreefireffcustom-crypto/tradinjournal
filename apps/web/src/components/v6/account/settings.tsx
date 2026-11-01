@@ -9,6 +9,7 @@ import { countryName } from '@/lib/countries';
 import { locationApi, type UserLocationDto } from '@/lib/location-api';
 import { api, NOTIFICATION_GROUPS, NOTIFICATION_GROUP_LABELS, type EventImpact, type NotificationChannel, type NotificationGroup, type NotificationGroupPrefs, type NotificationPrefs, type TelegramStatus } from '@/lib/api';
 import { enablePush, disablePush } from '@/lib/push-client';
+import TestNotification from './test-notification';
 import LocationForm from '@/components/location-form';
 import { ICheck, ILock } from '@/components/v3/icons';
 import '@/styles/v6/account.css';
@@ -212,6 +213,7 @@ export function NotificationsSection() {
                 <Row title="Browser push" desc="Real-time alerts, even when the tab is closed"><Switch on={draft.push} onClick={() => set('push', !draft.push)} label="Push alerts" /></Row>
               )}
               {tg?.available && <TelegramRow status={tg} onChange={setTg} />}
+              <Row title="Check delivery" desc="Sends one test to every channel that’s on, and says what arrived"><TestNotification /></Row>
             </div>
           )}
           {draft && prefs && (

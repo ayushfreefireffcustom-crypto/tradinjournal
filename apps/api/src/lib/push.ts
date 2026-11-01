@@ -30,6 +30,8 @@ export interface PushPayload {
   title: string;
   body: string;
   url?: string;
+  /** A test from Settings: the service worker tells the open page it arrived. */
+  test?: boolean;
 }
 
 export type PushResult = 'sent' | 'gone' | 'failed' | 'disabled';

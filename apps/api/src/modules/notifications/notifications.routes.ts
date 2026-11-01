@@ -20,11 +20,18 @@ import {
   handleDispatch,
   handleDispatchDigest,
 } from './notifications.controller.js';
+import { sendTestNotification } from './test-notification.service.js';
+import { perUserRateLimit } from '../../lib/rate-limit.js';
 
 // All notification routes require a signed-in user.
 export const notificationsRouter: IRouter = Router();
 notificationsRouter.use(requireAuth, requirePlatformAccess);
 notificationsRouter.get('/preferences', handleGetPrefs);
+// Settings › Notifications › Send a test (QW.15).
+const testLimit = perUserRateLimit({ name: 'notification-test', max: 5, windowSeconds: 600, message: 'That’s a few tests already. Try again in a few minutes.' });
+notificationsRouter.post('/test', testLimit, async (_req, res, next) => {
+  try { res.json({ data: await sendTestNotification(res.locals.user.id as string) }); } catch (err) { next(err); }
+});
 notificationsRouter.patch('/preferences', validateBody(notificationPrefsSchema), handleSetPrefs);
 notificationsRouter.get('/', handleListNotifications);
 notificationsRouter.post('/read', handleMarkRead);
