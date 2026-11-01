@@ -344,3 +344,10 @@
 .v6 .xj-note .x-tag { margin-right: 4px; }
 .v6 .xj-note small { display: block; color: var(--mut); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 3px; }
 .v6 .xj-text { min-height: 110px; resize: vertical; padding: 10px 12px; line-height: 1.5; height: auto; }
+
+/* API keys page. Prefix ak-. */
+.v6 .ak-new { display: grid; gap: 10px; outline: 1px solid var(--g); }
+.v6 tr.ak-off td { opacity: .55; }
+.v6 .ak-ex { margin-bottom: 10px; }
+.v6 .ak-ex-h { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; font-size: 13px; }
+.v6 .ak-ex-h b { font-weight: 500; }

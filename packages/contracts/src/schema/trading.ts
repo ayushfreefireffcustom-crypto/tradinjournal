@@ -393,3 +393,29 @@ export interface ExchangeJournalDto {
   firstFillAt: string | null;
   historySyncedAt: string | null;
 }
+
+// ── Personal API keys (D16) ─────────────────────────────────────────────────
+
+export const apiKeyScopes = ['read', 'trade'] as const;
+export const createApiKeySchema = z.object({
+  name: z.string().trim().min(1).max(60),
+  scope: z.enum(apiKeyScopes),
+});
+export type CreateApiKeyInput = z.infer<typeof createApiKeySchema>;
+
+export interface ApiKeyDto {
+  id: string;
+  name: string;
+  /** Shown as tl_<prefix>_••••<last4>. */
+  prefix: string;
+  last4: string;
+  scope: (typeof apiKeyScopes)[number];
+  lastUsedAt: string | null;
+  revokedAt: string | null;
+  createdAt: string;
+}
+
+/** Only returned once, when the key is created. */
+export interface ApiKeyCreatedDto extends ApiKeyDto {
+  key: string;
+}

@@ -1,6 +1,6 @@
 // Trading desk routes (/api/trading). Mounted only when TRADING_ENABLED.
 import { Router, type NextFunction, type Request, type Response, type Router as ExpressRouter } from 'express';
-import { historyImportSchema, historyQuerySchema, type HistoryImportInput, webhookSetupSchema, webhookUpdateSchema, type WebhookSetupInput, type WebhookUpdateInput, protectionQuerySchema, setProtectionSchema, type SetProtectionInput, cancelOrderSchema, type CancelOrderInput, closeManySchema, closePositionSchema, deskOrderFiltersSchema, deskOrdersQuerySchema, orderTicketSchema, ticketQuoteQuerySchema, type OrderTicketInput, type CloseManyInput, type ClosePositionInput, type DeskOrderFilters, type DeskOrdersQuery } from '@tradinjournal/contracts';
+import { createApiKeySchema, type CreateApiKeyInput, historyImportSchema, historyQuerySchema, type HistoryImportInput, webhookSetupSchema, webhookUpdateSchema, type WebhookSetupInput, type WebhookUpdateInput, protectionQuerySchema, setProtectionSchema, type SetProtectionInput, cancelOrderSchema, type CancelOrderInput, closeManySchema, closePositionSchema, deskOrderFiltersSchema, deskOrdersQuerySchema, orderTicketSchema, ticketQuoteQuerySchema, type OrderTicketInput, type CloseManyInput, type ClosePositionInput, type DeskOrderFilters, type DeskOrdersQuery } from '@tradinjournal/contracts';
 import { requireAuth } from '../../http/middleware/require-auth.js';
 import { requirePlatformAccess } from '../../http/middleware/require-platform-access.js';
 import { validateBody, validateQuery } from '../../http/middleware/validate.js';
@@ -8,6 +8,7 @@ import { perUserRateLimit } from '../../lib/rate-limit.js';
 import { placeTicket, previewTicket, ticketQuote } from './ticket.service.js';
 import { getProtection, setProtection } from './protection.service.js';
 import { exchangeJournal, importHistory } from './history.service.js';
+import { createApiKey, listApiKeys, revokeApiKey } from './api-keys.service.js';
 import { deleteWebhook, getWebhook, setupWebhook, updateWebhook, webhookEvents } from './webhook.service.js';
 import { cancelOrder, closeMany, closePosition, deskOrders, deskOrdersCsv, deskOrdersSummary, deskOverview } from './trading.service.js';
 
@@ -46,6 +47,11 @@ tradingRouter.get('/quote', readLimit, validateQuery(ticketQuoteQuerySchema), wr
 }));
 tradingRouter.post('/orders/preview', readLimit, validateBody(orderTicketSchema), wrap(async (req, res) => res.json({ data: await previewTicket(uid(res), req.body as OrderTicketInput) })));
 tradingRouter.post('/orders', closeLimit, validateBody(orderTicketSchema), wrap(async (req, res) => res.json({ data: await placeTicket(uid(res), req.body as OrderTicketInput) })));
+// Personal API keys for /api/v1 (D16).
+tradingRouter.get('/api-keys', wrap(async (_req, res) => res.json({ data: await listApiKeys(uid(res)) })));
+tradingRouter.post('/api-keys', closeLimit, validateBody(createApiKeySchema), wrap(async (req, res) => res.status(201).json({ data: await createApiKey(uid(res), req.body as CreateApiKeyInput) })));
+tradingRouter.post('/api-keys/:id/revoke', closeLimit, wrap(async (req, res) => res.json({ data: await revokeApiKey(uid(res), String(req.params.id).slice(0, 64)) })));
+
 // Exchange trade history and journal (D17, D18).
 tradingRouter.get('/history', validateQuery(historyQuerySchema), wrap(async (req, res) => res.json({ data: await exchangeJournal(uid(res), (req.query as unknown as { connectionId: string }).connectionId) })));
 tradingRouter.post('/history/import', exportLimit, validateBody(historyImportSchema), wrap(async (req, res) => {

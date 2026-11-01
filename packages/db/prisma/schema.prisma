@@ -52,6 +52,7 @@ model User {
   telegramLink      TelegramLink?
   telegramLinkCodes TelegramLinkCode[]
   tradingWebhook    TradingWebhook?
+  apiKeys           ApiKey[]
 
   @@map("user")
 }
@@ -1548,4 +1549,24 @@ model TradingWebhookEvent {
 
   @@index([webhookId, receivedAt])
   @@map("trading_webhook_event")
+}
+
+/// Personal API keys for the /api/v1 trading API (D16). The secret is shown once; only its hash is kept.
+model ApiKey {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String
+  /// Public part of the key ("tl_<prefix>_..."), used to look it up.
+  prefix     String    @unique
+  secretHash String
+  last4      String
+  /// "read" or "trade" (trade includes read).
+  scope      String
+  lastUsedAt DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([userId])
+  @@map("api_key")
 }

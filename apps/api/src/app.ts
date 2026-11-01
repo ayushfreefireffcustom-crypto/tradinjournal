@@ -13,6 +13,7 @@ import { exchangesRouter } from './modules/exchanges/exchanges.routes.js';
 import { followsRouter, leadersRouter } from './modules/copy/copy.routes.js';
 import { tradingRouter } from './modules/trading/trading.routes.js';
 import { tvHooksRouter } from './modules/trading/hooks.routes.js';
+import { v1Router } from './modules/trading/v1.routes.js';
 import { adminCopyRouter } from './modules/copy/admin-copy.routes.js';
 import { accountsRouter } from './modules/accounts/accounts.routes.js';
 import { tradesRouter } from './modules/trades/trades.routes.js';
@@ -120,6 +121,7 @@ export function createApp(): Express {
     app.use('/api/follows', followsRouter);
     app.use('/api/trading', tradingRouter);
     app.use('/api/hooks/tv', tvHooksRouter);
+    app.use('/api/v1', v1Router);
   }
   app.use('/api/trades', tradesRouter);
   app.use('/api/journal', journalRouter);

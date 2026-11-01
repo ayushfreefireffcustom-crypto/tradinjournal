@@ -434,6 +434,15 @@ export const historyApi = {
   importNow: (connectionId: string, days?: number) => call<{ imported: number; seen: number; from: string; to: string; message: string }>('/trading/history/import', { method: 'POST', ...body({ connectionId, days }) }),
 };
 
+export interface ApiKeyRow { id: string; name: string; prefix: string; last4: string; scope: 'read' | 'trade'; lastUsedAt: string | null; revokedAt: string | null; createdAt: string }
+export const apiKeysApi = {
+  list: () => call<ApiKeyRow[]>('/trading/api-keys'),
+  create: (b: { name: string; scope: 'read' | 'trade' }) => call<ApiKeyRow & { key: string }>('/trading/api-keys', { method: 'POST', ...body(b) }),
+  revoke: (id: string) => call<ApiKeyRow>(`/trading/api-keys/${encodeURIComponent(id)}/revoke`, { method: 'POST' }),
+};
+/** Where /api/v1 lives, for the docs' examples. */
+export const apiBase = () => (API || (typeof window !== 'undefined' ? window.location.origin : '')) + '/api/v1';
+
 export const tradingApi = {
   protection: (connectionId: string, symbol: string) => call<Protection>(`/trading/protection${qs({ connectionId, symbol })}`),
   setProtection: (b: { connectionId: string; symbol: string; takeProfit?: number | null; stopLoss?: number | null; stopLossTrail?: number }) =>
