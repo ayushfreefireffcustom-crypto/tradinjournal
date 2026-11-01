@@ -90,6 +90,12 @@ export const backtestParamsSchema = z.object({
 }).strict();
 export type BacktestParamsDto = z.infer<typeof backtestParamsSchema>;
 export const previewBacktestSchema = z.object({ spec: strategySpecSchema, params: backtestParamsSchema }).strict();
+/** The builder's Chart layout: the strategy drawn on recent bars of one of its markets. */
+export const chartPreviewSchema = z.object({
+  spec: strategySpecSchema,
+  symbol: z.string().trim().toUpperCase().pipe(z.string().regex(/^[A-Z0-9]{2,30}$/)).optional(),
+  bars: z.number().int().min(50).max(500).optional(),
+}).strict();
 export const generateStrategySchema = z.object({
   prompt: z.string().trim().min(10).max(1000),
   symbol: z.string().trim().toUpperCase().pipe(z.string().regex(/^[A-Z0-9]{2,30}$/)),

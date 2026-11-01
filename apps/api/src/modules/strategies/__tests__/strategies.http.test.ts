@@ -55,6 +55,7 @@ describe.skipIf(!local)('strategies over HTTP', () => {
     const ins = ((await (await call('POST', '/inspect', spec)).json()) as { data: { validation: { blockers: Array<{ code: string }> } } }).data;
     expect(ins.validation.blockers.map((b) => b.code)).toContain('over_leverage');
     expect((await call('POST', '/inspect', { ...spec, version: 1 })).status).toBe(422);
+    expect((await call('POST', '/chart', { spec, bars: 5 })).status).toBe(422);
     expect((await call('POST', '', { name: '' })).status).toBe(422);
     expect((await call('PATCH', `/${s.id}`, {})).status).toBe(422);
     expect((await call('GET', '/nope')).status).toBe(404);

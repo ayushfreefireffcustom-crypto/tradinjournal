@@ -129,6 +129,11 @@ export class SignalEngine {
     });
   }
 
+  /** An operand's values on every base bar (a higher timeframe holds its last closed value). */
+  aligned(o: Operand, tf: Interval = this.interval): Array<number | null> {
+    return this.base.map((_, i) => this.valueAt(o, tf, i));
+  }
+
   /** Average true range at bar i on the base interval. */
   atr(i: number, length = 14): number | null {
     return this.valueAt({ kind: 'indicator', id: 'atr', output: 'value', params: { length } }, this.interval, i);

@@ -1,8 +1,9 @@
 'use client';
 
-// Strategy builder (F2–F11, F13, F19). Two layouts over the same spec:
-// Cockpit (every zone at once) and Flow (one step at a time). The read-back,
-// checks and backtest update as you edit.
+// Strategy builder (F2–F11, F13, F19). Three layouts over the same spec:
+// Cockpit (every zone at once), Flow (one step at a time) and Chart (the rules
+// drawn on recent bars, numbers dragged on the chart). The read-back, checks
+// and backtest update as you edit.
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
@@ -11,6 +12,7 @@ import { useToast } from '@/components/toast';
 import { ErrorCard, Modal, useLoad } from '@/components/v6/copy/parts';
 import BacktestPanel from '@/components/v6/strategy/backtest-panel';
 import DeployDialog from '@/components/v6/strategy/deploy-dialog';
+import StrategyChart from '@/components/v6/strategy/strategy-chart';
 import { AdvancedZone, EntryZone, ExitZone, MarketZone, RiskZone, SessionZone, SizingZone } from '@/components/v6/strategy/zones';
 import { ApiError } from '@/lib/copy-api';
 import { indicatorAlertsApi } from '@/lib/indicator-alerts-api';
@@ -18,7 +20,7 @@ import { STATUS_TEXT, deploymentsApi, strategiesApi, tone, usd, type DeploymentR
 import '@/styles/v6/copy.css';
 import '@/styles/v6/markets.css';
 
-type Layout = 'cockpit' | 'flow';
+type Layout = 'cockpit' | 'flow' | 'chart';
 const ZONES = [
   { id: 'market', title: 'Market', sub: 'What it trades and with how much leverage' },
   { id: 'session', title: 'Session', sub: 'Bar size and when it may enter' },
@@ -50,7 +52,7 @@ export default function StrategyBuilderPage() {
   const [runs, setRuns] = useState<DeploymentRow[] | null>(null);
   useEffect(() => { deploymentsApi.forStrategy(id).then(setRuns, () => setRuns([])); }, [id]);
 
-  useEffect(() => { try { const l = localStorage.getItem('tradelogs.builder.layout'); if (l === 'flow' || l === 'cockpit') setLayout(l); } catch { /* ignore */ } }, []);
+  useEffect(() => { try { const l = localStorage.getItem('tradelogs.builder.layout'); if (l === 'flow' || l === 'cockpit' || l === 'chart') setLayout(l); } catch { /* ignore */ } }, []);
   const pickLayout = (l: Layout) => { setLayout(l); try { localStorage.setItem('tradelogs.builder.layout', l); } catch { /* ignore */ } };
   const load = (s: StrategyDetail) => { setStrategy(s); setSpec(s.spec); setName(s.name); setCheck({ validation: s.validation, readback: s.readback }); };
   useEffect(() => { strategiesApi.get(id).then(load, e => setLoadErr(e instanceof Error ? e.message : 'Could not load')); }, [id]);
@@ -120,11 +122,18 @@ export default function StrategyBuilderPage() {
           <div className="x-seg x-seg--in x-seg--sm" role="radiogroup" aria-label="Layout">
             <button type="button" role="radio" aria-checked={layout === 'cockpit'} onClick={() => pickLayout('cockpit')} data-testid="sb-layout-cockpit">Cockpit</button>
             <button type="button" role="radio" aria-checked={layout === 'flow'} onClick={() => pickLayout('flow')} data-testid="sb-layout-flow">Step by step</button>
+            <button type="button" role="radio" aria-checked={layout === 'chart'} onClick={() => pickLayout('chart')} data-testid="sb-layout-chart">Chart</button>
           </div>
         </div>
         <div className="sb-cols">
           <div className="sb-main">
-            {layout === 'cockpit' ? ZONES.map(card) : (
+            {layout === 'cockpit' ? ZONES.map(card) : layout === 'chart' ? (
+              <>
+                <StrategyChart spec={spec} set={set} />
+                <ol className="sb-steps" data-testid="sb-steps">{ZONES.map((z, k) => <li key={z.id}><button type="button" aria-current={k === step} className={blockedZones.has(z.id) ? 'is-blocked' : ''} onClick={() => setStep(k)}>{z.title}</button></li>)}</ol>
+                {card(ZONES[step]!)}
+              </>
+            ) : (
               <>
                 <ol className="sb-steps" data-testid="sb-steps">{ZONES.map((z, k) => <li key={z.id}><button type="button" aria-current={k === step} className={blockedZones.has(z.id) ? 'is-blocked' : ''} onClick={() => setStep(k)}>{k + 1}. {z.title}</button></li>)}</ol>
                 {card(ZONES[step]!)}

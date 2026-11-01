@@ -1,5 +1,5 @@
 import { Router, type IRouter, type Request, type Response, type NextFunction } from 'express';
-import { backtestParamsSchema, createStrategySchema, generateStrategySchema, previewBacktestSchema, strategySpecSchema, updateStrategySchema, type BacktestParamsDto } from '@tradinjournal/contracts';
+import { backtestParamsSchema, chartPreviewSchema, createStrategySchema, generateStrategySchema, previewBacktestSchema, strategySpecSchema, updateStrategySchema, type BacktestParamsDto } from '@tradinjournal/contracts';
 import type { StrategySpec } from '@tradinjournal/core';
 import { requireAuth } from '../../http/middleware/require-auth.js';
 import { requirePlatformAccess } from '../../http/middleware/require-platform-access.js';
@@ -7,7 +7,7 @@ import { validateBody } from '../../http/middleware/validate.js';
 import { ok, created } from '../../http/response.js';
 import { perUserRateLimit } from '../../lib/rate-limit.js';
 import {
-  backtestSpec, backtestStrategy, createStrategy, duplicateStrategy, generateStrategy, getBacktest, getStrategy, inspect,
+  backtestSpec, backtestStrategy, chartSpec, createStrategy, duplicateStrategy, generateStrategy, getBacktest, getStrategy, inspect,
   listStrategies, restoreVersion, updateStrategy,
 } from './strategies.service.js';
 import { mountStrategyDeployments } from './deployments.routes.js';
@@ -30,6 +30,12 @@ strategiesRouter.post('/preview', btLimit, validateBody(previewBacktestSchema), 
   const b = req.body as { spec: StrategySpec; params: BacktestParamsDto };
   const run = await backtestSpec(b.spec, b.params);
   ok(res, { ...run, result: { ...run.result, trades: run.result.trades.slice(-200) } });
+}));
+// The Chart layout: recent bars with the strategy drawn on them (also unsaved).
+const chartLimit = perUserRateLimit({ name: 'strategy-chart', max: 60, windowSeconds: 60, message: 'Too many chart refreshes in a minute. Give it a moment.' });
+strategiesRouter.post('/chart', chartLimit, validateBody(chartPreviewSchema), wrap(async (req, res) => {
+  const b = req.body as { spec: StrategySpec; symbol?: string; bars?: number };
+  ok(res, await chartSpec(b.spec, b));
 }));
 strategiesRouter.post('/generate', aiLimit, validateBody(generateStrategySchema), wrap(async (req, res) => created(res, await generateStrategy(uid(res), req.body))));
 strategiesRouter.get('/:id', wrap(async (req, res) => ok(res, await getStrategy(uid(res), p(req)))));

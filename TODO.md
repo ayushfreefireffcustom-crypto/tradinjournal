@@ -498,7 +498,7 @@ Legend:
 - [x] F8 Limits: daily loss cap → auto-pause; N consecutive losses → kill switch `S`
 - [x] F9 **Plain-English read-back**, live `S`
 - [x] F10 Validation split: "blocks deploy" vs "worth knowing" `S`
-- [ ] F11 Three layouts (Cockpit and Flow done 1 Nov; Chart layout to do): Cockpit (all at once), Flow (step by step), Chart (draw on chart, drag thresholds) `L → split per layout`
+- [x] F11 Three layouts (Cockpit, Flow and Chart done): Cockpit (all at once), Flow (step by step), Chart (draw on chart, drag thresholds) `L → split per layout`
 - [x] F12 Backtest engine v2 `L → split`:
   - multi-symbol
   - fee models per venue

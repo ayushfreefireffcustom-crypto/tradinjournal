@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Candle } from '../../trader/types.js';
-import { defaultSpec, describeStrategy, fromLegacy, mirrorGroup, runBacktest, SignalEngine, validateStrategy, type StrategySpec } from '../index.js';
+import { chartPreview, defaultSpec, describeStrategy, fromLegacy, mirrorGroup, runBacktest, SignalEngine, validateStrategy, type StrategySpec } from '../index.js';
 
 const H = 3_600_000;
 const T0 = Date.UTC(2026, 0, 5); // a Monday
@@ -248,5 +248,33 @@ describe('deployment options', () => {
     expect(r.trace![1]!.message).toBe('Long signal: entering at the next open.');
     const sess = run(spec((s) => { s.session.mode = 'windows'; s.session.windows = [{ days: [1], start: '09:00', end: '10:00' }]; }), bars([...flat(20), 101]), { traceFrom: T0 + 20 * H });
     expect(sess.trace![0]).toMatchObject({ kind: 'blocked', message: 'Outside the entry window.' });
+  });
+});
+
+describe('chart preview', () => {
+  const rsi = { kind: 'indicator' as const, id: 'rsi', output: 'value', params: { length: 3 } };
+  it('draws thresholds, indicator panes, signals, trades and the risk lines', () => {
+    const s = spec((x) => {
+      x.market.direction = 'both';
+      x.entry.long = { match: 'all', conditions: [closeAbove(100.5).conditions[0]!, { left: rsi, operator: 'gt', right: { kind: 'value', value: 50 } }] };
+      x.entry.short = 'mirror';
+    });
+    const c = bars([...flat(20), 101, 102, 103, 104]);
+    const p = chartPreview(s, 'AAAUSDT', c, { from: T0 + 10 * H });
+    expect(p.candles).toHaveLength(14);
+    expect(p.panes).toEqual(['price', 'p1']);
+    // Close is the candles, so only RSI is a line.
+    expect(p.series.map((x) => [x.label, x.pane, x.values.length])).toEqual([['RSI(3)', 'p1', 14]]);
+    expect(p.thresholds.map((t) => [t.group, t.index, t.pane, t.value, t.mirrored])).toEqual([
+      ['long', 0, 'price', 100.5, false], ['long', 1, 'p1', 50, false],
+      ['short', 0, 'price', 100.5, true], ['short', 1, 'p1', 50, true],
+    ]);
+    expect(p.signals.long).toEqual([10]); // the bar that crossed 100.5, 10 bars into the window
+    expect(p.trades).toHaveLength(1);
+    expect(p.trades[0]).toMatchObject({ side: 'long', exitT: null });
+    expect(p.trades[0]!.entryPrice).toBeCloseTo(102 * 1.0005); // next open plus 5 bps slippage
+    expect(p.risk).toMatchObject({ side: 'long', entry: 104 });
+    expect(p.risk!.stop).toBeCloseTo(104 * 0.98);
+    expect(p.risk!.target).toBeCloseTo(104 * 1.04);
   });
 });

@@ -107,6 +107,29 @@ describe.skipIf(!local)('strategies', () => {
     expect((full.result as { trades: unknown[] }).trades.length).toBe(r1.result.metrics.trades);
   });
 
+  it('draws the strategy on recent closed bars for the Chart layout', async () => {
+    const spec = core.defaultSpec('BTCUSDT');
+    spec.market.direction = 'both';
+    spec.entry.short = 'mirror';
+    spec.entry.long = { match: 'all', conditions: [
+      { left: { kind: 'indicator', id: 'ema', output: 'value', params: { length: 5 } }, operator: 'crosses_above', right: { kind: 'indicator', id: 'ema', output: 'value', params: { length: 20 } } },
+      { left: { kind: 'indicator', id: 'rsi', output: 'value', params: { length: 14 } }, operator: 'gt', right: { kind: 'value', value: 40 } },
+    ] };
+    const p = await svc.chartSpec(spec, { bars: 120 }, deps());
+    expect(p.symbol).toBe('BTCUSDT');
+    expect(p.candles).toHaveLength(120);
+    // The last bar shown is the last one that has closed.
+    expect(p.candles.at(-1)!.t).toBe(NOW - H);
+    expect(p.series.map((x) => x.pane)).toEqual(['price', 'price', 'p1']);
+    expect(p.series.every((x) => x.values.length === 120 && x.values.every((v) => v != null))).toBe(true); // warmed up before the window
+    expect(p.thresholds).toMatchObject([{ group: 'long', index: 1, pane: 'p1', value: 40 }, { group: 'short', index: 1, value: 60, mirrored: true }]);
+    expect(p.signals.long.length).toBeGreaterThan(0);
+    expect(p.trades.length).toBeGreaterThan(0);
+    expect(p.risk?.stop).not.toBeNull();
+    // An unknown symbol falls back to the strategy's first market; no data is refused.
+    expect((await svc.chartSpec(spec, { symbol: 'ETHUSDT', bars: 50 }, deps())).symbol).toBe('BTCUSDT');
+    await expect(svc.chartSpec(spec, {}, deps({ candles: async () => [] }))).rejects.toThrow(/No market data/);
+  });
   it('refuses ranges and specs that can’t run', async () => {
     const bad = core.defaultSpec();
     bad.risk.stopLoss = null;

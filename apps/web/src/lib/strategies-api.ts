@@ -62,6 +62,19 @@ export interface StrategyDetail {
   createdAt: string; updatedAt: string;
 }
 
+// The Chart layout (F11): the strategy drawn on recent bars.
+export type ChartGroup = 'long' | 'short' | 'exitLong' | 'exitShort';
+export interface ChartSeries { key: string; label: string; pane: string; scale: 'price' | 'percent' | 'centered' | 'volume' | 'ratio'; values: Array<number | null> }
+export interface ChartThreshold { group: ChartGroup; index: number; pane: string; seriesKey: string; label: string; operator: IaOperator; value: number; mirrored: boolean }
+export interface ChartPreview {
+  symbol: string; interval: Interval;
+  candles: Array<{ t: number; o: number; h: number; l: number; c: number }>;
+  series: ChartSeries[]; panes: string[]; thresholds: ChartThreshold[];
+  signals: { long: number[]; short: number[] };
+  trades: Array<{ side: 'long' | 'short'; entryT: number; entryPrice: number; exitT: number | null; exitPrice: number | null; pnl: number | null; reason: string | null }>;
+  risk: { side: 'long' | 'short'; entry: number; stop: number | null; target: number | null; atr: number | null } | null;
+}
+
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API}/api/strategies${path}`, { credentials: 'include', ...init, headers: { 'Content-Type': 'application/json', ...init?.headers } });
   const json = (await res.json().catch(() => null)) as { data?: T; error?: { code?: string; message?: string; details?: Record<string, string[]> } } | null;
@@ -86,6 +99,7 @@ export const strategiesApi = {
   backtest: (id: string, params: BacktestParams) => call<{ id: string; version: number; result: BacktestResult; cached: boolean; createdAt: string }>(`/${id}/backtests`, body('POST', params)),
   getBacktest: (id: string, bid: string) => call<{ id: string; version: number; params: BacktestParams; metrics: Metrics; result: BacktestResult; createdAt: string }>(`/${id}/backtests/${bid}`),
   generate: (b: { prompt: string; symbol: string; interval: Interval }) => call<StrategyDetail>('/generate', body('POST', b)),
+  chart: (spec: StrategySpec, symbol?: string, bars?: number) => call<ChartPreview>('/chart', body('POST', { spec, ...(symbol ? { symbol } : {}), ...(bars ? { bars } : {}) })),
 };
 
 // ── Small helpers shared by the builder ───────────────────────────────────────

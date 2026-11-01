@@ -5,8 +5,8 @@ import { createHash } from 'node:crypto';
 import { prisma, type Strategy } from '@tradinjournal/db';
 import { logger } from '@tradinjournal/logger';
 import {
-  defaultSpec, describeStrategy, fromLegacy, INDICATORS, INTERVAL_MS, runBacktest, validateStrategy,
-  type BacktestResult, type LegacyRules, type StrategySpec, type TraderCandle as Candle,
+  chartPreview, defaultSpec, describeStrategy, fromLegacy, INDICATORS, INTERVAL_MS, runBacktest, validateStrategy,
+  type BacktestResult, type ChartPreview, type LegacyRules, type StrategySpec, type TraderCandle as Candle,
 } from '@tradinjournal/core';
 import { strategySpecSchema, type BacktestParamsDto } from '@tradinjournal/contracts';
 import { cacheGet, cacheSet } from '../../lib/cache.js';
@@ -185,6 +185,20 @@ export async function loadRange(symbol: string, tf: string, fromMs: number, toMs
     if (out.size > MAX_BARS * 1.2) break;
   }
   return [...out.values()].sort((a, b) => a.openTime - b.openTime);
+}
+
+/** The builder's Chart layout: recent closed bars of one symbol with the strategy drawn on them. Not stored. */
+export async function chartSpec(spec: StrategySpec, input: { symbol?: string; bars?: number }, deps = defaultStrategyDeps): Promise<ChartPreview> {
+  const symbol = input.symbol && spec.market.symbols.some((s) => s.symbol === input.symbol) ? input.symbol : spec.market.symbols[0]?.symbol;
+  if (!symbol) throw new ValidationError('Pick a market first.');
+  const ms = INTERVAL_MS[spec.session.interval];
+  const bars = input.bars ?? 200;
+  const warm = Math.min(validateStrategy(spec).warmupBars, 2000) + 5;
+  const now = deps.now();
+  const to = Math.floor(now / ms) * ms - ms; // the last closed bar
+  const candles = (await loadRange(symbol, spec.session.interval, to - (bars + warm) * ms, to, deps)).filter((c) => c.openTime + ms <= now);
+  if (!candles.length) throw new ValidationError(`No market data for ${symbol}.`);
+  return chartPreview(spec, symbol, candles, { from: to - (bars - 1) * ms });
 }
 
 export interface BacktestRun { result: BacktestResult; params: BacktestParamsDto; hash: string; cached: boolean; validation: ReturnType<typeof validateStrategy> }

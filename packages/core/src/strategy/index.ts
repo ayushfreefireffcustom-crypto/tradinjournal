@@ -9,3 +9,5 @@ export { fromLegacy } from './legacy.js';
 export type { LegacyRules } from './legacy.js';
 export { planEntry } from './plan.js';
 export type { EntryPlan, PlanInput } from './plan.js';
+export { chartPreview } from './chart.js';
+export type { ChartPreview, ChartSeries, ChartThreshold, ChartGroup } from './chart.js';
