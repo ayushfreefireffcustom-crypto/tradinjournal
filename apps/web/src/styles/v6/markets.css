@@ -395,3 +395,18 @@
   .v6 .x-strip.mk-em-cols > div:nth-child(n+3) { border-top: 0; }
   .v6 .x-strip.mk-em-cols > div:nth-child(3)::before { display: block; }
 }
+
+/* Chart types (E2) */
+.v6 .mk-ct { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.v6 .mk-ct .x-select { width: auto; min-width: 0; height: 34px; padding-top: 0; padding-bottom: 0; }
+.v6 .mk-ct-field { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; }
+.v6 .mk-ct-num { width: 78px; height: 34px; }
+.v6 .mk-ct-num.is-bad { box-shadow: inset 0 0 0 1px var(--r); }
+.v6 .mk-ct-note { font-size: 12px; margin-left: auto; }
+.v6 .mk-pc { position: absolute; inset: 0 2px 6px 8px; overflow: hidden; }
+.v6 .mk-pc svg { display: block; }
+.v6 .mk-pc-axis { font-family: var(--mono); font-size: 11px; fill: var(--axis); }
+.v6 .mk-pc-last { fill: var(--inv); }
+.v6 .mk-pc-info { position: absolute; top: 2px; left: 6px; font-size: 11.5px; color: var(--mut); pointer-events: none; z-index: 1; }
+.v6 .mk-pc-empty { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 24px; color: var(--mut); font-size: 13px; }
+.v6 .mk-pc-tip { position: absolute; left: 6px; bottom: 26px; background: var(--tip); color: var(--tx); font-size: 12px; padding: 6px 9px; border-radius: 8px; pointer-events: none; max-width: calc(100% - 80px); }

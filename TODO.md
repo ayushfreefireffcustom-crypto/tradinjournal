@@ -433,7 +433,7 @@ Legend:
   - [x] E1f Volume: Volume, Volume SMA, VWAP, OBV, CMF, A/D `M` (done 1 Nov)
   - [ ] E1g Meta: funding rate, open interest (from Binance/Bybit/Delta public data) `M` (needs a funding/OI data feed; with E11/E17)
   - [x] E1h Price refs: O/H/L/C, highest high N, lowest low N `S` (done 1 Nov)
-- [ ] E2 Candle types: Heikin-Ashi, Renko (box %/ATR/fixed), Kagi, Point & Figure `M`
+- [x] E2 Candle types: Heikin-Ashi, Renko (box %/ATR/fixed), Kagi, Point & Figure `M` (done 1 Nov: chart-type menu on /charts, per pane; close-based Renko/Kagi/P&F on the last 1000 bars)
 - [x] E3 Indicator alerts `M` (done 1 Nov: new `indicator_alert` table instead of widening PriceAlert; change24h is ROC on the right bar count; funding/OI wait for E1g):
   - extend `PriceAlert` → `Alert`: kind price/indicator/change24h/funding/OI
   - operators < ≤ > ≥ = crosses above/below

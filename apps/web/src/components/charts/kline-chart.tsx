@@ -10,6 +10,7 @@ import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 're
 import type { Chart, KLineData, DataLoader, Period } from 'klinecharts';
 import { marketApi, streamCandles, type Candle, type MarketTimeframe } from '@/lib/market-api';
 import { chartDate, chartStyles, chartXTicks, onThemeChange } from '@/components/v6/markets/chart-theme';
+import { heikinAshi, heikinBar } from '@/lib/chart-types';
 
 export interface KlineChartHandle {
   createIndicator: (name: string) => void;
@@ -24,6 +25,8 @@ interface Props {
   accountId?: string;
   /** Latest close + reference close ~24h earlier, after each history load. */
   onQuote?: (q: { last: number; ref: number | null }) => void;
+  /** Draw Heikin-Ashi bars instead of candles. */
+  heikin?: boolean;
 }
 
 const TF_PERIOD: Record<MarketTimeframe, Period> = {
@@ -63,8 +66,15 @@ function derivePrecision(price: number): number {
 }
 
 const BAR_LIMIT = 500;
+// Each Heikin-Ashi bar depends on every bar before it, so that mode loads one
+// long window and doesn't page further back (a seam would show at each page).
+const HEIKIN_LIMIT = 1000;
 
-const KlineChart = forwardRef<KlineChartHandle, Props>(function KlineChart({ symbol, tf, accountId, onQuote }, ref) {
+const KlineChart = forwardRef<KlineChartHandle, Props>(function KlineChart({ symbol, tf, accountId, onQuote, heikin = false }, ref) {
+  const heikinRef = useRef(heikin);
+  heikinRef.current = heikin;
+  // Heikin-Ashi live updates: the raw bars and their Heikin-Ashi bars so far.
+  const haRef = useRef<{ raw: Candle[]; ha: Candle[] }>({ raw: [], ha: [] });
   const onQuoteRef = useRef(onQuote);
   onQuoteRef.current = onQuote;
   const containerRef = useRef<HTMLDivElement>(null);
@@ -112,8 +122,10 @@ const KlineChart = forwardRef<KlineChartHandle, Props>(function KlineChart({ sym
       const dataLoader: DataLoader = {
         getBars: async ({ type, timestamp, symbol: sym, period, callback }) => {
           const barTf = periodToTf(period);
+          const ha = heikinRef.current;
+          if (ha && type !== 'init') { callback([], false); return; }
           const params: Parameters<typeof marketApi.candles>[0] = {
-            symbol: sym.ticker, tf: barTf, limit: BAR_LIMIT, accountId: accountIdRef.current,
+            symbol: sym.ticker, tf: barTf, limit: ha ? HEIKIN_LIMIT : BAR_LIMIT, accountId: accountIdRef.current,
           };
           // v10: forward = older bars (left edge), backward = newer bars (right edge).
           if (type === 'forward' && timestamp) params.to = Math.floor(timestamp / 1000) - 1;
@@ -126,14 +138,18 @@ const KlineChart = forwardRef<KlineChartHandle, Props>(function KlineChart({ sym
               precisionForRef.current = sym.ticker;
               chart.setSymbol({ ticker: sym.ticker, pricePrecision: derivePrecision(last.close), volumePrecision: 2 });
             }
-            const hasMore = candles.length >= BAR_LIMIT;
+            const hasMore = !ha && candles.length >= BAR_LIMIT;
             const more =
               type === 'forward'
                 ? { forward: hasMore, backward: false }
                 : type === 'backward'
                   ? { forward: false, backward: hasMore }
                   : { forward: hasMore, backward: false };
-            callback(candles.map(toKLine), more);
+            if (ha) {
+              const bars = heikinAshi(candles);
+              haRef.current = { raw: candles.slice(-2), ha: bars.slice(-2) };
+              callback(bars.map(toKLine), more);
+            } else callback(candles.map(toKLine), more);
             if (type === 'init') {
               setReady(true);
               if (last) {
@@ -149,7 +165,23 @@ const KlineChart = forwardRef<KlineChartHandle, Props>(function KlineChart({ sym
         },
         subscribeBar: ({ symbol: sym, period, callback }) => {
           const barTf = periodToTf(period);
-          liveUnsubRef.current = streamCandles(sym.ticker, barTf, bar => callback(toKLine(bar)), {
+          // A reload can subscribe again before unsubscribing; never leave the
+          // old stream open (each one holds a connection to the API).
+          liveUnsubRef.current?.();
+          liveUnsubRef.current = null;
+          if (disposed) return; // the pane closed while its first load was in flight
+          liveUnsubRef.current = streamCandles(sym.ticker, barTf, bar => {
+            if (!heikinRef.current) { callback(toKLine(bar)); return; }
+            // Same bar updating, or a new bar: either way it builds on the
+            // Heikin-Ashi bar before it, which is final once its bar closed.
+            const st = haRef.current;
+            const lastRaw = st.raw[st.raw.length - 1];
+            if (lastRaw && bar.openTime === lastRaw.openTime) { st.raw[st.raw.length - 1] = bar; st.ha.pop(); }
+            else { st.raw = [...st.raw.slice(-1), bar]; st.ha = st.ha.slice(-1); }
+            const next = heikinBar(bar, st.ha[st.ha.length - 1] ?? null);
+            st.ha.push(next);
+            callback(toKLine(next));
+          }, {
             accountId: accountIdRef.current,
           });
         },
@@ -184,6 +216,16 @@ const KlineChart = forwardRef<KlineChartHandle, Props>(function KlineChart({ sym
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Switching between candles and Heikin-Ashi reloads the bars.
+  const firstHeikin = useRef(true);
+  useEffect(() => {
+    if (firstHeikin.current) { firstHeikin.current = false; return; }
+    const chart = chartRef.current;
+    if (!chart) return;
+    setReady(false);
+    chart.resetData();
+  }, [heikin]);
 
   // Symbol / timeframe changes → re-point the chart (triggers a fresh load).
   useEffect(() => {

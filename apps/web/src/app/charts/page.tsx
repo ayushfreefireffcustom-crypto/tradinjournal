@@ -18,6 +18,7 @@ import DrawingToolbar from '@/components/charts/drawing-toolbar';
 import Watchlist from '@/components/charts/watchlist';
 import AlertsPanel from '@/components/charts/alerts-panel';
 import AlertDialog from '@/components/charts/alert-dialog';
+import ChartTypeMenu from '@/components/charts/chart-type-menu';
 import '@/styles/v6/markets.css';
 
 const DEFAULT_SYMBOLS = ['BTCUSDT', 'ETHUSDT', 'XAUUSD', 'EURUSD'];
@@ -139,10 +140,15 @@ export default function ChartsPage() {
           <div className="x-card mk-tools">
             <SymbolSearch value={active.symbol} onSelect={symbol => patchActive({ symbol })} />
             <TimeframeBar value={active.tf} onChange={tf => patchActive({ tf })} />
-            <div className="mk-tools-r">
-              <IndicatorMenu onAdd={name => activeChart()?.createIndicator(name)} onClear={() => activeChart()?.removeIndicators()} />
-              <DrawingToolbar onDraw={name => activeChart()?.createOverlay(name)} onClear={() => activeChart()?.removeOverlays()} />
-            </div>
+            <ChartTypeMenu value={{ type: active.chartType ?? 'candles', size: active.size, reversal: active.reversal }}
+              onChange={v => patchActive({ chartType: v.type, size: v.size, reversal: v.reversal })} />
+            {/* Indicators and drawings live on time-based charts only. */}
+            {(active.chartType ?? 'candles') === 'candles' || active.chartType === 'heikin' ? (
+              <div className="mk-tools-r">
+                <IndicatorMenu onAdd={name => activeChart()?.createIndicator(name)} onClear={() => activeChart()?.removeIndicators()} />
+                <DrawingToolbar onDraw={name => activeChart()?.createOverlay(name)} onClear={() => activeChart()?.removeOverlays()} />
+              </div>
+            ) : <span className="x-muted mk-ct-note">Renko, Kagi and P&amp;F ignore time, so indicators and drawings are off.</span>}
           </div>
           <LayoutGrid panes={panes} activeId={activeId} onActivate={setActiveId} onClose={closePane} registerRef={registerRef} />
         </div>
