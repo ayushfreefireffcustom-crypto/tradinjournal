@@ -1,0 +1,317 @@
+'use client';
+
+// Indicator alerts (E4): rules like "RSI(14) crosses below 30 on BTCUSDT 1h",
+// checked at every bar close, with recent firings. Price-level alerts stay on
+// the Charts page.
+import Link from 'next/link';
+import { useEffect, useMemo, useState } from 'react';
+import AppShell from '@/components/app-shell';
+import { useToast } from '@/components/toast';
+import { ErrorCard, Modal, ago, useLoad, usePoll } from '@/components/v6/copy/parts';
+import SymbolSearch from '@/components/charts/symbol-search';
+import { ApiError } from '@/lib/copy-api';
+import {
+  IA_OPERATORS, IA_TIMEFRAMES, OPERATOR_LABEL, comparable, indicatorAlertsApi,
+  type CatalogueItem, type IaOperator, type IaTimeframe, type IndicatorAlert, type IndicatorOperand, type Operand, type Preview, type RuleBody,
+} from '@/lib/indicator-alerts-api';
+import '@/styles/v6/copy.css';
+import '@/styles/v6/markets.css';
+
+const MAX_RULES = 50;
+const fmt = (v: number | null | undefined) => (v == null ? '—' : Math.abs(v) >= 1000 ? v.toLocaleString(undefined, { maximumFractionDigits: 1 }) : Math.abs(v) >= 1 ? v.toFixed(2) : v.toPrecision(3));
+const COOLDOWNS: Array<{ sec: number; label: string }> = [
+  { sec: 0, label: 'No limit' }, { sec: 900, label: '15 min' }, { sec: 3600, label: '1 hour' }, { sec: 14_400, label: '4 hours' }, { sec: 86_400, label: '1 day' },
+];
+const cooldownLabel = (s: number) => COOLDOWNS.find(c => c.sec === s)?.label ?? `${Math.round(s / 60)} min`;
+const EVERY: Record<number, string> = { 900: '15 minutes', 3600: 'hour', 14_400: '4 hours', 86_400: 'day' };
+const repeatLabel = (r: IndicatorAlert) => (!r.recurring ? 'Once, then stops' : r.cooldownSec === 0 ? 'Repeats on every qualifying bar' : `Repeats, at most once every ${EVERY[r.cooldownSec] ?? cooldownLabel(r.cooldownSec)}`);
+const ind = (id: string, output = 'value', params?: Record<string, number>): IndicatorOperand => ({ kind: 'indicator', id, output, ...(params ? { params } : {}) });
+
+const PRESETS: Array<{ name: string; tf?: IaTimeframe; left: IndicatorOperand; operator: IaOperator; right: Operand }> = [
+  { name: 'RSI oversold', left: ind('rsi', 'value', { length: 14 }), operator: 'crosses_below', right: { kind: 'value', value: 30 } },
+  { name: 'RSI overbought', left: ind('rsi', 'value', { length: 14 }), operator: 'crosses_above', right: { kind: 'value', value: 70 } },
+  { name: 'Golden cross', left: ind('ema', 'value', { length: 50 }), operator: 'crosses_above', right: ind('ema', 'value', { length: 200 }) },
+  { name: 'MACD bullish cross', left: ind('macd', 'macd'), operator: 'crosses_above', right: ind('macd', 'signal') },
+  { name: 'Bollinger breakout', left: ind('price', 'close'), operator: 'crosses_above', right: ind('bb', 'upper') },
+  { name: 'Volume spike', left: ind('volume'), operator: 'gt', right: ind('volsma', 'value', { length: 20 }) },
+  { name: 'Up 5% in 24h', tf: '1h', left: ind('roc', 'value', { length: 24 }), operator: 'gt', right: { kind: 'value', value: 5 } },
+];
+
+export default function AlertsPage() {
+  const toast = useToast();
+  const cat = useLoad(() => indicatorAlertsApi.catalogue(), []);
+  const rules = useLoad(() => indicatorAlertsApi.list(), []);
+  const firings = useLoad(() => indicatorAlertsApi.firings(30), []);
+  usePoll(() => { void rules.reload(); void firings.reload(); }, 60_000);
+  const [building, setBuilding] = useState(false);
+  const [deleting, setDeleting] = useState<IndicatorAlert | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const count = rules.data?.length ?? 0;
+
+  async function setStatus(r: IndicatorAlert, status: 'active' | 'paused') {
+    setBusyId(r.id);
+    try {
+      const next = await indicatorAlertsApi.update(r.id, { status });
+      rules.setData(rs => rs?.map(x => (x.id === r.id ? next : x)) ?? rs);
+      toast.success(status === 'paused' ? 'Alert paused' : r.status === 'triggered' ? 'Alert re-armed' : 'Alert resumed');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not update the alert');
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  return (
+    <AppShell legacy={false} pageTitle="Indicator alerts" pageSubtitle="Get told when an indicator condition is met at a bar close"
+      actions={<button className="x-btn x-btn--hi" onClick={() => setBuilding(true)} disabled={!cat.data || count >= MAX_RULES} title={count >= MAX_RULES ? `Up to ${MAX_RULES} alerts` : undefined} data-testid="ia-new">New alert</button>}>
+      <div className="x-page" data-testid="ia-page">
+        {rules.error ? <ErrorCard message={rules.error} onRetry={rules.reload} /> : !rules.data ? <div className="x-skel cp-skel-table" /> : !rules.data.length ? (
+          <div className="x-card x-empty" data-testid="ia-empty">
+            <b>No indicator alerts yet</b>
+            <p>Pick a condition such as &ldquo;RSI crosses below 30&rdquo; or &ldquo;EMA 50 crosses above EMA 200&rdquo;. It&rsquo;s checked every time a bar closes, and you&rsquo;re notified in your inbox, by push and on Telegram if you&rsquo;ve linked it.</p>
+            <button className="x-btn x-btn--hi" onClick={() => setBuilding(true)} disabled={!cat.data}>Create your first alert</button>
+          </div>
+        ) : (
+          <section className="x-card" aria-label="Your alerts">
+            <div className="x-ch"><h2>Your alerts</h2><span className="x-sub">{count} of {MAX_RULES}</span></div>
+            <div className="x-tblwrap">
+              <table className="x-tbl trd-tbl ia-tbl" data-testid="ia-table">
+                <thead><tr><th>Market</th><th>Condition</th><th>At last close</th><th>Last alert</th><th>Status</th><th /></tr></thead>
+                <tbody>
+                  {rules.data.map(r => (
+                    <tr key={r.id} className={r.status === 'active' ? '' : 'ak-off'} data-testid={`ia-row-${r.id}`}>
+                      <td><Link className="x-link" href={`/charts?symbol=${encodeURIComponent(r.symbol)}&tf=${r.timeframe}`}><b>{r.symbol}</b></Link> <span className="x-tag x-tag--m">{r.timeframe}</span></td>
+                      <td><span data-testid="ia-desc">{r.description}</span>{r.note && <div className="x-muted ia-note">{r.note}</div>}<div className="x-muted ia-note">{repeatLabel(r)}</div></td>
+                      <td>{r.lastBarTime ? <span className="m">{fmt(r.lastLeft)}{r.right.kind === 'indicator' && <> vs {fmt(r.lastRight)}</>}</span> : <span className="x-muted">Waiting for a bar close</span>}</td>
+                      <td>{r.lastFiredAt ? ago(r.lastFiredAt) : <span className="x-muted">Never</span>}</td>
+                      <td><span className={`x-tag ${r.status === 'active' ? 'x-tag--g' : r.status === 'triggered' ? 'x-tag--r' : ''}`} data-testid="ia-status">{r.status === 'active' ? 'Active' : r.status === 'paused' ? 'Paused' : 'Triggered'}</span></td>
+                      <td className="trd-acts">
+                        {r.status === 'active'
+                          ? <button className="x-btn x-btn--sm" disabled={busyId === r.id} onClick={() => void setStatus(r, 'paused')} data-testid="ia-pause">Pause</button>
+                          : <button className="x-btn x-btn--sm" disabled={busyId === r.id} onClick={() => void setStatus(r, 'active')} data-testid="ia-resume">{r.status === 'triggered' ? 'Re-arm' : 'Resume'}</button>}
+                        <button className="x-btn x-btn--sm x-btn--ghost cp-del" onClick={() => setDeleting(r)} data-testid="ia-delete">Delete</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
+
+        <section className="x-card" aria-label="Recent alerts">
+          <div className="x-ch"><h2>Recent alerts</h2><span className="x-sub">Last 30</span></div>
+          {firings.error ? <p className="cp-err">{firings.error}</p> : !firings.data ? <div className="x-skel cp-skel-table" /> : !firings.data.length ? (
+            <p className="x-muted ia-none" data-testid="ia-firings-empty">Nothing has fired yet. Alerts are checked when each bar closes, so a 1h alert can take up to an hour to fire.</p>
+          ) : (
+            <ul className="ia-firings" data-testid="ia-firings">
+              {firings.data.map(f => (
+                <li key={f.id}>
+                  <span className="ia-when" title={new Date(f.firedAt).toLocaleString()}>{ago(f.firedAt)}</span>
+                  <Link className="x-link" href={`/charts?symbol=${encodeURIComponent(f.symbol)}&tf=${f.timeframe}`}><b>{f.symbol}</b> {f.timeframe}</Link>
+                  <span>{f.description}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      </div>
+
+      {building && cat.data && (
+        <RuleBuilder catalogue={cat.data} onClose={() => setBuilding(false)} onCreated={(a) => { setBuilding(false); rules.setData(rs => [a, ...(rs ?? [])]); toast.success('Alert created'); }} />
+      )}
+      {deleting && (
+        <Modal title="Delete this alert?" sub={`${deleting.symbol} ${deleting.timeframe}: ${deleting.description}`} onClose={() => setDeleting(null)} testId="ia-delete-dialog"
+          footer={<><button className="x-btn x-btn--ghost" onClick={() => setDeleting(null)}>Keep it</button><button className="x-btn x-btn--hi cp-del" data-testid="ia-delete-confirm" onClick={async () => {
+            try { await indicatorAlertsApi.remove(deleting.id); rules.setData(rs => rs?.filter(x => x.id !== deleting.id) ?? rs); setDeleting(null); toast.success('Alert deleted'); void firings.reload(); } catch (e) { toast.error(e instanceof Error ? e.message : 'Could not delete'); }
+          }}>Delete</button></>}>
+          <p className="cp-fine">Its alert history is deleted with it.</p>
+        </Modal>
+      )}
+    </AppShell>
+  );
+}
+
+const GROUPS: Array<[CatalogueItem['group'], string]> = [['price', 'Price'], ['trend', 'Trend'], ['oscillator', 'Oscillators'], ['volatility', 'Volatility'], ['volume', 'Volume']];
+
+/** Indicator + output + parameters. `allow` filters which outputs can be picked. */
+function OperandPicker({ catalogue, value, onChange, allow, label, testId }: {
+  catalogue: CatalogueItem[]; value: IndicatorOperand; onChange: (v: IndicatorOperand) => void; allow?: (it: CatalogueItem, out: CatalogueItem['outputs'][number]) => boolean; label: string; testId: string;
+}) {
+  const spec = catalogue.find(c => c.id === value.id);
+  const ok = (it: CatalogueItem) => it.outputs.filter(o => !allow || allow(it, o));
+  const pickIndicator = (id: string) => {
+    const it = catalogue.find(c => c.id === id)!;
+    onChange({ kind: 'indicator', id, output: (ok(it)[0] ?? it.outputs[0]!).key, params: Object.fromEntries(it.params.map(p => [p.key, p.default])) });
+  };
+  return (
+    <div className="ia-op" data-testid={testId}>
+      <div className="ia-op-row">
+        <select className="x-select" aria-label={`${label} indicator`} value={value.id} onChange={e => pickIndicator(e.target.value)} data-testid={`${testId}-id`}>
+          {GROUPS.map(([g, name]) => {
+            const items = catalogue.filter(c => c.group === g && ok(c).length);
+            return items.length ? <optgroup key={g} label={name}>{items.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}</optgroup> : null;
+          })}
+        </select>
+        {spec && spec.outputs.length > 1 && (
+          <select className="x-select" aria-label={`${label} line`} value={value.output} onChange={e => onChange({ ...value, output: e.target.value })} data-testid={`${testId}-out`}>
+            {ok(spec).map(o => <option key={o.key} value={o.key}>{o.label}</option>)}
+          </select>
+        )}
+      </div>
+      {spec && spec.params.length > 0 && (
+        <div className="ia-params">
+          {spec.params.map(p => (
+            <label key={p.key} className="ia-param">
+              <span>{p.label}</span>
+              <input className="x-input m" type="number" inputMode="decimal" min={p.min} max={p.max} step={p.step}
+                value={Number.isFinite(value.params?.[p.key] ?? p.default) ? (value.params?.[p.key] ?? p.default) : ''} data-testid={`${testId}-p-${p.key}`}
+                onChange={e => onChange({ ...value, params: { ...Object.fromEntries(spec.params.map(q => [q.key, q.default])), ...value.params, [p.key]: e.target.value === '' ? NaN : Number(e.target.value) } })} />
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RuleBuilder({ catalogue, onClose, onCreated }: { catalogue: CatalogueItem[]; onClose: () => void; onCreated: (a: IndicatorAlert) => void }) {
+  const toast = useToast();
+  const [symbol, setSymbol] = useState('BTCUSDT');
+  const [tf, setTf] = useState<IaTimeframe>('1h');
+  const [left, setLeft] = useState<IndicatorOperand>(PRESETS[0]!.left);
+  const [operator, setOperator] = useState<IaOperator>(PRESETS[0]!.operator);
+  const [right, setRight] = useState<Operand>(PRESETS[0]!.right);
+  const [cooldownSec, setCooldown] = useState(3600);
+  const [recurring, setRecurring] = useState(true);
+  const [note, setNote] = useState('');
+  const [preview, setPreview] = useState<Preview | null>(null);
+  const [previewErr, setPreviewErr] = useState<string | null>(null);
+  const [checking, setChecking] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  const scaleOf = (o: IndicatorOperand) => catalogue.find(c => c.id === o.id)?.outputs.find(x => x.key === o.output)?.scale ?? 'price';
+  const leftKey = { id: left.id, scale: scaleOf(left) };
+  const allowRight = (it: CatalogueItem, out: CatalogueItem['outputs'][number]) => comparable(leftKey, { id: it.id, scale: out.scale });
+  const canCompareIndicator = catalogue.some(it => it.outputs.some(o => allowRight(it, o)));
+  const firstRight = (): IndicatorOperand | null => {
+    for (const it of catalogue) for (const o of it.outputs) if (allowRight(it, o) && !(it.id === left.id && o.key === left.output)) return { kind: 'indicator', id: it.id, output: o.key, params: Object.fromEntries(it.params.map(p => [p.key, p.default])) };
+    return null;
+  };
+
+  // A new left side that can't be compared with the current right one: compare with a value instead.
+  useEffect(() => {
+    if (right.kind === 'indicator' && !comparable(leftKey, { id: right.id, scale: scaleOf(right) })) setRight({ kind: 'value', value: scaleOf(left) === 'percent' ? 50 : 0 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [left.id, left.output]);
+
+  const body: RuleBody = useMemo(() => ({ symbol, timeframe: tf, left, operator, right, cooldownSec, recurring, ...(note.trim() ? { note: note.trim() } : {}) }), [symbol, tf, left, operator, right, cooldownSec, recurring, note]);
+  const invalid = [left, right].some(o => o.kind === 'indicator' ? Object.values(o.params ?? {}).some(v => !Number.isFinite(v)) : !Number.isFinite(o.value));
+
+  // Live check against the last closed bar.
+  useEffect(() => {
+    if (invalid) { setPreview(null); setPreviewErr('Fill in every number.'); return; }
+    let live = true;
+    setChecking(true);
+    const t = setTimeout(() => {
+      indicatorAlertsApi.preview({ symbol, timeframe: tf, left, operator, right })
+        .then(p => { if (live) { setPreview(p); setPreviewErr(null); } })
+        .catch(e => { if (live) { setPreview(null); setPreviewErr(e instanceof Error ? e.message : 'Could not check this rule'); } })
+        .finally(() => { if (live) setChecking(false); });
+    }, 450);
+    return () => { live = false; clearTimeout(t); };
+  }, [symbol, tf, left, operator, right, invalid]);
+
+  function applyPreset(p: (typeof PRESETS)[number]) {
+    setLeft(p.left); setOperator(p.operator); setRight(p.right);
+    if (p.tf) setTf(p.tf);
+  }
+
+  async function create() {
+    setBusy(true);
+    try {
+      onCreated(await indicatorAlertsApi.create(body));
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : 'Could not create the alert');
+      setBusy(false);
+    }
+  }
+
+  const crossing = operator === 'crosses_above' || operator === 'crosses_below';
+  return (
+    <Modal title="New indicator alert" wide onClose={onClose} busy={busy} testId="ia-builder"
+      footer={<><button className="x-btn x-btn--ghost" onClick={onClose} disabled={busy}>Cancel</button><button className="x-btn x-btn--hi" onClick={() => void create()} disabled={busy || invalid || !!previewErr || checking} data-testid="ia-create">{busy ? 'Creating…' : 'Create alert'}</button></>}>
+      <div className="ia-body">
+      <div className="x-field">
+        <label>Quick start</label>
+        <div className="ia-presets">
+          {PRESETS.map(p => <button key={p.name} type="button" className="x-btn x-btn--sm" onClick={() => applyPreset(p)} data-testid={`ia-preset-${p.name.replace(/\W+/g, '-').toLowerCase()}`}>{p.name}</button>)}
+        </div>
+      </div>
+      <div className="ia-grid">
+        <div className="x-field"><label>Market</label><SymbolSearch value={symbol} onSelect={setSymbol} /></div>
+        <div className="x-field">
+          <label>Timeframe</label>
+          <div className="x-seg x-seg--in x-seg--sm" role="radiogroup" aria-label="Timeframe">
+            {IA_TIMEFRAMES.map(t => <button key={t} type="button" role="radio" aria-checked={tf === t} onClick={() => setTf(t)} data-testid={`ia-tf-${t}`}>{t}</button>)}
+          </div>
+        </div>
+      </div>
+      <div className="x-field">
+        <label>When</label>
+        <OperandPicker catalogue={catalogue} value={left} onChange={setLeft} label="When" testId="ia-left" />
+      </div>
+      <div className="x-field">
+        <label htmlFor="ia-opsel">Condition</label>
+        <select id="ia-opsel" className="x-select" value={operator} onChange={e => setOperator(e.target.value as IaOperator)} data-testid="ia-operator">
+          {IA_OPERATORS.map(o => <option key={o} value={o}>{OPERATOR_LABEL[o]}</option>)}
+        </select>
+      </div>
+      <div className="x-field">
+        <div className="ia-than">
+          <label>Than</label>
+          <div className="x-seg x-seg--in x-seg--sm" role="radiogroup" aria-label="Compare with">
+            <button type="button" role="radio" aria-checked={right.kind === 'value'} onClick={() => right.kind !== 'value' && setRight({ kind: 'value', value: preview?.left != null ? Number(fmt(preview.left).replace(/,/g, '')) : 0 })} data-testid="ia-right-value">A number</button>
+            <button type="button" role="radio" aria-checked={right.kind === 'indicator'} disabled={!canCompareIndicator} onClick={() => { const r = firstRight(); if (r && right.kind !== 'indicator') setRight(r); }} data-testid="ia-right-ind">Another line</button>
+          </div>
+        </div>
+        {right.kind === 'value'
+          ? <input className="x-input m" type="number" inputMode="decimal" aria-label="Value" value={Number.isFinite(right.value) ? right.value : ''} onChange={e => setRight({ kind: 'value', value: e.target.value === '' ? NaN : Number(e.target.value) })} data-testid="ia-value" />
+          : <OperandPicker catalogue={catalogue} value={right} onChange={setRight} allow={allowRight} label="Than" testId="ia-right" />}
+      </div>
+
+      <div className={`ia-preview ${previewErr ? 'is-err' : preview?.met ? 'is-met' : ''}`} aria-live="polite" data-testid="ia-preview">
+        {previewErr ? <span className="cp-err">{previewErr}</span>
+          : !preview ? <span className="x-muted">Checking…</span>
+          : !preview.enoughData ? <span>Not enough history yet: {preview.bars} closed bars. The alert will start once there are enough.</span>
+          : <>
+              <span data-testid="ia-preview-now">{right.kind === 'indicator'
+                ? <>{preview.leftLabel} is <b className="m">{fmt(preview.left)}</b> and {preview.rightLabel} is <b className="m">{fmt(preview.right)}</b> now.</>
+                : <>{preview.leftLabel} is <b className="m">{fmt(preview.left)}</b> now.</>}</span>{' '}
+              <span className="x-muted" data-testid="ia-preview-met">{preview.met ? 'Condition met' : 'Not met'} on the {preview.timeframe} bar that opened {new Date(preview.barTime).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}.</span>
+            </>}
+      </div>
+      <p className="cp-fine">{crossing ? 'Alerts on the bar close where the cross happens.' : 'Alerts at the bar close where this becomes true, not on every bar it stays true.'} Checked only on closed bars, so a wick that reverses doesn&rsquo;t count.</p>
+
+      <div className="ia-grid">
+        <div className="x-field">
+          <label>Repeat</label>
+          <div className="x-seg x-seg--in x-seg--sm" role="radiogroup" aria-label="Repeat">
+            <button type="button" role="radio" aria-checked={recurring} onClick={() => setRecurring(true)} data-testid="ia-repeat">Every time</button>
+            <button type="button" role="radio" aria-checked={!recurring} onClick={() => setRecurring(false)} data-testid="ia-once">Once</button>
+          </div>
+        </div>
+        {recurring && (
+          <div className="x-field">
+            <label htmlFor="ia-cool">At most once per</label>
+            <select id="ia-cool" className="x-select" value={cooldownSec} onChange={e => setCooldown(Number(e.target.value))} data-testid="ia-cooldown">
+              {COOLDOWNS.map(c => <option key={c.sec} value={c.sec}>{c.sec === 0 ? 'Bar (no limit)' : c.label}</option>)}
+            </select>
+          </div>
+        )}
+      </div>
+      <div className="x-field"><label htmlFor="ia-note">Note <span className="x-muted">(optional)</span></label><input id="ia-note" className="x-input" maxLength={200} placeholder="e.g. Look for a long at support" value={note} onChange={e => setNote(e.target.value)} data-testid="ia-note" /></div>
+      </div>
+    </Modal>
+  );
+}

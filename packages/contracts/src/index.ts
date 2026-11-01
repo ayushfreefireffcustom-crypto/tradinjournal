@@ -295,6 +295,45 @@ export const alertsDispatchSchema = z.object({
 });
 export type AlertsDispatchInput = z.infer<typeof alertsDispatchSchema>;
 
+// ── Indicator alerts (E3) ─────────────────────────────────────────────────────
+// "RSI(14) crosses below 30 on BTCUSDT 1h". Checked once per closed bar; the
+// indicator catalogue and unit rules live in @tradinjournal/core.
+
+export const INDICATOR_ALERT_TIMEFRAMES = ['5m', '15m', '1h', '4h', '1d'] as const;
+export const INDICATOR_ALERT_OPERATORS = ['gt', 'gte', 'lt', 'lte', 'eq', 'crosses_above', 'crosses_below'] as const;
+const indicatorOperandSchema = z.object({
+  kind: z.literal('indicator'),
+  id: z.string().min(1).max(32),
+  output: z.string().min(1).max(32),
+  params: z.record(z.string().max(32), z.number().finite()).optional(),
+}).strict();
+const valueOperandSchema = z.object({ kind: z.literal('value'), value: z.number().finite() }).strict();
+export const alertOperandSchema = z.discriminatedUnion('kind', [indicatorOperandSchema, valueOperandSchema]);
+export type AlertOperand = z.infer<typeof alertOperandSchema>;
+
+// POST /api/indicator-alerts
+export const createIndicatorAlertSchema = z.object({
+  symbol: z.string().trim().min(1).max(32),
+  timeframe: z.enum(INDICATOR_ALERT_TIMEFRAMES),
+  left: indicatorOperandSchema,
+  operator: z.enum(INDICATOR_ALERT_OPERATORS),
+  right: alertOperandSchema,
+  // At most one notification per rule in this window; 0 = every qualifying bar.
+  cooldownSec: z.number().int().min(0).max(7 * 86_400).optional(),
+  recurring: z.boolean().optional(),
+  note: z.string().trim().max(200).optional(),
+}).strict();
+export type CreateIndicatorAlertInput = z.infer<typeof createIndicatorAlertSchema>;
+
+// PATCH /api/indicator-alerts/:id — re-arming a triggered one-shot sets status active.
+export const updateIndicatorAlertSchema = z.object({
+  status: z.enum(['active', 'paused']).optional(),
+  cooldownSec: z.number().int().min(0).max(7 * 86_400).optional(),
+  recurring: z.boolean().optional(),
+  note: z.string().trim().max(200).nullable().optional(),
+}).strict().refine((v) => Object.keys(v).length > 0, { message: 'Nothing to change.' });
+export type UpdateIndicatorAlertInput = z.infer<typeof updateIndicatorAlertSchema>;
+
 // ── Macro segment ─────────────────────────────────────────────────────────────
 // The single dashboard JSON the terminal AND the Claude assistant both consume.
 // Decimals are serialized to numbers, timestamps to ISO strings over the wire.

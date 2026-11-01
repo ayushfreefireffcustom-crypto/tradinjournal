@@ -10,7 +10,7 @@ export const NOTIFICATION_GROUP_LABELS: Record<NotificationGroup, { label: strin
   trades: { label: 'Trade fills', hint: 'Copied orders, fills and orders that could not be copied' },
   risk: { label: 'Risk', hint: 'Loss limits, profit targets, paused leaders, broken exchange keys' },
   ai: { label: 'AI', hint: 'SignalX and paper-strategy signals' },
-  news: { label: 'News & alerts', hint: 'Economic events, news and your price alerts' },
+  news: { label: 'News & alerts', hint: 'Economic events, news, and your price and indicator alerts' },
   reports: { label: 'Reports', hint: 'Summaries and reports' },
   system: { label: 'System', hint: 'Account, leader applications and everything else' },
 };
@@ -31,7 +31,7 @@ export function notificationGroupOf(kind: string): NotificationGroup {
   if (TRADES.has(kind)) return 'trades';
   if (RISK.has(kind) || kind.startsWith('exchange.')) return 'risk';
   if (kind === 'strategy_signal' || kind.startsWith('signalx') || kind.startsWith('ai.')) return 'ai';
-  if (kind === 'event_reminder' || kind === 'news_alert' || kind === 'actual_released' || kind === 'price_alert') return 'news';
+  if (kind === 'event_reminder' || kind === 'news_alert' || kind === 'actual_released' || kind === 'price_alert' || kind === 'indicator_alert') return 'news';
   if (kind.startsWith('report') || kind.startsWith('digest')) return 'reports';
   return 'system';
 }
@@ -42,7 +42,7 @@ export function notificationKindFilter(group: NotificationGroup): { in?: string[
     case 'trades': return { in: [...TRADES] };
     case 'risk': return { in: [...RISK], startsWith: ['exchange.'] };
     case 'ai': return { in: ['strategy_signal'], startsWith: ['signalx', 'ai.'] };
-    case 'news': return { in: ['event_reminder', 'news_alert', 'actual_released', 'price_alert'] };
+    case 'news': return { in: ['event_reminder', 'news_alert', 'actual_released', 'price_alert', 'indicator_alert'] };
     case 'reports': return { startsWith: ['report', 'digest'] };
     case 'system': return {};
   }

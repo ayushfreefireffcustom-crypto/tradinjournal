@@ -7,7 +7,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import AppShell from '@/components/app-shell';
 import { useAccounts } from '@/lib/use-accounts';
 import type { BrokerAccount } from '@/lib/api';
-import { marketApi, type MarketTimeframe } from '@/lib/market-api';
+import { MARKET_TIMEFRAMES, marketApi, type MarketTimeframe } from '@/lib/market-api';
 import { alertsApi, type CreateAlertBody } from '@/lib/alerts-api';
 import LayoutGrid, { type Pane } from '@/components/charts/layout-grid';
 import type { KlineChartHandle } from '@/components/charts/kline-chart';
@@ -67,14 +67,17 @@ export default function ChartsPage() {
     else chartRefs.current.delete(id);
   }, []);
 
-  // Deep-link support: /charts?symbol=ETHUSDT (e.g. from a price-alert notification)
+  // Deep-link support: /charts?symbol=ETHUSDT&tf=1h (e.g. from an alert notification)
   // opens that symbol in the active pane. Read after mount to avoid an SSR/hydration
   // mismatch from reading window during render.
   useEffect(() => {
-    const sym = new URLSearchParams(window.location.search).get('symbol');
+    const q = new URLSearchParams(window.location.search);
+    const sym = q.get('symbol');
+    const tf = q.get('tf');
     if (sym && sym.trim()) {
       const symbol = sym.trim().toUpperCase();
-      setPanes(prev => prev.map((p, i) => (i === 0 ? { ...p, symbol } : p)));
+      const frame = tf && (MARKET_TIMEFRAMES as readonly string[]).includes(tf) ? (tf as MarketTimeframe) : undefined;
+      setPanes(prev => prev.map((p, i) => (i === 0 ? { ...p, symbol, ...(frame ? { tf: frame } : {}) } : p)));
     }
   }, []);
 

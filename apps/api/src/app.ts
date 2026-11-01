@@ -26,6 +26,7 @@ import { notificationsRouter, pushRouter, notificationsInternalRouter, telegramW
 import { marketRouter, marketInternalRouter } from './modules/market/market.routes.js';
 import { traderRouter, traderInternalRouter } from './modules/trader/trader.routes.js';
 import { alertsRouter, alertsInternalRouter } from './modules/alerts/alerts.routes.js';
+import { indicatorAlertsRouter } from './modules/alerts/indicator-alerts.routes.js';
 import { adminRouter } from './modules/admin/admin.routes.js';
 import { accessRouter } from './modules/admin/access.routes.js';
 import { usageRouter } from './modules/usage/usage.routes.js';
@@ -133,6 +134,7 @@ export function createApp(): Express {
   if (env.TELEGRAM_ENABLED) app.use('/api/telegram', telegramWebhookRouter);
   app.use('/api/market', marketRouter);
   app.use('/api/alerts', alertsRouter);
+  app.use('/api/indicator-alerts', indicatorAlertsRouter);
   app.use('/api/macro', macroRouter);
   app.use('/api/trader', traderRouter);
   // Worker-to-API routes. Not under /api: no session, no CORS use case — the

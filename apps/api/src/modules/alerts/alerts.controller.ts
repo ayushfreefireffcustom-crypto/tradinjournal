@@ -2,7 +2,9 @@ import type { Request, Response, NextFunction } from 'express';
 import type { CreateAlertInput, UpdateAlertInput } from '@tradinjournal/contracts';
 import { ok, created } from '../../http/response.js';
 import { NotFoundError } from '../../http/errors.js';
+import { logger } from '@tradinjournal/logger';
 import { listAlerts, createAlert, updateAlert, deleteAlert, dispatchPriceAlerts } from './alerts.service.js';
+import { dispatchIndicatorAlerts } from './indicator-alerts.service.js';
 
 // GET /api/alerts — the user's price alerts.
 export async function handleListAlerts(_req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -42,10 +44,16 @@ export async function handleDeleteAlert(req: Request, res: Response, next: NextF
   }
 }
 
-// POST /internal/alerts/dispatch — worker-only. Check + fire due alerts.
+// POST /internal/alerts/dispatch — worker-only. Check + fire due price and
+// indicator alerts. An indicator failure never holds up price alerts.
 export async function handleDispatchAlerts(_req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    ok(res, await dispatchPriceAlerts());
+    const price = await dispatchPriceAlerts();
+    const indicators = await dispatchIndicatorAlerts().catch((err: Error) => {
+      logger.warn(`[indicator-alerts] dispatch failed: ${err.message}`);
+      return null;
+    });
+    ok(res, { ...price, indicators });
   } catch (err) {
     next(err);
   }

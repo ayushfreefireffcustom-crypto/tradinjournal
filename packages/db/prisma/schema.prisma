@@ -53,6 +53,7 @@ model User {
   telegramLinkCodes TelegramLinkCode[]
   tradingWebhook    TradingWebhook?
   apiKeys           ApiKey[]
+  indicatorAlerts   IndicatorAlert[]
 
   @@map("user")
 }
@@ -1569,4 +1570,52 @@ model ApiKey {
 
   @@index([userId])
   @@map("api_key")
+}
+
+/// An alert on an indicator condition, checked once per closed bar (E3).
+model IndicatorAlert {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  symbol      String
+  timeframe   String // 5m | 15m | 1h | 4h | 1d
+  /// {kind:'indicator', id, output, params}
+  left        Json
+  /// gt | gte | lt | lte | eq | crosses_above | crosses_below
+  operator    String
+  /// {kind:'indicator', ...} or {kind:'value', value}
+  right       Json
+  cooldownSec Int       @default(3600)
+  recurring   Boolean   @default(true)
+  /// active | paused | triggered
+  status      String    @default("active")
+  note        String?
+  /// Open time of the last closed bar evaluated; a bar is never evaluated twice.
+  lastBarTime DateTime?
+  lastLeft    Float?
+  lastRight   Float?
+  lastFiredAt DateTime?
+  fireSeq     Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  firings IndicatorAlertFiring[]
+
+  @@index([status, symbol, timeframe])
+  @@index([userId])
+  @@map("indicator_alert")
+}
+
+/// Each time an indicator alert fired, for "recent firings" (E4).
+model IndicatorAlertFiring {
+  id        String         @id @default(cuid())
+  alertId   String
+  alert     IndicatorAlert @relation(fields: [alertId], references: [id], onDelete: Cascade)
+  firedAt   DateTime       @default(now())
+  barTime   DateTime
+  leftValue Float
+  rightValue Float
+
+  @@index([alertId, firedAt])
+  @@map("indicator_alert_firing")
 }

@@ -14,7 +14,7 @@ import { useTheme } from './use-theme';
 import { useExchangeConnections } from '@/lib/use-exchange-connections';
 import { venueName, type ExchangeConnection } from '@/lib/copy-api';
 import {
-  IAdmin, IAnalytics, IBrokers, ICalendar, ICharts, ICheck, IChevronDown, IClose, ICoach, IDashboard, IJournal, ILink, IMacro, IMarkets,
+  IAdmin, IAnalytics, IBell, IBrokers, ICalendar, ICharts, ICheck, IChevronDown, IClose, ICoach, IDashboard, IJournal, ILink, IMacro, IMarkets,
   IPartner, IPlus, IReplay, ISearch, ISettings, ISignalX, ISync, ITradeLog, IUsers, IMirror, IExchange, ILeader,
 } from '@/components/v3/icons';
 import '@/styles/v6/tokens.css';
@@ -36,6 +36,7 @@ export const NAV: { title: string; items: FrameNavItem[] }[] = [
   { title: 'Markets', items: [
     { href: '/charts', label: 'Charts', icon: ICharts },
     { href: '/markets', label: 'Markets', icon: IMarkets },
+    { href: '/alerts', label: 'Alerts', icon: IBell },
     { href: '/macro', label: 'Macro', icon: IMacro },
   ] },
   { title: 'AI', items: [

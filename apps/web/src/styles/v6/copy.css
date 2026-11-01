@@ -351,3 +351,41 @@
 .v6 .ak-ex { margin-bottom: 10px; }
 .v6 .ak-ex-h { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; font-size: 13px; }
 .v6 .ak-ex-h b { font-weight: 500; }
+
+/* Indicator alerts (E4) */
+.v6 .ia-note { font-size: 12px; margin-top: 2px; }
+.v6 .ia-tbl td:nth-child(2) { min-width: 240px; }
+.v6 .ia-none { margin: 0; font-size: 13px; line-height: 1.5; }
+.v6 .ia-firings { list-style: none; margin: 0; padding: 0; display: grid; }
+.v6 .ia-firings li { display: grid; grid-template-columns: 90px minmax(110px, auto) 1fr; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); font-size: 13px; align-items: baseline; }
+.v6 .ia-firings li:first-child { border-top: 0; }
+.v6 .ia-when { color: var(--mut); font-size: 12px; }
+.v6 .ia-presets { display: flex; flex-wrap: wrap; gap: 6px; }
+.v6 .ia-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.v6 .ia-op { display: grid; gap: 8px; }
+.v6 .ia-op-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.v6 .ia-op-row .x-select { flex: 1 1 160px; min-width: 0; }
+.v6 .ia-params { display: flex; gap: 8px; flex-wrap: wrap; }
+.v6 .ia-param { display: grid; gap: 3px; font-size: 11.5px; color: var(--mut); width: 92px; }
+.v6 .ia-param .x-input { width: 100%; }
+.v6 .ia-than { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
+.v6 .ia-than label { margin: 0; }
+.v6 .ia-preview { padding: 10px 12px; border-radius: 10px; background: var(--s2); font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+.v6 .ia-preview.is-met { box-shadow: inset 3px 0 0 var(--g); }
+.v6 .ia-preview.is-err { box-shadow: inset 3px 0 0 var(--r); }
+@media (max-width: 760px) {
+  .v6 .ia-grid { grid-template-columns: 1fr; }
+  .v6 .ia-firings li { grid-template-columns: 1fr; gap: 2px; }
+  /* Rules as stacked cards: every action stays on screen. */
+  .v6 .ia-tbl, .v6 .ia-tbl tbody, .v6 .ia-tbl tr, .v6 .ia-tbl td { display: block; width: auto; }
+  .v6 .ia-tbl thead { display: none; }
+  .v6 .ia-tbl tr { padding: 12px 0; border-top: 1px solid var(--line); }
+  .v6 .ia-tbl tr:first-child { border-top: 0; }
+  .v6 .ia-tbl td { padding: 2px 0; border: 0; text-align: left; min-width: 0 !important; }
+  .v6 .ia-tbl td:nth-child(3)::before { content: 'At last close  '; color: var(--mut); white-space: pre; }
+  .v6 .ia-tbl td:nth-child(4)::before { content: 'Last alert  '; color: var(--mut); white-space: pre; }
+  .v6 .ia-tbl td:nth-child(5) { padding-top: 6px; }
+  .v6 .ia-tbl .trd-acts { text-align: left; padding-top: 8px; }
+}
+.v6 .ia-body { display: grid; gap: 16px; }
+.v6 .ia-body > .cp-fine { margin-top: -8px; }
