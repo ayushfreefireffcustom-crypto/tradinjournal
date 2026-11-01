@@ -27,7 +27,7 @@ accounts. Nothing here is live until you set `TRADING_ENABLED=true`.
 
 ## Database
 
-Fourteen additive migrations (the first seven applied to Neon on 1 Nov 2026), applied with `prisma migrate deploy` after `migrate status` and your OK:
+Sixteen additive migrations (the first seven applied to Neon on 1 Nov 2026), applied with `prisma migrate deploy` after `migrate status` and your OK:
 - `20261031071652_trading_platform`: new tables only
 - `20261031072510_exchange_order_realized_pnl`: one nullable column and an index on `exchange_order`
 - `20261031120000_copy_follow_risk_and_profit_cap`: three nullable columns on `copy_follow`
@@ -42,6 +42,15 @@ Fourteen additive migrations (the first seven applied to Neon on 1 Nov 2026), ap
 - `20261101160000_saved_screens`: one new table, `saved_screen` (screener saved screens), cascading on user delete. Not trading-only. **Not yet on Neon**
 - `20261101170000_strategies`: three new tables, `strategy`, `strategy_version` and `strategy_backtest` (strategy builder, Part F), cascading on user and strategy delete. Existing `trader_strategy` rows are imported on first visit, not altered. **Not yet on Neon**
 - `20261101180000_strategy_deployments`: three new tables, `strategy_deployment`, `deployment_trade` and `deployment_event` (paper and live strategy runs, their trades and activity feed), cascading on user, strategy and deployment delete. **Not yet on Neon**
+- `20261102090000_account_security`: three nullable/defaulted columns on `user` (`phone`, `twoFactorEnabled`, `tour`) and three new tables, `two_factor`, `activity_event` and `feedback`, all cascading on user delete. Needed before the two-factor plugin is deployed: better-auth reads `user.twoFactorEnabled` on every sign-in. **Not yet on Neon**
+- `20261102100000_marketplace`: one nullable column on `strategy` (`templateId`) and three new tables, `creator_profile`, `strategy_template` and `template_subscription`. **Not yet on Neon**
+
+## Account, help and plans (Part H)
+
+- `NEXT_PUBLIC_SUPPORT_WHATSAPP` (web, optional): digits with country code; adds a WhatsApp option on /help. Unset: email and docs only.
+- Feedback from /help is emailed to `ADMIN_EMAILS` and listed on /admin/feedback.
+- `PLANS_ENABLED` (API, default off): everyone is on Free, which has every feature and today's limits. `PLAN_ASSIGNMENTS` (e.g. `pro:a@x.com,b@y.com`) puts people on another plan once plans are on, until billing exists. Limits and plans live in `apps/api/src/lib/plans.ts`.
+- Deleting an account emails a code (Resend must be configured in production) and removes every row for that user, including tables without a foreign key.
 
 ## Telegram alerts (optional)
 

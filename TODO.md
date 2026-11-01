@@ -424,7 +424,7 @@ Legend:
 ---
 
 # PART E — Analytics engine (Phase 3)
-- [ ] E1 Shared indicator engine in `packages/core` with typed params, min/max, a "comparable" flag, and unit tests per indicator. Covers the full CM catalogue of 52, in batches below `L → split`:
+- [x] E1 Shared indicator engine in `packages/core` with typed params, min/max, a "comparable" flag, and unit tests per indicator. Covers the full CM catalogue of 52, in batches below `L → split`:
   - [x] E1a Trend: EMA, SMA, WMA, VWMA, Hull, DEMA, TEMA `M` (done 1 Nov)
   - [x] E1b Trend: MACD, MACD hist, ADX, Supertrend, PSAR, Donchian U/L `M` (done 1 Nov)
   - [x] E1c Ichimoku (Tenkan, Kijun, Span A/B, Chikou) `S` (done 1 Nov)
@@ -538,21 +538,21 @@ Legend:
 ---
 
 # PART H — Marketplace, account, AI, platform (Phase 6)
-- [ ] H1 Strategy templates marketplace: browse (category, risk, sort), detail (rules private, **verified performance**), subscribe & deploy `M`
-- [ ] H2 Creator programme: apply, publish templates with tunable params and an exchange allowlist; pricing fields hidden while everything is free `M`
-- [ ] H3 Subscriptions page: pause / adjust sizing / cancel `S`
-- [ ] H4 Sessions & devices page: list (UA/IP/started/expires), revoke, sign out everywhere else (better-auth) `S`
-- [ ] H5 TOTP 2FA (better-auth plugin), recovery codes `M`
-- [ ] H6 Delete account with email OTP, plus data export `M`
-- [ ] H7 Activity log (sign-ins, connections, follows, orders) `S`
-- [ ] H8 Profile: timezone (IANA), phone (optional) `S`
-- [ ] H9 Guided product tour (dashboard, builder, leaders, AI, analytics); dismissible, state saved `M`
-- [ ] H10 Help page: email, WhatsApp, docs, report a bug, feedback box ("a person reads every one") `S`
-- [ ] H11 AI chat context chips (open positions, fills 7d, live strategies, follows) + tools (generate strategy, explain pattern, tune strategy with confirm) `M`
-- [ ] H12 AI watcher merged into alerts (rule catalogue + plain-English explanations) `M`
-- [ ] H13 In-app docs (English; Hindi later) `M`
-- [ ] H14 PWA install + biometric unlock research (WebAuthn passkeys) `M`
-- [ ] H15 Plans/limits infrastructure (entitlements middleware), **all free for now**, so turning plans on later is config only `M`
+- [x] H1 Strategy templates marketplace: browse (category, risk, sort), detail (rules private, **verified performance**), subscribe & deploy `M`
+- [x] H2 Creator programme: apply, publish templates with tunable params and an exchange allowlist; pricing fields hidden while everything is free `M`
+- [x] H3 Subscriptions page: pause / adjust sizing / cancel `S`
+- [x] H4 Sessions & devices page: list (UA/IP/started/expires), revoke, sign out everywhere else (better-auth) `S`
+- [x] H5 TOTP 2FA (better-auth plugin), recovery codes `M`
+- [x] H6 Delete account with email OTP, plus data export `M`
+- [x] H7 Activity log (sign-ins, connections, follows, orders) `S`
+- [x] H8 Profile: timezone (IANA), phone (optional) `S`
+- [x] H9 Guided product tour (dashboard, builder, leaders, AI, analytics); dismissible, state saved `M`
+- [x] H10 Help page: email, WhatsApp, docs, report a bug, feedback box ("a person reads every one") `S`
+- [x] H11 AI chat context chips (open positions, fills 7d, live strategies, follows) + tools (generate strategy, explain pattern, tune strategy with confirm) `M`
+- [x] H12 AI watcher merged into alerts (rule catalogue + plain-English explanations) `M`
+- [x] H13 In-app docs (English; Hindi later) `M`
+- [x] H14 PWA install + biometric unlock research (WebAuthn passkeys) `M`
+- [x] H15 Plans/limits infrastructure (entitlements middleware), **all free for now**, so turning plans on later is config only `M`
 
 ---
 
