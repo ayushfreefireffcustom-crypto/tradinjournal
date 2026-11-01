@@ -89,9 +89,9 @@ export const strategiesApi = {
 };
 
 // ── Small helpers shared by the builder ───────────────────────────────────────
-export const pct = (v: number | null | undefined, d = 1) => (v == null ? '—' : `${v > 0 ? '+' : ''}${v.toFixed(d)}%`);
+export const pct = (v: number | null | undefined, d = 1) => (v == null ? '—' : `${v >= 0.5 * 10 ** -d ? '+' : v <= -0.5 * 10 ** -d ? '−' : ''}${Math.abs(v).toFixed(d)}%`);
 export const num = (v: number | null | undefined, d = 2) => (v == null ? '—' : v.toFixed(d));
-export const usd = (v: number | null | undefined) => (v == null ? '—' : `${v < 0 ? '−' : ''}$${Math.abs(v).toLocaleString('en-US', { maximumFractionDigits: 2 })}`);
+export const usd = (v: number | null | undefined) => (v == null ? '—' : `${v <= -0.005 ? '−' : ''}$${Math.abs(v).toLocaleString('en-US', { maximumFractionDigits: 2 })}`);
 export const tone = (v: number | null | undefined) => (v == null || Math.abs(v) < 1e-9 ? '' : v > 0 ? 'pos' : 'neg');
 export const RANGE_PRESETS = [
   { id: '30d', label: '30 days', days: 30 }, { id: '90d', label: '90 days', days: 90 }, { id: '180d', label: '6 months', days: 180 }, { id: '365d', label: '1 year', days: 365 },
@@ -101,3 +101,38 @@ export function rangeParams(days: number, capital = 10_000, slippageBps = 5): Ba
   return { from: new Date(to.getTime() - days * 86_400_000).toISOString(), to: to.toISOString(), capital, slippageBps };
 }
 export const emptyCondition = (): StrategyCondition => ({ left: { kind: 'indicator', id: 'rsi', output: 'value', params: { length: 14 } }, operator: 'crosses_above', right: { kind: 'value', value: 30 } });
+
+// ── Deployments (F15-F18, F23) ────────────────────────────────────────────────
+export interface DeploymentTrade { symbol: string; side: string; qty: number; entryPrice: number; entryTime: string; exitPrice: number; exitTime: string; pnl: number; pnlPct: number; fees: number; rMultiple: number | null; reason: string }
+export interface OpenPos { symbol: string; side: 'long' | 'short'; qty: number; entryPrice: number; entryTime: number; stop: number | null; target: number | null; lastPrice: number; unrealized: number }
+export interface DeploymentRow {
+  id: string; strategyId: string; name: string; version: number; mode: 'paper' | 'live'; status: 'running' | 'paused' | 'stopping' | 'stopped' | 'errored' | 'archived';
+  capital: number; multiplier: number; connectionId: string | null; startedAt: string; stoppedAt: string | null; stopReason: string | null;
+  lastEvaluatedAt: string | null; lastBarTime: string | null; error: string | null; closedPnl: number; openPnl: number; tradeCount: number; open: OpenPos[]; killed: boolean; spark: number[];
+  recentTrades?: DeploymentTrade[];
+}
+export interface DeploymentEvent { id: string; at: string; symbol: string | null; kind: string; message: string; data: { conditions?: Array<{ text: string; met: boolean | null }> } | null }
+export interface DeploymentDetail extends DeploymentRow {
+  strategyVersion: number; strategyName: string; spec: StrategySpec; metrics: Metrics | null; equity: Array<{ t: number; equity: number }>;
+  pending: Array<{ symbol: string; side: string; kind: string }>; pauses: Array<{ from: number; to: number | null }>; sizeSchedule: Array<{ from: number; multiplier: number }>;
+  trades: DeploymentTrade[]; events: DeploymentEvent[];
+}
+export type DeployAction = 'pause' | 'resume' | 'stop' | 'settle' | 'emergency_close' | 'archive';
+export interface Report { mode: 'paper' | 'live'; days: number | null; capital: number; deployments: Array<{ id: string; name: string; strategyId: string; status: string; capital: number; startedAt: string }>; trades: Array<DeploymentTrade & { deploymentId: string; deployment: string }> }
+
+async function dcall<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(`${API}/api/deployments${path}`, { credentials: 'include', ...init, headers: { 'Content-Type': 'application/json', ...init?.headers } });
+  const json = (await res.json().catch(() => null)) as { data?: T; error?: { code?: string; message?: string } } | null;
+  if (!res.ok) throw new ApiError(json?.error?.message ?? `Request failed (${res.status})`, res.status, json?.error?.code);
+  return json!.data as T;
+}
+export const deploymentsApi = {
+  create: (strategyId: string, b: { mode: 'paper' | 'live'; capital?: number; connectionId?: string; sizeMultiplier?: number; confirmLive?: boolean }) => call<DeploymentDetail>(`/${strategyId}/deployments`, body('POST', b)),
+  forStrategy: (strategyId: string) => call<DeploymentRow[]>(`/${strategyId}/deployments`),
+  list: () => dcall<DeploymentRow[]>(''),
+  get: (id: string) => dcall<DeploymentDetail>(`/${id}`),
+  act: (id: string, action: DeployAction) => dcall<DeploymentDetail>(`/${id}/${action}`, { method: 'POST' }),
+  size: (id: string, multiplier: number) => dcall<DeploymentDetail>(`/${id}/size`, { method: 'POST', body: JSON.stringify({ multiplier }) }),
+  report: (mode: 'paper' | 'live', days: number | 'all') => dcall<Report>(`/report?mode=${mode}&days=${days}`),
+};
+export const STATUS_TEXT: Record<DeploymentRow['status'], string> = { running: 'Running', paused: 'Paused', stopping: 'Stopping', stopped: 'Stopped', errored: 'Needs attention', archived: 'Archived' };

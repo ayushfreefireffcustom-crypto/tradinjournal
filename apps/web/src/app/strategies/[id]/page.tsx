@@ -10,10 +10,11 @@ import AppShell from '@/components/app-shell';
 import { useToast } from '@/components/toast';
 import { ErrorCard, Modal, useLoad } from '@/components/v6/copy/parts';
 import BacktestPanel from '@/components/v6/strategy/backtest-panel';
+import DeployDialog from '@/components/v6/strategy/deploy-dialog';
 import { AdvancedZone, EntryZone, ExitZone, MarketZone, RiskZone, SessionZone, SizingZone } from '@/components/v6/strategy/zones';
 import { ApiError } from '@/lib/copy-api';
 import { indicatorAlertsApi } from '@/lib/indicator-alerts-api';
-import { strategiesApi, type StrategyDetail, type StrategySpec, type Validation } from '@/lib/strategies-api';
+import { STATUS_TEXT, deploymentsApi, strategiesApi, tone, usd, type DeploymentRow, type StrategyDetail, type StrategySpec, type Validation } from '@/lib/strategies-api';
 import '@/styles/v6/copy.css';
 import '@/styles/v6/markets.css';
 
@@ -45,6 +46,9 @@ export default function StrategyBuilderPage() {
   const [note, setNote] = useState('');
   const [versionsOpen, setVersionsOpen] = useState(false);
   const [name, setName] = useState('');
+  const [deploying, setDeploying] = useState(false);
+  const [runs, setRuns] = useState<DeploymentRow[] | null>(null);
+  useEffect(() => { deploymentsApi.forStrategy(id).then(setRuns, () => setRuns([])); }, [id]);
 
   useEffect(() => { try { const l = localStorage.getItem('tradelogs.builder.layout'); if (l === 'flow' || l === 'cockpit') setLayout(l); } catch { /* ignore */ } }, []);
   const pickLayout = (l: Layout) => { setLayout(l); try { localStorage.setItem('tradelogs.builder.layout', l); } catch { /* ignore */ } };
@@ -106,6 +110,7 @@ export default function StrategyBuilderPage() {
       actions={<>
         <Link className="x-btn" href="/strategies">All strategies</Link>
         <button className="x-btn" onClick={() => setVersionsOpen(true)} data-testid="sb-versions">Versions</button>
+        <button className="x-btn" onClick={() => setDeploying(true)} disabled={dirty || blockers.length > 0} title={dirty ? 'Save first' : blockers.length ? 'Fix the blocking issues first' : undefined} data-testid="sb-run">Run</button>
         <button className="x-btn x-btn--hi" onClick={() => void save()} disabled={!dirty && name === strategy.name || saving} data-testid="sb-save">{saving ? 'Saving…' : dirty ? 'Save' : 'Saved'}</button>
       </>}>
       <div className="x-page sb-page" data-testid="sb-page">
@@ -143,6 +148,18 @@ export default function StrategyBuilderPage() {
               {!blockers.length && !check?.validation.warnings.length && !check?.validation.live.length && <p className="x-muted">Nothing to flag.</p>}
             </section>
             <BacktestPanel strategy={strategy} spec={spec} dirty={dirty} blocked={blockers.length > 0} onSaved={load} />
+            {!!runs?.length && (
+              <section className="x-card" aria-label="Runs" data-testid="sb-deployments">
+                <div className="x-ch"><h2>Runs</h2><Link className="x-link" href="/strategies/deployments">All</Link></div>
+                {runs.slice(0, 6).map(r => (
+                  <Link key={r.id} href={`/strategies/deployments/${r.id}`} className="sb-run">
+                    <span><span className={`x-tag ${r.mode === 'live' ? 'x-tag--r' : ''}`}>{r.mode === 'live' ? 'Live' : 'Paper'}</span> v{r.version}</span>
+                    <span className="x-muted">{STATUS_TEXT[r.status]}</span>
+                    <span className={`m ${tone(r.closedPnl + r.openPnl)}`}>{usd(r.closedPnl + r.openPnl)}</span>
+                  </Link>
+                ))}
+              </section>
+            )}
             <div className="sb-danger">
               <button className="x-btn x-btn--sm x-btn--ghost" onClick={async () => { const d = await strategiesApi.duplicate(strategy.id); router.push(`/strategies/${d.id}`); }} data-testid="sb-dup">Duplicate</button>
               <button className="x-btn x-btn--sm x-btn--ghost" onClick={async () => { load(await strategiesApi.update(strategy.id, { status: strategy.status === 'archived' ? 'draft' : 'archived' })); }} data-testid="sb-archive">{strategy.status === 'archived' ? 'Unarchive' : 'Archive'}</button>
@@ -150,6 +167,7 @@ export default function StrategyBuilderPage() {
           </aside>
         </div>
       </div>
+      {deploying && <DeployDialog strategy={strategy} onClose={() => setDeploying(false)} onStarted={d => router.push(`/strategies/deployments/${d.id}`)} />}
       {versionsOpen && (
         <Modal title="Versions" sub="Every saved change to the rules. Restoring makes a new version; nothing is lost." onClose={() => setVersionsOpen(false)} testId="sb-versions-dialog">
           <ul className="sb-vers">

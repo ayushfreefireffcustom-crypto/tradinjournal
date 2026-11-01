@@ -9,6 +9,7 @@ import AppShell, { timeAgo } from '@/components/app-shell';
 import ConnectBrokerModal from '@/components/connect-broker-modal';
 import { useToast } from '@/components/toast';
 import { IPlus } from '@/components/v3/icons';
+import StrategiesCard from '@/components/v6/strategy/strategies-card';
 import {
   BreakdownCard, CoachReview, DailyCard, DeskSkeleton, EquityCard, KpiColumn, RecentTrades,
 } from '@/components/v6/desk';
@@ -134,6 +135,7 @@ export default function DashboardPage() {
             <CoachReview accountId={selected?.id ?? null} />
           </>
         )}
+        <StrategiesCard />
       </div>
 
       {showConnect && <ConnectBrokerModal onClose={() => setShowConnect(false)} onConnected={onConnected} />}

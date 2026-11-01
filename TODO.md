@@ -507,15 +507,15 @@ Legend:
   - metrics: return, CAGR, win rate, PF, max DD, Sharpe, Sortino, trades, avg slippage, fees
 - [x] F13 **Auto-backtest on edit (debounced) + pinned baseline comparison** `M`
 - [x] F14 Backtest page: saved strategy, dates, capital, fee model, slippage; run history with full stats `M`
-- [ ] F15 Paper deployments (generalise `TraderPaperPosition` / `/trader/paper/tick`) with live P&L `M`
-- [ ] F16 Live deployments through the engine: start/pause/resume/stop/settle/emergency close; honest state copy `L → split`
-- [ ] F17 Deployment list: tabs All/Live/Paused/Errored/Stopped/Archived, sparklines, inline trades, size multiplier `M`
-- [ ] F18 Strategy activity feed (each evaluation, why it did or didn't enter) + last evaluation `M`
+- [x] F15 Paper deployments (generalise `TraderPaperPosition` / `/trader/paper/tick`) with live P&L `M`
+- [x] F16 Live deployments through the engine: start/pause/resume/stop/settle/emergency close; honest state copy `L → split`
+- [x] F17 Deployment list: tabs All/Live/Paused/Errored/Stopped/Archived, sparklines, inline trades, size multiplier `M`
+- [x] F18 Strategy activity feed (each evaluation, why it did or didn't enter) + last evaluation `M`
 - [x] F19 Strategy version history; rule edits don't touch open trades `S`
 - [x] F20 My strategies page (P&L figures wait for deployments): stat strip (closed P&L 30D, open P&L, trades, best, worst, AI strategies), filters (All/Live/Paused/Draft/AI/Marketplace/Archived), sort `M`
 - [x] F21 **AI strategy generator** (text + symbol + TF → spec → quick backtest → open in builder) on Claude; live, not "coming soon" `M`
-- [ ] F22 Paper/Live toggle on the dashboard and reports `S`
-- [ ] F23 Reports & P&L page: KPIs, equity, drawdown, distribution, per-pair attribution; **PDF export** `M`
+- [x] F22 Paper/Live toggle on the dashboard and reports `S`
+- [x] F23 Reports & P&L page: KPIs, equity, drawdown, distribution, per-pair attribution; **PDF export** `M`
 
 ---
 

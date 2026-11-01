@@ -9,7 +9,7 @@ import { useToast } from '@/components/toast';
 import { ErrorCard, Modal, useLoad } from '@/components/v6/copy/parts';
 import SymbolSearch from '@/components/charts/symbol-search';
 import { ApiError } from '@/lib/copy-api';
-import { INTERVALS, pct, strategiesApi, tone, type Interval, type StrategyRow } from '@/lib/strategies-api';
+import { INTERVALS, deploymentsApi, pct, strategiesApi, tone, usd, type Interval, type StrategyRow } from '@/lib/strategies-api';
 import '@/styles/v6/copy.css';
 import '@/styles/v6/markets.css';
 
@@ -22,6 +22,11 @@ export default function StrategiesPage() {
   const router = useRouter();
   const toast = useToast();
   const list = useLoad(() => strategiesApi.list(), []);
+  const deps = useLoad(() => deploymentsApi.list(), []);
+  const pnl = useMemo(() => {
+    const ds = deps.data ?? [];
+    return { closed: ds.reduce((a, d) => a + d.closedPnl, 0), open: ds.reduce((a, d) => a + d.openPnl, 0), any: ds.length > 0 };
+  }, [deps.data]);
   const [filter, setFilter] = useState<Filter>('all');
   const [sort, setSort] = useState<Sort>('updated');
   const [creating, setCreating] = useState(false);
@@ -52,13 +57,15 @@ export default function StrategiesPage() {
   return (
     <AppShell legacy={false} pageTitle="Strategies" pageSubtitle="Build, backtest and run rule-based strategies"
       actions={<>
+        <Link className="x-btn" href="/strategies/deployments" data-testid="st-deployments">Deployments</Link>
+        <Link className="x-btn" href="/strategies/reports">Reports</Link>
         <button className="x-btn" onClick={() => setAiOpen(true)} data-testid="st-ai">Generate with AI</button>
         <button className="x-btn x-btn--hi" onClick={() => void createBlank()} disabled={creating} data-testid="st-new">{creating ? 'Creating…' : 'New strategy'}</button>
       </>}>
       <div className="x-page" data-testid="st-page">
         <section className="st-strip" aria-label="Summary" data-testid="st-strip">
           <div className="x-card ov-kpi"><div className="ov-kpi-h">Strategies</div><div className="ov-kpi-v"><b className="m">{stats.total}</b></div><div className="ov-kpi-s">{stats.ai} made with AI</div></div>
-          <div className="x-card ov-kpi"><div className="ov-kpi-h">Running</div><div className="ov-kpi-v"><b className="m">{stats.live}</b> live · <b className="m">{stats.paper}</b> paper</div><div className="ov-kpi-s">Closed P&amp;L (30d) <span className="m">—</span> until a deployment closes a trade</div></div>
+          <div className="x-card ov-kpi"><div className="ov-kpi-h">Running</div><div className="ov-kpi-v"><b className="m">{stats.live}</b> live · <b className="m">{stats.paper}</b> paper</div><div className="ov-kpi-s">{pnl.any ? <>Closed P&amp;L <span className={`m ${tone(pnl.closed)}`}>{usd(pnl.closed)}</span> · open <span className={`m ${tone(pnl.open)}`}>{usd(pnl.open)}</span></> : <>No runs yet</>}</div></div>
           <div className="x-card ov-kpi"><div className="ov-kpi-h">Best backtest</div>{stats.best ? <><div className="ov-kpi-v"><b className={`m ${tone(stats.best.lastBacktest!.metrics.totalReturnPct)}`}>{pct(stats.best.lastBacktest!.metrics.totalReturnPct)}</b></div><div className="ov-kpi-s">{stats.best.name}</div></> : <div className="x-muted">No runs yet</div>}</div>
           <div className="x-card ov-kpi"><div className="ov-kpi-h">Worst backtest</div>{stats.worst ? <><div className="ov-kpi-v"><b className={`m ${tone(stats.worst.lastBacktest!.metrics.totalReturnPct)}`}>{pct(stats.worst.lastBacktest!.metrics.totalReturnPct)}</b></div><div className="ov-kpi-s">{stats.worst.name}</div></> : <div className="x-muted">No runs yet</div>}</div>
         </section>
