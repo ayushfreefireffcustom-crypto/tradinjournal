@@ -9,7 +9,7 @@ const EXCHANGES = ['DELTA', 'COINDCX'] as const;
 const EXCHANGE_LABEL: Record<(typeof EXCHANGES)[number], string> = { DELTA: 'Delta', COINDCX: 'CoinDCX' };
 
 const EXPLORER_PERKS = ['All macro dashboards', 'Regime + confluence engine', 'Calendar, news & education'];
-const MEMBER_PERKS = ['Full TradeAI signal levels', 'Entry / stop / targets + risk sizing', 'Paper blotter & rationale'];
+const MEMBER_PERKS = ['Full SignalX signal levels', 'Entry / stop / targets + risk sizing', 'Paper blotter & rationale'];
 
 function statusTag(status: MacroMember['status']): string {
   if (status === 'APPROVED') return 'x-tag x-tag--g';
@@ -103,13 +103,13 @@ export default function MembershipPanel() {
           <ul>{EXPLORER_PERKS.map(p => <li key={p}><ICheck size={15} className="pos" />{p}</li>)}</ul>
         </section>
         <section className="x-card mc-tier">
-          <div className="x-ch"><h2>TradeAI member</h2><span className="x-r"><span className="x-tag">Verified</span></span></div>
+          <div className="x-ch"><h2>SignalX member</h2><span className="x-r"><span className="x-tag">Verified</span></span></div>
           <ul>{MEMBER_PERKS.map(p => <li key={p}><ICheck size={15} className="x-dim" />{p}</li>)}</ul>
         </section>
       </div>
 
       <section className="x-card">
-        <div className="x-ch"><h2>TradeAI access</h2></div>
+        <div className="x-ch"><h2>SignalX access</h2></div>
         <p className="x-muted mc-p">Free dashboards are open to every signed-in user. Signal levels stay gated on the server until your exchange mapping is approved (24–48h verification).</p>
 
         {member && (

@@ -58,7 +58,7 @@ export const MACRO_NAV: {
   {
     section: 'Members',
     items: [
-      { id: 'signals', label: 'TradeAI signals' },
+      { id: 'signals', label: 'SignalX' },
       { id: 'paper', label: 'Paper blotter' },
       { id: 'assistant', label: 'Macro AI' },
       { id: 'access', label: 'Access' },

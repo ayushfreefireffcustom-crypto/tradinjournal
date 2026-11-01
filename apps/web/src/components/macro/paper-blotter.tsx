@@ -41,7 +41,7 @@ export default function PaperBlotter({
       <section className="x-card x-empty mc-paper-empty" data-testid="macro-paper-empty">
         <span className="x-ic"><INote /></span>
         <b>Paper blotter is empty</b>
-        <p>Fill a signal from the TradeAI signals section (approved members) to track a simulated position here. It is a practice ledger only, with no real money at risk.</p>
+        <p>Fill a signal from the SignalX signals section (approved members) to track a simulated position here. It is a practice ledger only, with no real money at risk.</p>
       </section>
     );
   }

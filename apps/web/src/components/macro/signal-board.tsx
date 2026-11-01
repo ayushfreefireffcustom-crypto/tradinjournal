@@ -46,7 +46,7 @@ export default function SignalBoard({
     return (
       <section className="x-card x-empty" data-testid="macro-signals-locked">
         <span className="x-ic"><ILock /></span>
-        <b>TradeAI signals are for members</b>
+        <b>SignalX signals are for members</b>
         <p>Entry, stop and target levels are computed on the server and never sent to non-members. Map a verified exchange account to unlock the full board with reasoning and risk sizing.</p>
         <div className="mc-btns">
           {onRequestAccess && (
