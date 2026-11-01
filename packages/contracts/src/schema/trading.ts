@@ -280,3 +280,70 @@ export interface SetProtectionResultDto {
   protection: ProtectionDto;
   changes: Array<{ kind: 'TP' | 'SL'; action: 'placed' | 'removed' | 'replaced' | 'kept'; ok: boolean; message: string }>;
 }
+
+// ── TradingView webhooks (D14, D15) ─────────────────────────────────────────
+
+export const webhookSetupSchema = z.object({
+  connectionId: z.string().min(1).max(64),
+  /** Required to point the webhook at a real-money account. */
+  liveConfirmed: z.boolean().optional(),
+});
+export type WebhookSetupInput = z.infer<typeof webhookSetupSchema>;
+
+export const webhookUpdateSchema = z.object({
+  enabled: z.boolean().optional(),
+  connectionId: z.string().min(1).max(64).optional(),
+  liveConfirmed: z.boolean().optional(),
+}).refine((b) => Object.values(b).some((v) => v !== undefined), { message: 'Nothing to change' });
+export type WebhookUpdateInput = z.infer<typeof webhookUpdateSchema>;
+
+/**
+ * The alert message TradingView sends. Field names are short and snake_case so
+ * they're easy to type in TradingView's alert box. Numbers may arrive as
+ * strings (TradingView placeholders like {{close}} are text), so they're coerced.
+ */
+const num = z.coerce.number();
+export const tvAlertSchema = z.object({
+  secret: z.string().min(1).max(200),
+  action: z.enum(['buy', 'sell', 'close']),
+  symbol: z.string().trim().min(1).max(40).transform((s) => s.toUpperCase().replace(/^[A-Z]+:/, '').replace(/\.P$/, '')),
+  qty: num.positive().max(1e9).optional(),
+  size_usd: num.positive().max(1e9).optional(),
+  risk_pct: num.positive().max(10).optional(),
+  type: z.enum(['market', 'limit']).default('market'),
+  price: num.positive().optional(),
+  tp: num.positive().optional(),
+  sl: num.positive().optional(),
+  reduce_only: z.boolean().optional(),
+  leverage: z.coerce.number().int().min(1).max(200).optional(),
+  /** Unique per alert, e.g. "{{strategy.order.id}}-{{timenow}}"; repeats are ignored. */
+  id: z.string().trim().min(1).max(100).optional(),
+}).refine((a) => a.action === 'close' || [a.qty, a.size_usd, a.risk_pct].filter((v) => v != null).length === 1, { message: 'Give exactly one of qty, size_usd or risk_pct', path: ['qty'] })
+  .refine((a) => a.type !== 'limit' || a.price != null, { message: 'A limit order needs a price', path: ['price'] });
+export type TvAlert = z.infer<typeof tvAlertSchema>;
+
+export interface WebhookDto {
+  url: string;
+  secretLast4: string;
+  enabled: boolean;
+  liveConfirmed: boolean;
+  connection: { id: string; label: string; environment: 'TESTNET' | 'LIVE'; status: string };
+  createdAt: string;
+  rotatedAt: string;
+}
+
+/** Only returned when the secret is created or regenerated; it is never shown again. */
+export interface WebhookCreatedDto extends WebhookDto {
+  secret: string;
+}
+
+export interface WebhookEventDto {
+  id: string;
+  receivedAt: string;
+  ip: string | null;
+  status: 'rejected' | 'ordered' | 'failed' | 'duplicate';
+  reason: string | null;
+  alertId: string | null;
+  payload: Record<string, unknown> | null;
+  orderId: string | null;
+}

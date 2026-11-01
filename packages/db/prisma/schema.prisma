@@ -51,6 +51,7 @@ model User {
 
   telegramLink      TelegramLink?
   telegramLinkCodes TelegramLinkCode[]
+  tradingWebhook    TradingWebhook?
 
   @@map("user")
 }
@@ -1256,10 +1257,12 @@ model ExchangeConnection {
   orders    ExchangeOrder[]
   positions ExchangePosition[]
   fills     ExchangeFill[]
+  webhooks  TradingWebhook[]
 
   @@index([userId, status])
   @@index([exchange, environment, keyFingerprint])
   @@index([exchange, environment, accountRef])
+
   @@map("exchange_connection")
 }
 
@@ -1497,4 +1500,46 @@ model ExchangeFill {
   @@index([connectionId, exchTs])
   @@index([orderId])
   @@map("exchange_fill")
+}
+
+/// TradingView alerts → orders (D14). One per user; the token is public (in the URL), the secret isn't stored.
+model TradingWebhook {
+  id            String             @id @default(cuid())
+  userId        String             @unique
+  user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  connectionId  String
+  connection    ExchangeConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  token         String             @unique
+  /// sha256 of the secret; compared in constant time.
+  secretHash    String
+  secretLast4   String
+  enabled       Boolean            @default(true)
+  /// The user ticked "this account is real money" for unattended orders.
+  liveConfirmed Boolean            @default(false)
+  createdAt     DateTime           @default(now())
+  rotatedAt     DateTime           @default(now())
+
+  events TradingWebhookEvent[]
+
+  @@index([connectionId])
+  @@map("trading_webhook")
+}
+
+/// Every request a webhook received and what came of it (D15).
+model TradingWebhookEvent {
+  id         String         @id @default(cuid())
+  webhookId  String
+  webhook    TradingWebhook @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+  receivedAt DateTime       @default(now())
+  ip         String?
+  /// rejected | ordered | failed | duplicate
+  status     String
+  reason     String?
+  alertId    String?
+  /// The message with the secret removed.
+  payload    Json?
+  orderId    String?
+
+  @@index([webhookId, receivedAt])
+  @@map("trading_webhook_event")
 }

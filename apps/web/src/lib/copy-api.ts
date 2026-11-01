@@ -406,6 +406,20 @@ export interface ProtectionOrder { exchangeOrderId: string; price: number; trail
 export interface Protection { symbol: string; position: number; avgEntry: number | null; markPrice: number | null; tickSize: number; takeProfit: ProtectionOrder[]; stopLoss: ProtectionOrder[] }
 export interface SetProtectionResult { protection: Protection; changes: Array<{ kind: 'TP' | 'SL'; action: string; ok: boolean; message: string }> }
 
+export interface TradingWebhook {
+  url: string; secretLast4: string; enabled: boolean; liveConfirmed: boolean;
+  connection: { id: string; label: string; environment: ExchangeEnvironment; status: string }; createdAt: string; rotatedAt: string;
+}
+export interface WebhookEvent { id: string; receivedAt: string; ip: string | null; status: 'rejected' | 'ordered' | 'failed' | 'duplicate'; reason: string | null; alertId: string | null; payload: Record<string, unknown> | null; orderId: string | null }
+
+export const webhookApi = {
+  get: () => call<TradingWebhook | null>('/trading/webhook'),
+  setup: (b: { connectionId: string; liveConfirmed?: boolean }) => call<TradingWebhook & { secret: string }>('/trading/webhook', { method: 'POST', ...body(b) }),
+  update: (b: { enabled?: boolean; connectionId?: string; liveConfirmed?: boolean }) => call<TradingWebhook>('/trading/webhook', { method: 'PATCH', ...body(b) }),
+  remove: () => call<{ ok: boolean }>('/trading/webhook', { method: 'DELETE' }),
+  events: (cursor?: string | null) => call<Page<WebhookEvent>>(`/trading/webhook/events${qs({ cursor: cursor ?? undefined })}`),
+};
+
 export const tradingApi = {
   protection: (connectionId: string, symbol: string) => call<Protection>(`/trading/protection${qs({ connectionId, symbol })}`),
   setProtection: (b: { connectionId: string; symbol: string; takeProfit?: number | null; stopLoss?: number | null; stopLossTrail?: number }) =>

@@ -27,7 +27,7 @@ accounts. Nothing here is live until you set `TRADING_ENABLED=true`.
 
 ## Database
 
-Seven additive migrations, applied with `prisma migrate deploy` after `migrate status` and your OK:
+Eight additive migrations (the first seven applied to Neon on 1 Nov 2026), applied with `prisma migrate deploy` after `migrate status` and your OK:
 - `20261031071652_trading_platform`: new tables only
 - `20261031072510_exchange_order_realized_pnl`: one nullable column and an index on `exchange_order`
 - `20261031120000_copy_follow_risk_and_profit_cap`: three nullable columns on `copy_follow`
@@ -35,6 +35,7 @@ Seven additive migrations, applied with `prisma migrate deploy` after `migrate s
 - `20261101090000_notification_inbox_and_groups`: a nullable `archivedAt` on `notification` and a `groups` JSON column (default `{}`) on `notification_preference`. Not trading-only: the inbox and per-type settings need it whether or not trading is on
 - `20261101100000_leader_stat_top3_share`: two nullable columns on `leader_stat`. The engine fills them on its next stats pass (every 5 minutes)
 - `20261101110000_telegram_link`: two new tables, `telegram_link` and `telegram_link_code`, both cascading on user delete
+- `20261101120000_trading_webhooks`: two new tables, `trading_webhook` and `trading_webhook_event` (TradingView webhooks). **Not yet on Neon** (applied 1 Nov: the seven above)
 
 ## Telegram alerts (optional)
 
@@ -43,6 +44,12 @@ Seven additive migrations, applied with `prisma migrate deploy` after `migrate s
 3. Point the bot at the API once, from any terminal:
    `curl "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/setWebhook" -d url=https://api.tradelogs.com/api/telegram/webhook -d secret_token=$TELEGRAM_WEBHOOK_SECRET -d allowed_updates='["message"]'`
 4. Users connect from Settings › Notifications › Telegram. Alerts go out every 30 seconds from the API's scheduler; each notification is sent once, and only those created after the chat was linked.
+
+## TradingView webhooks
+
+- Endpoint: `POST https://api.tradelogs.com/api/hooks/tv/<token>`, mounted only with `TRADING_ENABLED`. Each user sets theirs up on `/trading/webhook`.
+- `TRADINGVIEW_IP_ALLOWLIST` (API, optional): by default only TradingView's alert servers (52.89.214.238, 34.212.75.30, 54.218.53.128, 52.32.178.7) are accepted. A comma list overrides it; `off` accepts any IP (local testing only; the per-user secret still applies).
+- The client IP is the **last** `X-Forwarded-For` hop (the one Railway's edge adds). After the first deploy, send one test alert and check the IP in the webhook log is TradingView's, not Railway's; if it isn't, the proxy setup differs and the allowlist needs adjusting.
 
 ## Operations
 

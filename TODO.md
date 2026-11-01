@@ -409,14 +409,14 @@ Legend:
 - [x] D11 Order ticket (market/limit/stop, tif, reduce-only, TP/SL) used by quick trade and the chart `M` (done 1 Nov: market/limit/stop/stop-limit, GTC/IOC, post-only, reduce-only, TP/SL on market entries, cancel from Pending)
 - [x] D12 Manual-orders log: what we sent and what the exchange replied; KPIs (placed, filled, rejected, in flight, notional). Evidence: CM seen `M` (done 1 Nov: log, Rejected tab, KPI strip incl. filled value)
 - [ ] D13 Set leverage and margin mode per symbol `S` (leverage per symbol done 1 Nov in the ticket; margin mode left)
-- [ ] D14 TradingView webhook bot `M`:
+- [x] D14 TradingView webhook bot `M`: (done 1 Nov: /trading/webhook, secret shown once + regenerate, templates, idempotent by alert id, TradingView IP allowlist, docs; tested on testnet)
   - per-user secret + regenerate (warning)
   - webhook URL
   - message templates per exchange
   - idempotency
   - IP allowlist of TradingView senders
   - docs page
-- [ ] D15 Webhook request log (received / validated / order result) `S`
+- [x] D15 Webhook request log (received / validated / order result) `S` (done 1 Nov)
 - [ ] D16 Personal API key (create/regenerate/revoke) + docs (later, after D14) `M`
 - [ ] D17 Journal integration: every exchange fill becomes a journal-able trade (notes, tags, emotions, screenshots, replay). **Our moat** `M`
 - [ ] D18 Exchange trade history import (fills since connect, plus a backfill window) into our analytics like MT5 deals `M`

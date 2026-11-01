@@ -316,3 +316,22 @@
 .v6 .x-btn.trd-sell { background: var(--r); color: #fff; }
 .v6 .trd-fab { position: fixed; right: 24px; bottom: 24px; z-index: 40; height: 48px; padding: 0 20px; border-radius: 999px; border: 0; background: var(--hi); color: var(--inv); font: 500 14px var(--sans); box-shadow: 0 8px 24px rgba(0,0,0,.35); cursor: pointer; }
 @media (max-width: 720px) { .v6 .trd-fab { bottom: calc(96px + env(safe-area-inset-bottom)); right: 16px; } }
+
+/* TradingView webhook page. Prefix wh-. */
+.v6 .wh-card { display: grid; gap: 16px; }
+.v6 .wh-setup { display: grid; gap: 12px; max-width: 520px; }
+.v6 .wh-grid { display: grid; gap: 16px; }
+.v6 .wh-copy { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.v6 .wh-copy code { flex: 1; min-width: 0; padding: 9px 12px; border-radius: 10px; background: var(--s2); font-size: 12.5px; overflow-x: auto; white-space: nowrap; }
+.v6 .wh-new code { outline: 1px solid var(--g); }
+.v6 .wh-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 16px; }
+.v6 .wh-acct { min-width: 220px; }
+.v6 .wh-tabs { margin-bottom: 4px; }
+.v6 .wh-help { font-size: 12.5px; margin: 6px 0; }
+.v6 .wh-pre { background: var(--s2); border-radius: 12px; padding: 12px 14px; font-size: 12.5px; overflow-x: auto; margin: 0 0 10px; white-space: pre; }
+.v6 .wh-reason { display: block; max-width: 420px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12.5px; }
+.v6 .wh-refresh { margin-left: auto; }
+.v6 .wh-docs ol { margin: 0 0 10px; padding-left: 22px; display: grid; gap: 6px; font-size: 13.5px; list-style: decimal; }
+.v6 .wh-docs li { display: list-item; }
+.v6 .wh-docs code { font-size: 12px; background: var(--s2); padding: 1px 5px; border-radius: 5px; }
+.v6 .wh-fields { font-size: 12.5px; color: var(--mut); line-height: 1.7; margin: 0; overflow-wrap: anywhere; }

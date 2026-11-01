@@ -53,6 +53,7 @@ export const COPY: FrameNavItem[] = [
   { href: '/copy', label: 'Leaders', icon: ILeader, badge: 'Beta' },
   { href: '/copy/following', label: 'My copies', icon: IMirror },
   { href: '/trading', label: 'Positions', icon: ITradeLog },
+  { href: '/trading/webhook', label: 'Webhooks', icon: ILink },
   { href: '/exchanges', label: 'Exchanges', icon: IExchange },
 ];
 const TABS = ['/dashboard', '/trades', '/journal', '/coach'];

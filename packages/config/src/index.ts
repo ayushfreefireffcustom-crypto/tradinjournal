@@ -135,6 +135,12 @@ const envSchema = z.object({
   TELEGRAM_BOT_USERNAME: z.string().optional(),
   TELEGRAM_WEBHOOK_SECRET: z.string().optional(),
 
+  // ── TradingView webhooks (D14) ────────────────────────────────────────────
+  // Comma list of sender IPs allowed to hit /api/hooks/tv. Defaults to
+  // TradingView's published alert IPs; "off" accepts any IP (the per-user
+  // secret still applies). Only for local testing.
+  TRADINGVIEW_IP_ALLOWLIST: z.string().optional(),
+
   // Daily email digest — one compilation email/user/day. Default 07:00 UTC.
   NOTIFICATIONS_DIGEST_CRON: z.string().default('0 7 * * *'),
 
@@ -299,6 +305,8 @@ export type Env = z.infer<typeof envSchema> & {
   PUSH_ENABLED: boolean;
   /** True when the Telegram bot token, username and webhook secret are all set. */
   TELEGRAM_ENABLED: boolean;
+  /** Sender IPs TradingView webhooks may come from; null = any. */
+  TRADINGVIEW_IPS: string[] | null;
   /** True when charting can run — Binance is keyless, so effectively always on. */
   MARKET_ENABLED: boolean;
   /** True when the Twelve Data stock/forex provider is configured. */
@@ -391,6 +399,10 @@ function loadEnv(): Env {
   const NEWS_ENABLED = true; // RSS baseline requires no key
   const NEWS_ENRICH_ENABLED = NEWS_ENABLED && AI_ENABLED;
   const PUSH_ENABLED = !!parsed.data.VAPID_PUBLIC_KEY && !!parsed.data.VAPID_PRIVATE_KEY;
+  // TradingView's alert senders, per tradingview.com/support (webhooks).
+  const TV_DEFAULT_IPS = ['52.89.214.238', '34.212.75.30', '54.218.53.128', '52.32.178.7'];
+  const tvRaw = parsed.data.TRADINGVIEW_IP_ALLOWLIST?.trim();
+  const TRADINGVIEW_IPS = tvRaw === 'off' ? null : tvRaw ? tvRaw.split(',').map((s) => s.trim()).filter(Boolean) : TV_DEFAULT_IPS;
   const TELEGRAM_ENABLED = !!parsed.data.TELEGRAM_BOT_TOKEN && !!parsed.data.TELEGRAM_BOT_USERNAME && (parsed.data.TELEGRAM_WEBHOOK_SECRET?.length ?? 0) >= 16;
 
   const MARKET_ENABLED = true; // Binance market data needs no key
@@ -434,6 +446,7 @@ function loadEnv(): Env {
     NEWS_ENRICH_ENABLED,
     PUSH_ENABLED,
     TELEGRAM_ENABLED,
+    TRADINGVIEW_IPS,
     MARKET_ENABLED,
     TWELVEDATA_ENABLED,
     MARKET_WARM_SYMBOLS_LIST,
