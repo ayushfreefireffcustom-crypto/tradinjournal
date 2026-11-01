@@ -15,7 +15,7 @@ import { useExchangeConnections } from '@/lib/use-exchange-connections';
 import { venueName, type ExchangeConnection } from '@/lib/copy-api';
 import {
   IAdmin, IAnalytics, IBell, IBrokers, ICalendar, ICharts, ICheck, IChevronDown, IClose, ICoach, IDashboard, IJournal, ILink, IMacro, IMarkets, IPlay,
-  IPartner, IPlus, IReplay, ISearch, ISettings, ISignalX, ISync, ITradeLog, ITrendUp, IUsers, IMirror, IExchange, ILeader, IMail,
+  IPartner, IPlus, ISearch, ISettings, ISignalX, ISync, ITradeLog, ITrendUp, IUsers, IMirror, IExchange, ILeader, IMail,
 } from '@/components/v3/icons';
 import '@/styles/v6/tokens.css';
 import '@/styles/v6/components.css';
@@ -28,8 +28,7 @@ export const NAV: { title: string; items: FrameNavItem[] }[] = [
   { title: 'Journal', items: [
     { href: '/dashboard', label: 'Dashboard', icon: IDashboard },
     { href: '/trades', label: 'Trade log', icon: ITradeLog },
-    { href: '/journal', label: 'Chart replay', icon: IReplay },
-    { href: '/notebook', label: 'Journal', icon: IJournal },
+    { href: '/journal', label: 'Journal', icon: IJournal },
     { href: '/analytics', label: 'Analytics', icon: IAnalytics },
     { href: '/calendar', label: 'Calendar', icon: ICalendar },
   ] },

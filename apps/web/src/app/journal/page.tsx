@@ -14,6 +14,8 @@ import { fmtHold, fmtUsd } from '@/lib/dashboard-v6';
 import { fmtPrice, marketKind, tickerMark } from '@/lib/desk';
 import { api, type BrokerAccount, type Trade, type JournalEntry } from '@/lib/api';
 import { useAccounts } from '@/lib/use-accounts';
+import NotesView from '@/components/v6/journal/notes-view';
+import JournalViewSwitch from '@/components/v6/journal/view-switch';
 import '@/styles/v6/journal.css';
 
 const EMOTIONS = ['Disciplined', 'Confident', 'Patient', 'FOMO', 'Revenge', 'Hesitant'];
@@ -21,8 +23,13 @@ type FilterKey = 'all' | 'wins' | 'losses' | 'journaled';
 const shortDate = (iso: string) => new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 const tone = (v: number) => (v > 0 ? 'pos' : v < 0 ? 'neg' : '');
 
-export default function ChartReplayPage() {
-  return <Suspense fallback={null}><ChartReplay /></Suspense>;
+export default function JournalPage() {
+  return <Suspense fallback={null}><JournalViews /></Suspense>;
+}
+
+/** Journal (A0.D1): trade review with the replay chart, or free-form notes (?view=notes). */
+function JournalViews() {
+  return useSearchParams().get('view') === 'notes' ? <NotesView /> : <ChartReplay />;
 }
 
 function ChartReplay() {
@@ -197,7 +204,7 @@ function ChartReplay() {
 
   return (
     <AppShell legacy={false} accounts={accounts} selectedAccount={selected} onSelectAccount={select} onConnectClick={() => setShowConnect(true)}
-      pageTitle="Chart replay" pageSubtitle={subtitle}>
+      pageTitle="Journal" pageSubtitle={subtitle} actions={<JournalViewSwitch view="trades" />}>
       <div className="jn-page" data-testid="chart-replay-page">
         {error && (
           <div className="x-banner x-banner--err" role="alert" data-testid="journal-error">
@@ -301,7 +308,7 @@ function ChartReplay() {
                       <div><span>Move</span><b className={`m ${tone(move)}`}>{move >= 0 ? '+' : '−'}{Math.abs(move).toFixed(1)}</b></div>
                       <div><span>Held</span><b className="m">{fmtHold(active.durationSecs)}</b></div>
                       <div><span>Gross</span><b className={`m ${tone(active.grossPnl)}`}>{fmtUsd(active.grossPnl, 0)}</b></div>
-                      <div><span>Fees</span><b className={`m ${fees < 0 ? 'neg' : ''}`}>{fees ? fmtUsd(fees) : '$0.00'}</b></div>
+                      <div><span>Fees</span><b className="m">{fees ? fmtUsd(fees) : '$0.00'}</b></div>
                     </div>
                   </>
                 )}

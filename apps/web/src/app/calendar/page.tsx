@@ -250,8 +250,8 @@ export default function CalendarPage() {
                 </>
               ) : <p className="cl-today-none">No closed trades yet today.</p>}
               {todayNoted
-                ? <Link href="/notebook" className="x-btn x-btn--full">Today&rsquo;s note is written · open journal</Link>
-                : <Link href="/notebook" className="x-btn x-btn--hi x-btn--full">Journal today</Link>}
+                ? <Link href="/journal?view=notes" className="x-btn x-btn--full">Today&rsquo;s note is written · open journal</Link>
+                : <Link href="/journal?view=notes" className="x-btn x-btn--hi x-btn--full">Journal today</Link>}
             </section>
 
             <section className="x-card cl-wd" data-testid="calendar-weekday">

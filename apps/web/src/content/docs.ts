@@ -49,11 +49,14 @@ export const DOCS: DocArticle[] = [
 **Numbers you can trust** Everything is computed from your broker's own records. When something can't be known (for example a figure that needs data your broker doesn't send), it shows "—" rather than a guess.` },
   },
   {
-    slug: 'journal-notes', section: 'Journal', title: 'Journal and chart replay', summary: 'Notes, emotions and tags per trade and per day, with the chart beside them.',
+    slug: 'journal-notes', section: 'Journal', title: 'Journal: trade review and notes', summary: 'Notes, emotions and tags per trade and per day, with the chart beside them.',
     related: ['trade-log', 'ai-coach'],
-    body: { en: `The **Journal** is where you write down what you were thinking: per trade or for the whole day. Add an emotion and tags so patterns show up later (for example "FOMO" trades losing more than planned ones).
+    body: { en: `The **Journal** is where you write down what you were thinking. It has two views:
 
-**Chart replay** shows a trade on the chart bar by bar, so you can see what you saw at the time, where you entered, and what happened after you exited.
+- **Trade review** shows a trade on the chart bar by bar, so you can see what you saw at the time, where you entered and what happened after you exited, with a note, an emotion and tags for that trade.
+- **Notes** is a free-form log for the whole day, whether or not you traded.
+
+Add an emotion and tags so patterns show up later (for example "FOMO" trades losing more than planned ones).
 
 Your notes feed the **AI coach** and the weekly review, which look for habits across many trades rather than judging one.` },
   },

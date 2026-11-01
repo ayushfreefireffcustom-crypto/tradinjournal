@@ -172,8 +172,8 @@ function TradeDetail() {
                   { l: 'Entry', v: fmtPrice(trade.entryPrice, trade.exitPrice), c: '' },
                   { l: 'Exit', v: trade.exitPrice == null ? '—' : fmtPrice(trade.exitPrice, trade.entryPrice), c: '' },
                   { l: 'Held', v: fmtHold(trade.durationSecs), c: '' },
-                  { l: 'Commission', v: trade.commission ? fmtUsd(trade.commission) : '$0.00', c: trade.commission < 0 ? 'neg' : '' },
-                  { l: 'Swap', v: trade.swap ? fmtUsd(trade.swap) : '$0.00', c: trade.swap < 0 ? 'neg' : '' },
+                  { l: 'Commission', v: trade.commission ? fmtUsd(trade.commission) : '$0.00', c: '' }, // fees, not losses: neutral (A4.3)
+                  { l: 'Swap', v: trade.swap ? fmtUsd(trade.swap) : '$0.00', c: '' },
                 ].map(m => (
                   <div key={m.l}><dt><span>{m.l}</span></dt><dd><b className={`m ${m.c}`}>{m.v}</b></dd></div>
                 ))}

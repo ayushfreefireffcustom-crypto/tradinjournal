@@ -166,8 +166,8 @@ export default function AnalyticsPage() {
       case 'heatmap': return <Sessions trades={rangedTrades} />;
       case 'rolling': return <Rolling trades={rangedTrades} />;
       case 'bysymbol': return <SymbolTable rows={view.bySymbol} />;
-      case 'emotion': return <GroupBars testId="perf-by-emotion" title="Psychology edge" sub="net P&L by emotion" rows={emotionStats} order={EMOTION_ORDER} empty="Log how you felt on a trade in Chart replay to see which states pay." />;
-      case 'tag': return <GroupBars testId="perf-by-tag" title="Setup edge" sub="net P&L by tag" rows={tagStats.slice(0, 8)} empty="Tag your setups in Chart replay or the journal to see which ones carry your edge." />;
+      case 'emotion': return <GroupBars testId="perf-by-emotion" title="Psychology edge" sub="net P&L by emotion" rows={emotionStats} order={EMOTION_ORDER} empty="Log how you felt on a trade in Journal › Trade review to see which states pay." />;
+      case 'tag': return <GroupBars testId="perf-by-tag" title="Setup edge" sub="net P&L by tag" rows={tagStats.slice(0, 8)} empty="Tag your setups in the Journal to see which ones carry your edge." />;
       case 'timeofday': return <Hours trades={rangedTrades} />;
       case 'scatter': return <Scatter trades={rangedTrades} />;
       case 'byday': return <DayBars data={view.byDay} />;
