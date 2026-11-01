@@ -54,6 +54,7 @@ model User {
   tradingWebhook    TradingWebhook?
   apiKeys           ApiKey[]
   indicatorAlerts   IndicatorAlert[]
+  savedScreens      SavedScreen[]
 
   @@map("user")
 }
@@ -1618,4 +1619,18 @@ model IndicatorAlertFiring {
 
   @@index([alertId, firedAt])
   @@map("indicator_alert_firing")
+}
+
+/// A screener definition a user saved (E5): timeframe, universe, filter groups, columns, sort.
+model SavedScreen {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String
+  definition Json
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([userId])
+  @@map("saved_screen")
 }

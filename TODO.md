@@ -434,22 +434,22 @@ Legend:
   - [ ] E1g Meta: funding rate, open interest (from Binance/Bybit/Delta public data) `M` (needs a funding/OI data feed; with E11/E17)
   - [x] E1h Price refs: O/H/L/C, highest high N, lowest low N `S` (done 1 Nov)
 - [ ] E2 Candle types: Heikin-Ashi, Renko (box %/ATR/fixed), Kagi, Point & Figure `M`
-- [ ] E3 Indicator alerts `M`:
+- [x] E3 Indicator alerts `M` (done 1 Nov: new `indicator_alert` table instead of widening PriceAlert; change24h is ROC on the right bar count; funding/OI wait for E1g):
   - extend `PriceAlert` → `Alert`: kind price/indicator/change24h/funding/OI
   - operators < ≤ > ≥ = crosses above/below
   - cooldown seconds
   - evaluate on bar close
   - delivery in-app/email/push/Telegram
   - Evidence: CM seen
-- [ ] E4 Alert rules UI: list, recent firings, create sheet with symbol search over the full universe `M`
-- [ ] E5 Screener `M`:
+- [x] E4 Alert rules UI: list, recent firings, create sheet with symbol search over the full universe `M` (done 1 Nov: /alerts)
+- [x] E5 Screener `M` (done 1 Nov: /screener over the top 50/100/200 Binance USDT pairs; funding from Bybit, else Binance futures):
   - quick screens (oversold, overbought, gainers, losers, high volume, ±funding, momentum)
   - AND conditions
   - table/cards
   - **saved screens**
   - export
   - row "Trade" button
-- [ ] E6 Scanner folded into the screener (OR groups, `between`) `S`
+- [x] E6 Scanner folded into the screener (OR groups, `between`) `S` (done 1 Nov)
 - [ ] E7 Signals table: composite rating on 1h/4h/1d (Strong Buy → Strong Sell) with components shown; reuse SignalX where possible `M`
 - [ ] E8 Chart-pattern detection (S/R, range, double top/bottom, channels, triangles, flags, wedges), drawn on candles `L → split by pattern family`
 - [ ] E9 Pattern explanations via Claude ("what it is / why it matters / where it's wrong / measured move") `S`

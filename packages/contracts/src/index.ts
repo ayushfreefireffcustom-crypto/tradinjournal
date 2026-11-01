@@ -334,6 +334,50 @@ export const updateIndicatorAlertSchema = z.object({
 }).strict().refine((v) => Object.keys(v).length > 0, { message: 'Nothing to change.' });
 export type UpdateIndicatorAlertInput = z.infer<typeof updateIndicatorAlertSchema>;
 
+// ── Screener (E5/E6) ──────────────────────────────────────────────────────────
+// Filters are ANDed inside a group; groups are ORed. Indicator filters use the
+// same conditions as indicator alerts, on the last closed bar.
+
+export const SCREENER_TIMEFRAMES = ['15m', '1h', '4h', '1d'] as const;
+export const SCREENER_UNIVERSES = [50, 100, 200] as const;
+export const SCREENER_FIELDS = ['price', 'change24h', 'volume24h', 'funding'] as const;
+export type ScreenerField = (typeof SCREENER_FIELDS)[number];
+const screenerIndicatorFilter = z.object({
+  type: z.literal('indicator'),
+  left: indicatorOperandSchema,
+  operator: z.enum(INDICATOR_ALERT_OPERATORS),
+  right: alertOperandSchema,
+}).strict();
+const screenerFieldFilter = z.object({
+  type: z.literal('field'),
+  field: z.enum(SCREENER_FIELDS),
+  operator: z.enum(['gt', 'gte', 'lt', 'lte']),
+  value: z.number().finite(),
+}).strict();
+export const screenerFilterSchema = z.discriminatedUnion('type', [screenerIndicatorFilter, screenerFieldFilter]);
+export type ScreenerFilter = z.infer<typeof screenerFilterSchema>;
+export const screenDefinitionSchema = z.object({
+  timeframe: z.enum(SCREENER_TIMEFRAMES),
+  universe: z.union([z.literal(50), z.literal(100), z.literal(200)]),
+  groups: z.array(z.array(screenerFilterSchema).max(8)).max(5),
+  // Extra indicator columns to show (filters' indicators are shown anyway).
+  columns: z.array(indicatorOperandSchema).max(4).optional(),
+  sort: z.object({ by: z.string().max(40), dir: z.enum(['asc', 'desc']) }).strict().optional(),
+}).strict();
+export type ScreenDefinition = z.infer<typeof screenDefinitionSchema>;
+
+// Saved screens.
+export const saveScreenSchema = z.object({
+  name: z.string().trim().min(1).max(60),
+  definition: screenDefinitionSchema,
+}).strict();
+export type SaveScreenInput = z.infer<typeof saveScreenSchema>;
+export const updateScreenSchema = z.object({
+  name: z.string().trim().min(1).max(60).optional(),
+  definition: screenDefinitionSchema.optional(),
+}).strict().refine((v) => v.name !== undefined || v.definition !== undefined, { message: 'Nothing to change.' });
+export type UpdateScreenInput = z.infer<typeof updateScreenSchema>;
+
 // ── Macro segment ─────────────────────────────────────────────────────────────
 // The single dashboard JSON the terminal AND the Claude assistant both consume.
 // Decimals are serialized to numbers, timestamps to ISO strings over the wire.

@@ -36,6 +36,7 @@ export const NAV: { title: string; items: FrameNavItem[] }[] = [
   { title: 'Markets', items: [
     { href: '/charts', label: 'Charts', icon: ICharts },
     { href: '/markets', label: 'Markets', icon: IMarkets },
+    { href: '/screener', label: 'Screener', icon: ISearch },
     { href: '/alerts', label: 'Alerts', icon: IBell },
     { href: '/macro', label: 'Macro', icon: IMacro },
   ] },

@@ -197,3 +197,30 @@ async function placeProtective(
     return { kind, ok: false, message: `${label} wasn't placed: ${e?.message ?? 'unknown error'}. The position is open without it.`, order: await orderDtoById(row.id) };
   }
 }
+
+// Live perpetuals per venue and environment; public data, so one list serves everyone.
+const INSTRUMENTS_TTL_MS = 10 * 60_000;
+const instrumentCache = new Map<string, { at: number; rows: Array<{ symbol: string; base: string }> }>();
+
+/**
+ * The contracts each of the user's active accounts can trade (live
+ * perpetuals), so other pages only offer "Trade" where a contract exists.
+ * An account whose venue can't be reached comes back with no symbols.
+ */
+export async function tradableInstruments(userId: string, now = Date.now(), deps: TradingDeps = defaultTradingDeps) {
+  const conns = await prisma.exchangeConnection.findMany({ where: { userId, status: 'ACTIVE', canTrade: true }, orderBy: { createdAt: 'asc' } });
+  return Promise.all(conns.map(async (c) => {
+    const key = `${c.exchange}:${c.environment}`;
+    let hit = instrumentCache.get(key);
+    if (!hit || now - hit.at > INSTRUMENTS_TTL_MS) {
+      try {
+        const list = await deps.adapterFor(c.exchange, c.environment).listInstruments();
+        hit = { at: now, rows: list.filter((i) => i.kind === 'PERPETUAL' && i.live).map((i) => ({ symbol: i.symbol, base: i.baseAsset })) };
+        instrumentCache.set(key, hit);
+      } catch {
+        hit = instrumentCache.get(key); // stale beats nothing
+      }
+    }
+    return { connectionId: c.id, label: c.label, environment: c.environment, instruments: hit?.rows ?? [] };
+  }));
+}

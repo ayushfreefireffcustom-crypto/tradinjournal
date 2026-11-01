@@ -7,8 +7,9 @@
 // retry can never place a second order.
 import { useEffect, useMemo, useState } from 'react';
 import { Modal, useLoad } from '@/components/v6/copy/parts';
-import { ApiError, exchangesApi, price, tradingApi, usd, type OrderTicket, type PlaceTicketResult, type TicketPreview, type TicketQuote, type TicketType } from '@/lib/copy-api';
+import { ApiError, exchangesApi, price, tradingApi, usd, type OrderTicket, type PlaceTicketResult, type TicketPreview, type TicketQuote, type TicketType, type TradableAccount } from '@/lib/copy-api';
 
+// Suggestions until the account's own contract list arrives.
 const SYMBOLS = ['BTCUSD', 'ETHUSD', 'SOLUSD', 'XRPUSD', 'DOGEUSD', 'BNBUSD'];
 const TYPES: Array<{ id: TicketType; label: string; help: string }> = [
   { id: 'MARKET', label: 'Market', help: 'Fills now at the best price available.' },
@@ -51,6 +52,9 @@ export default function OrderTicketDialog({ onClose, onPlaced, initial }: {
   const [quoteErr, setQuoteErr] = useState('');
 
   useEffect(() => { if (!connectionId && usable[0]) setConnectionId(usable[0].id); }, [usable, connectionId]);
+  const [contracts, setContracts] = useState<TradableAccount[] | null>(null);
+  useEffect(() => { tradingApi.instruments().then(setContracts, () => setContracts(null)); }, []);
+  const suggestions = contracts?.find(a => a.connectionId === connectionId)?.instruments.map(i => i.symbol).sort() ?? SYMBOLS;
 
   // Contract specs, mark and balance for the live estimate; refreshed as the account or contract changes.
   useEffect(() => {
@@ -153,7 +157,7 @@ export default function OrderTicketDialog({ onClose, onPlaced, initial }: {
             <div className="x-field">
               <label htmlFor="tk-sym">Contract</label>
               <input id="tk-sym" className="x-input m" list="tk-syms" value={symbol} onChange={e => setSymbol(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))} data-testid="ticket-symbol" />
-              <datalist id="tk-syms">{SYMBOLS.map(s => <option key={s} value={s} />)}</datalist>
+              <datalist id="tk-syms">{suggestions.map(s => <option key={s} value={s} />)}</datalist>
             </div>
           </div>
           {quoteErr ? <p className="cp-err" data-testid="ticket-quote-error">{quoteErr}</p> : quote && (

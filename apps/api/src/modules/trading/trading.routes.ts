@@ -5,7 +5,7 @@ import { requireAuth } from '../../http/middleware/require-auth.js';
 import { requirePlatformAccess } from '../../http/middleware/require-platform-access.js';
 import { validateBody, validateQuery } from '../../http/middleware/validate.js';
 import { perUserRateLimit } from '../../lib/rate-limit.js';
-import { placeTicket, previewTicket, ticketQuote } from './ticket.service.js';
+import { placeTicket, previewTicket, ticketQuote, tradableInstruments } from './ticket.service.js';
 import { getProtection, setProtection } from './protection.service.js';
 import { exchangeJournal, importHistory } from './history.service.js';
 import { createApiKey, listApiKeys, revokeApiKey } from './api-keys.service.js';
@@ -41,6 +41,7 @@ tradingRouter.get('/orders/export.csv', exportLimit, validateQuery(deskOrderFilt
   res.send(out.csv);
 }));
 // Order ticket (D10, D11, D13). Quote and preview read the exchange; place sends a real order.
+tradingRouter.get('/instruments', readLimit, wrap(async (_req, res) => res.json({ data: await tradableInstruments(uid(res)) })));
 tradingRouter.get('/quote', readLimit, validateQuery(ticketQuoteQuerySchema), wrap(async (req, res) => {
   const q = req.query as unknown as { connectionId: string; symbol: string };
   res.json({ data: await ticketQuote(uid(res), q.connectionId, q.symbol) });

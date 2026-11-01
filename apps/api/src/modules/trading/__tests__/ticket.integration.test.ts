@@ -182,4 +182,29 @@ describe.skipIf(!local)('order ticket', () => {
     await expect(svc.placeTicket(me, T({ connectionId: conns.theirs! }), new Date(), deps)).rejects.toThrow(/not found/i);
     await expect(svc.placeTicket(me, T({ connectionId: conns.ro! }), new Date(), deps)).rejects.toThrow(/read-only/);
   });
+  it('lists live perpetuals for trading accounts only, cached, and keeps the last list if the venue is down', async () => {
+    let calls = 0;
+    let fail = false;
+    const d = { ...deps, adapterFor: () => ({ listInstruments: async () => {
+      calls += 1;
+      if (fail) throw new Error('down');
+      return [
+        { symbol: 'BTCUSD', kind: 'PERPETUAL', live: true, baseAsset: 'BTC' },
+        { symbol: 'ETHUSD', kind: 'PERPETUAL', live: false, baseAsset: 'ETH' },
+        { symbol: 'C-BTC-90000-011126', kind: 'CALL', live: true, baseAsset: 'BTC' },
+      ];
+    } }) as unknown as Exchange };
+    const t0 = 9e12; // far from any other test's clock: the cache is per process
+    const r = await svc.tradableInstruments(me, t0, d);
+    expect(r.map((x) => x.label)).toContain('Main');
+    expect(r.map((x) => x.label)).not.toContain('RO'); // read-only key can't trade
+    expect(r.find((x) => x.label === 'Main')!.instruments).toEqual([{ symbol: 'BTCUSD', base: 'BTC' }]);
+    const before = calls;
+    await svc.tradableInstruments(me, t0 + 60_000, d);
+    expect(calls).toBe(before); // cached
+    fail = true;
+    const stale = await svc.tradableInstruments(me, t0 + 11 * 60_000, d);
+    expect(calls).toBeGreaterThan(before);
+    expect(stale.find((x) => x.label === 'Main')!.instruments).toEqual([{ symbol: 'BTCUSD', base: 'BTC' }]);
+  });
 });

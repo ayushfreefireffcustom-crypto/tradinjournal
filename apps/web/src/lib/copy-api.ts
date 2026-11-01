@@ -443,7 +443,11 @@ export const apiKeysApi = {
 /** Where /api/v1 lives, for the docs' examples. */
 export const apiBase = () => (API || (typeof window !== 'undefined' ? window.location.origin : '')) + '/api/v1';
 
+/** Live perpetuals each trading account can use (for "Trade" buttons and the ticket's suggestions). */
+export interface TradableAccount { connectionId: string; label: string; environment: ExchangeEnvironment; instruments: Array<{ symbol: string; base: string }> }
+
 export const tradingApi = {
+  instruments: () => call<TradableAccount[]>('/trading/instruments'),
   protection: (connectionId: string, symbol: string) => call<Protection>(`/trading/protection${qs({ connectionId, symbol })}`),
   setProtection: (b: { connectionId: string; symbol: string; takeProfit?: number | null; stopLoss?: number | null; stopLossTrail?: number }) =>
     call<SetProtectionResult>('/trading/protection', { method: 'POST', ...body(b) }),
