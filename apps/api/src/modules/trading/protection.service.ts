@@ -32,7 +32,7 @@ async function read(userId: string, c: ExchangeConnection, ex: Exchange, creds: 
     const mine = orders.length
       ? new Set((await prisma.exchangeOrder.findMany({ where: { userId, connectionId: c.id, exchangeOrderId: { in: orders.map((o) => o.exchangeOrderId) } }, select: { exchangeOrderId: true } })).map((r) => r.exchangeOrderId))
       : new Set<string | null>();
-    const dto = (o: OrderInfo): ProtectionOrderDto => ({ exchangeOrderId: o.exchangeOrderId, price: o.stopPrice ?? o.limitPrice ?? 0, qty: o.qty - o.filledQty, ours: mine.has(o.exchangeOrderId) });
+    const dto = (o: OrderInfo): ProtectionOrderDto => ({ exchangeOrderId: o.exchangeOrderId, price: o.stopPrice ?? o.limitPrice ?? 0, trail: o.trailAmount ?? null, qty: o.qty - o.filledQty, ours: mine.has(o.exchangeOrderId) });
     const forSymbol = orders.filter((o) => o.symbol === symbol);
     return {
       symbol,
@@ -66,8 +66,14 @@ export async function setProtection(userId: string, input: SetProtectionInput, n
   const qty = Math.abs(cur.position);
 
   // Check both before touching anything: a half-applied change is worse than none.
-  const want: Array<{ kind: 'TP' | 'SL'; price: number | null }> = [];
+  const want: Array<{ kind: 'TP' | 'SL'; price: number | null; trail?: number }> = [];
   const problems: string[] = [];
+  if (input.stopLossTrail !== undefined) {
+    const trail = toTick(input.stopLossTrail, cur.tickSize);
+    if (!(trail > 0)) problems.push(`The trailing distance is smaller than one price step (${cur.tickSize}).`);
+    else if (ref != null && trail >= ref * 0.5) problems.push(`A trail of ${fmt(trail)} is more than half the price (${fmt(ref)}); check it isn't a typo.`);
+    else want.push({ kind: 'SL', price: null, trail });
+  }
   for (const [kind, v] of [['TP', input.takeProfit], ['SL', input.stopLoss]] as const) {
     if (v === undefined) continue;
     if (v === null) { want.push({ kind, price: null }); continue; }
@@ -85,12 +91,26 @@ export async function setProtection(userId: string, input: SetProtectionInput, n
   for (const w of want) {
     const existing = w.kind === 'TP' ? cur.takeProfit : cur.stopLoss;
     const label = w.kind === 'TP' ? 'Take-profit' : 'Stop-loss';
+    if (w.trail !== undefined) {
+      if (existing.length === 1 && existing[0]!.trail === w.trail && existing[0]!.qty === qty) {
+        changes.push({ kind: 'SL', action: 'kept', ok: true, message: `Already trailing by ${w.trail}.` });
+        continue;
+      }
+      const placed = await placeOne(userId, c, ex, creds, input.symbol, 'SL', long ? 'SELL' : 'BUY', qty, null, now, w.trail);
+      if (!placed.ok) {
+        changes.push({ kind: 'SL', action: existing.length ? 'replaced' : 'placed', ok: false, message: `Trailing stop wasn't set: ${(placed.error ?? 'unknown error').replace(/\.$/, '')}.${existing.length ? ' The old stop-loss is still in place.' : ''}` });
+        continue;
+      }
+      const r = await cancelAll(userId, c, ex, creds, input.symbol, existing);
+      changes.push({ kind: 'SL', action: existing.length ? 'replaced' : 'placed', ok: r.failed === 0, message: `Trailing stop set ${w.trail} behind the price for ${qty} ${qty === 1 ? 'contract' : 'contracts'}.${r.failed ? ` The old stop-loss couldn't be removed; check the Pending tab.` : ''}` });
+      continue;
+    }
     if (w.price === null) {
       const r = await cancelAll(userId, c, ex, creds, input.symbol, existing);
       changes.push({ kind: w.kind, action: 'removed', ok: r.failed === 0, message: existing.length === 0 ? `There was no ${label.toLowerCase()} to remove.` : r.failed ? `${label}: ${r.failed} couldn't be removed; check the Pending tab.` : `${label} removed.` });
       continue;
     }
-    if (existing.length === 1 && existing[0]!.price === w.price && existing[0]!.qty === qty) {
+    if (existing.length === 1 && existing[0]!.trail == null && existing[0]!.price === w.price && existing[0]!.qty === qty) {
       changes.push({ kind: w.kind, action: 'kept', ok: true, message: `${label} already at ${w.price}.` });
       continue;
     }
@@ -109,12 +129,12 @@ export async function setProtection(userId: string, input: SetProtectionInput, n
   return { protection: await read(userId, c, ex, creds, input.symbol), changes };
 }
 
-async function placeOne(userId: string, c: ExchangeConnection, ex: Exchange, creds: Creds, symbol: string, kind: 'TP' | 'SL', side: 'BUY' | 'SELL', qty: number, price: number, now: Date): Promise<{ ok: boolean; error?: string }> {
+async function placeOne(userId: string, c: ExchangeConnection, ex: Exchange, creds: Creds, symbol: string, kind: 'TP' | 'SL', side: 'BUY' | 'SELL', qty: number, price: number | null, now: Date, trail?: number): Promise<{ ok: boolean; error?: string }> {
   const type = kind === 'TP' ? ('TAKE_PROFIT_MARKET' as const) : ('STOP_MARKET' as const);
   const clientOrderId = `prot:${now.getTime()}:${randomBytes(4).toString('hex')}`;
   const row = await prisma.exchangeOrder.create({ data: { userId, connectionId: c.id, source: 'MANUAL', clientOrderId, symbol, side, type, reduceOnly: true, qty, stopPrice: price, status: 'PENDING' } });
   try {
-    const o = await ex.placeOrder(creds, { symbol, side, qty, type, stopPrice: price, reduceOnly: true, clientOrderId });
+    const o = await ex.placeOrder(creds, { symbol, side, qty, type, ...(trail ? { trailAmount: trail } : { stopPrice: price! }), reduceOnly: true, clientOrderId });
     await prisma.exchangeOrder.update({ where: { id: row.id }, data: { exchangeOrderId: o.exchangeOrderId || null, status: o.status === 'REJECTED' ? 'REJECTED' : 'OPEN', submittedAt: now } });
     return o.status === 'REJECTED' ? { ok: false, error: 'the exchange rejected it' } : { ok: true };
   } catch (err) {

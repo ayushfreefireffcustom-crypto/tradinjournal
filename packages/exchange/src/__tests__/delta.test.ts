@@ -407,3 +407,24 @@ describe('Delta orders and positions stream (B2.5)', () => {
     expect(errors).toHaveLength(1);
   });
 });
+
+describe('Delta trailing stops (D6)', () => {
+  const base = { symbol: 'BTCUSD', qty: 2, type: 'STOP_MARKET' as const, reduceOnly: true, clientOrderId: 'trail-1' };
+  it('sends a signed trail amount instead of a stop price', () => {
+    const sell = deltaOrderBody(84, { ...base, side: 'SELL', trailAmount: 500 });
+    expect(sell).toMatchObject({ stop_order_type: 'stop_loss_order', trail_amount: '-500', order_type: 'market_order', reduce_only: true, side: 'sell' });
+    expect(sell).not.toHaveProperty('stop_price');
+    expect(deltaOrderBody(84, { ...base, side: 'BUY', trailAmount: 12.5 })).toMatchObject({ trail_amount: '12.5', side: 'buy' });
+  });
+  it('rejects a bad trail: zero, negative, or on a take-profit', () => {
+    expect(() => deltaOrderBody(84, { ...base, side: 'SELL', trailAmount: 0 })).toThrow(/above zero/);
+    expect(() => deltaOrderBody(84, { ...base, side: 'SELL', trailAmount: -5 })).toThrow(/above zero/);
+    expect(() => deltaOrderBody(84, { ...base, type: 'TAKE_PROFIT_MARKET', side: 'SELL', trailAmount: 5 })).toThrow(/Only stop-loss orders can trail/);
+    // A plain stop still needs its price.
+    expect(() => deltaOrderBody(84, { ...base, side: 'SELL' })).toThrow(/needs a trigger price/);
+  });
+  it('reads the trail back as a positive distance', () => {
+    expect(mapDeltaOrder({ id: 1, product_symbol: 'BTCUSD', side: 'sell', order_type: 'market_order', stop_order_type: 'stop_loss_order', size: 2, unfilled_size: 2, state: 'pending', stop_price: '69500', trail_amount: '-500', reduce_only: true }).trailAmount).toBe(500);
+    expect(mapDeltaOrder({ id: 2, product_symbol: 'BTCUSD', side: 'sell', order_type: 'market_order', stop_order_type: 'stop_loss_order', size: 2, unfilled_size: 2, state: 'pending', stop_price: '69500', trail_amount: null }).trailAmount).toBeNull();
+  });
+});

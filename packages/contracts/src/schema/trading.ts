@@ -247,12 +247,19 @@ export const setProtectionSchema = z.object({
   /** New trigger price; null removes it; omitted leaves it as it is. */
   takeProfit: z.number().positive().nullable().optional(),
   stopLoss: z.number().positive().nullable().optional(),
-}).refine((b) => b.takeProfit !== undefined || b.stopLoss !== undefined, { message: 'Nothing to change' });
+  /** Trailing stop-loss distance in price units (D6); replaces any stop-loss. */
+  stopLossTrail: z.number().positive().optional(),
+})
+  .refine((b) => b.takeProfit !== undefined || b.stopLoss !== undefined || b.stopLossTrail !== undefined, { message: 'Nothing to change' })
+  .refine((b) => !(b.stopLossTrail !== undefined && b.stopLoss != null), { message: 'Choose a fixed stop-loss or a trailing one, not both', path: ['stopLossTrail'] });
 export type SetProtectionInput = z.infer<typeof setProtectionSchema>;
 
 export interface ProtectionOrderDto {
   exchangeOrderId: string;
+  /** Trigger now; for a trailing stop it moves with the price. */
   price: number;
+  /** Trailing distance, for a trailing stop; null otherwise. */
+  trail: number | null;
   qty: number;
   /** Placed through TRADElogs (vs. directly on the exchange). */
   ours: boolean;

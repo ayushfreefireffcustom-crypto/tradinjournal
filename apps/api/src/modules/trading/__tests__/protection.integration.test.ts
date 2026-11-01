@@ -18,8 +18,8 @@ class Book {
   failPlace: ExchangeError | null = null;
   failCancel = false;
   n = 0;
-  add(type: OrderInfo['type'], price: number, qty = 2, id = `x${++this.n}`): OrderInfo {
-    const o: OrderInfo = { exchangeOrderId: id, clientOrderId: null, symbol: 'BTCUSD', side: this.position > 0 ? 'SELL' : 'BUY', type, status: 'PENDING', qty, filledQty: 0, avgFillPrice: null, limitPrice: null, stopPrice: price, reduceOnly: true, createdAt: new Date() };
+  add(type: OrderInfo['type'], price: number, qty = 2, id = `x${++this.n}`, trail: number | null = null): OrderInfo {
+    const o: OrderInfo = { exchangeOrderId: id, clientOrderId: null, symbol: 'BTCUSD', side: this.position > 0 ? 'SELL' : 'BUY', type, status: 'PENDING', qty, filledQty: 0, avgFillPrice: null, limitPrice: null, stopPrice: price, trailAmount: trail, reduceOnly: true, createdAt: new Date() };
     this.open.push(o);
     return o;
   }
@@ -31,6 +31,8 @@ class Book {
       getMarkPrice: async () => 70_000,
       placeOrder: async (_c: unknown, o: PlaceOrderRequest) => {
         if (this.failPlace) throw this.failPlace;
+        // A trailing stop starts at the mark minus (long) or plus (short) the trail.
+        if (o.trailAmount) return this.add(o.type, o.side === 'SELL' ? 70_000 - o.trailAmount : 70_000 + o.trailAmount, o.qty, undefined, o.trailAmount);
         return this.add(o.type, o.stopPrice!, o.qty);
       },
       cancelOrder: async (_c: unknown, ref: { exchangeOrderId: string }) => {
@@ -80,7 +82,7 @@ describe.skipIf(!local)('position protection (TP/SL edit)', () => {
     book.open = book.open.filter((o, i, a) => a.findIndex((x) => x.exchangeOrderId === o.exchangeOrderId) === i);
     const p = await svc.getProtection(me, conn, 'BTCUSD', deps);
     expect(p).toMatchObject({ position: 2, markPrice: 70_000, tickSize: 0.5 });
-    expect(p.takeProfit).toEqual([{ exchangeOrderId: 'external-tp', price: 72_000, qty: 2, ours: false }]);
+    expect(p.takeProfit).toEqual([{ exchangeOrderId: 'external-tp', price: 72_000, trail: null, qty: 2, ours: false }]);
     expect(p.stopLoss.map((o) => o.price)).toEqual([69_000]);
     // Reading works on a read-only key; not on someone else's.
     await expect(svc.getProtection(me, ro, 'BTCUSD', deps)).resolves.toBeTruthy();
@@ -144,5 +146,26 @@ describe.skipIf(!local)('position protection (TP/SL edit)', () => {
     book.position = 2;
     await expect(svc.setProtection(me, { connectionId: ro, symbol: 'BTCUSD', stopLoss: 1 }, new Date(), deps)).rejects.toThrow(/read-only/);
     await expect(svc.setProtection(me, { connectionId: theirs, symbol: 'BTCUSD', stopLoss: 1 }, new Date(), deps)).rejects.toThrow(/not found/i);
+  });
+
+  it('sets a trailing stop in place of a fixed one, and back again', async () => {
+    book.add('STOP_MARKET', 69_000, 2, 'fixed');
+    const r = await svc.setProtection(me, { connectionId: conn, symbol: 'BTCUSD', stopLossTrail: 500.2 }, new Date(), deps);
+    expect(r.changes[0]).toMatchObject({ kind: 'SL', action: 'replaced', ok: true, message: 'Trailing stop set 500 behind the price for 2 contracts.' });
+    expect(r.protection.stopLoss).toEqual([expect.objectContaining({ trail: 500, price: 69_500, ours: true })]);
+    expect(book.open.some((o) => o.exchangeOrderId === 'fixed')).toBe(false);
+    // Same trail again: nothing to do.
+    expect((await svc.setProtection(me, { connectionId: conn, symbol: 'BTCUSD', stopLossTrail: 500 }, new Date(), deps)).changes[0]!.action).toBe('kept');
+    // A fixed stop at the trailing stop's current trigger is still a change: it stops trailing.
+    const back = await svc.setProtection(me, { connectionId: conn, symbol: 'BTCUSD', stopLoss: 69_500 }, new Date(), deps);
+    expect(back.changes[0]!.action).toBe('replaced');
+    expect(back.protection.stopLoss).toEqual([expect.objectContaining({ trail: null, price: 69_500 })]);
+  });
+
+  it('refuses a silly trail before touching anything', async () => {
+    book.add('STOP_MARKET', 69_000, 2, 'fixed');
+    await expect(svc.setProtection(me, { connectionId: conn, symbol: 'BTCUSD', stopLossTrail: 40_000 }, new Date(), deps)).rejects.toThrow(/more than half the price/);
+    await expect(svc.setProtection(me, { connectionId: conn, symbol: 'BTCUSD', stopLossTrail: 0.1 }, new Date(), deps)).rejects.toThrow(/smaller than one price step/);
+    expect(book.open.map((o) => o.exchangeOrderId)).toEqual(['fixed']);
   });
 });

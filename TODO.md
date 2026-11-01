@@ -393,7 +393,7 @@ Legend:
 - [x] D3 Close position (market) with confirm `S` (done 1 Nov: reduce-only market, asks first for copy-managed positions)
 - [x] D4 Partial close (qty/lots, rounding explained) `S` (done 1 Nov: rounds down to the contract step, never past the position)
 - [x] D5 Edit SL / TP on an open position (exchange-native orders where supported) `M` (done 1 Nov: TP/SL per position, new-before-old replace, reads ones placed on the exchange too)
-- [ ] D6 Trailing stop (arm at +X, trail distance) `M`
+- [x] D6 Trailing stop (arm at +X, trail distance) `M` (done 1 Nov: Delta-native trailing stop-loss by distance from the TP/SL dialog; 'arm at +X' isn't native to Delta and needs engine watching, left as a follow-up)
 - [x] D7 Bulk select + close selected `S` (done 1 Nov)
 - [x] D8 Square off all (typed confirm) `S` (done 1 Nov: typed CLOSE ALL)
 - [x] D9 Trade details sheet: type, entry, mark, time, order ID, trade ID, copy buttons `S` (done 1 Nov)

@@ -77,6 +77,7 @@ export interface DeltaOrder {
   average_fill_price?: string | null;
   limit_price?: string | null;
   stop_price?: string | null;
+  trail_amount?: string | null;
   reduce_only?: boolean | string;
   state?: string;
   created_at?: string;
@@ -133,7 +134,10 @@ export function deltaOrderBody(productId: number, o: PlaceOrderRequest): Record<
   const isLimit = o.type === 'LIMIT' || o.type === 'STOP_LIMIT' || o.type === 'TAKE_PROFIT_LIMIT';
   const stopKind = o.type.startsWith('STOP') ? 'stop_loss_order' : o.type.startsWith('TAKE_PROFIT') ? 'take_profit_order' : null;
   if (isLimit && !(o.limitPrice && o.limitPrice > 0)) throw new ExchangeError('REQUEST', 'A limit order needs a limit price.');
-  if (stopKind && !(o.stopPrice && o.stopPrice > 0)) throw new ExchangeError('REQUEST', 'A stop or take-profit order needs a trigger price.');
+  const trailing = o.trailAmount != null;
+  if (trailing && !(o.trailAmount! > 0)) throw new ExchangeError('REQUEST', 'A trailing distance must be above zero.');
+  if (trailing && stopKind !== 'stop_loss_order') throw new ExchangeError('REQUEST', 'Only stop-loss orders can trail.');
+  if (stopKind && !trailing && !(o.stopPrice && o.stopPrice > 0)) throw new ExchangeError('REQUEST', 'A stop or take-profit order needs a trigger price.');
   const body: Record<string, unknown> = {
     product_id: productId,
     size,
@@ -145,7 +149,9 @@ export function deltaOrderBody(productId: number, o: PlaceOrderRequest): Record<
   if (isLimit) body.limit_price = String(o.limitPrice);
   if (stopKind) {
     body.stop_order_type = stopKind;
-    body.stop_price = String(o.stopPrice);
+    // Delta trails by a signed amount: positive for a buy stop (above the price), negative for a sell stop.
+    if (trailing) body.trail_amount = String(o.side === 'BUY' ? o.trailAmount : -o.trailAmount!);
+    else body.stop_price = String(o.stopPrice);
   }
   if (o.type === 'MARKET') body.time_in_force = 'ioc';
   else if (o.tif) body.time_in_force = o.tif.toLowerCase();
@@ -194,6 +200,7 @@ export function mapDeltaOrder(o: DeltaOrder): OrderInfo {
     avgFillPrice: o.average_fill_price ? num(o.average_fill_price) : null,
     limitPrice: o.limit_price ? num(o.limit_price) : null,
     stopPrice: o.stop_price ? num(o.stop_price) : null,
+    trailAmount: o.trail_amount != null && o.trail_amount !== '' && Number(o.trail_amount) !== 0 ? Math.abs(num(o.trail_amount)) : null,
     reduceOnly: o.reduce_only === true || o.reduce_only === 'true',
     createdAt: deltaTime(o.created_at),
     raw: o,

@@ -402,13 +402,13 @@ export interface PlaceTicketResult {
   protective: Array<{ kind: 'TP' | 'SL'; ok: boolean; message: string; order: DeskOrder | null }>;
 }
 
-export interface ProtectionOrder { exchangeOrderId: string; price: number; qty: number; ours: boolean }
+export interface ProtectionOrder { exchangeOrderId: string; price: number; trail: number | null; qty: number; ours: boolean }
 export interface Protection { symbol: string; position: number; avgEntry: number | null; markPrice: number | null; tickSize: number; takeProfit: ProtectionOrder[]; stopLoss: ProtectionOrder[] }
 export interface SetProtectionResult { protection: Protection; changes: Array<{ kind: 'TP' | 'SL'; action: string; ok: boolean; message: string }> }
 
 export const tradingApi = {
   protection: (connectionId: string, symbol: string) => call<Protection>(`/trading/protection${qs({ connectionId, symbol })}`),
-  setProtection: (b: { connectionId: string; symbol: string; takeProfit?: number | null; stopLoss?: number | null }) =>
+  setProtection: (b: { connectionId: string; symbol: string; takeProfit?: number | null; stopLoss?: number | null; stopLossTrail?: number }) =>
     call<SetProtectionResult>('/trading/protection', { method: 'POST', ...body(b) }),
   quote: (connectionId: string, symbol: string) => call<TicketQuote>(`/trading/quote${qs({ connectionId, symbol })}`),
   preview: (t: OrderTicket) => call<TicketPreview>('/trading/orders/preview', { method: 'POST', ...body(t) }),

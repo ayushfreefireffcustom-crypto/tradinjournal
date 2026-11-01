@@ -466,33 +466,50 @@ function CloseDialog({ p, onClose, onDone }: { p: DeskPosition; onClose: () => v
   );
 }
 
-/** Edit the take-profit and stop-loss of one open position (D5). */
+/** Edit the take-profit and stop-loss of one open position (D5), fixed or trailing (D6). */
 function ProtectionDialog({ p, onClose, onChanged }: { p: DeskPosition; onClose: () => void; onChanged: () => void }) {
   const cur = useLoad(() => tradingApi.protection(p.connectionId, p.symbol), [p.connectionId, p.symbol]);
   const [tp, setTp] = useState<string | null>(null);
   const [sl, setSl] = useState<string | null>(null);
+  const [trail, setTrail] = useState<string | null>(null);
+  const [slMode, setSlMode] = useState<'fixed' | 'trail' | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [res, setRes] = useState<SetProtectionResult | null>(null);
   const pr: Protection | null = res?.protection ?? cur.data ?? null;
   const first = (o: Protection['takeProfit']) => (o[0] ? String(o[0].price) : '');
+  const existingTrail = pr?.stopLoss.length === 1 && pr.stopLoss[0]!.trail != null ? pr.stopLoss[0]!.trail : null;
+  const mode = slMode ?? (existingTrail != null ? 'trail' : 'fixed');
   const tpVal = tp ?? (pr ? first(pr.takeProfit) : '');
-  const slVal = sl ?? (pr ? first(pr.stopLoss) : '');
+  const slVal = sl ?? (pr && existingTrail == null ? first(pr.stopLoss) : '');
+  const trailVal = trail ?? (existingTrail != null ? String(existingTrail) : '');
   const long = p.side === 'LONG';
   // Only what changed is sent: an empty box removes it, a new number replaces it.
-  const change = (val: string, orders: Protection['takeProfit']): number | null | undefined => {
+  const change = (val: string, orders: Protection['takeProfit'], wasTrailing = false): number | null | undefined => {
     const now = first(orders);
-    if (val.trim() === now && orders.length <= 1) return undefined;
+    if (!wasTrailing && val.trim() === now && orders.length <= 1) return undefined;
     return val.trim() === '' ? (orders.length ? null : undefined) : Number(val);
   };
-  const body = pr ? { takeProfit: change(tpVal, pr.takeProfit), stopLoss: change(slVal, pr.stopLoss) } : { takeProfit: undefined, stopLoss: undefined };
-  const dirty = body.takeProfit !== undefined || body.stopLoss !== undefined;
-  const bad = [body.takeProfit, body.stopLoss].some(v => typeof v === 'number' && !(v > 0));
+  const body: { takeProfit?: number | null; stopLoss?: number | null; stopLossTrail?: number } = {};
+  if (pr) {
+    const t = change(tpVal, pr.takeProfit);
+    if (t !== undefined) body.takeProfit = t;
+    if (mode === 'trail') {
+      if (trailVal.trim() !== '' && Number(trailVal) !== existingTrail) body.stopLossTrail = Number(trailVal);
+      else if (trailVal.trim() === '' && pr.stopLoss.length) body.stopLoss = null;
+    } else if (!(existingTrail != null && slVal.trim() === '')) {
+      // Switching a trailing stop to "Fixed" with an empty box changes nothing; clearing the trail removes it.
+      const v = change(slVal, pr.stopLoss, existingTrail != null);
+      if (v !== undefined) body.stopLoss = v;
+    }
+  }
+  const dirty = Object.keys(body).length > 0;
+  const bad = [body.takeProfit, body.stopLoss, body.stopLossTrail].some(v => typeof v === 'number' && !(v > 0));
   async function save() {
     setBusy(true); setErr('');
     try {
       const r = await tradingApi.setProtection({ connectionId: p.connectionId, symbol: p.symbol, ...body });
-      setRes(r); setTp(null); setSl(null);
+      setRes(r); setTp(null); setSl(null); setTrail(null); setSlMode(null);
       onChanged();
     } catch (e) {
       setErr(e instanceof ApiError ? e.message : 'Could not reach the server. Nothing was changed.');
@@ -500,27 +517,44 @@ function ProtectionDialog({ p, onClose, onChanged }: { p: DeskPosition; onClose:
       setBusy(false);
     }
   }
-  const lossAt = (v: string) => (pr?.avgEntry && Number(v) > 0 ? (long ? Number(v) - pr.avgEntry : pr.avgEntry - Number(v)) : null);
+  const fromEntry = (v: string) => (pr?.avgEntry && Number(v) > 0 ? (long ? Number(v) - pr.avgEntry : pr.avgEntry - Number(v)) : null);
+  const slHelp = () => {
+    const o = pr?.stopLoss ?? [];
+    if (!o.length) return 'Not set.';
+    if (o.length > 1) return `${o.length} orders set; saving replaces them with one.`;
+    const x = o[0]!;
+    return x.trail != null ? `Trailing ${price(x.trail)} behind the price, now at ${price(x.price)}.` : `Set at ${price(x.price)} for ${x.qty}${x.ours ? '' : ' (placed on the exchange directly)'}.`;
+  };
   return (
     <Modal title={`${p.symbol} take-profit / stop-loss`} sub={`${long ? 'Long' : 'Short'} ${p.size} on ${acct(p)}${pr?.markPrice ? ` · mark ${price(pr.markPrice)}` : ''}`} onClose={onClose} busy={busy} testId="desk-protect-dialog"
       footer={<><button className="x-btn x-btn--ghost" onClick={onClose} disabled={busy}>{res ? 'Done' : 'Cancel'}</button><button className="x-btn x-btn--hi" onClick={() => void save()} disabled={busy || !dirty || bad || !pr} data-testid="desk-protect-save">{busy ? 'Saving…' : 'Save'}</button></>}>
       {cur.error ? <p className="cp-err">{cur.error}</p> : !pr ? <div className="x-skel cp-skel-table" /> : <>
-        {(['TP', 'SL'] as const).map(k => {
-          const orders = k === 'TP' ? pr.takeProfit : pr.stopLoss;
-          const val = k === 'TP' ? tpVal : slVal;
-          const move = lossAt(val);
-          return (
-            <div className="x-field" key={k}>
-              <label htmlFor={`prot-${k}`}>{k === 'TP' ? 'Take-profit' : 'Stop-loss'} <span className="x-dim">{k === 'TP' ? (long ? 'above the mark' : 'below the mark') : (long ? 'below the mark' : 'above the mark')}</span></label>
-              <input id={`prot-${k}`} className="x-input m" inputMode="decimal" placeholder="None" value={val} onChange={e => (k === 'TP' ? setTp : setSl)(e.target.value.replace(/[^0-9.]/g, ''))} data-testid={`desk-protect-${k}`} />
-              <span className="x-help">
-                {orders.length === 0 ? 'Not set.' : orders.length > 1 ? `${orders.length} orders set; saving replaces them with one.` : `Set at ${price(orders[0]!.price)} for ${orders[0]!.qty}${orders[0]!.ours ? '' : ' (placed on the exchange directly)'}.`}
-                {move != null && pr.avgEntry ? ` That's ${move >= 0 ? '+' : ''}${price(move)} from your entry.` : ''}
-                {' '}Leave empty to remove it.
-              </span>
-            </div>
-          );
-        })}
+        <div className="x-field">
+          <label htmlFor="prot-TP">Take-profit <span className="x-dim">{long ? 'above the mark' : 'below the mark'}</span></label>
+          <input id="prot-TP" className="x-input m" inputMode="decimal" placeholder="None" value={tpVal} onChange={e => setTp(e.target.value.replace(/[^0-9.]/g, ''))} data-testid="desk-protect-TP" />
+          <span className="x-help">
+            {pr.takeProfit.length === 0 ? 'Not set.' : pr.takeProfit.length > 1 ? `${pr.takeProfit.length} orders set; saving replaces them with one.` : `Set at ${price(pr.takeProfit[0]!.price)} for ${pr.takeProfit[0]!.qty}${pr.takeProfit[0]!.ours ? '' : ' (placed on the exchange directly)'}.`}
+            {fromEntry(tpVal) != null ? ` That's ${fromEntry(tpVal)! >= 0 ? '+' : ''}${price(fromEntry(tpVal))} from your entry.` : ''} Leave empty to remove it.
+          </span>
+        </div>
+        <div className="x-field">
+          <label>Stop-loss</label>
+          <div className="x-seg x-seg--in x-seg--sm" role="radiogroup" aria-label="Stop-loss type">
+            <button type="button" role="radio" aria-checked={mode === 'fixed'} onClick={() => setSlMode('fixed')} data-testid="desk-protect-sl-fixed">Fixed price</button>
+            <button type="button" role="radio" aria-checked={mode === 'trail'} onClick={() => setSlMode('trail')} data-testid="desk-protect-sl-trail">Trailing</button>
+          </div>
+          {mode === 'fixed' ? (
+            <input id="prot-SL" className="x-input m" inputMode="decimal" placeholder={`None (${long ? 'below' : 'above'} the mark)`} value={slVal} onChange={e => setSl(e.target.value.replace(/[^0-9.]/g, ''))} data-testid="desk-protect-SL" aria-label="Stop-loss price" />
+          ) : (
+            <input id="prot-TRAIL" className="x-input m" inputMode="decimal" placeholder="Distance, e.g. 500" value={trailVal} onChange={e => setTrail(e.target.value.replace(/[^0-9.]/g, ''))} data-testid="desk-protect-TRAIL" aria-label="Trailing distance" />
+          )}
+          <span className="x-help">
+            {slHelp()}{' '}
+            {mode === 'trail'
+              ? <>The stop follows the price {long ? 'up' : 'down'}, staying this far {long ? 'below' : 'above'} it, and never moves back.{pr.markPrice && Number(trailVal) > 0 ? ` It would start at about ${price(long ? pr.markPrice - Number(trailVal) : pr.markPrice + Number(trailVal))}.` : ''}</>
+              : <>{fromEntry(slVal) != null ? `That's ${fromEntry(slVal)! >= 0 ? '+' : ''}${price(fromEntry(slVal))} from your entry. ` : ''}Leave empty to remove it.</>}
+          </span>
+        </div>
         <p className="cp-fine">Both cover the whole position as closing market orders. A new one is placed before the old one is cancelled, so the position is never left unprotected.</p>
         {res && <ul className="tk-msgs" data-testid="desk-protect-result">{res.changes.map(c => <li key={c.kind} className={c.ok ? 'pos' : 'neg'}>{c.message}</li>)}</ul>}
         {err && <p className="cp-err" role="alert" data-testid="desk-protect-error">{err}</p>}

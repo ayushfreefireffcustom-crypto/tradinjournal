@@ -49,6 +49,11 @@ export interface PlaceOrderRequest {
   type: OrderType;
   limitPrice?: number;
   stopPrice?: number;
+  /**
+   * Trailing stop: the trigger follows the price at this distance (in price
+   * units, always positive) instead of sitting at a fixed stopPrice.
+   */
+  trailAmount?: number;
   tif?: TimeInForce;
   reduceOnly?: boolean;
   postOnly?: boolean;
@@ -74,6 +79,8 @@ export interface OrderInfo {
   avgFillPrice: number | null;
   limitPrice: number | null;
   stopPrice: number | null;
+  /** Distance a trailing stop follows the price at (positive); null for other orders. */
+  trailAmount?: number | null;
   reduceOnly: boolean;
   createdAt: Date | null;
   raw?: unknown;
