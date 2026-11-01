@@ -37,41 +37,46 @@ export function tripsToTrades(r: LeaderRoundTrips): Trade[] {
 
 export default function LeaderAnalytics({ leaderId, range }: { leaderId: string; range: LeaderRange }) {
   const trips = useLoad(() => leadersApi.roundTrips(leaderId), [leaderId]);
-  const all = useMemo(() => (trips.data ? tripsToTrades(trips.data) : null), [trips.data]);
+  return (
+    <section aria-label="Performance" data-testid="leader-analytics" className="cp-an">
+      <div className="x-ch"><h2>Performance</h2><span className="x-sub">closed trades rebuilt from the leader&rsquo;s fills · price P&amp;L before fees and funding</span></div>
+      {trips.error ? <p className="x-muted">{trips.error}</p> : (
+        <TripAnalytics trips={trips.data} range={range} testId="leader-analytics-empty"
+          empty="Charts appear once the leader closes a trade they opened after we started tracking their account." />
+      )}
+    </section>
+  );
+}
+
+/**
+ * The dashboard's analytics cards over round trips (a leader's, or your own
+ * exchange account's). Same maths and charts as the journal.
+ */
+export function TripAnalytics({ trips, range, empty, testId }: { trips: LeaderRoundTrips | null; range: LeaderRange; empty: string; testId: string }) {
+  const all = useMemo(() => (trips ? tripsToTrades(trips) : null), [trips]);
   const ranged = useMemo(() => {
     if (!all) return null;
     const since = RANGE_MS[range] ? Date.now() - RANGE_MS[range] : 0;
     return all.filter(t => new Date(t.closeTime!).getTime() >= since);
   }, [all, range]);
   // Starting point for the curve: the first equity we recorded. Without one the curve starts at $0 and shows P&L only.
-  const view = useMemo(() => (ranged ? computeStats(ranged, trips.data?.startingEquityUsd ?? 0) : null), [ranged, trips.data]);
-
+  const view = useMemo(() => (ranged ? computeStats(ranged, trips?.startingEquityUsd ?? 0) : null), [ranged, trips]);
+  if (!view || !ranged || !all) return <div className="an-grid">{[12, 7, 5].map((n, i) => <div key={i} className={`x-skel an-s${n}`} style={{ height: n === 12 ? 110 : 300 }} />)}</div>;
+  if (!all.length) return <div className="x-card x-empty" data-testid={testId}><b>No closed trades yet</b><p>{empty}</p></div>;
   return (
-    <section aria-label="Performance" data-testid="leader-analytics" className="cp-an">
-      <div className="x-ch"><h2>Performance</h2><span className="x-sub">closed trades rebuilt from the leader&rsquo;s fills · price P&amp;L before fees and funding</span></div>
-      {trips.error ? <p className="x-muted">{trips.error}</p> : !view || !ranged || !all ? (
-        <div className="an-grid">{[12, 7, 5].map((n, i) => <div key={i} className={`x-skel an-s${n}`} style={{ height: n === 12 ? 110 : 300 }} />)}</div>
-      ) : all.length === 0 ? (
-        <div className="x-card x-empty" data-testid="leader-analytics-empty">
-          <b>No closed trades yet</b>
-          <p>Charts appear once the leader closes a trade they opened after we started tracking their account.</p>
-        </div>
-      ) : (
-        <>
-          <KpiStrip view={view} />
-          {ranged.length === 0 && <p className="x-muted cp-pad">No trades closed in this range. Try All time.</p>}
-          <div className="an-grid">
-            <div className="an-s7"><Equity view={view} /></div>
-            <div className="an-s5"><Strike view={view} /></div>
-            <div className="an-s6"><Dist trades={ranged} /></div>
-            <div className="an-s6"><Hours trades={ranged} /></div>
-            <div className="an-s6"><SymbolTable rows={view.bySymbol} /></div>
-            <div className="an-s6"><Direction view={view} /></div>
-            <div className="an-s12"><DayBars data={view.byDay} /></div>
-            <div className="an-s12"><YearHeatmap trades={all} /></div>
-          </div>
-        </>
-      )}
-    </section>
+    <>
+      <KpiStrip view={view} />
+      {ranged.length === 0 && <p className="x-muted cp-pad">No trades closed in this range. Try All time.</p>}
+      <div className="an-grid">
+        <div className="an-s7"><Equity view={view} /></div>
+        <div className="an-s5"><Strike view={view} /></div>
+        <div className="an-s6"><Dist trades={ranged} /></div>
+        <div className="an-s6"><Hours trades={ranged} /></div>
+        <div className="an-s6"><SymbolTable rows={view.bySymbol} /></div>
+        <div className="an-s6"><Direction view={view} /></div>
+        <div className="an-s12"><DayBars data={view.byDay} /></div>
+        <div className="an-s12"><YearHeatmap trades={all} /></div>
+      </div>
+    </>
   );
 }

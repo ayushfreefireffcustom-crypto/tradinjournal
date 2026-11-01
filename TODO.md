@@ -418,8 +418,8 @@ Legend:
   - docs page
 - [x] D15 Webhook request log (received / validated / order result) `S` (done 1 Nov)
 - [ ] D16 Personal API key (create/regenerate/revoke) + docs (later, after D14) `M`
-- [ ] D17 Journal integration: every exchange fill becomes a journal-able trade (notes, tags, emotions, screenshots, replay). **Our moat** `M`
-- [ ] D18 Exchange trade history import (fills since connect, plus a backfill window) into our analytics like MT5 deals `M`
+- [x] D17 Journal integration: every exchange fill becomes a journal-able trade (notes, tags, emotions, screenshots, replay). **Our moat** `M` (done 1 Nov: /trading/journal: round trips from imported fills, dashboard analytics, note + emotion + tags per trade via the journal; screenshots/replay not yet)
+- [x] D18 Exchange trade history import (fills since connect, plus a backfill window) into our analytics like MT5 deals `M` (done 1 Nov: backfill 30/90/365 days, then every 15 min; exact position-after stored at import)
 
 ---
 

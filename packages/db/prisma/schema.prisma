@@ -1248,6 +1248,8 @@ model ExchangeConnection {
   status         ExchangeConnectionStatus @default(ACTIVE)
   lastError      String?
   lastCheckedAt  DateTime?
+  /// Newest point the trade-history import has reached (D18); null before the first import.
+  historySyncedAt DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1493,6 +1495,10 @@ model ExchangeFill {
   qty             Decimal            @db.Decimal(30, 10)
   price           Decimal            @db.Decimal(30, 10)
   fee             Decimal?           @db.Decimal(20, 8)
+  /// Signed position after the fill, worked out at import from the live position (D18).
+  positionAfter   Decimal?           @db.Decimal(30, 10)
+  /// Contract size at import, so P&L can be priced in USD without asking the venue again.
+  contractMultiplier Decimal?        @db.Decimal(30, 12)
   exchTs          DateTime
   ingestedAt      DateTime           @default(now())
 

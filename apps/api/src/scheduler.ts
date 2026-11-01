@@ -11,6 +11,7 @@ import { logger } from '@tradinjournal/logger';
 import { dispatchReminders } from './modules/notifications/dispatch.service.js';
 import { dispatchCopyNotifications } from './modules/copy/copy-notify.service.js';
 import { dispatchTelegram } from './modules/notifications/telegram.service.js';
+import { importDue as importExchangeHistory } from './modules/trading/history.service.js';
 import { sendDailyDigests } from './modules/notifications/digest.service.js';
 import { ingestNews, enrichPendingNews } from './modules/news/news.service.js';
 import { ingestWindow } from './modules/calendar/calendar.service.js';
@@ -84,6 +85,8 @@ export function startInProcessScheduler(): void {
   every(5 * MIN, 'trade-sync', () => queueDueSyncs());
   // Copy-trading events to push and email (the in-app notification is written by the engine).
   if (env.TRADING_ENABLED) every(MIN / 2, 'copy-notify', () => dispatchCopyNotifications());
+  // Exchange trade history for the journal: each active account at most 15 minutes behind.
+  if (env.TRADING_ENABLED) every(5 * MIN, 'exchange-history', () => importExchangeHistory());
   // Telegram alerts: every notification type, to linked chats.
   if (env.TELEGRAM_ENABLED) every(MIN / 2, 'telegram', () => dispatchTelegram());
   // Partner dashboards: refresh referred clients' activity snapshots in small batches.

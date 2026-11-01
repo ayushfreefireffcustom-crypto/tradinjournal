@@ -420,6 +420,20 @@ export const webhookApi = {
   events: (cursor?: string | null) => call<Page<WebhookEvent>>(`/trading/webhook/events${qs({ cursor: cursor ?? undefined })}`),
 };
 
+export interface JournalTrade {
+  key: string; symbol: string; side: 'LONG' | 'SHORT'; qty: number; avgEntry: number; avgExit: number; pnlUsd: number; openedAt: string; closedAt: string;
+  note: { id: string; body: string; emotion: string | null; tags: string[] } | null;
+}
+export interface ExchangeJournal {
+  connection: { id: string; label: string; environment: ExchangeEnvironment };
+  trades: JournalTrade[]; startingEquityUsd: number | null; fillCount: number; firstFillAt: string | null; historySyncedAt: string | null;
+}
+
+export const historyApi = {
+  journal: (connectionId: string) => call<ExchangeJournal>(`/trading/history${qs({ connectionId })}`),
+  importNow: (connectionId: string, days?: number) => call<{ imported: number; seen: number; from: string; to: string; message: string }>('/trading/history/import', { method: 'POST', ...body({ connectionId, days }) }),
+};
+
 export const tradingApi = {
   protection: (connectionId: string, symbol: string) => call<Protection>(`/trading/protection${qs({ connectionId, symbol })}`),
   setProtection: (b: { connectionId: string; symbol: string; takeProfit?: number | null; stopLoss?: number | null; stopLossTrail?: number }) =>

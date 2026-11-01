@@ -27,7 +27,7 @@ accounts. Nothing here is live until you set `TRADING_ENABLED=true`.
 
 ## Database
 
-Eight additive migrations (the first seven applied to Neon on 1 Nov 2026), applied with `prisma migrate deploy` after `migrate status` and your OK:
+Nine additive migrations (the first seven applied to Neon on 1 Nov 2026), applied with `prisma migrate deploy` after `migrate status` and your OK:
 - `20261031071652_trading_platform`: new tables only
 - `20261031072510_exchange_order_realized_pnl`: one nullable column and an index on `exchange_order`
 - `20261031120000_copy_follow_risk_and_profit_cap`: three nullable columns on `copy_follow`
@@ -36,6 +36,7 @@ Eight additive migrations (the first seven applied to Neon on 1 Nov 2026), appli
 - `20261101100000_leader_stat_top3_share`: two nullable columns on `leader_stat`. The engine fills them on its next stats pass (every 5 minutes)
 - `20261101110000_telegram_link`: two new tables, `telegram_link` and `telegram_link_code`, both cascading on user delete
 - `20261101120000_trading_webhooks`: two new tables, `trading_webhook` and `trading_webhook_event` (TradingView webhooks). **Not yet on Neon** (applied 1 Nov: the seven above)
+- `20261101130000_exchange_history_import`: three nullable columns (`exchange_fill.positionAfter`, `exchange_fill.contractMultiplier`, `exchange_connection.historySyncedAt`). **Not yet on Neon**
 
 ## Telegram alerts (optional)
 

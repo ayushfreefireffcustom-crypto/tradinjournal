@@ -347,3 +347,49 @@ export interface WebhookEventDto {
   payload: Record<string, unknown> | null;
   orderId: string | null;
 }
+
+// ── Exchange trade history and journal (D17, D18) ───────────────────────────
+
+export const historyImportSchema = z.object({
+  connectionId: z.string().min(1).max(64),
+  /** How far back the first import reaches; later imports continue from where the last stopped. */
+  days: z.number().int().min(1).max(365).optional(),
+});
+export type HistoryImportInput = z.infer<typeof historyImportSchema>;
+
+export const historyQuerySchema = z.object({ connectionId: z.string().min(1).max(64) });
+
+export interface HistoryImportResultDto {
+  /** New fills stored by this import. */
+  imported: number;
+  /** Fills the exchange returned (new and already stored). */
+  seen: number;
+  from: string;
+  to: string;
+  message: string;
+}
+
+export interface JournalTradeDto {
+  /** Stable id for this round trip; journal notes attach to it. */
+  key: string;
+  symbol: string;
+  side: 'LONG' | 'SHORT';
+  qty: number;
+  avgEntry: number;
+  avgExit: number;
+  /** Price P&L in USD, before fees and funding. */
+  pnlUsd: number;
+  openedAt: string;
+  closedAt: string;
+  note: { id: string; body: string; emotion: string | null; tags: string[] } | null;
+}
+
+export interface ExchangeJournalDto {
+  connection: { id: string; label: string; environment: 'TESTNET' | 'LIVE' };
+  trades: JournalTradeDto[];
+  /** Equity at the first sample we have, for the curve; null when unknown. */
+  startingEquityUsd: number | null;
+  fillCount: number;
+  firstFillAt: string | null;
+  historySyncedAt: string | null;
+}
