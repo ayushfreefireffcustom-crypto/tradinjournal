@@ -155,7 +155,7 @@ Legend:
 - [x] A6.5 Loading states (`loading.tsx`) per route group `S` — root `loading.tsx`; each page draws `x-skel` blocks shaped like its content
 
 ## A7. UI QA pass
-- [ ] A7.1 Screenshot every route at 1440/1024/390 before and after; keep them in `design/ui-v6/` `S`
+- [x] A7.1 Screenshot every route at 1440/1024/390 before and after; keep them in `design/ui-v6/` `S` — 2 Nov: 186 shots in design/ui-v6/ (untracked) + audit-report.json + audit-summary.txt; 150 route-widths clean, the rest are the known exceptions (9px symbol marks, compare palette, TradingView iframe fetch)
 - [x] A7.2 Contrast check: text ≥ 4.5:1, muted ≥ 3:1 on its surfaces — automated audit over every route (scratchpad audit.cjs); --dim raised in both themes, landing fine print fixed (2 Nov) `S`
 - [ ] A7.3 Keyboard pass: tab order, focus rings, Esc closes sheets, ⌘K `S`
 - [ ] A7.4 Delete dead CSS (`app-v3.css` rules no longer referenced), dead components and `v3/` leftovers `M` — partial 2 Nov: app-v3.css and the dead components are gone, globals.css cleared of 85 unused rules; `components/v3/icons.tsx` and the `useTradeCandles` hook in `components/v3/` are still live and should move to v6
