@@ -164,6 +164,14 @@ export function Equity({ view }: { view: AccountStats }) {
     <ACard title="Equity curve" sub="realised, vs starting balance" testId="dd-card"
       right={<span className="x-tag x-tag--m">Peak ${peak.toLocaleString('en-US', { maximumFractionDigits: 0 })}</span>}>
       <EquityChart pts={pts} base={view.startingBalance} />
+      {view.risk && (
+        <Facts items={[
+          { l: 'Sharpe', h: 'sharpe', v: view.risk.sharpe == null ? '—' : view.risk.sharpe.toFixed(2) },
+          { l: 'Sortino', h: 'sortino', v: view.risk.sortino == null ? '—' : view.risk.sortino.toFixed(2) },
+          { l: 'CAGR', h: 'cagr', v: view.risk.cagrPct == null ? '—' : fmtPct(view.risk.cagrPct / 100), c: view.risk.cagrPct == null ? '' : tone(view.risk.cagrPct) },
+          { l: 'Recovery factor', h: 'recoveryFactor', v: view.risk.recoveryFactor == null ? '—' : view.risk.recoveryFactor.toFixed(2) },
+        ]} />
+      )}
     </ACard>
   );
 }

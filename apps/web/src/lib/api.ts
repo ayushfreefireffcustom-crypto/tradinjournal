@@ -139,6 +139,8 @@ export interface AccountStats {
   byDirection: { long: DirectionStat; short: DirectionStat };
   maxWinStreak: number;
   maxLossStreak: number;
+  /** Sharpe, Sortino, CAGR, recovery factor (client-computed; absent on raw API stats). */
+  risk?: import('./risk').RiskMetrics;
 }
 
 // ─── API calls ────────────────────────────────────────────────────────────────

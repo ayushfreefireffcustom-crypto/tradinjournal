@@ -3,6 +3,7 @@
 // range can drive every widget on the client without a round-trip and stay
 // consistent with the server for the ALL-time range.
 import type { AccountStats, DayStat, DirectionStat, EquityPoint, SymbolStat, Trade } from './api';
+import { riskMetrics } from './risk';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -182,6 +183,8 @@ export function computeStats(trades: Trade[], startingBalance: number): AccountS
     else { curLoss++; curWin = 0; if (curLoss > maxLossStreak) maxLossStreak = curLoss; }
   }
 
+  const risk = riskMetrics(equityCurve, startingBalance, netPnl);
+
   return {
     netPnl,
     totalTrades: closed.length,
@@ -206,5 +209,6 @@ export function computeStats(trades: Trade[], startingBalance: number): AccountS
     byDirection: { long, short },
     maxWinStreak,
     maxLossStreak,
+    risk,
   };
 }

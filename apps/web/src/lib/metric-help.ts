@@ -21,6 +21,8 @@ export const METRIC_HELP = {
   grossProfit: { label: 'Gross profit', what: 'The sum of every winning trade, before the losers are taken off.', why: 'Set against gross loss it gives the profit factor; on its own it flatters a strategy.' },
   grossLoss: { label: 'Gross loss', what: 'The sum of every losing trade.', why: 'If it grows faster than gross profit, losers are getting bigger or more frequent.' },
   stdDev: { label: 'Std dev', what: 'How far a typical trade’s result is from the average trade.', why: 'High spread means results swing a lot from trade to trade; size positions with that in mind.' },
+  cagr: { label: 'CAGR', what: 'The yearly growth rate that would turn your starting balance into today’s, compounded.', why: 'It lets you compare periods of different lengths. It is only shown after 90 days, since a few good weeks annualise into silly numbers.' },
+  recoveryFactor: { label: 'Recovery factor', what: 'Net profit divided by the biggest fall from a high point, in money.', why: 'Above 2 means you made well over what you had to sit through. Below 1, the worst stretch cost more than you have made.' },
   largestLoss: { label: 'Largest loss', what: 'Your single worst closed trade.', why: 'It should be close to your planned risk per trade. Much bigger means a stop was moved or missing.' },
 } satisfies Record<string, MetricHelp>;
 
