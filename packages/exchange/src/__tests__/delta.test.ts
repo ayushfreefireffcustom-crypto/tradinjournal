@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ExchangeError } from '../errors.js';
 import { deltaConfigFromEnv, type DeltaConfig } from '../delta/config.js';
 import { deltaSignature, encodeQuery, mapDeltaError } from '../delta/rest.js';
-import { deltaClientOrderId, deltaOrderBody, deltaTime, DeltaIndiaExchange, mapDeltaOrder, parseUserTrade } from '../delta/adapter.js';
+import { deltaClientOrderId, deltaOrderBody, deltaTime, DeltaIndiaExchange, mapDeltaOrder, parseAccountMessage, parseUserTrade } from '../delta/adapter.js';
 import type { WsLike } from '../delta/ws.js';
 
 const CFG: DeltaConfig = { env: 'testnet', restUrl: 'https://delta.test', wsUrl: 'wss://delta.test', userAgent: 'tradelogs/1.0' };
@@ -347,5 +347,54 @@ describe('DeltaIndiaExchange stream (fake WS)', () => {
     handle.close();
     ws.emit('close');
     expect(errors).toHaveLength(0);
+  });
+});
+
+describe('Delta orders and positions stream (B2.5)', () => {
+  it('parses a positions snapshot, an update and a close', () => {
+    expect(parseAccountMessage({ type: 'positions', action: 'snapshot', result: [
+      { symbol: 'ETHUSD', product_id: 3136, size: 3, entry_price: '3100.5', mark_price: '3120', unrealized_pnl: '0.6', liquidation_price: '1500' },
+      { symbol: 'BTCUSD', size: -2, entry_price: '70000' },
+    ] })).toEqual([
+      { kind: 'position', action: 'snapshot', position: { symbol: 'ETHUSD', size: 3, avgEntry: 3100.5, markPrice: 3120, unrealizedPnl: 0.6, liquidationPrice: 1500, leverage: null } },
+      { kind: 'position', action: 'snapshot', position: { symbol: 'BTCUSD', size: -2, avgEntry: 70000, markPrice: null, unrealizedPnl: 0, liquidationPrice: null, leverage: null } },
+    ]);
+    expect(parseAccountMessage({ type: 'positions', action: 'update', symbol: 'ETHUSD', size: 4, entry_price: '3101' })[0]).toMatchObject({ action: 'update', position: { symbol: 'ETHUSD', size: 4 } });
+    // A deleted position is flat, whatever size the frame still carries.
+    expect(parseAccountMessage({ type: 'positions', action: 'delete', symbol: 'ETHUSD', size: 4 })[0]).toMatchObject({ action: 'delete', position: { symbol: 'ETHUSD', size: 0 } });
+    expect(parseAccountMessage({ type: 'positions', action: 'snapshot' })).toEqual([]);
+  });
+
+  it('parses order frames into the same shape as REST orders', () => {
+    const [ev] = parseAccountMessage({ type: 'orders', action: 'update', id: 991, client_order_id: 'cp-abc', symbol: 'BTCUSD', side: 'buy', order_type: 'market_order', size: 5, unfilled_size: 2, average_fill_price: '70010', state: 'open', reduce_only: false });
+    expect(ev).toMatchObject({ kind: 'order', action: 'update', order: { exchangeOrderId: '991', clientOrderId: 'cp-abc', symbol: 'BTCUSD', side: 'BUY', type: 'MARKET', status: 'PARTIAL', qty: 5, filledQty: 3, avgFillPrice: 70010 } });
+    const [done] = parseAccountMessage({ type: 'orders', action: 'update', id: 991, symbol: 'BTCUSD', side: 'buy', size: 5, unfilled_size: 0, state: 'closed' });
+    expect(done).toMatchObject({ order: { status: 'FILLED', filledQty: 5 } });
+  });
+
+  it('ignores other frames, unknown actions and rows without ids', () => {
+    expect(parseAccountMessage({ type: 'v2/user_trades', sy: 'BTCUSD' })).toEqual([]);
+    expect(parseAccountMessage({ type: 'orders', action: 'weird', id: 1, symbol: 'BTCUSD' })).toEqual([]);
+    expect(parseAccountMessage({ type: 'orders', action: 'create', symbol: 'BTCUSD' })).toEqual([]);
+    expect(parseAccountMessage({ type: 'positions', action: 'update' })).toEqual([]);
+  });
+
+  it('subscribes to both channels after key-auth and delivers events', async () => {
+    const { ex } = fakeDelta({});
+    const exWs = new DeltaIndiaExchange(CFG, { fetch: (ex as unknown as { rest: { fetchImpl: never } }).rest.fetchImpl, WebSocket: FakeWs, now: () => 1_700_000_000_000 });
+    const events: unknown[] = [];
+    const errors: Error[] = [];
+    await exWs.streamAccount(CREDS, { onEvent: (e) => events.push(e), onError: (e) => errors.push(e) });
+    const ws = FakeWs.last;
+    ws.emit('open');
+    expect(ws.sent).toHaveLength(1);
+    ws.emit('message', { type: 'key-auth', success: true });
+    expect(ws.sent[1]).toEqual({ type: 'subscribe', payload: { channels: [{ name: 'orders', symbols: ['all'] }, { name: 'positions', symbols: ['all'] }] } });
+    ws.emit('message', { type: 'subscriptions', channels: [] });
+    ws.emit('message', { type: 'positions', action: 'snapshot', result: [{ symbol: 'ETHUSD', size: 3, entry_price: '3000' }] });
+    ws.emit('message', { type: 'orders', action: 'snapshot', result: [] });
+    expect(events).toEqual([{ kind: 'position', action: 'snapshot', position: expect.objectContaining({ symbol: 'ETHUSD', size: 3 }) }]);
+    ws.emit('close');
+    expect(errors).toHaveLength(1);
   });
 });

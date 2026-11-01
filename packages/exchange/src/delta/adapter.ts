@@ -6,6 +6,8 @@
 import { createHash } from 'node:crypto';
 import { ExchangeError } from '../errors.js';
 import type {
+  AccountEvent,
+  AccountEventAction,
   AccountInfo,
   ApiCredentials,
   Exchange,
@@ -52,6 +54,8 @@ interface DeltaBalance {
 interface DeltaPosition {
   product_id?: number;
   product_symbol?: string;
+  /** WS frames use `symbol`; REST uses `product_symbol`. */
+  symbol?: string;
   size?: number | string;
   entry_price?: string;
   mark_price?: string;
@@ -63,6 +67,7 @@ export interface DeltaOrder {
   id?: number | string;
   client_order_id?: string | null;
   product_symbol?: string;
+  symbol?: string;
   product_id?: number;
   side?: string;
   order_type?: string;
@@ -180,7 +185,7 @@ export function mapDeltaOrder(o: DeltaOrder): OrderInfo {
   return {
     exchangeOrderId: String(o.id ?? ''),
     clientOrderId: o.client_order_id ?? null,
-    symbol: o.product_symbol ?? '',
+    symbol: o.product_symbol ?? o.symbol ?? '',
     side: String(o.side).toLowerCase() === 'sell' ? 'SELL' : 'BUY',
     type: orderType(o),
     status,
@@ -223,6 +228,44 @@ export function parseUserTrade(msg: Record<string, unknown>): Omit<FillEvent, 'b
     exchangeOrderId: msg.o != null ? String(msg.o) : undefined,
     clientOrderId: msg.c != null ? String(msg.c) : undefined,
   };
+}
+
+const ACTIONS = new Set<AccountEventAction>(['snapshot', 'create', 'update', 'delete']);
+
+function mapDeltaPosition(p: DeltaPosition, closed: boolean): PositionInfo | null {
+  const symbol = p.product_symbol ?? p.symbol;
+  if (!symbol) return null;
+  return {
+    symbol: String(symbol),
+    size: closed ? 0 : num(p.size),
+    avgEntry: num(p.entry_price),
+    markPrice: p.mark_price ? num(p.mark_price) : null,
+    unrealizedPnl: num(p.unrealized_pnl),
+    liquidationPrice: p.liquidation_price ? num(p.liquidation_price) : null,
+    leverage: null,
+  };
+}
+
+/**
+ * Parse an `orders` or `positions` frame. A snapshot carries every row in
+ * `result`; create/update/delete carry one row inline. Anything else is [].
+ */
+export function parseAccountMessage(msg: Record<string, unknown>): AccountEvent[] {
+  if (msg.type !== 'orders' && msg.type !== 'positions') return [];
+  const action = String(msg.action ?? '') as AccountEventAction;
+  if (!ACTIONS.has(action)) return [];
+  const rows = action === 'snapshot' ? (Array.isArray(msg.result) ? (msg.result as Record<string, unknown>[]) : []) : [msg];
+  const out: AccountEvent[] = [];
+  for (const row of rows) {
+    if (msg.type === 'orders') {
+      const order = mapDeltaOrder(row as DeltaOrder);
+      if (order.exchangeOrderId && order.symbol) out.push({ kind: 'order', action, order });
+    } else {
+      const position = mapDeltaPosition(row as DeltaPosition, action === 'delete');
+      if (position) out.push({ kind: 'position', action, position });
+    }
+  }
+  return out;
 }
 
 const STABLES = new Set(['USD', 'USDT', 'USDC']);
@@ -355,15 +398,7 @@ export class DeltaIndiaExchange implements Exchange {
     const env = await this.rest.signed<DeltaPosition[]>(creds, 'GET', '/v2/positions/margined');
     return (env.result ?? [])
       .filter((p) => p.product_symbol && num(p.size) !== 0)
-      .map((p) => ({
-        symbol: String(p.product_symbol),
-        size: num(p.size),
-        avgEntry: num(p.entry_price),
-        markPrice: p.mark_price ? num(p.mark_price) : null,
-        unrealizedPnl: num(p.unrealized_pnl),
-        liquidationPrice: p.liquidation_price ? num(p.liquidation_price) : null,
-        leverage: null,
-      }));
+      .map((p) => mapDeltaPosition(p, false)!);
   }
 
   /** Real-time signed size for one product (`/positions/margined` lags up to ~10 s). */
@@ -482,6 +517,24 @@ export class DeltaIndiaExchange implements Exchange {
         onMessage: (msg) => {
           const fill = parseUserTrade(msg);
           if (fill) handlers.onEvent({ ...fill, ...productMeta(products.get(fill.symbol)) });
+        },
+        onError: handlers.onError,
+      },
+      WS,
+      this.deps.now,
+    );
+  }
+
+  async streamAccount(creds: ApiCredentials, handlers: StreamHandlers<AccountEvent>): Promise<StreamHandle> {
+    const WS = this.deps.WebSocket ?? (globalThis as unknown as { WebSocket?: WsCtor }).WebSocket;
+    if (!WS) throw new ExchangeError('UNAVAILABLE', 'No WebSocket implementation in this runtime.');
+    return openPrivateStream(
+      this.cfg,
+      creds,
+      {
+        channels: [{ name: 'orders', symbols: ['all'] }, { name: 'positions', symbols: ['all'] }],
+        onMessage: (msg) => {
+          for (const ev of parseAccountMessage(msg)) handlers.onEvent(ev);
         },
         onError: handlers.onError,
       },

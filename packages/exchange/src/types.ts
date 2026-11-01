@@ -134,6 +134,13 @@ export interface StreamHandle {
   close(): void;
 }
 
+/** A change to the account's own orders or positions, from the private stream. */
+export type AccountEvent =
+  | { kind: 'order'; action: AccountEventAction; order: OrderInfo }
+  /** A closed position arrives with `size` 0. */
+  | { kind: 'position'; action: AccountEventAction; position: PositionInfo };
+export type AccountEventAction = 'snapshot' | 'create' | 'update' | 'delete';
+
 export interface StreamHandlers<T> {
   onEvent: (event: T) => void;
   /** Transport failure. The caller decides whether and when to reconnect. */
@@ -175,4 +182,6 @@ export interface Exchange {
 
   /** Authenticated stream of the account's own fills. */
   streamFills(creds: ApiCredentials, handlers: StreamHandlers<FillEvent>): Promise<StreamHandle>;
+  /** Authenticated stream of order and position changes, starting with a snapshot where the venue sends one. */
+  streamAccount?(creds: ApiCredentials, handlers: StreamHandlers<AccountEvent>): Promise<StreamHandle>;
 }
