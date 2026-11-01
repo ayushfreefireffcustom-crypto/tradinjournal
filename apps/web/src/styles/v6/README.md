@@ -37,6 +37,19 @@ Approved mock: `design/dashboard-v8/a-desk-v2/` (dark + light screenshots in tha
    Loading gets `x-skel` blocks shaped like the content.
 8. Both themes must work: never hard-code a colour that only reads on dark.
 
+## Shared React pieces (`components/v6/ui/`)
+- `InfoTip`: the ⓘ next to a metric; copy for each metric lives in `lib/metric-help.ts`.
+- `Tooltip` / `IconButton`: an icon-only button gets `IconButton label="…"`; its name is the
+  tooltip. Never use the native `title` attribute for this.
+- `useMenu(open, close)`: put the ref on the wrapper around a `[aria-haspopup]` trigger and its
+  `[role=menu]` panel; items need `role="menuitem"` (or `menuitemradio`). Gives arrows, Home/End,
+  type-ahead, Tab/outside-click close and Esc back to the trigger.
+- `Sparkline`: the only sparkline. `zero` for P&L-like series, `label` when it carries meaning.
+- `DateRangePicker` (+ `lib/date-presets.ts`), `Freshness` ("Updated 12s ago").
+- Formatting: `lib/format.ts` (`fmtUsd`, `fmtPct`, `pnlClass`…): real minus, "—" for unknown.
+- Every primitive has a server-render smoke test in `components/v6/ui/primitives.test.ts`; the
+  dev-only gallery at `/dev/ui` shows them all in both themes.
+
 ## Layout
 - Content width is the frame's; use grids with `minmax(0, 1fr)` columns and `min-width: 0` on
   children so nothing pushes the page wider than the viewport.

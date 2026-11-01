@@ -204,6 +204,12 @@ html[data-theme=light] .v6 .x-dialog-scrim { background: rgba(17, 17, 19, .35); 
   display: grid; gap: 4px; text-align: left; letter-spacing: 0; text-transform: none;
 }
 .v6 .x-info-pop.below { transform: none; }
+/* Tooltip (components/v6/ui/tooltip.tsx): one dark label, positioned by script. */
+.v6.x-tip-layer { position: fixed; top: 0; left: 0; width: 0; height: 0; z-index: 90; pointer-events: none; }
+.v6 .x-tip {
+  position: fixed; max-width: 240px; background: var(--tip); color: #EDEDED; border-radius: 8px; padding: 6px 10px;
+  font: 400 12.5px/1.35 var(--sans); box-shadow: 0 8px 20px rgba(0, 0, 0, .28); white-space: normal; animation: x-fade .12s;
+}
 .v6 .x-info-what { color: #EDEDED; }
 .v6 .x-info-why { color: #A0A0A0; }
 /* Labels it sits in (stat strips, table heads) style their spans; the tip keeps its own shape. */
