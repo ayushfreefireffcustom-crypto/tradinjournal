@@ -50,6 +50,7 @@ export const NAV: { title: string; items: FrameNavItem[] }[] = [
     { href: '/strategies', label: 'Strategies', icon: IPlay },
     { href: '/strategies/deployments', label: 'Deployments', icon: ISync },
     { href: '/strategies/reports', label: 'Strategy reports', icon: IAnalytics },
+    { href: '/marketplace', label: 'Marketplace', icon: IUsers },
     { href: '/coach', label: 'AI coach', icon: ICoach },
   ] },
 ];

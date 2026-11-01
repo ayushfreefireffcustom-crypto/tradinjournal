@@ -21,6 +21,7 @@ import { loadPublicCandles } from '../market/market.service.js';
 import { claimDelivery } from '../../lib/notifications/claim.js';
 import { sendPush } from '../../lib/push.js';
 import { ConflictError, NotFoundError, ValidationError } from '../../http/errors.js';
+import { assertWithinLimit } from '../../lib/plans.js';
 
 const TF_MS: Record<string, number> = { '5m': 300_000, '15m': 900_000, '1h': 3_600_000, '4h': 14_400_000, '1d': 86_400_000 };
 /** Rules a user can keep (active, paused or triggered). */
@@ -145,9 +146,7 @@ const bucket = (need: number) => LOAD_BUCKETS.find((b) => b >= need + 5) ?? MAX_
 export async function createIndicatorAlert(userId: string, input: CreateIndicatorAlertInput, deps = defaultIndicatorAlertDeps) {
   const c = { left: input.left, operator: input.operator, right: input.right } as Condition;
   checkCondition(c);
-  if ((await prisma.indicatorAlert.count({ where: { userId } })) >= MAX_INDICATOR_ALERTS) {
-    throw new ConflictError(`You can keep up to ${MAX_INDICATOR_ALERTS} indicator alerts. Delete one to add another.`);
-  }
+  await assertWithinLimit(userId, 'indicatorAlerts', await prisma.indicatorAlert.count({ where: { userId } }), 'Delete one to add another.');
   const symbol = input.symbol.trim().toUpperCase();
   // A typo would otherwise sit silently forever. A provider outage doesn't block saving.
   let bars: Candle[] | null = null;

@@ -12,6 +12,7 @@ import { createApiKey, listApiKeys, revokeApiKey } from './api-keys.service.js';
 import { contextOf, recordActivity } from '../me/activity.service.js';
 import { deleteWebhook, getWebhook, setupWebhook, updateWebhook, webhookEvents } from './webhook.service.js';
 import { cancelOrder, closeMany, closePosition, deskOrders, deskOrdersCsv, deskOrdersSummary, deskOverview } from './trading.service.js';
+import { requireFeature } from '../../lib/plans.js';
 
 const uid = (res: Response) => res.locals.user.id as string;
 const wrap = (fn: (req: Request, res: Response) => Promise<unknown>) => async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -48,10 +49,10 @@ tradingRouter.get('/quote', readLimit, validateQuery(ticketQuoteQuerySchema), wr
   res.json({ data: await ticketQuote(uid(res), q.connectionId, q.symbol) });
 }));
 tradingRouter.post('/orders/preview', readLimit, validateBody(orderTicketSchema), wrap(async (req, res) => res.json({ data: await previewTicket(uid(res), req.body as OrderTicketInput) })));
-tradingRouter.post('/orders', closeLimit, validateBody(orderTicketSchema), wrap(async (req, res) => res.json({ data: await placeTicket(uid(res), req.body as OrderTicketInput) })));
+tradingRouter.post('/orders', closeLimit, requireFeature('trading.desk', 'Placing orders from the trading desk'), validateBody(orderTicketSchema), wrap(async (req, res) => res.json({ data: await placeTicket(uid(res), req.body as OrderTicketInput) })));
 // Personal API keys for /api/v1 (D16).
 tradingRouter.get('/api-keys', wrap(async (_req, res) => res.json({ data: await listApiKeys(uid(res)) })));
-tradingRouter.post('/api-keys', closeLimit, validateBody(createApiKeySchema), wrap(async (req, res) => {
+tradingRouter.post('/api-keys', closeLimit, requireFeature('api.keys', 'API keys'), validateBody(createApiKeySchema), wrap(async (req, res) => {
   const k = await createApiKey(uid(res), req.body as CreateApiKeyInput);
   await recordActivity(uid(res), 'api_key_created', `Created API key “${k.name}” (${k.scope}, …${k.last4})`, contextOf(req));
   res.status(201).json({ data: k });
@@ -71,7 +72,7 @@ tradingRouter.post('/history/import', exportLimit, validateBody(historyImportSch
 
 // TradingView webhook setup and its request log (D14, D15).
 tradingRouter.get('/webhook', wrap(async (_req, res) => res.json({ data: await getWebhook(uid(res)) })));
-tradingRouter.post('/webhook', closeLimit, validateBody(webhookSetupSchema), wrap(async (req, res) => res.json({ data: await setupWebhook(uid(res), req.body as WebhookSetupInput) })));
+tradingRouter.post('/webhook', closeLimit, requireFeature('webhooks', 'TradingView webhooks'), validateBody(webhookSetupSchema), wrap(async (req, res) => res.json({ data: await setupWebhook(uid(res), req.body as WebhookSetupInput) })));
 tradingRouter.patch('/webhook', closeLimit, validateBody(webhookUpdateSchema), wrap(async (req, res) => res.json({ data: await updateWebhook(uid(res), req.body as WebhookUpdateInput) })));
 tradingRouter.delete('/webhook', closeLimit, wrap(async (_req, res) => { await deleteWebhook(uid(res)); res.json({ data: { ok: true } }); }));
 tradingRouter.get('/webhook/events', wrap(async (req, res) => res.json({ data: await webhookEvents(uid(res), typeof req.query.cursor === 'string' ? req.query.cursor.slice(0, 64) : undefined) })));

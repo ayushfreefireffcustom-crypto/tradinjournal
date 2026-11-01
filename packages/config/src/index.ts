@@ -265,6 +265,14 @@ const envSchema = z.object({
     .string()
     .default('true')
     .transform(v => v.toLowerCase() === 'true' || v === '1'),
+  // ── Plans (H15) ─────────────────────────────────────────────────────────
+  /** Off (default): everyone is on the Free plan, which includes every feature. */
+  PLANS_ENABLED: z
+    .string()
+    .default('false')
+    .transform(v => v.toLowerCase() === 'true' || v === '1'),
+  /** With plans on: which emails are on which plan, e.g. "pro:a@x.com,b@y.com;team:c@z.com". Until billing exists. */
+  PLAN_ASSIGNMENTS: z.string().optional(),
   /** Referral activity snapshots older than this are refreshed by the scheduler. */
   PARTNER_STATS_STALE_MIN: z.coerce.number().int().min(5).default(360),
   /** Clicks recorded per IP per 10 minutes; extra clicks still redirect. */

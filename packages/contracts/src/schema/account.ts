@@ -29,3 +29,35 @@ export const feedbackSchema = z.object({
 export type FeedbackInput = z.infer<typeof feedbackSchema>;
 
 export const feedbackStatusSchema = z.object({ status: z.enum(['new', 'read', 'done']) }).strict();
+
+// ── Marketplace (H1–H3) ──
+export const creatorApplySchema = z.object({
+  displayName: z.string().trim().min(2).max(40),
+  bio: z.string().trim().min(20, 'Tell traders a little about how you trade (20+ characters)').max(1000),
+  experience: z.string().trim().max(500).optional(),
+  links: z.array(z.string().trim().url().max(200)).max(5).optional(),
+}).strict();
+
+const templateParamSchema = z.object({ id: z.string().min(3).max(120), label: z.string().trim().max(60).optional(), min: z.number(), max: z.number(), step: z.number().positive() }).strict();
+export const templateCreateSchema = z.object({
+  strategyId: z.string().min(1).max(40),
+  name: z.string().trim().min(3).max(60),
+  summary: z.string().trim().min(10).max(160),
+  description: z.string().trim().min(30, 'Describe the idea, when it works and when it doesn’t (30+ characters)').max(4000),
+  category: z.enum(['trend', 'reversion', 'breakout', 'momentum', 'range', 'scalping']),
+  risk: z.enum(['low', 'medium', 'high']),
+  params: z.array(templateParamSchema).max(8),
+  exchanges: z.array(z.enum(['delta_india', 'binance', 'bybit'])).max(3),
+  trackDeploymentId: z.string().min(1).max(40).nullable().optional(),
+}).strict();
+export const templateUpdateSchema = templateCreateSchema.omit({ strategyId: true }).partial().extend({ refreshRules: z.boolean().optional() }).strict();
+
+export const subscribeSchema = z.object({
+  mode: z.enum(['paper', 'live']),
+  capital: z.number().min(100).max(100_000_000).optional(),
+  connectionId: z.string().min(1).max(64).optional(),
+  confirmLive: z.boolean().optional(),
+  params: z.record(z.string().max(120), z.number()).optional(),
+}).strict();
+
+export const reviewSchema = z.object({ decision: z.string().min(3).max(20), note: z.string().trim().max(500).optional() }).strict();

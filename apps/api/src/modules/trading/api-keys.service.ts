@@ -6,8 +6,8 @@ import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import type { ApiKeyCreatedDto, ApiKeyDto, CreateApiKeyInput } from '@tradinjournal/contracts';
 import { prisma, type ApiKey } from '@tradinjournal/db';
 import { ConflictError, NotFoundError } from '../../http/errors.js';
+import { assertWithinLimit } from '../../lib/plans.js';
 
-const MAX_ACTIVE = 10;
 const sha256 = (s: string) => createHash('sha256').update(s).digest('hex');
 const KEY_RE = /^tl_([A-Za-z0-9]{12})_([A-Za-z0-9_-]{32,64})$/;
 
@@ -21,7 +21,7 @@ export async function listApiKeys(userId: string): Promise<ApiKeyDto[]> {
 
 export async function createApiKey(userId: string, input: CreateApiKeyInput): Promise<ApiKeyCreatedDto> {
   const active = await prisma.apiKey.count({ where: { userId, revokedAt: null } });
-  if (active >= MAX_ACTIVE) throw new ConflictError(`You can have at most ${MAX_ACTIVE} active keys. Revoke one you no longer use.`);
+  await assertWithinLimit(userId, 'apiKeys', active, 'Revoke one you no longer use.');
   const prefix = randomBytes(9).toString('base64url').replace(/[-_]/g, 'x').slice(0, 12);
   const secret = randomBytes(30).toString('base64url');
   const key = `tl_${prefix}_${secret}`;

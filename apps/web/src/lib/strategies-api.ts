@@ -127,7 +127,9 @@ export interface DeploymentRow {
 }
 export interface DeploymentEvent { id: string; at: string; symbol: string | null; kind: string; message: string; data: { conditions?: Array<{ text: string; met: boolean | null }> } | null }
 export interface DeploymentDetail extends DeploymentRow {
-  strategyVersion: number; strategyName: string; spec: StrategySpec; metrics: Metrics | null; equity: Array<{ t: number; equity: number }>;
+  strategyVersion: number; strategyName: string;
+  /** Marketplace runs: the rules are the creator's and aren't sent. */
+  private?: boolean; interval: string; spec: StrategySpec | null; metrics: Metrics | null; equity: Array<{ t: number; equity: number }>;
   pending: Array<{ symbol: string; side: string; kind: string }>; pauses: Array<{ from: number; to: number | null }>; sizeSchedule: Array<{ from: number; multiplier: number }>;
   trades: DeploymentTrade[]; events: DeploymentEvent[];
 }

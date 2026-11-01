@@ -21,6 +21,7 @@ import {
   handleUpdateFollow,
   handleUpdateMyLeader,
 } from './copy.controller.js';
+import { requireFeature } from '../../lib/plans.js';
 
 const writeLimit = perUserRateLimit({ name: 'copy-write', max: 30, windowSeconds: 600, message: 'Too many changes in a short time. Wait a few minutes and try again.' });
 // Stop can place orders on the user's exchange.
@@ -30,7 +31,7 @@ const leaders: ExpressRouter = Router();
 leaders.use(requireAuth, requirePlatformAccess);
 leaders.get('/', validateQuery(leadersQuerySchema), handleListLeaders);
 leaders.get('/me', handleMyLeader);
-leaders.post('/apply', writeLimit, validateBody(applyLeaderSchema), handleApplyLeader);
+leaders.post('/apply', writeLimit, requireFeature('copy.lead', 'Leading copy trading'), validateBody(applyLeaderSchema), handleApplyLeader);
 leaders.patch('/me', writeLimit, validateBody(updateLeaderSchema), handleUpdateMyLeader);
 leaders.get('/:id', validateQuery(leaderRangeQuerySchema), handleGetLeader);
 leaders.get('/:id/trades', validateQuery(cursorQuerySchema), handleLeaderTrades);
@@ -42,7 +43,7 @@ follows.use(requireAuth, requirePlatformAccess);
 follows.get('/', handleListFollows);
 // Before '/:id', or 'stream' would be taken for an id.
 follows.get('/stream', handleFollowStream);
-follows.post('/', writeLimit, validateBody(createFollowSchema), handleCreateFollow);
+follows.post('/', writeLimit, requireFeature('copy.follow', 'Copy trading'), validateBody(createFollowSchema), handleCreateFollow);
 follows.get('/:id', handleGetFollow);
 follows.get('/:id/orders', validateQuery(cursorQuerySchema), handleFollowOrders);
 follows.patch('/:id', writeLimit, validateBody(updateFollowSchema), handleUpdateFollow);

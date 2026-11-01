@@ -21,6 +21,7 @@ import { cacheGet, cacheSet } from '../../lib/cache.js';
 import { ConflictError, NotFoundError, ValidationError } from '../../http/errors.js';
 import { loadPublicCandles } from '../market/market.service.js';
 import { loadFunding, loadUniverse, type FundingMap, type UniverseRow } from './universe.js';
+import { assertWithinLimit } from '../../lib/plans.js';
 
 const TF_MS: Record<string, number> = { '15m': 900_000, '1h': 3_600_000, '4h': 14_400_000, '1d': 86_400_000 };
 const MAX_BARS = 1000;
@@ -240,9 +241,7 @@ export async function listScreens(userId: string) {
 
 export async function saveScreen(userId: string, input: SaveScreenInput) {
   checkDefinition(input.definition);
-  if ((await prisma.savedScreen.count({ where: { userId } })) >= MAX_SAVED_SCREENS) {
-    throw new ConflictError(`You can save up to ${MAX_SAVED_SCREENS} screens. Delete one to save another.`);
-  }
+  await assertWithinLimit(userId, 'savedScreens', await prisma.savedScreen.count({ where: { userId } }), 'Delete one to save another.');
   return screenDto(await prisma.savedScreen.create({ data: { userId, name: input.name, definition: input.definition as object } }));
 }
 

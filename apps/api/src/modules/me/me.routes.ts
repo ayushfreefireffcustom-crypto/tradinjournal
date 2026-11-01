@@ -11,6 +11,7 @@ import {
 } from './location.controller.js';
 import { confirmDeletion, deletionBlockers, exportData, getProfile, getTour, requestDeletion, updateProfile, updateTour } from './account.service.js';
 import { contextOf, listActivity, type ActivityGroup } from './activity.service.js';
+import { planSummary } from '../../lib/plans.js';
 
 const wrap = (fn: (req: Request, res: Response) => Promise<void>) => (req: Request, res: Response, next: NextFunction) => fn(req, res).catch(next);
 const uid = (res: Response) => res.locals.user.id as string;
@@ -54,3 +55,5 @@ meRouter.post('/delete/confirm', deleteConfirmLimit, validateBody(deleteConfirmS
   res.clearCookie('__Secure-better-auth.session_token', { path: '/', sameSite: 'none', secure: true });
   ok(res, { deleted: true });
 }));
+// Plan and limits (H15).
+meRouter.get('/plan', wrap(async (_req, res) => ok(res, await planSummary(uid(res)))));

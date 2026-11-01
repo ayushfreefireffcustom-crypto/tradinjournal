@@ -21,7 +21,7 @@ const KIND_LABEL: Record<string, string> = { started: 'Started', filled: 'Entere
 
 function statusLine(d: DeploymentDetail): string {
   switch (d.status) {
-    case 'running': return d.mode === 'live' ? `Live on your exchange account. It checks each ${d.spec.session.interval} bar close and acts on its own.` : `Running on paper with live prices. It checks each ${d.spec.session.interval} bar close.`;
+    case 'running': return d.mode === 'live' ? `Live on your exchange account. It checks each ${d.interval} bar close and acts on its own.` : `Running on paper with live prices. It checks each ${d.interval} bar close.`;
     case 'paused': return 'Paused: no new trades. Open trades keep their stops, targets and exit rules.';
     case 'stopping': return 'Stopping: no new trades. It stops for good once the open trades have closed.';
     case 'stopped': return `Stopped${d.stopReason ? ` (${d.stopReason.toLowerCase()})` : ''}${d.stoppedAt ? ` ${ago(d.stoppedAt)}` : ''}.`;
@@ -61,7 +61,7 @@ export default function DeploymentPage() {
     <AppShell legacy={false} pageTitle={x.name} pageSubtitle={`${x.mode === 'live' ? 'Live' : 'Paper'} · version ${x.version} · started ${ago(x.startedAt)}`}
       actions={<>
         <Link className="x-btn" href="/strategies/deployments">All deployments</Link>
-        <Link className="x-btn" href={`/strategies/${x.strategyId}`}>Strategy</Link>
+        {x.private ? <Link className="x-btn" href="/marketplace/subscriptions">Subscriptions</Link> : <Link className="x-btn" href={`/strategies/${x.strategyId}`}>Strategy</Link>}
       </>}>
       <div className="x-page" data-testid="dp-page">
         <section className={`x-card dp-status dp-${x.status}`} aria-label="Status" data-testid="dp-status">

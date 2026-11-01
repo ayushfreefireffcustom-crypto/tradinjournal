@@ -10,6 +10,7 @@ import { decryptWithKey, encryptWithKey, requireEncryptionKey } from '@tradinjou
 import { AppError, ConflictError, NotFoundError } from '../../http/errors.js';
 import { logAdminAction } from '../admin/admin-audit.service.js';
 import { adapterFor } from './exchanges.adapters.js';
+import { assertWithinLimit } from '../../lib/plans.js';
 
 export interface ExchangeDeps {
   adapterFor: (exchange: ExchangeVenue, environment: ExchangeEnvironment) => Exchange;
@@ -100,9 +101,7 @@ export async function connectExchange(
 
   // 1. Cap per user.
   const count = await prisma.exchangeConnection.count({ where: { userId: actor.id, status: { not: 'REVOKED' } } });
-  if (count >= env.EXCHANGE_MAX_CONNECTIONS) {
-    throw new ConflictError(`You can connect up to ${env.EXCHANGE_MAX_CONNECTIONS} exchange accounts. Remove one first.`);
-  }
+  await assertWithinLimit(actor.id, 'exchangeConnections', count, 'Remove one first.');
 
   // 2. Same key already connected (checked before calling the exchange).
   const fingerprint = fingerprintApiKey(input.exchange, input.apiKey, key);

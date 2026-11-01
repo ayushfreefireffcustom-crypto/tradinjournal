@@ -67,6 +67,9 @@ model User {
   twoFactors        TwoFactor[]
   activity          ActivityEvent[]
   feedback          Feedback[]
+  creatorProfile    CreatorProfile?
+  templates         StrategyTemplate[]
+  subscriptions     TemplateSubscription[]
 
   @@map("user")
 }
@@ -1707,17 +1710,22 @@ model Strategy {
   spec               Json
   /// draft | paper | live | paused | archived
   status             String   @default("draft")
-  /// manual | ai | legacy
+  /// manual | ai | legacy | template (a private copy made by subscribing; its rules aren't shown)
   source             String   @default("manual")
   legacyId           String?  @unique
   version            Int      @default(1)
   baselineBacktestId String?
+  /// For source=template: the marketplace template it was copied from.
+  templateId         String?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
-  versions    StrategyVersion[]
-  backtests   StrategyBacktest[]
-  deployments StrategyDeployment[]
+  versions      StrategyVersion[]
+  backtests     StrategyBacktest[]
+  deployments   StrategyDeployment[]
+  /// Templates published from this strategy.
+  templates     StrategyTemplate[]     @relation("TemplateSource")
+  subscriptions TemplateSubscription[]
 
   @@index([userId, updatedAt(sort: Desc)])
   @@map("strategy")
@@ -1831,4 +1839,91 @@ model DeploymentEvent {
 
   @@index([deploymentId, at(sort: Desc)])
   @@map("deployment_event")
+}
+
+// ── Marketplace (H1–H3) ───────────────────────────────────────────────────────
+
+/// Someone who publishes strategy templates. An admin approves the application.
+model CreatorProfile {
+  id          String    @id @default(cuid())
+  userId      String    @unique
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  displayName String
+  bio         String
+  experience  String?
+  links       String[]
+  /// pending | approved | rejected | suspended
+  status      String    @default("pending")
+  reviewNote  String?
+  reviewedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([status])
+  @@map("creator_profile")
+}
+
+/// A published strategy: a frozen copy of the creator's rules (kept private),
+/// the settings subscribers may tune, and performance computed by TRADElogs.
+model StrategyTemplate {
+  id                String    @id @default(cuid())
+  creatorId         String
+  creator           User      @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  strategyId        String?
+  strategy          Strategy? @relation("TemplateSource", fields: [strategyId], references: [id], onDelete: SetNull)
+  version           Int
+  spec              Json
+  name              String
+  summary           String
+  description       String
+  /// trend | reversion | breakout | momentum | range | scalping
+  category          String
+  /// low | medium | high
+  risk              String
+  /// [{ id, path, label, min, max, step, value }]
+  params            Json      @default("[]")
+  /// Venues it may run on live, e.g. ["delta_india"].
+  exchanges         String[]
+  symbols           String[]
+  interval          String
+  /// pending | published | rejected | unlisted
+  status            String    @default("pending")
+  reviewNote        String?
+  /// The creator's own run shown as its track record (paper or live).
+  trackDeploymentId String?
+  /// { backtest: { from, to, metrics, equity }, computedAt }
+  performance       Json?
+  publishedAt       DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  subscriptions TemplateSubscription[]
+
+  @@index([status, publishedAt])
+  @@index([creatorId])
+  @@map("strategy_template")
+}
+
+/// A subscriber running a template: a private strategy copy and its deployment.
+model TemplateSubscription {
+  id           String            @id @default(cuid())
+  userId       String
+  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Null once the creator removes the template; the subscriber's run carries on.
+  templateId   String?
+  template     StrategyTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  strategyId   String
+  strategy     Strategy          @relation(fields: [strategyId], references: [id], onDelete: Cascade)
+  deploymentId String?           @unique
+  /// The tuned settings: { [paramId]: value }.
+  params       Json              @default("{}")
+  /// active | paused | cancelled
+  status       String            @default("active")
+  cancelledAt  DateTime?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([templateId, status])
+  @@map("template_subscription")
 }

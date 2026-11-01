@@ -11,9 +11,8 @@ import {
 import { ConflictError, NotFoundError } from '../../http/errors.js';
 import { syncQueue, requestSyncWithin } from '../sync/sync.queue.js';
 import { prisma } from '@tradinjournal/db';
+import { assertWithinLimit } from '../../lib/plans.js';
 
-// Each user may connect at most this many broker accounts.
-const MAX_ACCOUNTS_PER_USER = 2;
 
 // Prettify a broker name from an MT5 server string, e.g.
 //   "XMGlobal-MT5 10" → "XM Global", "Xellion-Live" → "Xellion".
@@ -36,11 +35,8 @@ export async function connectAccount(userId: string, input: ConnectAccountInput)
   const alreadyHave = existing.some(
     a => a.mt5Login === BigInt(input.mt5Login) && a.server === input.server,
   );
-  if (!alreadyHave && existing.length >= MAX_ACCOUNTS_PER_USER) {
-    throw new ConflictError(
-      `Account limit reached — you can connect up to ${MAX_ACCOUNTS_PER_USER} accounts. Remove one first.`,
-    );
-  }
+  // How many MT5 accounts a user may connect comes from their plan (H15).
+  if (!alreadyHave) await assertWithinLimit(userId, 'brokerAccounts', existing.length, 'Remove one first.');
 
   const info = await verifyAccount({
     login: input.mt5Login,

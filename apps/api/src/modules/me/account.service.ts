@@ -77,6 +77,11 @@ export async function exportData(userId: string, ctx: ActivityContext) {
   const brokers = await prisma.brokerAccount.findMany({ where: { userId } });
   const brokerIds = brokers.map((b) => b.id);
   const conns = await prisma.exchangeConnection.findMany({ where: { userId } });
+  const [creatorProfile, templates, subscriptions] = await Promise.all([
+    prisma.creatorProfile.findUnique({ where: { userId } }),
+    prisma.strategyTemplate.findMany({ where: { creatorId: userId } }),
+    prisma.templateSubscription.findMany({ where: { userId } }),
+  ]);
   const [trades, executions, balance, journal, aiConvs, prefs, newsPrefs, watch, alerts, indAlerts, screens, strategies, deployments, follows, leaders, orders, webhooks, apiKeys, sessions, authAccounts, activity, feedback, notifications] = await Promise.all([
     prisma.trade.findMany({ where: { brokerAccountId: { in: brokerIds } } }),
     prisma.execution.findMany({ where: { brokerAccountId: { in: brokerIds } } }),
@@ -110,7 +115,9 @@ export async function exportData(userId: string, ctx: ActivityContext) {
     brokerAccounts: brokers.map((b) => omit(b, ['password', 'syncLockedUntil'])),
     trades, executions, balanceEvents: balance, journal, aiConversations: aiConvs,
     notificationPreferences: prefs, newsPreferences: newsPrefs, watchlist: watch, priceAlerts: alerts, indicatorAlerts: indAlerts, savedScreens: screens,
-    strategies, deployments,
+    // Marketplace copies are someone else's rules: listed, but without them.
+    strategies: strategies.map((x) => (x.source === 'template' ? { ...x, spec: null, versions: [] } : x)),
+    deployments: deployments.map((x) => (strategies.some((st) => st.id === x.strategyId && st.source === 'template') ? { ...x, spec: null } : x)),
     exchangeConnections: conns.map((c) => omit(c, ['apiKeyEnc', 'apiSecretEnc', 'passphraseEnc', 'keyFingerprint'])),
     copyFollows: follows, copyLeaders: leaders, exchangeOrders: orders,
     tradingWebhook: webhooks.map((w) => omit(w, ['secretHash', 'tokenHash', 'token', 'secret'])),
@@ -118,6 +125,7 @@ export async function exportData(userId: string, ctx: ActivityContext) {
     sessions: sessions.map((s) => omit(s, ['token'])),
     signInMethods: authAccounts.map((a) => ({ provider: a.providerId === 'credential' ? 'password' : a.providerId, createdAt: a.createdAt })),
     activity, feedback, notifications,
+    marketplace: { creatorProfile, templates, subscriptions },
   };
 }
 

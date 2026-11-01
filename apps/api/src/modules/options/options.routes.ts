@@ -11,6 +11,7 @@ import {
   type LegInput, type OptEnv, type Resolution,
 } from './options.service.js';
 import { placeBasket, previewBasket } from './orders.service.js';
+import { requireFeature } from '../../lib/plans.js';
 
 const wrap = (fn: (req: Request, res: Response) => Promise<void>) => (req: Request, res: Response, next: NextFunction) => fn(req, res).catch(next);
 const envOf = (req: Request): OptEnv => (req.query.env === 'testnet' ? 'testnet' : 'live');
@@ -71,6 +72,6 @@ optionsRouter.post('/replay', analyzeLimit, validateBody(optionsReplaySchema), w
 // G11: option orders through a connected account. Mounted only with TRADING_ENABLED.
 const orderLimit = perUserRateLimit({ name: 'options-orders', max: 20, windowSeconds: 60, message: 'Too many orders in a short time. Wait a minute and try again.' });
 export const optionsOrdersRouter: IRouter = Router();
-optionsOrdersRouter.use(requireAuth, requirePlatformAccess);
+optionsOrdersRouter.use(requireAuth, requirePlatformAccess, requireFeature('options.orders', 'Sending option orders'));
 optionsOrdersRouter.post('/preview', orderLimit, validateBody(optionsBasketSchema), wrap(async (req, r) => ok(r, await previewBasket(r.locals.user.id as string, req.body as OptionsBasketDto))));
 optionsOrdersRouter.post('/', orderLimit, validateBody(optionsBasketSchema), wrap(async (req, r) => ok(r, await placeBasket(r.locals.user.id as string, req.body as OptionsBasketDto))));

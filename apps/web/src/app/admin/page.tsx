@@ -172,6 +172,7 @@ export default function AdminPage() {
       actions={
         <>
           <Link href="/admin/feedback" className="x-btn" data-testid="admin-feedback-link">Feedback</Link>
+          <Link href="/admin/marketplace" className="x-btn" data-testid="admin-mk-link">Marketplace</Link>
           {TRADING_ENABLED && <Link href="/admin/copy" className="x-btn" data-testid="admin-copy-link">Copy trading</Link>}
           <button type="button" onClick={() => void loadCore(true)} disabled={refreshing || loading} className="x-btn" data-testid="admin-refresh">
             <ISync size={15} className={refreshing ? 'x-spin' : ''} />Refresh

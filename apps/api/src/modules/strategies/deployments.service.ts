@@ -20,11 +20,12 @@ import {
   type BacktestResult, type StrategySpec, type TraderCandle as Candle,
 } from '@tradinjournal/core';
 import type { PlaceTicketResultDto, TicketQuoteDto } from '@tradinjournal/contracts';
-import { ConflictError, NotFoundError, ValidationError } from '../../http/errors.js';
+import { ForbiddenError, ConflictError, NotFoundError, ValidationError } from '../../http/errors.js';
 import { closePosition } from '../trading/trading.service.js';
 import { setProtection } from '../trading/protection.service.js';
 import { placeTicket, ticketQuote, tradableInstruments } from '../trading/ticket.service.js';
 import { defaultStrategyDeps, loadRange, type StrategyDeps } from './strategies.service.js';
+import { assertWithinLimit, requireFeatureFor } from '../../lib/plans.js';
 
 export const MAX_RUNNING = 10;
 const PAPER_SLIPPAGE_BPS = 5;
@@ -72,14 +73,17 @@ export const defaultLiveDeps: LiveDeps = {
 
 export interface DeployInput { mode: 'paper' | 'live'; capital?: number; connectionId?: string; sizeMultiplier?: number; confirmLive?: boolean }
 
-export async function createDeployment(userId: string, strategyId: string, input: DeployInput, live = defaultLiveDeps) {
+export async function createDeployment(userId: string, strategyId: string, input: DeployInput, live = defaultLiveDeps, opts: { fromSubscription?: boolean } = {}) {
   const s = await prisma.strategy.findFirst({ where: { id: strategyId, userId } });
   if (!s) throw new NotFoundError('Strategy not found');
+  // A marketplace copy runs only through its subscription (exchange allowlist, one run each).
+  if (s.source === 'template' && !opts.fromSubscription) throw new ForbiddenError('Run marketplace strategies from Subscriptions.');
   if (s.status === 'archived') throw new ConflictError('Unarchive the strategy first.');
   const spec = s.spec as unknown as StrategySpec;
   const v = validateStrategy(spec);
   if (v.blockers.length) throw new ValidationError(`Fix this first: ${v.blockers[0]!.message}`);
-  if ((await prisma.strategyDeployment.count({ where: { userId, status: { in: ACTIVE } } })) >= MAX_RUNNING) throw new ConflictError(`You can run up to ${MAX_RUNNING} deployments at once. Stop one first.`);
+  await assertWithinLimit(userId, 'runningDeployments', await prisma.strategyDeployment.count({ where: { userId, status: { in: ACTIVE } } }), 'Stop one first.');
+  if (input.mode === 'live') await requireFeatureFor(userId, 'strategies.live', 'Running strategies live');
   const multiplier = input.sizeMultiplier ?? 1;
   if (!(multiplier > 0 && multiplier <= 10)) throw new ValidationError('The size multiplier must be between 0.01 and 10.');
   const now = Date.now();
@@ -162,16 +166,21 @@ export async function getDeployment(userId: string, id: string) {
   const [trades, events, strat] = await Promise.all([
     prisma.deploymentTrade.findMany({ where: { deploymentId: id }, orderBy: { exitTime: 'desc' }, take: 300 }),
     prisma.deploymentEvent.findMany({ where: { deploymentId: id }, orderBy: [{ at: 'desc' }, { createdAt: 'desc' }], take: 150 }),
-    prisma.strategy.findUnique({ where: { id: d.strategyId }, select: { version: true, name: true } }),
+    prisma.strategy.findUnique({ where: { id: d.strategyId }, select: { version: true, name: true, source: true } }),
   ]);
   const snap = (d.snapshot ?? {}) as { metrics?: BacktestResult['metrics']; equity?: Array<{ t: number; equity: number }>; pending?: BacktestResult['pending'] };
+  // A marketplace run: the rules and the condition values behind each check stay private.
+  const isPrivate = strat?.source === 'template';
   return {
     ...summary(d, trades.reduce((a, t) => a + t.pnl, 0), trades.length),
     strategyVersion: strat?.version ?? d.version, strategyName: strat?.name ?? d.name,
-    spec: specOf(d), metrics: snap.metrics ?? null, equity: snap.equity ?? [], pending: snap.pending ?? [],
+    private: isPrivate,
+    // Bar size isn't a secret; the page says when it next acts.
+    interval: specOf(d).session.interval,
+    spec: isPrivate ? null : specOf(d), metrics: snap.metrics ?? null, equity: snap.equity ?? [], pending: snap.pending ?? [],
     pauses: pausesOf(d), sizeSchedule: sizesOf(d),
     trades: trades.map(tradeDto),
-    events: events.map((e) => ({ id: e.id, at: e.at.toISOString(), symbol: e.symbol, kind: e.kind, message: e.message, data: e.data })),
+    events: events.map((e) => ({ id: e.id, at: e.at.toISOString(), symbol: e.symbol, kind: e.kind, message: e.message, data: isPrivate ? null : e.data })),
   };
 }
 

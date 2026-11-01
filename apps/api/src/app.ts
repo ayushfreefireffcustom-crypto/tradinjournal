@@ -34,6 +34,7 @@ import { overviewRouter } from './modules/overview/overview.routes.js';
 import { derivativesRouter } from './modules/derivatives/derivatives.routes.js';
 import { optionsOrdersRouter, optionsRouter } from './modules/options/options.routes.js';
 import { adminFeedbackRouter, feedbackRouter } from './modules/feedback/feedback.routes.js';
+import { adminMarketplaceRouter, marketplaceRouter } from './modules/marketplace/marketplace.routes.js';
 import { strategiesRouter } from './modules/strategies/strategies.routes.js';
 import { deploymentsInternalRouter, deploymentsRouter } from './modules/strategies/deployments.routes.js';
 import { adminRouter } from './modules/admin/admin.routes.js';
@@ -120,10 +121,12 @@ export function createApp(): Express {
   // Copy-trading admin first: the general admin router 404s anything it doesn't know.
   if (env.TRADING_ENABLED) app.use('/api/admin/copy', adminCopyRouter);
   app.use('/api/admin/feedback', adminFeedbackRouter);
+  app.use('/api/admin/marketplace', adminMarketplaceRouter);
   app.use('/api/admin', adminRouter);
   app.use('/api/usage', usageRouter);
   app.use('/api/me', meRouter);
   app.use('/api/feedback', feedbackRouter);
+  app.use('/api/marketplace', marketplaceRouter);
 
   app.use('/api/accounts', accountsRouter);
   // Trading platform: exchange connections and copy trading. Off until TRADING_ENABLED (404).
