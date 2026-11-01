@@ -14,7 +14,7 @@ import { createPortal } from 'react-dom';
 import { IClose } from '@/components/v3/icons';
 import '@/styles/v6/tokens.css';
 import '@/styles/v6/components.css';
-import '@/styles/v6/account.css';
+import '@/styles/v6/dialogs.css';
 
 /** Render children in a `.v6` scope under <body>. Nothing renders on the server. */
 export function V6Portal({ children }: { children: ReactNode }) {

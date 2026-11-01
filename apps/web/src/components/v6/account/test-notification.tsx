@@ -5,6 +5,7 @@
 // so we wait for the service worker to report it and say so plainly if not.
 import { useState } from 'react';
 import { api } from '@/lib/api';
+import '@/styles/v6/account.css';
 
 type Outcome = { tone: 'ok' | 'warn'; lines: string[] };
 

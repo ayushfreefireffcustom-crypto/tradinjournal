@@ -9,6 +9,7 @@ import { Modal } from '@/components/v6/copy/parts';
 import { accountApi, shownIp, type ActivityGroup, type ActivityItem, type PlanSummary, type Profile } from '@/lib/account-api';
 import { ApiError } from '@/lib/copy-api';
 import { IAlert, IArrowRight, ICheck, IClose, IDownload, IExchange, ILock, IPlay, IPlus, IStop } from '@/components/v3/icons';
+import '@/styles/v6/account.css';
 
 // ── Profile ──
 const zones = (): string[] => {

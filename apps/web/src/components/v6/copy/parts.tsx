@@ -8,6 +8,7 @@ import { IClose } from '@/components/v3/icons';
 import type { Follow, RiskGrade } from '@/lib/copy-api';
 import { usd } from '@/lib/copy-api';
 import '@/styles/v6/copy.css';
+import '@/styles/v6/dialogs.css';
 
 const MONO = { fontFamily: 'var(--mono)' } as const;
 

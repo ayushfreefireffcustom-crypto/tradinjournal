@@ -6,6 +6,7 @@ import { BROKERS, CUSTOM_SERVER, OTHER_BROKER } from '@/lib/brokers';
 import { V6Portal } from '@/components/confirm-dialog';
 import { IClose, ILock } from '@/components/v3/icons';
 import '@/styles/v6/account.css';
+import '@/styles/v6/dialogs.css';
 
 interface Props {
   onClose: () => void;

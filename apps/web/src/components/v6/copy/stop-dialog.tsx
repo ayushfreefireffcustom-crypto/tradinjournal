@@ -5,6 +5,7 @@
 import { useState } from 'react';
 import { Modal } from './parts';
 import { followsApi, type Follow, type StopResult } from '@/lib/copy-api';
+import '@/styles/v6/dialogs.css';
 
 export default function StopDialog({ follow, onClose, onDone }: { follow: Follow; onClose: () => void; onDone: (r: StopResult) => void }) {
   const [close, setClose] = useState(follow.openPositions > 0);

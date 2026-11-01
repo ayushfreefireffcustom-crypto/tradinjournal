@@ -8,6 +8,7 @@ import { useToast } from '@/components/toast';
 import { Modal } from '@/components/v6/copy/parts';
 import { accountApi, deviceOf, shownIp, type Profile } from '@/lib/account-api';
 import { authClient } from '@/lib/auth-client';
+import '@/styles/v6/account.css';
 
 type AuthErr = { message?: string; status?: number } | null | undefined;
 const msgOf = (e: AuthErr, fallback: string) => (e?.status === 429 ? 'Too many tries. Wait a minute.' : e?.message && !/^\[/.test(e.message) ? e.message : fallback);

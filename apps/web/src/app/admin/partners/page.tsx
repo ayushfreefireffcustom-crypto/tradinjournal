@@ -17,6 +17,7 @@ import { Avatar, PartnerStatusPill, day, n, pct } from '@/components/v6/account/
 import { useConfirm, V6Portal } from '@/components/confirm-dialog';
 import '@/styles/v6/account.css';
 import '@/styles/v6/admin.css';
+import '@/styles/v6/dialogs.css';
 
 type Sort = 'active' | 'signups30d' | 'clicks30d' | 'conv' | 'clients';
 type View = 'live' | 'SUSPENDED' | 'REVOKED';

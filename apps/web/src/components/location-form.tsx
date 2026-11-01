@@ -6,7 +6,7 @@ import { locationApi, type PlaceSuggestion } from '@/lib/location-api';
 import { MapPin, SpinnerGap } from '@phosphor-icons/react';
 import '@/styles/v6/tokens.css';
 import '@/styles/v6/components.css';
-import '@/styles/v6/account.css';
+import '@/styles/v6/dialogs.css';
 
 interface Props {
   initial?: { country?: string | null; city?: string | null; postalCode?: string | null };
@@ -93,6 +93,11 @@ function SuggestList({
   );
 }
 
+// The blocking gate's unsaved answers. The gate lives in the app shell, which
+// re-mounts when the page underneath redirects (a new user's /dashboard goes to
+// /brokers), so keep what they typed instead of wiping it mid-form.
+let gateDraft: { country: string; city: string; postalCode: string } | null = null;
+
 export default function LocationForm({
   initial,
   onSaved,
@@ -101,9 +106,11 @@ export default function LocationForm({
   subtitle = 'A quiet detail for product insights: country, city and postal code. Takes a moment.',
   submitLabel = 'Continue',
 }: Props) {
-  const [country, setCountry] = useState(initial?.country?.toUpperCase() ?? '');
-  const [city, setCity] = useState(initial?.city ?? '');
-  const [postalCode, setPostalCode] = useState(initial?.postalCode ?? '');
+  const draft = blocking ? gateDraft : null;
+  const [country, setCountry] = useState(draft?.country ?? initial?.country?.toUpperCase() ?? '');
+  const [city, setCity] = useState(draft?.city ?? initial?.city ?? '');
+  const [postalCode, setPostalCode] = useState(draft?.postalCode ?? initial?.postalCode ?? '');
+  useEffect(() => { if (blocking) gateDraft = { country, city, postalCode }; }, [blocking, country, city, postalCode]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [cityOpen, setCityOpen] = useState(false);
@@ -136,6 +143,7 @@ export default function LocationForm({
         city: city.trim(),
         postalCode: postalCode.trim(),
       });
+      if (blocking) gateDraft = null;
       onSaved();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save location');

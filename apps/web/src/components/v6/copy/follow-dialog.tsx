@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Modal } from './parts';
 import { exchangesApi, followsApi, usd, venueName, type ExchangeConnection, type ExchangeEnvironment, type Follow, type FollowSettings, type SizingMode } from '@/lib/copy-api';
+import '@/styles/v6/dialogs.css';
 
 const MODES: Array<{ id: SizingMode; label: string; help: string }> = [
   { id: 'PROPORTIONAL', label: 'Match my balance', help: 'Your size is the leader’s size scaled by your balance over theirs. Multiplier 1 copies the same share of your account.' },

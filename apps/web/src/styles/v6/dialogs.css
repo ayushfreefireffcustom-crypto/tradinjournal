@@ -1,0 +1,43 @@
+/* Dialog pieces shared across pages: the confirm dialog, the location gate
+   form, and the dialog header/footer used by copy, exchanges and brokers.
+   Split out of account.css so a page with a dialog doesn't ship all of settings (A7.5). */
+.v6.ac-portal { font: 400 14px/1.45 var(--sans); color: var(--tx); -webkit-font-smoothing: antialiased; }
+.v6 .ac-dlg { position: relative; }
+.v6 .ac-dlg--form { width: min(500px, 100%); }
+.v6 .ac-dlg h2 { letter-spacing: -.01em; }
+.v6 .ac-dlg-h { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 16px; }
+.v6 .ac-dlg-h > div { flex: 1; min-width: 0; }
+.v6 .ac-dlg-h h2 { margin: 0 0 4px; }
+.v6 .ac-dlg-h .x-btn--icon { margin: -4px -6px 0 auto; }
+.v6 .ac-dlg-msg { margin: 0; color: var(--mut); font-size: 13.5px; line-height: 1.55; }
+.v6 .ac-dlg > .ac-dlg-msg { margin-bottom: 20px; }
+.v6 .ac-dlg-reason { margin-bottom: 18px; }
+.v6 .ac-dlg-ta { min-height: 76px; }
+.v6 .ac-dlg-ft { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+.v6 .ac-form .ac-dlg-ft { margin-top: 4px; }
+.v6 .ac-row2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.v6 .ac-loc { display: grid; gap: 14px; }
+.v6 .ac-loc-f { position: relative; }
+.v6 .ac-loc .x-input:disabled { opacity: .5; cursor: not-allowed; }
+.v6 .ac-loc-hint { margin: -4px 0 0; font-size: 12px; color: var(--dim); }
+.v6 .ac-loc-save { justify-self: start; }
+.v6 .ac-suggest {
+  position: absolute; z-index: 20; left: 0; right: 0; top: calc(100% + 6px); max-height: 200px; overflow-y: auto; list-style: none; margin: 0;
+  padding: 6px; background: var(--pop); border-radius: 14px; box-shadow: var(--pop-shadow);
+}
+.v6 .ac-suggest button { width: 100%; display: grid; gap: 2px; text-align: left; padding: 8px 10px; border: 0; border-radius: 9px; background: none; color: var(--tx); font: 400 13.5px var(--sans); cursor: pointer; }
+.v6 .ac-suggest button:hover { background: var(--s2); }
+.v6 .ac-suggest span, .v6 .ac-suggest small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.v6 .ac-suggest small { font-size: 11.5px; color: var(--mut); }
+.v6 .ac-suggest-note { display: flex; align-items: center; gap: 8px; padding: 8px 10px; font-size: 12.5px; color: var(--mut); }
+.v6 .ac-loc-scrim { z-index: 90; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.v6 .ac-loc-dlg { width: min(440px, 100%); padding: 28px; overflow: visible; }
+.v6 .ac-loc-dlg h2 { text-align: center; font-size: 20px; letter-spacing: -.015em; }
+.v6 .ac-loc-ic { width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; margin: 0 auto 14px; background: var(--g-soft); color: var(--g); }
+.v6 .ac-loc-sub { text-align: center; max-width: 34ch; margin: 0 auto 22px; }
+@media (max-width: 760px) {
+  .v6 .ac-row2 { grid-template-columns: minmax(0, 1fr); }
+  .v6 .ac-dlg-ft .x-btn { flex: 1; }
+  .v6 .ac-loc-dlg { padding: 24px 18px calc(24px + env(safe-area-inset-bottom)); }
+  .v6 .ac-loc-save { justify-self: stretch; }
+}

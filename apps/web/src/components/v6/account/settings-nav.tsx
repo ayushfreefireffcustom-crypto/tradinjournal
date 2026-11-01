@@ -3,6 +3,7 @@
 // The settings sections (Part H): profile, security, activity, your data.
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import '@/styles/v6/account.css';
 
 const TABS: Array<[string, string]> = [['/settings', 'Profile'], ['/settings/security', 'Security'], ['/settings/activity', 'Activity'], ['/settings/data', 'Your data']];
 

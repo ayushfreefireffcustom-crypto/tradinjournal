@@ -10,6 +10,7 @@ import { useToast } from '@/components/toast';
 import { ErrorCard, useLoad } from '@/components/v6/copy/parts';
 import { ICheck, ILeader } from '@/components/v3/icons';
 import { exchangesApi, leadersApi, signedUsd, toneOf, venueName, type MyLeader } from '@/lib/copy-api';
+import '@/styles/v6/dialogs.css';
 
 const STATUS: Record<MyLeader['status'], { tag: string; tone: string; text: string }> = {
   PENDING: { tag: 'In review', tone: '', text: 'We check the account and your history, usually within two working days. You’ll get a notification.' },

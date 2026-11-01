@@ -10,6 +10,7 @@ import { api, type BrokerAccount } from '@/lib/api';
 import { V6Portal } from '@/components/confirm-dialog';
 import { IClose } from '@/components/v3/icons';
 import '@/styles/v6/account.css';
+import '@/styles/v6/dialogs.css';
 
 interface Props {
   account: BrokerAccount;

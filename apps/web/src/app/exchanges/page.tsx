@@ -12,6 +12,7 @@ import { ICheck, ICopy, IExchange, ILock, IPlus, ISync } from '@/components/v3/i
 import { TRADING_ENABLED } from '@/lib/features';
 import { exchangesApi, usd, venueName, type ExchangeCatalogItem, type ExchangeConnection, type ExchangeEnvironment } from '@/lib/copy-api';
 import { invalidateExchangeConnections } from '@/lib/use-exchange-connections';
+import '@/styles/v6/dialogs.css';
 
 export default function ExchangesPage() {
   const toast = useToast();
