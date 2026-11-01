@@ -93,8 +93,8 @@ export function TradeLog({ rows, shown, sortKey, sortDir, onSort, notes, balance
     if (tags.length) {
       return (
         <span className="tr-tags">
-          {tags.slice(0, 2).map(x => <span key={x.label} className={`x-tag ${x.tone === 'g' ? 'x-tag--g' : x.tone === 'r' ? 'x-tag--r' : ''}`} title={x.label}>{x.label}</span>)}
-          {tags.length > 2 && <span className="x-dim">+{tags.length - 2}</span>}
+          {tags.slice(0, 1).map(x => <span key={x.label} className={`x-tag ${x.tone === 'g' ? 'x-tag--g' : x.tone === 'r' ? 'x-tag--r' : ''}`} title={x.label}>{x.label}</span>)}
+          {tags.length > 1 && <span className="x-muted" title={tags.slice(1).map(x => x.label).join(', ')}>+{tags.length - 1}</span>}
         </span>
       );
     }

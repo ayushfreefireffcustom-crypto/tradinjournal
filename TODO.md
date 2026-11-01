@@ -697,14 +697,14 @@ Legend:
 - [x] L: mobile KPI orphan (A0.31) `S` — verified in code (2 Nov)
 
 ### A4.2 `/trades`: `app/trades/page.tsx`, `components/deals-table.tsx`
-- [ ] H: TAG column clipped at 1440. Table fits or scrolls inside with a visible affordance `S`
-- [ ] H: one filter row: Segmented (All/Long/Short/Win/Loss) + symbol select + search; Positions/Raw deals as page tabs `M`
+- [x] H: TAG column clipped at 1440. Table fits or scrolls inside with a visible affordance `S` — fits at 1440 (checked 2 Nov)
+- [x] H: one filter row: Segmented (All/Long/Short/Win/Loss) + symbol select + search; Positions/Raw deals as page tabs `M` — one row: view tabs, side/result filter, symbol, exit, search; Reset moved to the summary line (2 Nov)
 - [x] M: H1 "Trade log" + subline "78 positions · all time" (no serif) `S` — verified in code (2 Nov)
 - [x] M: mono only on numbers; dates sans `S` — verified in code (2 Nov)
 - [x] M: one scroll container (page scroll, sticky header); "Show more" at the page bottom `S` — verified in code (2 Nov)
-- [ ] M: one chip per row max (tag chips collapse to "+2") `S`
-- [ ] M: remove the summary strip or reduce it to one line (A0.D4) `S`
-- [ ] L: sticky filter on mobile `S`
+- [x] M: one chip per row max (tag chips collapse to "+2") `S` — one tag + "+N" (2 Nov)
+- [x] M: remove the summary strip or reduce it to one line (A0.D4) `S` — one line: net, win rate, avg trade (2 Nov)
+- [ ] L: sticky filter on mobile `S` — decided against: on a phone the filter bar is four rows; sticking it would cover a quarter of the screen
 
 ### A4.3 `/trades/[positionId]`: `app/trades/[positionId]/page.tsx`, `components/v3/trade-candles.tsx`
 - [x] H: synthetic candles. Make "Illustrative path, not tick data" prominent, or show real candles from the `Candle` table when available (check coverage) `M`

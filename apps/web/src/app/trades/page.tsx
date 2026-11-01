@@ -10,10 +10,9 @@ import { useAccounts } from '@/lib/use-accounts';
 import { toCsv, downloadCsv, dateStamp } from '@/lib/csv';
 import { useToast } from '@/components/toast';
 import { IDownload, ISearch, IClose } from '@/components/v3/icons';
-import { fmtUsd, fmtUsdCompact } from '@/lib/format';
+import { fmtUsd } from '@/lib/format';
 
 const money = (v: number) => fmtUsd(v, { signed: true });
-const moneyShort = (v: number) => fmtUsdCompact(v, { signed: true });
 import { notesByTrade } from '@/lib/desk';
 import { TradeLog, type SortKey } from '@/components/v6/trades/trade-log';
 import { EXIT_LABEL, exitReasonOf, type ExitReason } from '@/lib/exit-reason';
@@ -112,9 +111,7 @@ function TradeLogPage() {
   const slice = useMemo(() => {
     const closed = sorted.filter(t => t.status === 'CLOSED');
     const wins = closed.filter(t => t.netPnl > 0).length;
-    const best = closed.reduce((m, t) => Math.max(m, t.netPnl), -Infinity);
-    const worst = closed.reduce((m, t) => Math.min(m, t.netPnl), Infinity);
-    return { n: closed.length, win: closed.length ? wins / closed.length : 0, avg: closed.length ? filteredPnl / closed.length : 0, best, worst };
+    return { n: closed.length, win: closed.length ? wins / closed.length : 0, avg: closed.length ? filteredPnl / closed.length : 0 };
   }, [sorted, filteredPnl]);
 
   function toggleSort(key: SortKey) {
@@ -188,15 +185,6 @@ function TradeLogPage() {
           </div>
         )}
 
-        {tab === 'trades' && slice.n > 0 && (
-          <dl className="x-strip x-strip--card tr-strip" data-testid="trades-summary" aria-label="Summary of the trades shown">
-            <div><dt><span>Net P&amp;L{filtersOn ? ' · filtered' : ''}</span></dt><dd><b className={`m mny tr-full ${pnlTone(filteredPnl)}`}>{money(filteredPnl)}</b><b className={`m mny tr-short ${pnlTone(filteredPnl)}`}>{moneyShort(filteredPnl)}</b></dd></div>
-            <div><dt><span>Win rate</span></dt><dd><b className="m">{(slice.win * 100).toFixed(1)}%</b></dd></div>
-            <div><dt><span>Avg trade</span></dt><dd><b className={`m mny tr-full ${pnlTone(slice.avg)}`}>{money(slice.avg)}</b><b className={`m mny tr-short ${pnlTone(slice.avg)}`}>{moneyShort(slice.avg)}</b></dd></div>
-            <div><dt><span>Best</span></dt><dd><b className={`m mny ${Number.isFinite(slice.best) ? pnlTone(slice.best) : ''}`}>{Number.isFinite(slice.best) ? money(slice.best) : '—'}</b></dd></div>
-            <div><dt><span>Worst</span></dt><dd><b className={`m mny ${Number.isFinite(slice.worst) ? pnlTone(slice.worst) : ''}`}>{Number.isFinite(slice.worst) ? money(slice.worst) : '—'}</b></dd></div>
-          </dl>
-        )}
 
         <section className="x-card">
           <div className="tr-bar">
@@ -227,11 +215,20 @@ function TradeLogPage() {
                     onKeyDown={e => { if (e.key === 'Escape') setSearch(''); }} />
                   {search && <button type="button" className="tr-x" aria-label="Clear search" onClick={() => { setSearch(''); searchRef.current?.focus(); }}><IClose size={13} /></button>}
                 </label>
-                {filtersOn && <button className="x-btn x-btn--ghost x-btn--sm" onClick={clearFilters}>Reset</button>}
               </>
             )}
           </div>
 
+          {tab === 'trades' && slice.n > 0 && (
+            // One line, not a KPI strip: the deep numbers live on Analytics (A0.D4).
+            <p className="tr-sum" data-testid="trades-summary" aria-label="Summary of the trades shown">
+              <span>{filtersOn ? 'Filtered' : 'All positions'}</span>
+              <span>Net <b className={`m mny ${pnlTone(filteredPnl)}`}>{money(filteredPnl)}</b></span>
+              <span>Win rate <b className="m">{(slice.win * 100).toFixed(1)}%</b></span>
+              <span>Avg trade <b className={`m mny ${pnlTone(slice.avg)}`}>{money(slice.avg)}</b></span>
+              {filtersOn && <button type="button" className="x-link tr-sum-reset" onClick={clearFilters} data-testid="reset-filters">Reset filters</button>}
+            </p>
+          )}
           {tab === 'trades' ? (
             <>
               <TradeLog rows={sorted} shown={shown} sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} notes={notes} balance={balance}
