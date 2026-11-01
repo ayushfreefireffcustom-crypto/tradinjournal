@@ -7,7 +7,6 @@ import AuthShell, { AuthError, AuthSubmit, EyeButton, I_CHECK, PasswordStrength 
 import GoogleButton from '@/components/google-button';
 import { authClient } from '@/lib/auth-client';
 import { useRedirectIfAuthed } from '@/lib/use-redirect-if-authed';
-import { COUNTRIES } from '@/lib/countries';
 import { partnerApi } from '@/lib/partner-api';
 import { PARTNERS_ENABLED } from '@/lib/features';
 
@@ -29,9 +28,6 @@ export default function SignupPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [country, setCountry] = useState('');
-  const [city, setCity] = useState('');
-  const [postalCode, setPostalCode] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   // Consent is an explicit tick (DPDP: clear affirmative action), never pre-checked.
   const [agree, setAgree] = useState(false);
@@ -62,10 +58,7 @@ export default function SignupPage() {
     name.trim().length > 1 &&
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) &&
     strength.score >= 2 &&
-    agree &&
-    country.length === 2 &&
-    city.trim().length > 0 &&
-    postalCode.trim().length > 0;
+    agree;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -78,9 +71,6 @@ export default function SignupPage() {
         email: addr,
         password,
         name: name.trim(),
-        country: country.toUpperCase(),
-        city: city.trim(),
-        postalCode: postalCode.trim(),
         // Only a recognised code is sent; an unknown one is simply ignored.
         ...(refValid ? { referralCode: refCode.trim() } : {}),
       });
@@ -118,19 +108,6 @@ export default function SignupPage() {
               <EyeButton shown={showPassword} onClick={() => setShowPassword(s => !s)} testId="toggle-password" />
             </div>
             {password && <PasswordStrength score={strength.score} label={strength.label} />}
-          </div>
-          <div className="x-field"><label htmlFor="su-country">Country</label>
-            <div className="au-inw">
-              {country && <span className="au-flag m" aria-hidden>{country}</span>}
-              <select id="su-country" className="x-select" required value={country} onChange={e => setCountry(e.target.value)} data-testid="signup-country" style={country ? { paddingLeft: 44 } : undefined}>
-                <option value="">Select country…</option>
-                {COUNTRIES.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
-              </select>
-            </div>
-          </div>
-          <div className="au-two">
-            <div className="x-field"><label htmlFor="su-city">City</label><input id="su-city" className="x-input" type="text" required value={city} onChange={e => setCity(e.target.value)} data-testid="signup-city" placeholder="e.g. Raipur" autoComplete="address-level2" /></div>
-            <div className="x-field"><label htmlFor="su-postal">Postal / ZIP / PIN</label><input id="su-postal" className="x-input" type="text" required value={postalCode} onChange={e => setPostalCode(e.target.value)} data-testid="signup-postal" placeholder="e.g. 492001" autoComplete="postal-code" /></div>
           </div>
           {PARTNERS_ENABLED && (
             <div className="au-ref" data-testid="signup-referral">

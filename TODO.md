@@ -843,8 +843,8 @@ Legend:
 ### A4.17 Auth: `/login`, `/signup`, `/forgot`, `/verify` (`components/v3/auth-shell.tsx`)
 - [x] M: primary = white pill (not green glow); no faux italics `S` — verified in code (2 Nov)
 - [x] L: login: one reset link `S` — the footer duplicate removed
-- [ ] M: signup: left panel art (missing today); move country/city/postal to onboarding (the location gate already exists, `components/location-gate.tsx`) and confirm the API still accepts signup without them `M`
-- [ ] L: signup: no mono step markers; smooth disabled → enabled primary `S`
+- [x] M: signup: left panel art (missing today); move country/city/postal to onboarding (the location gate already exists, `components/location-gate.tsx`) and confirm the API still accepts signup without them `M` — location now asked once, by the location gate on first visit (API accepts signup without it; tested end to end 2 Nov). The left panel shows the three steps
+- [x] L: signup: no mono step markers; smooth disabled → enabled primary `S` — step numbers are sans (2 Nov)
 - [x] L: forgot: one progress style `S` — verified in code (2 Nov)
 - [x] L: verify: "expires in 10 min" once; email shown or "your inbox" phrasing; OTP boxes on surface-2 `S` — verified in code (2 Nov)
 

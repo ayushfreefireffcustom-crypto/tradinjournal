@@ -26,7 +26,7 @@ html[data-theme=light]:has(.v6.au-root), html[data-theme=light] body:has(.v6.au-
 .v6 .au-lines li { display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 12px; align-items: start; }
 .v6 .au-lines li > i {
   width: 32px; height: 32px; border-radius: 10px; background: var(--s1); box-shadow: var(--shadow); color: var(--g);
-  display: grid; place-items: center; font: 500 12px/1 var(--mono); font-style: normal;
+  display: grid; place-items: center; font: 500 13px/1 var(--sans); font-style: normal;
 }
 .v6 .au-lines li b { display: block; font-size: 14px; }
 .v6 .au-lines li small { display: block; font-size: 13px; color: var(--mut); margin-top: 2px; line-height: 1.45; }
@@ -80,7 +80,6 @@ html[data-theme=light]:has(.v6.au-root), html[data-theme=light] body:has(.v6.au-
 .v6 .au-ok, .v6 .au-lock { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); pointer-events: none; }
 .v6 .au-ok { color: var(--g); }
 .v6 .au-lock { color: var(--dim); }
-.v6 .au-flag { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-size: 12px; line-height: 1; color: var(--mut); pointer-events: none; } /* ISO code, not a flag emoji (A0.21) */
 .v6 .au-reveal {
   position: absolute; right: 5px; top: 50%; transform: translateY(-50%); width: 34px; height: 34px; border-radius: 9px;
   border: 0; background: none; color: var(--dim); display: grid; place-items: center; cursor: pointer;
