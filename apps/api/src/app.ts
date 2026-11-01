@@ -32,7 +32,7 @@ import { signalsRouter } from './modules/signals/signals.routes.js';
 import { patternsRouter } from './modules/patterns/patterns.routes.js';
 import { overviewRouter } from './modules/overview/overview.routes.js';
 import { derivativesRouter } from './modules/derivatives/derivatives.routes.js';
-import { optionsRouter } from './modules/options/options.routes.js';
+import { optionsOrdersRouter, optionsRouter } from './modules/options/options.routes.js';
 import { strategiesRouter } from './modules/strategies/strategies.routes.js';
 import { deploymentsInternalRouter, deploymentsRouter } from './modules/strategies/deployments.routes.js';
 import { adminRouter } from './modules/admin/admin.routes.js';
@@ -131,6 +131,7 @@ export function createApp(): Express {
     app.use('/api/trading', tradingRouter);
     app.use('/api/hooks/tv', tvHooksRouter);
     app.use('/api/v1', v1Router);
+    app.use('/api/options/orders', optionsOrdersRouter);
   }
   app.use('/api/trades', tradesRouter);
   app.use('/api/journal', journalRouter);

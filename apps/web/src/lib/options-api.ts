@@ -62,6 +62,16 @@ export interface ReplayData {
   replay: { start: number; end: number; grid: number[]; frames: ReplayFrame[]; expiryCurve: number[] };
 }
 
+// G11 orders.
+export type Pricing = 'touch' | 'mark' | 'market';
+export interface BasketLeg { kind: OptionKind; side: 1 | -1; qty: number; strike: number; expiry: string }
+export interface BasketPlan {
+  env: OptEnv; connectionLabel: string; netCost: number | null; availableUsd: number | null; equityUsd: number | null; warnings: string[];
+  legs: Array<{ symbol: string; side: 'BUY' | 'SELL'; qty: number; type: 'LIMIT' | 'MARKET'; limitPrice: number | null; refPrice: number | null; cost: number | null }>;
+}
+export type LegOutcome = 'filled' | 'partial' | 'resting' | 'rejected' | 'unconfirmed' | 'skipped';
+export interface BasketResult { message: string; legs: Array<{ symbol: string; outcome: LegOutcome; message: string }> }
+
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API}/api/options${path}`, { credentials: 'include', ...init, headers: { 'Content-Type': 'application/json', ...init?.headers } });
   const json = (await res.json().catch(() => null)) as { data?: T; error?: { code?: string; message?: string; details?: Record<string, string[]> } } | null;
@@ -90,6 +100,8 @@ export const optionsApi = {
   templates: () => call<TemplateInfo[]>('/templates'),
   template: (b: { env: OptEnv; underlying: string; template: string; expiry: string; qty: number }) => call<LegInput[]>('/template', { method: 'POST', body: JSON.stringify(b) }),
   analyze: (b: { env: OptEnv; underlying: string; legs: LegInput[]; at?: number; vol?: number }) => call<Analysis>('/analyze', { method: 'POST', body: JSON.stringify(b) }),
+  orderPreview: (b: { connectionId: string; requestId: string; underlying: string; legs: BasketLeg[]; pricing: Pricing }) => call<BasketPlan>('/orders/preview', { method: 'POST', body: JSON.stringify(b) }),
+  orderPlace: (b: { connectionId: string; requestId: string; underlying: string; legs: BasketLeg[]; pricing: Pricing }) => call<BasketResult>('/orders', { method: 'POST', body: JSON.stringify(b) }),
   replay: (b: { env: OptEnv; underlying: string; legs: LegInput[]; path: 'flat' | 'recorded' }) => call<ReplayData>('/replay', { method: 'POST', body: JSON.stringify(b) }),
 };
 

@@ -11,7 +11,7 @@ import { defaultTradingDeps, orderDtoById, type TradingDeps } from './trading.se
 
 const DONE = new Set(['FILLED', 'CANCELLED', 'REJECTED']);
 
-async function tradableConnection(userId: string, connectionId: string): Promise<ExchangeConnection> {
+export async function tradableConnection(userId: string, connectionId: string): Promise<ExchangeConnection> {
   const c = await prisma.exchangeConnection.findFirst({ where: { id: connectionId, userId } });
   if (!c) throw new NotFoundError('Exchange account not found');
   if (c.status !== 'ACTIVE') throw new ConflictError('This exchange key stopped working. Reconnect it on the Exchanges page first.');

@@ -1,5 +1,5 @@
 import { Router, type IRouter, type Request, type Response, type NextFunction } from 'express';
-import { optionsAnalyzeSchema, optionsReplaySchema, optionsTemplateSchema, type OptionsAnalyzeDto } from '@tradinjournal/contracts';
+import { optionsAnalyzeSchema, optionsBasketSchema, optionsReplaySchema, optionsTemplateSchema, type OptionsAnalyzeDto, type OptionsBasketDto } from '@tradinjournal/contracts';
 import { requireAuth } from '../../http/middleware/require-auth.js';
 import { requirePlatformAccess } from '../../http/middleware/require-platform-access.js';
 import { validateBody } from '../../http/middleware/validate.js';
@@ -10,6 +10,7 @@ import {
   analyzeLegs, chain, contract, replayLegs, contractCandles, optionsOverview, premiumSeries, RESOLUTIONS, templateFor, templates, underlyings,
   type LegInput, type OptEnv, type Resolution,
 } from './options.service.js';
+import { placeBasket, previewBasket } from './orders.service.js';
 
 const wrap = (fn: (req: Request, res: Response) => Promise<void>) => (req: Request, res: Response, next: NextFunction) => fn(req, res).catch(next);
 const envOf = (req: Request): OptEnv => (req.query.env === 'testnet' ? 'testnet' : 'live');
@@ -66,3 +67,10 @@ optionsRouter.post('/replay', analyzeLimit, validateBody(optionsReplaySchema), w
   const b = req.body as { env: OptEnv; underlying: string; legs: LegInput[]; path: 'flat' | 'recorded' };
   ok(r, await replayLegs(b.env, b.underlying, { legs: b.legs, path: b.path }));
 }));
+
+// G11: option orders through a connected account. Mounted only with TRADING_ENABLED.
+const orderLimit = perUserRateLimit({ name: 'options-orders', max: 20, windowSeconds: 60, message: 'Too many orders in a short time. Wait a minute and try again.' });
+export const optionsOrdersRouter: IRouter = Router();
+optionsOrdersRouter.use(requireAuth, requirePlatformAccess);
+optionsOrdersRouter.post('/preview', orderLimit, validateBody(optionsBasketSchema), wrap(async (req, r) => ok(r, await previewBasket(r.locals.user.id as string, req.body as OptionsBasketDto))));
+optionsOrdersRouter.post('/', orderLimit, validateBody(optionsBasketSchema), wrap(async (req, r) => ok(r, await placeBasket(r.locals.user.id as string, req.body as OptionsBasketDto))));

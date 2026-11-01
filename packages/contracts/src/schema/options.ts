@@ -40,3 +40,21 @@ export const optionsReplaySchema = z.object({
   legs: z.array(optionLegSchema).min(1).max(8),
   path: z.enum(['flat', 'recorded']).default('flat'),
 }).strict();
+
+/** G11: a multi-leg option order, sent leg by leg. */
+export const optionsBasketSchema = z.object({
+  connectionId: z.string().min(1).max(64),
+  /** One per click: a repeat with the same id returns the first send. */
+  requestId: z.string().regex(/^[A-Za-z0-9-]{8,64}$/),
+  underlying,
+  legs: z.array(z.object({
+    kind: z.enum(['call', 'put']),
+    side: z.union([z.literal(1), z.literal(-1)]),
+    qty: z.number().int().min(1).max(100_000),
+    strike: z.number().positive(),
+    expiry: expiryCode,
+  }).strict()).min(1).max(8),
+  /** Limit at the best price on the other side, at the mark, or market. */
+  pricing: z.enum(['touch', 'mark', 'market']).default('touch'),
+}).strict();
+export type OptionsBasketDto = z.infer<typeof optionsBasketSchema>;

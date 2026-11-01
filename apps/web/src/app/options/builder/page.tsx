@@ -10,6 +10,7 @@ import { useToast } from '@/components/toast';
 import { ErrorCard, useLoad } from '@/components/v6/copy/parts';
 import { LineChart } from '@/components/v6/options/charts';
 import OptionsHead, { useOptionsCtx } from '@/components/v6/options/head';
+import OrderPanel from '@/components/v6/options/order-panel';
 import { ApiError } from '@/lib/copy-api';
 import {
   daysLabel, expiryLabel, fmtCompact, fmtNum, fmtUsd, ivPct, loadLegs, optionsApi, saveLegs,
@@ -249,6 +250,7 @@ export default function OptionsBuilderPage() {
                   </section>
                 </>
               )}
+              {ctx && legs.length > 0 && <OrderPanel ctx={ctx} setCtx={setCtx} legs={legs} />}
             </div>
           </div>
         )}

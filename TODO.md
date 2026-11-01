@@ -520,20 +520,20 @@ Legend:
 ---
 
 # PART G — Options (Phase 5)
-- [ ] G1 Research: Delta options API (chain, Greeks, order book, WS); which other venues list options (Bybit, Binance, OKX, Deribit) `M`
-- [ ] G2 Option chain: calls | strike | puts; expiry carousel; account + underlying selectors `M`
-- [ ] G3 Column settings: 16 columns incl. Greeks, show/hide, drag reorder, reset (MP parity) `M`
-- [ ] G4 Contract panel: 24h change, price, index, mark IV, volume, Greeks strip, order book `M`
-- [ ] G5 Options overview: expected move, gamma centre, 25Δ risk reversal, term slope, OI/IV by strike and by expiry `M`
-- [ ] G6 Multi-leg builder `M`:
+- [x] G1 Research: Delta options API (chain, Greeks, order book, WS); which other venues list options (Bybit, Binance, OKX, Deribit) `M`
+- [x] G2 Option chain: calls | strike | puts; expiry carousel; account + underlying selectors `M`
+- [x] G3 Column settings: 16 columns incl. Greeks, show/hide, drag reorder, reset (MP parity) `M`
+- [x] G4 Contract panel: 24h change, price, index, mark IV, volume, Greeks strip, order book `M`
+- [x] G5 Options overview: expected move, gamma centre, 25Δ risk reversal, term slope, OI/IV by strike and by expiry `M`
+- [x] G6 Multi-leg builder `M`:
   - add leg / future
   - templates: Popular/Bullish/Bearish/Neutral/Hedging
   - presets: straddle, strangle, spreads, iron condor, butterfly
-- [ ] G7 Payoff chart with target-price slider and expiry date; max profit/loss, R:R, breakevens, margin `M`
-- [ ] G8 Analysis panel: premium at risk, delta-weighted OI, fillability, decay efficiency, rich/cheap, GEX, distance to breakeven `M`
-- [ ] G9 Contract charts: candles, IV, OI, multi-strike OI, rolling ATM straddle, strangle premium `M`
-- [ ] G10 **Expiry replay simulator**: scrubber, play, speeds, melt to expiry, paper legs, ±1σ band (pairs with our chart replay) `L → split`
-- [ ] G11 Options order placement (multi-leg basket) via the engine; needs execution `M`
+- [x] G7 Payoff chart with target-price slider and expiry date; max profit/loss, R:R, breakevens, margin `M`
+- [x] G8 Analysis panel: premium at risk, delta-weighted OI, fillability, decay efficiency, rich/cheap, GEX, distance to breakeven `M`
+- [x] G9 Contract charts: candles, IV, OI, multi-strike OI, rolling ATM straddle, strangle premium `M`
+- [x] G10 **Expiry replay simulator**: scrubber, play, speeds, melt to expiry, paper legs, ±1σ band (pairs with our chart replay) `L → split`
+- [x] G11 Options order placement (multi-leg basket) via the engine; needs execution `M`
 
 ---
 

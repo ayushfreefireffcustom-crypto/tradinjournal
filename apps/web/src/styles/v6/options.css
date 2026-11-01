@@ -114,3 +114,6 @@
 .v6 .op-rp-ctl { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 .v6 .op-rp-scrub { flex: 1 1 260px; accent-color: var(--tx); }
 .v6 .op-rp-ctl .op-fine { flex-basis: 100%; }
+/* Orders */
+.v6 .op-order-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }
+.v6 .op-order-out { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 13px; }
