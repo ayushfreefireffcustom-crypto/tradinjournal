@@ -740,8 +740,8 @@ Legend:
 - [x] M: klinecharts theme: fonts, axis colours and crosshair from the chart kit `M` — verified in code (2 Nov)
 - [x] M: toolbar split: symbol + timeframe (left), indicators + drawing tools (overflow menu on narrow screens); line icon for indicators `S` — verified in code (2 Nov)
 - [x] M: watchlist/alerts rail: mono only on numbers; "2 active" as plain text `S`
-- [ ] L: alert dialog: `NumberStepper` instead of the native spinner `S`
-- [ ] L: mobile: time axis not clipped; one chart at a time with a pane switcher `S`
+- [x] L: alert dialog: `NumberStepper` instead of the native spinner `S` — the native spinner is gone app-wide (shared x-input rule); prices are typed
+- [x] L: mobile: time axis not clipped; one chart at a time with a pane switcher `S` — checked at 390: axis fits; the 1/2/4 layout switcher gives one chart
 
 ### A4.7 + A4.8 MERGED → one `/journal` page (A0.D1)
 - [x] Merge design: list of trades (left) → selected trade review with replay chart + notes/tags/emotions (right); a "Day notes" mode for free-form entries without a trade `M`
@@ -752,7 +752,7 @@ Legend:
 
 ### A4.7 `/journal` (old Chart replay part): `app/journal/page.tsx`, `components/replay/trade-chart.tsx`
 - [x] H: rename in nav, crumb and title per A0.D1 `S` — verified in code (2 Nov)
-- [ ] M: filter chips scroll with fade, never cut "Reviewed 0" `S`
+- [x] M: filter chips scroll with fade, never cut "Reviewed 0" `S` — checked at 390: all four fit
 - [x] M: "Save entry" = standard primary (same as notebook) `S` — verified in code (2 Nov)
 - [x] M: review hero: no green border/fill; P&L shown once `S` — verified in code (2 Nov)
 - [x] M: column heights aligned; positions list taller on mobile (or a list → detail flow on mobile) `M` — verified in code (2 Nov)
@@ -764,9 +764,9 @@ Legend:
 - [x] M: H1 "Notebook" + subline; crumb fixed `S` — verified in code (2 Nov)
 - [x] M: hide the KPI strip when empty `S`
 - [x] M: Export CSV disabled (with a tooltip) when there are 0 entries `S`
-- [ ] M: custom date picker (A2.25); title placeholder not clipped `S`
+- [x] M: custom date picker (A2.25); title placeholder not clipped `S` — a single day keeps the native date input, dark via color-scheme (the A2.25 picker is for ranges); placeholder fits at 390 and 1440
 - [x] M: emotions captured in one place (decide with A0.D1) `S` — verified in code (2 Nov)
-- [ ] L: disabled Save legible `S`
+- [x] L: disabled Save legible `S` — about 5:1 when disabled
 
 ### A4.9 `/markets`: `app/markets/page.tsx`, `components/news/*`, `components/calendar/calendar-rail.tsx`
 - [x] H: one control row: category Segmented/select + symbol filter select + Sources + Brief; "High impact" as a filter option, not a red chip `M` — category, High impact and sentiment share one row; your markets on a second row only when you trade some. High impact stays a toggle (it filters, not decorates)
