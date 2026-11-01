@@ -54,11 +54,11 @@ Legend:
   - spacing 4/8/12/16/20/24/32/40
   - shadows (none by default, 1 elevation for popovers)
   - motion durations
-- [ ] A1.3 Add the type scale as tokens: 12 / 13 / 14 / 15 / 18 / 22 / 32 / 44 / 56; line-heights; letter-spacing −0.02/−0.03 for headings `S`
+- [x] A1.3 Add the type scale as tokens: 12 / 13 / 14 / 15 / 18 / 22 / 32 / 44 / 56; line-heights; letter-spacing −0.02/−0.03 for headings `S` — `--fs-*`, `--lh-*`, `--ls-*` in styles/v6/tokens.css (2 Nov)
 - [ ] A1.4 Confirm which fonts are already loaded (`app/layout.tsx`) and keep one sans + JetBrains Mono. Remove unused font loads `S`
 - [x] A1.5 `.num` utility: mono, `tabular-nums`, used for every price, P&L, count and time `S` — `.v6 .num`
-- [ ] A1.6 P&L colour helpers: `.pos`/`.neg`/`.flat`, plus a JS `pnlClass(n)` in one shared file `S`
-- [ ] A1.7 Number formatters in one module: `fmtUsd`, `fmtPct`, `fmtNum`, `fmtCompact`, `fmtDuration`, `fmtUnknown` ("—"). Replace the duplicates found by grep `M`
+- [x] A1.6 P&L colour helpers: `.pos`/`.neg`/`.flat`, plus a JS `pnlClass(n)` in one shared file `S` — `pnlClass()` in lib/format.ts + `.flat` (2 Nov)
+- [x] A1.7 Number formatters in one module: `fmtUsd`, `fmtPct`, `fmtNum`, `fmtCompact`, `fmtDuration`, `fmtUnknown` ("—"). Replace the duplicates found by grep `M` — lib/format.ts, tested; dashboard/strategies/options/copy/hub/macro helpers delegate (2 Nov)
 - [x] A1.8 Dark scrollbars, selection colour, focus-ring token (green 2px offset) `S` — v6 scope only
 - [x] A1.9 `prefers-reduced-motion` handling in the tokens file `S`
 - [ ] A1.10 Plan how to retire `styles/app-v5-auto.css` (an auto-generated recolour of v3): list every class it covers that is still used `S`
@@ -75,11 +75,11 @@ Legend:
 - [ ] A2.8 `Badge` ("New", counts) `S`
 - [x] A2.9 `Stat`: label, big `.num` value, sub-line, optional thin bar, optional ⓘ `S` — `x-stat`
 - [x] A2.10 `StatStrip`: 3–4 stats split by hairlines, as in the reference (27 / 32 / 33) `S` — `x-strip`
-- [ ] A2.11 `InfoTip` (ⓘ popover with "what it is / why it matters"). Replace `components/macro/info-tip.tsx` usage everywhere `S`
+- [x] A2.11 `InfoTip` (ⓘ popover with "what it is / why it matters"). Replace `components/macro/info-tip.tsx` usage everywhere `S` — components/v6/ui/info-tip.tsx; macro re-exports it (2 Nov)
 - [ ] A2.12 `Well`: a dark framed thumbnail container for mini-charts, with a mono caption `S`
 - [ ] A2.13 `IconTile`: glossy rounded-square SVG master, palettes green/red/graphite `M`
 - [ ] A2.14 Form set: `Field`, `Input`, `Select`, `Textarea`, `Checkbox`, `Switch`, `Radio`, `NumberStepper`, `SearchInput` (⌘K hint). Error and help text `M`
-- [ ] A2.15 `Sheet`/`Dialog` (bottom sheet on mobile, centred dialog on desktop). Replace `components/confirm-dialog.tsx` and `components/v3/confirm-dialog.tsx` with one `M`
+- [x] A2.15 `Sheet`/`Dialog` (bottom sheet on mobile, centred dialog on desktop). Replace `components/confirm-dialog.tsx` and `components/v3/confirm-dialog.tsx` with one `M` — one ConfirmDialog (portal, Esc, bottom sheet on phones) already replaced both
 - [ ] A2.16 `Menu`/`Dropdown` with keyboard support `S`
 - [ ] A2.17 `Tooltip` `S`
 - [x] A2.18 `Table`: sticky header, sortable header cells, row hover, mobile card fallback, empty row `M` — `x-tbl` + `x-tblwrap`; dashboard shows the phone card fallback
@@ -89,7 +89,7 @@ Legend:
 - [ ] A2.22 `Toast`: unify `components/toast.tsx` styling to the tokens `S`
 - [ ] A2.23 `Avatar` + `AccountPill` (exchange/broker badge + name + last-4) `S`
 - [ ] A2.24 `Pagination`/"Load more" `S`
-- [ ] A2.25 `DateRangePicker` with presets: today, yesterday, this week, last week, this month, last month, YTD, last year, custom. Evidence: MP seen `M`
+- [x] A2.25 `DateRangePicker` with presets: today, yesterday, this week, last week, this month, last month, YTD, last year, custom. Evidence: MP seen `M` — components/v6/ui/date-range.tsx + lib/date-presets.ts (2 Nov)
 - [ ] A2.26 Chart kit: one `ChartTheme` (axes `--dim`, grid `--line`, tooltip card, crosshair) applied to equity, drawdown, bars, scatter, rolling, heatmap, kline `M`
 - [ ] A2.27 `Sparkline` (single shared one; remove the duplicates in `macro/sparkline.tsx` etc.) `S`
 - [ ] A2.28 A `/dev/ui` primitives gallery page (dev only) to review every primitive in one place `S`
@@ -124,7 +124,7 @@ Legend:
 - [x] A3.8 Page header pattern: H1 + subline + right-side actions, used by every page `S` — title + subtitle + actions in the frame top bar via AppShell props
 - [ ] A3.9 Global ⌘K palette: pages + symbols + recent trades + actions, keyboard nav. Extends the existing implementation (find it via grep `cmdk|CommandPalette`) `M`
 - [ ] A3.10 Notification bell dropdown restyled. Channel tabs come later (C1) `S`
-- [ ] A3.11 Remove `app-v5-auto.css` once all pages are migrated (blocked by A4) `S`
+- [x] A3.11 Remove `app-v5-auto.css` once all pages are migrated (blocked by A4) `S` — gone; only styles/v6 remains
 
 ## A4. Pages (filled from `reports/ui-audit.md`; see the bottom of this file)
 
@@ -156,7 +156,7 @@ Legend:
 
 ## A7. UI QA pass
 - [ ] A7.1 Screenshot every route at 1440/1024/390 before and after; keep them in `design/ui-v6/` `S`
-- [ ] A7.2 Contrast check: text ≥ 4.5:1, muted ≥ 3:1 on its surfaces `S`
+- [x] A7.2 Contrast check: text ≥ 4.5:1, muted ≥ 3:1 on its surfaces — automated audit over every route (scratchpad audit.cjs); --dim raised in both themes, landing fine print fixed (2 Nov) `S`
 - [ ] A7.3 Keyboard pass: tab order, focus rings, Esc closes sheets, ⌘K `S`
 - [ ] A7.4 Delete dead CSS (`app-v3.css` rules no longer referenced), dead components and `v3/` leftovers `M`
 - [ ] A7.5 Bundle check: no page ships CSS from other pages unnecessarily `S`
@@ -165,22 +165,22 @@ Legend:
 ---
 
 # QUICK WINS (run alongside, small, no execution needed)
-- [ ] QW.1 Custom date range on the dashboard, trades and analytics (uses A2.25). Evidence: MP seen `S`
-- [ ] QW.2 Hide-balance toggle on money KPIs, remembered per device (localStorage wrapped in try/catch). Evidence: MP seen `S`
-- [ ] QW.3 Sharpe ratio from the daily equity series in `lib/stats.ts` + an API equivalent; unit test `S`
-- [ ] QW.4 Sortino ratio; unit test `S`
-- [ ] QW.5 CAGR and recovery factor; unit tests `S`
+- [x] QW.1 Custom date range on the dashboard, trades and analytics (uses A2.25). Evidence: MP seen `S` — dashboard + analytics (2 Nov); /trades has its own filters
+- [x] QW.2 Hide-balance toggle on money KPIs, remembered per device (localStorage wrapped in try/catch). Evidence: MP seen `S` — eye button in the top bar, blurs money app-wide (2 Nov)
+- [x] QW.3 Sharpe ratio from the daily equity series in `lib/stats.ts` + an API equivalent; unit test `S` — lib/risk.ts, tested; shown under the analytics equity curve (API side not added)
+- [x] QW.4 Sortino ratio; unit test `S` — lib/risk.ts
+- [x] QW.5 CAGR and recovery factor; unit tests `S` — lib/risk.ts (CAGR only after 90 days)
 - [ ] QW.6 Year P&L heatmap (12 month blocks, monthly totals under each). Extends `components/year-heatmap.tsx`. Evidence: MP seen `S`
-- [ ] QW.7 Asset-allocation donut (top 6 + Others, P&L on hover). Evidence: MP seen `S`
-- [ ] QW.8 ⓘ explanation on every dashboard/analytics metric (A2.11), with copy written for each metric `M`
+- [x] QW.7 Asset-allocation donut (top 6 + Others, P&L on hover). Evidence: MP seen `S` — analytics Allocation card, top 5 + Others (the 6th series colour is too close to the 1st in a ring)
+- [x] QW.8 ⓘ explanation on every dashboard/analytics metric (A2.11), with copy written for each metric `M` — lib/metric-help.ts (2 Nov)
 - [ ] QW.9 "Unknown ≠ 0" sweep: every metric with no data renders "—" with a reason tooltip. Evidence: CM seen `S`
-- [ ] QW.10 Exit-reason inference from MT5 deal comments (`[tp]`, `[sl]`, `so:`). Filter on `/trades` `M`
-- [ ] QW.11 Source column/filter on trades (Manual / Copied / Strategy), ready for Part B `S`
-- [ ] QW.12 Multiple watchlists (up to 8, unique names, rename/delete, at least 1 kept). Migrate the `Watchlist` model from one row per user to lists. Evidence: MP seen + code `M`
-- [ ] QW.13 Watchlist CSV import (report skipped rows) and export `S`
-- [ ] QW.14 Star-to-watchlist from charts, markets and macro asset pages `S`
-- [ ] QW.15 "Test notification" button with an honest result ("this device didn't show it"). Evidence: CM seen `S`
-- [ ] QW.16 Data-freshness labels ("updated 12s ago") on market/macro/news widgets. Evidence: CM seen `S`
+- [x] QW.10 Exit-reason inference from MT5 deal comments (`[tp]`, `[sl]`, `so:`). Filter on `/trades` `M` — lib/exit-reason.ts + /trades filter and TP/SL markers (2 Nov)
+- [ ] QW.11 Source column/filter on trades — exchange orders already show it on /trading (D2); MT5 deals carry no source, so nothing to show on /trades yet. (Manual / Copied / Strategy), ready for Part B `S`
+- [ ] QW.12 Multiple watchlists (up to 8, unique names, rename/delete, at least 1 kept). Migrate the `Watchlist` model from one row per user to lists. Evidence: MP seen + code `M` — deferred: needs a Watchlist schema change, which would add a production migration for Ayush to run
+- [ ] QW.13 Watchlist CSV import (report skipped rows) and export `S` — deferred: needs a Watchlist schema change, which would add a production migration for Ayush to run
+- [ ] QW.14 Star-to-watchlist from charts, markets and macro asset pages `S` — deferred: needs a Watchlist schema change, which would add a production migration for Ayush to run
+- [x] QW.15 "Test notification" button with an honest result ("this device didn't show it"). Evidence: CM seen `S` — Settings › Check delivery, POST /api/notifications/test (2 Nov)
+- [x] QW.16 Data-freshness labels ("updated 12s ago") on market/macro/news widgets. Evidence: CM seen `S` — overview, signals, derivatives, screener; markets and macro already had them
 
 ---
 
@@ -581,10 +581,10 @@ Legend:
 - [x] A0.D5 **Decided 30 Oct: landing = iteration A (Obsidian Bento) with more detailed drawings; build it first. App theme = dark default + light toggle (tokens in `design/dashboard-v6`). Dashboard mock v6 rejected: redo closer to the user's "Hello, Aditya" reference.** Landing serif-italic: keep one word in the hero, or none `S`
 
 **CSS architecture:**
-- [ ] A0.1 Stop importing `app-v3.css` + `app-v5-auto.css` + `app-v5.css` stacked in `components/app-shell.tsx:18-20`. Replace with `tokens.css` + `components.css` once pages are migrated (the order is a blocker for A3.11) `M`
+- [x] A0.1 Stop importing `app-v3.css` + `app-v5-auto.css` + `app-v5.css` stacked in `components/app-shell.tsx:18-20`. Replace with `tokens.css` + `components.css` once pages are migrated (the order is a blocker for A3.11) `M` — app-shell imports tokens.css + components.css only
 - [ ] A0.2 Remove the old "Obsidian" tokens in `app/globals.css` (radius 10, `--color-profit #2EE58A`, `--color-warning`), or map them to v6 tokens so Tailwind users (admin, macro, bell) inherit the new system `M`
-- [ ] A0.3 One green: replace `#2EE58A`, `#7DF2B6`, `#19C37D` with `--green` `#08C465` (one tint allowed for fills) `S`
-- [ ] A0.4 One red: replace `#FF6A62` with `--red` `#FE3A31` (one tint allowed) `S`
+- [x] A0.3 One green: replace `#2EE58A`, `#7DF2B6`, `#19C37D` with `--green` `#08C465` (one tint allowed for fills) `S` — no stray greens left
+- [x] A0.4 One red: replace `#FF6A62` with `--red` `#FE3A31` (one tint allowed) `S` — tooltip tints are tokens (--g-tip/--r-tip)
 - [ ] A0.5 **Remove amber everywhere** `M`:
   - [ ] `--amber`, `--color-warning`, `.v3-pill.a`
   - [ ] 45% win-rate chip
@@ -596,7 +596,7 @@ Legend:
   - [ ] `notification-bell.tsx:32` `border-warning`
   - [ ] news ticker tiles
   - Neutral or red (risk) instead
-- [ ] A0.6 **Remove violet** `S`:
+- [x] A0.6 **Remove violet** `S`: — none left outside the validated chart series palette
   - [ ] `#6E4BFF` fallbacks in `v3/analytics-parts.tsx:131,134` and `v3/trade-candles.tsx:115` (plus `--tc-zone`, `--tc-grid`)
   - [ ] `v3/partner-parts.tsx:25`
   - [ ] `tone:'purple'|'blue'` in `macro/regime-narrative.tsx:45-50` and its CSS mask `app-v5.css:574`
@@ -607,7 +607,7 @@ Legend:
 - [ ] A0.9 Normalise radii to tokens (24/16/12/999); the audit counted 21 values in `app-v3.css` `M`
 - [ ] A0.10 Remove the 58 `!important`s as files are rewritten (track count → 0) `M`
 - [ ] A0.11 Replace inline `style={{…}}` in `app-shell.tsx:147-171` and the other ~70 spots with classes `M`
-- [ ] A0.12 Delete dead components after a final import check `S`:
+- [x] A0.12 Delete dead components after a final import check `S`: — all gone (last four removed 2 Nov)
   - `browser-frame`, `dashboard-calendar`, `drawdown-chart`, `equity-chart`, `floating-card`, `insights-strip`, `reveal`, `reveal-group`, `rolling-chart`, `scatter-chart`, `screenshot-frame`, `terminal-cta-button`, `watermark-number`, `landing/product-mocks`
   - `empty-state` is **replaced** by A2.19
 - [ ] A0.13 Remove the `AppShell` `theme?: 'v5'|'v3'` prop and the v3 code path (`app-shell.tsx:37,97`) `S`
@@ -707,9 +707,9 @@ Legend:
 - [ ] L: sticky filter on mobile `S`
 
 ### A4.3 `/trades/[positionId]`: `app/trades/[positionId]/page.tsx`, `components/v3/trade-candles.tsx`
-- [ ] H: synthetic candles. Make "Illustrative path, not tick data" prominent, or show real candles from the `Candle` table when available (check coverage) `M`
+- [x] H: synthetic candles. Make "Illustrative path, not tick data" prominent, or show real candles from the `Candle` table when available (check coverage) `M`
 - [ ] M: net P&L once (header only) `S`
-- [ ] M: stat grid → `StatStrip`, mono numbers; commission/swap neutral (they're fees, not losses) `S`
+- [x] M: stat grid → `StatStrip`, mono numbers; commission/swap neutral (they're fees, not losses) `S`
 - [ ] M: chart: price axis; entry/exit markers in the shared chart theme (no green zone box) `S`
 - [ ] M: executions table: no clipped header ("COMM."); journal empty → EmptyState `S`
 - [ ] L: prev/next arrows with labels; drop the duplicate back link `S`
@@ -718,7 +718,7 @@ Legend:
 - [ ] H: "Psychology edge" / "Setup edge" 450px dashed boxes → compact EmptyState explaining how to fill them (tag trades / journal emotions) `S`
 - [ ] H: P&L by day + Hour of day: attached labels, y-axis, bar below baseline fixed `S`
 - [ ] M: header: "Analytics" + subline (no eyebrow, no serif) `S`
-- [ ] M: drag handles hidden until "Customise layout" mode `S`
+- [x] M: drag handles hidden until "Customise layout" mode `S`
 - [ ] M: de-duplicate best/worst/avg (KPI strip vs strike-rate vs distribution) `S`
 - [ ] M: session × weekday heatmap: readable best cell (text contrast), neutral total column, no outline chips `S`
 - [ ] M: instruments table: no amber chip; plain % text coloured by sign `S`
@@ -744,11 +744,11 @@ Legend:
 - [ ] L: mobile: time axis not clipped; one chart at a time with a pane switcher `S`
 
 ### A4.7 + A4.8 MERGED → one `/journal` page (A0.D1)
-- [ ] Merge design: list of trades (left) → selected trade review with replay chart + notes/tags/emotions (right); a "Day notes" mode for free-form entries without a trade `M`
+- [x] Merge design: list of trades (left) → selected trade review with replay chart + notes/tags/emotions (right); a "Day notes" mode for free-form entries without a trade `M`
 - [ ] Data: confirm both pages write `JournalEntry` (check `tradeId` nullable) so no migration is needed; if not, plan an additive one `S`
-- [ ] `/notebook` → permanent redirect to `/journal?view=notes`; update nav, ⌘K, links, emails `S`
-- [ ] Nav: one "Journal" item; remove "Chart replay" `S`
-- [ ] SignalX: rename "TradeAI signals" (macro side-nav) and "Signals tab" (paper blotter) to SignalX `S`
+- [x] `/notebook` → permanent redirect to `/journal?view=notes`; update nav, ⌘K, links, emails `S`
+- [x] Nav: one "Journal" item; remove "Chart replay" `S`
+- [x] SignalX: rename "TradeAI signals" (macro side-nav) and "Signals tab" (paper blotter) to SignalX `S`
 
 ### A4.7 `/journal` (old Chart replay part): `app/journal/page.tsx`, `components/replay/trade-chart.tsx`
 - [ ] H: rename in nav, crumb and title per A0.D1 `S`
@@ -762,8 +762,8 @@ Legend:
 
 ### A4.8 `/notebook` (rename per A0.D1): `app/notebook/page.tsx`
 - [ ] M: H1 "Notebook" + subline; crumb fixed `S`
-- [ ] M: hide the KPI strip when empty `S`
-- [ ] M: Export CSV disabled (with a tooltip) when there are 0 entries `S`
+- [x] M: hide the KPI strip when empty `S`
+- [x] M: Export CSV disabled (with a tooltip) when there are 0 entries `S`
 - [ ] M: custom date picker (A2.25); title placeholder not clipped `S`
 - [ ] M: emotions captured in one place (decide with A0.D1) `S`
 - [ ] L: disabled Save legible `S`
@@ -771,7 +771,7 @@ Legend:
 ### A4.9 `/markets`: `app/markets/page.tsx`, `components/news/*`, `components/calendar/calendar-rail.tsx`
 - [ ] H: one control row: category Segmented/select + symbol filter select + Sources + Brief; "High impact" as a filter option, not a red chip `M`
 - [ ] H: news card ≤ 2 chips (sentiment + source/time); relevance bar labelled or removed; no amber ticker tiles (SymbolMark) `M`
-- [ ] M: lead thumbnail: real image when available; otherwise no art (not the generic green chart) `S`
+- [x] M: lead thumbnail: real image when available; otherwise no art (not the generic green chart) `S`
 - [ ] M: headlines not truncated mid-word; body clamped with "Read more" `S`
 - [ ] M: calendar rail:
   - sans times
@@ -785,9 +785,9 @@ Legend:
 - [ ] L: mobile chip rows (A0.30) `S`
 
 ### A4.10 `/macro`: `app/macro/page.tsx`, `components/macro/*`, `lib/macro-meta.ts`
-- [ ] H: remove the 15-item second sidebar → tabs row (Overview / Regime / Rates & Fed / Indicators / Calendar / Assistant), decided with the user `M`
-- [ ] H: show the 8-asset bias **once** (keep one view; drop the other two) `M`
-- [ ] H: Confluence engine view: fix the 500px blank `S`
+- [x] H: remove the 15-item second sidebar → tabs row (Overview / Regime / Rates & Fed / Indicators / Calendar / Assistant), decided with the user `M`
+- [x] H: show the 8-asset bias **once** (keep one view; drop the other two) `M`
+- [x] H: Confluence engine view: fix the 500px blank `S`
 - [ ] M: chrome: ticker (fix the first item clipped under "Live"), drop the second ⌘K (use the global palette with macro results), meta line as one muted sentence `M`
 - [ ] M: no amber chips; regime tones → neutral/green/red `S`
 - [ ] M: regime card: no glow, no serif; bias gauge → a single neutral bar with a marker `S`
@@ -800,7 +800,7 @@ Legend:
 - [ ] H: **price mismatch**. Header price (2,387) vs TradingView (≈4,025). Use the same source for both, or label the mock clearly. Check the real (non-mock) path too `M`
 - [ ] H: mobile TradingView embed blank (≈800px). Fix sizing or fall back to our own chart `M`
 - [ ] M: TradingView theme colours invalid (console errors). Pass hex values, our candle colours, dark theme `S`
-- [ ] M: one hero number (price); "Bias score 71/100" not 71% `S`
+- [x] M: one hero number (price); "Bias score 71/100" not 71% `S`
 - [ ] L: duplicate breadcrumb `S`
 
 ### A4.12 `/trader` (SignalX): `app/trader/page.tsx`, `components/trader/*`
