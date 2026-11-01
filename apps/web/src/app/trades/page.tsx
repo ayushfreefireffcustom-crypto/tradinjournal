@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import AppShell, { timeAgo } from '@/components/app-shell';
 import ConnectBrokerModal from '@/components/connect-broker-modal';
 import DealsTable from '@/components/deals-table';
@@ -23,7 +23,13 @@ const FILTERS: [Filter, string][] = [['ALL', 'All'], ['LONG', 'Long'], ['SHORT',
 const PAGE = 50;
 
 export default function TradesPage() {
+  return <Suspense fallback={null}><TradeLogPage /></Suspense>;
+}
+
+function TradeLogPage() {
   const router = useRouter();
+  // ?symbol=XAUUSD (from the ⌘K palette) opens the log filtered to that symbol.
+  const symbolParam = useSearchParams().get('symbol');
   const toast = useToast();
   const { accounts, selected, select, setAccounts, loading: accountsLoading } = useAccounts();
   const [trades, setTrades] = useState<Trade[]>([]);
@@ -36,7 +42,8 @@ export default function TradesPage() {
   const [showConnect, setShowConnect] = useState(false);
   const [tab, setTab] = useState<'trades' | 'deals'>('trades');
   const [filter, setFilter] = useState<Filter>('ALL');
-  const [symbolFilter, setSymbolFilter] = useState('ALL');
+  const [symbolFilter, setSymbolFilter] = useState(symbolParam || 'ALL');
+  useEffect(() => { if (symbolParam) setSymbolFilter(symbolParam); }, [symbolParam]);
   // How the trade ended (QW.10), from the closing deal's MT5 comment.
   const [exitFilter, setExitFilter] = useState<'ALL' | ExitReason>('ALL');
   const [search, setSearch] = useState('');
@@ -142,7 +149,7 @@ export default function TradesPage() {
   const open = (t: Trade) => selected && router.push(`/trades/${t.positionId}?account=${encodeURIComponent(selected.id)}`);
   const exportDisabled = (tab === 'deals' ? deals.length : sorted.length) === 0;
   const filtersOn = filter !== 'ALL' || symbolFilter !== 'ALL' || exitFilter !== 'ALL' || search.trim() !== '';
-  const clearFilters = () => { setFilter('ALL'); setSymbolFilter('ALL'); setExitFilter('ALL'); setSearch(''); };
+  const clearFilters = () => { setFilter('ALL'); setSymbolFilter('ALL'); setExitFilter('ALL'); setSearch(''); if (symbolParam) router.replace('/trades', { scroll: false }); };
   const notes = useMemo(() => notesByTrade(journal), [journal]);
   const pnlTone = (v: number) => (v > 0 ? 'pos' : v < 0 ? 'neg' : '');
   const noData = (loading || !!error) && !trades.length;
@@ -206,7 +213,7 @@ export default function TradesPage() {
                     </button>
                   ))}
                 </div>
-                <select className="x-select tr-sel" value={symbolFilter} onChange={e => setSymbolFilter(e.target.value)} data-testid="symbol-filter" aria-label="Symbol">
+                <select className="x-select tr-sel" value={symbolFilter} onChange={e => { setSymbolFilter(e.target.value); if (symbolParam) router.replace('/trades', { scroll: false }); }} data-testid="symbol-filter" aria-label="Symbol">
                   <option value="ALL">All symbols</option>
                   {symbols.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>

@@ -122,7 +122,7 @@ Legend:
 - [x] A3.6 Sidebar footer: user + plan + sign out. Remove the duplicate sync card `S` — user card with plan; menu has theme, settings, sign out
 - [x] A3.7 Page container: max width, gutters 32/16, consistent vertical rhythm between sections `S` — frame pads the content; `x-page` / `x-row` grids
 - [x] A3.8 Page header pattern: H1 + subline + right-side actions, used by every page `S` — title + subtitle + actions in the frame top bar via AppShell props
-- [ ] A3.9 Global ⌘K palette: pages + symbols + recent trades + actions, keyboard nav. Extends the existing implementation (find it via grep `cmdk|CommandPalette`) `M`
+- [x] A3.9 Global ⌘K palette: pages + symbols + recent trades + actions, keyboard nav. Extends the existing implementation (find it via grep `cmdk|CommandPalette`) `M` — components/v6/command-palette.tsx + lib/palette.ts (tested): pages, actions (sync, theme, hide balances, day note, connect broker, sign out), 4 recent trades, symbols → `/trades?symbol=`, ticket search; arrows wrap, Home/End, combobox aria (2 Nov)
 - [ ] A3.10 Notification bell dropdown restyled. Channel tabs come later (C1) `S`
 - [x] A3.11 Remove `app-v5-auto.css` once all pages are migrated (blocked by A4) `S` — gone; only styles/v6 remains
 
@@ -693,7 +693,7 @@ Legend:
   - badge stays while open
   - `S`
 - [x] M: account menu pushes nav down (or becomes the top-bar AccountPill per A3.3); one "Add broker" state `S` — account pill in the top bar
-- [ ] L: ⌘K list fade at the bottom, group header once `S`
+- [x] L: ⌘K list fade at the bottom, group header once `S` — section headings, bottom fade (2 Nov)
 - [ ] L: mobile KPI orphan (A0.31) `S`
 
 ### A4.2 `/trades`: `app/trades/page.tsx`, `components/deals-table.tsx`

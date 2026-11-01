@@ -2,7 +2,7 @@
 
 // Signed-in app chrome: sends signed-out visitors to /login, waits for the
 // platform-access check, then draws the v6 frame (components/v6/frame.tsx)
-// around the page, plus the ⌘K page switcher.
+// around the page, plus the ⌘K palette (components/v6/command-palette.tsx).
 import Logo from '@/components/logo';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
@@ -14,7 +14,8 @@ import { PARTNERS_ENABLED, TRADING_ENABLED } from '@/lib/features';
 import { UsageTracker } from '@/components/usage-tracker';
 import LocationGate from '@/components/location-gate';
 import Frame, { COPY, NAV, type FrameNavItem } from '@/components/v6/frame';
-import { IAdmin, IBell, IBrokers, ILink, IPartner, ISearch, ISettings, IUsers } from '@/components/v3/icons';
+import { IAdmin, IBell, IBrokers, ILink, IPartner, ISettings, IUsers } from '@/components/v3/icons';
+import CommandPalette from '@/components/v6/command-palette';
 import '@/styles/v6/tokens.css';
 import '@/styles/v6/components.css';
 import Tour from '@/components/v6/tour';
@@ -122,6 +123,7 @@ export default function AppShell({
   const sel = selectedAccount ?? accounts[0] ?? null;
   const isAdmin = !!accessStatus?.isAdmin;
   const isPartner = PARTNERS_ENABLED && accessStatus?.partnerStatus === 'ACTIVE';
+  const pages = ALL.filter(x => (x.group !== 'Partner' || isPartner) && (x.group !== 'Admin' || isAdmin));
 
   return (
     <>
@@ -137,51 +139,12 @@ export default function AppShell({
         {children}
       </Frame>
       <Tour />
-      {cmdk && <CommandPalette onClose={() => setCmdk(false)} onGo={href => { setCmdk(false); router.push(href); }} isAdmin={isAdmin} isPartner={isPartner} />}
+      {cmdk && (
+        <CommandPalette
+          pages={pages} accountId={sel?.id} onClose={() => setCmdk(false)} onGo={href => { setCmdk(false); router.push(href); }}
+          onSync={onSync} onConnect={onConnectClick} onSignOut={() => authClient.signOut()}
+        />
+      )}
     </>
-  );
-}
-
-function CommandPalette({ onClose, onGo, isAdmin, isPartner }: { onClose: () => void; onGo: (href: string) => void; isAdmin: boolean; isPartner: boolean }) {
-  const [q, setQ] = useState('');
-  const [i, setI] = useState(0);
-  const items = useMemo(() => {
-    const list = ALL.filter(x => (x.group !== 'Partner' || isPartner) && (x.group !== 'Admin' || isAdmin));
-    const n = q.trim().toLowerCase();
-    return n ? list.filter(x => x.label.toLowerCase().includes(n) || x.group.toLowerCase().includes(n)) : list;
-  }, [q, isAdmin, isPartner]);
-  useEffect(() => { setI(0); }, [q]);
-  return (
-    // The tokens and dialog styles are scoped under .v6, so the scrim needs a .v6 parent.
-    <div className="v6">
-    <div className="x-dialog-scrim f-cmdk-scrim" onMouseDown={onClose}>
-      <div className="f-cmdk" role="dialog" aria-label="Jump to a page" onMouseDown={e => e.stopPropagation()}>
-        <div className="f-cmdk-in">
-          <ISearch size={17} />
-          <input autoFocus placeholder="Jump to a page…" value={q} onChange={e => setQ(e.target.value)} aria-label="Search pages"
-            onKeyDown={e => {
-              if (e.key === 'ArrowDown') { e.preventDefault(); setI(v => Math.min(items.length - 1, v + 1)); }
-              if (e.key === 'ArrowUp') { e.preventDefault(); setI(v => Math.max(0, v - 1)); }
-              if (e.key === 'Enter' && items[i]) onGo(items[i].href);
-            }} />
-          <kbd>Esc</kbd>
-        </div>
-        {items.length === 0 ? <div className="f-cmdk-empty">No pages match &ldquo;{q}&rdquo;.</div> : (
-          <ul>
-            {items.map((x, k) => {
-              const Icon = x.icon;
-              return (
-                <li key={x.href}>
-                  <a href={x.href} data-on={k === i} onMouseEnter={() => setI(k)} onClick={e => { e.preventDefault(); onGo(x.href); }}>
-                    <span className="f-cmdk-ic"><Icon size={16} /></span>{x.label}<small>{x.group}</small>
-                  </a>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </div>
-    </div>
-    </div>
   );
 }
