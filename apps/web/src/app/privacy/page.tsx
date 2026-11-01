@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 const S: LegalSection[] = [
   { id: 'collect', title: 'What we collect', body: <>
-    <p><b>Account details.</b> Your name, email address and password (stored as a one-way hash), or your Google profile name and email if you sign in with Google. At signup we also ask for your country, city and postal code.</p>
+    <p><b>Account details.</b> Your name, email address and password (stored as a one-way hash), or your Google profile name and email if you sign in with Google. When you set up your account we also ask for your country, city and postal code.</p>
     <p><b>Broker connection.</b> For each MT5 account you connect: the broker, server, login number and <b>investor (read-only) password</b>. We need the investor password to keep syncing your history. It can only read the account — it can’t trade.</p>
     <p><b>Trading data.</b> The positions, deals, balances and statistics we import from MT5, and anything you add — journal entries, emotions, tags, notes, price alerts, watchlists, strategies and AI coach conversations.</p>
     <p><b>Usage and device data.</b> When you use the app we record your IP address and browser user-agent with your login session, and first-party usage events such as which pages you visit and how long you stay. We use these to secure accounts, fix problems and understand which features are used.</p>

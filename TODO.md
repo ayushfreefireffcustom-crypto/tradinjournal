@@ -852,7 +852,7 @@ Legend:
 - [x] H: `/access/inactive`: no amber; neutral card with a red risk note; one primary + a text link `S` — neutral card, Recheck primary + a text link
 - [x] L: `/access/elefin`: standard primary, no faux italic `S` — verified in code (2 Nov)
 - [x] L: `/maintenance`: no violet tone; one paragraph `S`
-- [ ] L: `/privacy`, `/terms`: no faux italic; muted section numbers; bullets on mobile; header matches the landing nav `S`
+- [x] L: `/privacy`, `/terms`: no faux italic; muted section numbers; bullets on mobile; header matches the landing nav `S` — checked 2 Nov: plain headings, muted numbers, logo + links header like the landing
 - [x] L: `/unsubscribe`: no faux italic `S` — verified in code (2 Nov)
 - [x] L: `/news`, `/economic-calendar` redirects: confirm nothing links to them `S` — verified in code (2 Nov)
 
