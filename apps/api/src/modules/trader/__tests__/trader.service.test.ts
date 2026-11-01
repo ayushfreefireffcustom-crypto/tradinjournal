@@ -18,6 +18,11 @@ vi.mock('../../../lib/market/flow/unusual-whales.js', () => ({ fetchUnusualWhale
 vi.mock('../../../lib/market/flow/benzinga.js', () => ({ fetchBenzinga: vi.fn(async () => null) }));
 vi.mock('../../../lib/market/flow/santiment.js', () => ({ fetchSantiment: vi.fn(async () => null) }));
 vi.mock('../trader.lgbm.service.js', () => ({ predictLgbmIfServing: vi.fn(async () => null) }));
+// The free lanes (Binance flow, Fear & Greed, macro bias) call out too; off here so
+// the tests don't depend on the network.
+vi.mock('../../../lib/market/flow/binance-flow.js', () => ({ fetchCryptoFlow: vi.fn(async () => null) }));
+vi.mock('../../../lib/market/flow/fear-greed.js', () => ({ fetchFearGreed: vi.fn(async () => null) }));
+vi.mock('../../macro/macro.service.js', () => ({ getMacroState: vi.fn(async () => { throw new Error('macro off in tests'); }) }));
 
 import { analyze, mergeLlm, classifyAsset } from '../trader.service.js';
 

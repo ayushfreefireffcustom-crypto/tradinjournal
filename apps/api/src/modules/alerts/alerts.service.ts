@@ -10,6 +10,7 @@ import { getLatestPrice } from '../market/market.service.js';
 import { claimDelivery } from '../../lib/notifications/claim.js';
 import { sendPush } from '../../lib/push.js';
 import { deliveryAllowed } from '@tradinjournal/contracts';
+import { NotFoundError } from '../../http/errors.js';
 
 // Read degrades gracefully if the table is missing (migration lagging a deploy)
 // so the chart page's alerts panel shows empty instead of 500ing.
@@ -28,6 +29,7 @@ export async function createAlert(userId: string, input: CreateAlertInput) {
   // already past). We deliberately DON'T fetch the price server-side here: that
   // blocked the create response on a slow provider call. If no seed is given,
   // the next dispatch tick arms it (cross detection ignores a null lastPrice).
+  if (input.accountId && !(await prisma.brokerAccount.findFirst({ where: { id: input.accountId, userId }, select: { id: true } }))) throw new NotFoundError('Account not found');
   return prisma.priceAlert.create({
     data: {
       userId,
@@ -49,7 +51,8 @@ export async function updateAlert(userId: string, id: string, input: UpdateAlert
 
 export async function deleteAlert(userId: string, id: string): Promise<{ ok: boolean }> {
   const res = await prisma.priceAlert.deleteMany({ where: { id, userId } });
-  return { ok: res.count > 0 };
+  if (res.count === 0) throw new NotFoundError('Alert not found');
+  return { ok: true };
 }
 
 /**

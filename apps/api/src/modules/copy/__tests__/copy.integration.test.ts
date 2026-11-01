@@ -215,7 +215,8 @@ describe.skipIf(!local)('copy trading leaders and follows (integration)', () => 
   it('refuses follows that break the rules', async () => {
     const f = users.fol!.id;
     await expect(follows.createFollow(f, followInput({ leaderId: 'nope' }))).rejects.toThrow(/Leader not found/);
-    await expect(follows.createFollow(f, followInput({ leaderId: pendingLeaderId }))).rejects.toThrow(/not taking new followers/);
+    // A pending profile is invisible to others, so it answers like a missing one.
+    await expect(follows.createFollow(f, followInput({ leaderId: pendingLeaderId }))).rejects.toThrow(/Leader not found/);
     await expect(follows.createFollow(users.lead!.id, followInput({ connectionId: conns.lead }))).rejects.toThrow(/can't copy your own/);
     await expect(follows.createFollow(f, followInput({ connectionId: conns.other }))).rejects.toThrow(/Exchange account not found/);
     await expect(follows.createFollow(f, followInput({ connectionId: conns.live }))).rejects.toThrow(/Delta Exchange India \(testnet\)/);

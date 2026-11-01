@@ -219,8 +219,11 @@ const settingsData = (input: Partial<CreateFollowInput>) => ({
 export async function createFollow(userId: string, input: CreateFollowInput, now = new Date()): Promise<FollowDto> {
   const leader = await prisma.copyLeader.findFirst({ where: { id: input.leaderId, status: { not: 'DELISTED' } }, include: { connection: true } });
   const existing = await prisma.copyFollow.findUnique({ where: { userId_leaderId: { userId, leaderId: input.leaderId } } });
-  // An unlisted leader can only be (re)followed by someone already following it.
-  if (!leader || (!leader.listed && !(existing && existing.status !== 'STOPPED'))) throw new NotFoundError('Leader not found');
+  // Same rule as the leader pages: a leader that isn't approved and listed is only
+  // there for its owner and the people already copying it. Anyone else gets the
+  // answer a missing leader gets, so ids can't be probed for pending profiles.
+  const copying = !!existing && existing.status !== 'STOPPED';
+  if (!leader || !(leader.userId === userId || copying || (leader.status === 'VERIFIED' && leader.listed))) throw new NotFoundError('Leader not found');
   if (leader.userId === userId) throw new ConflictError("You can't copy your own trades.");
   if (leader.status !== 'VERIFIED') throw new ConflictError('This leader is not taking new followers right now.');
   if (existing && existing.status !== 'STOPPED') throw new ConflictError('You already copy this leader. Edit or resume that follow instead.');

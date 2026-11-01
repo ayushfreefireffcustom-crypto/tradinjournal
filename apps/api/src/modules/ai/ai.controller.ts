@@ -25,6 +25,7 @@ import {
   deleteConversation,
 } from './ai.service.js';
 import { getReport } from './ai.report.service.js';
+import { findAccountById } from '../accounts/accounts.repository.js';
 import { availableChips, chipContext } from './context-chips.service.js';
 import {
   getSubscription,
@@ -305,6 +306,7 @@ export async function handleContextChips(_req: Request, res: Response, next: Nex
 export async function handleToolTurn(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const b = req.body as AiToolTurnInput;
+    if (!(await findAccountById(b.accountId, res.locals.user.id as string))) throw new NotFoundError('Account not found');
     const conversationId = await persistTurn({ userId: res.locals.user.id as string, brokerAccountId: b.accountId, conversationId: b.conversationId, userContent: b.user, assistantContent: b.assistant, lane: 'personal' });
     ok(res, { conversationId });
   } catch (err) { next(err); }

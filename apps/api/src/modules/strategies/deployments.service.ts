@@ -146,6 +146,7 @@ function summary(d: StrategyDeployment, closedPnl: number, trades: number) {
 }
 
 export async function listDeployments(userId: string, strategyId?: string) {
+  if (strategyId && !(await prisma.strategy.findFirst({ where: { id: strategyId, userId }, select: { id: true } }))) throw new NotFoundError('Strategy not found');
   const rows = await prisma.strategyDeployment.findMany({ where: { userId, ...(strategyId ? { strategyId } : {}) }, orderBy: { startedAt: 'desc' } });
   const agg = await prisma.deploymentTrade.groupBy({ by: ['deploymentId'], where: { deploymentId: { in: rows.map((r) => r.id) } }, _sum: { pnl: true }, _count: { _all: true } });
   const by = new Map(agg.map((a) => [a.deploymentId, a]));
