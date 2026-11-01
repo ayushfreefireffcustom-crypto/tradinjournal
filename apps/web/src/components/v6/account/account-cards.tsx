@@ -58,8 +58,8 @@ export function ProfileEditCard({ profile, onSaved }: { profile: Profile | null;
 }
 
 // ── Activity ──
-const GROUPS: Array<[ActivityGroup, string]> = [['all', 'All'], ['security', 'Sign-ins and security'], ['trading', 'Exchanges and copies'], ['orders', 'Orders']];
-const ICON: Record<string, string> = { sign_in: '→', sessions_revoked: '⎋', password_changed: '•', two_factor_on: '✓', two_factor_off: '!', backup_codes_new: '•', profile_updated: '•', data_exported: '↓', delete_requested: '!', exchange_connected: '+', exchange_removed: '−', follow_started: '+', follow_stopped: '−', api_key_created: '+', api_key_revoked: '−', deployment_started: '▶', deployment_stopped: '■', order: '◆' };
+const GROUPS: Array<[ActivityGroup, string]> = [['all', 'All'], ['security', 'Sign-ins and security'], ['trading', 'Trading changes'], ['orders', 'Orders']];
+const ICON: Record<string, string> = { sign_in: '→', sessions_revoked: '⎋', password_changed: '•', two_factor_on: '✓', two_factor_off: '!', backup_codes_new: '•', profile_updated: '•', data_exported: '↓', delete_requested: '!', exchange_connected: '+', exchange_removed: '−', follow_started: '+', follow_stopped: '−', api_key_created: '+', api_key_revoked: '−', deployment_started: '▶', deployment_stopped: '■', deployment_changed: '•', subscription_changed: '•', follow_changed: '•', leader_changed: '•', webhook_changed: '•', protection_changed: '•', order_cancelled: '×', order: '◆' };
 
 export function ActivityList() {
   const [group, setGroup] = useState<ActivityGroup>('all');

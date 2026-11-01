@@ -11,6 +11,7 @@ import {
   type LegInput, type OptEnv, type Resolution,
 } from './options.service.js';
 import { placeBasket, previewBasket } from './orders.service.js';
+import { recordTradeAction } from '../me/activity.service.js';
 import { requireFeature } from '../../lib/plans.js';
 
 const wrap = (fn: (req: Request, res: Response) => Promise<void>) => (req: Request, res: Response, next: NextFunction) => fn(req, res).catch(next);
@@ -74,4 +75,13 @@ const orderLimit = perUserRateLimit({ name: 'options-orders', max: 20, windowSec
 export const optionsOrdersRouter: IRouter = Router();
 optionsOrdersRouter.use(requireAuth, requirePlatformAccess, requireFeature('options.orders', 'Sending option orders'));
 optionsOrdersRouter.post('/preview', orderLimit, validateBody(optionsBasketSchema), wrap(async (req, r) => ok(r, await previewBasket(r.locals.user.id as string, req.body as OptionsBasketDto))));
-optionsOrdersRouter.post('/', orderLimit, validateBody(optionsBasketSchema), wrap(async (req, r) => ok(r, await placeBasket(r.locals.user.id as string, req.body as OptionsBasketDto))));
+optionsOrdersRouter.post('/', orderLimit, validateBody(optionsBasketSchema), wrap(async (req, r) => {
+  const b = req.body as OptionsBasketDto;
+  const out = await placeBasket(r.locals.user.id as string, b);
+  const sent = out.legs.filter((l) => l.order).length;
+  await recordTradeAction(req, r, 'order_placed', `${b.underlying} options order, ${b.legs.length} leg${b.legs.length === 1 ? '' : 's'} (${sent} sent): ${out.message}`, {
+    connectionId: b.connectionId, requestId: b.requestId, underlying: b.underlying, legs: b.legs, pricing: b.pricing, outcomes: out.legs.map((l) => l.outcome),
+    orderIds: out.legs.flatMap((l) => (l.order ? [l.order.id] : [])),
+  });
+  ok(r, out);
+}));

@@ -2,7 +2,7 @@ import type { Request, Response, NextFunction } from 'express';
 import type { ApplyLeaderInput, CreateFollowInput, CursorQuery, LeaderRange, LeadersQuery, StopFollowInput, UpdateFollowInput, UpdateLeaderInput } from '@tradinjournal/contracts';
 import { applyAsLeader, getLeader, getMyLeader, leaderEquity, leaderRoundTrips, leaderTrades, listLeaders, updateMyLeader } from './leaders.service.js';
 import { subscribeCopy } from './copy-stream.js';
-import { contextOf, recordActivity } from '../me/activity.service.js';
+import { contextOf, recordActivity, recordTradeAction } from '../me/activity.service.js';
 import { createFollow, followOrders, getFollow, listFollows, stopFollow, updateFollow } from './follows.service.js';
 
 const uid = (res: Response) => res.locals.user.id as string;
@@ -20,8 +20,18 @@ const rangeOf = (req: Request) => (req.query as { range: LeaderRange }).range;
 
 export const handleListLeaders = wrap(async (req, res) => res.json({ data: await listLeaders(uid(res), req.query as unknown as LeadersQuery) }));
 export const handleMyLeader = wrap(async (_req, res) => res.json({ data: await getMyLeader(uid(res)) }));
-export const handleApplyLeader = wrap(async (req, res) => res.status(201).json({ data: await applyAsLeader(actorOf(res), req.body as ApplyLeaderInput) }));
-export const handleUpdateMyLeader = wrap(async (req, res) => res.json({ data: await updateMyLeader(uid(res), req.body as UpdateLeaderInput) }));
+export const handleApplyLeader = wrap(async (req, res) => {
+  const l = await applyAsLeader(actorOf(res), req.body as ApplyLeaderInput);
+  await recordTradeAction(req, res, 'leader_changed', `Applied to lead copy trading as ${l.displayName}`, { leaderId: l.id, connectionId: l.connectionId });
+  res.status(201).json({ data: l });
+});
+export const handleUpdateMyLeader = wrap(async (req, res) => {
+  const b = req.body as UpdateLeaderInput;
+  const l = await updateMyLeader(uid(res), b);
+  const what = [b.displayName !== undefined ? 'name' : null, b.bio !== undefined ? 'bio' : null, b.listed === true ? 'listed on the leaderboard' : b.listed === false ? 'hidden from the leaderboard' : null].filter(Boolean);
+  await recordTradeAction(req, res, 'leader_changed', `Changed the leader profile: ${what.join(', ')}`, { leaderId: l.id, ...b });
+  res.json({ data: l });
+});
 export const handleGetLeader = wrap(async (req, res) => res.json({ data: await getLeader(uid(res), String(req.params.id), rangeOf(req)) }));
 export const handleLeaderTrades = wrap(async (req, res) => res.json({ data: await leaderTrades(uid(res), String(req.params.id), req.query as unknown as CursorQuery) }));
 export const handleLeaderRoundTrips = wrap(async (req, res) => res.json({ data: await leaderRoundTrips(uid(res), String(req.params.id)) }));
@@ -35,7 +45,14 @@ export const handleCreateFollow = wrap(async (req, res) => {
 });
 export const handleGetFollow = wrap(async (req, res) => res.json({ data: await getFollow(uid(res), String(req.params.id)) }));
 export const handleFollowOrders = wrap(async (req, res) => res.json({ data: await followOrders(uid(res), String(req.params.id), req.query as unknown as CursorQuery) }));
-export const handleUpdateFollow = wrap(async (req, res) => res.json({ data: await updateFollow(uid(res), String(req.params.id), req.body as UpdateFollowInput) }));
+export const handleUpdateFollow = wrap(async (req, res) => {
+  const b = req.body as UpdateFollowInput;
+  const f = await updateFollow(uid(res), String(req.params.id), b);
+  const settings = Object.keys(b).filter((k) => k !== 'action');
+  const what = [b.action === 'pause' ? 'paused' : b.action === 'resume' ? 'resumed' : null, settings.length ? `changed ${settings.join(', ')}` : null].filter(Boolean);
+  await recordTradeAction(req, res, 'follow_changed', `Copy of ${f.leader.displayName}: ${what.join(', ')}`, { followId: f.id, ...b });
+  res.json({ data: f });
+});
 export const handleStopFollow = wrap(async (req, res) => {
   const close = (req.body as StopFollowInput).closePositions;
   const r = await stopFollow(uid(res), String(req.params.id), close);

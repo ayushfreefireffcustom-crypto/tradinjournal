@@ -6,7 +6,7 @@ import { requireInternalToken } from '../../http/middleware/require-internal-tok
 import { validateBody } from '../../http/middleware/validate.js';
 import { ok, created } from '../../http/response.js';
 import { perUserRateLimit } from '../../lib/rate-limit.js';
-import { contextOf, recordActivity } from '../me/activity.service.js';
+import { contextOf, recordActivity, recordTradeAction } from '../me/activity.service.js';
 import { controlDeployment, createDeployment, deploymentReport, getDeployment, listDeployments, setMultiplier, tickDeployments, type DeployAction } from './deployments.service.js';
 
 const uid = (res: Response) => res.locals.user.id as string;
@@ -43,12 +43,18 @@ deploymentsRouter.get('/report', wrap(async (req, res) => {
   ok(res, await deploymentReport(uid(res), mode, days));
 }));
 deploymentsRouter.get('/:id', wrap(async (req, res) => ok(res, await getDeployment(uid(res), p(req)))));
-deploymentsRouter.post('/:id/size', limit, validateBody(z.object({ multiplier: z.number().min(0.01).max(10) }).strict()), wrap(async (req, res) => ok(res, await setMultiplier(uid(res), p(req), (req.body as { multiplier: number }).multiplier))));
+deploymentsRouter.post('/:id/size', limit, validateBody(z.object({ multiplier: z.number().min(0.01).max(10) }).strict()), wrap(async (req, res) => {
+  const m = (req.body as { multiplier: number }).multiplier;
+  const d = await setMultiplier(uid(res), p(req), m);
+  await recordTradeAction(req, res, 'deployment_changed', `Set “${d.name}” to ${m}× size`, { deploymentId: p(req), multiplier: m });
+  ok(res, d);
+}));
 deploymentsRouter.post('/:id/:action', limit, wrap(async (req, res) => {
   const a = String(req.params.action);
   if (!(actions as readonly string[]).includes(a)) { res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Unknown action' } }); return; }
   const d = await controlDeployment(uid(res), p(req), a as DeployAction);
   if (['stop', 'settle', 'emergency_close'].includes(a)) await recordActivity(uid(res), 'deployment_stopped', `${a === 'stop' ? 'Stopped' : a === 'settle' ? 'Settled' : 'Emergency-closed'} a strategy run`, contextOf(req), { deploymentId: p(req) });
+  else await recordTradeAction(req, res, 'deployment_changed', `${a === 'pause' ? 'Paused' : a === 'resume' ? 'Resumed' : 'Archived'} “${d.name}”`, { deploymentId: p(req), action: a });
   ok(res, d);
 }));
 

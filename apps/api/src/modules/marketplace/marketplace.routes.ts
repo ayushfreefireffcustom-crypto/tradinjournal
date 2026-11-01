@@ -7,7 +7,7 @@ import { validateBody } from '../../http/middleware/validate.js';
 import { created, ok } from '../../http/response.js';
 import { ValidationError } from '../../http/errors.js';
 import { perUserRateLimit } from '../../lib/rate-limit.js';
-import { contextOf, recordActivity } from '../me/activity.service.js';
+import { contextOf, recordActivity, recordTradeAction } from '../me/activity.service.js';
 import {
   adminQueue, applyCreator, browse, createTemplate, getCreator, manageSubscription, mySubscriptions, myTemplates, publishOptions, resizeSubscription,
   reviewCreator, reviewTemplate, setListed, subscribe, templateDetail, updateTemplate, type Sort, type SubscribeInput, type TemplateInput,
@@ -35,9 +35,17 @@ marketplaceRouter.get('/subscriptions', wrap(async (_req, res) => ok(res, await 
 marketplaceRouter.post('/subscriptions/:id/size', writeLimit, wrap(async (req, res) => {
   const m = Number((req.body as { multiplier?: unknown })?.multiplier);
   if (!(m >= 0.01 && m <= 10)) throw new ValidationError('The size multiplier must be between 0.01 and 10.');
-  ok(res, await resizeSubscription(uid(res), p(req), m));
+  const s = await resizeSubscription(uid(res), p(req), m);
+  await recordTradeAction(req, res, 'subscription_changed', `Set the “${s.template?.name ?? 'marketplace'}” subscription to ${m}× size`, { subscriptionId: p(req), multiplier: m });
+  ok(res, s);
 }));
-marketplaceRouter.post('/subscriptions/:id/:action(pause|resume|cancel|cancel_settle)', writeLimit, wrap(async (req, res) => ok(res, await manageSubscription(uid(res), p(req), req.params.action as 'pause' | 'resume' | 'cancel' | 'cancel_settle'))));
+const SUB_VERB = { pause: 'Paused', resume: 'Resumed', cancel: 'Cancelled', cancel_settle: 'Cancelled and closed the positions of' } as const;
+marketplaceRouter.post('/subscriptions/:id/:action(pause|resume|cancel|cancel_settle)', writeLimit, wrap(async (req, res) => {
+  const a = req.params.action as keyof typeof SUB_VERB;
+  const s = await manageSubscription(uid(res), p(req), a);
+  await recordTradeAction(req, res, 'subscription_changed', `${SUB_VERB[a]} the “${s.template?.name ?? 'marketplace'}” subscription`, { subscriptionId: p(req), action: a });
+  ok(res, s);
+}));
 marketplaceRouter.get('/:id', wrap(async (req, res) => ok(res, await templateDetail(uid(res), p(req)))));
 marketplaceRouter.post('/:id/subscribe', writeLimit, validateBody(subscribeSchema), wrap(async (req, res) => {
   const r = await subscribe(uid(res), p(req), req.body as SubscribeInput);

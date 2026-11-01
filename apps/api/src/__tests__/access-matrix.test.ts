@@ -295,8 +295,8 @@ describe.skipIf(!local)('access-control matrix', () => {
     const lLeader = await prisma.copyLeader.create({ data: { userId: l, connectionId: lConn.id, displayName: 'ACL leader', status: 'VERIFIED', listed: true } });
     await prisma.creatorProfile.create({ data: { userId: l, displayName: 'L creator', bio: 'L bio', status: 'approved' } });
     const lStrategy = await prisma.strategy.create({ data: { userId: l, name: 'L strat', spec: spec as object } });
-    const tmpl = (creatorId: string, strategyId: string, name: string, status: string) => prisma.strategyTemplate.create({ data: { creatorId, strategyId, version: 1, spec: spec as object, name, summary: 'A test template summary.', description: 'A test template description that is long enough.', category: 'trend', risk: 'low', exchanges: ['delta_india'], symbols: ['BTCUSDT'], interval: spec.session.interval, status, publishedAt: status === 'approved' ? new Date() : null } });
-    const lTemplate = await tmpl(l, lStrategy.id, 'L public', 'approved');
+    const tmpl = (creatorId: string, strategyId: string, name: string, status: string) => prisma.strategyTemplate.create({ data: { creatorId, strategyId, version: 1, spec: spec as object, name, summary: 'A test template summary.', description: 'A test template description that is long enough.', category: 'trend', risk: 'low', exchanges: ['delta_india'], symbols: ['BTCUSDT'], interval: spec.session.interval, status, publishedAt: status === 'published' ? new Date() : null } });
+    const lTemplate = await tmpl(l, lStrategy.id, 'L public', 'published');
     mine = { strategy: bStrategy.id, account: bAccount.id, connection: bConn.id, publicTemplate: lTemplate.id, publicLeader: lLeader.id };
 
     // A's records.
