@@ -33,3 +33,10 @@ export const optionsTemplateSchema = z.object({
   expiry: expiryCode,
   qty: z.number().int().min(1).max(100_000).default(1),
 }).strict();
+
+export const optionsReplaySchema = z.object({
+  env: optionsEnvSchema.default('live'),
+  underlying,
+  legs: z.array(optionLegSchema).min(1).max(8),
+  path: z.enum(['flat', 'recorded']).default('flat'),
+}).strict();

@@ -1,5 +1,5 @@
 import { Router, type IRouter, type Request, type Response, type NextFunction } from 'express';
-import { optionsAnalyzeSchema, optionsTemplateSchema, type OptionsAnalyzeDto } from '@tradinjournal/contracts';
+import { optionsAnalyzeSchema, optionsReplaySchema, optionsTemplateSchema, type OptionsAnalyzeDto } from '@tradinjournal/contracts';
 import { requireAuth } from '../../http/middleware/require-auth.js';
 import { requirePlatformAccess } from '../../http/middleware/require-platform-access.js';
 import { validateBody } from '../../http/middleware/validate.js';
@@ -7,7 +7,7 @@ import { ok } from '../../http/response.js';
 import { ValidationError } from '../../http/errors.js';
 import { perUserRateLimit } from '../../lib/rate-limit.js';
 import {
-  analyzeLegs, chain, contract, contractCandles, optionsOverview, premiumSeries, RESOLUTIONS, templateFor, templates, underlyings,
+  analyzeLegs, chain, contract, replayLegs, contractCandles, optionsOverview, premiumSeries, RESOLUTIONS, templateFor, templates, underlyings,
   type LegInput, type OptEnv, type Resolution,
 } from './options.service.js';
 
@@ -61,4 +61,8 @@ optionsRouter.post('/analyze', analyzeLimit, validateBody(optionsAnalyzeSchema),
 optionsRouter.post('/template', analyzeLimit, validateBody(optionsTemplateSchema), wrap(async (req, r) => {
   const b = req.body as { env: OptEnv; underlying: string; template: string; expiry: string; qty: number };
   ok(r, await templateFor(b.env, b.underlying, b.template, b.expiry, b.qty));
+}));
+optionsRouter.post('/replay', analyzeLimit, validateBody(optionsReplaySchema), wrap(async (req, r) => {
+  const b = req.body as { env: OptEnv; underlying: string; legs: LegInput[]; path: 'flat' | 'recorded' };
+  ok(r, await replayLegs(b.env, b.underlying, { legs: b.legs, path: b.path }));
 }));

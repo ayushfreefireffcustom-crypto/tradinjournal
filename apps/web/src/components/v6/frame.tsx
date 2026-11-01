@@ -40,6 +40,7 @@ export const NAV: { title: string; items: FrameNavItem[] }[] = [
     { href: '/screener', label: 'Screener', icon: ISearch },
     { href: '/signals', label: 'Signals', icon: ITrendUp },
     { href: '/derivatives', label: 'Derivatives', icon: ISync },
+    { href: '/options', label: 'Options', icon: ICharts },
     { href: '/compare', label: 'Compare', icon: IMirror },
     { href: '/alerts', label: 'Alerts', icon: IBell },
     { href: '/macro', label: 'Macro', icon: IMacro },

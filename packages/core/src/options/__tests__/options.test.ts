@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   analyse, atmIv, bsGreeks, bsPrice, byStrike, expiryStats, gammaCentre, gammaFlip, impliedVol, ivAtDelta, maxPain, normCdf, overview,
-  parseOptionSymbol, payoff, resolveTemplate, summarize, TEMPLATES, YEAR_MS, type Chain, type Leg, type OptionQuote,
+  parseOptionSymbol, payoff, probInside, replay, resolveTemplate, summarize, TEMPLATES, YEAR_MS, type Chain, type Leg, type OptionQuote,
 } from '../index.js';
 
 describe('black-scholes', () => {
@@ -161,5 +161,37 @@ describe('analysis panel', () => {
     expect(a.decayPerDayPct!).toBeLessThan(0); // a long option pays for time
     expect(a.toBreakevenPct!).toBeGreaterThan(10);
     expect(a.legs[0]!.deltaWeightedOi).toBeCloseTo(q.oi * Math.abs(q.delta!), 9);
+  });
+});
+
+describe('expiry replay', () => {
+  const exp = NOW + 10 * 86_400_000;
+  const legs: Leg[] = [{ kind: 'call', side: -1, qty: 1, strike: 100, expiry: exp, price: bsPrice('call', 100, 100, 10 / 365, 0.5), iv: 0.5 }, { kind: 'put', side: -1, qty: 1, strike: 100, expiry: exp, price: bsPrice('put', 100, 100, 10 / 365, 0.5), iv: 0.5 }];
+  it('melts a short straddle to its full premium when the price stands still', () => {
+    const path = Array.from({ length: 11 }, (_, d) => ({ t: NOW + d * 86_400_000, spot: 100 }));
+    const r = replay(legs, 1, path, { vol: 0.5, grid: [90, 100, 110] });
+    expect(r.frames).toHaveLength(11);
+    expect(r.frames[0]!.pnl).toBeCloseTo(0, 9);
+    const premium = legs[0]!.price + legs[1]!.price;
+    expect(r.frames.at(-1)!.pnl).toBeCloseTo(premium, 9);
+    // Decay speeds up into expiry: the last day earns more than the first.
+    expect(r.frames[10]!.pnl - r.frames[9]!.pnl).toBeGreaterThan(r.frames[1]!.pnl - r.frames[0]!.pnl);
+    expect(r.frames[5]!.band!.hi).toBeCloseTo(100 * Math.exp(0.5 * Math.sqrt(5 / 365)), 9);
+    expect(r.expiryCurve).toEqual([premium - 10, premium, premium - 10].map((v) => expect.closeTo(v, 9)));
+    expect(r.frames[3]!.curve[1]).toBeCloseTo(r.frames[3]!.pnl, 9);
+  });
+  it('stops at the first expiry and pins a last frame there', () => {
+    const path = [{ t: NOW, spot: 100 }, { t: NOW + 4 * 86_400_000, spot: 104 }, { t: NOW + 20 * 86_400_000, spot: 90 }];
+    const r = replay(legs, 1, path, { vol: null, grid: [100] });
+    expect(r.frames.map((f) => (f.t - NOW) / 86_400_000)).toEqual([0, 4, 10]);
+    expect(r.frames.at(-1)!.spot).toBe(104);
+    expect(r.frames[1]!.band).toBeNull();
+  });
+  it('gives the chance of finishing inside a range', () => {
+    expect(probInside(100, 0, Infinity, 0.5, 0.1)).toBeCloseTo(1, 9);
+    expect(probInside(100, 90, 110, 0.5, 0)).toBe(1);
+    const p = probInside(100, 95, 105, 0.5, 10 / 365);
+    expect(p).toBeGreaterThan(0.3);
+    expect(p).toBeLessThan(0.6);
   });
 });

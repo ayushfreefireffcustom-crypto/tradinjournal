@@ -1,7 +1,7 @@
 // Options service against a fake Delta: no network.
 import { describe, expect, it } from 'vitest';
 import { bsGreeks, bsPrice, YEAR_MS } from '@tradinjournal/core';
-import { analyzeLegs, chain, contract, contractCandles, optionsOverview, premiumSeries, templateFor, underlyings, type OptionsDeps } from '../options.service.js';
+import { analyzeLegs, chain, contract, contractCandles, optionsOverview, premiumSeries, replayLegs, templateFor, underlyings, type OptionsDeps } from '../options.service.js';
 
 const NOW = Date.UTC(2026, 10, 2, 6);
 const EXP = [{ code: '031126', at: Date.UTC(2026, 10, 3, 12) }, { code: '131126', at: Date.UTC(2026, 10, 13, 12) }, { code: '271126', at: Date.UTC(2026, 10, 27, 12) }];
@@ -113,6 +113,22 @@ describe('options service', () => {
     const cal = await templateFor('live', 'BTC', 'calendar_call', '131126', 1, deps);
     expect(cal.map((l) => l.expiry)).toEqual(['131126', '271126']);
     await expect(templateFor('live', 'BTC', 'calendar_call', '271126', 1, deps)).rejects.toThrow(/later expiry/);
+  });
+  it('replays legs to expiry on a flat or a recorded path', async () => {
+    const legs = [{ kind: 'call' as const, side: -1 as const, qty: 1, strike: 78_000, expiry: '031126' }, { kind: 'put' as const, side: -1 as const, qty: 1, strike: 78_000, expiry: '031126' }];
+    const flat = await replayLegs('live', 'BTC', { legs, path: 'flat' }, deps);
+    const f = flat.replay.frames;
+    expect(f[0]!.t).toBe(NOW);
+    expect(f.at(-1)!.t).toBe(EXP[0]!.at);
+    expect(f.length).toBe(31); // hourly over 30 h
+    expect(f[0]!.pnl).toBeCloseTo(0, 6);
+    expect(f.at(-1)!.pnl).toBeCloseTo(flat.legs.reduce((a, l) => a + l.price, 0) * 0.001, 6); // the whole premium kept
+    expect(flat.replay.grid).toHaveLength(61);
+    const rec = await replayLegs('live', 'BTC', { legs, path: 'recorded' }, deps);
+    // The fixture index rose 76k → 80k (+5.26 %): replayed from today's 78k.
+    expect(rec.replay.frames.at(-1)!.spot).toBeCloseTo(78_000 * 80 / 76, 6);
+    expect(rec.recorded).toEqual({ from: NOW - 5 * H, to: NOW - H });
+    await expect(replayLegs('live', 'BTC', { legs: [{ kind: 'future', side: 1, qty: 1 }], path: 'flat' }, deps)).rejects.toThrow(/at least one option/);
   });
   it('reads testnet listings when asked', async () => {
     const c = await chain('testnet', 'BTC', undefined, deps);

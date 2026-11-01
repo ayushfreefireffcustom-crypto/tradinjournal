@@ -4,3 +4,4 @@ export * from './chain.js';
 export * from './legs.js';
 export * from './templates.js';
 export * from './analysis.js';
+export * from './replay.js';

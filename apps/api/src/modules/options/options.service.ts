@@ -3,7 +3,7 @@
 // candles, and multi-leg analysis. Testnet has its own listings, so the
 // environment follows the account the user trades on (live by default).
 import {
-  analyse, byStrike, expiriesOf, expiryStats, impliedVol, overview, parseOptionSymbol, payoff, resolveTemplate, summarize, TEMPLATES, YEAR_MS,
+  analyse, byStrike, expiriesOf, expiryStats, impliedVol, overview, parseOptionSymbol, payoff, replay, resolveTemplate, summarize, TEMPLATES, YEAR_MS,
   type Chain, type Leg, type OptionQuote,
 } from '@tradinjournal/core';
 import { cacheGet, cacheSet } from '../../lib/cache.js';
@@ -211,10 +211,8 @@ export async function premiumSeries(env: OptEnv, underlying: string, expiryCode:
 // ── Multi-leg analysis (G6–G8) ──
 export interface LegInput { kind: 'call' | 'put' | 'future'; side: 1 | -1; qty: number; strike?: number; expiry?: string; price?: number; iv?: number }
 
-/** Legs priced from the chain: options at their mark and mark IV unless given; futures at the index. */
-export async function analyzeLegs(env: OptEnv, underlying: string, input: { legs: LegInput[]; at?: number; vol?: number }, deps = defaultOptionsDeps) {
-  const c = await chainOf(env, underlying, deps);
-  const legs: Leg[] = input.legs.map((l, i) => {
+function resolveLegs(c: Chain, underlying: string, input: LegInput[]): Leg[] {
+  return input.map((l, i) => {
     if (l.kind === 'future') return { kind: 'future', side: l.side, qty: l.qty, price: l.price ?? c.spot };
     const q = c.quotes.find((x) => x.kind === l.kind && x.strike === l.strike && x.expiryCode === l.expiry);
     if (!q) throw new ValidationError(`Leg ${i + 1}: no ${underlying} ${l.kind} at ${l.strike} for ${l.expiry}.`);
@@ -222,19 +220,31 @@ export async function analyzeLegs(env: OptEnv, underlying: string, input: { legs
     if (iv == null) throw new ValidationError(`Leg ${i + 1}: ${q.symbol} has no IV to value it with.`);
     return { kind: l.kind, side: l.side, qty: l.qty, strike: q.strike, expiry: q.expiry, price: l.price ?? q.mark ?? 0, iv, symbol: q.symbol };
   });
-  const now = c.asOf;
-  const at = Math.max(now, Math.min(input.at ?? now, Math.min(...legs.filter((l) => l.expiry).map((l) => l.expiry!))));
+}
+
+/** The price range to chart: ±3σ to the first expiry, widened to show every strike (and breakeven). */
+function rangeFor(c: Chain, legs: Leg[], vol: number | null, extra: number[] = []) {
   const opts = legs.filter((l) => l.kind !== 'future');
   const firstExp = opts.length ? Math.min(...opts.map((l) => l.expiry!)) : null;
-  const atmVol = firstExp ? expiryStats(c, firstExp).atmIv : null;
-  const vol = input.vol ?? atmVol ?? null;
-  const s = summarize(legs, c.contractValue, c.spot, now, vol);
-  // Chart range: ±3σ to the first expiry, widened to show every strike and breakeven.
-  const T = firstExp ? (firstExp - now) / YEAR_MS : 7 / 365;
+  const T = firstExp ? (firstExp - c.asOf) / YEAR_MS : 7 / 365;
   const sd = (vol ?? 0.5) * Math.sqrt(Math.max(T, 1 / 365));
-  const ks = [...legs.filter((l) => l.strike).map((l) => l.strike!), ...s.breakevens];
-  const lo = Math.max(0, Math.min(c.spot * Math.exp(-3 * sd), ...ks.map((k) => k * 0.97)));
-  const hi = Math.max(c.spot * Math.exp(3 * sd), ...ks.map((k) => k * 1.03));
+  const ks = [...legs.filter((l) => l.strike).map((l) => l.strike!), ...extra];
+  return { lo: Math.max(0, Math.min(c.spot * Math.exp(-3 * sd), ...ks.map((k) => k * 0.97))), hi: Math.max(c.spot * Math.exp(3 * sd), ...ks.map((k) => k * 1.03)), sd, firstExp };
+}
+const atmVolFor = (c: Chain, legs: Leg[]) => {
+  const opts = legs.filter((l) => l.kind !== 'future');
+  return opts.length ? expiryStats(c, Math.min(...opts.map((l) => l.expiry!))).atmIv : null;
+};
+
+/** Legs priced from the chain: options at their mark and mark IV unless given; futures at the index. */
+export async function analyzeLegs(env: OptEnv, underlying: string, input: { legs: LegInput[]; at?: number; vol?: number }, deps = defaultOptionsDeps) {
+  const c = await chainOf(env, underlying, deps);
+  const legs = resolveLegs(c, underlying, input.legs);
+  const now = c.asOf;
+  const at = Math.max(now, Math.min(input.at ?? now, Math.min(...legs.filter((l) => l.expiry).map((l) => l.expiry!))));
+  const vol = input.vol ?? atmVolFor(c, legs) ?? null;
+  const s = summarize(legs, c.contractValue, c.spot, now, vol);
+  const { lo, hi, sd, firstExp } = rangeFor(c, legs, vol, s.breakevens);
   return {
     env, underlying, spot: c.spot, contractValue: c.contractValue, asOf: now, at, vol,
     legs: legs.map((l) => ({ ...l, expiryCode: l.symbol ? parseOptionSymbol(l.symbol)!.expiryCode : null, mark: l.kind === 'future' ? c.spot : c.quotes.find((q) => q.symbol === l.symbol)?.mark ?? null })),
@@ -242,6 +252,47 @@ export async function analyzeLegs(env: OptEnv, underlying: string, input: { legs
     payoff: payoff(legs, c.contractValue, { from: lo, to: hi, steps: 160, at }),
     analysis: analyse(legs, c, s),
     sigma: vol != null && firstExp ? { lo: c.spot * Math.exp(-sd), hi: c.spot * Math.exp(sd) } : null,
+  };
+}
+
+/**
+ * Expiry replay (G10): paper legs walked to their first expiry along either a
+ * flat price (pure time decay) or the index's own recent moves replayed from
+ * today's price, compressed or stretched to fit the time left.
+ */
+export async function replayLegs(env: OptEnv, underlying: string, input: { legs: LegInput[]; path: 'flat' | 'recorded' }, deps = defaultOptionsDeps) {
+  const c = await chainOf(env, underlying, deps);
+  const legs = resolveLegs(c, underlying, input.legs);
+  const vol = atmVolFor(c, legs);
+  const { lo, hi, firstExp } = rangeFor(c, legs, vol);
+  if (!firstExp) throw new ValidationError('Add at least one option leg to replay to expiry.');
+  const now = c.asOf;
+  const span = firstExp - now;
+  const steps = Math.max(2, Math.min(240, Math.ceil(span / 3_600_000)));
+  let path: Array<{ t: number; spot: number }>;
+  let recorded: { from: number; to: number } | null = null;
+  if (input.path === 'flat') {
+    path = Array.from({ length: steps + 1 }, (_, i) => ({ t: now + (span * i) / steps, spot: c.spot }));
+  } else {
+    const ps = await products(env, deps);
+    const index = ps[legs.find((l) => l.symbol)!.symbol!]?.index;
+    if (!index) throw new NotFoundError('No index for these options.');
+    // The most recent stretch of history as long as the time left (up to 30 days).
+    const len = Math.min(span, 30 * 86_400_000);
+    const res: Resolution = len <= 10 * 86_400_000 ? '1h' : '4h';
+    const hist = await candlesFor(env, index, res, now - len, now, deps);
+    if (hist.length < 2) throw new ValidationError('Not enough recorded prices to replay.');
+    const t0 = hist[0]!.t;
+    const t1 = hist.at(-1)!.t;
+    const p0 = hist[0]!.c;
+    recorded = { from: t0, to: t1 };
+    path = hist.map((h) => ({ t: now + ((h.t - t0) / Math.max(1, t1 - t0)) * span, spot: (c.spot * h.c) / p0 }));
+  }
+  const grid = Array.from({ length: 61 }, (_, i) => lo + ((hi - lo) * i) / 60);
+  return {
+    env, underlying, spot: c.spot, contractValue: c.contractValue, asOf: now, vol, path: input.path, recorded,
+    legs: legs.map((l) => ({ kind: l.kind, side: l.side, qty: l.qty, strike: l.strike, expiry: l.expiry, price: l.price, iv: l.iv, symbol: l.symbol })),
+    replay: replay(legs, c.contractValue, path, { vol, grid }),
   };
 }
 
