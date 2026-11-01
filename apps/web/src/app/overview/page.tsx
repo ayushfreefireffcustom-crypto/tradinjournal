@@ -11,6 +11,7 @@ import { fmtPct, fmtPrice, fmtUsd, hubApi, toneOf, type MarketBrief, type Overvi
 import { squarify } from '@/lib/treemap';
 import '@/styles/v6/copy.css';
 import '@/styles/v6/markets.css';
+import Freshness from '@/components/v6/ui/freshness';
 
 function useWidth<T extends HTMLElement>() {
   const ref = useRef<T>(null);
@@ -37,7 +38,7 @@ export default function OverviewPage() {
   const brief = useLoad(() => hubApi.brief(), []);
   usePoll(() => void o.reload(), 2 * 60_000);
   return (
-    <AppShell legacy={false} pageTitle="Market overview" pageSubtitle="Crypto breadth, sectors and sentiment, with FX and indices alongside">
+    <AppShell legacy={false} pageTitle="Market overview" pageSubtitle={<>Crypto breadth, sectors and sentiment, with FX and indices alongside {o.data && <> · <Freshness at={o.data.asOf} /></>}</>}>
       <div className="x-page ov-page" data-testid="ov-page">
         {brief.data && <BriefCard b={brief.data} />}
         {o.error ? <ErrorCard message={o.error} onRetry={o.reload} /> : !o.data ? <div className="x-skel" style={{ height: 420 }} /> : (

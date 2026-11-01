@@ -13,6 +13,7 @@ import {
 } from '@/lib/signals-api';
 import '@/styles/v6/copy.css';
 import '@/styles/v6/markets.css';
+import Freshness from '@/components/v6/ui/freshness';
 
 type Show = 'all' | 'buy' | 'sell';
 const isBuy = (l: RatingLabel | null | undefined) => l === 'buy' || l === 'strong_buy';
@@ -50,7 +51,7 @@ export default function SignalsPage() {
   }), [list.data]);
 
   return (
-    <AppShell legacy={false} pageTitle="Signals" pageSubtitle="Technical ratings for the most-traded crypto pairs, at the last closed bar">
+    <AppShell legacy={false} pageTitle="Signals" pageSubtitle={<>Technical ratings for the most-traded crypto pairs, at the last closed bar {list.data && <> · <Freshness at={list.data.asOf} /></>}</>}>
       <div className="x-page" data-testid="sg-page">
         <section className="x-card sg-controls" aria-label="Options">
           <div className="sg-search"><span className="x-muted">Rate any symbol</span><SymbolSearch value="" onSelect={s => setOpen(s)} /></div>

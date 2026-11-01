@@ -8,6 +8,7 @@ import AppShell from '@/components/app-shell';
 import { ErrorCard, useLoad, usePoll } from '@/components/v6/copy/parts';
 import { fmtPct, fmtPrice, fmtUsd, hubApi, toneOf, type DerivRow, type SqueezeKind } from '@/lib/hub-api';
 import '@/styles/v6/copy.css';
+import Freshness from '@/components/v6/ui/freshness';
 
 const SNAP_KEY = 'tradelogs.derivatives.snapshot';
 interface Snapshot { at: number; rows: Record<string, { f: number | null; oi: number | null }> }
@@ -70,7 +71,7 @@ export default function DerivativesPage() {
   );
 
   return (
-    <AppShell legacy={false} pageTitle="Derivatives" pageSubtitle="Funding, open interest and positioning across USDT perpetuals">
+    <AppShell legacy={false} pageTitle="Derivatives" pageSubtitle={<>Funding, open interest and positioning across USDT perpetuals {d.data && <> · <Freshness at={d.data.asOf} /></>}</>}>
       <div className="x-page dv" data-testid="dv-page">
         {d.error ? <ErrorCard message={d.error} onRetry={d.reload} /> : !data ? <div className="x-skel" style={{ height: 420 }} /> : !data.source ? (
           <div className="x-card x-empty" data-testid="dv-down"><b>No derivatives data right now</b><p>{data.note}</p><button className="x-btn" onClick={() => void d.reload()}>Try again</button></div>

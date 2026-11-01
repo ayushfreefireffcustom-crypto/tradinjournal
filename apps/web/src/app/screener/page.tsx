@@ -19,6 +19,7 @@ import {
 } from '@/lib/screener-api';
 import { useExchangeConnections } from '@/lib/use-exchange-connections';
 import '@/styles/v6/copy.css';
+import Freshness from '@/components/v6/ui/freshness';
 
 // ── Editable rows ─────────────────────────────────────────────────────────────
 // A row is one filter in the editor; "between" is two filters when run.
@@ -198,7 +199,7 @@ export default function ScreenerPage() {
   );
 
   return (
-    <AppShell legacy={false} pageTitle="Screener" pageSubtitle="The most-traded crypto pairs on Binance, filtered by indicators at the last closed bar"
+    <AppShell legacy={false} pageTitle="Screener" pageSubtitle={<>The most-traded crypto pairs on Binance, filtered by indicators at the last closed bar {res && <> · <Freshness at={res.asOf} /></>}</>}
       actions={<>
         <button className="x-btn" onClick={exportCsv} disabled={!res?.rows.length} data-testid="sc-export">Export CSV</button>
         {activeSaved && dirty
