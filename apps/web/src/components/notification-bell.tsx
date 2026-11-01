@@ -57,25 +57,29 @@ export default function NotificationBell() {
     return () => clearInterval(t);
   }, [load]);
 
+  // What's new stays marked while the panel is open (A4.1), so you can see which
+  // ones they are; it's all marked read when the panel closes.
+  const itemsRef = useRef(items);
+  itemsRef.current = items;
+  const close = useCallback(() => {
+    setOpen(false);
+    if (!itemsRef.current.some(i => !i.read)) return;
+    setUnread(0);
+    setItems(prev => prev.map(i => ({ ...i, read: true })));
+    void api.notifications.markRead().catch(() => { /* the next poll shows the true count */ });
+  }, []);
+
   // Close on outside click or Escape.
   useEffect(() => {
     if (!open) return;
-    const onClick = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    const onClick = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) close(); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') close(); };
     document.addEventListener('mousedown', onClick);
     document.addEventListener('keydown', onKey);
     return () => { document.removeEventListener('mousedown', onClick); document.removeEventListener('keydown', onKey); };
-  }, [open]);
+  }, [open, close]);
 
-  const toggle = useCallback(async () => {
-    const next = !open;
-    setOpen(next);
-    if (next && unread > 0) {
-      setUnread(0);
-      setItems(prev => prev.map(i => ({ ...i, read: true })));
-      try { await api.notifications.markRead(); } catch { /* the next poll shows the true count */ }
-    }
-  }, [open, unread]);
+  const toggle = useCallback(() => { if (open) close(); else setOpen(true); }, [open, close]);
 
   const fresh = items.filter(i => !i.read).length;
 
@@ -88,7 +92,7 @@ export default function NotificationBell() {
 
       {open && (
         <div className="x-pop nb-pop" role="dialog" aria-label="Notifications" data-testid="notif-center">
-          <div className="nb-hd"><b>Notifications</b>{fresh > 0 && <span>{fresh} new</span>}</div>
+          <div className="nb-hd"><b>Notifications</b>{fresh > 0 && <><span>{fresh} new</span><button type="button" className="nb-markall" onClick={close} data-testid="notif-mark-all">Mark all read</button></>}</div>
           {items.length === 0 ? (
             <div className="nb-empty"><span className="nb-tile"><ICheck /></span>You&rsquo;re all caught up.</div>
           ) : (
@@ -107,13 +111,13 @@ export default function NotificationBell() {
                 );
                 return (
                   <li key={n.id} className={n.read ? '' : 'nb-new'}>
-                    {n.href ? <Link href={n.href} onClick={() => setOpen(false)}>{body}</Link> : <div>{body}</div>}
+                    {n.href ? <Link href={n.href} onClick={close}>{body}</Link> : <div>{body}</div>}
                   </li>
                 );
               })}
             </ul>
           )}
-          <Link href="/notifications" className="nb-all" onClick={() => setOpen(false)} data-testid="notif-view-all">View all</Link>
+          <Link href="/notifications" className="nb-all" onClick={close} data-testid="notif-view-all">Open the inbox</Link>
         </div>
       )}
     </div>
