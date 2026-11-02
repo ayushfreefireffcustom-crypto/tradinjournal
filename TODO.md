@@ -98,7 +98,7 @@ Legend:
 ## A3. App shell
 - [x] A3.0 v6 frame (`components/v6/frame.tsx`) behind `AppShell frame="v6"`: icon rail in a pill, top-bar pills, phone tab bar. Dashboard uses it (30 Oct) `M`
 - [x] A3.0b Frame is the default for every page; pages not yet rebuilt render inside the old style scope (`legacy`) `M`
-- [ ] A3.0d Rebuild each page on the v6 components (`legacy={false}`): trades, analytics, calendar, journal, notebook, charts, markets, macro, SignalX, coach, brokers, settings, admin, partner, auth/status/legal `L` (in progress 31 Oct)
+- [x] A3.0d Rebuild each page on the v6 components (`legacy={false}`): trades, analytics, calendar, journal, notebook, charts, markets, macro, SignalX, coach, brokers, settings, admin, partner, auth/status/legal `L` — done 2 Nov: every page renders in the v6 frame with v6 components; `legacy` is a no-op and the old scope is gone (no `v3-`, `d-` or legacy Tailwind colour classes left outside the landing page)
 - [x] A3.0c Light theme for portalled UI (connect-broker modal, toasts, ⌘K palette still render dark) `S` — all three portal into a `.v6` wrapper, so the light tokens apply (palette checked in light 2 Nov)
 - [x] A3.1 Rebuild `components/app-shell.tsx` on the new primitives. Keep the props API (`accounts`, `selectedAccount`, `pageTitle`, `actions`…) `M` — v6 frame (`components/v6/frame.tsx`) is now the only shell; props API kept (31 Oct)
 - [x] A3.2 Sidebar `M`: — labelled groups, green active edge, icon rail with tooltips at ≤1180px
@@ -144,7 +144,7 @@ Legend:
 - [x] A5.7 Footer with a giant ghosted "TRADElogs" wordmark, link columns and a contact card `S` (contact card points to the AI coach; there is no Telegram channel yet)
 - [ ] A5.8 Rewrite landing copy for the new scope (journal + copy + strategies). No unverified numbers `M`
 - [x] A5.11 Delete the unused `components/landing-v5/` (keep `useSignedIn` by moving it to `lib/`, it is imported by landing-v6) and `public/landing/*` shots it used `S` — landing-v5 already gone, useSignedIn in lib/; the three unreferenced shots removed (dashboard-v5.jpg stays: it is the OG image)
-- [ ] A5.9 Landing performance: Lighthouse ≥ 90 on mobile, no layout shift, lazy art `M`
+- [x] A5.9 Landing performance: Lighthouse ≥ 90 on mobile, no layout shift, lazy art `M` — 2 Nov, production build, Lighthouse mobile ×3: performance 92–93 (was 85), accessibility 100 (was 94), best practices 100, SEO 100; first paint 1.7 s (was 3.1 s), layout shift ≤ 0.033. The Fontshare stylesheet was blocking first paint for ~0.9 s: Satoshi's two @font-face rules now sit in globals.css and the files are preloaded. Fixed on the way: low-contrast step numbers and footer text, footer headings out of order. The art is CSS/SVG, so there are no images to lazy-load
 - [x] A5.10 Check the hero WebGL silk: keep it or replace it with a calmer glass object (decide with the user using screenshots) `S`
 
 ## A6. Auth and system pages
@@ -861,7 +861,7 @@ Legend:
 - [x] M: Security section white → dark; light mail mock → dark `S`
 - [x] M: no amber "Timing" bar `S`
 - [x] M: one bar above the hero (not announcement + nav + ticker) `S`
-- [ ] M: re-shoot the product images after Part A (the current shot shows the cluttered dashboard) `S`
-- [ ] L: fewer glows (`landing.css` has 54 gradients) `S`
+- [x] M: re-shoot the product images after Part A (the current shot shows the cluttered dashboard) `S` — 2 Nov: the only product image left is the social preview; replaced with the current dashboard (`public/landing/dashboard-v6.jpg`, sample data, sample name)
+- [x] L: fewer glows (`landing.css` has 54 gradients) `S` — superseded: `landing.css` and its 54 gradients went with the old landing; the v6 landing uses its glows inside the art scenes only
 - [x] L: mobile: the "Syncs read-only…" overlap `S` — verified in code (2 Nov)
 - [x] L: sentence-case eyebrows; drop the A/B/C/D indices `S`

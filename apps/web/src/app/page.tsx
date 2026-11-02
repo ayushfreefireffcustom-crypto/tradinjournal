@@ -13,7 +13,7 @@ export const metadata: Metadata = {
     description: 'The MT5 trading journal with a behaviour engine, an AI coach and a weekly review that tells you the one thing to fix.',
     url: 'https://www.tradelogs.com',
     siteName: 'TRADElogs',
-    images: [{ url: '/landing/dashboard-v5.jpg', width: 2160, height: 1350, alt: 'TRADElogs dashboard' }],
+    images: [{ url: '/landing/dashboard-v6.jpg', width: 2160, height: 1350, alt: 'TRADElogs dashboard' }],
     type: 'website',
   },
 };

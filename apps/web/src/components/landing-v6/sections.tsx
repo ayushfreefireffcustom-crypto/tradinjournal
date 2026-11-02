@@ -274,9 +274,9 @@ export function Footer() {
             <p style={{ color: 'var(--mut)', fontSize: 13.5, marginTop: 14, maxWidth: 280 }}>The trading journal that reads your MT5 history and tells you what to fix.</p>
             <div className="contact"><IconTile icon="chat" size="sm" /><div><b>Questions about your trading?</b><small>Ask the AI coach inside the app</small></div></div>
           </div>
-          <nav aria-label="Product"><h4>Product</h4><ul><li><a href="#journal">Journal</a></li><li><a href="#analytics">Analytics</a></li><li><a href="#coach">AI coach</a></li><li><a href="#coach">SignalX</a></li><li><a href="#markets">Markets</a></li></ul></nav>
-          <nav aria-label="Account"><h4>Account</h4><ul><li><a href="/signup">Create account</a></li><li><a href="/login">Sign in</a></li>{PARTNERS_ENABLED && <li><a href="/partner">Become a partner</a></li>}<li><a href="#faq">FAQ</a></li></ul></nav>
-          <nav aria-label="Legal"><h4>Legal</h4><ul><li><a href="/privacy">Privacy policy</a></li><li><a href="/terms">Terms of service</a></li></ul></nav>
+          <nav aria-label="Product"><h3>Product</h3><ul><li><a href="#journal">Journal</a></li><li><a href="#analytics">Analytics</a></li><li><a href="#coach">AI coach</a></li><li><a href="#coach">SignalX</a></li><li><a href="#markets">Markets</a></li></ul></nav>
+          <nav aria-label="Account"><h3>Account</h3><ul><li><a href="/signup">Create account</a></li><li><a href="/login">Sign in</a></li>{PARTNERS_ENABLED && <li><a href="/partner">Become a partner</a></li>}<li><a href="#faq">FAQ</a></li></ul></nav>
+          <nav aria-label="Legal"><h3>Legal</h3><ul><li><a href="/privacy">Privacy policy</a></li><li><a href="/terms">Terms of service</a></li></ul></nav>
         </div>
         <div className="ghostmark" aria-hidden>TRADElogs</div>
         <div className="fine"><span>© 2026 TRADElogs. Trading involves risk. Past performance does not guarantee future results. Figures shown are illustrative.</span><span className="links"><a href="/privacy">Privacy</a><a href="/terms">Terms</a></span></div>

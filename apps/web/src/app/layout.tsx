@@ -27,10 +27,11 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <head>
         {/* v6 theme before first paint: ?theme= wins, then the saved choice, else dark. */}
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
-        {/* Satoshi, the product typeface (Fontshare, free for commercial use). Only the two weights the UI uses. */}
-        <link rel="preconnect" href="https://api.fontshare.com" />
+        {/* Satoshi, the product typeface (Fontshare, free for commercial use). Only the two weights the UI uses.
+            The @font-face rules are in globals.css (no render-blocking stylesheet request, A5.9); preload both files. */}
         <link rel="preconnect" href="https://cdn.fontshare.com" crossOrigin="" />
-        <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500&display=swap" />
+        <link rel="preload" as="font" type="font/woff2" href="https://cdn.fontshare.com/wf/TTX2Z3BF3P6Y5BQT3IV2VNOK6FL22KUT/7QYRJOI3JIMYHGY6CH7SOIFRQLZOLNJ6/KFIAZD4RUMEZIYV6FQ3T3GP5PDBDB6JY.woff2" crossOrigin="" />
+        <link rel="preload" as="font" type="font/woff2" href="https://cdn.fontshare.com/wf/P2LQKHE6KA6ZP4AAGN72KDWMHH6ZH3TA/ZC32TK2P7FPS5GFTL46EU6KQJA24ZYDB/7AHDUZ4A7LFLVFUIFSARGIWCRQJHISQP.woff2" crossOrigin="" />
       </head>
       <body className="min-h-screen bg-app text-fg antialiased">
         <ClickBurstEffect />
