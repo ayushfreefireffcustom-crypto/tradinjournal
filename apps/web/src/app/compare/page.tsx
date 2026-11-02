@@ -66,7 +66,7 @@ export default function ComparePage() {
   }
 
   return (
-    <AppShell legacy={false} pageTitle="Compare" pageSubtitle="Up to six markets on one chart, rebased to the same start"
+    <AppShell legacy={false} pageTitle="Compare" pageSubtitle="Up to six markets, same start"
       actions={<button className="x-btn" onClick={exportCsv} disabled={!cmp.times.length} data-testid="cmp-export">Export CSV</button>}>
       <div className="x-page" data-testid="cmp-page">
         <section className="x-card cmp-controls">

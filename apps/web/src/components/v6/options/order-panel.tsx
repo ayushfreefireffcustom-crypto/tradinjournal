@@ -3,7 +3,7 @@
 // Send the builder's option legs to a connected Delta account (G11). The
 // review step shows each leg's price and cost and the account's balance;
 // legs go out one at a time and stop at the first one the exchange refuses.
-import Link from 'next/link';
+import Link from '@/components/v6/ui/link';
 import { useEffect, useState } from 'react';
 import Modal from '@/components/v6/ui/modal';
 import { ApiError, exchangesApi, type ExchangeConnection } from '@/lib/copy-api';

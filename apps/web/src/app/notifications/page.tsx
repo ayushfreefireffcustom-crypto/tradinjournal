@@ -4,7 +4,7 @@
 // dimmed, Unread / All / Archived, mark read and archive per item or per tab,
 // and a per-device sound toggle for new notifications.
 import { useCallback, useEffect, useState } from 'react';
-import Link from 'next/link';
+import Link from '@/components/v6/ui/link';
 import AppShell from '@/components/app-shell';
 import { useToast } from '@/components/toast';
 import { api, NOTIFICATION_GROUPS, NOTIFICATION_GROUP_LABELS, type Inbox, type InboxItem, type InboxStatus, type NotificationGroup } from '@/lib/api';
@@ -83,7 +83,7 @@ export default function NotificationsPage() {
   const unreadHere = data ? (group ? data.unread[group] : unreadAll) : 0;
 
   return (
-    <AppShell legacy={false} pageTitle="Notifications" pageSubtitle="Everything TRADElogs told you, by type"
+    <AppShell legacy={false} pageTitle="Notifications" pageSubtitle="Your alerts and updates"
       actions={<Link href="/settings#notifications" className="x-btn">Settings</Link>}>
       <div className="x-page ib" data-testid="inbox-page">
         <div className="x-tabs ib-tabs" role="tablist" aria-label="Notification types">

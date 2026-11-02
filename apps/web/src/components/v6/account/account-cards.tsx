@@ -2,7 +2,7 @@
 
 // Account cards (H6–H8): editing the profile, the activity log, downloading
 // your data and deleting the account.
-import Link from 'next/link';
+import Link from '@/components/v6/ui/link';
 import { useEffect, useMemo, useState, type ComponentType } from 'react';
 import { useToast } from '@/components/toast';
 import Modal from '@/components/v6/ui/modal';
@@ -220,7 +220,7 @@ export function TourCard() {
   return (
     <section className="x-card ac-st-card" aria-labelledby="ac-tour" data-testid="tour-card">
       <div className="x-ch"><h2 id="ac-tour">Product tour</h2></div>
-      <p className="x-muted">A short card on the dashboard, analytics, the coach, strategies and copy trading the first time you open each.</p>
+      <p className="x-muted">A quick tip the first time you open each main page.</p>
       <button className="x-btn" disabled={done} onClick={async () => { const { restartTour } = await import('@/components/v6/tour'); await restartTour(); setDone(true); }} data-testid="tour-restart">{done ? 'It starts on the dashboard' : 'Take the tour again'}</button>
     </section>
   );
@@ -249,8 +249,8 @@ export function InstallCard() {
             <p className="x-muted">Add TRADElogs to your home screen or dock. It opens in its own window, with notifications.</p>
             <button className="x-btn" onClick={async () => { const { promptInstall } = await import('@/components/pwa-setup'); const r = await promptInstall(); if (r === 'accepted') setState('installed'); }} data-testid="install-btn">Install</button>
           </>
-        ) : state === 'ios' ? <p className="x-muted" data-testid="install-ios">On iPhone or iPad: open this page in Safari, tap the Share button, then <b>Add to Home Screen</b>.</p>
-        : <p className="x-muted" data-testid="install-other">Use your browser’s menu and choose <b>Install TRADElogs</b> or <b>Add to Home Screen</b>. In Chrome and Edge it’s also the install icon at the right of the address bar.</p>}
+        ) : state === 'ios' ? <p className="x-muted" data-testid="install-ios">On iPhone or iPad: in Safari, tap Share, then <b>Add to Home Screen</b>.</p>
+        : <p className="x-muted" data-testid="install-other">In your browser menu, choose <b>Install TRADElogs</b> or <b>Add to Home Screen</b>.</p>}
     </section>
   );
 }

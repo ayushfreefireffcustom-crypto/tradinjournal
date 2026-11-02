@@ -4,7 +4,7 @@
 // one card per connected account (health, equity, Test / Rename / Remove), and
 // the connect wizard (pick exchange → paste key and secret → verify).
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
+import Link from '@/components/v6/ui/link';
 import AppShell from '@/components/app-shell';
 import { useToast } from '@/components/toast';
 import { ago, useLoad } from '@/components/v6/ui/data';
@@ -33,7 +33,7 @@ export default function ExchangesPage() {
   const replace = (c: ExchangeConnection) => conns.setData(prev => (prev ?? []).map(x => (x.id === c.id ? c : x)));
 
   return (
-    <AppShell legacy={false} pageTitle="Exchanges" pageSubtitle="Crypto exchange accounts for copy trading"
+    <AppShell legacy={false} pageTitle="Exchanges" pageSubtitle="Your crypto exchange accounts"
       actions={live.length > 0 && <button className="x-btn" onClick={() => setConnecting(live[0]!)} data-testid="ex-connect"><IPlus size={15} />Connect exchange</button>}>
       <div className="x-page" data-testid="exchanges-page">
         {conns.error ? <ErrorCard message={conns.error} onRetry={conns.reload} /> : conns.loading && !conns.data ? (

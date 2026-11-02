@@ -3,7 +3,7 @@
 // My copies (C4.5): every follow with its status, P&L and controls. Pause keeps
 // copying exits; stop asks what to do with open copies. Updates live.
 import { useState } from 'react';
-import Link from 'next/link';
+import Link from '@/components/v6/ui/link';
 import AppShell from '@/components/app-shell';
 import { useToast } from '@/components/toast';
 import FollowDialog from '@/components/v6/copy/follow-dialog';
@@ -44,7 +44,7 @@ export default function FollowingPage() {
   }
 
   return (
-    <AppShell legacy={false} pageTitle="My copies" pageSubtitle="Leaders you copy onto your exchange accounts"
+    <AppShell legacy={false} pageTitle="My copies" pageSubtitle="Leaders you copy"
       actions={<Link href="/copy" className="x-btn x-btn--hi">Find leaders</Link>}>
       <div className="x-page" data-testid="following-page">
         <div className="x-strip x-strip--card" style={{ ['--n' as string]: 3 }}>

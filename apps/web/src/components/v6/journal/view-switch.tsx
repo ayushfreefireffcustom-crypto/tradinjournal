@@ -2,7 +2,7 @@
 
 // Journal has two views on one page (A0.D1): reviewing trades on their chart,
 // and free-form notes for the day. The switch keeps the account and the URL.
-import Link from 'next/link';
+import Link from '@/components/v6/ui/link';
 
 export default function JournalViewSwitch({ view }: { view: 'trades' | 'notes' }) {
   return (

@@ -92,7 +92,9 @@
 .v6 .st-card-warn { font-size: var(--t2); }
 .v6 .st-card-m { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; font-size: var(--t1); }
 .v6 .st-card-m > span { display: grid; gap: 2px; }
-.v6 .st-card-m b { font-size: var(--t3); font-weight: 500; }
+.v6 .st-card-m b { font-size: var(--t3); font-weight: 700; }
+/* the empty state is one line of text, not four metric columns */
+.v6 .st-card-m.x-muted { display: block; font-size: var(--t2); }
 /* Backtest report */
 .v6 .bt-cells { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
 .v6 .bt-cells > div { display: grid; gap: 2px; background: var(--s2); border-radius: var(--r-ctl); padding: 8px 10px; font-size: var(--t2); }
@@ -144,7 +146,7 @@
 .v6 .rp-print-h { display: none; }
 .v6 .rp-kpis { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
 .v6 .rp-kpis > .x-card { display: grid; gap: 4px; font-size: var(--t2); }
-.v6 .rp-kpis b { font-size: var(--t3); font-weight: 500; }
+.v6 .rp-kpis b { font-size: var(--t4); font-weight: 800; letter-spacing: -.035em; }
 .v6 .rp-kpis .pos, .v6 .rp-bars .pos { color: var(--g-tx); } .v6 .rp-kpis .neg, .v6 .rp-bars .neg { color: var(--r-tx); }
 .v6 .rp-bars { display: grid; gap: 6px; }
 .v6 .rp-bar { display: grid; grid-template-columns: minmax(80px, 160px) 1fr 100px 70px; gap: 10px; align-items: center; font-size: var(--t2); }
@@ -158,7 +160,7 @@
 .v6 .rp-hcol { display: grid; justify-items: center; gap: 4px; font-size: var(--t1); }
 .v6 .rp-hcol i { display: block; width: 100%; border-radius: 4px 4px 0 0; }
 .v6 .rp-hcol i.g { background: var(--g); } .v6 .rp-hcol i.r { background: var(--r); }
-.v6 .rp-hl { font-size: var(--t1); color: var(--mut); text-align: center; line-height: 1.2; }
+.v6 .rp-hl { font-size: var(--t1); color: var(--mut); text-align: center; line-height: 1.2; white-space: nowrap; }
 @media (max-width: 900px) {
   .v6 .dp-cols { grid-template-columns: 1fr; }
   .v6 .dp-ev { grid-template-columns: 1fr; gap: 2px; }

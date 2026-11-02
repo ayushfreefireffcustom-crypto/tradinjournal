@@ -411,6 +411,7 @@
 .v6 .mc-ah .mc-scale-ax { margin-top: 10px; }
 .v6 .mc-evd { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; }
 .v6 .mc-evd .x-label { display: block; margin-bottom: 8px; }
+.v6 .mc-tv .mc-tv-sk { height: 480px; border-radius: var(--r-inset); }
 .v6 .mc-tv iframe { display: block; width: 100%; height: 480px; border: 0; border-radius: var(--r-inset); background: var(--s2); }
 
 /* skeletons */
@@ -479,7 +480,7 @@
   .v6 .mc-ah-c { padding: 0 16px; }
   .v6 .mc-ah-c + .mc-ah-c { box-shadow: inset 0 1px 0 var(--line); margin-top: 18px; padding-top: 18px; }
   .v6 .mc-evd { grid-template-columns: minmax(0, 1fr); gap: 16px; }
-  .v6 .mc-tv iframe { height: 360px; }
+  .v6 .mc-tv iframe, .v6 .mc-tv .mc-tv-sk { height: 360px; }
   .v6 .mc-tv .x-ch .x-r { display: none; }
   .v6 .x-strip.mc-strip3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .v6 .x-strip.mc-strip3 > div { padding: 14px 12px; border-top: 0; }

@@ -3,7 +3,7 @@
 // Backtest beside the builder (F13): every edit re-runs a quick backtest of
 // the unsaved rules (debounced), compared with a pinned baseline run. "Run and
 // save" stores a run in the history (F14).
-import Link from 'next/link';
+import Link from '@/components/v6/ui/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import EquityChart from './equity-chart';
 import { ApiError } from '@/lib/copy-api';

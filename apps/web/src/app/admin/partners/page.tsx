@@ -2,7 +2,7 @@
 
 // Admin: every partner, ranked by what their link actually produced, with the
 // approval queue on top, a "who referred this person?" lookup and blocked names.
-import Link from 'next/link';
+import Link from '@/components/v6/ui/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import AppShell from '@/components/app-shell';
@@ -65,7 +65,7 @@ export default function AdminPartnersPage() {
 
   return (
     <AppShell legacy={false} accounts={accounts} selectedAccount={selected} onSelectAccount={select} pageTitle="Partners"
-      pageSubtitle="Who’s bringing traders in, and how many of them stick"
+      pageSubtitle="Who brings traders in"
       actions={<>
         <div className="x-seg" role="group" aria-label="Show">
           {([['live', 'Active & pending'], ['SUSPENDED', 'Suspended'], ['REVOKED', 'Revoked']] as const).map(([k, l]) => (

@@ -3,7 +3,7 @@
 // Screener (E5/E6): filter the most-traded crypto pairs by indicators and
 // market fields. Filters inside a group must all match; any group can match.
 // Quick screens, saved screens, CSV export and a Trade button per row.
-import Link from 'next/link';
+import Link from '@/components/v6/ui/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import AppShell from '@/components/app-shell';
 import { useToast } from '@/components/toast';
@@ -203,7 +203,7 @@ export default function ScreenerPage() {
   );
 
   return (
-    <AppShell legacy={false} pageTitle="Screener" pageSubtitle={<>The most-traded crypto pairs on Binance, filtered by indicators at the last closed bar {res && <> · <Freshness at={res.asOf} /></>}</>}
+    <AppShell legacy={false} pageTitle="Screener" pageSubtitle={<>Filter crypto pairs by indicators{res && <> · <Freshness at={res.asOf} /></>}</>}
       actions={<>
         <button className="x-btn" onClick={exportCsv} disabled={!res?.rows.length} data-testid="sc-export">Export CSV</button>
         {activeSaved && dirty
@@ -267,9 +267,8 @@ export default function ScreenerPage() {
             <div className="x-ch">
               <h2 data-testid="sc-count">{res.matched} of {res.scanned} match</h2>
               <span className="x-sub" data-testid="sc-meta">
-                {res.barTime ? `${res.timeframe} bar that opened ${new Date(res.barTime).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}` : `24h stats as of ${new Date(res.asOf).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}`}
-                {' · '}funding {res.fundingSource ? `from ${res.fundingSource === 'bybit' ? 'Bybit' : 'Binance'} perpetuals` : 'unavailable'}
-                {dirty && ' · filters changed, run again to update'}
+                {res.barTime ? `${res.timeframe} bar · ${new Date(res.barTime).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}` : `24h stats as of ${new Date(res.asOf).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}`}
+                {dirty && ' · filters changed, run again'}
               </span>
             </div>
             {res.noData.length > 0 && <p className="x-muted sc-nodata">No {res.timeframe} candles for {res.noData.length === 1 ? res.noData[0] : `${res.noData.length} pairs`}; left out.</p>}

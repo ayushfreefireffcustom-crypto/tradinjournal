@@ -3,7 +3,7 @@
 // v6 auth layout: a quiet brand column (logo, one line about the screen, what
 // TRADElogs does) beside the form card. Phones get the form column alone with
 // the logo in its top bar.
-import Link from 'next/link';
+import Link from '@/components/v6/ui/link';
 import type { ReactNode } from 'react';
 import Logo from '@/components/logo';
 import '@/styles/v6/tokens.css';

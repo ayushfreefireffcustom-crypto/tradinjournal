@@ -6,7 +6,7 @@
 // with copyable IDs (D9), and the filterable, exportable log of every order we
 // sent with its KPIs (D2, D12).
 import { useMemo, useState } from 'react';
-import Link from 'next/link';
+import Link from '@/components/v6/ui/link';
 import AppShell from '@/components/app-shell';
 import { useToast } from '@/components/toast';
 import { useLoad, usePoll } from '@/components/v6/ui/data';
@@ -64,7 +64,7 @@ export default function TradingPage() {
   const filtering = !!quick.symbol.trim() || !!quick.side;
 
   return (
-    <AppShell legacy={false} pageTitle="Positions" pageSubtitle="Your exchange accounts: what's open, waiting and done"
+    <AppShell legacy={false} pageTitle="Positions" pageSubtitle="Open, pending and closed"
       actions={<>
         <button className="x-btn" onClick={() => void desk.reload()} disabled={desk.loading} data-testid="desk-refresh">{desk.loading ? 'Refreshing…' : 'Refresh'}</button>
         <button className="x-btn x-btn--hi" onClick={() => setTicket(true)} data-testid="desk-new-order">New order</button>
@@ -112,7 +112,6 @@ export default function TradingPage() {
         ) : (
           <OrderLog key={tab} status={tab === 'rejected' ? 'rejected' : 'all'} onDetail={setDetail} />
         )}
-        <p className="cp-note">Prices and sizes come straight from the exchange. Sizes are in contracts.</p>
       </div>
 
       {closing && (

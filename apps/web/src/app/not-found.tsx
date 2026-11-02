@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import Link from '@/components/v6/ui/link';
 import StatusCard, { SC_ICONS } from '@/components/v6/auth/status-card';
 
 export default function NotFound() {

@@ -171,7 +171,7 @@ export default function ChartsPage() {
 
   return (
     <AppShell legacy={false} accounts={accounts} selectedAccount={selected} onSelectAccount={(a: BrokerAccount) => select(a)}
-      pageTitle="Charts" pageSubtitle="Live candles · crypto from Binance, FX and stocks from Twelve Data" actions={layoutSeg}>
+      pageTitle="Charts" pageSubtitle="Live candles" actions={layoutSeg}>
       <div className="mk-charts" data-testid="charts-page">
         <div className="mk-cmain">
           <div className="x-card mk-tools">

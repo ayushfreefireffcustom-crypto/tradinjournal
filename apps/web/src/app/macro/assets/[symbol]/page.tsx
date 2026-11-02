@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
+import Link from '@/components/v6/ui/link';
 import { useParams } from 'next/navigation';
 import AppShell from '@/components/app-shell';
 import { useAccounts } from '@/lib/use-accounts';
@@ -79,6 +79,15 @@ export default function MacroAssetPage() {
   const [state, setState] = useState<MacroState | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  // The TradingView embed pulls ~160 files; start it once this page has painted
+  // and the browser is idle, so the macro read above never waits on it.
+  const [chartOn, setChartOn] = useState(false);
+  useEffect(() => {
+    if (loading) return;
+    const w = window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number };
+    if (w.requestIdleCallback) { const id = w.requestIdleCallback(() => setChartOn(true), { timeout: 2500 }); return () => (window as Window & { cancelIdleCallback?: (n: number) => void }).cancelIdleCallback?.(id); }
+    const t = setTimeout(() => setChartOn(true), 800); return () => clearTimeout(t);
+  }, [loading]);
   const theme = useDocTheme();
 
   useEffect(() => {
@@ -166,9 +175,9 @@ export default function MacroAssetPage() {
 
               {tv && (
                 <section className="x-card mc-tv" data-testid="macro-asset-tv">
-                  <div className="x-ch"><h2>Chart</h2><span className="x-sub"><span className="m">{tick}</span> · 1h</span><span className="x-r">TradingView embed</span></div>
-                  <iframe key={theme} title={`${name} chart`} loading="lazy"
-                    src={`https://s.tradingview.com/widgetembed/?symbol=${encodeURIComponent(tv)}&interval=60&theme=${theme}&style=1&locale=en&hideideas=1&hidetoptoolbar=1&hidesidetoolbar=1&toolbarbg=${bg}&backgroundColor=${bg}&overrides=${tvOverrides(theme)}&studies_overrides=${tvStudyOverrides(theme)}`} />
+                  <div className="x-ch"><h2>Chart</h2><span className="x-sub"><span className="m">{tick}</span> · 1h</span></div>
+                  {!chartOn ? <div className="x-skel mc-tv-sk" aria-hidden /> : <iframe key={theme} title={`${name} chart`} loading="lazy"
+                    src={`https://s.tradingview.com/widgetembed/?symbol=${encodeURIComponent(tv)}&interval=60&theme=${theme}&style=1&locale=en&hideideas=1&hidetoptoolbar=1&hidesidetoolbar=1&toolbarbg=${bg}&backgroundColor=${bg}&overrides=${tvOverrides(theme)}&studies_overrides=${tvStudyOverrides(theme)}`} />}
                 </section>
               )}
             </>

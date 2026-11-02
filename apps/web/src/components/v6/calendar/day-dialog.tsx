@@ -4,7 +4,7 @@
 // heatmap cell. A centred dialog on desktop, a bottom sheet on phones.
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import Link from 'next/link';
+import Link from '@/components/v6/ui/link';
 import type { Trade } from '@/lib/api';
 import { fmtHold, fmtUsd } from '@/lib/dashboard-v6';
 import { tickerMark } from '@/lib/desk';

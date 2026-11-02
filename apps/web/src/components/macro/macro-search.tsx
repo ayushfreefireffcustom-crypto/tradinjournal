@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
+import Link from '@/components/v6/ui/link';
 import type { MacroState } from '@/lib/macro-api';
 import { biasTone, formatIndicatorValue } from '@/lib/macro-format';
 import { BiasTag, ISearch, sentence } from '@/components/v6/macro/ui';

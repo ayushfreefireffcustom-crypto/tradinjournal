@@ -3,7 +3,7 @@
 // Expiry replay (G10): the builder's legs as paper trades, walked to their
 // first expiry on a flat price (pure time decay) or on the index's own recent
 // moves replayed from today. Scrub, play at three speeds, or melt to expiry.
-import Link from 'next/link';
+import Link from '@/components/v6/ui/link';
 import { useEffect, useRef, useState } from 'react';
 import AppShell from '@/components/app-shell';
 import { useToast } from '@/components/toast';

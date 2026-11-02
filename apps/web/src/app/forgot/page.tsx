@@ -5,7 +5,7 @@
 //   2) enter code + new password → emailOtp.resetPassword → back to /login
 // Mirrors the styling of the login / verify screens.
 
-import Link from 'next/link';
+import Link from '@/components/v6/ui/link';
 import { useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
 import AuthShell, { AuthError, AuthSubmit, EyeButton, PasswordStrength } from '@/components/v6/auth/auth-shell';

@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import Link from '@/components/v6/ui/link';
 import type { MacroState } from '@/lib/macro-api';
 import { biasTone, formatMacroNumber, formatSignedPct } from '@/lib/macro-format';
 import { tickerMark } from '@/lib/desk';

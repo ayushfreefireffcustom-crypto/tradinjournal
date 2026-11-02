@@ -2,7 +2,7 @@
 
 // A saved backtest run in full (F14): settings, every metric, equity and
 // drawdown, per-market results and the trade list.
-import Link from 'next/link';
+import Link from '@/components/v6/ui/link';
 import { useParams } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import AppShell from '@/components/app-shell';

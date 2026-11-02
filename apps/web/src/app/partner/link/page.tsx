@@ -68,7 +68,7 @@ export default function PartnerLinkPage() {
 
   return (
     <AppShell legacy={false} accounts={accounts} selectedAccount={selected} onSelectAccount={select} pageTitle="My link"
-      pageSubtitle="Anyone who signs up through your link or with your code counts as your client, for good">
+      pageSubtitle="Everyone who joins through your link or code">
       <div className="x-page" data-testid="partner-link">
         {gate ? <PartnerGate reason={gate} onApplied={() => {}} /> : <>
           {error && <div className="x-banner x-banner--err" role="alert"><span>{error}</span><button type="button" className="x-btn x-btn--sm" onClick={() => void load()}>Retry</button></div>}

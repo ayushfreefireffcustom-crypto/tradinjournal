@@ -3,7 +3,7 @@
 // A marketplace strategy (H1): what it trades, the performance we computed,
 // the creator's own run, the settings you may tune, and subscribing to run
 // it on paper or live. The rules themselves stay with the creator.
-import Link from 'next/link';
+import Link from '@/components/v6/ui/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import AppShell from '@/components/app-shell';

@@ -2,7 +2,7 @@
 
 // Admin › Marketplace (H2): creator applications and strategies waiting for
 // review. Admins see the rules in plain English to judge them.
-import Link from 'next/link';
+import Link from '@/components/v6/ui/link';
 import { useCallback, useEffect, useState } from 'react';
 import AppShell from '@/components/app-shell';
 import AdminOnly from '@/components/v6/admin/admin-only';
@@ -34,7 +34,7 @@ export default function AdminMarketplacePage() {
   }
   const note = (id: string) => <input className="x-input" placeholder="Note to the creator (optional)" value={notes[id] ?? ''} maxLength={500} onChange={(e) => setNotes((n) => ({ ...n, [id]: e.target.value }))} />;
   return (
-    <AppShell legacy={false} pageTitle="Marketplace review" pageSubtitle="Creators and strategies waiting to be listed" actions={<Link href="/admin" className="x-btn">Command center</Link>}>
+    <AppShell legacy={false} pageTitle="Marketplace review" pageSubtitle="Waiting for review" actions={<Link href="/admin" className="x-btn">Command center</Link>}>
       <AdminOnly>
         <div className="ac-st1 mk-admin" data-testid="admin-mk-page">
           <div className="x-seg x-seg--in x-seg--sm" role="tablist" aria-label="Show">{VIEWS.map(([v, l]) => <button key={v} type="button" role="tab" aria-selected={view === v} onClick={() => setView(v)} data-testid={`amk-${v}`}>{l}</button>)}</div>

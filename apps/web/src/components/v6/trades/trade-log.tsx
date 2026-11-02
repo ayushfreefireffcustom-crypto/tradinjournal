@@ -3,7 +3,7 @@
 // Trade log table for /trades: positions grouped by the day they closed (when
 // sorted by time, matching daily P&L everywhere else), sortable headers, journal
 // tags, and stacked cards on phones.
-import Link from 'next/link';
+import Link from '@/components/v6/ui/link';
 import type { ReactNode } from 'react';
 import type { Trade } from '@/lib/api';
 import { fmtHold, fmtUsd } from '@/lib/dashboard-v6';

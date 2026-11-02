@@ -81,7 +81,7 @@ export function LocationSection() {
           {!loaded ? <i className="x-skel x-skel--in ac-st-loc-sk" />
             : loc?.complete ? <><b>{loc.city}, {countryName(loc.country)}</b><span className="m x-muted">{loc.postalCode}</span></>
             : <span className="x-tag x-tag--r">Not set, required</span>}
-          <p>Used for product insights only. It is never shown to other traders.</p>
+          <p>Only used for product insights. Never shown to others.</p>
         </div>
       ) : (
         <LocationForm initial={loc ?? undefined} submitLabel="Save location" onSaved={() => { setEditing(false); loadLoc(); }} />

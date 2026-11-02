@@ -3,7 +3,7 @@
 // Strategy marketplace (H1): published strategies with performance TRADElogs
 // computed itself. Filter by style, risk and market; sort by popularity,
 // return, drawdown or newest.
-import Link from 'next/link';
+import Link from '@/components/v6/ui/link';
 import { useEffect, useState } from 'react';
 import AppShell from '@/components/app-shell';
 import { useLoad } from '@/components/v6/ui/data';
@@ -25,7 +25,7 @@ export default function MarketplacePage() {
   useEffect(() => { const t = setTimeout(() => setDebounced({ symbol: symbol.trim(), q: q.trim() }), 350); return () => clearTimeout(t); }, [symbol, q]);
   const list = useLoad(() => marketApi.browse({ category, risk, symbol: debounced.symbol, q: debounced.q, sort }), [category, risk, debounced.symbol, debounced.q, sort]);
   return (
-    <AppShell legacy={false} pageTitle="Marketplace" pageSubtitle="Strategies from other traders, with results we computed ourselves"
+    <AppShell legacy={false} pageTitle="Marketplace" pageSubtitle="Strategies from other traders"
       actions={<><Link className="x-btn" href="/marketplace/subscriptions" data-testid="mk-subs-link">My subscriptions</Link><Link className="x-btn" href="/marketplace/creator" data-testid="mk-creator-link">Publish yours</Link></>}>
       <div className="x-page mk-page" data-testid="mk-page">
         <div className="mk-filters">

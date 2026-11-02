@@ -1,7 +1,7 @@
 'use client';
 
 // A marketplace strategy card (H1).
-import Link from 'next/link';
+import Link from '@/components/v6/ui/link';
 import { catLabel, pctS, riskLabel, type Card } from '@/lib/marketplace-api';
 import { usd } from '@/lib/strategies-api';
 

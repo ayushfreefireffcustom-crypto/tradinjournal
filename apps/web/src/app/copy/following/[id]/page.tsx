@@ -4,7 +4,7 @@
 // latency, open positions, and every copied order with the leader's price
 // next to ours and the slippage. Updates live while open.
 import { useRef, useState } from 'react';
-import Link from 'next/link';
+import Link from '@/components/v6/ui/link';
 import { useParams } from 'next/navigation';
 import AppShell from '@/components/app-shell';
 import { useToast } from '@/components/toast';

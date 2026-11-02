@@ -3,7 +3,7 @@
 // Partner overview: how the partner's link is performing — clicks through to
 // active traders — plus channels, recent activity and the newest clients.
 // Tracking only; the programme has no earnings. Non-partners see the gate.
-import Link from 'next/link';
+import Link from '@/components/v6/ui/link';
 import { useCallback, useEffect, useState } from 'react';
 import AppShell from '@/components/app-shell';
 import { useAccounts } from '@/lib/use-accounts';

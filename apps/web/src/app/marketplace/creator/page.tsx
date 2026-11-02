@@ -4,7 +4,7 @@
 // settings subscribers may tune, the venues it may run on live, and your own
 // run as its track record), and manage what you've published. Pricing isn't
 // offered while everything is free.
-import Link from 'next/link';
+import Link from '@/components/v6/ui/link';
 import { useEffect, useState } from 'react';
 import AppShell from '@/components/app-shell';
 import { useToast } from '@/components/toast';
@@ -173,7 +173,7 @@ export default function CreatorPage() {
   const c = creator.data;
   const [editing, setEditing] = useState(false);
   return (
-    <AppShell legacy={false} pageTitle="Creator programme" pageSubtitle="Publish your strategies for other traders to run" actions={<Link className="x-btn" href="/marketplace">Marketplace</Link>}>
+    <AppShell legacy={false} pageTitle="Creator programme" pageSubtitle="Share your strategies" actions={<Link className="x-btn" href="/marketplace">Marketplace</Link>}>
       <div className="ac-st1 mk-creator" data-testid="mk-creator-page">
         {creator.error ? <ErrorCard message={creator.error} onRetry={creator.reload} /> : creator.loading && !c ? <div className="x-skel" style={{ height: 200 }} /> : (
           <section className="x-card ac-st-card" aria-label="Your creator profile" data-testid="mk-creator-card">

@@ -3,7 +3,7 @@
 // Indicator alerts (E4): rules like "RSI(14) crosses below 30 on BTCUSDT 1h",
 // checked at every bar close, with recent firings. Price-level alerts stay on
 // the Charts page.
-import Link from 'next/link';
+import Link from '@/components/v6/ui/link';
 import { useEffect, useMemo, useState } from 'react';
 import AppShell from '@/components/app-shell';
 import { useToast } from '@/components/toast';
@@ -67,7 +67,7 @@ export default function AlertsPage() {
   }
 
   return (
-    <AppShell legacy={false} pageTitle="Indicator alerts" pageSubtitle="Get told when an indicator condition is met at a bar close"
+    <AppShell legacy={false} pageTitle="Indicator alerts" pageSubtitle="Get told when an indicator triggers"
       actions={<button className="x-btn x-btn--hi" onClick={() => setBuilding(true)} disabled={!cat.data || count >= MAX_RULES} title={count >= MAX_RULES ? `Up to ${MAX_RULES} alerts` : undefined} data-testid="ia-new">New alert</button>}>
       <div className="x-page" data-testid="ia-page">
         {rules.error ? <ErrorCard message={rules.error} onRetry={rules.reload} /> : !rules.data ? <div className="x-skel cp-skel-table" /> : !rules.data.length ? (
@@ -301,14 +301,13 @@ function WatchRules({ onCreated }: { onCreated: (a: IndicatorAlert) => void }) {
   const shown = list.data.filter((r) => cat === 'all' || r.category === cat);
   return (
     <section className="x-card" aria-label="Watch rules" data-testid="ia-watch">
-      <div className="x-ch"><h2>Watch rules</h2><span className="x-sub">Well-known signals, explained. Pick one and a market.</span></div>
+      <div className="x-ch"><h2>Watch rules</h2><span className="x-sub">Pick a signal and a market</span></div>
       <div className="x-seg x-seg--in x-seg--sm ia-watch-cats" role="radiogroup" aria-label="Kind">{CATS.map(([c, l]) => <button key={c} type="button" role="radio" aria-checked={cat === c} onClick={() => setCat(c)} data-testid={`ia-wcat-${c}`}>{l}</button>)}</div>
       <div className="ia-watch-grid">
         {shown.map((r) => (
           <article key={r.id} className="ia-wr" data-testid={`ia-wr-${r.id}`}>
             <div className="ia-wr-h"><b>{r.name}</b><span className={`x-tag ${r.bias === 'bullish' ? 'x-tag--g' : r.bias === 'bearish' ? 'x-tag--r' : ''}`}>{r.bias === 'neutral' ? 'Either way' : r.bias === 'bullish' ? 'Bullish' : 'Bearish'}</span></div>
-            <p>{r.explain.what} {r.explain.why}</p>
-            <p className="x-muted">{r.explain.caution}</p>
+            <p title={`${r.explain.why} ${r.explain.caution}`}>{r.explain.what}</p>
             <button type="button" className="x-btn x-btn--sm" onClick={() => { setPick(r); setTf(r.timeframe); }} data-testid={`ia-wr-watch-${r.id}`}>Watch</button>
           </article>
         ))}

@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useState, useCallback } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import Link from 'next/link';
+import Link from '@/components/v6/ui/link';
 import AppShell from '@/components/app-shell';
 import { LoadingScreen } from '@/components/loader';
 import { api, type BrokerAccount, type Deal, type Trade, type JournalEntry } from '@/lib/api';

@@ -4,12 +4,14 @@
 // and shows a dropdown of recent notifications with deep links. Self-contained,
 // so a failed poll never disturbs the frame. Styled by styles/v6/frame.css.
 import { useCallback, useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
+import Link from '@/components/v6/ui/link';
 import { api, type AppNotification } from '@/lib/api';
 import { getSoundOn, playChime } from '@/lib/notification-sound';
 import { useOnScreen } from '@/components/v6/ui/use-on-screen';
 
 const POLL_MS = 60_000;
+const FRESH_MS = 30_000;
+let cache: { at: number; res: Awaited<ReturnType<typeof api.notifications.list>> } | null = null;
 
 function ago(iso: string): string {
   const s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
@@ -40,9 +42,13 @@ export default function NotificationBell() {
   // Newest notification seen so far; a newer one chimes if sound is on. Null until the first load.
   const newest = useRef<string | null>(null);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (force = true) => {
     try {
-      const res = await api.notifications.list();
+      // Every page mounts its own shell, so the bell reuses a list fetched in the last
+      // half minute instead of asking the API again on each navigation.
+      const fresh = !force && cache && Date.now() - cache.at < FRESH_MS;
+      const res = fresh ? cache!.res : await api.notifications.list();
+      if (!fresh) cache = { at: Date.now(), res };
       setItems(res.items);
       setUnread(res.unread);
       const top = res.items[0]?.createdAt ?? '';
@@ -54,8 +60,8 @@ export default function NotificationBell() {
   }, []);
 
   useEffect(() => {
-    void load();
-    const t = setInterval(() => void load(), POLL_MS);
+    void load(false);
+    const t = setInterval(() => { if (document.visibilityState === 'visible') void load(); }, POLL_MS);
     return () => clearInterval(t);
   }, [load]);
 
@@ -68,6 +74,7 @@ export default function NotificationBell() {
     if (!itemsRef.current.some(i => !i.read)) return;
     setUnread(0);
     setItems(prev => prev.map(i => ({ ...i, read: true })));
+    cache = null;
     void api.notifications.markRead().catch(() => { /* the next poll shows the true count */ });
   }, []);
 

@@ -3,7 +3,7 @@
 // Guided product tour (H9): a short card the first time you open each main
 // page, with a way to the next stop. Skippable for good; progress is saved
 // to the account so it doesn't repeat on another device.
-import Link from 'next/link';
+import Link from '@/components/v6/ui/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { accountApi, type TourState } from '@/lib/account-api';

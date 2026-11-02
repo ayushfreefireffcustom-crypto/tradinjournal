@@ -22,7 +22,7 @@ export default function MarketsPage() {
 
   return (
     <AppShell legacy={false} accounts={accounts} selectedAccount={selected} onSelectAccount={(a: BrokerAccount) => select(a)}
-      pageTitle="Markets" pageSubtitle="Live headlines and the economic calendar">
+      pageTitle="Markets" pageSubtitle="News and the economic calendar">
       <div className="mk-desk" data-testid="markets-page">
         <div className="x-seg mk-switch" role="tablist" aria-label="View">
           <button role="tab" aria-selected={tab === 'feed'} aria-pressed={tab === 'feed'} onClick={() => setTab('feed')} data-testid="markets-tab-feed">News</button>

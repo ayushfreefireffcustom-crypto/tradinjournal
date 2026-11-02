@@ -4,7 +4,7 @@
 // rebuilt into round trips, with the journal's analytics and a note, tags and
 // an emotion on each trade, just like MT5 trades.
 import { useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
+import Link from '@/components/v6/ui/link';
 import AppShell from '@/components/app-shell';
 import { useToast } from '@/components/toast';
 import { ago, useLoad } from '@/components/v6/ui/data';
@@ -52,7 +52,7 @@ export default function ExchangeJournalPage() {
   }
 
   return (
-    <AppShell legacy={false} pageTitle="Exchange journal" pageSubtitle="Your exchange trades, with the journal's analytics and notes"
+    <AppShell legacy={false} pageTitle="Exchange journal" pageSubtitle="Your exchange trades"
       actions={
         <div className="x-seg" role="tablist" aria-label="Range">
           {(['7d', '30d', 'all'] as LeaderRange[]).map(r => <button key={r} role="tab" aria-selected={range === r} onClick={() => setRange(r)}>{RANGE_LABEL[r]}</button>)}

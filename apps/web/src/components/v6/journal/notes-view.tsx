@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
-import Link from 'next/link';
+import Link from '@/components/v6/ui/link';
 import AppShell from '@/components/app-shell';
 import ConnectBrokerModal from '@/components/connect-broker-modal';
 import { api, type BrokerAccount, type JournalEntry } from '@/lib/api';

@@ -4,7 +4,7 @@
 // the global kill switch, and engine health. Every action asks for a
 // confirmation (with a reason where it affects people) and is audited.
 import { useCallback, useEffect, useState } from 'react';
-import Link from 'next/link';
+import Link from '@/components/v6/ui/link';
 import AppShell from '@/components/app-shell';
 import AdminOnly from '@/components/v6/admin/admin-only';
 import { useConfirm } from '@/components/confirm-dialog';
@@ -114,7 +114,7 @@ export default function AdminCopyPage() {
   const pending = health?.leaders.PENDING ?? 0;
 
   return (
-    <AppShell legacy={false} pageTitle="Copy trading admin" pageSubtitle="Leaders, the kill switch and engine health"
+    <AppShell legacy={false} pageTitle="Copy trading admin" pageSubtitle="Leaders, kill switch, engine"
       actions={<button className="x-btn" onClick={() => { void loadLeaders(); void loadHealth(); }}><ISync size={14} />Refresh</button>}>
       <AdminOnly>
         <div className="x-page" data-testid="admin-copy-page">

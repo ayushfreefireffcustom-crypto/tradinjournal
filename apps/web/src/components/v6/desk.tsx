@@ -3,7 +3,7 @@
 // "Desk" dashboard cards: equity + drawdown, KPI column, daily P&L, breakdown by
 // symbol/session/weekday, recent trades grouped by day, and the coach review.
 // Charts measure their container so labels stay crisp at every width.
-import Link from 'next/link';
+import Link from '@/components/v6/ui/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { api, type AccountStats, type AiReport, type JournalEntry, type Trade } from '@/lib/api';
@@ -229,7 +229,7 @@ export function DailyCard({ trades }: { trades: Trade[] }) {
       <div className="x-ch">
         <h2>Daily P&amp;L</h2><span className="x-sub">last {days.length} trading day{days.length === 1 ? '' : 's'}</span>
         <div className="x-r">
-          <span className="dk-legend"><span><i className="g" />Day</span><span><i className="ln" />Running total</span></span>
+          <span className="dk-legend"><span><i className="g" />Day</span><span><i className="ln" />Total</span></span>
           {days.length > 0 && <span><b className="m pos">{st.green}</b> green · <b className="m neg">{st.red}</b> red</span>}
         </div>
       </div>
@@ -237,7 +237,7 @@ export function DailyCard({ trades }: { trades: Trade[] }) {
       <div className="x-strip dk-dstats">
         <div><span>Avg green day<Help k="avgGreenDay" /></span><b className="m mny pos">{st.avgGreen == null ? <Unknown why="No green days in this range" /> : fmtUsd(st.avgGreen, 0)}</b></div>
         <div><span>Avg red day<Help k="avgRedDay" /></span><b className="m mny neg">{st.avgRed == null ? <Unknown why="No red days in this range" /> : fmtUsd(st.avgRed, 0)}</b></div>
-        <div><span>Best green streak<Help k="bestStreak" /></span><b>{st.bestStreak ? `${st.bestStreak} day${st.bestStreak === 1 ? '' : 's'}` : <Unknown why="No green days in this range" />}</b></div>
+        <div><span>Best streak<Help k="bestStreak" /></span><b>{st.bestStreak ? `${st.bestStreak} day${st.bestStreak === 1 ? '' : 's'}` : <Unknown why="No green days in this range" />}</b></div>
         <div><span>Trades per day<Help k="tradesPerDay" /></span><b>{st.perDay == null ? <Unknown why="No trading days in this range" /> : st.perDay.toFixed(1)}</b></div>
       </div>
     </section>
@@ -348,7 +348,7 @@ export function BreakdownCard({ trades }: { trades: Trade[] }) {
       </div>
       {shown.length === 0 ? <div className="x-empty"><p>No closed trades in this range.</p></div> : (
         <>
-          <div className="dk-bd-head"><span>{label}</span><span>Won vs given back</span><span>Net</span></div>
+          <div className="dk-bd-head"><span>{label}</span><span>Won · lost</span><span>Net</span></div>
           <div className="dk-bd-rows">
             {shown.map(r => {
               const net = r.gw - r.gl;
@@ -370,7 +370,7 @@ export function BreakdownCard({ trades }: { trades: Trade[] }) {
                   </div>
                   <div className="dk-bd-net">
                     <b className={`m ${net >= 0 ? 'pos' : 'neg'}`}>{fmtUsdCompact(net)}</b>
-                    <small>{r.gw > 0 ? `${fmtPct(r.gl / r.gw, 0)} given back` : 'no wins'}</small>
+                    <small>{r.gw > 0 ? `${fmtPct(r.gl / r.gw, 0)} lost back` : 'no wins'}</small>
                   </div>
                 </div>
               );
@@ -425,7 +425,7 @@ export function RecentTrades({ trades, journal, balance }: { trades: Trade[]; jo
     <section className="x-card dk-trades" data-testid="dash-trades">
       <div className="x-ch">
         <h2>Recent trades</h2>
-        <span className="x-sub">{noted} of {trades.length} journaled</span>
+        <span className="x-sub">{noted}/{trades.length} with notes</span>
         <div className="x-r">
           <div className="x-seg x-seg--sm" role="tablist" aria-label="Filter trades">
             {FILTERS.map(x => <button key={x.key} role="tab" aria-selected={f === x.key} onClick={() => setF(x.key)} data-testid={`tf-${x.key}`}>{x.label}</button>)}

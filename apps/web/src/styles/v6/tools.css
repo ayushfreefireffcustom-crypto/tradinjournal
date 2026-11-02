@@ -249,10 +249,13 @@
 .v6 .ia-why p { margin: 6px 0 0; line-height: 1.5; max-width: 520px; }
 .v6 .ia-watch-cats { margin-bottom: 12px; overflow-x: auto; max-width: 100%; }
 .v6 .ia-watch-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
-.v6 .ia-wr { display: grid; gap: 6px; align-content: start; padding: 12px; border-radius: var(--r-inset); background: var(--s2); }
+.v6 .ia-wr { display: flex; flex-direction: column; gap: 8px; padding: 14px; border-radius: var(--r-inset); background: var(--s2); }
 .v6 .ia-wr-h { display: flex; justify-content: space-between; gap: 8px; align-items: start; }
-.v6 .ia-wr-h b { font-weight: 500; font-size: var(--t2); }
-.v6 .ia-wr p { margin: 0; font-size: var(--t2); line-height: 1.5; }
-.v6 .ia-wr .x-btn { justify-self: start; }
+.v6 .ia-wr-h b { font-weight: 600; font-size: var(--t2); }
+.v6 .ia-wr p { margin: 0; font-size: var(--t2); line-height: 1.5; color: var(--mut); }
+.v6 .ia-wr .x-btn { align-self: flex-start; margin-top: auto; }
 .v6 .ia-watch-form { display: grid; gap: 12px; }
 .v6 .ia-watch-form p { margin: 0; font-size: var(--t2); }
+/* names and rates stay on one line; the name gives way with an ellipsis */
+.v6 .ov-mt > span:first-child { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.v6 .ov-mt > .m { white-space: nowrap; }

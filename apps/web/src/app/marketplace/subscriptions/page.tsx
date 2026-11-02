@@ -2,7 +2,7 @@
 
 // Subscriptions (H3): marketplace strategies you run. Pause, change size, or
 // cancel (let open trades finish, or close them now).
-import Link from 'next/link';
+import Link from '@/components/v6/ui/link';
 import { useState } from 'react';
 import AppShell from '@/components/app-shell';
 import { useToast } from '@/components/toast';

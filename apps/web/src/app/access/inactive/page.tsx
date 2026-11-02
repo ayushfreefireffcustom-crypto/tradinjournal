@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+import Link from '@/components/v6/ui/link';
 import { authClient } from '@/lib/auth-client';
 import { accessApi, type AccessStatusDto } from '@/lib/access-api';
 import { invalidateAccessCache, primeAccessCache } from '@/lib/use-platform-access';

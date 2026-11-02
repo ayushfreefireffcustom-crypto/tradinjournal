@@ -2,7 +2,7 @@
 
 // Derivatives (E11, E17): funding, open interest, long/short and squeezes for
 // USDT perpetuals (Bybit public data), with what changed since your last look.
-import Link from 'next/link';
+import Link from '@/components/v6/ui/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import AppShell from '@/components/app-shell';
 import { useLoad, usePoll } from '@/components/v6/ui/data';
@@ -104,7 +104,7 @@ export default function DerivativesPage() {
                   const f = data.rows.filter(r => r.funding != null).sort((a, b) => b.funding! - a.funding!);
                   const hi = f.slice(0, 5);
                   const lo = f.slice(-5).reverse();
-                  const li = (r: DerivRow) => <li key={r.symbol}><b>{r.base}</b><span className="m x-muted">{fmtPct(r.annualised, 0)} / yr</span><span className={`m ${toneOf(r.funding)}`}>{fmtFunding(r.funding)}</span></li>;
+                  const li = (r: DerivRow) => <li key={r.symbol}><b>{r.base}</b><span className="m x-muted" style={{ whiteSpace: 'nowrap' }}>{fmtPct(r.annualised, 0)} / yr</span><span className={`m ${toneOf(r.funding)}`}>{fmtFunding(r.funding)}</span></li>;
                   return <div className="dv-ext"><div><div className="ov-macro-h">Highest: longs pay most</div><ul className="ov-movers">{hi.map(li)}</ul></div><div><div className="ov-macro-h">Lowest: shorts pay most</div><ul className="ov-movers">{lo.map(li)}</ul></div></div>;
                 })()}
               </section>

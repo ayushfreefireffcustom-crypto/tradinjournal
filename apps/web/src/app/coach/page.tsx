@@ -6,7 +6,7 @@
 // cites web sources, and keeps every conversation in a switchable thread list.
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ContextChips, ToolsMenu, type ChipId, type ToolResult } from '@/components/coach/coach-tools';
-import Link from 'next/link';
+import Link from '@/components/v6/ui/link';
 import AppShell from '@/components/app-shell';
 import MarkdownMessage from '@/components/coach/markdown-message';
 import SourcesFooter from '@/components/coach/sources-footer';
@@ -316,7 +316,7 @@ export default function CoachPage() {
 
   return (
     <AppShell legacy={false} accounts={accounts} selectedAccount={selected} onSelectAccount={(a: BrokerAccount) => select(a)}
-      pageTitle="AI coach" pageSubtitle="Reads your trades and journal, searches the web when it helps">
+      pageTitle="AI coach" pageSubtitle="Ask about your trading">
       <div className="ai-co" ref={rootRef} data-testid="coach-page">
         <ConversationSidebar {...sidebarProps} />
 
@@ -406,7 +406,7 @@ export default function CoachPage() {
                 <button type="submit" disabled={!accountId || !input.trim()} data-testid="coach-send" className="x-btn x-btn--hi" aria-label="Send"><ISend /></button>
               )}
             </div>
-            <p className="ai-fine">Not financial advice.<span> The coach reviews your behaviour; web answers are general info, so verify before acting.</span></p>
+            <p className="ai-fine">Not financial advice.</p>
           </form>
         </section>
       </div>

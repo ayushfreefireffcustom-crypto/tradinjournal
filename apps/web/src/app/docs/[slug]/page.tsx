@@ -1,7 +1,7 @@
 'use client';
 
 // One docs article (H13).
-import Link from 'next/link';
+import Link from '@/components/v6/ui/link';
 import { useParams } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';

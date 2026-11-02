@@ -2,7 +2,7 @@
 
 // The options pages' shared bar: sections, the underlying and where the data
 // comes from (Delta live, or the testnet when trading on a testnet account).
-import Link from 'next/link';
+import Link from '@/components/v6/ui/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { fmtNum, loadCtx, optionsApi, saveCtx, type OptionsCtx, type Underlying } from '@/lib/options-api';

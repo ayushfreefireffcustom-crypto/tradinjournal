@@ -4,7 +4,7 @@
 // positions, trade history, strategy, and the copy box with a "what if"
 // estimate from the leader's real return over the range.
 import { useState } from 'react';
-import Link from 'next/link';
+import Link from '@/components/v6/ui/link';
 import { useParams, useRouter } from 'next/navigation';
 import AppShell from '@/components/app-shell';
 import { useToast } from '@/components/toast';

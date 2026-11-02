@@ -74,7 +74,7 @@ export default function MacroPage() {
   const asOf = state ? new Date(state.asOf).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }) : '';
   const subtitle = state ? (
     <span className="mc-state" data-testid="macro-state-line">
-      <span className="m">{state.engineVer}</span><span>·</span><span><span className="m">{state.macro.length}</span> indicators</span><span>·</span><span>as of <span className="m">{asOf}</span> UTC</span>
+      <span><span className="m">{state.macro.length}</span> indicators</span><span>·</span><span>as of <span className="m">{asOf}</span> UTC</span>
     </span>
   ) : 'Global macro, regime and asset bias';
   const actions = (

@@ -1,7 +1,7 @@
 'use client';
 
 // The settings sections (Part H): profile, security, activity, your data.
-import Link from 'next/link';
+import Link from '@/components/v6/ui/link';
 import { usePathname } from 'next/navigation';
 import '@/styles/v6/account.css';
 

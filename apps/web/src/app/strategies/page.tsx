@@ -1,7 +1,7 @@
 'use client';
 
 // My strategies (F20) and the AI generator (F21).
-import Link from 'next/link';
+import Link from '@/components/v6/ui/link';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import AppShell from '@/components/app-shell';
@@ -59,7 +59,7 @@ export default function StrategiesPage() {
   }
 
   return (
-    <AppShell legacy={false} pageTitle="Strategies" pageSubtitle="Build, backtest and run rule-based strategies"
+    <AppShell legacy={false} pageTitle="Strategies" pageSubtitle="Build, test and run your rules"
       actions={<>
         <Link className="x-btn" href="/strategies/deployments" data-testid="st-deployments">Deployments</Link>
         <Link className="x-btn" href="/strategies/reports">Reports</Link>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import Link from 'next/link';
+import Link from '@/components/v6/ui/link';
 import StatusCard, { SC_ICONS } from '@/components/v6/auth/status-card';
 
 export default function RouteError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {

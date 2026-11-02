@@ -14,7 +14,7 @@
 .v6 .op-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
 .v6 .op-strip > div { background: var(--s1); border-radius: var(--r-inset); padding: 12px 14px; display: grid; gap: 4px; box-shadow: var(--shadow); }
 .v6 .op-strip span { font-size: var(--t2); color: var(--mut); }
-.v6 .op-strip b { font-size: var(--t3); font-weight: 500; }
+.v6 .op-strip b { font-size: var(--t4); font-weight: 800; letter-spacing: -.035em; line-height: 1.15; }
 .v6 .op-strip small { font-size: var(--t1); }
 .v6 .op-chain-card { display: grid; gap: 8px; }
 .v6 .op-chain-top { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; font-size: var(--t2); }

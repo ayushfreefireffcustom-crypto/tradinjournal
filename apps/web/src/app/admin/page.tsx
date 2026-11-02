@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+import Link from '@/components/v6/ui/link';
 import { TRADING_ENABLED } from '@/lib/features';
 import AppShell from '@/components/app-shell';
 import { useAccounts } from '@/lib/use-accounts';
@@ -168,7 +168,7 @@ export default function AdminPage() {
 
   return (
     <AppShell legacy={false} accounts={accounts} selectedAccount={selected} onSelectAccount={select}
-      pageTitle="Command center" pageSubtitle="Usage, access, brokers and platform health"
+      pageTitle="Command center" pageSubtitle="Usage, access and health"
       actions={
         <>
           <Link href="/admin/feedback" className="x-btn" data-testid="admin-feedback-link">Feedback</Link>

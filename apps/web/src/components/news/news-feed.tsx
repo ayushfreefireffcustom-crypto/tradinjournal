@@ -84,9 +84,6 @@ function NewsCardBase({ it, onOpen, matched = [] }: { it: NewsItem; onOpen: (i: 
       </span>
       <span className="mk-item-r">
         <span className="mk-item-tags"><Tags it={it} /></span>
-        {typeof it.relevance === 'number' && (
-          <span className="mk-relv" title={`How much this matters to traders: ${it.relevance} of 100`}><small>Relevance</small><span className="x-bar"><i style={{ width: `${it.relevance}%` }} /></span><small className="m">{it.relevance}</small></span>
-        )}
       </span>
       {it.imageUrl && <NewsThumb src={it.imageUrl} className="mk-item-img" />}
     </button>

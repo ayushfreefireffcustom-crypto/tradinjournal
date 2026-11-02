@@ -4,7 +4,7 @@
 // for a question, and three tools: make a strategy, explain a chart pattern,
 // and tune a strategy (shown as a before/after backtest, saved only when you
 // confirm). Each tool's result is kept in the conversation.
-import Link from 'next/link';
+import Link from '@/components/v6/ui/link';
 import { useEffect, useState } from 'react';
 import Modal from '@/components/v6/ui/modal';
 import { ApiError } from '@/lib/copy-api';

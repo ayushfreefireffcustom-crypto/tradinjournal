@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import Link from '@/components/v6/ui/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import AuthShell, { AuthError, AuthSubmit, EyeButton, I_CHECK } from '@/components/v6/auth/auth-shell';

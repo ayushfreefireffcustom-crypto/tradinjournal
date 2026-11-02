@@ -3,7 +3,7 @@
 // Market overview (E10) with sector rotation and correlation (E14) and the
 // weekly market brief (E15): crypto breadth, movers, a volume heatmap and
 // bubble map, sectors, Fear & Greed, altcoin season, and FX/indices beside it.
-import Link from 'next/link';
+import Link from '@/components/v6/ui/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import AppShell from '@/components/app-shell';
 import { useLoad, usePoll } from '@/components/v6/ui/data';
@@ -41,7 +41,7 @@ export default function OverviewPage() {
   const brief = useLoad(() => hubApi.brief(), []);
   usePoll(() => void o.reload(), 2 * 60_000);
   return (
-    <AppShell legacy={false} pageTitle="Market overview" pageSubtitle={<>Crypto breadth, sectors and sentiment, with FX and indices alongside {o.data && <> · <Freshness at={o.data.asOf} /></>}</>}>
+    <AppShell legacy={false} pageTitle="Market overview" pageSubtitle={<>Crypto and markets at a glance{o.data && <> · <Freshness at={o.data.asOf} /></>}</>}>
       <div className="x-page ov-page" data-testid="ov-page">
         {brief.data && <BriefCard b={brief.data} />}
         {o.error ? <ErrorCard message={o.error} onRetry={o.reload} /> : !o.data ? <div className="x-skel" style={{ height: 420 }} /> : (
@@ -78,7 +78,7 @@ function BriefCard({ b }: { b: MarketBrief }) {
       <p>{b.summary}</p>
       <ul>{b.bullets.map((x, i) => <li key={i}>{x}</li>)}</ul>
       <p className="ov-watch"><b>Worth watching:</b> {b.watch}</p>
-      <p className="cp-fine">{b.source === 'ai' ? 'Written by Claude from the numbers on this page.' : 'Summarised from the numbers on this page.'} Not financial advice. The same brief is added to your weekly review email.</p>
+      <p className="cp-fine">Not financial advice.</p>
     </section>
   );
 }

@@ -64,7 +64,9 @@ export default function ReportsPage() {
     const t = r.data?.trades ?? [];
     const edges = [-Infinity, -5, -2, -1, -0.5, 0, 0.5, 1, 2, 5, Infinity];
     const labels = ['< −5%', '−5 to −2', '−2 to −1', '−1 to −0.5', '−0.5 to 0', '0 to 0.5', '0.5 to 1', '1 to 2', '2 to 5', '> 5%'];
-    return labels.map((label, k) => ({ label, n: t.filter(x => x.pnlPct >= edges[k]! && x.pnlPct < edges[k + 1]!).length, up: k >= 5 }));
+    // Under each bar only the bin's lower edge fits; the full range is in the tooltip.
+    const short = ['< −5', '−5', '−2', '−1', '−0.5', '0', '0.5', '1', '2', '> 5'];
+    return labels.map((label, k) => ({ label, short: short[k]!, n: t.filter(x => x.pnlPct >= edges[k]! && x.pnlPct < edges[k + 1]!).length, up: k >= 5 }));
   }, [r.data]);
   const bySymbol = useMemo(() => {
     const m = new Map<string, { pnl: number; n: number }>();
@@ -79,7 +81,7 @@ export default function ReportsPage() {
   const maxN = Math.max(1, ...dist.map(d => d.n));
 
   return (
-    <AppShell legacy={false} pageTitle="Strategy reports" pageSubtitle="P&L from your paper and live strategy runs"
+    <AppShell legacy={false} pageTitle="Strategy reports" pageSubtitle="Results from your strategy runs"
       actions={<button className="x-btn" onClick={() => window.print()} disabled={!s?.trades} data-testid="rp-pdf">Save as PDF</button>}>
       <div className="x-page rp-page" data-testid="rp-page">
         <div className="rp-bar-top">
@@ -103,7 +105,7 @@ export default function ReportsPage() {
             <section className="x-card" aria-label="Equity"><div className="x-ch"><h2>Equity and drawdown</h2><span className="x-sub">Starting from {usd(r.data.capital)} across {r.data.deployments.length} run{r.data.deployments.length === 1 ? '' : 's'}</span></div><EquityChart equity={s.curve} drawdown height={260} testId="rp-equity" /></section>
             <div className="ov-two">
               <section className="x-card" aria-label="Distribution"><div className="x-ch"><h2>Trade results</h2><span className="x-sub">% per trade</span></div>
-                <div className="rp-hist" data-testid="rp-hist">{dist.map(d => <div key={d.label} className="rp-hcol" title={`${d.label}: ${d.n}`}><span className="m">{d.n || ''}</span><i className={d.up ? 'g' : 'r'} style={{ height: `${(d.n / maxN) * 120}px` }} /><span className="rp-hl">{d.label}</span></div>)}</div>
+                <div className="rp-hist" data-testid="rp-hist">{dist.map(d => <div key={d.label} className="rp-hcol" title={`${d.label}: ${d.n}`}><span className="m">{d.n || ''}</span><i className={d.up ? 'g' : 'r'} style={{ height: `${(d.n / maxN) * 120}px` }} /><span className="rp-hl">{d.short}</span></div>)}</div>
               </section>
               <section className="x-card" aria-label="By market"><div className="x-ch"><h2>By market</h2></div><Bars rows={bySymbol} testId="rp-symbols" /></section>
             </div>

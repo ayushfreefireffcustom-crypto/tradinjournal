@@ -61,7 +61,7 @@ export default function PartnerClientsPage() {
 
   return (
     <AppShell legacy={false} accounts={accounts} selectedAccount={selected} onSelectAccount={select} pageTitle="Clients"
-      pageSubtitle="Everyone who signed up through your link or code">
+      pageSubtitle="Joined through your link or code">
       <div className="x-page" data-testid="partner-clients">
         {gate ? <PartnerGate reason={gate} onApplied={() => {}} /> : <>
           <div className="ac-tiles" role="group" aria-label="Filter by status">

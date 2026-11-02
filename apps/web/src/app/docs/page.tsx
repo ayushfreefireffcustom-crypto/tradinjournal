@@ -1,7 +1,7 @@
 'use client';
 
 // In-app docs (H13): every part of TRADElogs explained, with search.
-import Link from 'next/link';
+import Link from '@/components/v6/ui/link';
 import { useMemo, useState } from 'react';
 import AppShell from '@/components/app-shell';
 import { DOCS, SECTIONS, searchDocs } from '@/content/docs';

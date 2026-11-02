@@ -4,7 +4,7 @@
 /* greeting (E2) */
 .v6 .dk-hello { padding: 8px 2px 4px; position: relative; }
 .v6 .dk-cap { font-size: var(--t1); font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--g-tx); }
-.v6 .dk-hello h2 { font: 800 var(--t6)/1.08 var(--sans); letter-spacing: -.035em; margin: 12px 0 0; max-width: 980px; text-wrap: balance; }
+.v6 .dk-hello h2 { font: 800 var(--t6)/1.08 var(--sans); letter-spacing: -.035em; margin: 6px 0 0; max-width: 980px; text-wrap: balance; }
 .v6 .dk-hello h2 span { color: var(--dim); }
 .v6 .dk-hello h2 em { font-style: normal; color: var(--g-tx); }
 .v6 .dk-hello p { margin: 10px 0 0; color: var(--mut); font-size: var(--t3); }
@@ -45,7 +45,8 @@
 .v6 .dk-kpi .x-stat > span { white-space: nowrap; padding-right: 64px; }
 .v6 .dk-kpi > svg, .v6 .dk-kpi > .dk-wl, .v6 .dk-kpi > .dk-spark { position: absolute; right: 18px; top: 16px; flex: none; }
 .v6 .dk-kpi > svg:not(.dk-spark) { width: 52px; height: auto; }
-.v6 .dk-kpi > .dk-wl { width: 84px; }
+.v6 .dk-kpi > .dk-wl { width: 72px; top: 44px; }
+.v6 .dk-kpi > .dk-spark { top: 44px; }
 .v6 .dk-kpi > .dk-spark { width: 80px; height: 32px; }
 .v6 .dk-wl { width: 112px; display: grid; gap: 7px; flex: none; }
 .v6 .dk-wl div { display: flex; align-items: center; gap: 8px; }

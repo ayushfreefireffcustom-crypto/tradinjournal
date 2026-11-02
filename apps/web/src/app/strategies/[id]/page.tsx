@@ -4,7 +4,7 @@
 // Cockpit (every zone at once), Flow (one step at a time) and Chart (the rules
 // drawn on recent bars, numbers dragged on the chart). The read-back, checks
 // and backtest update as you edit.
-import Link from 'next/link';
+import Link from '@/components/v6/ui/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import AppShell from '@/components/app-shell';

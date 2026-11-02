@@ -3,7 +3,7 @@
 // Admin view of one partner: the same funnel, trend and channels the partner
 // sees, their client list (assign / unlink / move all), codes, status controls
 // and the note trail every admin action writes to.
-import Link from 'next/link';
+import Link from '@/components/v6/ui/link';
 import { use, useCallback, useEffect, useState } from 'react';
 import AppShell from '@/components/app-shell';
 import AdminOnly from '@/components/v6/admin/admin-only';

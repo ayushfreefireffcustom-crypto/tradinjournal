@@ -3,7 +3,7 @@
 // Multi-leg builder (G6–G8): templates, legs, the payoff at expiry and at a
 // chosen date with a target-price slider, the summary numbers and the
 // analysis panel. Legs are priced at the mark unless a price is typed.
-import Link from 'next/link';
+import Link from '@/components/v6/ui/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import AppShell from '@/components/app-shell';
 import { useToast } from '@/components/toast';
@@ -125,7 +125,7 @@ export default function OptionsBuilderPage() {
   const k0 = (v: number) => fmtNum(v, 0);
 
   return (
-    <AppShell legacy={false} pageTitle="Options builder" pageSubtitle="Combine legs, see the payoff and what you’re taking on">
+    <AppShell legacy={false} pageTitle="Options builder" pageSubtitle="Build a position and see its payoff">
       <div className="x-page op-page" data-testid="op-builder-page">
         {ctx && <OptionsHead ctx={ctx} setCtx={setCtx} spot={a?.spot ?? base.data?.spot} />}
         {base.error && !base.data ? <ErrorCard message={base.error} onRetry={base.reload} /> : !base.data ? <div className="x-skel" style={{ height: 520 }} /> : (

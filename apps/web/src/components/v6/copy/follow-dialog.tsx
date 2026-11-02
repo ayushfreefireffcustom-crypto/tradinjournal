@@ -3,7 +3,7 @@
 // Start copying a leader, or edit a running copy (C4.4): account, sizing,
 // optional caps, and the risk notice that must be accepted to start.
 import { useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
+import Link from '@/components/v6/ui/link';
 import Modal from '@/components/v6/ui/modal';
 import { exchangesApi, followsApi, usd, venueName, type ExchangeConnection, type ExchangeEnvironment, type Follow, type FollowSettings, type SizingMode } from '@/lib/copy-api';
 import '@/styles/v6/dialogs.css';

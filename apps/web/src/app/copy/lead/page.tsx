@@ -4,7 +4,7 @@
 // your exchange accounts, see the review status, and once live, your
 // followers, their open copies and their combined P&L.
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
+import Link from '@/components/v6/ui/link';
 import AppShell from '@/components/app-shell';
 import { useToast } from '@/components/toast';
 import { useLoad } from '@/components/v6/ui/data';
@@ -25,7 +25,7 @@ const STATUS: Record<MyLeader['status'], { tag: string; tone: string; text: stri
 export default function LeadPage() {
   const me = useLoad(() => leadersApi.me(), []);
   return (
-    <AppShell legacy={false} pageTitle="Become a leader" pageSubtitle="Let other traders copy your exchange account">
+    <AppShell legacy={false} pageTitle="Become a leader" pageSubtitle="Let others copy your trades">
       <div className="x-page" data-testid="lead-page">
         {me.error ? <ErrorCard message={me.error} onRetry={me.reload} /> : me.loading && me.data === null ? <div className="x-skel cp-skel-hero" /> : me.data ? <Portal l={me.data} onChange={v => me.setData(v)} /> : <Apply onDone={v => me.setData(v)} />}
       </div>

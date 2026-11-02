@@ -4,7 +4,7 @@
 // a URL to paste into TradingView and a secret that goes in each alert message.
 // The secret is shown once, when it's created or regenerated.
 import { useState } from 'react';
-import Link from 'next/link';
+import Link from '@/components/v6/ui/link';
 import AppShell from '@/components/app-shell';
 import { useToast } from '@/components/toast';
 import { useLoad } from '@/components/v6/ui/data';
@@ -86,7 +86,7 @@ export default function WebhookPage() {
   }
 
   return (
-    <AppShell legacy={false} pageTitle="TradingView webhook" pageSubtitle="Turn TradingView alerts into orders on your exchange account">
+    <AppShell legacy={false} pageTitle="TradingView webhook" pageSubtitle="TradingView alerts as orders">
       <div className="x-page" data-testid="webhook-page">
         {hook.error ? <ErrorCard message={hook.error} onRetry={hook.reload} /> : hook.loading && !w ? <div className="x-skel cp-skel-hero" /> : (
           <section className="x-card wh-card" aria-label="Webhook">

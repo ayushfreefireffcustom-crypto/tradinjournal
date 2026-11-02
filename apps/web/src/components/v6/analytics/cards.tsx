@@ -59,7 +59,7 @@ export function Strike({ view }: { view: AccountStats }) {
   const w = total ? view.totalWins / total : 0;
   const R = 58, C = 2 * Math.PI * R;
   return (
-    <ACard title="Strike rate" sub="wins vs losses" testId="strike-card">
+    <ACard title="Win rate" sub="wins vs losses" testId="strike-card">
       <div className="an-strike">
         <div className="an-ring" data-testid="winloss-donut">
           <svg viewBox="0 0 140 140" aria-hidden>
@@ -172,7 +172,7 @@ export function Equity({ view }: { view: AccountStats }) {
   const days = view.risk?.tradingDays ?? 0;
   const fewDays = days < MIN_RETURNS ? `Needs ${MIN_RETURNS} trading days; ${days} so far` : null;
   return (
-    <ACard title="Equity curve" sub="realised, vs starting balance" testId="dd-card"
+    <ACard title="Equity curve" sub="vs starting balance" testId="dd-card"
       right={<span className="x-sub an-peak">Peak <b className="m mny">{plainUsd(peak, { digits: 0 })}</b></span>}>
       <EquityChart pts={pts} base={view.startingBalance} />
       {view.risk && (
@@ -451,7 +451,7 @@ export function Allocation({ rows }: { rows: AccountStats['bySymbol'] }) {
   });
   const h = slices.find(x => x.key === hov) ?? null;
   return (
-    <ACard title="Allocation" sub="share of closed trades" testId="allocation-card">
+    <ACard title="Allocation" sub="by trades" testId="allocation-card">
       {!total ? <Empty h={200}>No closed trades in this range.</Empty> : (
         <div className="an-alloc">
           <div className="an-alloc-ring">

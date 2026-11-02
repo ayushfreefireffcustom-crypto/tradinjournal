@@ -2,7 +2,7 @@
 
 // Admin pages render a clear "no access" state for non-admins instead of an empty
 // admin shell (the API already refuses them; this is the UI half).
-import Link from 'next/link';
+import Link from '@/components/v6/ui/link';
 import type { ReactNode } from 'react';
 import { usePlatformAccess } from '@/lib/use-platform-access';
 import { ILock } from '@/components/v6/icons';

@@ -2,7 +2,7 @@
 
 // Deployments (F17): every paper and live run, with P&L, a sparkline, recent
 // trades and the size multiplier.
-import Link from 'next/link';
+import Link from '@/components/v6/ui/link';
 import { Fragment, useMemo, useState } from 'react';
 import AppShell from '@/components/app-shell';
 import { useToast } from '@/components/toast';

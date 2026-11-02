@@ -1,6 +1,6 @@
 // Shared layout for the Terms and Privacy pages: logo header, title block,
 // sticky table of contents on wide screens, and a readable single column.
-import Link from 'next/link';
+import Link from '@/components/v6/ui/link';
 import type { ReactNode } from 'react';
 import Logo from '@/components/logo';
 import LegalCta from './legal-cta';

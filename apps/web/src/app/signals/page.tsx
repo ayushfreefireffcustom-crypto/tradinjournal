@@ -2,7 +2,7 @@
 
 // Signals (E7): a technical rating, Strong sell … Strong buy, for the most
 // traded pairs on 1h, 4h and 1d. Open a row to see every vote behind it.
-import Link from 'next/link';
+import Link from '@/components/v6/ui/link';
 import { useMemo, useState } from 'react';
 import AppShell from '@/components/app-shell';
 import { useLoad, usePoll } from '@/components/v6/ui/data';
@@ -54,7 +54,7 @@ export default function SignalsPage() {
   }), [list.data]);
 
   return (
-    <AppShell legacy={false} pageTitle="Signals" pageSubtitle={<>Technical ratings for the most-traded crypto pairs, at the last closed bar {list.data && <> · <Freshness at={list.data.asOf} /></>}</>}>
+    <AppShell legacy={false} pageTitle="Signals" pageSubtitle={<>Technical ratings for top crypto pairs{list.data && <> · <Freshness at={list.data.asOf} /></>}</>}>
       <div className="x-page" data-testid="sg-page">
         <section className="x-card sg-controls" aria-label="Options">
           <div className="sg-search"><span className="x-muted">Rate any symbol</span><SymbolSearch value="" onSelect={s => setOpen(s)} /></div>

@@ -2,7 +2,7 @@
 
 // One deployment (F16, F18): honest status, controls, positions, trades and
 // the activity feed explaining every check.
-import Link from 'next/link';
+import Link from '@/components/v6/ui/link';
 import { useParams } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import AppShell from '@/components/app-shell';

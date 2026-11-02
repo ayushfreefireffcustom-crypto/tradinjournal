@@ -4,7 +4,7 @@
 // tablets, a top bar with the page title and actions, and a bottom tab bar with
 // an all-pages sheet on phones. Auth gating, ⌘K and the location gate stay in
 // AppShell; this only draws the chrome.
-import Link from 'next/link';
+import Link from '@/components/v6/ui/link';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import type { BrokerAccount } from '@/lib/api';
 import NotificationBell from '@/components/notification-bell';

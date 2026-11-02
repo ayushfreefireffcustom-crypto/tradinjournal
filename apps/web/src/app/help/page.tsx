@@ -2,7 +2,7 @@
 
 // Help (H10): how to reach us, the docs, and a box for bugs, ideas and
 // questions. Every message is emailed to a person on the team.
-import Link from 'next/link';
+import Link from '@/components/v6/ui/link';
 import { useEffect, useState } from 'react';
 import AppShell from '@/components/app-shell';
 import { useToast } from '@/components/toast';
@@ -49,7 +49,7 @@ export default function HelpPage() {
   }
   const k = KINDS.find((x) => x[0] === kind)!;
   return (
-    <AppShell legacy={false} pageTitle="Help" pageSubtitle="Reach a person, read the docs, report a bug">
+    <AppShell legacy={false} pageTitle="Help" pageSubtitle="Contact us, docs, bug reports">
       <div className="ac-help" data-testid="help-page">
         <section className="ac-help-ways" aria-label="Ways to reach us">
           <a className="x-card ac-help-way" href={`mailto:${SUPPORT_EMAIL}`} data-testid="help-email"><b>Email</b><span>{SUPPORT_EMAIL}</span><small className="x-muted">We reply within a working day.</small></a>

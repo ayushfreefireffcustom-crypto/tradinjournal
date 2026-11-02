@@ -28,7 +28,7 @@ export default function ApiKeysPage() {
     { title: 'Close a position (trade key)', code: `curl -X POST ${base}/positions/close \\\n  -H "Authorization: Bearer $TRADELOGS_KEY" \\\n  -H "Content-Type: application/json" \\\n  -d '{"connectionId":"<account id>","symbol":"BTCUSD"}'` },
   ];
   return (
-    <AppShell legacy={false} pageTitle="API keys" pageSubtitle="Trade and read your exchange accounts from your own scripts"
+    <AppShell legacy={false} pageTitle="API keys" pageSubtitle="For your own scripts"
       actions={<button className="x-btn x-btn--hi" onClick={() => setCreating(true)} disabled={active.length >= 10} data-testid="keys-new">New key</button>}>
       <div className="x-page" data-testid="keys-page">
         {shown && (

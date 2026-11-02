@@ -12,8 +12,8 @@
 .v6 .tr-sum b.pos { color: var(--g-tx); } .v6 .tr-sum b.neg { color: var(--r-tx); }
 .v6 .tr-bar .x-seg small { font: 400 var(--t1) var(--mono); color: var(--dim); }
 .v6 .tr-bar .x-seg [aria-pressed=true] small { color: inherit; opacity: .6; }
-.v6 .tr-sel { width: 168px; flex: 0 1 168px; height: 38px; border-radius: var(--r-pill); font-size: var(--t2); }
-.v6 .tr-search { flex: 1 1 180px; max-width: 300px; min-width: 0; }
+.v6 .tr-sel { width: 150px; flex: 0 1 150px; height: 38px; border-radius: var(--r-pill); font-size: var(--t2); }
+.v6 .tr-search { flex: 1 1 140px; max-width: 300px; min-width: 0; margin-left: auto; }
 .v6 .tr-search .x-input { height: 38px; border-radius: var(--r-pill); font-size: var(--t2); padding-right: 36px; }
 .v6 .tr-search .tr-x { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 26px; height: 26px; border-radius: 50%; border: 0; background: none; color: var(--mut); cursor: pointer; display: grid; place-items: center; }
 .v6 .tr-search .tr-x:hover { background: var(--s3); color: var(--tx); }

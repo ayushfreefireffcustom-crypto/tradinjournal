@@ -8,7 +8,7 @@
 // unsubscribe would silently opt people out of mail they still wanted.
 import { Suspense, useCallback, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import Link from 'next/link';
+import Link from '@/components/v6/ui/link';
 import StatusCard, { SC_ICONS } from '@/components/v6/auth/status-card';
 import { AuthError, AuthSubmit } from '@/components/v6/auth/auth-shell';
 import { LoadingScreen } from '@/components/loader';

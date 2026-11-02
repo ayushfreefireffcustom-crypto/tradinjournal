@@ -2,7 +2,7 @@
 
 // Strategy P&L on the dashboard with the paper / live switch (F22). Shown only
 // once you've run a strategy. The switch is shared with the reports page.
-import Link from 'next/link';
+import Link from '@/components/v6/ui/link';
 import { useEffect, useState } from 'react';
 import { useLoad } from '@/components/v6/ui/data';
 import { deploymentsApi, tone, usd } from '@/lib/strategies-api';

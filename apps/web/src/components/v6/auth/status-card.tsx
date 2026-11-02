@@ -1,7 +1,7 @@
 'use client';
 
 // Centred status card for the access, maintenance, unsubscribe and 404 screens.
-import Link from 'next/link';
+import Link from '@/components/v6/ui/link';
 import type { ReactNode } from 'react';
 import Logo from '@/components/logo';
 import '@/styles/v6/tokens.css';

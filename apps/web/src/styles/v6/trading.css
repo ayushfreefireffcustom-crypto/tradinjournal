@@ -47,7 +47,7 @@
 .v6 .tk-more summary { cursor: pointer; font-size: var(--t2); color: var(--mut); margin-bottom: 8px; }
 .v6 .tk-more[open] { display: grid; gap: 10px; }
 .v6 .tk-sum { display: grid; gap: 2px; padding: 12px 14px; border-radius: var(--r-field); border: 1px solid var(--line); }
-.v6 .tk-sum b { font-size: var(--t3); font-weight: 500; }
+.v6 .tk-sum b { font-size: var(--t3); font-weight: 700; }
 .v6 .tk-sum span { font-size: var(--t2); color: var(--mut); }
 .v6 .tk-sum--buy { border-color: var(--g); background: var(--g-soft); }
 .v6 .tk-sum--sell { border-color: var(--r); background: var(--r-soft); }

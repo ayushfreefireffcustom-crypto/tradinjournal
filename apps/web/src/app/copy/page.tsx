@@ -4,7 +4,7 @@
 // stats from their exchange accounts, sort / range / search, and an FAQ.
 // Browsing works without a connected exchange.
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
+import Link from '@/components/v6/ui/link';
 import AppShell from '@/components/app-shell';
 import { GradeBadge, Monogram } from '@/components/v6/copy/parts';
 import { useLoad } from '@/components/v6/ui/data';
@@ -54,7 +54,7 @@ export default function LeadersPage() {
   const copying = (mine.data ?? []).length;
 
   return (
-    <AppShell legacy={false} pageTitle="Copy trading" pageSubtitle="Copy verified traders onto your own exchange account"
+    <AppShell legacy={false} pageTitle="Copy trading" pageSubtitle="Copy verified traders"
       actions={<Link href="/copy/lead" className="x-btn">Become a leader</Link>}>
       <div className="x-page" data-testid="leaders-page">
         {copying > 0 && (

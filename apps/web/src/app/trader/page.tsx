@@ -12,7 +12,7 @@ export default function TraderPage() {
   const { accounts, selected, select } = useAccounts();
   return (
     <AppShell legacy={false} accounts={accounts} selectedAccount={selected} onSelectAccount={(a: BrokerAccount) => select(a)}
-      pageTitle="SignalX" pageSubtitle="Direction, levels and graded outcomes for any symbol">
+      pageTitle="SignalX" pageSubtitle="Direction and levels for any symbol">
       <div className="x-page" data-testid="trader-page">
         <div className="ai-sx">
           <TraderMaster />

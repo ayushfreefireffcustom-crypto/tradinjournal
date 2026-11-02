@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import Link from 'next/link';
+import Link from '@/components/v6/ui/link';
 import { traderApi, type TraderStrategy, type TraderStrategyRules, type TraderTimeframe } from '@/lib/trader-api';
 import { formatMacroNumber } from '@/lib/macro-format';
 import { SideChip } from '@/components/v6/desk';
