@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { marketApi, MARKET_SYMBOL_NAMES } from '@/lib/market-api';
 import { tickerMark } from '@/lib/desk';
-import { IClose } from '@/components/v3/icons';
+import { IClose } from '@/components/v6/icons';
 import { useQuotes, fmtQuote, fmtChg } from './quote';
 
 // Persisted per-user pinned symbols. Click to load into the active chart.

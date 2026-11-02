@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useConfirm } from '@/components/confirm-dialog';
 import { adminCopyApi, signedUsd, sizingLabel, venueName, type AdminUserCopy, type Follow } from '@/lib/copy-api';
-import { ago } from './parts';
+import { ago } from '@/components/v6/ui/data';
 
 export default function AdminUserCopySection({ userId }: { userId: string }) {
   const [data, setData] = useState<AdminUserCopy | null>(null);

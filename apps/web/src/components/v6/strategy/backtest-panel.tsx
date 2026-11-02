@@ -8,6 +8,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import EquityChart from './equity-chart';
 import { ApiError } from '@/lib/copy-api';
 import { RANGE_PRESETS, pct, num, rangeParams, strategiesApi, tone, usd, type BacktestResult, type Metrics, type StrategyDetail, type StrategySpec } from '@/lib/strategies-api';
+import '@/styles/v6/kit.css';
+import '@/styles/v6/tools.css';
+import '@/styles/v6/strategy.css';
 
 const ROWS: Array<{ key: keyof Metrics; label: string; fmt: (v: number | null) => string; better: 1 | -1 }> = [
   { key: 'totalReturnPct', label: 'Return', fmt: v => pct(v), better: 1 },

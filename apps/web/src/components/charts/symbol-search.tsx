@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { ISearch } from '@/components/v3/icons';
+import { ISearch } from '@/components/v6/icons';
 import { marketApi, type MarketSymbol } from '@/lib/market-api';
 
 const CLASS_LABEL: Record<string, string> = { crypto: 'Crypto', forex: 'Forex', stock: 'Stock', commodity: 'Commodity', broker: 'Broker' };

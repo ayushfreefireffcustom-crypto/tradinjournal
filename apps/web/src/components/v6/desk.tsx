@@ -14,7 +14,7 @@ import {
   type BreakdownBy, type DayBucket,
 } from '@/lib/desk';
 import MarkdownMessage from '@/components/coach/markdown-message';
-import { IChevronDown, ISync } from '@/components/v3/icons';
+import { IChevronDown, ISync } from '@/components/v6/icons';
 import '@/styles/v6/desk.css';
 import InfoTip from '@/components/v6/ui/info-tip';
 import { METRIC_HELP, type MetricKey } from '@/lib/metric-help';
@@ -228,7 +228,7 @@ export function DailyCard({ trades }: { trades: Trade[] }) {
       <div className="x-ch">
         <h2>Daily P&amp;L</h2><span className="x-sub">last {days.length} trading day{days.length === 1 ? '' : 's'}</span>
         <div className="x-r">
-          <span className="dk-legend"><span><i style={{ background: 'var(--g)' }} />Day</span><span><i className="ln" />Running total</span></span>
+          <span className="dk-legend"><span><i className="g" />Day</span><span><i className="ln" />Running total</span></span>
           {days.length > 0 && <span><b className="m pos">{st.green}</b> green · <b className="m neg">{st.red}</b> red</span>}
         </div>
       </div>
@@ -356,7 +356,7 @@ export function BreakdownCard({ trades }: { trades: Trade[] }) {
                 <div className="dk-bd-row" key={r.key}>
                   <div className="x-sym">
                     <span className="x-mk">{mark}</span>
-                    <div style={{ minWidth: 0 }}>
+                    <div className="x-min0">
                       <b>{r.key}{by === 'session' && <span className="x-dim"> · UTC</span>}</b>
                       <small className="dk-ell">{r.kind && <span className="dk-bd-kind">{r.kind} · </span>}{r.n} trade{r.n === 1 ? '' : 's'} · {fmtPct(r.wins / r.n, 0)} won</small>
                     </div>
@@ -539,7 +539,7 @@ export function CoachReview({ accountId }: { accountId: string | null }) {
       ) : report && (
         <>
           <div className={`dk-coach-bd ${open ? 'open' : ''}`}><MarkdownMessage content={report.content} /></div>
-          {report.stale && <p className="x-lead" style={{ fontSize: 12.5 }}>Couldn&rsquo;t refresh, so this is the last review.</p>}
+          {report.stale && <p className="x-lead dk-stale">Couldn&rsquo;t refresh, so this is the last review.</p>}
           <button className="dk-more" onClick={() => setOpen(o => !o)} aria-expanded={open}>
             {open ? 'Show less' : 'Read the full review'}<IChevronDown size={15} style={{ transform: open ? 'rotate(180deg)' : undefined }} />
           </button>

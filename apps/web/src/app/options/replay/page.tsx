@@ -7,12 +7,13 @@ import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import AppShell from '@/components/app-shell';
 import { useToast } from '@/components/toast';
-import { ErrorCard, useLoad } from '@/components/v6/copy/parts';
+import { useLoad } from '@/components/v6/ui/data';
+import ErrorCard from '@/components/v6/ui/error-card';
 import { LineChart } from '@/components/v6/options/charts';
 import OptionsHead, { useOptionsCtx } from '@/components/v6/options/head';
 import { ApiError } from '@/lib/copy-api';
 import { daysLabel, expiryLabel, fmtNum, fmtUsd, loadLegs, optionsApi, saveLegs, type LegInput, type ReplayData } from '@/lib/options-api';
-import '@/styles/v6/copy.css';
+import '@/styles/v6/tools.css';
 import '@/styles/v6/markets.css';
 import '@/styles/v6/options.css';
 

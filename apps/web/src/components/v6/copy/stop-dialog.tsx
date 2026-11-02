@@ -3,9 +3,10 @@
 // Stop a copy (C4.5): choose to close the follow's open copies (reduce-only,
 // never more than was copied) or keep them, then show what happened.
 import { useState } from 'react';
-import { Modal } from './parts';
+import Modal from '@/components/v6/ui/modal';
 import { followsApi, type Follow, type StopResult } from '@/lib/copy-api';
 import '@/styles/v6/dialogs.css';
+import '@/styles/v6/kit.css';
 
 export default function StopDialog({ follow, onClose, onDone }: { follow: Follow; onClose: () => void; onDone: (r: StopResult) => void }) {
   const [close, setClose] = useState(follow.openPositions > 0);

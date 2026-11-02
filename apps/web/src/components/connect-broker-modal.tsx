@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { api, type BrokerAccount } from '@/lib/api';
 import { BROKERS, CUSTOM_SERVER, OTHER_BROKER } from '@/lib/brokers';
 import { V6Portal } from '@/components/confirm-dialog';
-import { IClose, ILock } from '@/components/v3/icons';
+import { IClose, ILock } from '@/components/v6/icons';
+import { useDialog } from '@/components/v6/ui/use-dialog';
 import '@/styles/v6/account.css';
 import '@/styles/v6/dialogs.css';
 
@@ -30,11 +31,7 @@ export default function ConnectBrokerModal({ onClose, onConnected }: Props) {
   const usingCustom = isOther || serverSel === CUSTOM_SERVER;
   const server = (usingCustom ? customServer : serverSel).trim();
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && !loading) onClose(); };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [onClose, loading]);
+  const ref = useDialog({ onClose, locked: loading });
 
   function shake() { setShaking(true); setTimeout(() => setShaking(false), 350); }
 
@@ -70,7 +67,7 @@ export default function ConnectBrokerModal({ onClose, onConnected }: Props) {
   return (
     <V6Portal>
       <div className="x-dialog-scrim" onMouseDown={onClose}>
-        <div className={`x-dialog ac-dlg ac-dlg--form ${shaking ? 'ac-shake' : ''}`} role="dialog" aria-modal="true" aria-labelledby="cb-t" data-testid="connect-broker-modal" onMouseDown={e => e.stopPropagation()}>
+        <div ref={ref} className={`x-dialog ac-dlg ac-dlg--form ${shaking ? 'ac-shake' : ''}`} role="dialog" aria-modal="true" aria-labelledby="cb-t" data-testid="connect-broker-modal" onMouseDown={e => e.stopPropagation()}>
           <div className="ac-dlg-h">
             <div>
               <h2 id="cb-t">Connect a broker</h2>

@@ -6,7 +6,7 @@ import PriceChart from './price-chart';
 import type { ChartType, SizeSetting } from '@/lib/chart-types';
 import { DEFAULT_SIZE } from '@/lib/chart-types';
 import type { MarketTimeframe } from '@/lib/market-api';
-import { IClose } from '@/components/v3/icons';
+import { IClose } from '@/components/v6/icons';
 import { fmtQuote, fmtChg } from './quote';
 
 export interface Pane {

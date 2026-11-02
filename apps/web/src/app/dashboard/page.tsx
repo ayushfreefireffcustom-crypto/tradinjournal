@@ -8,7 +8,7 @@ import { authClient } from '@/lib/auth-client';
 import AppShell, { timeAgo } from '@/components/app-shell';
 import ConnectBrokerModal from '@/components/connect-broker-modal';
 import { useToast } from '@/components/toast';
-import { IPlus } from '@/components/v3/icons';
+import { IPlus } from '@/components/v6/icons';
 import StrategiesCard from '@/components/v6/strategy/strategies-card';
 import {
   BreakdownCard, CoachReview, DailyCard, DeskSkeleton, EquityCard, KpiColumn, RecentTrades,

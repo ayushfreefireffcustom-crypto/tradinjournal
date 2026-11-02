@@ -8,13 +8,15 @@ import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import AppShell from '@/components/app-shell';
 import { useToast } from '@/components/toast';
-import { ErrorCard, Modal, useLoad } from '@/components/v6/copy/parts';
+import { useLoad } from '@/components/v6/ui/data';
+import ErrorCard from '@/components/v6/ui/error-card';
+import Modal from '@/components/v6/ui/modal';
 import EquityChart from '@/components/v6/strategy/equity-chart';
 import { ApiError, exchangesApi, type ExchangeConnection } from '@/lib/copy-api';
 import { TRADING_ENABLED } from '@/lib/features';
 import { catLabel, marketApi, pctS, riskLabel, type Detail } from '@/lib/marketplace-api';
 import { usd } from '@/lib/strategies-api';
-import '@/styles/v6/copy.css';
+import '@/styles/v6/kit.css';
 import '@/styles/v6/markets.css';
 import '@/styles/v6/marketplace.css';
 

@@ -4,7 +4,7 @@
 // grouped by category with checkboxes; saving replaces the user's preferred
 // sources, which pins those outlets to the top of the feed.
 import { useMemo, useState } from 'react';
-import { ICheck } from '@/components/v3/icons';
+import { ICheck } from '@/components/v6/icons';
 import MkDialog, { MkClose } from '@/components/v6/markets/dialog';
 import type { NewsSource, NewsCategory } from '@/lib/api';
 

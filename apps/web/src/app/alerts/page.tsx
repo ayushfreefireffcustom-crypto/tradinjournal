@@ -7,7 +7,9 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import AppShell from '@/components/app-shell';
 import { useToast } from '@/components/toast';
-import { ErrorCard, Modal, ago, useLoad, usePoll } from '@/components/v6/copy/parts';
+import { ago, useLoad, usePoll } from '@/components/v6/ui/data';
+import ErrorCard from '@/components/v6/ui/error-card';
+import Modal from '@/components/v6/ui/modal';
 import SymbolSearch from '@/components/charts/symbol-search';
 import { ApiError } from '@/lib/copy-api';
 import OperandPicker from '@/components/v6/indicators/operand-picker';
@@ -16,7 +18,8 @@ import {
   type CatalogueItem, type IaOperator, type IaTimeframe, type IndicatorAlert, type IndicatorOperand, type Operand, type Preview, type RuleBody,
   type WatchRule,
 } from '@/lib/indicator-alerts-api';
-import '@/styles/v6/copy.css';
+import '@/styles/v6/kit.css';
+import '@/styles/v6/tools.css';
 import '@/styles/v6/markets.css';
 
 const MAX_RULES = 50;

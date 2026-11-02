@@ -8,7 +8,7 @@ import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { Trade } from '@/lib/api';
 import type { Candle } from '@/lib/market-api';
 import { candlesFromReal } from '@/components/replay/trade-chart';
-import { synthCandles } from '@/components/v3/trade-candles';
+import { synthCandles } from '@/lib/use-trade-candles';
 import { fmtUsd } from '@/lib/dashboard-v6';
 import { fmtPrice } from '@/lib/desk';
 import '@/styles/v6/trades.css';

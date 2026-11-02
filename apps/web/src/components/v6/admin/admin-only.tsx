@@ -5,7 +5,7 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { usePlatformAccess } from '@/lib/use-platform-access';
-import { ILock } from '@/components/v3/icons';
+import { ILock } from '@/components/v6/icons';
 
 export default function AdminOnly({ children }: { children: ReactNode }) {
   const { status } = usePlatformAccess();

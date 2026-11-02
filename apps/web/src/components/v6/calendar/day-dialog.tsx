@@ -2,29 +2,21 @@
 
 // Day detail: the closed trades for one calendar day. Opened from a calendar or
 // heatmap cell. A centred dialog on desktop, a bottom sheet on phones.
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import type { Trade } from '@/lib/api';
 import { fmtHold, fmtUsd } from '@/lib/dashboard-v6';
 import { tickerMark } from '@/lib/desk';
 import { SideChip } from '@/components/v6/desk';
+import { useDialog } from '@/components/v6/ui/use-dialog';
 import '@/styles/v6/calendar.css';
 
 export default function DayDialog({ date, trades, accountId, onClose }: { date: Date; trades: Trade[]; accountId?: string; onClose: () => void }) {
   // Portal to <body> (inside its own .v6 scope) so `position: fixed` is viewport-relative.
   const [mounted, setMounted] = useState(false);
-  const closeRef = useRef<HTMLButtonElement>(null);
   useEffect(() => setMounted(true), []);
-  useEffect(() => { if (mounted) closeRef.current?.focus(); }, [mounted]);
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    document.addEventListener('keydown', onKey);
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => { document.removeEventListener('keydown', onKey); document.body.style.overflow = prev; };
-  }, [onClose]);
+  const ref = useDialog({ onClose });
 
   const sorted = [...trades].sort((a, b) => +new Date(a.closeTime!) - +new Date(b.closeTime!));
   const total = sorted.reduce((s, t) => s + t.netPnl, 0);
@@ -36,14 +28,14 @@ export default function DayDialog({ date, trades, accountId, onClose }: { date: 
   return createPortal(
     <div className="v6 cl-layer">
       <div className="x-dialog-scrim" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-        <div className="x-dialog cl-dlg" data-testid="day-trades-modal" role="dialog" aria-modal="true" aria-labelledby="cl-dlg-t">
+        <div ref={ref} className="x-dialog cl-dlg" data-testid="day-trades-modal" role="dialog" aria-modal="true" aria-labelledby="cl-dlg-t">
           <header className="cl-dlg-hd">
-            <div style={{ minWidth: 0 }}>
+            <div className="x-min0">
               <small>Day breakdown</small>
               <h2 id="cl-dlg-t">{dateLabel}</h2>
               <p>{sorted.length} {sorted.length === 1 ? 'trade' : 'trades'} · {wins} won · {sorted.length - wins} lost</p>
             </div>
-            <button ref={closeRef} onClick={onClose} aria-label="Close" data-testid="day-modal-close" className="x-btn x-btn--icon x-btn--sm">
+            <button data-autofocus onClick={onClose} aria-label="Close" data-testid="day-modal-close" className="x-btn x-btn--icon x-btn--sm">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden><path d="M6 6l12 12M18 6 6 18" /></svg>
             </button>
           </header>

@@ -42,7 +42,7 @@
 /* tooltip: the dashboard's .dk-tip (desk.css, loaded with components/v6/desk) plus a width cap */
 .v6 .an-tip { max-width: 230px; }
 .v6 .an-facts { margin-top: 16px; }
-.v6 .an-facts b.pos { color: var(--g); } .v6 .an-facts b.neg { color: var(--r); }
+.v6 .an-facts b.pos { color: var(--g-tx); } .v6 .an-facts b.neg { color: var(--r-tx); }
 
 /* strike rate */
 .v6 .an-strike { display: flex; align-items: center; justify-content: center; gap: 36px; flex: 1; padding: 6px 0; flex-wrap: wrap; }
@@ -56,6 +56,10 @@
 .v6 .an-legend dt { display: flex; align-items: center; gap: 8px; color: var(--mut); }
 .v6 .an-legend dd { margin: 0; }
 .v6 .an-legend i { width: 9px; height: 9px; border-radius: 3px; display: inline-block; }
+.v6 .an-legend i.g { background: var(--g); }
+.v6 .an-legend i.r { background: var(--r); }
+.v6 .an-yh-stats { min-width: 0; flex: 1; }
+.v6 .an-yh-none { margin: 0; font-size: 13px; }
 .v6 .an-legend .t { border-top: 1px solid var(--line); padding-top: 10px; }
 .v6 .an-legend .t dt { color: var(--tx); }
 
@@ -63,7 +67,7 @@
 .v6 .an-hm { display: grid; grid-template-columns: 56px repeat(5, minmax(0, 1fr)) minmax(0, 1fr); gap: 4px; align-items: stretch; }
 .v6 .an-hm .h { font-size: 12px; color: var(--mut); text-align: center; padding-bottom: 4px; }
 .v6 .an-hm .r { font-size: 12.5px; color: var(--mut); display: flex; align-items: center; }
-.v6 .an-hm .c { height: 46px; border-radius: 10px; display: grid; place-items: center; font-size: 12.5px; color: var(--tx); background: var(--s2); white-space: nowrap; overflow: hidden; }
+.v6 .an-hm .c { height: 46px; border-radius: var(--r-ctl); display: grid; place-items: center; font-size: 12.5px; color: var(--tx); background: var(--s2); white-space: nowrap; overflow: hidden; }
 .v6 .an-hm .c.g { background: color-mix(in srgb, var(--g) var(--p), var(--s2)); }
 .v6 .an-hm .c.l { background: color-mix(in srgb, var(--r) var(--p), var(--s2)); }
 .v6 .an-hm .c.z { color: var(--dim); }
@@ -77,13 +81,13 @@
 .v6 .an-hm-lg i.g { background: color-mix(in srgb, var(--g) 50%, var(--s2)); }
 .v6 .an-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
 .v6 .an-hm-note { display: flex; flex-wrap: wrap; gap: 4px 18px; margin: 12px 0 0; font-size: 13px; color: var(--mut); }
-.v6 .an-hm-note b { font-weight: 500; color: var(--tx); } .v6 .an-hm-note b.pos { color: var(--g); } .v6 .an-hm-note b.neg { color: var(--r); }
+.v6 .an-hm-note b { font-weight: 500; color: var(--tx); } .v6 .an-hm-note b.pos { color: var(--g-tx); } .v6 .an-hm-note b.neg { color: var(--r-tx); }
 .v6 .an-peak b { color: var(--tx); font-weight: 500; }
 
 /* instruments */
 .v6 .an-sym th button { color: inherit; }
 .v6 .an-sym th button.an-sorted { color: var(--tx); }
-.v6 .an-sym td.pos { color: var(--g); } .v6 .an-sym td.neg { color: var(--r); }
+.v6 .an-sym td.pos { color: var(--g-tx); } .v6 .an-sym td.neg { color: var(--r-tx); }
 .v6 .an-sym .an-show { display: none; }
 
 /* diverging bars */
@@ -107,9 +111,9 @@
 .v6 .an-yh rect { transition: opacity .12s; }
 .v6 .an-yh rect:hover { opacity: .8; }
 .v6 .an-yh-months { list-style: none; margin: 10px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 6px; }
-.v6 .an-yh-months li { display: grid; gap: 2px; padding: 8px 10px; border-radius: 10px; background: var(--s2); }
+.v6 .an-yh-months li { display: grid; gap: 2px; padding: 8px 10px; border-radius: var(--r-ctl); background: var(--s2); }
 .v6 .an-yh-months span { font-size: 11.5px; color: var(--mut); }
-.v6 .an-yh-months b { font-size: 13px; font-weight: 500; } .v6 .an-yh-months b.pos { color: var(--g); } .v6 .an-yh-months b.neg { color: var(--r); }
+.v6 .an-yh-months b { font-size: 13px; font-weight: 500; } .v6 .an-yh-months b.pos { color: var(--g-tx); } .v6 .an-yh-months b.neg { color: var(--r-tx); }
 .v6 .an-yh-ft { display: flex; align-items: flex-end; gap: 16px; margin-top: 12px; flex-wrap: wrap; }
 .v6 .an-yh-ft .an-facts { margin-top: 0; }
 .v6 .an-yh-lg { display: flex; align-items: center; gap: 4px; font-size: 11.5px; color: var(--mut); margin-left: auto; padding-bottom: 4px; }
@@ -137,7 +141,7 @@
   .v6 .an-ring { width: 132px; height: 132px; }
   .v6 .an-ring b { font-size: 24px; }
   .v6 .an-hm { grid-template-columns: 46px repeat(5, minmax(0, 1fr)); gap: 3px; }
-  .v6 .an-hm .tot { display: none !important; }
+  .v6 .an-hm .tot { display: none; }
   .v6 .an-hm .c { height: 40px; font-size: 12px; border-radius: 8px; }
   .v6 .an-hm .r { font-size: 12px; }
   .v6 .an-sym .an-hide { display: none; }
@@ -160,7 +164,7 @@
 .v6 .an-alloc-c { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; gap: 2px; pointer-events: none; }
 .v6 .an-alloc-c b { font: 500 18px/1.2 var(--sans); }
 .v6 .an-alloc-c span { font-size: 12px; color: var(--mut); }
-.v6 .an-alloc-c span.pos { color: var(--g); } .v6 .an-alloc-c span.neg { color: var(--r); }
+.v6 .an-alloc-c span.pos { color: var(--g-tx); } .v6 .an-alloc-c span.neg { color: var(--r-tx); }
 .v6 .an-alloc-l { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
 .v6 .an-alloc-l li { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto auto; gap: 10px; align-items: center; padding: 7px 8px; border-radius: 9px; font-size: 13px; }
 .v6 .an-alloc-l li.on { background: var(--s2); }

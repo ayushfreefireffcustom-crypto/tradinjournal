@@ -8,12 +8,13 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import AppShell from '@/components/app-shell';
 import { useToast } from '@/components/toast';
-import { ErrorCard, useLoad } from '@/components/v6/copy/parts';
+import { useLoad } from '@/components/v6/ui/data';
+import ErrorCard from '@/components/v6/ui/error-card';
 import { ApiError } from '@/lib/copy-api';
 import { CATEGORIES, RISKS, catLabel, marketApi, pctS, type CandidateParam, type Category, type Creator, type MyTemplate, type PublishOptions, type Risk } from '@/lib/marketplace-api';
 import { strategiesApi } from '@/lib/strategies-api';
 import '@/styles/v6/account.css';
-import '@/styles/v6/copy.css';
+import '@/styles/v6/kit.css';
 import '@/styles/v6/markets.css';
 import '@/styles/v6/marketplace.css';
 

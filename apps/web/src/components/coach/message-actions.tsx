@@ -5,7 +5,7 @@
 // last reply, where re-running the turn is unambiguous.
 import { useEffect, useState } from 'react';
 import { ICopy, IRedo } from '@/components/v6/ai/bits';
-import { ICheck } from '@/components/v3/icons';
+import { ICheck } from '@/components/v6/icons';
 
 interface Props {
   content: string;

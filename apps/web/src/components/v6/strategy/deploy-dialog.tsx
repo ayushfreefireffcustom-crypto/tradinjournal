@@ -2,10 +2,12 @@
 
 // Start a strategy on paper or live (F15, F16).
 import { useEffect, useState } from 'react';
-import { Modal } from '@/components/v6/copy/parts';
+import Modal from '@/components/v6/ui/modal';
 import { ApiError, exchangesApi, type ExchangeConnection } from '@/lib/copy-api';
 import { TRADING_ENABLED } from '@/lib/features';
 import { deploymentsApi, type DeploymentDetail, type StrategyDetail } from '@/lib/strategies-api';
+import '@/styles/v6/kit.css';
+import '@/styles/v6/strategy.css';
 
 export default function DeployDialog({ strategy, onClose, onStarted }: { strategy: StrategyDetail; onClose: () => void; onStarted: (d: DeploymentDetail) => void }) {
   const [mode, setMode] = useState<'paper' | 'live'>('paper');

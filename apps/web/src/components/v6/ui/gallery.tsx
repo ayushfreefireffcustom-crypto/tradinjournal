@@ -3,7 +3,7 @@
 // The /dev/ui gallery (A2.28): each shared primitive in its states, so a change
 // to tokens or components.css can be reviewed in one place, in both themes.
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
-import { IPlus, ISearch, ISync } from '@/components/v3/icons';
+import { IPlus, ISearch, ISync } from '@/components/v6/icons';
 import { IEye, IMoonIcon, ISunIcon } from '@/components/v6/frame';
 import { useTheme } from '@/components/v6/use-theme';
 import { fmtUsd, pnlClass } from '@/lib/format';

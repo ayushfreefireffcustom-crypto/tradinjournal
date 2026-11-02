@@ -21,7 +21,7 @@ import { AdminMaintenancePanel } from '@/components/admin/admin-maintenance';
 import { AdminGrantsSection } from '@/components/admin/admin-grants';
 import { AdminUsersSection } from '@/components/admin/admin-users';
 import { auditLabel, fmtRelative, sentence } from '@/components/admin/admin-utils';
-import { ISync } from '@/components/v3/icons';
+import { ISync } from '@/components/v6/icons';
 import '@/styles/v6/admin.css';
 
 export default function AdminPage() {

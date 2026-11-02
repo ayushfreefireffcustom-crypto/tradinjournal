@@ -2,7 +2,7 @@
 
 // Shown once on the landing page after someone deletes their account (H6).
 import { useEffect, useState } from 'react';
-import { IClose } from '@/components/v3/icons';
+import { IClose } from '@/components/v6/icons';
 
 export default function DeletedNote() {
   const [show, setShow] = useState(false);

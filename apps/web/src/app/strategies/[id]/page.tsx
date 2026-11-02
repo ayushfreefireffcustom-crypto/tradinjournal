@@ -9,7 +9,9 @@ import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import AppShell from '@/components/app-shell';
 import { useToast } from '@/components/toast';
-import { ErrorCard, Modal, useLoad } from '@/components/v6/copy/parts';
+import { useLoad } from '@/components/v6/ui/data';
+import ErrorCard from '@/components/v6/ui/error-card';
+import Modal from '@/components/v6/ui/modal';
 import BacktestPanel from '@/components/v6/strategy/backtest-panel';
 import DeployDialog from '@/components/v6/strategy/deploy-dialog';
 import StrategyChart from '@/components/v6/strategy/strategy-chart';
@@ -17,7 +19,7 @@ import { AdvancedZone, EntryZone, ExitZone, MarketZone, RiskZone, SessionZone, S
 import { ApiError } from '@/lib/copy-api';
 import { indicatorAlertsApi } from '@/lib/indicator-alerts-api';
 import { STATUS_TEXT, deploymentsApi, strategiesApi, tone, usd, type DeploymentRow, type StrategyDetail, type StrategySpec, type Validation } from '@/lib/strategies-api';
-import '@/styles/v6/copy.css';
+import '@/styles/v6/strategy.css';
 import '@/styles/v6/markets.css';
 
 type Layout = 'cockpit' | 'flow' | 'chart';

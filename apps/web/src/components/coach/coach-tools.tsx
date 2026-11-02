@@ -6,10 +6,11 @@
 // confirm). Each tool's result is kept in the conversation.
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { Modal } from '@/components/v6/copy/parts';
+import Modal from '@/components/v6/ui/modal';
 import { ApiError } from '@/lib/copy-api';
 import { patternsApi, type ChartPattern } from '@/lib/patterns-api';
 import { INTERVALS, pct, strategiesApi, type Interval, type StrategyRow, type StrategySpec } from '@/lib/strategies-api';
+import '@/styles/v6/kit.css';
 
 const API = process.env.NEXT_PUBLIC_API_URL || '';
 export type ChipId = 'positions' | 'fills7d' | 'strategies' | 'follows';

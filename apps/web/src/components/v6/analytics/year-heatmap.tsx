@@ -131,7 +131,7 @@ export default function YearHeatmap({ trades, accountId }: { trades: Trade[]; ac
       )}
       <div className="an-yh-ft">
         {tradingDays > 0 ? (
-          <div data-testid="year-heatmap-stats" style={{ minWidth: 0, flex: 1 }}>
+          <div data-testid="year-heatmap-stats" className="an-yh-stats">
             <Facts items={[
               { l: 'Green days', v: `${stats.green} / ${tradingDays}` },
               { l: 'Best day', v: fmtUsd(stats.best, 0), c: stats.best > 0 ? 'pos' : 'neg' },
@@ -139,7 +139,7 @@ export default function YearHeatmap({ trades, accountId }: { trades: Trade[]; ac
               { l: 'Longest green run', v: `${stats.longest} day${stats.longest === 1 ? '' : 's'}` },
             ]} />
           </div>
-        ) : <p className="x-muted" style={{ margin: 0, fontSize: 13 }}>No closed trades in the last 12 months.</p>}
+        ) : <p className="x-muted an-yh-none">No closed trades in the last 12 months.</p>}
         <div className="an-yh-lg" aria-hidden>
           <span>Loss</span>
           <i style={{ background: fill(-maxAbs, maxAbs) }} /><i style={{ background: fill(-maxAbs * 0.3, maxAbs) }} />

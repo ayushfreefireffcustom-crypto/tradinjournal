@@ -68,8 +68,8 @@ export function Strike({ view }: { view: AccountStats }) {
           <div><b className="m">{total ? fmtPct(w, 0) : '—'}</b><span>win rate</span></div>
         </div>
         <dl className="an-legend">
-          <div><dt><i style={{ background: 'var(--g)' }} />Wins</dt><dd className="m">{view.totalWins}</dd></div>
-          <div><dt><i style={{ background: 'var(--r)' }} />Losses</dt><dd className="m">{view.totalLosses}</dd></div>
+          <div><dt><i className="g" />Wins</dt><dd className="m">{view.totalWins}</dd></div>
+          <div><dt><i className="r" />Losses</dt><dd className="m">{view.totalLosses}</dd></div>
           <div className="t"><dt>Total</dt><dd className="m">{total}</dd></div>
         </dl>
       </div>

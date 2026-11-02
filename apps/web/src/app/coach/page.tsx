@@ -13,7 +13,8 @@ import SourcesFooter from '@/components/coach/sources-footer';
 import ConversationSidebar from '@/components/coach/conversation-sidebar';
 import MessageActions from '@/components/coach/message-actions';
 import { IHistory, ISend, Thinking } from '@/components/v6/ai/bits';
-import { IPlus } from '@/components/v3/icons';
+import { IPlus } from '@/components/v6/icons';
+import { useDialog } from '@/components/v6/ui/use-dialog';
 import { useAccounts } from '@/lib/use-accounts';
 import { api, type AiChatMessage, type AiConversationSummary, type BrokerAccount } from '@/lib/api';
 
@@ -74,13 +75,9 @@ export default function CoachPage() {
     return () => { ro.disconnect(); window.removeEventListener('resize', fit); };
   }, []);
 
-  // Esc closes the history drawer.
-  useEffect(() => {
-    if (!sidebarOpen) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setSidebarOpen(false); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [sidebarOpen]);
+  // The history drawer on phones: Esc closes it, Tab stays inside, focus returns to the toggle.
+  const closeDrawer = useCallback(() => setSidebarOpen(false), []);
+  const drawerRef = useDialog({ open: sidebarOpen, onClose: closeDrawer });
 
   // Never leave a stream running after the page goes away.
   useEffect(() => () => abortRef.current?.abort(), []);
@@ -324,7 +321,7 @@ export default function CoachPage() {
         <ConversationSidebar {...sidebarProps} />
 
         {sidebarOpen && (
-          <div className="x-dialog-scrim ai-drawer" role="dialog" aria-modal="true" aria-label="Conversation history" onMouseDown={e => { if (e.target === e.currentTarget) setSidebarOpen(false); }}>
+          <div ref={drawerRef} className="x-dialog-scrim ai-drawer" role="dialog" aria-modal="true" aria-label="Conversation history" onMouseDown={e => { if (e.target === e.currentTarget) setSidebarOpen(false); }}>
             <div className="ai-drawer-p"><ConversationSidebar {...sidebarProps} onClose={() => setSidebarOpen(false)} /></div>
           </div>
         )}

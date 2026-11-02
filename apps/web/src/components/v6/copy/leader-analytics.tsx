@@ -9,7 +9,9 @@ import { computeStats } from '@/lib/stats';
 import { Direction, Dist, Equity, Hours, KpiStrip, Strike, SymbolTable, DayBars } from '@/components/v6/analytics/cards';
 import YearHeatmap from '@/components/v6/analytics/year-heatmap';
 import { leadersApi, type LeaderRange, type LeaderRoundTrips } from '@/lib/copy-api';
-import { useLoad } from './parts';
+import { useLoad } from '@/components/v6/ui/data';
+import '@/styles/v6/kit.css';
+import '@/styles/v6/copy.css';
 
 const DAY = 24 * 3600_000;
 const RANGE_MS: Record<LeaderRange, number> = { '7d': 7 * DAY, '30d': 30 * DAY, all: 0 };

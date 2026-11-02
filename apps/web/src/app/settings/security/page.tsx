@@ -5,9 +5,8 @@ import { useState } from 'react';
 import AppShell from '@/components/app-shell';
 import { DevicesCard, PasswordCard, TwoFactorCard, useProfile } from '@/components/v6/account/security';
 import SettingsNav from '@/components/v6/account/settings-nav';
-import { ErrorCard } from '@/components/v6/copy/parts';
+import ErrorCard from '@/components/v6/ui/error-card';
 import '@/styles/v6/account.css';
-import '@/styles/v6/copy.css';
 
 export default function SecurityPage() {
   const { profile, error, reload } = useProfile();

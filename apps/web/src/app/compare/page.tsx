@@ -8,7 +8,8 @@ import SymbolSearch from '@/components/charts/symbol-search';
 import { compareCsv, compareSeries } from '@/lib/compare';
 import { marketApi, type Candle, type MarketTimeframe } from '@/lib/market-api';
 import { fmtPct, toneOf } from '@/lib/hub-api';
-import '@/styles/v6/copy.css';
+import '@/styles/v6/kit.css';
+import '@/styles/v6/tools.css';
 import '@/styles/v6/markets.css';
 
 const RANGES: Array<{ id: string; label: string; tf: MarketTimeframe; bars: number }> = [

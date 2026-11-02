@@ -5,9 +5,11 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import AppShell from '@/components/app-shell';
-import { ErrorCard, useLoad, usePoll } from '@/components/v6/copy/parts';
+import { useLoad, usePoll } from '@/components/v6/ui/data';
+import ErrorCard from '@/components/v6/ui/error-card';
 import { fmtPct, fmtPrice, fmtUsd, hubApi, toneOf, type DerivRow, type SqueezeKind } from '@/lib/hub-api';
-import '@/styles/v6/copy.css';
+import '@/styles/v6/kit.css';
+import '@/styles/v6/tools.css';
 import Freshness from '@/components/v6/ui/freshness';
 
 const SNAP_KEY = 'tradelogs.derivatives.snapshot';

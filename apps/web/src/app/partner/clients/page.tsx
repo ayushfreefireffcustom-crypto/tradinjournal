@@ -9,7 +9,7 @@ import { useAccounts } from '@/lib/use-accounts';
 import {
   partnerApi, PartnerApiError, STATUS_LABEL, type ClientsPage, type ClientsQuery, type PartnerChannel, type ReferralStatus,
 } from '@/lib/partner-api';
-import { ISearch, ILock } from '@/components/v3/icons';
+import { ISearch, ILock } from '@/components/v6/icons';
 import PartnerGate, { GATE_CODES, type GateReason } from '@/components/v6/account/partner-gate';
 import { ClientRows, n, pct } from '@/components/v6/account/partner-parts';
 import '@/styles/v6/account.css';

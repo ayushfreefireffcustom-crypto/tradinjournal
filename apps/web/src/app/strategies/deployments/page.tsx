@@ -6,11 +6,14 @@ import Link from 'next/link';
 import { Fragment, useMemo, useState } from 'react';
 import AppShell from '@/components/app-shell';
 import { useToast } from '@/components/toast';
-import { ErrorCard, ago, useLoad, usePoll } from '@/components/v6/copy/parts';
+import { ago, useLoad, usePoll } from '@/components/v6/ui/data';
+import ErrorCard from '@/components/v6/ui/error-card';
 import Sparkline from '@/components/v6/ui/sparkline';
 import { ApiError } from '@/lib/copy-api';
 import { STATUS_TEXT, deploymentsApi, tone, usd, type DeploymentRow } from '@/lib/strategies-api';
-import '@/styles/v6/copy.css';
+import '@/styles/v6/kit.css';
+import '@/styles/v6/tools.css';
+import '@/styles/v6/strategy.css';
 import '@/styles/v6/markets.css';
 
 type Tab = 'all' | 'live' | 'paper' | 'paused' | 'errored' | 'stopped' | 'archived';

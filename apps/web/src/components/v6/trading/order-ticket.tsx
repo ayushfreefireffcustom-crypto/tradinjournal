@@ -6,8 +6,11 @@
 // sent, with a plain outcome. One request id per ticket, so a double click or a
 // retry can never place a second order.
 import { useEffect, useMemo, useState } from 'react';
-import { Modal, useLoad } from '@/components/v6/copy/parts';
+import { useLoad } from '@/components/v6/ui/data';
+import Modal from '@/components/v6/ui/modal';
 import { ApiError, exchangesApi, price, tradingApi, usd, type OrderTicket, type PlaceTicketResult, type TicketPreview, type TicketQuote, type TicketType, type TradableAccount } from '@/lib/copy-api';
+import '@/styles/v6/kit.css';
+import '@/styles/v6/trading.css';
 
 // Suggestions until the account's own contract list arrives.
 const SYMBOLS = ['BTCUSD', 'ETHUSD', 'SOLUSD', 'XRPUSD', 'DOGEUSD', 'BNBUSD'];

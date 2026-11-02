@@ -5,6 +5,7 @@ import Link from 'next/link';
 import type { MacroState } from '@/lib/macro-api';
 import { biasTone, formatIndicatorValue } from '@/lib/macro-format';
 import { BiasTag, ISearch, sentence } from '@/components/v6/macro/ui';
+import { useDialog } from '@/components/v6/ui/use-dialog';
 
 interface Props {
   open: boolean;
@@ -22,13 +23,7 @@ export default function MacroSearch({ open, onClose, state, onNavigate }: Props)
   }, [open]);
 
   // ⌘K is the app-wide palette on every page, this one included; the macro search opens from its button.
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape' && open) onClose();
-    }
-    window.addEventListener('keydown', onKey, true);
-    return () => window.removeEventListener('keydown', onKey, true);
-  }, [open, onClose]);
+  const ref = useDialog({ open, onClose });
 
   const results = useMemo(() => {
     if (!state || !q.trim()) return { indicators: [], assets: [], events: [] };
@@ -51,7 +46,7 @@ export default function MacroSearch({ open, onClose, state, onNavigate }: Props)
 
   return (
     <div className="x-dialog-scrim mc-sscrim" data-testid="macro-search" onMouseDown={onClose}>
-      <div className="mc-sdlg" role="dialog" aria-modal="true" aria-label="Search macro" onMouseDown={e => e.stopPropagation()}>
+      <div ref={ref} className="mc-sdlg" role="dialog" aria-modal="true" aria-label="Search macro" onMouseDown={e => e.stopPropagation()}>
         <div className="mc-sin">
           <ISearch size={17} />
           <input

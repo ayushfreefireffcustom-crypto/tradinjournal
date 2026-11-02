@@ -6,7 +6,7 @@ import { useCallback, useEffect, useState } from 'react';
 import AppShell, { timeAgo } from '@/components/app-shell';
 import { useAccounts } from '@/lib/use-accounts';
 import { partnerApi, PartnerApiError, type PartnerChannel, type PartnerCode, type PartnerLinks } from '@/lib/partner-api';
-import { IPlus } from '@/components/v3/icons';
+import { IPlus } from '@/components/v6/icons';
 import PartnerGate, { GATE_CODES, type GateReason } from '@/components/v6/account/partner-gate';
 import { ChannelTable, CopyButton, LinkBox, Qr, ShareRow, n, pct, place } from '@/components/v6/account/partner-parts';
 import { useConfirm } from '@/components/confirm-dialog';

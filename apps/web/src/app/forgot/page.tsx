@@ -78,7 +78,7 @@ export default function ForgotPasswordPage() {
           <p className="au-step"><span className="au-prog" aria-hidden><i className="on" /><i /></span>Step 1 of 2</p>
           <h1 className="au-t">Forgot your password?</h1>
           <p className="au-lead">Enter your email and we’ll send a 6-digit code to reset it.</p>
-          <div className="au-stack" style={{ marginTop: 24 }}>
+          <div className="au-stack au-stack--gap">
             <div className="x-field"><label htmlFor="fp-email">Email</label>
               <input id="fp-email" className="x-input" type="email" required value={email} onChange={e => setEmail(e.target.value)} data-testid="forgot-email" autoComplete="email" autoFocus placeholder="you@example.com" aria-invalid={error ? true : undefined} />
               {error && <AuthError testId="forgot-error">{error}</AuthError>}
@@ -92,7 +92,7 @@ export default function ForgotPasswordPage() {
           <p className="au-step"><span className="au-prog" aria-hidden><i className="on" /><i className="on" /></span>Step 2 of 2</p>
           <h1 className="au-t">Choose a new password</h1>
           <p className="au-lead">We sent a code to <b>{email}</b>. Enter it below with your new password.</p>
-          <div className="au-stack" style={{ marginTop: 24 }}>
+          <div className="au-stack au-stack--gap">
             <div className="x-field au-field">
               <label>6-digit code</label>
               <div className="au-codes" role="group" aria-label="6-digit code" data-testid="forgot-otp">

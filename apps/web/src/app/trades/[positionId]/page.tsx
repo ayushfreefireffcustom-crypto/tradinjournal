@@ -7,9 +7,9 @@ import AppShell from '@/components/app-shell';
 import { LoadingScreen } from '@/components/loader';
 import { api, type BrokerAccount, type Deal, type Trade, type JournalEntry } from '@/lib/api';
 import { persistSelectedAccountId } from '@/lib/use-accounts';
-import { IArrowLeft, IArrowRight } from '@/components/v3/icons';
+import { IArrowLeft, IArrowRight } from '@/components/v6/icons';
 import IconButton from '@/components/v6/ui/icon-button';
-import { useTradeCandles } from '@/components/v3/trade-candles';
+import { useTradeCandles } from '@/lib/use-trade-candles';
 import { TradeCandles } from '@/components/v6/trades/trade-candles';
 import { pctOfBalance } from '@/components/v6/trades/trade-log';
 import { SideChip } from '@/components/v6/desk';
@@ -156,7 +156,7 @@ function TradeDetail() {
             <section className="x-card tr-hero">
               <div className="tr-id">
                 <span className="x-mk">{tickerMark(trade.symbol)}</span>
-                <div style={{ minWidth: 0 }}>
+                <div className="x-min0">
                   <h2>{trade.symbol}<SideChip dir={trade.direction} /><span className={`x-tag ${trade.status === 'OPEN' ? 'x-tag--g' : ''}`}>{trade.status === 'OPEN' ? 'Open' : 'Closed'}</span></h2>
                   <p>{kind ? `${kind} · ` : ''}<span className="tr-nw">{when(trade)}</span> · <span className="tr-nw">held <span className="m">{fmtHold(trade.durationSecs)}</span></span></p>
                 </div>

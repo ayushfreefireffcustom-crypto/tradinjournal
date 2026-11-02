@@ -1,4 +1,4 @@
-// v3 icon set — 24px grid, 1.7 stroke, round caps. One family across the app.
+// The app icon set: 24px grid, 1.7 stroke, round caps. One family across the app.
 import type { SVGProps } from 'react';
 
 type P = SVGProps<SVGSVGElement> & { size?: number };

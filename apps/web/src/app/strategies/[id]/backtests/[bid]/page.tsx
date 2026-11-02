@@ -6,10 +6,13 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import AppShell from '@/components/app-shell';
-import { ErrorCard, useLoad } from '@/components/v6/copy/parts';
+import { useLoad } from '@/components/v6/ui/data';
+import ErrorCard from '@/components/v6/ui/error-card';
 import EquityChart from '@/components/v6/strategy/equity-chart';
 import { num, pct, strategiesApi, tone, usd, type Metrics, type Trade } from '@/lib/strategies-api';
-import '@/styles/v6/copy.css';
+import '@/styles/v6/kit.css';
+import '@/styles/v6/tools.css';
+import '@/styles/v6/strategy.css';
 import '@/styles/v6/markets.css';
 
 const REASON: Record<string, string> = { stop: 'Stop', target: 'Target', trailing: 'Trailing stop', breakeven: 'Break-even', time: 'Time stop', signal: 'Exit signal', opposite: 'Opposite signal', liquidation: 'Liquidated', end: 'End of test' };

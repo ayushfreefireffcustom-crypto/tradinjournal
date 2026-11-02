@@ -10,9 +10,13 @@ import AppShell from '@/components/app-shell';
 import { useToast } from '@/components/toast';
 import FollowDialog from '@/components/v6/copy/follow-dialog';
 import LeaderAnalytics from '@/components/v6/copy/leader-analytics';
-import { EquityLine, ErrorCard, GradeBadge, Monogram, ago, useLoad } from '@/components/v6/copy/parts';
-import { IArrowLeft } from '@/components/v3/icons';
+import { EquityLine, GradeBadge, Monogram } from '@/components/v6/copy/parts';
+import { ago, useLoad } from '@/components/v6/ui/data';
+import ErrorCard from '@/components/v6/ui/error-card';
+import { IArrowLeft } from '@/components/v6/icons';
 import { leadersApi, followsApi, pct, price, RANGE_LABEL, signedUsd, toneOf, usd, venueName, type LeaderDetail, type LeaderRange, type LeaderTrade } from '@/lib/copy-api';
+import '@/styles/v6/kit.css';
+import '@/styles/v6/copy.css';
 
 export default function LeaderPage() {
   const { id } = useParams<{ id: string }>();

@@ -14,7 +14,7 @@ import { PARTNERS_ENABLED, TRADING_ENABLED } from '@/lib/features';
 import { UsageTracker } from '@/components/usage-tracker';
 import LocationGate from '@/components/location-gate';
 import Frame, { COPY, NAV, type FrameNavItem } from '@/components/v6/frame';
-import { IAdmin, IBell, IBrokers, ILink, IPartner, ISettings, IUsers } from '@/components/v3/icons';
+import { IAdmin, IBell, IBrokers, ILink, IPartner, ISettings, IUsers } from '@/components/v6/icons';
 import CommandPalette from '@/components/v6/command-palette';
 import '@/styles/v6/tokens.css';
 import '@/styles/v6/components.css';

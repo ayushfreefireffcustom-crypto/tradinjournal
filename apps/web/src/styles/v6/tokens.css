@@ -1,6 +1,7 @@
 /* v6 design tokens. Dark is the default; `html[data-theme=light]` swaps the
    palette (set before paint by the script in app/layout.tsx). Scoped to `.v6`
-   so anything still on the v3/v5 stylesheets is untouched.
+   (the app frame, its portalled dialogs and the auth pages); the landing page
+   has its own scope (`.lp6`).
    Rules of the system (see styles/v6/README.md):
    - two surfaces on the page background: s1 (cards) and s2 (insets inside cards)
    - green = profit / brand, red = loss / risk; no other accent colours
@@ -20,6 +21,8 @@
   --r: #FE3A31;
   --g-soft: rgba(8, 196, 101, .13);
   --r-soft: rgba(254, 58, 49, .13);
+  --g-tx: #08C465;        /* green and red for text and icons; darker than --g/--r in light so */
+  --r-tx: #FE3A31;        /* small text keeps 4.5:1 on every surface (A7.2) */
   --on-g: #06150C;
   --hi: #EDEDED;          /* primary button / active chip background */
   --inv: #0A0A0A;         /* text on --hi */
@@ -41,11 +44,12 @@
   --shadow: none;         /* cards are flat in dark */
   --pop: #1F1F1F;
   --pop-shadow: 0 18px 40px -12px rgba(0, 0, 0, .7), 0 0 0 1px rgba(255, 255, 255, .06);
-  --focus: 0 0 0 2px var(--bg), 0 0 0 4px var(--g);
   --logo-fg: #FFFFFF;
 
+  --r-dlg: 24px;    /* dialogs and sheets */
   --r-card: 20px;
   --r-inset: 14px;
+  --r-field: 12px;  /* inputs, list rows, menu rows */
   --r-ctl: 10px;
   --r-pill: 999px;
   --sans: Satoshi, ui-sans-serif, system-ui, sans-serif;
@@ -76,6 +80,8 @@ html[data-theme=light] .v6 {
   --r: #E0342B;
   --g-soft: rgba(5, 166, 86, .11);
   --r-soft: rgba(224, 52, 43, .1);
+  --g-tx: #06733A;        /* ≥ 4.9:1 on s1, s2, s3 and the soft tints */
+  --r-tx: #BD281F;        /* ≥ 5.2:1 likewise */
   --on-g: #FFFFFF;
   --hi: #111113;
   --inv: #FFFFFF;
@@ -95,11 +101,17 @@ html[data-theme=light] .v6 {
 .v6 .m, .v6 .num { font-family: var(--mono); font-feature-settings: "tnum"; letter-spacing: -.01em; }
 /* Satoshi 400/500 only: the browser's bold for these would be 700. Zero specificity, so any rule wins. */
 .v6 :where(b, strong, h1, h2, h3, h4, h5, h6, th, dt, legend, optgroup) { font-weight: 500; }
-.v6 .pos { color: var(--g); }
-.v6 .neg { color: var(--r); }
+.v6 .pos { color: var(--g-tx); }
+.v6 .neg { color: var(--r-tx); }
+/* Tooltips are dark in both themes: profit and loss there use the tints made for --tip. */
+.v6 :is(.x-tip, .x-info-pop, .ad-tip, .ac-tip, .ai-tip, .dk-tip, .jn-tip, .cp-tip, .cmp-tip, .mk-pc-tip, .tr-pill, .tr-ohlc) .pos { color: var(--g-tip); }
+.v6 :is(.x-tip, .x-info-pop, .ad-tip, .ac-tip, .ai-tip, .dk-tip, .jn-tip, .cp-tip, .cmp-tip, .mk-pc-tip, .tr-pill, .tr-ohlc) .neg { color: var(--r-tip); }
 .v6 .flat { color: var(--mut); }   /* zero or unknown P&L (lib/format pnlClass) */
 .v6 ::selection { background: var(--g); color: var(--on-g); }
-.v6 :focus-visible { outline: none; box-shadow: var(--focus); }
+/* The keyboard focus ring. An outline (it follows border-radius) rather than a
+   box-shadow, so components that set their own box-shadow (primary buttons, the
+   current nav item) can't wipe it out depending on stylesheet order (A7.3). */
+.v6 :focus-visible { outline: 2px solid var(--g); outline-offset: 2px; }
 .v6 * { scrollbar-color: var(--s4) transparent; scrollbar-width: thin; }
 
 @media (prefers-reduced-motion: reduce) {

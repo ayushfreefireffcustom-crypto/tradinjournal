@@ -4,11 +4,12 @@
 // 25-delta skew, the term structure, the smile, and OI by strike and expiry.
 import { useEffect, useState } from 'react';
 import AppShell from '@/components/app-shell';
-import { ErrorCard, useLoad, usePoll } from '@/components/v6/copy/parts';
+import { useLoad, usePoll } from '@/components/v6/ui/data';
+import ErrorCard from '@/components/v6/ui/error-card';
 import { LineChart, MirrorBars } from '@/components/v6/options/charts';
 import OptionsHead, { useOptionsCtx } from '@/components/v6/options/head';
 import { daysLabel, expiryLabel, fmtCompact, fmtNum, fmtUsd, ivPct, optionsApi } from '@/lib/options-api';
-import '@/styles/v6/copy.css';
+import '@/styles/v6/tools.css';
 import '@/styles/v6/markets.css';
 import '@/styles/v6/options.css';
 
@@ -85,7 +86,7 @@ export default function OptionsOverviewPage() {
             <section className="x-card" aria-label="By strike" data-testid="op-ov-strikes">
               <div className="x-ch"><h2>{oiMode === 'oi' ? 'Open interest by strike' : 'Gamma by strike'}</h2>
                 <span className="x-sub">{sel ? expiryLabel(sel.expiry) : ''}</span>
-                <div className="x-seg x-seg--in x-seg--sm" role="radiogroup" aria-label="Measure" style={{ marginLeft: 'auto' }}>
+                <div className="x-seg x-seg--in x-seg--sm x-push" role="radiogroup" aria-label="Measure">
                   <button type="button" role="radio" aria-checked={oiMode === 'oi'} onClick={() => setOiMode('oi')} data-testid="op-ov-oi">OI</button>
                   <button type="button" role="radio" aria-checked={oiMode === 'gex'} onClick={() => setOiMode('gex')} data-testid="op-ov-gex">Gamma</button>
                 </div>

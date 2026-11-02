@@ -4,7 +4,7 @@
 // form, "waiting for review", or why access is off. Driven by the API error code.
 import { useState } from 'react';
 import { partnerApi, PartnerApiError } from '@/lib/partner-api';
-import { IAlert, IPartner } from '@/components/v3/icons';
+import { IAlert, IPartner } from '@/components/v6/icons';
 import '@/styles/v6/account.css';
 
 export type GateReason = 'NOT_A_PARTNER' | 'PARTNER_PENDING' | 'PARTNER_SUSPENDED' | 'PARTNER_REVOKED';

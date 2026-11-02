@@ -2,6 +2,7 @@
 
 // Equity curve with an optional baseline overlay and a drawdown strip.
 import { useEffect, useRef, useState } from 'react';
+import '@/styles/v6/strategy.css';
 
 /** Axis labels with enough decimals that the three ticks differ. */
 function axis(v: number, span: number) {

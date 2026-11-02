@@ -12,9 +12,10 @@ import { useAccounts } from '@/lib/use-accounts';
 import {
   partnerApi, type AdminPartnerRow, type PartnerStatus, type ReferrerLookup, type ReservedCode,
 } from '@/lib/partner-api';
-import { IClose, IPlus, ISearch } from '@/components/v3/icons';
+import { IClose, IPlus, ISearch } from '@/components/v6/icons';
 import { Avatar, PartnerStatusPill, day, n, pct } from '@/components/v6/account/partner-parts';
 import { useConfirm, V6Portal } from '@/components/confirm-dialog';
+import { useDialog } from '@/components/v6/ui/use-dialog';
 import '@/styles/v6/account.css';
 import '@/styles/v6/admin.css';
 import '@/styles/v6/dialogs.css';
@@ -217,10 +218,7 @@ function AddPartner({ onClose, onAdded }: { onClose: () => void; onAdded: (p: Ad
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const valid = /\S+@\S+\.\S+/.test(f.email) && (!f.code || f.code.length >= 3);
-  useEffect(() => {
-    const k = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k);
-  }, [onClose]);
+  const ref = useDialog<HTMLFormElement>({ onClose, locked: busy });
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!valid) return;
@@ -232,7 +230,7 @@ function AddPartner({ onClose, onAdded }: { onClose: () => void; onAdded: (p: Ad
   return (
     <V6Portal>
       <div className="x-dialog-scrim" onMouseDown={onClose}>
-        <form className="x-dialog ac-dlg ac-dlg--form" role="dialog" aria-modal="true" aria-label="Add partner" onMouseDown={e => e.stopPropagation()} onSubmit={submit}>
+        <form ref={ref} className="x-dialog ac-dlg ac-dlg--form" role="dialog" aria-modal="true" aria-label="Add partner" onMouseDown={e => e.stopPropagation()} onSubmit={submit}>
           <div className="ac-dlg-h">
             <div>
               <h2>Add a partner</h2>

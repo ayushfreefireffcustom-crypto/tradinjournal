@@ -10,9 +10,13 @@ import AppShell from '@/components/app-shell';
 import { useToast } from '@/components/toast';
 import FollowDialog from '@/components/v6/copy/follow-dialog';
 import StopDialog from '@/components/v6/copy/stop-dialog';
-import { ErrorCard, FollowStatusTag, ago, useCopyStream, useLoad, usePoll } from '@/components/v6/copy/parts';
-import { IArrowLeft, IPause, IPlay } from '@/components/v3/icons';
+import { FollowStatusTag, useCopyStream } from '@/components/v6/copy/parts';
+import { ago, useLoad, usePoll } from '@/components/v6/ui/data';
+import ErrorCard from '@/components/v6/ui/error-card';
+import { IArrowLeft, IPause, IPlay } from '@/components/v6/icons';
 import { followsApi, price, signedUsd, sizingLabel, toneOf, usd, type CopiedOrder } from '@/lib/copy-api';
+import '@/styles/v6/kit.css';
+import '@/styles/v6/copy.css';
 
 const STATUS: Record<string, string> = { FILLED: 'Filled', PARTIAL: 'Part filled', SKIPPED: 'Not copied', REJECTED: 'Rejected', CANCELLED: 'Not filled', EXPIRED: 'Expired', PENDING: 'Sending', SUBMITTED: 'Sent', OPEN: 'Open' };
 

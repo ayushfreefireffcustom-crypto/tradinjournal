@@ -6,11 +6,16 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import AppShell from '@/components/app-shell';
-import { ErrorCard, GradeBadge, Modal, Monogram, useLoad } from '@/components/v6/copy/parts';
+import { GradeBadge, Monogram } from '@/components/v6/copy/parts';
+import { useLoad } from '@/components/v6/ui/data';
+import ErrorCard from '@/components/v6/ui/error-card';
+import Modal from '@/components/v6/ui/modal';
 import Sparkline from '@/components/v6/ui/sparkline';
-import { IArrowRight, ILeader, ISearch } from '@/components/v3/icons';
+import { IArrowRight, ILeader, ISearch } from '@/components/v6/icons';
 import { TRADING_ENABLED } from '@/lib/features';
 import { leadersApi, followsApi, pct, RANGE_LABEL, signedUsd, toneOf, usd, venueName, type LeaderCard, type LeaderDetail, type LeaderRange, type LeaderSort } from '@/lib/copy-api';
+import '@/styles/v6/kit.css';
+import '@/styles/v6/copy.css';
 
 const SORTS: Array<{ id: LeaderSort; label: string }> = [
   { id: 'roi', label: 'Return' },

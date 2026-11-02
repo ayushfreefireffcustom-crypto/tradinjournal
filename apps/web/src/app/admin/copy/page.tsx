@@ -9,10 +9,12 @@ import AppShell from '@/components/app-shell';
 import AdminOnly from '@/components/v6/admin/admin-only';
 import { useConfirm } from '@/components/confirm-dialog';
 import { useToast } from '@/components/toast';
-import { ErrorCard, ago, usePoll } from '@/components/v6/copy/parts';
-import { ISync } from '@/components/v3/icons';
+import { ago, usePoll } from '@/components/v6/ui/data';
+import ErrorCard from '@/components/v6/ui/error-card';
+import { ISync } from '@/components/v6/icons';
 import { adminCopyApi, pct, usd, venueName, type AdminLeaderAction, type AdminLeaderRow, type EngineHealth, type KillSwitch, type LeaderStatus } from '@/lib/copy-api';
 import '@/styles/v6/admin.css';
+import '@/styles/v6/kit.css';
 import '@/styles/v6/copy.css';
 
 type View = 'PENDING' | 'VERIFIED' | 'PAUSED' | 'DELISTED' | 'ALL';

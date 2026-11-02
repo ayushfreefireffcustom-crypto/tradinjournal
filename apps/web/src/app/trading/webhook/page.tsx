@@ -7,9 +7,12 @@ import { useState } from 'react';
 import Link from 'next/link';
 import AppShell from '@/components/app-shell';
 import { useToast } from '@/components/toast';
-import { ErrorCard, Modal, useLoad } from '@/components/v6/copy/parts';
+import { useLoad } from '@/components/v6/ui/data';
+import ErrorCard from '@/components/v6/ui/error-card';
+import Modal from '@/components/v6/ui/modal';
 import { ApiError, exchangesApi, webhookApi, type TradingWebhook, type WebhookEvent } from '@/lib/copy-api';
-import '@/styles/v6/copy.css';
+import '@/styles/v6/kit.css';
+import '@/styles/v6/trading.css';
 
 const when = (iso: string) => new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit' });
 const TONE: Record<WebhookEvent['status'], string> = { ordered: 'x-tag--g', duplicate: '', rejected: 'x-tag--r', failed: 'x-tag--r' };

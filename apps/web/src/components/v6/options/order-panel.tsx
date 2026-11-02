@@ -5,10 +5,11 @@
 // legs go out one at a time and stop at the first one the exchange refuses.
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { Modal } from '@/components/v6/copy/parts';
+import Modal from '@/components/v6/ui/modal';
 import { ApiError, exchangesApi, type ExchangeConnection } from '@/lib/copy-api';
 import { TRADING_ENABLED } from '@/lib/features';
 import { fmtNum, fmtUsd, optionsApi, type BasketLeg, type BasketPlan, type BasketResult, type LegInput, type OptionsCtx, type Pricing } from '@/lib/options-api';
+import '@/styles/v6/kit.css';
 
 const PRICING: Array<[Pricing, string]> = [['touch', 'Limit at best price'], ['mark', 'Limit at mark'], ['market', 'Market']];
 const OUTCOME: Record<string, string> = { filled: 'Filled', partial: 'Part filled', resting: 'Waiting', rejected: 'Refused', unconfirmed: 'Not confirmed', skipped: 'Not sent' };

@@ -5,9 +5,12 @@
 import { useState } from 'react';
 import AppShell from '@/components/app-shell';
 import { useToast } from '@/components/toast';
-import { ErrorCard, Modal, ago, useLoad } from '@/components/v6/copy/parts';
+import { ago, useLoad } from '@/components/v6/ui/data';
+import ErrorCard from '@/components/v6/ui/error-card';
+import Modal from '@/components/v6/ui/modal';
 import { ApiError, apiBase, apiKeysApi, type ApiKeyRow } from '@/lib/copy-api';
-import '@/styles/v6/copy.css';
+import '@/styles/v6/kit.css';
+import '@/styles/v6/trading.css';
 
 export default function ApiKeysPage() {
   const toast = useToast();

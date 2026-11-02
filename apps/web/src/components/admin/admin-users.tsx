@@ -4,7 +4,7 @@ import { useState } from 'react';
 import type { AdminUserFilter, AdminUserRowDto } from '@/lib/admin-api';
 import { fmtRelative, sentence, statusTone, tagClass } from './admin-utils';
 import { UserDrawer } from './user-drawer';
-import { ISearch } from '@/components/v3/icons';
+import { ISearch } from '@/components/v6/icons';
 
 const FILTERS: { id: AdminUserFilter; label: string }[] = [
   { id: 'all', label: 'All' },

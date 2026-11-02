@@ -10,7 +10,8 @@ import { useToast } from '@/components/toast';
 import { ApiError } from '@/lib/copy-api';
 import { fmtPrice } from '@/lib/hub-api';
 import { strategiesApi, tone, usd, type ChartGroup, type ChartPreview, type ChartThreshold, type SignalGroup, type StrategyCondition, type StrategySpec } from '@/lib/strategies-api';
-import { IClose } from '@/components/v3/icons';
+import { IClose } from '@/components/v6/icons';
+import '@/styles/v6/strategy.css';
 
 const OPS: Record<string, string> = { gt: '>', gte: '≥', lt: '<', lte: '≤', eq: '=', crosses_above: 'crosses above', crosses_below: 'crosses below' };
 const GROUP_TEXT: Record<ChartGroup, string> = { long: 'Long entry', short: 'Short entry', exitLong: 'Exit long', exitShort: 'Exit short' };
@@ -295,7 +296,7 @@ export default function StrategyChart({ spec, set }: { spec: StrategySpec; set: 
 
   return (
     <section className="x-card sc-card" aria-label="Chart" data-testid="sc-card">
-      <div className="sc-top">
+      <div className="sc-chead">
         {symbols.length > 1 ? (
           <select className="x-input sc-sym" value={d?.symbol ?? symbols[0]} onChange={e => setSymbol(e.target.value)} aria-label="Market" data-testid="sc-symbol">{symbols.map(s => <option key={s}>{s}</option>)}</select>
         ) : <b className="sc-symb">{symbols[0] ?? '—'}</b>}
@@ -357,7 +358,7 @@ export default function StrategyChart({ spec, set }: { spec: StrategySpec; set: 
                   <title>{`${t.side === 'long' ? 'Long' : 'Short'} at ${fmtPrice(t.entryPrice)}${t.exitPrice != null ? ` → ${fmtPrice(t.exitPrice)} (${t.reason}) ${usd(t.pnl)}` : ', still open'}`}</title>
                   <line x1={X(a)} x2={X(b)} y1={ya} y2={Y('price', end)} stroke={col} strokeDasharray="3 3" strokeWidth={1.2} />
                   <polygon points={tri} fill={t.side === 'long' ? 'var(--g)' : 'var(--r)'} />
-                  {t.exitPrice != null && <text x={X(b)} y={Y('price', t.exitPrice) + 4} textAnchor="middle" className="sc-x" fill={col}>×</text>}
+                  {t.exitPrice != null && <text x={X(b)} y={Y('price', t.exitPrice) + 4} textAnchor="middle" className="sc-exitmark" fill={col}>×</text>}
                 </g>
               );
             })}

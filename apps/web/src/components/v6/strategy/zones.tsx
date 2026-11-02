@@ -7,6 +7,8 @@ import SymbolSearch from '@/components/charts/symbol-search';
 import GroupEditor from './group-editor';
 import type { CatalogueItem } from '@/lib/indicator-alerts-api';
 import { INTERVALS, VENUES, emptyCondition, type Interval, type SessionWindow, type SignalGroup, type Sizing, type StrategySpec, type Venue } from '@/lib/strategies-api';
+import '@/styles/v6/kit.css';
+import '@/styles/v6/strategy.css';
 
 type Set = (fn: (s: StrategySpec) => StrategySpec) => void;
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];

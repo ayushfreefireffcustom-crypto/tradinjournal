@@ -4,8 +4,10 @@
 // pattern (E9). Clicking a pattern highlights it on the chart and draws its
 // measured-move target.
 import { useState } from 'react';
-import { Modal, useLoad } from '@/components/v6/copy/parts';
+import { useLoad } from '@/components/v6/ui/data';
+import Modal from '@/components/v6/ui/modal';
 import { STATUS_LABEL, patternsApi, type ChartPattern, type PatternsResult } from '@/lib/patterns-api';
+import '@/styles/v6/kit.css';
 
 const px = (v: number | null | undefined) => (v == null ? '—' : Math.abs(v) >= 1000 ? v.toLocaleString('en-US', { maximumFractionDigits: 2 }) : v.toLocaleString('en-US', { maximumSignificantDigits: 6 }));
 

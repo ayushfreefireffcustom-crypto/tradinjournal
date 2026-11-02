@@ -6,11 +6,10 @@ import { useCallback, useEffect, useState } from 'react';
 import AppShell from '@/components/app-shell';
 import AdminOnly from '@/components/v6/admin/admin-only';
 import { useToast } from '@/components/toast';
-import { ErrorCard } from '@/components/v6/copy/parts';
+import ErrorCard from '@/components/v6/ui/error-card';
 import { accountApi, deviceOf, type AdminFeedbackRow } from '@/lib/account-api';
 import '@/styles/v6/account.css';
 import '@/styles/v6/admin.css';
-import '@/styles/v6/copy.css';
 
 const VIEWS: Array<[string, string]> = [['new', 'New'], ['read', 'Read'], ['done', 'Resolved'], ['', 'All']];
 const KIND: Record<string, string> = { bug: 'Bug', feedback: 'Feedback', question: 'Question' };

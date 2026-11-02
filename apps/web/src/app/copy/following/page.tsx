@@ -8,9 +8,13 @@ import AppShell from '@/components/app-shell';
 import { useToast } from '@/components/toast';
 import FollowDialog from '@/components/v6/copy/follow-dialog';
 import StopDialog from '@/components/v6/copy/stop-dialog';
-import { ErrorCard, FollowStatusTag, Monogram, ago, useCopyStream, useLoad, usePoll } from '@/components/v6/copy/parts';
-import { IMirror, IPause, IPlay } from '@/components/v3/icons';
+import { FollowStatusTag, Monogram, useCopyStream } from '@/components/v6/copy/parts';
+import { ago, useLoad, usePoll } from '@/components/v6/ui/data';
+import ErrorCard from '@/components/v6/ui/error-card';
+import { IMirror, IPause, IPlay } from '@/components/v6/icons';
 import { followsApi, signedUsd, sizingLabel, toneOf, venueName, type Follow } from '@/lib/copy-api';
+import '@/styles/v6/kit.css';
+import '@/styles/v6/copy.css';
 
 export default function FollowingPage() {
   const toast = useToast();

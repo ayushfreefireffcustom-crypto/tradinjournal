@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 import { adminApi, type AdminUserDossierDto } from '@/lib/admin-api';
 import { fmtDate, fmtRelative, sentence, statusTone, tagClass } from './admin-utils';
 import { V6Portal } from '@/components/confirm-dialog';
-import { IClose, ISync } from '@/components/v3/icons';
+import { IClose, ISync } from '@/components/v6/icons';
+import { useDialog } from '@/components/v6/ui/use-dialog';
 import AdminUserCopySection from '@/components/v6/copy/admin-user-copy';
 import { TRADING_ENABLED } from '@/lib/features';
 import '@/styles/v6/admin.css';
@@ -34,16 +35,12 @@ export function UserDrawer({
     return () => { cancelled = true; };
   }, [userId]);
 
-  useEffect(() => {
-    const k = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    window.addEventListener('keydown', k);
-    return () => window.removeEventListener('keydown', k);
-  }, [onClose]);
+  const ref = useDialog<HTMLElement>({ onClose });
 
   return (
     <V6Portal>
       <div className="ad-drawer-scrim" onClick={onClose} aria-hidden />
-      <aside className="ad-drawer" role="dialog" aria-modal="true" aria-label="User details" data-testid="admin-user-drawer">
+      <aside ref={ref} className="ad-drawer" role="dialog" aria-modal="true" aria-label="User details" data-testid="admin-user-drawer">
         <header className="ad-drawer-h">
           <span className="x-label">User details</span>
           <button type="button" onClick={onClose} className="x-btn x-btn--ghost x-btn--icon x-btn--sm" aria-label="Close"><IClose size={16} /></button>

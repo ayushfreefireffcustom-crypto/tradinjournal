@@ -6,9 +6,9 @@
 .v6 .ad-strip3 { --n: 3; }
 .v6 .ad-strip4 { --n: 4; }
 .v6 .ad-small { display: block; font-size: 12px; color: var(--mut); margin-top: 3px; white-space: normal; }
-.v6 .ad-small.neg { color: var(--r); }
-.v6 .x-strip b.pos { color: var(--g); }
-.v6 .x-strip b.neg { color: var(--r); }
+.v6 .ad-small.neg { color: var(--r-tx); }
+.v6 .x-strip b.pos { color: var(--g-tx); }
+.v6 .x-strip b.neg { color: var(--r-tx); }
 .v6 .ad-note { margin: 12px 0 0; font-size: 12.5px; color: var(--mut); line-height: 1.5; }
 .v6 .ad-none { margin: 6px 0 0; font-size: 13px; color: var(--mut); }
 .v6 .ad-tx { color: var(--tx); font-weight: 500; }
@@ -42,7 +42,7 @@
 .v6 .ad-bar.on i { opacity: 1; }
 .v6 .ad-tip {
   position: absolute; top: 0; transform: translateX(-50%); z-index: 3; pointer-events: none; display: grid; gap: 2px; min-width: 116px;
-  background: var(--tip); color: #F2F2F2; border-radius: 10px; padding: 8px 11px; font-size: 11.5px; box-shadow: 0 10px 24px rgba(0, 0, 0, .3); white-space: nowrap;
+  background: var(--tip); color: #F2F2F2; border-radius: var(--r-ctl); padding: 8px 11px; font-size: 11.5px; box-shadow: 0 10px 24px rgba(0, 0, 0, .3); white-space: nowrap;
 }
 .v6 .ad-tip.l { transform: translateX(-100%); }
 .v6 .ad-tip span { color: #A0A0A0; }
@@ -78,7 +78,7 @@
 .v6 .ad-geo-list li { display: flex; justify-content: space-between; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 13.5px; }
 .v6 .ad-geo-list li:last-child { border-bottom: 0; }
 .v6 .ad-geo-list li span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.v6 .ad-geo-list li b { font-weight: 500; color: var(--g); }
+.v6 .ad-geo-list li b { font-weight: 500; color: var(--g-tx); }
 .v6 .ad-map .leaflet-popup-content-wrapper, .v6 .ad-map .leaflet-popup-tip { background: var(--pop); color: var(--tx); box-shadow: var(--pop-shadow); }
 .v6 .ad-map .leaflet-popup-content { font: 400 12.5px var(--sans); margin: 10px 12px; }
 .v6 .ad-map .leaflet-bar a { background: var(--pop); color: var(--tx); border-color: var(--line); }
@@ -116,10 +116,10 @@
 .v6 .ad-brk { max-width: 180px; }
 .v6 .ad-chev { color: var(--dim); font-size: 18px; }
 .v6 .ad-ell { max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
-.v6 .ad-note-cell { max-width: 280px; white-space: normal !important; }
+.v6 td.ad-note-cell { max-width: 280px; white-space: normal; }
 .v6 .ad-note-cell span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; color: var(--mut); }
-.v6 .x-card .ad-revoke { color: var(--r); }
-.v6 .x-card .ad-revoke:hover { background: var(--r-soft); color: var(--r); }
+.v6 .x-card .ad-revoke { color: var(--r-tx); }
+.v6 .x-card .ad-revoke:hover { background: var(--r-soft); color: var(--r-tx); }
 .v6 .ad-tbl-sk { display: grid; gap: 10px; }
 .v6 .ad-tbl-sk i { display: block; height: 46px; }
 .v6 .ad-pager { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); font-size: 12.5px; color: var(--mut); flex-wrap: wrap; }
@@ -138,7 +138,7 @@
 html[data-theme=light] .v6 .ad-drawer-scrim { background: rgba(17, 17, 19, .35); }
 .v6 .ad-drawer {
   position: fixed; top: 10px; right: 10px; bottom: 10px; z-index: 61; width: min(440px, calc(100vw - 20px)); display: flex; flex-direction: column;
-  background: var(--s1); border-radius: 24px; box-shadow: var(--pop-shadow); animation: ad-slide .2s var(--ease); overflow: hidden;
+  background: var(--s1); border-radius: var(--r-dlg); box-shadow: var(--pop-shadow); animation: ad-slide .2s var(--ease); overflow: hidden;
 }
 @keyframes ad-slide { from { transform: translateX(24px); opacity: 0; } }
 .v6 .ad-drawer-h { display: flex; align-items: center; justify-content: space-between; padding: 14px 14px 10px 22px; flex: none; }
@@ -243,7 +243,7 @@ html[data-theme=light] .v6 .ad-drawer-scrim { background: rgba(17, 17, 19, .35);
   .v6 .ad-scroll { margin: 0 -16px; padding: 0 16px; }
   .v6 .ad-search { max-width: none; flex-basis: 100%; }
   .v6 .ad-grant-form { grid-template-columns: minmax(0, 1fr); }
-  .v6 .ad-drawer { top: auto; left: 0; right: 0; bottom: 0; width: 100%; max-height: 92dvh; border-radius: 24px 24px 0 0; animation-name: ad-up; }
+  .v6 .ad-drawer { top: auto; left: 0; right: 0; bottom: 0; width: 100%; max-height: 92dvh; border-radius: var(--r-dlg) var(--r-dlg) 0 0; animation-name: ad-up; }
   @keyframes ad-up { from { transform: translateY(24px); opacity: 0; } }
   .v6 .ad-drawer-bd { padding: 4px 18px 18px; }
   .v6 .ad-drawer-f { padding: 12px 18px calc(16px + env(safe-area-inset-bottom)); }

@@ -8,7 +8,7 @@ import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { Trade } from '@/lib/api';
 import type { Candle } from '@/lib/market-api';
 import { candlesFromReal } from '@/components/replay/trade-chart';
-import { synthCandles } from '@/components/v3/trade-candles';
+import { synthCandles } from '@/lib/use-trade-candles';
 import { fmtPrice } from '@/lib/desk';
 
 const MONO = { fontFamily: 'var(--mono)' } as const;

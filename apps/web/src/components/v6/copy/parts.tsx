@@ -1,50 +1,14 @@
 'use client';
 
-// Shared pieces for the exchange and copy-trading pages: a dialog shell,
-// sparkline, equity chart, grade and status badges, and a small fetch hook.
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
-import { V6Portal } from '@/components/confirm-dialog';
-import { IClose } from '@/components/v3/icons';
+// Copy-trading pieces: the follows stream, the equity chart, grade and status
+// badges and the monogram. The generic helpers (useLoad, usePoll, ago, Modal,
+// ErrorCard) live in components/v6/ui.
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { Follow, RiskGrade } from '@/lib/copy-api';
 import { usd } from '@/lib/copy-api';
-import '@/styles/v6/copy.css';
-import '@/styles/v6/dialogs.css';
+import '@/styles/v6/kit.css';
 
 const MONO = { fontFamily: 'var(--mono)' } as const;
-
-/** Load data once and on demand; keeps the last good value while reloading. */
-export function useLoad<T>(fn: () => Promise<T>, deps: unknown[]) {
-  const [data, setData] = useState<T | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const seq = useRef(0);
-  const run = useCallback(async () => {
-    const n = ++seq.current;
-    setLoading(true);
-    try {
-      const v = await fn();
-      if (n === seq.current) { setData(v); setError(null); }
-    } catch (e) {
-      if (n === seq.current) setError(e instanceof Error ? e.message : 'Something went wrong');
-    } finally {
-      if (n === seq.current) setLoading(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, deps);
-  useEffect(() => { void run(); }, [run]);
-  return { data, error, loading, reload: run, setData };
-}
-
-/** Re-run `fn` every `ms` while the tab is visible. */
-export function usePoll(fn: () => void, ms: number, on = true) {
-  const ref = useRef(fn);
-  ref.current = fn;
-  useEffect(() => {
-    if (!on) return;
-    const t = setInterval(() => { if (document.visibilityState === 'visible') ref.current(); }, ms);
-    return () => clearInterval(t);
-  }, [ms, on]);
-}
 
 /**
  * Refetch when the user's copy trading changes (C3.4): the API pings
@@ -65,32 +29,6 @@ export function useCopyStream(onChange: () => void, on = true) {
     };
     return () => { if (t) clearTimeout(t); es.close(); };
   }, [on]);
-}
-
-export function Modal({ title, sub, onClose, children, footer, busy, wide, testId }: {
-  title: string; sub?: ReactNode; onClose: () => void; children: ReactNode; footer?: ReactNode; busy?: boolean; wide?: boolean; testId?: string;
-}) {
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && !busy) onClose(); };
-    document.addEventListener('keydown', onKey);
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => { document.removeEventListener('keydown', onKey); document.body.style.overflow = prev; };
-  }, [onClose, busy]);
-  return (
-    <V6Portal>
-      <div className="x-dialog-scrim" onMouseDown={() => !busy && onClose()}>
-        <div className={`x-dialog ac-dlg cp-dlg ${wide ? 'cp-dlg--wide' : ''}`} role="dialog" aria-modal="true" aria-labelledby="cp-dlg-t" data-testid={testId} onMouseDown={e => e.stopPropagation()}>
-          <div className="ac-dlg-h">
-            <div><h2 id="cp-dlg-t">{title}</h2>{sub && <p className="ac-dlg-msg">{sub}</p>}</div>
-            <button type="button" className="x-btn x-btn--ghost x-btn--icon x-btn--sm" onClick={onClose} disabled={busy} aria-label="Close"><IClose size={16} /></button>
-          </div>
-          <div className="cp-dlg-body">{children}</div>
-          {footer && <footer className="ac-dlg-ft cp-dlg-ft">{footer}</footer>}
-        </div>
-      </div>
-    </V6Portal>
-  );
 }
 
 function useSize<T extends HTMLElement>() {
@@ -187,25 +125,4 @@ export function FollowStatusTag({ f }: { f: Pick<Follow, 'status' | 'pauseReason
 export function Monogram({ name }: { name: string }) {
   const m = name.trim().split(/\s+/).map(w => w[0] ?? '').join('').slice(0, 2).toUpperCase() || 'TL';
   return <span className="x-mk cp-mono" aria-hidden>{m}</span>;
-}
-
-export function ErrorCard({ message, onRetry }: { message: string; onRetry?: () => void }) {
-  return (
-    <div className="x-card x-empty" role="alert">
-      <b>Couldn&rsquo;t load this</b>
-      <p>{message}</p>
-      {onRetry && <button className="x-btn" onClick={onRetry}>Try again</button>}
-    </div>
-  );
-}
-
-/** "3 min ago" for recent stamps, a date for older ones. */
-export function ago(iso: string | null | undefined): string {
-  if (!iso) return '—';
-  const s = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 1000));
-  if (s < 45) return 'just now';
-  if (s < 3600) return `${Math.max(1, Math.round(s / 60))} min ago`;
-  if (s < 86400) return `${Math.round(s / 3600)} h ago`;
-  if (s < 7 * 86400) return `${Math.round(s / 86400)} d ago`;
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }

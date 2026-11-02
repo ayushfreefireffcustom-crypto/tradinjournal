@@ -5,13 +5,16 @@
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import AppShell from '@/components/app-shell';
-import { ErrorCard, Modal, useLoad, usePoll } from '@/components/v6/copy/parts';
+import { useLoad, usePoll } from '@/components/v6/ui/data';
+import ErrorCard from '@/components/v6/ui/error-card';
+import Modal from '@/components/v6/ui/modal';
 import SymbolSearch from '@/components/charts/symbol-search';
 import {
   RATING_TEXT, SIGNAL_TFS, signalsApi,
   type RatingGroup, type RatingLabel, type SignalCell, type SignalRow, type SignalTf, type TfRating,
 } from '@/lib/signals-api';
-import '@/styles/v6/copy.css';
+import '@/styles/v6/kit.css';
+import '@/styles/v6/tools.css';
 import '@/styles/v6/markets.css';
 import Freshness from '@/components/v6/ui/freshness';
 

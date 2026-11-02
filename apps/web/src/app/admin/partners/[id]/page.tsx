@@ -11,7 +11,7 @@ import { useAccounts } from '@/lib/use-accounts';
 import {
   partnerApi, type AdminPartnerDetail, type AdminPartnerRow, type ClientsPage, type PartnerClient, type PartnerRange, type StatusAction,
 } from '@/lib/partner-api';
-import { IArrowLeft } from '@/components/v3/icons';
+import { IArrowLeft } from '@/components/v6/icons';
 import {
   ActivityFeed, Avatar, ChannelTable, ClientRows, Funnel, PartnerStatusPill, RangeSeg, TrendCard, day, n,
 } from '@/components/v6/account/partner-parts';

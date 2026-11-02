@@ -5,10 +5,13 @@
 // strategy. "Save as PDF" prints a clean page.
 import { useEffect, useMemo, useState } from 'react';
 import AppShell from '@/components/app-shell';
-import { ErrorCard, useLoad } from '@/components/v6/copy/parts';
+import { useLoad } from '@/components/v6/ui/data';
+import ErrorCard from '@/components/v6/ui/error-card';
 import EquityChart from '@/components/v6/strategy/equity-chart';
 import { deploymentsApi, num, pct, tone, usd, type Report } from '@/lib/strategies-api';
-import '@/styles/v6/copy.css';
+import '@/styles/v6/kit.css';
+import '@/styles/v6/tools.css';
+import '@/styles/v6/strategy.css';
 import '@/styles/v6/markets.css';
 
 const MODE_KEY = 'tradelogs.strategies.mode';

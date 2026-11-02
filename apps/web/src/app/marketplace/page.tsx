@@ -6,10 +6,10 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import AppShell from '@/components/app-shell';
-import { ErrorCard, useLoad } from '@/components/v6/copy/parts';
+import { useLoad } from '@/components/v6/ui/data';
+import ErrorCard from '@/components/v6/ui/error-card';
 import TemplateCard from '@/components/v6/marketplace/card';
 import { CATEGORIES, RISKS, marketApi, type Sort } from '@/lib/marketplace-api';
-import '@/styles/v6/copy.css';
 import '@/styles/v6/markets.css';
 import '@/styles/v6/marketplace.css';
 

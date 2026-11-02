@@ -13,7 +13,7 @@ import ConfirmDialog from '@/components/confirm-dialog';
 import { useToast } from '@/components/toast';
 import { useAccounts } from '@/lib/use-accounts';
 import { api, type BrokerAccount, type AccountStats } from '@/lib/api';
-import { IPlus, ISearch, IClose, ILock } from '@/components/v3/icons';
+import { IPlus, ISearch, IClose, ILock } from '@/components/v6/icons';
 import '@/styles/v6/account.css';
 
 const MAX_ACCOUNTS = 2;

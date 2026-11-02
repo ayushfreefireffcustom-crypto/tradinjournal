@@ -11,9 +11,10 @@
 // bottom sheet on phones.
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { IClose } from '@/components/v3/icons';
+import { IClose } from '@/components/v6/icons';
 import '@/styles/v6/tokens.css';
 import '@/styles/v6/components.css';
+import { useDialog } from '@/components/v6/ui/use-dialog';
 import '@/styles/v6/dialogs.css';
 
 /** Render children in a `.v6` scope under <body>. Nothing renders on the server. */
@@ -45,24 +46,18 @@ export default function ConfirmDialog({
   onConfirm,
   onClose,
 }: Props) {
-  // Esc to close + lock body scroll while open.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && !loading) onClose(); };
-    document.addEventListener('keydown', onKey);
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => { document.removeEventListener('keydown', onKey); document.body.style.overflow = prev; };
-  }, [onClose, loading]);
+  // Esc closes, Tab stays inside, the page behind doesn't scroll, focus returns to the opener.
+  const ref = useDialog({ onClose, locked: loading });
 
   return (
     <V6Portal>
       <div className="x-dialog-scrim" onMouseDown={() => !loading && onClose()}>
-        <div className="x-dialog ac-dlg" role="alertdialog" aria-modal="true" aria-labelledby="cd-t" aria-describedby="cd-m" data-testid="confirm-dialog" onMouseDown={e => e.stopPropagation()}>
+        <div ref={ref} className="x-dialog ac-dlg" role="alertdialog" aria-modal="true" aria-labelledby="cd-t" aria-describedby="cd-m" data-testid="confirm-dialog" onMouseDown={e => e.stopPropagation()}>
           <h2 id="cd-t">{title}</h2>
           <p id="cd-m" className="ac-dlg-msg">{message}</p>
           <footer className="ac-dlg-ft">
             <button type="button" onClick={onClose} disabled={loading} data-testid="confirm-cancel" className="x-btn">{cancelLabel}</button>
-            <button type="button" onClick={onConfirm} disabled={loading} data-testid="confirm-accept" className={`x-btn ${danger ? 'x-btn--danger' : 'x-btn--hi'}`} autoFocus>{loading ? 'Working…' : confirmLabel}</button>
+            <button type="button" onClick={onConfirm} disabled={loading} data-testid="confirm-accept" className={`x-btn ${danger ? 'x-btn--danger' : 'x-btn--hi'}`} data-autofocus>{loading ? 'Working…' : confirmLabel}</button>
           </footer>
         </div>
       </div>
@@ -87,8 +82,6 @@ export function useConfirm(): [ReactNode, (o: ConfirmOptions) => Promise<Confirm
   const [open, setOpen] = useState<ConfirmOptions | null>(null);
   const [reason, setReason] = useState('');
   const resolver = useRef<((r: ConfirmResult) => void) | null>(null);
-  const confirmRef = useRef<HTMLButtonElement>(null);
-  const reasonRef = useRef<HTMLTextAreaElement>(null);
 
   const ask = useCallback((o: ConfirmOptions) => new Promise<ConfirmResult>(resolve => {
     resolver.current?.(null);
@@ -103,19 +96,12 @@ export function useConfirm(): [ReactNode, (o: ConfirmOptions) => Promise<Confirm
     setOpen(null);
   }, []);
 
-  useEffect(() => {
-    if (!open) return;
-    // The portal mounts a tick later; focus once it's there.
-    const t = setTimeout(() => (open.reason ? reasonRef.current : confirmRef.current)?.focus(), 0);
-    const k = (e: KeyboardEvent) => { if (e.key === 'Escape') close(null); };
-    window.addEventListener('keydown', k);
-    return () => { clearTimeout(t); window.removeEventListener('keydown', k); };
-  }, [open, close]);
+  const dlgRef = useDialog<HTMLFormElement>({ open: !!open, onClose: () => close(null) });
 
   const dialog = open ? (
     <V6Portal>
       <div className="x-dialog-scrim" onMouseDown={() => close(null)}>
-        <form className="x-dialog ac-dlg" role="alertdialog" aria-modal="true" aria-labelledby="ac-confirm-t" onMouseDown={e => e.stopPropagation()}
+        <form ref={dlgRef} className="x-dialog ac-dlg" role="alertdialog" aria-modal="true" aria-labelledby="ac-confirm-t" onMouseDown={e => e.stopPropagation()}
           onSubmit={e => { e.preventDefault(); if (open.reasonRequired && reason.trim().length < 3) return; close({ reason: reason.trim() || undefined }); }} data-testid="confirm-dialog">
           <div className="ac-dlg-h">
             <h2 id="ac-confirm-t">{open.title}</h2>
@@ -125,14 +111,14 @@ export function useConfirm(): [ReactNode, (o: ConfirmOptions) => Promise<Confirm
           {open.reason && (
             <div className="x-field ac-dlg-reason">
               <label htmlFor="ac-confirm-reason">{open.reasonLabel ?? 'Reason'} {!open.reasonRequired && <span className="x-dim">(optional, kept on the note trail)</span>}</label>
-              <textarea id="ac-confirm-reason" ref={reasonRef} rows={2} maxLength={300} value={reason} onChange={e => setReason(e.target.value)} data-testid="confirm-reason" className="x-textarea ac-dlg-ta"
+              <textarea id="ac-confirm-reason" data-autofocus rows={2} maxLength={300} value={reason} onChange={e => setReason(e.target.value)} data-testid="confirm-reason" className="x-textarea ac-dlg-ta"
                 // Enter confirms (what people expect in a dialog); Shift+Enter adds a line.
                 onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); e.currentTarget.form?.requestSubmit(); } }} />
             </div>
           )}
           <footer className="ac-dlg-ft">
             <button type="button" className="x-btn" onClick={() => close(null)} data-testid="confirm-cancel">Cancel</button>
-            <button ref={confirmRef} type="submit" className={`x-btn ${open.tone === 'danger' ? 'x-btn--danger' : 'x-btn--hi'}`} data-testid="confirm-ok" disabled={!!open.reasonRequired && reason.trim().length < 3}>{open.confirmLabel ?? 'Confirm'}</button>
+            <button type="submit" data-autofocus={open.reason ? undefined : true} className={`x-btn ${open.tone === 'danger' ? 'x-btn--danger' : 'x-btn--hi'}`} data-testid="confirm-ok" disabled={!!open.reasonRequired && reason.trim().length < 3}>{open.confirmLabel ?? 'Confirm'}</button>
           </footer>
         </form>
       </div>

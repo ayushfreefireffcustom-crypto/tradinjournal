@@ -7,12 +7,11 @@ import { useCallback, useEffect, useState } from 'react';
 import AppShell from '@/components/app-shell';
 import AdminOnly from '@/components/v6/admin/admin-only';
 import { useToast } from '@/components/toast';
-import { ErrorCard } from '@/components/v6/copy/parts';
+import ErrorCard from '@/components/v6/ui/error-card';
 import { ApiError } from '@/lib/copy-api';
 import { catLabel, marketApi, pctS, riskLabel, type AdminQueue } from '@/lib/marketplace-api';
 import '@/styles/v6/account.css';
 import '@/styles/v6/admin.css';
-import '@/styles/v6/copy.css';
 import '@/styles/v6/marketplace.css';
 
 const VIEWS: Array<[string, string]> = [['pending', 'Waiting for review'], ['published', 'Listed'], ['approved', 'Approved creators'], ['all', 'All']];

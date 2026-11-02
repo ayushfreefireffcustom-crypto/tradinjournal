@@ -4,6 +4,7 @@ import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import { COUNTRIES } from '@/lib/countries';
 import { locationApi, type PlaceSuggestion } from '@/lib/location-api';
 import { MapPin, SpinnerGap } from '@phosphor-icons/react';
+import { useDialog } from '@/components/v6/ui/use-dialog';
 import '@/styles/v6/tokens.css';
 import '@/styles/v6/components.css';
 import '@/styles/v6/dialogs.css';
@@ -111,6 +112,8 @@ export default function LocationForm({
   const [city, setCity] = useState(draft?.city ?? initial?.city ?? '');
   const [postalCode, setPostalCode] = useState(draft?.postalCode ?? initial?.postalCode ?? '');
   useEffect(() => { if (blocking) gateDraft = { country, city, postalCode }; }, [blocking, country, city, postalCode]);
+  // The gate can't be dismissed (no Esc), but focus starts inside it and stays there.
+  const gateRef = useDialog({ open: blocking });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [cityOpen, setCityOpen] = useState(false);
@@ -264,7 +267,7 @@ export default function LocationForm({
   return (
     <div className="v6 ac-portal">
       <div className="x-dialog-scrim ac-loc-scrim" role="dialog" aria-modal="true" aria-labelledby="location-gate-title" data-testid="location-gate-modal">
-        <div className="x-dialog ac-loc-dlg">
+        <div ref={gateRef} className="x-dialog ac-loc-dlg">
           <span className="ac-loc-ic" aria-hidden><MapPin size={22} weight="duotone" /></span>
           <h2 id="location-gate-title">{title}</h2>
           <p className="ac-dlg-msg ac-loc-sub">{subtitle}</p>

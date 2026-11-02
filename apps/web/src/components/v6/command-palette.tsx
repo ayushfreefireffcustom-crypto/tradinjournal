@@ -4,11 +4,12 @@
 // balances), open one of the selected account's recent trades, or filter the
 // trade log to a symbol. Arrow keys move, Enter opens, Esc closes.
 import { useEffect, useId, useMemo, useRef, useState, type ComponentType } from 'react';
+import { useDialog } from './ui/use-dialog';
 import { api, type Trade } from '@/lib/api';
 import { fmtUsd, pnlClass } from '@/lib/format';
 import { paletteSections, symbolEntries, tradeEntries, type PaletteEntry } from '@/lib/palette';
 import { tickerMark } from '@/lib/desk';
-import { IBrokers, IJournal, ISearch, ISync } from '@/components/v3/icons';
+import { IBrokers, IJournal, ISearch, ISync } from '@/components/v6/icons';
 import { IEye, IEyeOff, IMoonIcon, ISunIcon } from './frame';
 import { useTheme } from './use-theme';
 import { useHideMoney } from './use-hide-money';
@@ -57,6 +58,8 @@ export default function CommandPalette({ pages, accountId, onGo, onClose, onSync
   const trades = useRecentTrades(accountId);
   const list = useRef<HTMLDivElement>(null);
   const id = useId();
+  // Tab stays in the palette, the page behind doesn't scroll, closing returns focus.
+  const dlg = useDialog({ onClose });
 
   // Icons and handlers live here; lib/palette only knows ids, labels and links.
   const icons = useMemo(() => new Map<string, Icon>(pages.map((p) => [`page:${p.href}`, p.icon])), [pages]);
@@ -121,7 +124,7 @@ export default function CommandPalette({ pages, accountId, onGo, onClose, onSync
     // The tokens and dialog styles are scoped under .v6, so the scrim needs a .v6 parent.
     <div className="v6">
       <div className="x-dialog-scrim f-cmdk-scrim" onMouseDown={onClose}>
-        <div className="f-cmdk" role="dialog" aria-modal="true" aria-label="Search pages, trades and actions" onMouseDown={(e) => e.stopPropagation()} data-testid="cmdk">
+        <div ref={dlg} className="f-cmdk" role="dialog" aria-modal="true" aria-label="Search pages, trades and actions" onMouseDown={(e) => e.stopPropagation()} data-testid="cmdk">
           <div className="f-cmdk-in">
             <ISearch size={17} />
             <input

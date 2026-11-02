@@ -17,11 +17,12 @@ import { venueName, type ExchangeConnection } from '@/lib/copy-api';
 import {
   IAdmin, IAnalytics, IBell, IBrokers, ICalendar, ICharts, ICheck, IChevronDown, IClose, ICoach, IDashboard, IJournal, ILink, IMacro, IMarkets, IPlay,
   IPartner, IPlus, ISearch, ISettings, ISignalX, ISync, ITradeLog, ITrendUp, IUsers, IMirror, IExchange, ILeader, IMail,
-} from '@/components/v3/icons';
+} from '@/components/v6/icons';
 import '@/styles/v6/tokens.css';
 import '@/styles/v6/components.css';
 import '@/styles/v6/frame.css';
 import { useMenu } from './ui/use-menu';
+import { useDialog } from './ui/use-dialog';
 import IconButton from './ui/icon-button';
 
 type Icon = (p: { size?: number }) => ReactNode;
@@ -119,12 +120,7 @@ export default function Frame(p: Props) {
   const [more, setMore] = useState(false);
   const closeMore = useCallback(() => setMore(false), []);
   useEffect(() => { setMore(false); }, [p.activeHref]);
-  useEffect(() => {
-    if (!more) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setMore(false); };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [more]);
+  const sheetRef = useDialog({ open: more, onClose: closeMore });
 
   const groups = [
     ...NAV,
@@ -168,7 +164,7 @@ export default function Frame(p: Props) {
         <header className="f-top">
           <div className="f-title">
             <Link href="/dashboard" className="f-mlogo" aria-label="TRADElogs dashboard">TL</Link>
-            <div style={{ minWidth: 0 }}>
+            <div className="x-min0">
               <h1 data-testid="crumb">{p.pageTitle}</h1>
               {p.subtitle && <p>{p.subtitle}</p>}
             </div>
@@ -215,7 +211,7 @@ export default function Frame(p: Props) {
 
       {more && (
         <div className="f-sheet-scrim" onClick={closeMore}>
-          <div className="f-sheet" role="dialog" aria-label="All pages" onClick={e => e.stopPropagation()}>
+          <div ref={sheetRef} className="f-sheet" role="dialog" aria-modal="true" aria-label="All pages" onClick={e => e.stopPropagation()}>
             <div className="f-sheet-hd">
               <b>All pages</b>
               <button className="f-ib" onClick={closeMore} aria-label="Close"><IClose size={18} /></button>

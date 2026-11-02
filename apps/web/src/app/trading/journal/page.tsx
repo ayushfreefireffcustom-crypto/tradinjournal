@@ -7,12 +7,15 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import AppShell from '@/components/app-shell';
 import { useToast } from '@/components/toast';
-import { ErrorCard, Modal, ago, useLoad } from '@/components/v6/copy/parts';
+import { ago, useLoad } from '@/components/v6/ui/data';
+import ErrorCard from '@/components/v6/ui/error-card';
+import Modal from '@/components/v6/ui/modal';
 import { TripAnalytics } from '@/components/v6/copy/leader-analytics';
 import { EmotionChips, TagEditor, tagClass, tagLabel } from '@/components/v6/journal/chips';
 import { api } from '@/lib/api';
 import { ApiError, exchangesApi, historyApi, price, RANGE_LABEL, signedUsd, toneOf, type JournalTrade, type LeaderRange } from '@/lib/copy-api';
-import '@/styles/v6/copy.css';
+import '@/styles/v6/kit.css';
+import '@/styles/v6/trading.css';
 
 const EMOTIONS = ['Disciplined', 'Confident', 'Patient', 'FOMO', 'Revenge', 'Hesitant'];
 const when = (iso: string) => new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });

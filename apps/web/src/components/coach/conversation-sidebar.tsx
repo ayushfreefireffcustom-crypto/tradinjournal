@@ -4,7 +4,7 @@
 // one, or delete a thread. Rendered as a card column on desktop and inside a
 // slide-in drawer on smaller screens (the parent owns the open/close state).
 import { useEffect, useState } from 'react';
-import { IClose, ICheck, IPlus } from '@/components/v3/icons';
+import { IClose, ICheck, IPlus } from '@/components/v6/icons';
 import type { AiConversationSummary } from '@/lib/api';
 import '@/styles/v6/ai.css';
 

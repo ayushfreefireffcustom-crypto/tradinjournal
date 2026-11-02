@@ -7,12 +7,16 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import AppShell from '@/components/app-shell';
 import { useToast } from '@/components/toast';
-import { ErrorCard, Modal, ago, useLoad } from '@/components/v6/copy/parts';
-import { ICheck, ICopy, IExchange, ILock, IPlus, ISync } from '@/components/v3/icons';
+import { ago, useLoad } from '@/components/v6/ui/data';
+import ErrorCard from '@/components/v6/ui/error-card';
+import Modal from '@/components/v6/ui/modal';
+import { ICheck, ICopy, IExchange, ILock, IPlus, ISync } from '@/components/v6/icons';
 import { TRADING_ENABLED } from '@/lib/features';
 import { exchangesApi, usd, venueName, type ExchangeCatalogItem, type ExchangeConnection, type ExchangeEnvironment } from '@/lib/copy-api';
 import { invalidateExchangeConnections } from '@/lib/use-exchange-connections';
 import '@/styles/v6/dialogs.css';
+import '@/styles/v6/kit.css';
+import '@/styles/v6/copy.css';
 
 export default function ExchangesPage() {
   const toast = useToast();

@@ -5,7 +5,6 @@ import AppShell from '@/components/app-shell';
 import { ActivityList } from '@/components/v6/account/account-cards';
 import SettingsNav from '@/components/v6/account/settings-nav';
 import '@/styles/v6/account.css';
-import '@/styles/v6/copy.css';
 
 export default function ActivityPage() {
   return (

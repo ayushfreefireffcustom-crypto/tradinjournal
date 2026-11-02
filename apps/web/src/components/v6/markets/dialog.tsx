@@ -4,7 +4,8 @@
 // `.v6` scope so tokens and both themes apply outside the frame.
 import { useEffect, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { IClose } from '@/components/v3/icons';
+import { IClose } from '@/components/v6/icons';
+import { useDialog } from '@/components/v6/ui/use-dialog';
 import '@/styles/v6/markets.css';
 
 export default function MkDialog({ onClose, labelledBy, testId, className = '', locked = false, children }: {
@@ -18,18 +19,12 @@ export default function MkDialog({ onClose, labelledBy, testId, className = '', 
 }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && !locked) onClose(); };
-    document.addEventListener('keydown', onKey);
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => { document.removeEventListener('keydown', onKey); document.body.style.overflow = prev; };
-  }, [onClose, locked]);
+  const ref = useDialog({ onClose, locked });
   if (!mounted) return null;
   return createPortal(
     <div className="v6 mk-portal">
       <div className="x-dialog-scrim" onMouseDown={e => { if (e.target === e.currentTarget && !locked) onClose(); }}>
-        <div className={`x-dialog mk-dlg ${className}`} role="dialog" aria-modal="true" aria-labelledby={labelledBy} data-testid={testId}>
+        <div ref={ref} className={`x-dialog mk-dlg ${className}`} role="dialog" aria-modal="true" aria-labelledby={labelledBy} data-testid={testId}>
           {children}
         </div>
       </div>

@@ -1,7 +1,7 @@
 'use client';
 
 // Emotion picker and tag editor shared by chart replay and the notebook.
-import { IClose, IPlus } from '@/components/v3/icons';
+import { IClose, IPlus } from '@/components/v6/icons';
 import '@/styles/v6/journal.css';
 
 export const POSITIVE_EMOTIONS = ['Disciplined', 'Confident', 'Patient'];

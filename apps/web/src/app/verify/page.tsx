@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useEffect, useRef, useState } from 'react';
+import { Fragment, Suspense, useEffect, useRef, useState } from 'react';
 import AuthShell, { AuthError, AuthOk, AuthSubmit } from '@/components/v6/auth/auth-shell';
 import { LoadingScreen } from '@/components/loader';
 import { authClient } from '@/lib/auth-client';
@@ -111,12 +111,12 @@ function VerifyInner() {
         <p className="au-lead">We sent a 6-digit code to <b>{email || 'your email'}</b>.</p>
         <div className={`au-codes ${error ? 'err' : ''}`} data-testid="otp-inputs" role="group" aria-label="6-digit code">
           {digits.map((d, i) => (
-            <span key={i} style={{ display: 'contents' }}>
+            <Fragment key={i}>
               {i === 3 && <span className="au-dash" aria-hidden />}
               <input ref={el => { inputs.current[i] = el; }} type="text" inputMode="numeric" autoComplete={i === 0 ? 'one-time-code' : 'off'} maxLength={OTP_LEN}
                 value={d} onChange={e => setDigit(i, e.target.value)} onKeyDown={e => onKeyDown(i, e)} disabled={loading} className={d ? 'f' : ''}
                 aria-label={`Digit ${i + 1}`} data-testid={`otp-${i}`} />
-            </span>
+            </Fragment>
           ))}
         </div>
         <div className="au-resend">
@@ -124,7 +124,7 @@ function VerifyInner() {
           <button type="button" onClick={resend} disabled={cooldown > 0} data-testid="verify-resend">{cooldown > 0 ? `Resend in ${cooldown}s` : 'Resend code'}</button>
         </div>
         {(error || resent) && (
-          <div style={{ marginBottom: 16 }}>
+          <div className="au-msg">
             {error ? <AuthError testId="verify-error">{error}</AuthError> : <AuthOk>New code sent. Check your inbox.</AuthOk>}
           </div>
         )}

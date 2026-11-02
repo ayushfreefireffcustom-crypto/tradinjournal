@@ -11,7 +11,7 @@ import { api, NOTIFICATION_GROUPS, NOTIFICATION_GROUP_LABELS, type EventImpact, 
 import { enablePush, disablePush } from '@/lib/push-client';
 import TestNotification from './test-notification';
 import LocationForm from '@/components/location-form';
-import { ICheck, ILock } from '@/components/v3/icons';
+import { ICheck, ILock } from '@/components/v6/icons';
 import '@/styles/v6/account.css';
 
 function initialsOf(name: string): string {

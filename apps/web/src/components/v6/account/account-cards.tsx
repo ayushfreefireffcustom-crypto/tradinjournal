@@ -5,11 +5,12 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState, type ComponentType } from 'react';
 import { useToast } from '@/components/toast';
-import { Modal } from '@/components/v6/copy/parts';
+import Modal from '@/components/v6/ui/modal';
 import { accountApi, shownIp, type ActivityGroup, type ActivityItem, type PlanSummary, type Profile } from '@/lib/account-api';
 import { ApiError } from '@/lib/copy-api';
-import { IAlert, IArrowRight, ICheck, IClose, IDownload, IExchange, ILock, IPlay, IPlus, IStop } from '@/components/v3/icons';
+import { IAlert, IArrowRight, ICheck, IClose, IDownload, IExchange, ILock, IPlay, IPlus, IStop } from '@/components/v6/icons';
 import '@/styles/v6/account.css';
+import '@/styles/v6/kit.css';
 
 // ── Profile ──
 const zones = (): string[] => {

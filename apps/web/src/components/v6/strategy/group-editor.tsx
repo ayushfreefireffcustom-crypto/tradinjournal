@@ -6,6 +6,7 @@
 import OperandPicker from '@/components/v6/indicators/operand-picker';
 import { comparable, IA_OPERATORS, OPERATOR_LABEL, type CatalogueItem, type IaOperator, type IndicatorOperand } from '@/lib/indicator-alerts-api';
 import { emptyCondition, INTERVALS, type Interval, type SignalGroup, type StrategyCondition } from '@/lib/strategies-api';
+import '@/styles/v6/strategy.css';
 
 export default function GroupEditor({ group, onChange, catalogue, interval, testId, emptyText }: {
   group: SignalGroup;

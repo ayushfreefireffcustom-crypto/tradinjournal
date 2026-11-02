@@ -9,7 +9,7 @@ import AppShell from '@/components/app-shell';
 import { useAccounts } from '@/lib/use-accounts';
 import { invalidateAccessCache } from '@/lib/use-platform-access';
 import { partnerApi, PartnerApiError, type PartnerOverview, type PartnerRange } from '@/lib/partner-api';
-import { IArrowRight } from '@/components/v3/icons';
+import { IArrowRight } from '@/components/v6/icons';
 import PartnerGate, { GATE_CODES, type GateReason } from '@/components/v6/account/partner-gate';
 import {
   ActivityFeed, ChannelTable, ClientRows, CopyButton, Funnel, LinkBox, Qr, RangeSeg, ShareRow, TrendCard, day,

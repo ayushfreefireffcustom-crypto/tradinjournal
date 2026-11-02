@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { ICheck } from '@/components/v3/icons';
+import { ICheck } from '@/components/v6/icons';
 
 // klinecharts built-in indicators. Main-pane overlays and sub-pane oscillators.
 const INDICATORS: { name: string; label: string }[] = [

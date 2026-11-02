@@ -9,7 +9,7 @@ import { useToast } from '@/components/toast';
 import { accountApi, type FeedbackRow } from '@/lib/account-api';
 import { ApiError } from '@/lib/copy-api';
 import '@/styles/v6/account.css';
-import '@/styles/v6/copy.css';
+import '@/styles/v6/kit.css';
 
 const SUPPORT_EMAIL = 'hello@tradelogs.com';
 /** Digits only, with country code (e.g. 919876543210). Unset: no WhatsApp option. */
@@ -58,7 +58,7 @@ export default function HelpPage() {
         </section>
         <section className="x-card ac-st-card" aria-labelledby="help-form-h" data-testid="help-form-card">
           <div className="x-ch"><h2 id="help-form-h">Write to us</h2></div>
-          <p className="x-muted ac-fine" style={{ marginTop: 0 }}>A person reads every one.</p>
+          <p className="x-muted ac-fine ac-fine--flush">A person reads every one.</p>
           {sent ? (
             <div className="ac-help-sent" data-testid="help-sent"><b>Thanks, it’s with the team.</b><p className="x-muted">We’ll reply to your account email if we need more, or when it’s fixed.</p><button className="x-btn x-btn--sm" onClick={() => setSent(false)}>Write another</button></div>
           ) : (

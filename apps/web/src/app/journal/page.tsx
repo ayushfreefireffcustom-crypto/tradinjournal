@@ -5,8 +5,8 @@ import { useSearchParams } from 'next/navigation';
 import AppShell from '@/components/app-shell';
 import ConnectBrokerModal from '@/components/connect-broker-modal';
 import { pipMove, pipSize } from '@/components/replay/trade-chart';
-import { useTradeCandles } from '@/components/v3/trade-candles';
-import { ICheck, IClose, IPlus, ISearch, IReplay, IArrowLeft, IArrowRight } from '@/components/v3/icons';
+import { useTradeCandles } from '@/lib/use-trade-candles';
+import { ICheck, IClose, IPlus, ISearch, IReplay, IArrowLeft, IArrowRight } from '@/components/v6/icons';
 import { SideChip } from '@/components/v6/desk';
 import { ReplayChart } from '@/components/v6/journal/replay-chart';
 import { EmotionChips, TagEditor } from '@/components/v6/journal/chips';
@@ -302,7 +302,7 @@ function ChartReplay() {
                       <span className="x-sub"><span className="m">{move >= 0 ? '+' : '−'}{Math.abs(move).toFixed(1)}</span> {unit} in {fmtHold(active.durationSecs)}</span>
                     </div>
                     <ReplayChart key={active.positionId} trade={active} real={candles.candles} />
-                    <div className="x-strip jn-strip6" style={{ ['--n' as string]: 6 }}>
+                    <div className="x-strip jn-strip6">
                       <div><span>Entry</span><b className="m">{fmtPrice(active.entryPrice, active.exitPrice)}</b></div>
                       <div><span>Exit</span><b className="m">{fmtPrice(active.exitPrice, active.entryPrice)}</b></div>
                       <div><span>Move</span><b className={`m ${tone(move)}`}>{move >= 0 ? '+' : '−'}{Math.abs(move).toFixed(1)}</b></div>

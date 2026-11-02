@@ -7,7 +7,8 @@ import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import AppShell from '@/components/app-shell';
 import { useToast } from '@/components/toast';
-import { ErrorCard, useLoad } from '@/components/v6/copy/parts';
+import { useLoad } from '@/components/v6/ui/data';
+import ErrorCard from '@/components/v6/ui/error-card';
 import { LineChart } from '@/components/v6/options/charts';
 import OptionsHead, { useOptionsCtx } from '@/components/v6/options/head';
 import OrderPanel from '@/components/v6/options/order-panel';
@@ -16,10 +17,10 @@ import {
   daysLabel, expiryLabel, fmtCompact, fmtNum, fmtUsd, ivPct, loadLegs, optionsApi, saveLegs,
   type Analysis, type ChainData, type LegInput, type TemplateInfo,
 } from '@/lib/options-api';
-import '@/styles/v6/copy.css';
+import '@/styles/v6/kit.css';
 import '@/styles/v6/markets.css';
 import '@/styles/v6/options.css';
-import { IClose } from '@/components/v3/icons';
+import { IClose } from '@/components/v6/icons';
 
 const CATS: Array<[TemplateInfo['categories'][number], string]> = [['popular', 'Popular'], ['bullish', 'Bullish'], ['bearish', 'Bearish'], ['neutral', 'Neutral'], ['hedging', 'Hedging']];
 const FILL: Record<string, string> = { easy: 'Easy', ok: 'Fair', hard: 'Thin', no_quote: 'No quote' };
@@ -142,7 +143,7 @@ export default function OptionsBuilderPage() {
                 ))}</div>
               </section>
               <section className="x-card" aria-label="Legs" data-testid="op-legs">
-                <div className="x-ch"><h2>Legs</h2><span className="x-sub">{legs.length}/8</span>{legs.length > 0 && <button type="button" className="x-btn x-btn--sm x-btn--ghost" style={{ marginLeft: 'auto' }} onClick={() => setLegs([])} data-testid="op-clear">Clear</button>}</div>
+                <div className="x-ch"><h2>Legs</h2><span className="x-sub">{legs.length}/8</span>{legs.length > 0 && <button type="button" className="x-btn x-btn--sm x-btn--ghost x-push" onClick={() => setLegs([])} data-testid="op-clear">Clear</button>}</div>
                 {!legs.length && <p className="x-muted">Pick a template, add a leg, or press Buy / Sell on a contract in the chain.</p>}
                 {legs.map((l, i) => {
                   const ks = strikesFor(l.expiry);

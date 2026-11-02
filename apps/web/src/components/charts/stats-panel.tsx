@@ -3,7 +3,7 @@
 // Symbol deep-dive stats beside the chart (E12): returns, realised volatility,
 // drawdown, up days, beta and correlation with BTC, liquidity and funding.
 import { useEffect, useState } from 'react';
-import { useLoad } from '@/components/v6/copy/parts';
+import { useLoad } from '@/components/v6/ui/data';
 import { fmtPct, fmtUsd, hubApi, toneOf } from '@/lib/hub-api';
 
 function Countdown({ at }: { at: number }) {

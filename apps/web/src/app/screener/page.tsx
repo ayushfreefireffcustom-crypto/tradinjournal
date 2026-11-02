@@ -7,7 +7,9 @@ import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import AppShell from '@/components/app-shell';
 import { useToast } from '@/components/toast';
-import { ErrorCard, Modal, useLoad } from '@/components/v6/copy/parts';
+import { useLoad } from '@/components/v6/ui/data';
+import ErrorCard from '@/components/v6/ui/error-card';
+import Modal from '@/components/v6/ui/modal';
 import OperandPicker from '@/components/v6/indicators/operand-picker';
 import OrderTicketDialog from '@/components/v6/trading/order-ticket';
 import { ApiError, tradingApi } from '@/lib/copy-api';
@@ -18,7 +20,8 @@ import {
   type SavedScreen, type ScreenDefinition, type ScreenerField, type ScreenerFilter, type ScreenResult, type ScreenRow, type ScreenerTimeframe,
 } from '@/lib/screener-api';
 import { useExchangeConnections } from '@/lib/use-exchange-connections';
-import '@/styles/v6/copy.css';
+import '@/styles/v6/kit.css';
+import '@/styles/v6/tools.css';
 import Freshness from '@/components/v6/ui/freshness';
 
 // ── Editable rows ─────────────────────────────────────────────────────────────

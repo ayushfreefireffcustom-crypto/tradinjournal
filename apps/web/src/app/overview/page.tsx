@@ -6,11 +6,13 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import AppShell from '@/components/app-shell';
-import { ErrorCard, useLoad, usePoll } from '@/components/v6/copy/parts';
+import { useLoad, usePoll } from '@/components/v6/ui/data';
+import ErrorCard from '@/components/v6/ui/error-card';
 import Sparkline from '@/components/v6/ui/sparkline';
 import { fmtPct, fmtPrice, fmtUsd, hubApi, toneOf, type MarketBrief, type Overview, type SectorRow } from '@/lib/hub-api';
 import { squarify } from '@/lib/treemap';
-import '@/styles/v6/copy.css';
+import '@/styles/v6/kit.css';
+import '@/styles/v6/tools.css';
 import '@/styles/v6/markets.css';
 import Freshness from '@/components/v6/ui/freshness';
 

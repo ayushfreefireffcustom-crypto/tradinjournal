@@ -5,7 +5,7 @@
 // feed and the referred-clients table. Tracking only — no money anywhere.
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
-import { ICheck, ICopy, IDownload } from '@/components/v3/icons';
+import { ICheck, ICopy, IDownload } from '@/components/v6/icons';
 import { timeAgo } from '@/components/app-shell';
 import {
   PARTNER_STATUS_LABEL, STATUS_LABEL, type PartnerChannel, type PartnerClient, type PartnerDailyPoint, type PartnerEvent,

@@ -9,7 +9,7 @@ import { api, type BrokerAccount, type Deal, type JournalEntry, type Trade } fro
 import { useAccounts } from '@/lib/use-accounts';
 import { toCsv, downloadCsv, dateStamp } from '@/lib/csv';
 import { useToast } from '@/components/toast';
-import { IDownload, ISearch, IClose } from '@/components/v3/icons';
+import { IDownload, ISearch, IClose } from '@/components/v6/icons';
 import { fmtUsd } from '@/lib/format';
 
 const money = (v: number) => fmtUsd(v, { signed: true });

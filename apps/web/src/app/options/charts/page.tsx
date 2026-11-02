@@ -5,11 +5,12 @@
 // Single-contract charts (price, mark, IV, OI) live in the contract panel.
 import { useEffect, useState } from 'react';
 import AppShell from '@/components/app-shell';
-import { ErrorCard, useLoad } from '@/components/v6/copy/parts';
+import { useLoad } from '@/components/v6/ui/data';
+import ErrorCard from '@/components/v6/ui/error-card';
 import { LineChart } from '@/components/v6/options/charts';
 import OptionsHead, { useOptionsCtx } from '@/components/v6/options/head';
 import { daysLabel, expiryLabel, fmtNum, fmtUsd, optionsApi, type Resolution } from '@/lib/options-api';
-import '@/styles/v6/copy.css';
+import '@/styles/v6/kit.css';
 import '@/styles/v6/markets.css';
 import '@/styles/v6/options.css';
 

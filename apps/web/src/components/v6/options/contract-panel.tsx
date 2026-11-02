@@ -6,10 +6,11 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/toast';
-import { useLoad, usePoll } from '@/components/v6/copy/parts';
+import { useLoad, usePoll } from '@/components/v6/ui/data';
 import { LineChart } from './charts';
 import { addLeg, daysLabel, expiryLabel, fmtCompact, fmtNum, fmtUsd, ivPct, optionsApi, type CandleKind, type OptionsCtx, type Resolution } from '@/lib/options-api';
-import { IClose } from '@/components/v3/icons';
+import { IClose } from '@/components/v6/icons';
+import '@/styles/v6/kit.css';
 
 const KINDS: Array<[CandleKind, string]> = [['mark', 'Mark'], ['price', 'Traded'], ['iv', 'IV'], ['oi', 'Open interest']];
 const RANGES: Array<[Resolution, number, string]> = [['15m', 1, '1D'], ['1h', 3, '3D'], ['1h', 7, '7D'], ['4h', 30, '30D']];

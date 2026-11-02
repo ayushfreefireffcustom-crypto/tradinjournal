@@ -5,10 +5,11 @@
 // password against the broker before saving, so a wrong entry fails here with a
 // clear message and nothing is persisted.
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { api, type BrokerAccount } from '@/lib/api';
 import { V6Portal } from '@/components/confirm-dialog';
-import { IClose } from '@/components/v3/icons';
+import { IClose } from '@/components/v6/icons';
+import { useDialog } from '@/components/v6/ui/use-dialog';
 import '@/styles/v6/account.css';
 import '@/styles/v6/dialogs.css';
 
@@ -24,11 +25,7 @@ export default function UpdateBrokerPasswordModal({ account, onClose, onUpdated 
   const [error, setError] = useState('');
   const [shaking, setShaking] = useState(false);
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && !loading) onClose(); };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [onClose, loading]);
+  const ref = useDialog({ onClose, locked: loading });
 
   function shake() { setShaking(true); setTimeout(() => setShaking(false), 350); }
 
@@ -53,7 +50,7 @@ export default function UpdateBrokerPasswordModal({ account, onClose, onUpdated 
   return (
     <V6Portal>
       <div className="x-dialog-scrim" onMouseDown={onClose}>
-        <div className={`x-dialog ac-dlg ac-dlg--form ${shaking ? 'ac-shake' : ''}`} role="dialog" aria-modal="true" aria-labelledby="up-t" data-testid="update-password-modal" onMouseDown={e => e.stopPropagation()}>
+        <div ref={ref} className={`x-dialog ac-dlg ac-dlg--form ${shaking ? 'ac-shake' : ''}`} role="dialog" aria-modal="true" aria-labelledby="up-t" data-testid="update-password-modal" onMouseDown={e => e.stopPropagation()}>
           <div className="ac-dlg-h">
             <div>
               <h2 id="up-t">Update MT5 password</h2>

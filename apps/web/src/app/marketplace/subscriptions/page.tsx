@@ -6,11 +6,13 @@ import Link from 'next/link';
 import { useState } from 'react';
 import AppShell from '@/components/app-shell';
 import { useToast } from '@/components/toast';
-import { ErrorCard, Modal, useLoad, usePoll } from '@/components/v6/copy/parts';
+import { useLoad, usePoll } from '@/components/v6/ui/data';
+import ErrorCard from '@/components/v6/ui/error-card';
+import Modal from '@/components/v6/ui/modal';
 import { ApiError } from '@/lib/copy-api';
 import { marketApi, type Subscription } from '@/lib/marketplace-api';
 import { tone, usd } from '@/lib/strategies-api';
-import '@/styles/v6/copy.css';
+import '@/styles/v6/kit.css';
 import '@/styles/v6/markets.css';
 import '@/styles/v6/marketplace.css';
 

@@ -8,7 +8,7 @@ import { api, type BrokerAccount, type JournalEntry } from '@/lib/api';
 import { useAccounts } from '@/lib/use-accounts';
 import { toCsv, downloadCsv, dateStamp } from '@/lib/csv';
 import { useToast } from '@/components/toast';
-import { IDownload, IClose, ISearch, IJournal } from '@/components/v3/icons';
+import { IDownload, IClose, ISearch, IJournal } from '@/components/v6/icons';
 import { EmotionChips, POSITIVE_EMOTIONS, TagEditor, tagClass, tagLabel } from '@/components/v6/journal/chips';
 import JournalViewSwitch from '@/components/v6/journal/view-switch';
 import '@/styles/v6/journal.css';
@@ -166,7 +166,7 @@ export default function NotesView() {
         )}
 
         {/* Stats only once there's something to count (zero-data rule, A0.29). */}
-        {!loading && entries.length > 0 && <section className="x-strip x-strip--card jn-stats" style={{ ['--n' as string]: 5 }} aria-label="Journal stats">
+        {!loading && entries.length > 0 && <section className="x-strip x-strip--card jn-stats" aria-label="Journal stats">
           <div><span>This month</span><b className="m">{loading ? '—' : stats.thisMonth}</b><small>entr{stats.thisMonth === 1 ? 'y' : 'ies'}</small></div>
           <div><span>Day streak</span><b className="m">{loading ? '—' : stats.streak}</b><small>{stats.streak ? `day${stats.streak === 1 ? '' : 's'} in a row` : 'Write today to start one'}</small></div>
           <div><span>Top mindset</span><b>{stats.top ?? '—'}</b><small>{stats.top ? `${stats.topPct}% of tagged entries` : 'Tag an emotion to see this'}</small></div>
@@ -175,7 +175,7 @@ export default function NotesView() {
             <span>Mindset mix</span>
             <div className="jn-mixbar" role="group" aria-label={stats.mix.map(m => `${m.e} ${m.n}`).join(', ') || 'No emotions logged'}>
               {stats.mix.map(m => (
-                <button key={m.e} style={{ width: `${m.pct}%`, background: MIX[m.e]!.c, opacity: MIX[m.e]!.o }} title={`${m.e} · ${m.n}`} aria-label={`Filter by ${m.e}`} aria-pressed={emoFilter === m.e}
+                <button key={m.e} style={{ width: `${m.pct}%`, background: MIX[m.e]!.c, ['--o' as string]: MIX[m.e]!.o }} title={`${m.e} · ${m.n}`} aria-label={`Filter by ${m.e}`} aria-pressed={emoFilter === m.e}
                   className={emoFilter && emoFilter !== m.e ? 'dim' : ''} onClick={() => setEmoFilter(f => (f === m.e ? null : m.e))} />
               ))}
             </div>
@@ -239,8 +239,8 @@ export default function NotesView() {
               </div>
             )}
             {loading ? (
-              <div aria-busy="true" style={{ display: 'grid', gap: 18 }}>
-                {[0, 1, 2].map(i => <div key={i} style={{ display: 'grid', gap: 8 }}><i className="x-skel x-skel--in" style={{ height: 12, width: '30%' }} /><i className="x-skel x-skel--in" style={{ height: 14, width: '90%' }} /><i className="x-skel x-skel--in" style={{ height: 14, width: '70%' }} /></div>)}
+              <div aria-busy="true" className="jn-sk">
+                {[0, 1, 2].map(i => <div key={i} className="jn-sk-i"><i className="x-skel x-skel--in" style={{ height: 12, width: '30%' }} /><i className="x-skel x-skel--in" style={{ height: 14, width: '90%' }} /><i className="x-skel x-skel--in" style={{ height: 14, width: '70%' }} /></div>)}
               </div>
             ) : entries.length === 0 ? (
               <div className="x-empty" data-testid="journal-empty">

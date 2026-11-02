@@ -2,7 +2,7 @@
 
 // Candle data for a single position's chart: real candles when the market API
 // has the window, otherwise a deterministic path anchored to the fills (callers
-// label that as illustrative). The charts themselves live in components/v6.
+// label that as illustrative). The charts themselves live in components/v6. (Moved from components/v3, A7.4.)
 import { useEffect, useState } from 'react';
 import type { Trade } from '@/lib/api';
 import { marketApi, type Candle, type MarketTimeframe } from '@/lib/market-api';

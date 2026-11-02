@@ -12,8 +12,18 @@ Approved mock: `design/dashboard-v8/a-desk-v2/` (dark + light screenshots in tha
 - `components.css`: shared `x-` classes (cards, buttons, segmented controls, tabs, tags, side chips,
   stat strips, tables, forms, empty/skeleton/banner states, popovers, dialogs).
 - `frame.css`: the app frame. Don't restyle it from a page.
+- `dialogs.css`: dialog and sheet layout (`ac-dlg`, `ac-confirm`, the location gate). Imported by
+  the dialog components, so a page with a dialog doesn't ship a whole page stylesheet.
+- `kit.css`: `cp-` pieces shared by the exchange, copy, trading, strategy and tool pages (page
+  bits, form rows, the dialog body, the equity chart, grades, `trd-tbl` table helpers).
 - `<page>.css`: one file per page or page group for layout and page-only pieces, prefixed with a
-  short page prefix (dashboard uses `dk-`). Import it from the page's component file.
+  short page prefix (dashboard uses `dk-`). Import it from the component that uses the classes,
+  not from a parent: a page that loads only through client navigation from another page would
+  otherwise break on a fresh load. Page groups: `copy.css` (exchanges, copy trading),
+  `trading.css` (desk, ticket, webhooks, API keys), `tools.css` (alerts, screener, signals,
+  overview, derivatives, compare), `strategy.css` (builder, backtests, deployments, reports).
+- Before reusing a prefix, grep for it: two files defining the same class name style each other's
+  pages whenever both load.
 
 ## Migrating a page off the legacy styles
 1. Pass `legacy={false}` to `<AppShell>`. Without it the page is wrapped in the old `.v3.v5` scope.
@@ -28,6 +38,9 @@ Approved mock: `design/dashboard-v8/a-desk-v2/` (dark + light screenshots in tha
    The one exception is a chart with several series (compare, option legs): its lines and legend
    keys use `var(--series-1…6)`; never for state, text or buttons.
    Charts: grid `var(--grid)`, axis text `var(--axis)`, tooltips `var(--tip)` with light text.
+   Green or red *text* (P&L, chips, badges, icons) uses `var(--g-tx)` / `var(--r-tx)`: equal to
+   `--g`/`--r` in dark, darker in light so small text keeps 4.5:1. Fills, bars and lines keep
+   `--g`/`--r`. Inside a tooltip use `--g-tip` / `--r-tip`.
 5. Typography: Satoshi 400/500 only (never 600/700/900, never `font-bold`/`font-black`), JetBrains
    Mono (`.m`) for numbers only (prices, P&L, counts, times); labels, dates and headings stay sans.
    Sentence case; no uppercase letter-spaced labels; no serif or italic accents.
@@ -44,6 +57,12 @@ Approved mock: `design/dashboard-v8/a-desk-v2/` (dark + light screenshots in tha
 - `useMenu(open, close)`: put the ref on the wrapper around a `[aria-haspopup]` trigger and its
   `[role=menu]` panel; items need `role="menuitem"` (or `menuitemradio`). Gives arrows, Home/End,
   type-ahead, Tab/outside-click close and Esc back to the trigger.
+- `useDialog({ onClose, locked, open })`: put the ref on the `role="dialog"` element of every
+  modal, sheet or drawer. Focus moves in (the `data-autofocus` element, else the first field or
+  button), Tab stays inside, Esc closes the top dialog only, the page behind stops scrolling and
+  focus goes back to the opener. Leave `onClose` out for a gate that can't be dismissed.
+- `Modal` (form/content dialog, a bottom sheet on phones), `ErrorCard` (couldn't-load card with
+  retry), and `data.ts` (`useLoad`, `usePoll`, `ago`).
 - `Sparkline`: the only sparkline. `zero` for P&L-like series, `label` when it carries meaning.
 - `DateRangePicker` (+ `lib/date-presets.ts`), `Freshness` ("Updated 12s ago").
 - Formatting: `lib/format.ts` (`fmtUsd`, `fmtPct`, `pnlClass`…): real minus, "—" for unknown.
@@ -63,3 +82,5 @@ Approved mock: `design/dashboard-v8/a-desk-v2/` (dark + light screenshots in tha
 - Brave at 1440, 1280, 1024, 768, 390, 360, in dark and light (`?theme=light` forces light).
 - `document.documentElement.scrollWidth === clientWidth` at every width.
 - No console errors. No clipped or overlapping text. Hover/focus states visible. Esc closes popovers.
+- Focus ring: `.v6 :focus-visible` draws a 2px green outline. Don't remove it with `outline: none`
+  unless the element shows its own focus cue (a field's green border, a row highlight).

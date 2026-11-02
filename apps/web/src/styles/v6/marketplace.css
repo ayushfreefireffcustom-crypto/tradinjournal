@@ -20,8 +20,8 @@
 .v6 .mk-stats--big { margin-bottom: 12px; }
 .v6 .mk-track { font-size: 12.5px; }
 .v6 .mk-track b { font-weight: 500; }
-.v6 .mk-risk-low { background: var(--g-soft); color: var(--g); }
-.v6 .mk-risk-high { background: var(--r-soft); color: var(--r); }
+.v6 .mk-risk-low { background: var(--g-soft); color: var(--g-tx); }
+.v6 .mk-risk-high { background: var(--r-soft); color: var(--r-tx); }
 .v6 .mk-fine { font-size: 12px; margin: 0; line-height: 1.5; }
 .v6 .mk-cols { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: start; }
 .v6 .mk-main, .v6 .mk-side { display: grid; gap: 16px; min-width: 0; }

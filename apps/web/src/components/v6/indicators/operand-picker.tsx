@@ -4,6 +4,7 @@
 // Shared by indicator alerts and the screener; `allow` limits which lines can
 // be picked (the right-hand side only offers lines in the same units).
 import type { CatalogueItem, IndicatorOperand } from '@/lib/indicator-alerts-api';
+import '@/styles/v6/tools.css';
 
 const GROUPS: Array<[CatalogueItem['group'], string]> = [['price', 'Price'], ['trend', 'Trend'], ['oscillator', 'Oscillators'], ['volatility', 'Volatility'], ['volume', 'Volume']];
 
