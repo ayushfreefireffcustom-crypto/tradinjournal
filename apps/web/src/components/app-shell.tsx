@@ -19,6 +19,7 @@ import CommandPalette from '@/components/v6/command-palette';
 import '@/styles/v6/tokens.css';
 import '@/styles/v6/components.css';
 import Tour from '@/components/v6/tour';
+import { useShellAccounts } from '@/lib/use-accounts';
 
 interface Props {
   children: ReactNode;
@@ -73,9 +74,12 @@ export function timeAgo(iso?: string | null): string {
 }
 
 export default function AppShell({
-  children, accounts = [], selectedAccount, onSelectAccount, onConnectClick, pageTitle, pageSubtitle, actions,
+  children, accounts: pageAccounts, selectedAccount, onSelectAccount, onConnectClick, pageTitle, pageSubtitle, actions,
   onSync, syncing, syncedAt,
 }: Props) {
+  // Pages that don't pass accounts still show the real account pill, not "Connect MT5".
+  const shellAccounts = useShellAccounts(pageAccounts === undefined);
+  const accounts = pageAccounts ?? shellAccounts.accounts;
   const pathname = usePathname();
   const router = useRouter();
   const { data: session, isPending } = authClient.useSession();
@@ -120,7 +124,7 @@ export default function AppShell({
   }
 
   const user = session?.user;
-  const sel = selectedAccount ?? accounts[0] ?? null;
+  const sel = selectedAccount ?? (pageAccounts === undefined ? shellAccounts.selected : accounts[0]) ?? null;
   const isAdmin = !!accessStatus?.isAdmin;
   const isPartner = PARTNERS_ENABLED && accessStatus?.partnerStatus === 'ACTIVE';
   const pages = ALL.filter(x => (x.group !== 'Partner' || isPartner) && (x.group !== 'Admin' || isAdmin));
@@ -132,7 +136,7 @@ export default function AppShell({
       <Frame
         activeHref={current?.href} pageTitle={pageTitle ?? current?.label ?? ''} subtitle={pageSubtitle} user={user}
         isAdmin={isAdmin} isPartner={isPartner}
-        accounts={accounts} selected={sel} onSelectAccount={onSelectAccount} onConnectClick={onConnectClick}
+        accounts={accounts} selected={sel} onSelectAccount={onSelectAccount ?? (pageAccounts === undefined ? shellAccounts.select : undefined)} onConnectClick={onConnectClick}
         onSync={onSync} syncing={syncing} syncedLabel={syncedAt ? `Synced ${timeAgo(syncedAt)}` : sel?.lastSyncAt ? `Synced ${timeAgo(sel.lastSyncAt)}` : null}
         actions={actions} onOpenSearch={() => setCmdk(true)} onSignOut={() => authClient.signOut()}
       >

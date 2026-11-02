@@ -136,3 +136,27 @@ export function useAccounts(initialIdOverride?: string | null) {
 
   return { accounts, selected, select, setAccounts, loading };
 }
+
+/** For the shell on pages that don't load accounts themselves (strategies, alerts,
+ *  screener…): the same shared list and saved selection, read-only, and never a
+ *  redirect to /brokers. `on` is false where the page passes its own accounts. */
+export function useShellAccounts(on: boolean) {
+  const [accs, setAccs] = useState<BrokerAccount[]>(() => (on && cache ? cache.accs : []));
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!on) return;
+    let live = true;
+    const apply = (list: BrokerAccount[]) => {
+      if (!live) return;
+      setAccs(list);
+      const wanted = readStored();
+      setSelectedId(list.find(a => a.id === wanted)?.id ?? list[0]?.id ?? null);
+    };
+    if (cache && Date.now() - cache.at < FRESH_MS) apply(cache.accs);
+    else fetchAccounts().then(apply).catch(() => { /* the pill shows Connect MT5 until it loads */ });
+    return () => { live = false; };
+  }, [on]);
+  const selected = accs.find(a => a.id === selectedId) ?? accs[0] ?? null;
+  const select = (a: BrokerAccount) => { writeStored(a.id); setSelectedId(a.id); };
+  return { accounts: accs, selected, select };
+}
