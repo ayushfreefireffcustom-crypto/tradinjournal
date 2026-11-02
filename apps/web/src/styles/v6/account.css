@@ -400,7 +400,7 @@
 .v6 .ac-act-ic { width: 24px; height: 24px; flex: none; border-radius: 50%; background: var(--s2); display: grid; place-items: center; font-size: 11px; color: var(--mut); }
 .v6 .ac-act-orders .ac-act-ic { color: var(--tx); }
 .v6 .ac-danger { box-shadow: inset 0 0 0 1px var(--r-soft); }
-.v6 .ac-btn-danger { background: var(--r); color: #fff; border-color: var(--r); }
+.v6 .ac-btn-danger, .v6 .x-card .ac-btn-danger { background: var(--r); color: #fff; border-color: var(--r); }
 .v6 .ac-btn-danger:disabled { opacity: .45; }
 .v6 .ac-blockers { background: var(--r-soft); border-radius: var(--r-inset); padding: 12px 14px; margin: 10px 0 14px; font-size: 13px; }
 .v6 .ac-blockers ul { margin: 6px 0; padding-left: 18px; }
@@ -429,6 +429,11 @@
 .v6 .ac-limits i b { display: block; height: 100%; background: var(--tx); border-radius: 3px; }
 .v6 .ac-limits i b.is-full { background: var(--r); }
 .v6 .ac-limits .m { text-align: right; color: var(--mut); }
+/* Narrow phones: label and count on one line, the bar under them. */
+@media (max-width: 420px) {
+  .v6 .ac-limits li { grid-template-columns: minmax(0, 1fr) auto; row-gap: 6px; }
+  .v6 .ac-limits i { grid-column: 1 / -1; order: 3; }
+}
 
 /* Send a test (QW.15) */
 .v6 .ac-test { display: grid; justify-items: end; gap: 6px; max-width: 360px; }
