@@ -153,6 +153,15 @@
 .v6 .x-switch[aria-checked=true] { background: var(--g); }
 .v6 .x-switch[aria-checked=true]::after { transform: translateX(16px); }
 .v6 .x-check, .v6 .x-radio { width: 18px; height: 18px; accent-color: var(--g); margin: 0; flex: none; }
+/* Watchlist ☆ (QW.14): green when the symbol is in a list; menu rows carry a tick box. */
+.v6 .x-star.on { color: var(--g-tx); }
+.v6 .x-star-wrap { display: inline-flex; }
+.v6 .x-pop.x-star-pop { position: fixed; top: 0; left: 0; right: auto; bottom: auto; min-width: 240px; max-width: calc(100vw - 16px); max-height: min(420px, calc(100dvh - 16px)); overflow-y: auto; z-index: 90; }
+.v6 .x-tick { width: 18px; height: 18px; border-radius: 6px; border: 1.5px solid var(--line-2); flex: none; display: grid; place-items: center; }
+.v6 .x-tick.on { background: var(--g); border-color: var(--g); }
+.v6 .x-tick.on::after { content: ""; width: 9px; height: 5px; border: solid #fff; border-width: 0 0 2px 2px; transform: translateY(-1px) rotate(-45deg); }
+.v6 .x-pop > button:disabled { color: var(--dim); cursor: default; background: none; }
+.v6 .x-star-err { color: var(--r-tx); }
 
 /* ── states ───────────────────────────────────────────────────────────────── */
 .v6 .x-empty { display: grid; place-items: center; text-align: center; gap: 10px; padding: 44px 20px; color: var(--mut); font-size: 14px; }

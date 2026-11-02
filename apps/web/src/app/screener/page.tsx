@@ -14,6 +14,7 @@ import OperandPicker from '@/components/v6/indicators/operand-picker';
 import OrderTicketDialog from '@/components/v6/trading/order-ticket';
 import { ApiError, tradingApi } from '@/lib/copy-api';
 import { TRADING_ENABLED } from '@/lib/features';
+import WatchStar from '@/components/v6/ui/watch-star';
 import { comparable, indicatorAlertsApi, IA_OPERATORS, OPERATOR_LABEL, type CatalogueItem, type IaOperator, type IndicatorOperand, type Operand } from '@/lib/indicator-alerts-api';
 import {
   FIELD_LABEL, SCREENER_TIMEFRAMES, SCREENER_UNIVERSES, screenerApi,
@@ -293,6 +294,7 @@ export default function ScreenerPage() {
                         <td className="r m" data-label="Open interest">{r.openInterest == null ? '—' : vol(r.openInterest)}</td>
                         {r.values.map((v, k) => <td key={k} className="r m" data-label={res.columns[k]!.label}>{num(v)}</td>)}
                         <td className="trd-acts">
+                          <WatchStar symbol={r.symbol} label={r.base} />
                           <Link className="x-btn x-btn--sm" href={`/charts?symbol=${r.symbol}&tf=${res.timeframe}`}>Chart</Link>
                           {tradable.has(r.base) && <button className="x-btn x-btn--sm" onClick={() => setTrade(tradable.get(r.base)!)} title={`Trade ${tradable.get(r.base)!.symbol}`} data-testid={`sc-trade-${r.symbol}`}>Trade</button>}
                         </td>

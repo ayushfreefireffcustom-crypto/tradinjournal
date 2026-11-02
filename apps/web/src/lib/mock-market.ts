@@ -38,9 +38,14 @@ export function mockCandles(symbol: string, tf: string, limit = 300, to?: number
   });
 }
 
-const g = globalThis as unknown as { __mockWatch?: string[]; __mockAlerts?: PriceAlert[] };
+const g = globalThis as unknown as { __mockWatch?: string[]; __mockAlerts?: PriceAlert[]; __mockLists?: { id: string; name: string; symbols: string[] }[] };
 export const watchStore = () => (g.__mockWatch ??= ['BTCUSDT', 'XAUUSD', 'US100', 'EURUSD']);
-export const setWatch = (s: string[]) => { g.__mockWatch = s; };
+export const setWatch = (s: string[]) => { g.__mockWatch = s; const l = listStore()[0]; if (l) l.symbols = s; };
+/** Preview builds: named watchlists, the first one shared with the single-list mock above. */
+export const listStore = () => (g.__mockLists ??= [
+  { id: 'wl-1', name: 'Watchlist', symbols: watchStore() },
+  { id: 'wl-2', name: 'Crypto', symbols: ['BTCUSDT', 'ETHUSDT', 'SOLUSDT'] },
+]) as { id: string; name: string; symbols: string[] }[];
 export const alertStore = () => (g.__mockAlerts ??= [
   { id: 'al-1', symbol: 'BTCUSDT', accountId: null, direction: 'above', threshold: '68000', lastPrice: '67420', status: 'active', recurring: true, note: 'breakout watch', triggeredAt: null, createdAt: new Date().toISOString() },
   { id: 'al-2', symbol: 'XAUUSD', accountId: null, direction: 'below', threshold: '2370', lastPrice: '2387.4', status: 'active', recurring: false, note: 'retest', triggeredAt: null, createdAt: new Date().toISOString() },

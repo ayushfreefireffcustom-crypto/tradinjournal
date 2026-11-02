@@ -12,6 +12,7 @@ import { alertsApi, type CreateAlertBody } from '@/lib/alerts-api';
 import LayoutGrid, { type Pane } from '@/components/charts/layout-grid';
 import type { KlineChartHandle } from '@/components/charts/kline-chart';
 import SymbolSearch from '@/components/charts/symbol-search';
+import WatchStar from '@/components/v6/ui/watch-star';
 import TimeframeBar from '@/components/charts/timeframe-bar';
 import IndicatorMenu from '@/components/charts/indicator-menu';
 import DrawingToolbar from '@/components/charts/drawing-toolbar';
@@ -174,7 +175,10 @@ export default function ChartsPage() {
       <div className="mk-charts" data-testid="charts-page">
         <div className="mk-cmain">
           <div className="x-card mk-tools">
-            <SymbolSearch value={active.symbol} onSelect={symbol => patchActive({ symbol })} />
+            <div className="mk-symgrp">
+              <SymbolSearch value={active.symbol} onSelect={symbol => patchActive({ symbol })} />
+              <WatchStar symbol={active.symbol} size="md" />
+            </div>
             <TimeframeBar value={active.tf} onChange={tf => patchActive({ tf })} />
             <ChartTypeMenu value={{ type: active.chartType ?? 'candles', size: active.size, reversal: active.reversal }}
               onChange={v => patchActive({ chartType: v.type, size: v.size, reversal: v.reversal })} />

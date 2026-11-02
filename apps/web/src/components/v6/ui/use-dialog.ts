@@ -4,7 +4,8 @@
 // ref on the element with role="dialog": opening moves focus inside (the
 // element marked data-autofocus or autoFocus, else the first field or button),
 // Tab and Shift+Tab stay inside, Esc closes the topmost dialog only, the page
-// behind stops scrolling, and closing gives focus back to whatever opened it.
+// behind stops scrolling, and closing gives focus back to whatever opened it
+// (or, when that was a menu item that has since gone, to the menu's button).
 import { useEffect, useRef } from 'react';
 
 const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]):not([type=hidden]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"]),[contenteditable=true]';
@@ -23,6 +24,18 @@ export function focusables(root: ParentNode): HTMLElement[] {
  * Where Tab should go from `cur` (an index into the focusable list, -1 when
  * focus is outside), or null to let the browser move it. Wraps at both ends.
  */
+/**
+ * Where focus goes back to when the dialog closes: the element that opened it,
+ * or the button of the menu it was opened from (menu items unmount when the
+ * menu closes, so they can't take focus back).
+ */
+export function returnTarget(opener: HTMLElement | null): HTMLElement | null {
+  if (!opener || opener === document.body) return null;
+  const menu = opener.closest('[role=menu]');
+  const trigger = menu?.parentElement?.querySelector<HTMLElement>(':scope > [aria-haspopup]') ?? null;
+  return menu ? trigger : opener;
+}
+
 export function trapIndex(cur: number, count: number, back: boolean): number | null {
   if (!count) return null;
   if (cur < 0) return back ? count - 1 : 0;
@@ -54,7 +67,12 @@ export function useDialog<T extends HTMLElement = HTMLDivElement>({ onClose, loc
   // the dialog takes focus at commit, before any effect could look.
   const opener = useRef<HTMLElement | null>(null);
   const wasOpen = useRef(false);
-  if (open && !wasOpen.current && typeof document !== 'undefined') opener.current = document.activeElement as HTMLElement | null;
+  const backTo = useRef<HTMLElement | null>(null);
+  // Read during render: by the time effects run, a menu item that opened this has already unmounted.
+  if (open && !wasOpen.current && typeof document !== 'undefined') {
+    opener.current = document.activeElement as HTMLElement | null;
+    backTo.current = returnTarget(opener.current);
+  }
   wasOpen.current = open;
 
   useEffect(() => {
@@ -62,6 +80,7 @@ export function useDialog<T extends HTMLElement = HTMLDivElement>({ onClose, loc
     const token = {};
     stack.push(token);
     const from = opener.current;
+    const back = backTo.current;
     let raf = 0;
     // Portalled dialogs mount a frame later; wait for the node.
     const focusIn = (tries = 0) => {
@@ -103,7 +122,8 @@ export function useDialog<T extends HTMLElement = HTMLDivElement>({ onClose, loc
       if (i >= 0) stack.splice(i, 1);
       // Back to the opener, unless focus already went somewhere on purpose.
       const active = document.activeElement;
-      if (from && from !== document.body && from.isConnected && (!active || active === document.body || ref.current?.contains(active) || !active.isConnected)) from.focus({ preventScroll: true });
+      const to = from?.isConnected && from !== document.body ? from : back;
+      if (to?.isConnected && (!active || active === document.body || ref.current?.contains(active) || !active.isConnected)) to.focus({ preventScroll: true });
     };
   }, [open, lockScroll]);
 

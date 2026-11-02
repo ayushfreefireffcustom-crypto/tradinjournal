@@ -38,6 +38,10 @@ export const IWarn = mk(<><path d="M12 3l9 16H3z" /><path d="M12 10v4M12 17h.01"
 export const ITrendUp = mk(<path d="M4 16l5-5 4 4 7-7M15 8h5v5" />);
 export const ISun = mk(<><circle cx="12" cy="12" r="4" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3" /></>);
 export const IDownload = mk(<path d="M12 4v11M7 10l5 5 5-5M5 20h14" />);
+export const IUpload = mk(<path d="M12 15V4M7 9l5-5 5 5M5 20h14" />);
+export const IStar = mk(<path d="m12 3.5 2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z" />);
+export const IEdit = mk(<path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16zM13.5 6.5l4 4" />);
+export const IMore = mk(<><circle cx="5" cy="12" r="1.2" /><circle cx="12" cy="12" r="1.2" /><circle cx="19" cy="12" r="1.2" /></>);
 export const ILock = mk(<><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V8a4 4 0 018 0v3" /></>);
 export const IMail = mk(<><rect x="3" y="5" width="18" height="14" rx="2.5" /><path d="M3.5 7l8.5 6 8.5-6" /></>);
 export const IPartner = mk(<><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20a6.5 6.5 0 0113 0" /><path d="M16 4.5a3.5 3.5 0 010 7M21.5 20a6.5 6.5 0 00-4-6" /></>);

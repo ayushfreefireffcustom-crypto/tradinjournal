@@ -97,7 +97,16 @@ export const marketApi = {
   watchlist: () => req<{ symbols: string[] }>(`${PREFIX}/market/watchlist`),
   setWatchlist: (symbols: string[]) =>
     req<{ symbols: string[] }>(`${PREFIX}/market/watchlist`, { method: 'PUT', body: JSON.stringify({ symbols }) }),
+  watchlists: () => req<{ lists: WatchlistList[] }>(`${PREFIX}/market/watchlists`),
+  createWatchlist: (name: string, symbols?: string[]) =>
+    req<WatchlistList>(`${PREFIX}/market/watchlists`, { method: 'POST', body: JSON.stringify({ name, ...(symbols ? { symbols } : {}) }) }),
+  updateWatchlist: (id: string, patch: { name?: string; symbols?: string[] }) =>
+    req<WatchlistList>(`${PREFIX}/market/watchlists/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(patch) }),
+  deleteWatchlist: (id: string) => req<{ deleted: true }>(`${PREFIX}/market/watchlists/${encodeURIComponent(id)}`, { method: 'DELETE' }),
 };
+
+/** A named watchlist (up to 8 per user). */
+export interface WatchlistList { id: string; name: string; symbols: string[] }
 
 /**
  * Subscribe to live forming bars for one symbol/timeframe over SSE. Returns an

@@ -11,6 +11,7 @@ import { macroApi, type MacroState } from '@/lib/macro-api';
 import { biasTone, formatSignedPct } from '@/lib/macro-format';
 import { BiasTag, IChevronL, ScoreTrack, useDocTheme } from '@/components/v6/macro/ui';
 import MacroCompliance from '@/components/v6/macro/compliance';
+import WatchStar from '@/components/v6/ui/watch-star';
 
 const NAMES: Record<string, string> = {
   BTC: 'Bitcoin',
@@ -37,6 +38,9 @@ const TV_SYMBOL: Record<string, string> = {
   DXY: 'TVC:DXY',
   UST: 'AMEX:TLT',
 };
+
+// The symbol the watchlist ☆ adds: what /charts loads for this asset (QW.14).
+const CHART_SYMBOL: Record<string, string> = { BTC: 'BTCUSDT', ETH: 'ETHUSDT', SOL: 'SOLUSDT', XAU: 'XAUUSD', XAG: 'XAGUSD', SPX: 'US500', NDX: 'NAS100', OIL: 'USOIL', DXY: 'DX-Y.NYB', UST: '^TNX' };
 
 const TICK: Record<string, string> = { XAU: 'XAUUSD', XAG: 'XAGUSD', BTC: 'BTCUSD', ETH: 'ETHUSD', SOL: 'SOLUSD', SPX: 'SPX', NDX: 'NDX', OIL: 'WTI', DXY: 'DXY', UST: 'US10Y' };
 // Reference instruments are proxies (ETFs/indices) rather than the exact asset.
@@ -104,7 +108,7 @@ export default function MacroAssetPage() {
   return (
     <AppShell legacy={false} accounts={accounts} selectedAccount={selected} onSelectAccount={(a: BrokerAccount) => select(a)}
       pageTitle={name} pageSubtitle={subtitle}
-      actions={<Link href="/macro" className="x-btn"><IChevronL />Macro</Link>}>
+      actions={<>{CHART_SYMBOL[symbol] && <WatchStar symbol={CHART_SYMBOL[symbol]} label={name} size="md" />}<Link href="/macro" className="x-btn"><IChevronL />Macro</Link></>}>
       {loading ? (
         <div className="mc mc-asset" role="status" aria-label="Loading asset">
           <div className="x-skel mc-sk-hero" />
