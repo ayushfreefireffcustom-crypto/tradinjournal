@@ -97,8 +97,8 @@ export default function YearHeatmap({ trades, accountId }: { trades: Trade[]; ac
       right={<span className="an-yh-sum"><b className={`m ${totalNet > 0 ? 'pos' : totalNet < 0 ? 'neg' : ''}`}>{tradingDays ? fmtUsd(totalNet, 0) : '—'}</b> · {tradingDays} trading days</span>}>
       <div className="an-yh" ref={ref} onPointerLeave={() => setHover(null)}>
         <svg width={gridW} height={gridH} role="img" aria-label={`Daily net P&L heatmap, ${tradingDays} trading days`}>
-          {labels.map(m => <text key={`${m.col}-${m.label}`} x={RAIL + m.col * step} y={11} fontSize="10.5" fill="var(--axis)">{m.label}</text>)}
-          {WD.map((d, i) => d && <text key={i} x={0} y={TOP + i * step + cell / 2 + 3.5} fontSize="10" fill="var(--axis)">{d}</text>)}
+          {labels.map(m => <text key={`${m.col}-${m.label}`} x={RAIL + m.col * step} y={11} fontSize="11" fill="var(--axis)">{m.label}</text>)}
+          {WD.map((d, i) => d && <text key={i} x={0} y={TOP + i * step + cell / 2 + 3.5} fontSize="11" fill="var(--axis)">{d}</text>)}
           {weeks.map((week, wi) => week.map((c, di) => {
             if (!c) return null;
             const x = RAIL + wi * step, y = TOP + di * step, agg = c.agg;

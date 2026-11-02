@@ -91,11 +91,11 @@ export function ReplayChart({ trade, real }: { trade: Trade; real?: Candle[] | n
           {ticks.map(v => (
             <g key={v}>
               <line x1={L} x2={L + pw} y1={Y(v)} y2={Y(v)} stroke="var(--grid)" />
-              {!nearPill(v) && <text x={L + pw + 10} y={Y(v) + 3.5} fontSize="10.5" fill="var(--axis)" style={MONO}>{fmtPrice(v, pref)}</text>}
+              {!nearPill(v) && <text x={L + pw + 10} y={Y(v) + 3.5} fontSize="11" fill="var(--axis)" style={MONO}>{fmtPrice(v, pref)}</text>}
             </g>
           ))}
           {timeTicks.map((i, k) => (
-            <text key={k} x={cx(i)} y={h - 6} fontSize="10.5" fill="var(--axis)" textAnchor="middle">{tickTime(times![i]!, spanMs)}</text>
+            <text key={k} x={cx(i)} y={h - 6} fontSize="11" fill="var(--axis)" textAnchor="middle">{tickTime(times![i]!, spanMs)}</text>
           ))}
           <rect x={zx} y={T} width={Math.max(zx2 - zx, slot)} height={ph} fill="var(--tx)" opacity=".035" />
           {!open && (
@@ -130,12 +130,12 @@ export function ReplayChart({ trade, real }: { trade: Trade; real?: Candle[] | n
 
           <g transform={`translate(${L + pw + 4} ${ep})`}>
             <rect x="0" y="-10" width={R - 6} height="20" rx="6" fill="var(--hi)" />
-            <text x="7" y="3.8" fontSize="10.5" fill="var(--inv)" style={MONO}>{fmtPrice(trade.entryPrice, pref)}</text>
+            <text x="7" y="3.8" fontSize="11" fill="var(--inv)" style={MONO}>{fmtPrice(trade.entryPrice, pref)}</text>
           </g>
           {!open && (
             <g transform={`translate(${L + pw + 4} ${xp})`}>
               <rect x="0" y="-10" width={R - 6} height="20" rx="6" fill={res} />
-              <text x="7" y="3.8" fontSize="10.5" fill="var(--on-g)" style={MONO}>{fmtPrice(exitPx, pref)}</text>
+              <text x="7" y="3.8" fontSize="11" fill="var(--on-g)" style={MONO}>{fmtPrice(exitPx, pref)}</text>
             </g>
           )}
         </svg>

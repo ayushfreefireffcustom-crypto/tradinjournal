@@ -120,21 +120,21 @@ function EquityChart({ pts }: { pts: ReturnType<typeof withDrawdown> }) {
             return (
               <g key={f}>
                 <line x1={L} x2={w - R} y1={Y(v)} y2={Y(v)} stroke="var(--grid)" />
-                <text className="mny" x={w - R + 8} y={Y(v) + 3.5} fontSize="10.5" fill="var(--axis)" style={MONO}>{fmtUsdCompact(v)}</text>
+                <text className="mny" x={w - R + 8} y={Y(v) + 3.5} fontSize="11" fill="var(--axis)" style={MONO}>{fmtUsdCompact(v)}</text>
               </g>
             );
           })}
           <path d={`${line} L${X(pts.length - 1)} ${eqB} L${X(0)} ${eqB}Z`} fill="url(#dk-eq-g)" />
           <path d={line} fill="none" stroke="var(--g)" strokeWidth="2" strokeLinejoin="round" />
           <line x1={L} x2={w - R} y1={ddTop} y2={ddTop} stroke="var(--grid)" />
-          <text x={L} y={ddTop - 5} fontSize="10.5" fill="var(--axis)">Drawdown</text>
+          <text x={L} y={ddTop - 5} fontSize="11" fill="var(--axis)">Drawdown</text>
           <path d={`${ddLine} L${X(pts.length - 1)} ${ddTop} L${X(0)} ${ddTop}Z`} fill="url(#dk-dd-g)" />
           <path d={ddLine} fill="none" stroke="var(--r)" strokeWidth="1.2" strokeLinejoin="round" />
-          <text x={w - R + 8} y={ddTop + 4} fontSize="10.5" fill="var(--axis)" style={MONO}>0%</text>
-          <text x={w - R + 8} y={ddB} fontSize="10.5" fill="var(--r)" style={MONO}>−{fmtPct(mdd)}</text>
+          <text x={w - R + 8} y={ddTop + 4} fontSize="11" fill="var(--axis)" style={MONO}>0%</text>
+          <text x={w - R + 8} y={ddB} fontSize="11" fill="var(--r)" style={MONO}>−{fmtPct(mdd)}</text>
           {ticks.map((f, k) => {
             const i = Math.round(f * (pts.length - 1));
-            return <text key={k} x={X(i)} y={h - 2} fontSize="10.5" fill="var(--axis)" textAnchor={k === 0 ? 'start' : k === ticks.length - 1 ? 'end' : 'middle'}>{shortDate(pts[i]!.time)}</text>;
+            return <text key={k} x={X(i)} y={h - 2} fontSize="11" fill="var(--axis)" textAnchor={k === 0 ? 'start' : k === ticks.length - 1 ? 'end' : 'middle'}>{shortDate(pts[i]!.time)}</text>;
           })}
           {hp && hover != null ? (
             <g>
@@ -291,7 +291,7 @@ function DailyChart({ days }: { days: DayBucket[] }) {
           {[top, top / 2, 0, -bot / 2, -bot].map((v, k) => (
             <g key={k}>
               <line x1={L} x2={w - R} y1={yOf(v)} y2={yOf(v)} stroke={v === 0 ? 'var(--line-2)' : 'var(--grid)'} strokeDasharray={k === 1 || k === 3 ? '2 4' : undefined} />
-              <text className="mny" x={L - 8} y={yOf(v) + 3.5} textAnchor="end" fontSize="10" fill="var(--axis)" style={MONO}>{v === 0 ? '$0' : fmtUsdCompact(v)}</text>
+              <text className="mny" x={L - 8} y={yOf(v) + 3.5} textAnchor="end" fontSize="11" fill="var(--axis)" style={MONO}>{v === 0 ? '$0' : fmtUsdCompact(v)}</text>
             </g>
           ))}
           {days.map((d, i) => {
@@ -306,10 +306,10 @@ function DailyChart({ days }: { days: DayBucket[] }) {
           <path d={runs.map((v, i) => `${i ? 'L' : 'M'}${(bx(i) + bw / 2).toFixed(1)} ${rY(v).toFixed(1)}`).join(' ')} fill="none" stroke="var(--tx)" strokeOpacity=".7" strokeWidth="1.5" strokeLinejoin="round" pointerEvents="none" />
           <circle cx={bx(days.length - 1) + bw / 2} cy={rY(runs[runs.length - 1]!)} r="3.5" fill="var(--tx)" pointerEvents="none" />
           {hover == null && (
-            <text className="mny" x={Math.max(L + 40, bx(days.length - 1) + bw / 2 - 8)} y={Math.max(12, rY(runs[runs.length - 1]!) - 9)} textAnchor="end" fontSize="10.5" fill="var(--tx)" style={MONO} pointerEvents="none">{fmtUsd(runs[runs.length - 1]!, 0)}</text>
+            <text className="mny" x={Math.max(L + 40, bx(days.length - 1) + bw / 2 - 8)} y={Math.max(12, rY(runs[runs.length - 1]!) - 9)} textAnchor="end" fontSize="11" fill="var(--tx)" style={MONO} pointerEvents="none">{fmtUsd(runs[runs.length - 1]!, 0)}</text>
           )}
           {days.map((d, i) => labels.has(i) ? (
-            <text key={d.key} x={bx(i) + bw / 2} y={h - 5} fontSize="10.5" fill="var(--axis)" textAnchor={i === 0 ? 'start' : i === days.length - 1 ? 'end' : 'middle'}>{shortDate(d.date)}</text>
+            <text key={d.key} x={bx(i) + bw / 2} y={h - 5} fontSize="11" fill="var(--axis)" textAnchor={i === 0 ? 'start' : i === days.length - 1 ? 'end' : 'middle'}>{shortDate(d.date)}</text>
           ) : null)}
         </svg>
       )}

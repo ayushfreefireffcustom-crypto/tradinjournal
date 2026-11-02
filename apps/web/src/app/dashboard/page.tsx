@@ -125,10 +125,9 @@ export default function DashboardPage() {
           </section>
         ) : (
           <>
-            <div className="dk-row1">
-              <EquityCard view={view} trades={rangedTrades} rangeLabel={rangeLabel} />
-              <KpiColumn view={view} trades={rangedTrades} />
-            </div>
+            <Hello name={session?.user?.name ?? null} broker={selected?.broker ?? null} trades={view.totalTrades} rangeLabel={rangeLabel} />
+            <KpiColumn view={view} trades={rangedTrades} />
+            <EquityCard view={view} trades={rangedTrades} rangeLabel={rangeLabel} />
             <div className="dk-row2">
               <DailyCard trades={rangedTrades} />
               <BreakdownCard trades={rangedTrades} />
@@ -142,5 +141,20 @@ export default function DashboardPage() {
 
       {showConnect && <ConnectBrokerModal onClose={() => setShowConnect(false)} onConnected={onConnected} />}
     </AppShell>
+  );
+}
+
+/** The greeting at the top of the dashboard (E2): who, which account, how many trades. */
+function Hello({ name, broker, trades, rangeLabel }: { name: string | null; broker: string | null; trades: number; rangeLabel: string }) {
+  const [part, setPart] = useState<string | null>(null);
+  // Time of day is the viewer's, so it is set after mount (the server doesn't know it).
+  useEffect(() => { const h = new Date().getHours(); setPart(h < 12 ? 'morning' : h < 18 ? 'afternoon' : 'evening'); }, []);
+  const first = name?.trim().split(/\s+/)[0];
+  return (
+    <header className="dk-hello" data-testid="dash-hello">
+      <span className="dk-cap">{broker ? `Dashboard · ${broker}` : 'Dashboard'}</span>
+      <h2>{part ? `Good ${part}${first ? `, ${first}` : ''}.` : first ? `Hi, ${first}.` : 'Welcome back.'} <span>Here’s how your trading is <em>really</em> going.</span></h2>
+      <p>{broker ? `${broker} · ` : ''}<b className="m">{trades}</b> closed {trades === 1 ? 'trade' : 'trades'} · {rangeLabel.toLowerCase()}</p>
+    </header>
   );
 }

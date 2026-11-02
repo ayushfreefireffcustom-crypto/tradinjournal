@@ -78,10 +78,10 @@ export function TradeCandles({ trade, real }: { trade: Trade; real?: Candle[] | 
             {ticks.map(v => (
               <g key={v}>
                 <line x1={0} x2={plotW} y1={y(v)} y2={y(v)} stroke="var(--grid)" />
-                {AX > 0 && <text x={W} y={y(v) + 3.5} textAnchor="end" fill="var(--axis)" fontSize="10.5" fontFamily="var(--mono)">{fmtPrice(v, trade.entryPrice)}</text>}
+                {AX > 0 && <text x={W} y={y(v) + 3.5} textAnchor="end" fill="var(--axis)" fontSize="11" fontFamily="var(--mono)">{fmtPrice(v, trade.entryPrice)}</text>}
               </g>
             ))}
-            {timeTicks.map(i => <text key={i} x={cx(i)} y={H - 6} textAnchor="middle" fill="var(--axis)" fontSize="10.5" fontFamily="var(--sans)">{fmtT(times![i]!)}</text>)}
+            {timeTicks.map(i => <text key={i} x={cx(i)} y={H - 6} textAnchor="middle" fill="var(--axis)" fontSize="11" fontFamily="var(--sans)">{fmtT(times![i]!)}</text>)}
             <line x1={zx} x2={plotW} y1={ey} y2={ey} stroke="var(--tx)" strokeOpacity={0.55} strokeDasharray="4 4" />
             {!open && <line x1={cx(exitIdx)} x2={plotW} y1={xy} y2={xy} stroke={win ? 'var(--g)' : 'var(--r)'} strokeDasharray="4 4" />}
             {candles.map((c, i) => {

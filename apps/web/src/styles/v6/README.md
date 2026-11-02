@@ -43,9 +43,11 @@ Approved mock: `design/dashboard-v8/a-desk-v2/` (dark + light screenshots in tha
    `--g`/`--r`. Inside a tooltip use `--g-tip` / `--r-tip`. A red fill with white text on it
    (sell buttons, the delete button, a danger hover) uses `var(--r-solid)`: white on `--r` is
    only 3.6:1. Green fills take dark text (`--on-g`) instead.
-5. Typography: Satoshi 400/500 only (never 600/700/900, never `font-bold`/`font-black`), JetBrains
-   Mono (`.m`) for numbers only (prices, P&L, counts, times); labels, dates and headings stay sans.
-   Sentence case; no uppercase letter-spaced labels; no serif or italic accents.
+5. Typography (E2, 2 Nov 2026): Inter only, self-hosted by next/font (`--font-inter`). Seven sizes,
+   nothing else: `--t1` 11, `--t2` 13, `--t3` 14, `--t4` 22, `--t5` 34, `--t6` 40, `--t7` 64. Body 400,
+   labels 500, emphasis 600, card titles 700, 22px and up 800, big numbers 900 with tight tracking.
+   Numbers use `.m`/`.num` (tabular figures). Capitals with tracking only on small labels.
+   Sentence case; no serif or italic accents.
 6. One primary action per card (`x-btn--hi`); everything else `x-btn`. Long/short is `SideChip`
    from `components/v6/desk.tsx`. Symbols use `x-mk` + `tickerMark()` from `lib/desk.ts`.
 7. Unknown is "—", never 0. Empty data gets `x-empty` with one sentence and at most one button.

@@ -78,13 +78,13 @@ export function EquityLine({ points, empty }: { points: Array<{ t: string; equit
           <defs><linearGradient id="cp-eq-g" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor={col} stopOpacity=".22" /><stop offset="1" stopColor={col} stopOpacity="0" /></linearGradient></defs>
           {[0, 1 / 3, 2 / 3, 1].map(f => {
             const v = mn + (mx - mn) * f;
-            return <g key={f}><line x1={L} x2={w - R} y1={Y(v)} y2={Y(v)} stroke="var(--grid)" /><text x={w - R + 8} y={Y(v) + 3.5} fontSize="10.5" fill="var(--axis)" style={MONO}>{compact(v)}</text></g>;
+            return <g key={f}><line x1={L} x2={w - R} y1={Y(v)} y2={Y(v)} stroke="var(--grid)" /><text x={w - R + 8} y={Y(v) + 3.5} fontSize="11" fill="var(--axis)" style={MONO}>{compact(v)}</text></g>;
           })}
           <path d={`${line} L${X(points.length - 1)} ${B} L${X(0)} ${B}Z`} fill="url(#cp-eq-g)" />
           <path d={line} fill="none" stroke={col} strokeWidth="2" strokeLinejoin="round" />
           {ticks.map((f, k) => {
             const i = Math.round(f * (points.length - 1));
-            return <text key={k} x={X(i)} y={h - 3} fontSize="10.5" fill="var(--axis)" textAnchor={k === 0 ? 'start' : k === ticks.length - 1 ? 'end' : 'middle'}>{shortDate(points[i]!.t)}</text>;
+            return <text key={k} x={X(i)} y={h - 3} fontSize="11" fill="var(--axis)" textAnchor={k === 0 ? 'start' : k === ticks.length - 1 ? 'end' : 'middle'}>{shortDate(points[i]!.t)}</text>;
           })}
           {hp && hover != null && (
             <g>

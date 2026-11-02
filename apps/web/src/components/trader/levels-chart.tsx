@@ -101,13 +101,13 @@ export default function LevelsChart({ a }: { a: TraderAnalysis }) {
           <line x1={0} x2={plotW} y1={y(a.t2)} y2={y(a.t2)} stroke="var(--g)" strokeDasharray="2 5" />
           {tags.map(t => (
             <g key={t.l}>
-              <text x={plotW + 8} y={t.y + 3.5} fontSize="10.5" fill={t.c}>{t.l}</text>
-              <text x={w} y={t.y + 3.5} fontSize="10.5" fill="var(--axis)" textAnchor="end" style={MONO}>{formatMacroNumber(t.v)}</text>
+              <text x={plotW + 8} y={t.y + 3.5} fontSize="11" fill={t.c}>{t.l}</text>
+              <text x={w} y={t.y + 3.5} fontSize="11" fill="var(--axis)" textAnchor="end" style={MONO}>{formatMacroNumber(t.v)}</text>
             </g>
           ))}
           {xTicks.map((f, k) => {
             const i = Math.round(f * (shown.length - 1));
-            return <text key={k} x={slot * i + slot / 2} y={h - 4} fontSize="10.5" fill="var(--axis)" textAnchor={k === 0 ? 'start' : k === xTicks.length - 1 ? 'end' : 'middle'}>{when(shown[i]!.openTime, tf)}</text>;
+            return <text key={k} x={slot * i + slot / 2} y={h - 4} fontSize="11" fill="var(--axis)" textAnchor={k === 0 ? 'start' : k === xTicks.length - 1 ? 'end' : 'middle'}>{when(shown[i]!.openTime, tf)}</text>;
           })}
           {hover != null && <line x1={slot * hover + slot / 2} x2={slot * hover + slot / 2} y1={T} y2={T + plotH} stroke="var(--axis)" strokeOpacity=".6" strokeDasharray="3 3" />}
         </svg>

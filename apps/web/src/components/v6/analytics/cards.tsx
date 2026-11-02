@@ -129,7 +129,7 @@ function DistChart({ buckets, total }: { buckets: { lo: number; hi: number; n: n
           {yt.map(v => (
             <g key={v}>
               <line x1={L} x2={w - R} y1={Y(v)} y2={Y(v)} stroke={v === 0 ? 'var(--line-2)' : 'var(--grid)'} />
-              <text x={L - 8} y={Y(v) + 3.5} textAnchor="end" fontSize="10.5" fill="var(--axis)" style={MONO}>{v}</text>
+              <text x={L - 8} y={Y(v) + 3.5} textAnchor="end" fontSize="11" fill="var(--axis)" style={MONO}>{v}</text>
             </g>
           ))}
           {buckets.map((b, i) => {
@@ -138,8 +138,8 @@ function DistChart({ buckets, total }: { buckets: { lo: number; hi: number; n: n
               <g key={i} onPointerEnter={() => setHov(i)}>
                 <rect x={L + i * slot} y={T} width={slot} height={h - B - T} fill="transparent" />
                 {b.n > 0 && <rect x={x} y={Y(b.n)} width={bw} height={h - B - Y(b.n)} rx={Math.min(4, bw / 4)} fill={mid < 0 ? 'var(--r)' : 'var(--g)'} opacity={hov == null || hov === i ? 0.9 : 0.4} />}
-                {b.n > 0 && <text x={x + bw / 2} y={Y(b.n) - 5} textAnchor="middle" fontSize="10.5" fill="var(--mut)" style={MONO}>{b.n}</text>}
-                {(i % every === 0) && <text x={L + i * slot + slot / 2} y={h - 5} textAnchor="middle" fontSize="10.5" fill="var(--axis)" style={MONO}>{sc(mid)}</text>}
+                {b.n > 0 && <text x={x + bw / 2} y={Y(b.n) - 5} textAnchor="middle" fontSize="11" fill="var(--mut)" style={MONO}>{b.n}</text>}
+                {(i % every === 0) && <text x={L + i * slot + slot / 2} y={h - 5} textAnchor="middle" fontSize="11" fill="var(--axis)" style={MONO}>{sc(mid)}</text>}
               </g>
             );
           })}
@@ -228,24 +228,24 @@ function EquityChart({ pts, base }: { pts: EqPt[]; base: number }) {
           {yt.map(v => (
             <g key={v}>
               <line x1={L} x2={w - R} y1={Y(v)} y2={Y(v)} stroke="var(--grid)" />
-              <text className="mny" x={L - 8} y={Y(v) + 3.5} textAnchor="end" fontSize="10.5" fill="var(--axis)" style={MONO}>{ax(v)}</text>
+              <text className="mny" x={L - 8} y={Y(v) + 3.5} textAnchor="end" fontSize="11" fill="var(--axis)" style={MONO}>{ax(v)}</text>
             </g>
           ))}
           <path d={area} fill={`url(#${uid}g)`} clipPath={`url(#${uid}a)`} />
           <path d={area} fill={`url(#${uid}r)`} clipPath={`url(#${uid}b)`} />
           <line x1={L} x2={w - R} y1={yb} y2={yb} stroke="var(--line-2)" strokeDasharray="4 4" />
-          <text x={w - R} y={yb - 6} textAnchor="end" fontSize="10" fill="var(--axis)">Starting balance</text>
+          <text x={w - R} y={yb - 6} textAnchor="end" fontSize="11" fill="var(--axis)">Starting balance</text>
           <path d={line} fill="none" stroke="var(--g)" strokeWidth="2" strokeLinejoin="round" clipPath={`url(#${uid}a)`} />
           <path d={line} fill="none" stroke="var(--r)" strokeWidth="2" strokeLinejoin="round" clipPath={`url(#${uid}b)`} />
-          <text x={L} y={ddTop - 8} fontSize="10.5" fill="var(--axis)">Drawdown from peak</text>
+          <text x={L} y={ddTop - 8} fontSize="11" fill="var(--axis)">Drawdown from peak</text>
           <line x1={L} x2={w - R} y1={ddTop} y2={ddTop} stroke="var(--grid)" />
           <line x1={L} x2={w - R} y1={ddB} y2={ddB} stroke="var(--grid)" />
-          <text x={L - 8} y={ddTop + 3.5} textAnchor="end" fontSize="10.5" fill="var(--axis)" style={MONO}>0%</text>
-          <text x={L - 8} y={ddB + 3.5} textAnchor="end" fontSize="10.5" fill="var(--r)" style={MONO}>−{fmtPct(mdd)}</text>
+          <text x={L - 8} y={ddTop + 3.5} textAnchor="end" fontSize="11" fill="var(--axis)" style={MONO}>0%</text>
+          <text x={L - 8} y={ddB + 3.5} textAnchor="end" fontSize="11" fill="var(--r)" style={MONO}>−{fmtPct(mdd)}</text>
           <path d={`${ddLine} L${X(pts.length - 1)} ${ddTop} L${X(0)} ${ddTop}Z`} fill={`url(#${uid}r)`} />
           <path d={ddLine} fill="none" stroke="var(--r)" strokeWidth="1.3" strokeLinejoin="round" />
           {xt.map((i, k) => (
-            <text key={k} x={X(i)} y={h - 3} fontSize="10.5" fill="var(--axis)" textAnchor={k === 0 ? 'start' : k === xt.length - 1 ? 'end' : 'middle'}>{label(i)}</text>
+            <text key={k} x={X(i)} y={h - 3} fontSize="11" fill="var(--axis)" textAnchor={k === 0 ? 'start' : k === xt.length - 1 ? 'end' : 'middle'}>{label(i)}</text>
           ))}
           {hp && hov != null && (
             <g pointerEvents="none">
@@ -378,7 +378,7 @@ function SplitLine({ vals, base, axis, tip, xLabel, baseLabel }: {
           {yt.map(v => (
             <g key={v}>
               <line x1={L} x2={w - R} y1={Y(v)} y2={Y(v)} stroke="var(--grid)" />
-              <text x={L - 8} y={Y(v) + 3.5} textAnchor="end" fontSize="10.5" fill="var(--axis)" style={MONO}>{axis(v)}</text>
+              <text x={L - 8} y={Y(v) + 3.5} textAnchor="end" fontSize="11" fill="var(--axis)" style={MONO}>{axis(v)}</text>
             </g>
           ))}
           <path d={area} fill="var(--g)" fillOpacity=".14" clipPath={`url(#${uid}a)`} />
@@ -387,7 +387,7 @@ function SplitLine({ vals, base, axis, tip, xLabel, baseLabel }: {
           <path d={line} fill="none" stroke="var(--g)" strokeWidth="1.8" strokeLinejoin="round" clipPath={`url(#${uid}a)`} />
           <path d={line} fill="none" stroke="var(--r)" strokeWidth="1.8" strokeLinejoin="round" clipPath={`url(#${uid}b)`} />
           {xt.map((i, k) => (
-            <text key={k} x={X(i)} y={h - 4} fontSize="10.5" fill="var(--axis)" style={MONO} textAnchor={k === 0 ? 'start' : k === xt.length - 1 ? 'end' : 'middle'}>{xLabel(i)}</text>
+            <text key={k} x={X(i)} y={h - 4} fontSize="11" fill="var(--axis)" style={MONO} textAnchor={k === 0 ? 'start' : k === xt.length - 1 ? 'end' : 'middle'}>{xLabel(i)}</text>
           ))}
           {hov != null && (
             <g pointerEvents="none">
@@ -575,7 +575,7 @@ export function VBars({ bars, labelEvery = 1, values = false, tipLabel, height }
           {yt.map(v => (
             <g key={v}>
               <line x1={L} x2={w - R} y1={Y(v)} y2={Y(v)} stroke={v === 0 ? 'var(--line-2)' : 'var(--grid)'} />
-              <text className="mny" x={L - 8} y={Y(v) + 3.5} textAnchor="end" fontSize="10.5" fill="var(--axis)" style={MONO}>{ax(v)}</text>
+              <text className="mny" x={L - 8} y={Y(v) + 3.5} textAnchor="end" fontSize="11" fill="var(--axis)" style={MONO}>{ax(v)}</text>
             </g>
           ))}
           {bars.map((b, i) => {
@@ -585,8 +585,8 @@ export function VBars({ bars, labelEvery = 1, values = false, tipLabel, height }
               <g key={b.key} onPointerEnter={() => setHov(i)}>
                 <rect x={L + i * slot} y={T} width={slot} height={h - B - T + (values ? 20 : 0)} fill="transparent" />
                 {bh > 0 && <rect x={x} y={b.net >= 0 ? y0 - bh : y0} width={bw} height={bh} rx={Math.min(4, bw / 4)} fill={b.net >= 0 ? 'var(--g)' : 'var(--r)'} opacity={hov == null || hov === i ? 0.92 : 0.4} />}
-                {(i % labelEvery === 0) && <text x={x + bw / 2} y={h - (values ? 22 : 5)} textAnchor="middle" fontSize="10.5" fill="var(--axis)" style={values ? undefined : MONO}>{b.label}</text>}
-                {values && <text x={x + bw / 2} y={h - 5} textAnchor="middle" fontSize="10.5" fill={b.net > 0 ? 'var(--g)' : b.net < 0 ? 'var(--r)' : 'var(--dim)'} style={MONO}>{!b.n ? '—' : slot < 46 && b.net > 0 ? compact(b.net).slice(1) : compact(b.net)}</text>}
+                {(i % labelEvery === 0) && <text x={x + bw / 2} y={h - (values ? 22 : 5)} textAnchor="middle" fontSize="11" fill="var(--axis)" style={values ? undefined : MONO}>{b.label}</text>}
+                {values && <text x={x + bw / 2} y={h - 5} textAnchor="middle" fontSize="11" fill={b.net > 0 ? 'var(--g)' : b.net < 0 ? 'var(--r)' : 'var(--dim)'} style={MONO}>{!b.n ? '—' : slot < 46 && b.net > 0 ? compact(b.net).slice(1) : compact(b.net)}</text>}
               </g>
             );
           })}
@@ -676,13 +676,13 @@ function ScatterChart({ pts }: { pts: Trade[] }) {
           {yt.map(v => (
             <g key={v}>
               <line x1={L} x2={w - R} y1={Y(v)} y2={Y(v)} stroke={v === 0 ? 'var(--line-2)' : 'var(--grid)'} />
-              <text className="mny" x={L - 8} y={Y(v) + 3.5} textAnchor="end" fontSize="10.5" fill="var(--axis)" style={MONO}>{ax(v)}</text>
+              <text className="mny" x={L - 8} y={Y(v) + 3.5} textAnchor="end" fontSize="11" fill="var(--axis)" style={MONO}>{ax(v)}</text>
             </g>
           ))}
           {shownX.map(s => (
             <g key={s}>
               <line x1={X(s)} x2={X(s)} y1={T} y2={h - B} stroke="var(--grid)" />
-              <text x={X(s)} y={h - 5} textAnchor="middle" fontSize="10.5" fill="var(--axis)" style={MONO}>{fmtHold(s)}</text>
+              <text x={X(s)} y={h - 5} textAnchor="middle" fontSize="11" fill="var(--axis)" style={MONO}>{fmtHold(s)}</text>
             </g>
           ))}
           {pts.map((t, i) => (

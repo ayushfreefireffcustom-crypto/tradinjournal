@@ -34,7 +34,7 @@ function Chart({ pts }: { pts: Pt[] }) {
           {ticks.map(v => (
             <g key={v}>
               <line x1={L} x2={w - R} y1={Y(v)} y2={Y(v)} stroke="var(--grid)" />
-              <text x={w - R + 8} y={Y(v) + 3.5} fontSize="10.5" fill="var(--axis)" style={MONO}>{v.toFixed(2)}%</text>
+              <text x={w - R + 8} y={Y(v) + 3.5} fontSize="11" fill="var(--axis)" style={MONO}>{v.toFixed(2)}%</text>
             </g>
           ))}
           <path d={`${line} L${X(pts.length - 1)} ${h - B} L${X(0)} ${h - B}Z`} fill="url(#mc-yc-g)" />
@@ -42,7 +42,7 @@ function Chart({ pts }: { pts: Pt[] }) {
           {pts.map((p, i) => (
             <g key={p.label}>
               <circle cx={X(i)} cy={Y(p.value)} r="3.5" fill="var(--s1)" stroke="var(--g)" strokeWidth="1.8" />
-              <text x={X(i)} y={Y(p.value) - 9} textAnchor="middle" fontSize="10.5" fill="var(--tx)" style={MONO}>{p.value.toFixed(2)}</text>
+              <text x={X(i)} y={Y(p.value) - 9} textAnchor="middle" fontSize="11" fill="var(--tx)" style={MONO}>{p.value.toFixed(2)}</text>
               <text x={X(i)} y={h - 4} textAnchor="middle" fontSize="11" fill="var(--axis)">{p.label}</text>
             </g>
           ))}

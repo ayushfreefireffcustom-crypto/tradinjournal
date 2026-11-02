@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
 import '@/components/landing-v5/landing.css';
 import Nav, { Announcement } from '@/components/landing-v5/nav';
 import Hero from '@/components/landing-v5/hero';
@@ -8,9 +7,6 @@ import { PARTNERS_ENABLED } from '@/lib/features';
 import { Ai, Behaviour, Core, Cta, Facts, Faq, Footer, Partners, Review, Security, Steps } from '@/components/landing-v5/sections';
 import { Copy, Markets, Options, Strategies } from '@/components/landing-v5/features';
 
-// The landing uses the approved E2 type: Inter only. Loaded here so the app
-// pages, which use Satoshi, don't download it.
-const inter = Inter({ subsets: ['latin'], weight: ['400', '500', '600', '700', '800', '900'], variable: '--font-l5', display: 'swap' });
 
 export const metadata: Metadata = {
   title: 'TRADElogs — The trading journal that tells you what to fix',
@@ -30,7 +26,7 @@ export const viewport = { themeColor: '#030303' };
 
 export default function LandingPage() {
   return (
-    <div className={`lp5 ${inter.variable}`}>
+    <div className="lp5">
       <a href="#main" className="l5-skip">Skip to content</a>
       <div className="l5-grain" aria-hidden />
       <DeletedNote />

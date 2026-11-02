@@ -25,7 +25,7 @@ export function chartStyles(el: Element): DeepPartial<Styles> {
   const inv = v('--inv');
   const onG = v('--on-g');
   const mono = v('--mono', '"JetBrains Mono", ui-monospace, monospace');
-  const sans = v('--sans', 'Satoshi, ui-sans-serif, system-ui, sans-serif');
+  const sans = v('--sans', 'Inter, ui-sans-serif, system-ui, sans-serif');
 
   const tick = { color: axis, size: 11, family: mono, weight: '400' };
   const xhairText = { backgroundColor: hi, borderColor: hi, color: inv, family: mono, size: 11, weight: '400' };

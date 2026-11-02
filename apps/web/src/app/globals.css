@@ -1,21 +1,5 @@
 @import "tailwindcss";
 
-/* Satoshi 400 and 500 from Fontshare's CDN, the same files its stylesheet API
-   serves (https://api.fontshare.com/v2/css?f[]=satoshi@400,500&display=swap).
-   Declared here so the first paint doesn't wait on that stylesheet (A5.9). If
-   the files ever move, text falls back to the system sans until these URLs are
-   refreshed from that API. */
-@font-face {
-  font-family: 'Satoshi';
-  src: url('https://cdn.fontshare.com/wf/TTX2Z3BF3P6Y5BQT3IV2VNOK6FL22KUT/7QYRJOI3JIMYHGY6CH7SOIFRQLZOLNJ6/KFIAZD4RUMEZIYV6FQ3T3GP5PDBDB6JY.woff2') format('woff2'), url('https://cdn.fontshare.com/wf/TTX2Z3BF3P6Y5BQT3IV2VNOK6FL22KUT/7QYRJOI3JIMYHGY6CH7SOIFRQLZOLNJ6/KFIAZD4RUMEZIYV6FQ3T3GP5PDBDB6JY.woff') format('woff');
-  font-weight: 400; font-style: normal; font-display: swap;
-}
-@font-face {
-  font-family: 'Satoshi';
-  src: url('https://cdn.fontshare.com/wf/P2LQKHE6KA6ZP4AAGN72KDWMHH6ZH3TA/ZC32TK2P7FPS5GFTL46EU6KQJA24ZYDB/7AHDUZ4A7LFLVFUIFSARGIWCRQJHISQP.woff2') format('woff2'), url('https://cdn.fontshare.com/wf/P2LQKHE6KA6ZP4AAGN72KDWMHH6ZH3TA/ZC32TK2P7FPS5GFTL46EU6KQJA24ZYDB/7AHDUZ4A7LFLVFUIFSARGIWCRQJHISQP.woff') format('woff');
-  font-weight: 500; font-style: normal; font-display: swap;
-}
-
 @theme {
   /* Obsidian palette */
   --color-app: #000000;
@@ -34,11 +18,10 @@
   --color-loss: #FE3A31;
   --color-warning: #A1A1AA; /* was amber; the system has no amber (A0.5), so warnings read neutral */
 
-  /* Same faces as the v6 tokens (styles/v6/tokens.css): Satoshi for text,
-     JetBrains Mono (next/font, --font-v5-mono) for numbers. */
-  --font-sans: Satoshi, ui-sans-serif, system-ui, sans-serif;
-  --font-display: Satoshi, ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-v5-mono), "JetBrains Mono", ui-monospace, monospace;
+  /* Same face as the v6 tokens (styles/v6/tokens.css): Inter for everything. */
+  --font-sans: var(--font-inter), "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-inter), "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-inter), "Inter", ui-sans-serif, system-ui, sans-serif;
 }
 
 /* Motion and the few radius/shadow values the remaining global helpers use. */

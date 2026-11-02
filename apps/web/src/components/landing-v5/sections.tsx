@@ -342,7 +342,7 @@ function Vault() {
       </g>
       {tags.map(([t, x, y]) => { const w = t.length * 8.4 + 26; return (
         <g key={t} transform={`translate(${x - w / 2},${y - 15})`}><rect width={w} height="30" rx="15" fill="rgba(10,10,10,.92)" stroke="rgba(125,242,182,.35)" />
-          <text x={w / 2} y="19.5" textAnchor="middle" fontFamily="var(--font-l5), Inter, sans-serif" fontSize="12" fontWeight="600" letterSpacing="1.4" fill="#7DF2B6">{t}</text></g>
+          <text x={w / 2} y="19.5" textAnchor="middle" fontFamily="var(--font-inter), Inter, sans-serif" fontSize="12" fontWeight="600" letterSpacing="1.4" fill="#7DF2B6">{t}</text></g>
       ); })}
     </svg>
   );

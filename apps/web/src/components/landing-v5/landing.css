@@ -13,7 +13,7 @@
   --txt: #F4F4F5; --txt-2: #A1A1AA; --mute: #71717A;
   --g: #08C465; --g2: #2EE58A; --g3: #7DF2B6; --gd: #06A253; --on-g: #03140A;
   --r: #FE3A31; --r2: #FF6A62;
-  --sans: var(--font-l5), 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --sans: var(--font-inter), 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   --mono: var(--sans);
   --t1: 12px; --t2: 14px; --t3: 16px; --t4: 20px; --t5: 28px; --t6: 56px; --t7: 96px;
   --ease: cubic-bezier(.22, 1, .36, 1);
