@@ -235,7 +235,7 @@
 .v6 .cmp-chip button { background: none; border: 0; color: var(--mut); cursor: pointer; font-size: 15px; line-height: 1; padding: 0 4px; }
 .v6 .cmp-add { min-width: 200px; }
 .v6 .cmp-chart { position: relative; width: 100%; }
-.v6 .cmp-tip { position: absolute; top: 8px; left: 12px; background: var(--tip); border-radius: 8px; padding: 8px 10px; display: grid; gap: 3px; font-size: 12px; pointer-events: none; }
+.v6 .cmp-tip { position: absolute; top: 8px; left: 12px; background: var(--tip); color: #F2F2F2; border-radius: var(--r-ctl); padding: 8px 11px; display: grid; gap: 3px; font-size: 11.5px; pointer-events: none; box-shadow: 0 10px 24px rgba(0, 0, 0, .3); }
 .v6 .cmp-tip span { display: flex; gap: 6px; align-items: center; }
 .v6 .cmp-tip .pos { color: var(--g-tip); } .v6 .cmp-tip .neg { color: var(--r-tip); }
 .v6 [data-testid=cmp-table] td.pos { color: var(--g-tx); } .v6 [data-testid=cmp-table] td.neg { color: var(--r-tx); }

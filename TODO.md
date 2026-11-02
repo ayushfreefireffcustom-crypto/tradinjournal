@@ -78,7 +78,7 @@ Legend:
 - [x] A2.11 `InfoTip` (ⓘ popover with "what it is / why it matters"). Replace `components/macro/info-tip.tsx` usage everywhere `S` — components/v6/ui/info-tip.tsx; macro re-exports it (2 Nov)
 - [ ] A2.12 `Well`: a dark framed thumbnail container for mini-charts, with a mono caption `S`
 - [ ] A2.13 `IconTile`: glossy rounded-square SVG master, palettes green/red/graphite `M`
-- [ ] A2.14 Form set: `Field`, `Input`, `Select`, `Textarea`, `Checkbox`, `Switch`, `Radio`, `NumberStepper`, `SearchInput` (⌘K hint). Error and help text `M`
+- [x] A2.14 Form set: `Field`, `Input`, `Select`, `Textarea`, `Checkbox`, `Switch`, `Radio`, `NumberStepper`, `SearchInput` (⌘K hint). Error and help text `M` — 2 Nov: a class set rather than React wrappers (native inputs stay simple): `x-field` (label, `x-help`, `x-err`), `x-input`, `x-select`, `x-textarea`, `x-check`, `x-radio` (new), `x-switch`, `cp-stepper` (number stepper), `x-search`; the ⌘K hint is on the frame's search button. All shown in /dev/ui
 - [x] A2.15 `Sheet`/`Dialog` (bottom sheet on mobile, centred dialog on desktop). Replace `components/confirm-dialog.tsx` and `components/v3/confirm-dialog.tsx` with one `M` — one ConfirmDialog (portal, Esc, bottom sheet on phones) already replaced both
 - [x] A2.16 `Menu`/`Dropdown` with keyboard support `S` — `useMenu` (components/v6/ui/use-menu.ts, tested): arrows, Home/End, type-ahead, Esc back to trigger; account switcher + user menu use it
 - [x] A2.17 `Tooltip` `S` — components/v6/ui/tooltip.tsx: hover after 350ms or keyboard focus, portal, flips, Esc
@@ -90,7 +90,7 @@ Legend:
 - [x] A2.23 `Avatar` + `AccountPill` (exchange/broker badge + name + last-4) `S` — frame `f-av` + the top-bar account pill (broker, last 4, exchange rows)
 - [x] A2.24 `Pagination`/"Load more" `S` — "Show more" + "Showing N of M" on the trade log; other lists are short
 - [x] A2.25 `DateRangePicker` with presets: today, yesterday, this week, last week, this month, last month, YTD, last year, custom. Evidence: MP seen `M` — components/v6/ui/date-range.tsx + lib/date-presets.ts (2 Nov)
-- [ ] A2.26 Chart kit: one `ChartTheme` (axes `--dim`, grid `--line`, tooltip card, crosshair) applied to equity, drawdown, bars, scatter, rolling, heatmap, kline `M`
+- [x] A2.26 Chart kit: one `ChartTheme` (axes `--dim`, grid `--line`, tooltip card, crosshair) applied to equity, drawdown, bars, scatter, rolling, heatmap, kline `M` — 2 Nov: the theme is the tokens: grid `--grid`, axis text `--axis`, reference lines `--line-2`, profit/loss marks `--g`/`--r`, several series `--series-1…6`, and one tooltip card (`--tip`, `--r-ctl`, 8×11 padding, 11.5px, light text, `--g-tip`/`--r-tip` inside). Checked in every SVG chart: no hard-coded colours. Brought the copy, compare and partner tooltips onto the card; the compare tooltip had no text colour and went dark-on-dark in light theme
 - [x] A2.27 `Sparkline` (single shared one; remove the duplicates in `macro/sparkline.tsx` etc.) `S` — components/v6/ui/sparkline.tsx + lib/sparkline.ts (tested); the macro, copy and desk copies are gone
 - [x] A2.28 A `/dev/ui` primitives gallery page (dev only) to review every primitive in one place `S` — app/dev/ui (404 in production), both themes
 - [x] A2.29 Unit tests for formatters + `pnlClass`; a render smoke test for each primitive `S` — format.test.ts + components/v6/ui/primitives.test.ts (react-dom/server)
@@ -173,7 +173,7 @@ Legend:
 - [x] QW.6 Year P&L heatmap (12 month blocks, monthly totals under each). Extends `components/year-heatmap.tsx`. Evidence: MP seen `S` — monthly net P&L under the consistency grid, whole dollars, adds up to the total (2 Nov)
 - [x] QW.7 Asset-allocation donut (top 6 + Others, P&L on hover). Evidence: MP seen `S` — analytics Allocation card, top 5 + Others (the 6th series colour is too close to the 1st in a ring)
 - [x] QW.8 ⓘ explanation on every dashboard/analytics metric (A2.11), with copy written for each metric `M` — lib/metric-help.ts (2 Nov)
-- [ ] QW.9 "Unknown ≠ 0" sweep: every metric with no data renders "—" with a reason tooltip. Evidence: CM seen `S` — partial: unknowns show "—" across dashboard, analytics, trades, calendar, brokers, macro (checked with the empty-account run); reason tooltips not added
+- [x] QW.9 "Unknown ≠ 0" sweep: every metric with no data renders "—" with a reason tooltip. Evidence: CM seen `S` — done 2 Nov: unknowns show "—" everywhere; on the dashboard KPIs and daily stats and on every analytics KPI and fact row the dash is `components/v6/ui/unknown.tsx`, with the reason on hover or keyboard focus and in its accessible name ("No closed trades in this range", "Needs 10 trading days; 3 so far", "No losing days yet"…). Checked on an empty date range: 16 reasons, no bare dash left
 - [x] QW.10 Exit-reason inference from MT5 deal comments (`[tp]`, `[sl]`, `so:`). Filter on `/trades` `M` — lib/exit-reason.ts + /trades filter and TP/SL markers (2 Nov)
 - [ ] QW.11 Source column/filter on trades — exchange orders already show it on /trading (D2); MT5 deals carry no source, so nothing to show on /trades yet. (Manual / Copied / Strategy), ready for Part B `S`
 - [ ] QW.12 Multiple watchlists (up to 8, unique names, rename/delete, at least 1 kept). Migrate the `Watchlist` model from one row per user to lists. Evidence: MP seen + code `M` — deferred: needs a Watchlist schema change, which would add a production migration for Ayush to run
@@ -648,7 +648,7 @@ Legend:
 - [x] A0.23 One `SideChip` for long/short (sentence case "Long"/"Short", green/red text on a graphite chip). Replaces the 5 current styles incl. BUY/SELL on raw deals `S` — desk.tsx SideChip / `x-side`
 
 **Charts:**
-- [ ] A0.24 Shared chart theme (A2.26) applied to all 7 implementations `L → split`:
+- [x] A0.24 Shared chart theme (A2.26) applied to all 7 implementations `L → split`: — 2 Nov: dashboard, analytics, year heatmap, trade candles, replay, macro sparklines and yield curve all draw from the tokens (A2.26); klinecharts reads them through `components/v6/markets/chart-theme.ts`; the TradingView embed gets the theme, background and colours through its URL
   - `dashboard-parts` equity/hour/day
   - `analytics-parts` area/rolling/scatter/heatmap
   - `year-heatmap`
@@ -658,7 +658,7 @@ Legend:
   - macro sparklines/yield curve
 - [x] A0.25 Every bar/line chart gets a y-axis (or value labels) + light gridlines; x labels attached to the plot `M` — verified in code (2 Nov)
 - [x] A0.26 Drawdown series always red `S` — verified in code (2 Nov)
-- [ ] A0.27 Candle colours: brand green/red everywhere incl. klinecharts + TradingView overrides `S`
+- [x] A0.27 Candle colours: brand green/red everywhere incl. klinecharts + TradingView overrides `S` — 2 Nov: SVG candles and klinecharts use `--g`/`--r`; the TradingView embed now gets `overrides` (candle body, border, wick) and `studies_overrides` (volume), checked on a screenshot in both themes: no TradingView teal left
 
 **States:**
 - [x] A0.28 One `EmptyState` used everywhere. Replace the six ad-hoc versions (analytics dashed boxes, notebook, paper blotter, dashboard text, brokers dashed card, admin red bar) `M` — the dashed boxes, red bars and "+$0.00" empties are gone. Page and card empties use `x-empty`; charts keep a compact empty-grid (`an-empty`, `dk-chart-empty`) and lists a muted line (`jn-none`, `mk-none`, `cl-empty`, `tr-jnone`): same tone, sized for where they sit. Decided not to force those into the big page style
@@ -793,7 +793,7 @@ Legend:
 - [x] M: regime card: no glow, no serif; bias gauge → a single neutral bar with a marker `S` — verified in code (2 Nov)
 - [x] M: indicator groups: line icons; ⓘ per group (not 33 per row); values mono; sparklines in chart theme `M` — decided to keep one ⓘ per indicator: each explains its own series, a group tip would lose that. Line icons, mono values and the shared Sparkline are in
 - [x] M: sentence-case chips (Bullish, Upward, Stance: dovish…) `S` — verified in code (2 Nov)
-- [ ] M: Fed sub-view: fill the layout or shorten the page; paper blotter EmptyState with an action and the right tab name `S`
+- [x] M: Fed sub-view: fill the layout or shorten the page; paper blotter EmptyState with an action and the right tab name `S` — checked 2 Nov at 1440 and 390: the Fed view is two cards and a strip with no empty stretch; the blotter's empty state names "SignalX signals" and has an "Open SignalX signals" button
 - [x] L: disclaimers: one sentence-case footer line `S` — verified in code (2 Nov)
 
 ### A4.11 `/macro/assets/[symbol]`: `app/macro/assets/[symbol]/page.tsx`

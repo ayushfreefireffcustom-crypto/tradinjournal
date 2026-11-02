@@ -43,6 +43,19 @@ const TICK: Record<string, string> = { XAU: 'XAUUSD', XAG: 'XAGUSD', BTC: 'BTCUS
 const REF_NOTE: Record<string, string> = { SPX: 'Ref SPY', NDX: 'Ref QQQ', OIL: 'Ref USO', UST: 'Ref TLT', DXY: 'Ref ICE' };
 // TradingView embed palette per app theme (matches the card surface tokens).
 const TV_BG = { dark: 'rgba(19,19,19,1)', light: 'rgba(255,255,255,1)' } as const;
+// Brand green/red candles in the embed (A0.27): the same values as --g / --r in each theme.
+const TV_CANDLES = { dark: ['#08C465', '#FE3A31'], light: ['#05A656', '#E0342B'] } as const;
+function tvOverrides(theme: 'dark' | 'light'): string {
+  const [up, down] = TV_CANDLES[theme];
+  const c = 'mainSeriesProperties.candleStyle';
+  return encodeURIComponent(JSON.stringify({ [`${c}.upColor`]: up, [`${c}.downColor`]: down, [`${c}.borderUpColor`]: up, [`${c}.borderDownColor`]: down, [`${c}.wickUpColor`]: up, [`${c}.wickDownColor`]: down }));
+}
+/** Volume bars in the same green/red, softened like ours. */
+function tvStudyOverrides(theme: 'dark' | 'light'): string {
+  const soft = (hex: string) => `rgba(${parseInt(hex.slice(1, 3), 16)},${parseInt(hex.slice(3, 5), 16)},${parseInt(hex.slice(5, 7), 16)},0.45)`;
+  const [up, down] = TV_CANDLES[theme];
+  return encodeURIComponent(JSON.stringify({ 'volume.volume.color.0': soft(down), 'volume.volume.color.1': soft(up) }));
+}
 // Preview builds serve canned macro data, so the quote won't match the live chart below.
 const SAMPLE_QUOTES = process.env.NEXT_PUBLIC_USE_MOCKS === 'true';
 function strength(score: number): string {
@@ -151,7 +164,7 @@ export default function MacroAssetPage() {
                 <section className="x-card mc-tv" data-testid="macro-asset-tv">
                   <div className="x-ch"><h2>Chart</h2><span className="x-sub"><span className="m">{tick}</span> · 1h</span><span className="x-r">TradingView embed</span></div>
                   <iframe key={theme} title={`${name} chart`} loading="lazy"
-                    src={`https://s.tradingview.com/widgetembed/?symbol=${encodeURIComponent(tv)}&interval=60&theme=${theme}&style=1&locale=en&hideideas=1&hidetoptoolbar=1&hidesidetoolbar=1&toolbarbg=${bg}&backgroundColor=${bg}`} />
+                    src={`https://s.tradingview.com/widgetembed/?symbol=${encodeURIComponent(tv)}&interval=60&theme=${theme}&style=1&locale=en&hideideas=1&hidetoptoolbar=1&hidesidetoolbar=1&toolbarbg=${bg}&backgroundColor=${bg}&overrides=${tvOverrides(theme)}&studies_overrides=${tvStudyOverrides(theme)}`} />
                 </section>
               )}
             </>

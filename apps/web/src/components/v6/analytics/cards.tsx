@@ -13,6 +13,8 @@ import { ACard, Empty, Facts, MONO, Tip, ticks, useSize } from './kit';
 import InfoTip from '@/components/v6/ui/info-tip';
 import { METRIC_HELP } from '@/lib/metric-help';
 import { allocationSlices } from '@/lib/allocation';
+import { MIN_CAGR_DAYS, MIN_RETURNS } from '@/lib/risk';
+import Unknown from '@/components/v6/ui/unknown';
 
 const tone = (v: number) => (v > 0 ? 'pos' : v < 0 ? 'neg' : '');
 /** "+$1.2k" / "−$340" / "$0". */
@@ -45,7 +47,7 @@ export function KpiStrip({ view }: { view: AccountStats }) {
   ];
   return (
     <section className="x-strip x-strip--card an-kpis" style={{ ['--n' as string]: 5 }} aria-label="Summary">
-      {k.map(x => <div key={x.id} data-testid={`kpi-${x.id}`}><span>{x.l}<InfoTip {...METRIC_HELP[x.h]} /></span><b className={`m ${x.c} ${['netpl', 'grossprofit', 'grossloss'].includes(x.id) ? 'mny' : ''}`}>{x.v}</b><small className={x.id === 'maxdrawdown' ? 'mny' : ''}>{x.s}</small></div>)}
+      {k.map(x => <div key={x.id} data-testid={`kpi-${x.id}`}><span>{x.l}<InfoTip {...METRIC_HELP[x.h]} /></span><b className={`m ${x.c} ${['netpl', 'grossprofit', 'grossloss'].includes(x.id) ? 'mny' : ''}`}>{x.v === '—' ? <Unknown why="No closed trades in this range" /> : x.v}</b><small className={x.id === 'maxdrawdown' ? 'mny' : ''}>{x.s}</small></div>)}
     </section>
   );
 }
@@ -74,10 +76,10 @@ export function Strike({ view }: { view: AccountStats }) {
         </dl>
       </div>
       <Facts items={[
-        { l: 'Avg win', h: 'avgWinLoss', v: total ? fmtUsd(view.avgWin) : '—', c: view.avgWin ? 'pos' : '' },
-        { l: 'Avg loss', v: total ? fmtUsd(-Math.abs(view.avgLoss)) : '—', c: view.avgLoss ? 'neg' : '' },
-        { l: 'Best', v: total ? fmtUsd(view.bestTrade) : '—', c: tone(view.bestTrade) },
-        { l: 'Worst', v: total ? fmtUsd(view.worstTrade) : '—', c: tone(view.worstTrade) },
+        { l: 'Avg win', h: 'avgWinLoss', v: total ? fmtUsd(view.avgWin) : '—', c: view.avgWin ? 'pos' : '', why: 'No closed trades in this range' },
+        { l: 'Avg loss', v: total ? fmtUsd(-Math.abs(view.avgLoss)) : '—', c: view.avgLoss ? 'neg' : '', why: 'No closed trades in this range' },
+        { l: 'Best', v: total ? fmtUsd(view.bestTrade) : '—', c: tone(view.bestTrade), why: 'No closed trades in this range' },
+        { l: 'Worst', v: total ? fmtUsd(view.worstTrade) : '—', c: tone(view.worstTrade), why: 'No closed trades in this range' },
       ]} />
     </ACard>
   );
@@ -104,7 +106,7 @@ export function Dist({ trades }: { trades: Trade[] }) {
         { l: 'Expectancy', h: 'expectancy', v: fmtUsd(exp), c: tone(exp) },
         { l: 'Std dev', h: 'stdDev', v: plainUsd(sd, { digits: 0 }) },
         { l: 'Median trade', h: 'median', v: fmtUsd(median), c: tone(median) },
-        { l: 'Within 1 std dev', h: 'withinSd', v: pnls.length > 1 ? `${Math.round(within * 100)}%` : '—' },
+        { l: 'Within 1 std dev', h: 'withinSd', v: pnls.length > 1 ? `${Math.round(within * 100)}%` : '—', why: 'Needs at least 2 closed trades' },
       ]} />
     </ACard>
   );
@@ -167,16 +169,18 @@ export function Equity({ view }: { view: AccountStats }) {
     });
   }, [view.equityCurve]);
   const peak = Math.max(...pts.map(p => p.equity), view.startingBalance);
+  const days = view.risk?.tradingDays ?? 0;
+  const fewDays = days < MIN_RETURNS ? `Needs ${MIN_RETURNS} trading days; ${days} so far` : null;
   return (
     <ACard title="Equity curve" sub="realised, vs starting balance" testId="dd-card"
       right={<span className="x-sub an-peak">Peak <b className="m mny">{plainUsd(peak, { digits: 0 })}</b></span>}>
       <EquityChart pts={pts} base={view.startingBalance} />
       {view.risk && (
         <Facts items={[
-          { l: 'Sharpe', h: 'sharpe', v: view.risk.sharpe == null ? '—' : view.risk.sharpe.toFixed(2) },
-          { l: 'Sortino', h: 'sortino', v: view.risk.sortino == null ? '—' : view.risk.sortino.toFixed(2) },
-          { l: 'CAGR', h: 'cagr', v: view.risk.cagrPct == null ? '—' : fmtPct(view.risk.cagrPct / 100), c: view.risk.cagrPct == null ? '' : tone(view.risk.cagrPct) },
-          { l: 'Recovery factor', h: 'recoveryFactor', v: view.risk.recoveryFactor == null ? '—' : view.risk.recoveryFactor.toFixed(2) },
+          { l: 'Sharpe', h: 'sharpe', v: view.risk.sharpe == null ? '—' : view.risk.sharpe.toFixed(2), why: fewDays ?? 'Every day returned the same, so there is no spread to measure' },
+          { l: 'Sortino', h: 'sortino', v: view.risk.sortino == null ? '—' : view.risk.sortino.toFixed(2), why: fewDays ?? 'No losing days yet' },
+          { l: 'CAGR', h: 'cagr', v: view.risk.cagrPct == null ? '—' : fmtPct(view.risk.cagrPct / 100), c: view.risk.cagrPct == null ? '' : tone(view.risk.cagrPct), why: `Needs ${MIN_CAGR_DAYS} days of history and a positive balance` },
+          { l: 'Recovery factor', h: 'recoveryFactor', v: view.risk.recoveryFactor == null ? '—' : view.risk.recoveryFactor.toFixed(2), why: 'No drawdown yet, so nothing to recover from' },
         ]} />
       )}
     </ACard>
@@ -609,9 +613,9 @@ export function Hours({ trades }: { trades: Trade[] }) {
     <ACard title="Hour of day" sub="UTC entry hour" testId="time-of-day">
       {!trades.length ? <Empty h={220}>No closed trades in this range.</Empty> : <VBars bars={bars} labelEvery={3} tipLabel={b => `${hh(Number(b.key))}–${hh((Number(b.key) + 1) % 24)} UTC`} />}
       <Facts items={[
-        { l: 'Best hour', v: net[best]! > 0 ? hh(best) : '—', c: net[best]! > 0 ? 'pos' : '' },
-        { l: 'Worst hour', v: net[worst]! < 0 ? hh(worst) : '—', c: net[worst]! < 0 ? 'neg' : '' },
-        { l: 'Most active', v: cnt[busy] ? hh(busy) : '—' },
+        { l: 'Best hour', v: net[best]! > 0 ? hh(best) : '—', c: net[best]! > 0 ? 'pos' : '', why: trades.length ? 'No hour finished in profit' : 'No closed trades in this range' },
+        { l: 'Worst hour', v: net[worst]! < 0 ? hh(worst) : '—', c: net[worst]! < 0 ? 'neg' : '', why: trades.length ? 'No hour finished at a loss' : 'No closed trades in this range' },
+        { l: 'Most active', v: cnt[busy] ? hh(busy) : '—', why: 'No closed trades in this range' },
       ]} />
     </ACard>
   );

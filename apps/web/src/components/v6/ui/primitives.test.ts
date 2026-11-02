@@ -12,6 +12,7 @@ import Freshness from './freshness';
 import DateRangePicker from './date-range';
 import CommandPalette from '../command-palette';
 import { placeTip } from './tooltip';
+import Unknown from './unknown';
 
 const html = (el: Parameters<typeof renderToStaticMarkup>[0]) => renderToStaticMarkup(el);
 
@@ -71,6 +72,12 @@ describe('other primitives', () => {
   it('Freshness renders a dash-free stamp only when it has a time', () => {
     expect(html(h(Freshness, { at: null }))).toBe('');
     expect(html(h(Freshness, { at: Date.now() }))).toContain('Updated');
+  });
+  it('Unknown shows a dash whose name carries the reason', () => {
+    const out = html(h(Unknown, { why: 'Needs 10 trading days; 3 so far' }));
+    expect(out).toContain('>—</span>');
+    expect(out).toContain('aria-label="Not available: Needs 10 trading days; 3 so far"');
+    expect(out).toContain('tabindex="0"');
   });
   it('DateRangePicker starts closed with a Custom button', () => {
     const out = html(h(DateRangePicker, { value: null, onChange: () => {} }));

@@ -371,7 +371,7 @@
   .v6 .mk-sym { width: 100%; flex: 1 1 100%; }
   .v6 .mk-tf { flex: 1 1 auto; }
   .v6 .mk-tools-r { margin-left: 0; width: 100%; justify-content: space-between; flex-wrap: wrap; row-gap: 6px; }
-  .v6 .mk-ind-pop { right: auto; left: 0; }
+  .v6 .mk-ind-pop, .v6 .mk-tools .mk-ind-pop { position: fixed; left: 12px; right: 12px; top: auto; bottom: calc(12px + env(safe-area-inset-bottom)); width: auto; max-height: 70dvh; overflow-y: auto; z-index: 80; box-shadow: 0 0 0 100vmax rgba(0, 0, 0, .5), var(--pop-shadow); }
   .v6 .mk-cgrid, .v6 .mk-cgrid.n2, .v6 .mk-cgrid.n4 { grid-template-columns: minmax(0, 1fr); grid-auto-rows: 320px; }
   .v6 .mk-cgrid.n1 { grid-auto-rows: 400px; }
   .v6 .mk-crail { grid-template-columns: minmax(0, 1fr); }

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { trapIndex } from './use-dialog';
+import { popSide } from './use-on-screen';
 
 describe('trapIndex', () => {
   it('wraps Tab from the last element to the first', () => {
@@ -22,5 +23,17 @@ describe('trapIndex', () => {
   });
   it('does nothing when nothing can take focus', () => {
     expect(trapIndex(-1, 0, false)).toBeNull();
+  });
+});
+
+describe('popSide', () => {
+  it('keeps a popover that fits', () => {
+    expect(popSide({ left: 100, right: 440 }, 768)).toBeNull();
+  });
+  it('anchors to the start when it hangs off the left', () => {
+    expect(popSide({ left: -204, right: 136 }, 768)).toBe('start');
+  });
+  it('anchors to the end when it hangs off the right', () => {
+    expect(popSide({ left: 266, right: 516 }, 390)).toBe('end');
   });
 });

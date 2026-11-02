@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { api, type AppNotification } from '@/lib/api';
 import { getSoundOn, playChime } from '@/lib/notification-sound';
+import { useOnScreen } from '@/components/v6/ui/use-on-screen';
 
 const POLL_MS = 60_000;
 
@@ -34,6 +35,7 @@ export default function NotificationBell() {
   const [items, setItems] = useState<AppNotification[]>([]);
   const [unread, setUnread] = useState(0);
   const [open, setOpen] = useState(false);
+  const pop = useOnScreen(open);
   const ref = useRef<HTMLDivElement>(null);
   // Newest notification seen so far; a newer one chimes if sound is on. Null until the first load.
   const newest = useRef<string | null>(null);
@@ -91,7 +93,7 @@ export default function NotificationBell() {
       </button>
 
       {open && (
-        <div className="x-pop nb-pop" role="dialog" aria-label="Notifications" data-testid="notif-center">
+        <div ref={pop} className="x-pop nb-pop" role="dialog" aria-label="Notifications" data-testid="notif-center">
           <div className="nb-hd"><b>Notifications</b>{fresh > 0 && <><span>{fresh} new</span><button type="button" className="nb-markall" onClick={close} data-testid="notif-mark-all">Mark all read</button></>}</div>
           {items.length === 0 ? (
             <div className="nb-empty"><span className="nb-tile"><ICheck /></span>You&rsquo;re all caught up.</div>

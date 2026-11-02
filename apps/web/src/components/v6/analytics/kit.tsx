@@ -9,6 +9,7 @@ import '@/styles/v6/desk.css';
 import '@/styles/v6/analytics.css';
 import InfoTip from '@/components/v6/ui/info-tip';
 import { METRIC_HELP, type MetricKey } from '@/lib/metric-help';
+import Unknown from '@/components/v6/ui/unknown';
 
 export const MONO = { fontFamily: 'var(--mono)' } as const;
 
@@ -101,10 +102,11 @@ export function Tip({ x, y, w, children, width = 160 }: { x: number; y: number; 
 }
 
 /** Small row of labelled numbers under a chart. */
-export function Facts({ items }: { items: { l: string; v: string; c?: string; h?: MetricKey }[] }) {
+/** `why` explains a "—" value (QW.9). */
+export function Facts({ items }: { items: { l: string; v: string; c?: string; h?: MetricKey; why?: string }[] }) {
   return (
     <div className="x-strip an-facts" style={{ ['--n' as string]: items.length }}>
-      {items.map(t => <div key={t.l}><span>{t.l}{t.h && <InfoTip {...METRIC_HELP[t.h]} />}</span><b className={`m ${t.c ?? ''}`}>{t.v}</b></div>)}
+      {items.map(t => <div key={t.l}><span>{t.l}{t.h && <InfoTip {...METRIC_HELP[t.h]} />}</span><b className={`m ${t.c ?? ''}`}>{t.v === '—' && t.why ? <Unknown why={t.why} /> : t.v}</b></div>)}
     </div>
   );
 }

@@ -6,9 +6,11 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { PRESETS, isoDay, presetRange, rangeText } from '@/lib/date-presets';
 import type { CustomRange } from '@/lib/stats';
+import { useOnScreen } from './use-on-screen';
 
 export default function DateRangePicker({ value, onChange }: { value: CustomRange | null; onChange: (r: CustomRange) => void }) {
   const [open, setOpen] = useState(false);
+  const pop = useOnScreen(open);
   const [draft, setDraft] = useState<CustomRange>(() => value ?? presetRange('thisMonth'));
   const box = useRef<HTMLDivElement>(null);
   const id = useId();
@@ -34,7 +36,7 @@ export default function DateRangePicker({ value, onChange }: { value: CustomRang
         <span>{value ? rangeText(value) : 'Custom'}</span>
       </button>
       {open && (
-        <div className="x-pop x-dr-pop" id={id} role="dialog" aria-label="Choose dates" data-testid="range-custom-pop">
+        <div ref={pop} className="x-pop x-dr-pop" id={id} role="dialog" aria-label="Choose dates" data-testid="range-custom-pop">
           <div className="x-dr-presets">
             {PRESETS.map(([k, label]) => (
               <button key={k} type="button" onClick={() => pick(presetRange(k))} data-testid={`range-preset-${k}`}>{label}</button>

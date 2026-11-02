@@ -17,6 +17,7 @@ import { useMenu } from './use-menu';
 import '@/styles/v6/tokens.css';
 import '@/styles/v6/components.css';
 import '@/styles/v6/frame.css';
+import '@/styles/v6/kit.css';
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -118,6 +119,11 @@ export default function Gallery() {
         <div className="x-field"><label htmlFor="dv-err">With an error</label><input id="dv-err" className="x-input" aria-invalid="true" defaultValue="abc" /><span className="x-err">Enter a number.</span></div>
         <label className="x-search"><ISearch size={16} /><input className="x-input" placeholder="Search" aria-label="Search" /></label>
         <label className="dv-row"><input type="checkbox" className="x-check" defaultChecked /> Checkbox</label>
+        <div className="dv-row" role="radiogroup" aria-label="Demo radio">
+          <label className="dv-row"><input type="radio" name="dv-r" className="x-radio" defaultChecked /> Close positions</label>
+          <label className="dv-row"><input type="radio" name="dv-r" className="x-radio" /> Keep them</label>
+        </div>
+        <div className="cp-stepper"><button type="button" className="x-btn" aria-label="Less">−</button><input className="x-input m" defaultValue="1.0" aria-label="Multiplier" /><button type="button" className="x-btn" aria-label="More">+</button></div>
         <button type="button" className="x-switch" role="switch" aria-checked={on} onClick={() => setOn((v) => !v)} aria-label="Demo switch" />
         <textarea className="x-textarea" placeholder="Notes" rows={2} />
         <DateRangePicker value={range} onChange={setRange} />

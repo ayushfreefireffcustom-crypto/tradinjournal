@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { ICheck } from '@/components/v6/icons';
+import { useOnScreen } from '@/components/v6/ui/use-on-screen';
 
 // klinecharts built-in indicators. Main-pane overlays and sub-pane oscillators.
 const INDICATORS: { name: string; label: string }[] = [
@@ -14,6 +15,7 @@ export default function IndicatorMenu({ onAdd, onClear }: { onAdd: (name: string
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState<Set<string>>(new Set());
   const ref = useRef<HTMLDivElement>(null);
+  const pop = useOnScreen(open);
   useEffect(() => {
     if (!open) return;
     const close = (e: MouseEvent | KeyboardEvent) => { if (e instanceof KeyboardEvent ? e.key === 'Escape' : !ref.current?.contains(e.target as Node)) setOpen(false); };
@@ -27,7 +29,7 @@ export default function IndicatorMenu({ onAdd, onClear }: { onAdd: (name: string
         Indicators{active.size > 0 && <span className="mk-count m">{active.size}</span>}
       </button>
       {open && (
-        <div className="x-pop mk-ind-pop" role="menu">
+        <div ref={pop} className="x-pop mk-ind-pop" role="menu">
           {INDICATORS.map(ind => (
             <button key={ind.name} role="menuitemcheckbox" aria-checked={active.has(ind.name)} disabled={active.has(ind.name)}
               onClick={() => { onAdd(ind.name); setActive(p => new Set(p).add(ind.name)); }}>
