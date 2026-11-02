@@ -149,15 +149,37 @@ def _connect(login: int, password: str, server: str) -> None:
         time.sleep(CONNECT_RETRY_DELAY_S)
 
     code, msg = (last + (None, None))[:2]
-    # -6 (and login-refused) means the credentials/server were rejected by the
-    # trade server -> 401 so the client re-checks password/server. Everything
-    # else is treated as a transient terminal/infra problem -> 503.
-    status = 401 if code == -6 else 503
-    log.error(f"[connect] giving up on {login}@{server} after {CONNECT_ATTEMPTS} tries: ({code}, {msg})")
+    # Tell "this login can't sign in" apart from "the terminal is down". The MT5
+    # library reports a rejected login in several ways: -6 (authorization failed),
+    # and for a server the terminal doesn't know, or a refused password, often
+    # -10004/-10005 "No IPC". So if the terminal still answers on its own, the
+    # failure belongs to this login (server name, login or password) -> 422.
+    # Only when the terminal itself is unreachable is it our problem -> 503.
+    if code == -6 or _terminal_up():
+        log.error(f"[connect] login rejected for {login}@{server}: ({code}, {msg})")
+        raise HTTPException(
+            status_code=422,
+            detail={"code": "LOGIN_REJECTED", "server": server, "message": f"MT5 could not log in to {login}@{server}: ({code}, {msg})"},
+        )
+    log.error(f"[connect] terminal unreachable, giving up on {login}@{server}: ({code}, {msg})")
     raise HTTPException(
-        status_code=status,
-        detail=f"MT5 connect failed for {login}@{server}: ({code}, {msg})",
+        status_code=503,
+        detail={"code": "TERMINAL_DOWN", "message": f"MT5 terminal unreachable: ({code}, {msg})"},
     )
+
+
+def _terminal_up() -> bool:
+    """True if the terminal answers when attached without any account login."""
+    try:
+        mt5.shutdown()
+    except Exception:
+        pass
+    try:
+        if not mt5.initialize(path=settings.terminal_path, timeout=CONNECT_TIMEOUT_MS):
+            return False
+        return mt5.terminal_info() is not None
+    except Exception:
+        return False
 
 
 def _margin_mode(mode_int: int) -> str:

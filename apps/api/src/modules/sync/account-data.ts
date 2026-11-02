@@ -37,7 +37,7 @@ const inBackoff = (a: BrokerAccount, now = Date.now()) => !!a.syncRetryAt && a.s
 function storedFailure(a: BrokerAccount): Error {
   return a.status === 'ERROR'
     ? new BrokerAuthError()
-    : new BrokerConnectionError(a.lastSyncError ?? 'Broker bridge is unavailable right now. Please try again in a moment.');
+    : new BrokerConnectionError(a.lastSyncError ?? 'We can\'t reach MT5 right now. This is on our side; please try again in a few minutes.');
 }
 
 /** First load: wait for the backfill (or for another instance that holds the lease). */

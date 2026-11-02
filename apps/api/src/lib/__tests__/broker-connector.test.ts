@@ -64,4 +64,19 @@ describe('bridge client', () => {
     fetchMock.mockResolvedValue(new Response('Authorization failed (-6)', { status: 503 }));
     await expect(verifyAccount(creds)).rejects.toMatchObject({ name: 'BrokerAuthError' });
   });
+
+  it('a rejected login on connect names the server and what to check', async () => {
+    fetchMock.mockResolvedValue(new Response(JSON.stringify({ detail: { code: 'LOGIN_REJECTED', server: 'XMGlobal-MT5 10', message: 'x' } }), { status: 422 }));
+    await expect(verifyAccount(creds)).rejects.toMatchObject({ code: 'BROKER_AUTH_FAILED', message: expect.stringContaining('XMGlobal-MT5 10') });
+  });
+
+  it('a rejected login during sync keeps the update-your-password message', async () => {
+    fetchMock.mockResolvedValue(new Response(JSON.stringify({ detail: { code: 'LOGIN_REJECTED', server: 'S' } }), { status: 422 }));
+    await expect(getDeals(creds)).rejects.toMatchObject({ code: 'BROKER_AUTH_FAILED', message: expect.stringContaining('update it under Brokers') });
+  });
+
+  it('a terminal outage says it is on our side', async () => {
+    fetchMock.mockResolvedValue(new Response(JSON.stringify({ detail: { code: 'TERMINAL_DOWN' } }), { status: 503 }));
+    await expect(verifyAccount(creds)).rejects.toMatchObject({ code: 'BROKER_CONNECTION_ERROR', message: expect.stringContaining('on our side') });
+  });
 });

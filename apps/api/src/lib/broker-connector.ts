@@ -78,7 +78,7 @@ async function bridgePostOnce<T>(path: string, body: object, timeoutMs: number):
     const timedOut = (err as Error)?.name === 'TimeoutError' || (err as Error)?.name === 'AbortError';
     throw new BrokerConnectionError(timedOut
       ? 'The broker bridge took too long to answer. Please try again in a moment.'
-      : 'Broker bridge is unavailable right now. Please try again in a moment.');
+      : 'We can\'t reach MT5 right now. This is on our side; please try again in a few minutes.');
   }
 
   if (!res.ok) {
@@ -88,18 +88,34 @@ async function bridgePostOnce<T>(path: string, body: object, timeoutMs: number):
     // and older bridges surface it as a 503 whose body mentions "Authorization
     // failed". Either way it means the stored password no longer works — turn it
     // into a clear, user-actionable error instead of a generic 500.
-    if (res.status === 401 || /authoriz|invalid account|invalid password|-6/i.test(text)) {
-      throw new BrokerAuthError();
+    // Keep the bridge's own reason in the logs (it can name the MT5 login, never the password).
+    logger.warn('[bridge] request failed', { path, status: res.status, reason: text.slice(0, 300) });
+    const detail = bridgeDetail(text);
+
+    // The terminal answered but this login couldn't sign in (422 LOGIN_REJECTED,
+    // or 401 from an older bridge): a wrong server name, login or password.
+    if (res.status === 401 || res.status === 422 || detail?.code === 'LOGIN_REJECTED' || /authoriz|invalid account|invalid password|\(-6,/i.test(text)) {
+      const server = typeof detail?.server === 'string' ? detail.server : (body as { server?: string }).server;
+      throw new BrokerAuthError(path === '/verify'
+        ? `MT5 couldn't log in to ${server ?? 'that server'}. Check the server name matches MT5 exactly (for example "XMGlobal-MT5 10"), the login number, and the investor password.`
+        : undefined);
     }
 
-    // Any other bridge failure (offline, timeout, 5xx) is an upstream problem.
-    // Keep the bridge's own reason in the logs — the user-facing message hides it.
-    // (It can name the MT5 login, never the password.)
-    logger.warn('[bridge] request failed', { path, status: res.status, reason: text.slice(0, 300) });
-    throw new BrokerConnectionError(`Broker bridge is unavailable right now. Please try again in a moment.`);
+    // The terminal itself is down or busy: our problem, not the user's.
+    throw new BrokerConnectionError('We can\'t reach MT5 right now. This is on our side; please try again in a few minutes.');
   }
 
   return res.json() as Promise<T>;
+}
+
+/** The bridge's structured `detail` ({ code, server, message }) when it sends one. */
+function bridgeDetail(text: string): { code?: string; server?: unknown } | null {
+  try {
+    const d = (JSON.parse(text) as { detail?: unknown }).detail;
+    return d && typeof d === 'object' ? (d as { code?: string; server?: unknown }) : null;
+  } catch {
+    return null;
+  }
 }
 
 export async function verifyAccount(creds: BridgeCreds): Promise<VerifyResult> {
