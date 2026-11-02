@@ -567,7 +567,7 @@ Legend:
 - [ ] Z8 Production migrations per phase: migrate status → SQL review → user OK → `migrate deploy` → verify row counts `S` (each) — needs Ayush's OK: 9 pending, SQL reviewed (additive only), checklist in `DEPLOY.md`
 - [x] Z9 ~~SEBI/legal opinion~~ Not pursued (Ayush, 31 Oct 2026). Live stays behind `EXCHANGE_LIVE_ENABLED`, switched on by Ayush only `S`
 - [x] Z10 Load test: 100 followers × 1 leader fill; fan-out latency < 1s on testnet `M` — simulated 60 ms exchange (100 testnet accounts don't exist): 13.9 s → 0.65 s after concurrent fan-out; `fanout.load.test.ts`
-- [ ] Z11 Update the Google Sheet tracker after each work session `S` — needs Ayush (no sheet access from here)
+- [ ] Z11 Update the Google Sheet tracker after each work session `S` — up to date through 2 Nov (rows 64–76 of the Ayush tab, "TTM Project Tracker"). Edit access is on the second Google account in Brave: open the sheet at `/spreadsheets/u/1/d/…`; the default account is view-only
 
 ---
 
