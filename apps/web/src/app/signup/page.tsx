@@ -129,7 +129,7 @@ export default function SignupPage() {
           )}
           <label className="au-tick">
             <input type="checkbox" className="x-check" checked={agree} onChange={e => setAgree(e.target.checked)} data-testid="agree-toggle" />
-            <span>I agree to the <Link href="/terms" target="_blank">Terms</Link> and <Link href="/privacy" target="_blank">Privacy policy</Link>. TRADElogs is a journal, not investment advice; we only use your read-only MT5 login.</span>
+            <span>I agree to the <Link href="/terms" target="_blank">Terms</Link> and <Link href="/privacy" target="_blank">Privacy policy</Link>.</span>
           </label>
           {error && <AuthError testId="signup-error">{error}</AuthError>}
           <AuthSubmit loading={loading} disabled={!canSubmit} testId="signup-submit">{loading ? 'Creating account…' : 'Create account'}</AuthSubmit>

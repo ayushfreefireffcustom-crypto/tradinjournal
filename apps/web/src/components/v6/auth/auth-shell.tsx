@@ -14,58 +14,39 @@ type Variant = 'signin' | 'signup' | 'verify' | 'forgot';
 
 const LOCK = <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V8a4 4 0 018 0v3" /></svg>;
 const SHIELD = <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z" /></svg>;
-const I_EYE = <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M3 12s4-6 9-6 9 6 9 6-4 6-9 6-9-6-9-6z" /><circle cx="12" cy="12" r="2.6" /></svg>;
-const I_SYNC = <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M20 11a8 8 0 00-14.5-4.5L4 8" /><path d="M4 4v4h4" /><path d="M4 13a8 8 0 0014.5 4.5L20 16" /><path d="M20 20v-4h-4" /></svg>;
-const I_TARGET = <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><circle cx="12" cy="12" r="8" /><circle cx="12" cy="12" r="3.5" /></svg>;
 export const I_CHECK = <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>;
 const I_ALERT = <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="12" cy="12" r="9" /><path d="M12 7.5v5.5M12 16.5h.01" /></svg>;
 
-const COPY: Record<Variant, { h: string; p: string; foot: ReactNode }> = {
-  signin: { h: 'Your journal kept syncing while you were away.', p: 'Sign in to pick up where you left off.', foot: <><span>{LOCK} Read-only MT5 access</span><span>{SHIELD} Can’t trade or withdraw</span></> },
-  signup: { h: 'Start journaling in a few minutes.', p: 'Free, no card required.', foot: <><span>{LOCK} We never place trades</span><span>{SHIELD} Your data is never sold</span></> },
-  verify: { h: 'One step left.', p: 'Confirm your email, connect MT5 read-only, and your history backfills automatically.', foot: <span>{LOCK} Codes expire after 10 minutes</span> },
-  forgot: { h: 'Reset your password.', p: 'We’ll email you a 6-digit code. Your journal and broker connections stay exactly as they are.', foot: <span>{LOCK} Codes expire after 10 minutes</span> },
+const COPY: Record<Variant, { h: ReactNode; p: string; foot: ReactNode }> = {
+  signin: { h: <>Welcome back.<br />Your trades <em>kept syncing.</em></>, p: 'Sign in to pick up where you left off.', foot: <><span>{LOCK} Read-only MT5 access</span><span>{SHIELD} Can’t trade or withdraw</span></> },
+  signup: { h: <>Start journaling<br />in <em>90 seconds.</em></>, p: 'Free, no card needed. Connect MT5 read-only and your history fills in on its own.', foot: <><span>{LOCK} We never place trades</span><span>{SHIELD} Your data is never sold</span></> },
+  verify: { h: <>One step <em>left.</em></>, p: 'Confirm your email, connect MT5 read-only, and your history backfills automatically.', foot: <span>{LOCK} Codes expire after 10 minutes</span> },
+  forgot: { h: <>Reset your <em>password.</em></>, p: 'We’ll email you a 6-digit code. Your journal and brokers stay as they are.', foot: <span>{LOCK} Codes expire after 10 minutes</span> },
 };
 
-const LINES: [ReactNode, string, string][] = [
-  [I_EYE, 'Read-only by design', 'Connects with your MT5 investor password. TRADElogs can’t place trades or move funds.'],
-  [I_SYNC, 'Synced for you', 'Your history imports when you connect and keeps updating on its own.'],
-  [I_TARGET, 'One thing to fix', 'Analytics, journal notes and a weekly review built from your own trades.'],
-];
-
-const STEPS = [
-  ['Create your account', 'Free, no card required'],
-  ['Connect MT5 read-only', 'Investor password, any broker'],
-  ['Get your first review', 'Every week, one thing to fix'],
-];
+const STEPS = ['Create your account', 'Connect MT5 read-only', 'Get your first review'];
 
 export default function AuthShell({ variant, top, children, testId, wide }: { variant: Variant; top?: ReactNode; children: ReactNode; testId?: string; wide?: boolean }) {
   const c = COPY[variant];
   return (
     <div className="v6 au-root au-auth" data-testid={testId}>
       <aside className="au-brand">
-        <Link href="/" className="au-logo" aria-label="TRADElogs home"><Logo height={28} /></Link>
-        <div className="au-pitch">
-          <div>
+        <div className="au-brand-in">
+          <Link href="/" className="au-logo" aria-label="TRADElogs home"><Logo height={28} /></Link>
+          <div className="au-pitch">
             <h2>{c.h}</h2>
             <p>{c.p}</p>
+            {variant === 'signup' && (
+              <ol className="au-steps">{STEPS.map((t, i) => <li key={t} className={i === 0 ? 'on' : ''}><i>{i + 1}</i>{t}</li>)}</ol>
+            )}
           </div>
-          {variant === 'signup' ? (
-            <ol className="au-lines">
-              {STEPS.map(([t, s], i) => (
-                <li key={t} className={i === 0 ? 'au-here' : ''}>
-                  <i className="au-num">{i + 1}</i>
-                  <span><b>{t}{i === 0 && <span className="x-tag x-tag--g">You’re here</span>}</b><small>{s}</small></span>
-                </li>
-              ))}
-            </ol>
-          ) : (
-            <ul className="au-lines">
-              {LINES.map(([ic, t, s]) => <li key={t}><i>{ic}</i><span><b>{t}</b><small>{s}</small></span></li>)}
-            </ul>
-          )}
+          {/* The product, so the page shows what you're signing in to. Demo data. */}
+          <figure className="au-shot" aria-hidden>
+            <img src="/landing/dashboard-v5.jpg" alt="" width={2160} height={1350} decoding="async" />
+            <figcaption className="au-float"><span className="au-float-k">One thing to fix</span><b>No new entries after 15:00</b></figcaption>
+          </figure>
+          <div className="au-trust">{c.foot}</div>
         </div>
-        <div className="au-trust">{c.foot}</div>
       </aside>
       <main className="au-col">
         <div className="au-bar">

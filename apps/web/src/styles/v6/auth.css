@@ -255,3 +255,63 @@ html[data-theme=light]:has(.v6.au-root), html[data-theme=light] body:has(.v6.au-
   .v6 .au-lghd .au-hide-xs { display: none; }
 }
 .v6 .au-small .au-linkbtn { background: none; border: 0; padding: 0; font: inherit; cursor: pointer; }
+
+/* ── Sign-in / sign-up shell (2 Nov 2026): the landing's look. A lit brand panel
+   with a big E2 headline and the product shot on the left; a roomy form on the
+   right. Phones: the form alone under a soft green glow. ─────────────────── */
+.v6.au-auth { grid-template-columns: minmax(0, 1.15fr) minmax(420px, .85fr); }
+.v6.au-auth .au-brand { position: relative; margin: 12px; border-radius: 28px; overflow: hidden; padding: 0; border: 0;
+  background: radial-gradient(70% 55% at 30% 0%, rgba(8,196,101,.22), transparent 70%), radial-gradient(60% 50% at 100% 100%, rgba(8,196,101,.14), transparent 70%), #070908;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.06); }
+.v6.au-auth .au-brand::before { content: ""; position: absolute; inset: 0; pointer-events: none;
+  background-image: linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px); background-size: 56px 56px;
+  -webkit-mask-image: radial-gradient(80% 70% at 30% 20%, #000, transparent 85%); mask-image: radial-gradient(80% 70% at 30% 20%, #000, transparent 85%); }
+.v6.au-auth .au-brand-in { position: relative; height: 100%; min-height: calc(100dvh - 24px); display: flex; flex-direction: column; padding: 36px 40px 32px; }
+.v6.au-auth .au-pitch { margin: 56px 0 0; padding: 0; display: block; }
+.v6.au-auth .au-pitch h2 { font: 800 var(--t6)/1.06 var(--sans); letter-spacing: -.04em; max-width: 560px; color: #F4F4F5; }
+.v6.au-auth .au-pitch h2 em { font-style: normal; color: #2EE58A; }
+.v6.au-auth .au-pitch > p { font-size: var(--t3); color: #A1A1AA; margin: 16px 0 0; max-width: 440px; line-height: 1.6; }
+.v6 .au-steps { list-style: none; display: flex; flex-wrap: wrap; gap: 8px; margin: 24px 0 0; padding: 0; }
+.v6 .au-steps li { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px 6px 6px; border-radius: 99px; font-size: var(--t2); color: #A1A1AA; background: rgba(255,255,255,.04); box-shadow: inset 0 0 0 1px rgba(255,255,255,.08); }
+.v6 .au-steps li i { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font: 700 var(--t1)/1 var(--sans); font-style: normal; background: rgba(255,255,255,.08); color: #D4D4D8; }
+.v6 .au-steps li.on { color: #F4F4F5; box-shadow: inset 0 0 0 1px rgba(46,229,138,.45); }
+.v6 .au-steps li.on i { background: #08C465; color: #03140A; }
+.v6 .au-shot { position: relative; margin: 40px -40px 0 0; flex: 1; min-height: 260px; perspective: 1600px; overflow: hidden;
+  -webkit-mask-image: linear-gradient(180deg, #000 72%, transparent); mask-image: linear-gradient(180deg, #000 72%, transparent); }
+.v6 .au-shot img { position: absolute; left: 0; top: 0; width: 118%; max-width: none; height: auto; border-radius: 16px; box-shadow: 0 0 0 1px rgba(255,255,255,.1), 0 40px 90px -30px #000, 0 -20px 80px -40px rgba(8,196,101,.5);
+  transform: rotateX(8deg) rotateY(-10deg); transform-origin: 0 0; }
+.v6 .au-float { position: absolute; left: 0; bottom: 30%; z-index: 2; display: grid; gap: 4px; padding: 12px 16px; border-radius: 14px; background: rgba(14,14,14,.88); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.1), 0 0 0 1px rgba(255,255,255,.08), 0 24px 50px -16px #000; }
+.v6 .au-float-k { font-size: var(--t1); font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: #2EE58A; }
+.v6 .au-float b { font-size: var(--t3); font-weight: 700; color: #F4F4F5; }
+.v6.au-auth .au-trust { position: relative; margin-top: 24px; color: #A1A1AA; }
+/* the form side */
+.v6.au-auth .au-col { padding: 24px 48px; }
+.v6.au-auth .au-card { width: min(420px, 100%); padding: 0; background: none; box-shadow: none; border: 0; }
+.v6.au-auth .au-card--wide { width: min(500px, 100%); }
+.v6.au-auth .au-t { font-size: var(--t5); line-height: 1.1; font-weight: 800; letter-spacing: -.045em; }
+.v6.au-auth .au-lead { margin-top: 10px; }
+.v6.au-auth .au-gbtn-wrap { margin-top: 28px; }
+.v6.au-auth .x-input, .v6.au-auth .au-gbtn, .v6.au-auth .au-sub-btn { min-height: 48px; }
+.v6.au-auth .x-input { font-size: var(--t3); border-radius: 14px; }
+.v6.au-auth .au-sub-btn { margin-top: 4px; background: var(--g); color: var(--on-g); font-weight: 700; box-shadow: 0 12px 30px -14px rgba(8,196,101,.8); }
+.v6.au-auth .au-sub-btn:hover:not(:disabled) { filter: brightness(1.08); }
+.v6.au-auth .au-sub-btn:disabled { background: var(--s3); color: var(--dim); box-shadow: none; }
+.v6.au-auth .x-field label { font-size: var(--t2); font-weight: 600; }
+@media (max-width: 1100px) {
+  .v6.au-auth { grid-template-columns: minmax(0, 1fr) minmax(400px, 1fr); }
+  .v6.au-auth .au-pitch h2 { font-size: var(--t5); }
+  .v6.au-auth .au-col { padding: 24px 32px; }
+}
+@media (max-width: 900px) {
+  .v6.au-auth { grid-template-columns: minmax(0, 1fr); }
+  .v6.au-auth .au-brand { display: none; }
+  .v6.au-auth .au-col { background: radial-gradient(90% 40% at 50% 0%, rgba(8,196,101,.14), transparent 70%); }
+}
+@media (max-width: 760px) {
+  .v6.au-auth .au-col { padding: 16px 20px 20px; }
+  .v6.au-auth .au-center { padding: 32px 0 24px; }
+  .v6.au-auth .au-card { padding: 0; }
+  .v6.au-auth .au-t { font-size: var(--t5); }
+}
+html[data-theme=light] .v6.au-auth .au-col { background: none; }
