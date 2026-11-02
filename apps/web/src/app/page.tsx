@@ -7,7 +7,7 @@ import { Closing, FaqSection, Features, Footer, Hero, How, Integrations, Nav, Ne
 export const metadata: Metadata = {
   title: 'TRADElogs — The complete trading journal',
   description:
-    'Connect MetaTrader 5 with a read-only login. TRADElogs journals every fill, measures every habit, and every Saturday tells you the one thing to fix.',
+    'Connect MetaTrader 5 with a read-only login. TRADElogs journals every fill, measures every habit, tells you the one thing to fix each Saturday, and lets you backtest your rules as a no-code strategy.',
   openGraph: {
     title: 'TRADElogs — The complete trading journal',
     description: 'The MT5 trading journal with a behaviour engine, an AI coach and a weekly review that tells you the one thing to fix.',

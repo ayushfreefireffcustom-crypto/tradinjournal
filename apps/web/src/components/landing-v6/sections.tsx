@@ -1,5 +1,5 @@
 import Logo from '@/components/logo';
-import { PARTNERS_ENABLED } from '@/lib/features';
+import { PARTNERS_ENABLED, TRADING_ENABLED } from '@/lib/features';
 import { Faq, NavLinks, SignInLink, Stage, StartCta } from './client';
 import { Ic, type IconName } from './icons';
 import { Bento, IconTile, Label, SecHead, Tile, seeded, type Tone } from './ui';
@@ -10,14 +10,19 @@ import CoachArt from './art/coach-art';
 import DisciplineArt from './art/discipline-art';
 import MarketsArt from './art/markets-art';
 import SecurityArt from './art/security-art';
+import StrategyArt from './art/strategy-art';
+import CopyArt from './art/copy-art';
 
+// Copy trading is advertised only when the trading platform is switched on
+// (NEXT_PUBLIC_TRADING); until then the landing lists it under "Coming next".
 const NAV = [
   { href: '#journal', label: 'Journal' },
   { href: '#analytics', label: 'Analytics' },
   { href: '#coach', label: 'AI coach' },
-  { href: '#markets', label: 'Markets' },
+  { href: '#strategies', label: 'Strategies' },
+  ...(TRADING_ENABLED ? [{ href: '#copy', label: 'Copy trading' }] : [{ href: '#markets', label: 'Markets' }]),
   { href: '#faq', label: 'FAQ' },
-] as const;
+];
 
 export function Nav() {
   return (
@@ -37,7 +42,9 @@ export function Hero() {
       <div className="wrap">
         <Label>Read-only sync for any MetaTrader 5 broker</Label>
         <h1 id="hero-h">The complete<br />trading journal</h1>
-        <p className="sub">Every MT5 fill journaled, every habit measured, and every Saturday one thing to fix. Read-only by design, free while we’re getting started.</p>
+        <p className="sub">{TRADING_ENABLED
+          ? 'Every MT5 fill journaled and every habit measured. Turn your rules into a strategy you can backtest, or copy traders whose record is synced from their exchange. Free while we’re getting started.'
+          : 'Every MT5 fill journaled, every habit measured, and every Saturday one thing to fix. Then test your own rules as a strategy, on paper first. Free while we’re getting started.'}</p>
         <div className="ctas"><StartCta testId="hero-start" /></div>
         <div className="assure">
           <span><Ic name="eye" />Investor password only</span>
@@ -95,19 +102,37 @@ export function Features() {
           art={<Art tone="r"><DisciplineArt /></Art>} />
       </section>
 
+      <section className="sec" id="strategies" aria-labelledby="strategies-h">
+        <SecHead id="strategies" label="Strategy builder" title={<>Turn your rules<br />into a strategy</>}
+          body={`Describe a setup in a sentence or build it from blocks, then backtest it on years of real candles and run it on paper with simulated fills.${TRADING_ENABLED ? ' When the numbers hold up, deploy it to your own exchange account.' : ''} No code.`}
+          action={{ href: '/signup', text: 'Build a strategy' }} />
+        <Bento tiles={<Tiles defs={[['blocks', 'No-code', 'rule blocks'], ['bulb', 'From a sentence', 'with the AI builder'], ['curve', 'Backtests', 'on real candles'], ['play', TRADING_ENABLED ? 'Paper, then live' : 'Paper trading', TRADING_ENABLED ? 'when you’re ready' : 'with simulated fills']]} />}
+          art={<Art tone="g"><StrategyArt live={TRADING_ENABLED} /></Art>} />
+      </section>
+
+      {TRADING_ENABLED && (
+        <section className="sec" id="copy" aria-labelledby="copy-h">
+          <SecHead id="copy" label="Copy trading · Beta" title={<>Copy traders whose<br />record you can check</>}
+            body="Every leader’s results come from their exchange account, not a screenshot. Pick one, choose your size and a daily loss limit, and their trades are placed on your own account through a trade-only API key. Delta Exchange India first; try it on testnet before real money."
+            action={{ href: '/signup', text: 'See the leaders' }} />
+          <Bento flip tiles={<Tiles defs={[['copy', 'Synced records', 'from the exchange'], ['gauge', 'Your size', 'proportional, fixed or ×'], ['shield', 'Daily loss limit', 'pauses copying'], ['key', 'Trade-only keys', 'can’t withdraw']]} />}
+            art={<Art tone="g"><CopyArt /></Art>} />
+        </section>
+      )}
+
       <section className="sec" id="markets" aria-labelledby="markets-h">
         <SecHead id="markets" label="Markets & macro" tone="gray" title={<>The market context,<br />right next to your trades</>}
           body="An economic calendar, market news filtered to your symbols, a macro dashboard and price alerts, so you know what moved the market on the days you won and lost."
           action={{ href: '/signup', text: 'Open markets' }} />
-        <Bento tiles={<Tiles tone="gray" defs={[['cal', 'Economic calendar', 'with impact levels'], ['news', 'News', 'for the symbols you trade'], ['globe', 'Macro dashboard', 'and asset bias'], ['bell', 'Price alerts', 'to web push']]} />}
+        <Bento flip={!TRADING_ENABLED} tiles={<Tiles tone="gray" defs={[['cal', 'Economic calendar', 'with impact levels'], ['news', 'News', 'for the symbols you trade'], ['globe', 'Macro dashboard', 'and asset bias'], ['bell', 'Price alerts', 'to web push']]} />}
           art={<Art tone="k"><MarketsArt /></Art>} />
       </section>
 
       <section className="sec" id="security" aria-labelledby="security-h">
         <SecHead id="security" label="Read-only by design" tone="gray" title={<>It can look at your account.<br />It can never touch it.</>}
-          body="TRADElogs connects with MetaTrader’s investor password, the one that can view history but cannot open, modify or close a position. It’s encrypted at rest, and disconnecting removes the synced data."
+          body={`TRADElogs connects with MetaTrader’s investor password, the one that can view history but cannot open, modify or close a position. It’s encrypted at rest, and disconnecting removes the synced data.${TRADING_ENABLED ? ' Exchange keys are encrypted the same way, and keys with withdrawal rights are refused.' : ''}`}
           action={{ href: '/privacy', text: 'How we keep it safe' }} />
-        <Bento flip tiles={<Tiles tone="gray" defs={[['eye', 'Investor password', 'only'], ['key', 'AES-256-GCM', 'encryption at rest'], ['plug', 'Any MT5 broker', 'with an investor login'], ['unlink', 'Disconnect', 'and the synced data goes']]} />}
+        <Bento flip={TRADING_ENABLED} tiles={<Tiles tone="gray" defs={[['eye', 'Investor password', 'only'], ['key', 'AES-256-GCM', 'encryption at rest'], ['plug', 'Any MT5 broker', 'with an investor login'], ['unlink', 'Disconnect', 'and the synced data goes']]} />}
           art={<Art tone="k"><SecurityArt /></Art>} />
       </section>
     </>
@@ -177,11 +202,13 @@ export function How() {
   );
 }
 
+/** What isn't live yet. Hidden once the trading platform is switched on. */
 export function Next() {
+  if (TRADING_ENABLED) return null;
   const items: [IconName, string, string][] = [
-    ['copy', 'Copy verified traders', 'Follow a trader whose record is synced from their broker, sized to your account, with your own loss caps.'],
-    ['blocks', 'No-code strategy builder', 'Describe the rules, backtest them, then run them on paper before anything goes live.'],
-    ['key', 'Crypto exchanges', 'Connect exchanges with trade-only API keys. Withdrawal permission is never accepted.'],
+    ['copy', 'Copy verified traders', 'Follow a trader whose record is synced from their exchange, sized to your account, with your own daily loss limit.'],
+    ['key', 'Crypto exchanges', 'Connect an exchange with a trade-only API key. Keys that can withdraw are refused.'],
+    ['play', 'Strategies, live', 'Run a strategy you’ve backtested and paper-traded on your own exchange account.'],
   ];
   return (
     <section className="sec" aria-labelledby="next-h">
@@ -197,7 +224,9 @@ export function Next() {
 }
 
 export function Integrations() {
-  const items: [IconName, string][] = [['plug', 'MetaTrader 5'], ['eye', 'Any MT5 broker'], ['bell', 'Web push'], ['mail', 'Email reviews'], ['cal', 'Economic calendar'], ['news', 'Market news'], ['globe', 'Macro data'], ['curve', 'Live charts']];
+  const items: [IconName, string][] = TRADING_ENABLED
+    ? [['plug', 'MetaTrader 5'], ['eye', 'Any MT5 broker'], ['key', 'Delta Exchange India'], ['signal', 'TradingView alerts'], ['bell', 'Web push'], ['mail', 'Email reviews'], ['cal', 'Economic calendar'], ['curve', 'Live charts']]
+    : [['plug', 'MetaTrader 5'], ['eye', 'Any MT5 broker'], ['bell', 'Web push'], ['mail', 'Email reviews'], ['cal', 'Economic calendar'], ['news', 'Market news'], ['globe', 'Macro data'], ['curve', 'Live charts']];
   return (
     <section className="sec" aria-labelledby="int-h">
       <h2 className="int-title" id="int-h">What TRADElogs works with today</h2>
@@ -212,12 +241,16 @@ export function Integrations() {
 }
 
 const FAQ = [
-  { q: 'Can TRADElogs place or close trades on my account?', a: 'No. You connect with MT5’s investor (read-only) password, which can view your history but cannot open, modify or close positions.' },
+  TRADING_ENABLED
+    ? { q: 'Can TRADElogs place or close trades on my account?', a: 'Not on MT5: you connect with the investor (read-only) password, which can view your history but cannot open, modify or close positions. On a crypto exchange it places orders only for the copies and strategies you switch on, using a trade-only API key you create and can revoke at any time.' }
+    : { q: 'Can TRADElogs place or close trades on my account?', a: 'No. You connect with MT5’s investor (read-only) password, which can view your history but cannot open, modify or close positions.' },
   { q: 'Which brokers work?', a: 'Any broker that offers MetaTrader 5. You only need your MT5 login, investor password and your broker’s server name.' },
   { q: 'How much does it cost?', a: 'TRADElogs is free while we’re getting started, and you don’t need a card to sign up.' },
   { q: 'What happens to my password and data?', a: 'Your investor password is encrypted (AES-256-GCM) so we can keep syncing, and it can only read your account. Disconnecting a broker from the Brokers page deletes its synced data.' },
   { q: 'Do I have to import trades by hand?', a: 'Never. Once your account is connected, your history backfills automatically and new trades appear as they close.' },
-] as const;
+  { q: 'Can I test a strategy before risking money?', a: 'Yes. Every strategy can be backtested on past candles and run on paper with simulated fills, so you see how the rules behave before anything else.' },
+  ...(TRADING_ENABLED ? [{ q: 'Can a leader I copy take money from my account?', a: 'No. Leaders never see your account. Copies go through your own trade-only API key, and keys that can withdraw are refused. You set the size and a daily loss limit, and you can stop copying at any time.' }] : []),
+];
 
 export function FaqSection() {
   return (
@@ -274,7 +307,7 @@ export function Footer() {
             <p style={{ color: 'var(--mut)', fontSize: 13.5, marginTop: 14, maxWidth: 280 }}>The trading journal that reads your MT5 history and tells you what to fix.</p>
             <div className="contact"><IconTile icon="chat" size="sm" /><div><b>Questions about your trading?</b><small>Ask the AI coach inside the app</small></div></div>
           </div>
-          <nav aria-label="Product"><h3>Product</h3><ul><li><a href="#journal">Journal</a></li><li><a href="#analytics">Analytics</a></li><li><a href="#coach">AI coach</a></li><li><a href="#coach">SignalX</a></li><li><a href="#markets">Markets</a></li></ul></nav>
+          <nav aria-label="Product"><h3>Product</h3><ul><li><a href="#journal">Journal</a></li><li><a href="#analytics">Analytics</a></li><li><a href="#coach">AI coach</a></li><li><a href="#coach">SignalX</a></li><li><a href="#strategies">Strategies</a></li>{TRADING_ENABLED && <li><a href="#copy">Copy trading</a></li>}<li><a href="#markets">Markets</a></li></ul></nav>
           <nav aria-label="Account"><h3>Account</h3><ul><li><a href="/signup">Create account</a></li><li><a href="/login">Sign in</a></li>{PARTNERS_ENABLED && <li><a href="/partner">Become a partner</a></li>}<li><a href="#faq">FAQ</a></li></ul></nav>
           <nav aria-label="Legal"><h3>Legal</h3><ul><li><a href="/privacy">Privacy policy</a></li><li><a href="/terms">Terms of service</a></li></ul></nav>
         </div>
