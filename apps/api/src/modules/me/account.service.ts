@@ -82,7 +82,7 @@ export async function exportData(userId: string, ctx: ActivityContext) {
     prisma.strategyTemplate.findMany({ where: { creatorId: userId } }),
     prisma.templateSubscription.findMany({ where: { userId } }),
   ]);
-  const [trades, executions, balance, journal, aiConvs, prefs, newsPrefs, watch, alerts, indAlerts, screens, strategies, deployments, follows, leaders, orders, webhooks, apiKeys, sessions, authAccounts, activity, feedback, notifications] = await Promise.all([
+  const [trades, executions, balance, journal, aiConvs, prefs, newsPrefs, watch, watchLists, alerts, indAlerts, screens, strategies, deployments, follows, leaders, orders, webhooks, apiKeys, sessions, authAccounts, activity, feedback, notifications] = await Promise.all([
     prisma.trade.findMany({ where: { brokerAccountId: { in: brokerIds } } }),
     prisma.execution.findMany({ where: { brokerAccountId: { in: brokerIds } } }),
     prisma.balanceEvent.findMany({ where: { brokerAccountId: { in: brokerIds } } }),
@@ -91,6 +91,7 @@ export async function exportData(userId: string, ctx: ActivityContext) {
     prisma.notificationPreference.findUnique({ where: { userId } }),
     prisma.newsPreference.findUnique({ where: { userId } }),
     prisma.watchlist.findMany({ where: { userId } }),
+    prisma.watchlistList.findMany({ where: { userId } }),
     prisma.priceAlert.findMany({ where: { userId } }),
     prisma.indicatorAlert.findMany({ where: { userId } }),
     prisma.savedScreen.findMany({ where: { userId } }),
@@ -114,7 +115,7 @@ export async function exportData(userId: string, ctx: ActivityContext) {
     profile: omit(u, ['twoFactorEnabled']),
     brokerAccounts: brokers.map((b) => omit(b, ['password', 'syncLockedUntil'])),
     trades, executions, balanceEvents: balance, journal, aiConversations: aiConvs,
-    notificationPreferences: prefs, newsPreferences: newsPrefs, watchlist: watch, priceAlerts: alerts, indicatorAlerts: indAlerts, savedScreens: screens,
+    notificationPreferences: prefs, newsPreferences: newsPrefs, watchlist: watch, watchlists: watchLists, priceAlerts: alerts, indicatorAlerts: indAlerts, savedScreens: screens,
     // Marketplace copies are someone else's rules: listed, but without them.
     strategies: strategies.map((x) => (x.source === 'template' ? { ...x, spec: null, versions: [] } : x)),
     deployments: deployments.map((x) => (strategies.some((st) => st.id === x.strategyId && st.source === 'template') ? { ...x, spec: null } : x)),
@@ -202,6 +203,7 @@ export async function confirmDeletion(userId: string, otp: string, now = Date.no
     prisma.notificationDelivery.deleteMany({ where }),
     prisma.notification.deleteMany({ where }),
     prisma.watchlist.deleteMany({ where }),
+    prisma.watchlistList.deleteMany({ where }),
     prisma.priceAlert.deleteMany({ where }),
     prisma.macroMember.deleteMany({ where }),
     prisma.traderAnalysis.deleteMany({ where }),

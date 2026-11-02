@@ -44,7 +44,7 @@ const isAdminRoute = (t: string) => t.startsWith('/api/admin/') || t.startsWith(
 /** A cuid-shaped id that matches nothing. */
 const fakeId = (n: number) => `cm${tag.slice(-6)}${String(n).padStart(4, '0')}zzzzzzzzzzzzz`.slice(0, 25);
 
-type Ids = Record<'strategy' | 'copyStrategy' | 'backtest' | 'deployment' | 'subDeployment' | 'template' | 'subscription' | 'account' | 'connection' | 'follow' | 'hiddenLeader' | 'apiKey' | 'journal' | 'conversation' | 'alert' | 'indicatorAlert' | 'screen' | 'traderStrategy' | 'partnerChannel' | 'partnerCode', string>;
+type Ids = Record<'strategy' | 'copyStrategy' | 'backtest' | 'deployment' | 'subDeployment' | 'template' | 'subscription' | 'account' | 'connection' | 'follow' | 'hiddenLeader' | 'apiKey' | 'journal' | 'conversation' | 'alert' | 'indicatorAlert' | 'screen' | 'watchlist' | 'traderStrategy' | 'partnerChannel' | 'partnerCode', string>;
 interface Probe { route: string; method: string; path: (x: Ids, mine: Mine) => string; body?: (x: Ids, mine: Mine) => unknown }
 /** The caller's own records, for requests that mix theirs with someone else's. */
 interface Mine { strategy: string; account: string; connection: string; publicTemplate: string; publicLeader: string }
@@ -91,6 +91,8 @@ const PATH_PROBES: Probe[] = [
   { route: 'DELETE /api/indicator-alerts/:id', method: 'DELETE', path: (x) => `/api/indicator-alerts/${x.indicatorAlert}` },
   { route: 'PATCH /api/screener/screens/:id', method: 'PATCH', path: (x) => `/api/screener/screens/${x.screen}`, body: () => ({ name: 'Taken over' }) },
   { route: 'DELETE /api/screener/screens/:id', method: 'DELETE', path: (x) => `/api/screener/screens/${x.screen}` },
+  { route: 'PATCH /api/market/watchlists/:id', method: 'PATCH', path: (x) => `/api/market/watchlists/${x.watchlist}`, body: () => ({ name: 'Taken over', symbols: ['BTCUSDT'] }) },
+  { route: 'DELETE /api/market/watchlists/:id', method: 'DELETE', path: (x) => `/api/market/watchlists/${x.watchlist}` },
   ...(['strategy', 'copyStrategy'] as const).flatMap((k): Probe[] => [
     { route: 'GET /api/strategies/:id', method: 'GET', path: (x) => `/api/strategies/${x[k]}` },
     { route: 'PATCH /api/strategies/:id', method: 'PATCH', path: (x) => `/api/strategies/${x[k]}`, body: () => ({ name: 'Taken over' }) },
@@ -208,6 +210,7 @@ describe.skipIf(!local)('access-control matrix', () => {
       prisma.priceAlert.findMany({ where: { userId: u }, ...sorted }),
       prisma.indicatorAlert.findMany({ where: { userId: u }, ...sorted }),
       prisma.savedScreen.findMany({ where: { userId: u }, ...sorted }),
+      prisma.watchlistList.findMany({ where: { userId: u }, ...sorted }),
       prisma.traderStrategy.findMany({ where: { userId: u }, ...sorted }),
       prisma.activityEvent.findMany({ where: { userId: u }, ...sorted }),
     ]));
@@ -233,6 +236,7 @@ describe.skipIf(!local)('access-control matrix', () => {
       prisma.exchangeOrder.findMany({ where: { userId: u } }), prisma.journalEntry.findMany({ where: { userId: u } }), prisma.priceAlert.findMany({ where: { userId: u } }),
       prisma.aiConversation.findMany({ where: { userId: u }, include: { messages: true } }), prisma.tradingWebhook.findMany({ where: { userId: u } }), prisma.activityEvent.findMany({ where: { userId: u } }),
       prisma.indicatorAlert.findMany({ where: { userId: u } }), prisma.savedScreen.findMany({ where: { userId: u } }), prisma.traderStrategy.findMany({ where: { userId: u } }),
+      prisma.watchlistList.findMany({ where: { userId: u } }),
     ]));
   };
 
@@ -319,13 +323,16 @@ describe.skipIf(!local)('access-control matrix', () => {
     const alert = await prisma.priceAlert.create({ data: { userId: a, symbol: 'BTCUSDT', direction: 'above', threshold: 200000 } });
     const indicatorAlert = await prisma.indicatorAlert.create({ data: { userId: a, symbol: 'BTCUSDT', timeframe: '1h', left: { kind: 'price' }, operator: 'above', right: { kind: 'value', value: 1 } } });
     const screen = await prisma.savedScreen.create({ data: { userId: a, name: 'A screen', definition: {} } });
+    // Two lists, so a stray delete would succeed rather than hit the keep-one rule.
+    const watchlist = await prisma.watchlistList.create({ data: { userId: a, name: 'A list', symbols: ['ETHUSDT'] } });
+    await prisma.watchlistList.create({ data: { userId: a, name: 'A second list', symbols: [], position: 1 } });
     const traderStrategy = await prisma.traderStrategy.create({ data: { userId: a, name: 'A trader', prompt: 'buy dips', rules: { kind: 'ema_cross', direction: 'LONG', symbol: 'BTCUSDT', timeframe: '1h', fast: 9, slow: 21, stopAtr: 1.5, targetR: 2 } } });
     const partner = await prisma.partner.create({ data: { userId: a, status: 'ACTIVE', approvedAt: new Date(), codes: { create: [{ code: `${tag}A`.toUpperCase(), isPrimary: true }, { code: `${tag}A2`.toUpperCase() }] }, channels: { create: { label: 'A channel', slug: 'a-channel' } } }, include: { codes: true, channels: true } });
     await prisma.creatorProfile.create({ data: { userId: a, displayName: 'A creator', bio: 'A bio', status: 'approved' } });
     A = {
       strategy: strategy.id, copyStrategy: copyStrategy.id, backtest: backtest.id, deployment: deployment.id, subDeployment: subDeployment.id, template: template.id, subscription: subscription.id,
       account: account.id, connection: aConn.id, follow: follow.id, hiddenLeader: hiddenLeader.id, apiKey: apiKey.id, journal: journal.id, conversation: conversation.id, alert: alert.id,
-      indicatorAlert: indicatorAlert.id, screen: screen.id, traderStrategy: traderStrategy.id, partnerChannel: partner.channels[0]!.id, partnerCode: partner.codes.find((c) => !c.isPrimary)!.id,
+      indicatorAlert: indicatorAlert.id, screen: screen.id, watchlist: watchlist.id, traderStrategy: traderStrategy.id, partnerChannel: partner.channels[0]!.id, partnerCode: partner.codes.find((c) => !c.isPrimary)!.id,
     };
     Object.keys(A).forEach((k, i) => { (FAKE as Record<string, string>)[k] = fakeId(i); });
 

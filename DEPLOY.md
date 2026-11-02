@@ -84,12 +84,12 @@ without someone choosing to run it.
    export DATABASE_URL='<neon direct url>' DIRECT_URL='<neon direct url>'
    npx prisma migrate status
    ```
-   Expect exactly the pending list in the engine notes (9 as of 2 Nov 2026:
+   Expect exactly the pending list in the engine notes (10 as of 2 Nov 2026:
    trading_webhooks, exchange_history_import, api_keys, indicator_alerts,
    saved_screens, strategies, strategy_deployments, account_security,
-   marketplace). Anything else pending, or a "drift" warning: stop.
+   marketplace, watchlist_lists). Anything else pending, or a "drift" warning: stop.
 3. Read each pending `prisma/migrations/<name>/migration.sql`. As of 2 Nov they
-   hold 18 `CREATE TABLE`s and 7 `ADD COLUMN`s, every added column nullable or
+   hold 19 `CREATE TABLE`s and 7 `ADD COLUMN`s, every added column nullable or
    with a default, and no `DROP`, `TRUNCATE`, `DELETE`, `RENAME` or
    `SET NOT NULL`. Re-check with:
    ```bash

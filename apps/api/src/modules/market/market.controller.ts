@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
-import type { CandlesQuery, SymbolSearchQuery, WatchlistInput } from '@tradinjournal/contracts';
-import { ok } from '../../http/response.js';
+import type { CandlesQuery, CreateWatchlistInput, SymbolSearchQuery, UpdateWatchlistInput, WatchlistInput } from '@tradinjournal/contracts';
+import { ok, created } from '../../http/response.js';
+import { AppError } from '../../http/errors.js';
 import { acquireLive, releaseLive, subscribeCandle } from '../../lib/market/stream.js';
 import {
   getCandles,
@@ -10,6 +11,7 @@ import {
   setWatchlist,
   brokerCredsFor,
 } from './market.service.js';
+import { createWatchlist, deleteWatchlist, listWatchlists, updateWatchlist } from './watchlists.service.js';
 
 function sseHeaders(res: Response): void {
   res.setHeader('Content-Type', 'text/event-stream');
@@ -86,6 +88,29 @@ export async function handleSetWatchlist(req: Request, res: Response, next: Next
   } catch (err) {
     next(err);
   }
+}
+
+// Named watchlists (QW.12). Before the watchlist_list migration is applied these
+// answer 503 rather than 500; the old /watchlist routes keep working meanwhile.
+const notReady = (err: unknown) => (err as { code?: string }).code === 'P2021'
+  ? new AppError(503, 'NOT_READY', 'Watchlists are being updated. Try again in a few minutes.') : err;
+const uid = (res: Response) => res.locals.user.id as string;
+
+// GET /api/market/watchlists — the user's lists, in order (creates the first one).
+export async function handleListWatchlists(_req: Request, res: Response, next: NextFunction): Promise<void> {
+  try { ok(res, { lists: await listWatchlists(uid(res)) }); } catch (err) { next(notReady(err)); }
+}
+// POST /api/market/watchlists — add a list (max 8, unique name).
+export async function handleCreateWatchlist(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try { created(res, await createWatchlist(uid(res), req.body as CreateWatchlistInput)); } catch (err) { next(notReady(err)); }
+}
+// PATCH /api/market/watchlists/:id — rename and/or replace its symbols.
+export async function handleUpdateWatchlist(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try { ok(res, await updateWatchlist(uid(res), req.params.id as string, req.body as UpdateWatchlistInput)); } catch (err) { next(notReady(err)); }
+}
+// DELETE /api/market/watchlists/:id — refused for the last list.
+export async function handleDeleteWatchlist(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try { ok(res, await deleteWatchlist(uid(res), req.params.id as string)); } catch (err) { next(notReady(err)); }
 }
 
 // POST /internal/market/warm — worker-only. Refresh the warm symbol set.

@@ -44,6 +44,7 @@ Sixteen additive migrations (the first seven applied to Neon on 1 Nov 2026), app
 - `20261101180000_strategy_deployments`: three new tables, `strategy_deployment`, `deployment_trade` and `deployment_event` (paper and live strategy runs, their trades and activity feed), cascading on user, strategy and deployment delete. **Not yet on Neon**
 - `20261102090000_account_security`: three nullable/defaulted columns on `user` (`phone`, `twoFactorEnabled`, `tour`) and three new tables, `two_factor`, `activity_event` and `feedback`, all cascading on user delete. Needed before the two-factor plugin is deployed: better-auth reads `user.twoFactorEnabled` on every sign-in. **Not yet on Neon**
 - `20261102100000_marketplace`: one nullable column on `strategy` (`templateId`) and three new tables, `creator_profile`, `strategy_template` and `template_subscription`. **Not yet on Neon**
+- `20261102120000_watchlist_lists`: one new table, `watchlist_list` (named watchlists, QW.12), cascading on user delete. The old `watchlist` table is left as it is: a user's first read copies their row into a list called "Watchlist". Until it's applied, the chart page keeps using the old table and the new list routes answer 503. **Not yet on Neon**
 
 ## Account, help and plans (Part H)
 

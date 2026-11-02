@@ -62,6 +62,7 @@ model User {
   apiKeys           ApiKey[]
   indicatorAlerts   IndicatorAlert[]
   savedScreens      SavedScreen[]
+  watchlistLists    WatchlistList[]
   strategies        Strategy[]   
   deployments       StrategyDeployment[]
   twoFactors        TwoFactor[]
@@ -732,12 +733,31 @@ model Candle {
 }
 
 // One row per user — the symbols they've pinned to their chart watchlist.
+// Superseded by WatchlistList (QW.12); kept so nothing is lost. A user's first
+// read of their lists copies this row into a list named "Watchlist".
 model Watchlist {
   userId    String   @id
   symbols   String[]
   updatedAt DateTime @updatedAt
 
   @@map("watchlist")
+}
+
+/// A named watchlist (QW.12): up to 8 per user, names unique per user
+/// (case-insensitive, enforced in the service), at least one always kept.
+model WatchlistList {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  symbols   String[]
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, name])
+  @@index([userId, position])
+  @@map("watchlist_list")
 }
 
 // A user's price alert: notify when `symbol` crosses `threshold`. Fires on a

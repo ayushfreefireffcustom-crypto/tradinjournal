@@ -264,6 +264,27 @@ export const watchlistSchema = z.object({
 });
 export type WatchlistInput = z.infer<typeof watchlistSchema>;
 
+// Named watchlists (QW.12): up to 8 per user, unique names, at least one kept.
+export const WATCHLIST_MAX_LISTS = 8;
+export const WATCHLIST_MAX_SYMBOLS = 100;
+const watchlistName = z.string().trim().min(1).max(32);
+const watchlistSymbols = z.array(z.string().trim().min(1).max(32)).max(WATCHLIST_MAX_SYMBOLS);
+export const createWatchlistSchema = z.object({ name: watchlistName, symbols: watchlistSymbols.optional() }).strict();
+export type CreateWatchlistInput = z.infer<typeof createWatchlistSchema>;
+export const updateWatchlistSchema = z.object({ name: watchlistName.optional(), symbols: watchlistSymbols.optional() }).strict()
+  .refine((v) => v.name !== undefined || v.symbols !== undefined, { message: 'Nothing to change.' });
+export type UpdateWatchlistInput = z.infer<typeof updateWatchlistSchema>;
+/** Trimmed, blanks dropped, first occurrence kept. Case is kept: broker symbols like `EURUSD.m` are case-sensitive. */
+export function cleanWatchlistSymbols(symbols: readonly string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of symbols) {
+    const s = raw.trim();
+    if (s && !seen.has(s)) { seen.add(s); out.push(s); }
+  }
+  return out;
+}
+
 // POST /internal/market/warm body (worker → API).
 export const marketWarmSchema = z.object({
   bucket: z.string().min(1).max(64).optional(),

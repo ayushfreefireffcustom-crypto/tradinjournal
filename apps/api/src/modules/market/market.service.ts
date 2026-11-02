@@ -11,6 +11,7 @@ import type { CandlesQuery, MarketTimeframe } from '@tradinjournal/contracts';
 import { cacheGet, cacheSet } from '../../lib/cache.js';
 import { resolveProvider, searchAllSymbols } from '../../lib/market/providers/index.js';
 import { findAccountById } from '../accounts/accounts.repository.js';
+import { firstListSymbols, setFirstListSymbols } from './watchlists.service.js';
 import type { BridgeCreds, GetCandlesOpts, NormalizedCandle, SymbolInfo } from '../../lib/market/types.js';
 
 // Timeframes the warm cron keeps hot for the configured symbol set.
@@ -152,10 +153,18 @@ export async function warmSymbols(): Promise<{ warmed: number }> {
   return { warmed };
 }
 
-// Watchlist reads/writes degrade gracefully: if the `watchlist` table is missing
-// (a migration lagging behind a deploy), we return empty / echo the input rather
-// than 500 the chart page. Persistence resumes automatically once migrated.
+// The old single-watchlist API now reads and writes the user's first named list
+// (watchlists.service.ts). Until the `watchlist_list` migration is applied it
+// falls back to the old `watchlist` table; if that's missing too it returns
+// empty / echoes the input rather than 500 the chart page.
+const tableMissing = (err: unknown) => (err as { code?: string }).code === 'P2021';
+
 export async function getWatchlist(userId: string): Promise<{ symbols: string[] }> {
+  try {
+    return await firstListSymbols(userId);
+  } catch (err) {
+    if (!tableMissing(err)) throw err;
+  }
   try {
     const row = await prisma.watchlist.findUnique({ where: { userId } });
     return { symbols: row?.symbols ?? [] };
@@ -166,6 +175,11 @@ export async function getWatchlist(userId: string): Promise<{ symbols: string[] 
 }
 
 export async function setWatchlist(userId: string, symbols: string[]): Promise<{ symbols: string[] }> {
+  try {
+    return await setFirstListSymbols(userId, symbols);
+  } catch (err) {
+    if (!tableMissing(err)) throw err;
+  }
   try {
     const row = await prisma.watchlist.upsert({
       where: { userId },

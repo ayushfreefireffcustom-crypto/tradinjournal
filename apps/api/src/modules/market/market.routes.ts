@@ -3,7 +3,7 @@ import { requireAuth } from '../../http/middleware/require-auth.js';
 import { requirePlatformAccess } from '../../http/middleware/require-platform-access.js';
 import { requireInternalToken } from '../../http/middleware/require-internal-token.js';
 import { validateBody, validateQuery } from '../../http/middleware/validate.js';
-import { candlesQuerySchema, symbolSearchSchema, watchlistSchema, marketWarmSchema } from '@tradinjournal/contracts';
+import { candlesQuerySchema, symbolSearchSchema, watchlistSchema, marketWarmSchema, createWatchlistSchema, updateWatchlistSchema } from '@tradinjournal/contracts';
 import {
   handleCandles,
   handleSymbolSearch,
@@ -11,6 +11,10 @@ import {
   handleGetWatchlist,
   handleSetWatchlist,
   handleWarm,
+  handleListWatchlists,
+  handleCreateWatchlist,
+  handleUpdateWatchlist,
+  handleDeleteWatchlist,
 } from './market.controller.js';
 
 // Public (signed-in) market routes.
@@ -21,6 +25,10 @@ marketRouter.get('/search', validateQuery(symbolSearchSchema), handleSymbolSearc
 marketRouter.get('/stream', validateQuery(candlesQuerySchema), handleCandleStream);
 marketRouter.get('/watchlist', handleGetWatchlist);
 marketRouter.put('/watchlist', validateBody(watchlistSchema), handleSetWatchlist);
+marketRouter.get('/watchlists', handleListWatchlists);
+marketRouter.post('/watchlists', validateBody(createWatchlistSchema), handleCreateWatchlist);
+marketRouter.patch('/watchlists/:id', validateBody(updateWatchlistSchema), handleUpdateWatchlist);
+marketRouter.delete('/watchlists/:id', handleDeleteWatchlist);
 
 // Internal (worker → API) warm refresher, token-guarded.
 export const marketInternalRouter: IRouter = Router();
