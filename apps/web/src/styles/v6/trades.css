@@ -78,7 +78,7 @@
   font: 500 11.5px/1 var(--mono); padding: 6px 9px; border-radius: 8px; background: var(--tip); color: rgba(255, 255, 255, .95); box-shadow: 0 8px 18px -8px rgba(0, 0, 0, .45); }
 .v6 .tr-pill.dn { transform: translate(-50%, 0); margin-top: 12px; }
 .v6 .tr-pill.g { background: var(--g); color: var(--on-g); }
-.v6 .tr-pill.r { background: var(--r); color: rgba(255, 255, 255, .97); }
+.v6 .tr-pill.r { background: var(--r-solid); color: rgba(255, 255, 255, .97); }
 .v6 .tr-ohlc { position: absolute; left: 0; top: 0; z-index: 3; display: flex; gap: 12px; flex-wrap: wrap; pointer-events: none;
   background: var(--tip); color: rgba(255, 255, 255, .6); border-radius: var(--r-ctl); padding: 7px 11px; font: 400 11.5px var(--mono); max-width: 100%; }
 .v6 .tr-ohlc b { color: rgba(255, 255, 255, .95); font-weight: 500; }

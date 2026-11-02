@@ -13,6 +13,7 @@ import { useLoad, usePoll } from '@/components/v6/ui/data';
 import ErrorCard from '@/components/v6/ui/error-card';
 import Modal from '@/components/v6/ui/modal';
 import OrderTicketDialog from '@/components/v6/trading/order-ticket';
+import { IPlus } from '@/components/v6/icons';
 import { ApiError, exchangesApi, price, signedUsd, toneOf, tradingApi, usd, venueName, type CloseManyResult, type Protection, type SetProtectionResult, type DeskClosedTrade, type DeskOrder, type DeskOrderFilters, type DeskOrderStatus, type DeskPendingOrder, type DeskPosition } from '@/lib/copy-api';
 import '@/styles/v6/kit.css';
 import '@/styles/v6/trading.css';
@@ -68,7 +69,7 @@ export default function TradingPage() {
         <button className="x-btn" onClick={() => void desk.reload()} disabled={desk.loading} data-testid="desk-refresh">{desk.loading ? 'Refreshing…' : 'Refresh'}</button>
         <button className="x-btn x-btn--hi" onClick={() => setTicket(true)} data-testid="desk-new-order">New order</button>
       </>}>
-      <div className="x-page" data-testid="desk-page">
+      <div className="x-page trd-page" data-testid="desk-page">
         <div className="x-strip x-strip--card trd-strip" style={{ ['--n' as string]: 3 }}>
           <div><span>Open P&amp;L</span><b className={`m ${toneOf(upnl ?? 0)}`}>{upnl == null ? '—' : signedUsd(upnl)}</b></div>
           <div><span>Closed P&amp;L · 30 days</span><b className={`m ${toneOf(realized30 ?? 0)}`}>{realized30 == null ? '—' : signedUsd(realized30)}</b><small>before fees and funding</small></div>
@@ -118,7 +119,7 @@ export default function TradingPage() {
         <CloseDialog p={closing} onClose={() => setClosing(null)}
           onDone={(msg, ok) => { setClosing(null); (ok ? toast.success : toast.error)(msg); void desk.reload(); }} />
       )}
-      {!ticket && <button className="trd-fab" onClick={() => setTicket(true)} aria-label="Quick trade" data-testid="desk-quick-trade">Quick trade</button>}
+      {!ticket && <button className="trd-fab" onClick={() => setTicket(true)} aria-label="Quick trade" title="Quick trade" data-testid="desk-quick-trade"><IPlus size={20} /><span>Quick trade</span></button>}
       {ticket && <OrderTicketDialog onClose={() => setTicket(false)} onPlaced={() => void desk.reload()} />}
       {bulk && (
         <BulkCloseDialog rows={bulk.rows} all={bulk.all} onClose={() => setBulk(null)}

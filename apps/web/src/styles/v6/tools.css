@@ -89,10 +89,12 @@
   .v6 .sc-tbl td { display: flex; justify-content: space-between; gap: 8px; padding: 0; border: 0; }
   .v6 .sc-tbl td, .v6 .sc-tbl td.r { text-align: left; }
   .v6 .sc-tbl td:first-child, .v6 .sc-tbl td.trd-acts { grid-column: 1 / -1; }
+  /* The symbol is the card's title link: give it a finger-sized target. */
+  .v6 .sc-tbl td:first-child .x-link { display: inline-flex; align-items: center; min-height: 32px; min-width: 44px; }
   .v6 .sc-tbl td[data-label]::before { content: attr(data-label); color: var(--mut); font-family: var(--sans); font-size: 12px; letter-spacing: 0; }
   .v6 .sc-tbl td.trd-acts { justify-content: flex-start; padding-top: 6px; }
 }
-.v6 .sc-filters > summary { cursor: pointer; font-weight: 500; list-style: none; display: flex; gap: 8px; align-items: baseline; }
+.v6 .sc-filters > summary { cursor: pointer; font-weight: 500; list-style: none; display: flex; gap: 8px; align-items: center; min-height: 32px; }
 .v6 .sc-filters > summary::-webkit-details-marker { display: none; }
 .v6 .sc-filters > summary::before { content: '▸'; color: var(--mut); transition: transform .15s; display: inline-block; }
 .v6 .sc-filters[open] > summary::before { transform: rotate(90deg); }
@@ -124,7 +126,7 @@
 .v6 .sg-pill.sg-buy { background: var(--g-soft); color: var(--g-tx); }
 .v6 .sg-pill.sg-strong_buy { background: var(--g); color: var(--on-g); }
 .v6 .sg-pill.sg-sell { background: var(--r-soft); color: var(--r-tx); }
-.v6 .sg-pill.sg-strong_sell { background: var(--r); color: #fff; }
+.v6 .sg-pill.sg-strong_sell { background: var(--r-solid); color: #fff; }
 .v6 .sg-nfa { margin-top: -4px; }
 .v6 .sg-detail { display: grid; gap: 16px; }
 .v6 .sg-detail .x-seg { justify-self: start; flex-wrap: wrap; }

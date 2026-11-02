@@ -40,7 +40,7 @@
 .v6 .x-btn--g, .v6 .x-card .x-btn--g { background: var(--g); color: var(--on-g); }
 .v6 .x-btn--g:hover, .v6 .x-card .x-btn--g:hover { background: var(--g); opacity: .88; }
 .v6 .x-btn--danger, .v6 .x-card .x-btn--danger { background: var(--r-soft); color: var(--r-tx); }
-.v6 .x-btn--danger:hover, .v6 .x-card .x-btn--danger:hover { background: var(--r); color: #fff; }
+.v6 .x-btn--danger:hover, .v6 .x-card .x-btn--danger:hover { background: var(--r-solid); color: #fff; }
 .v6 .x-btn--ghost, .v6 .x-card .x-btn--ghost { background: none; box-shadow: none; color: var(--mut); }
 .v6 .x-btn--ghost:hover { color: var(--tx); background: var(--s2); }
 .v6 .x-btn--dash, .v6 .x-card .x-btn--dash { background: none; border: 1px dashed var(--line-2); box-shadow: none; }

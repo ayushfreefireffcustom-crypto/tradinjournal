@@ -40,7 +40,9 @@ Approved mock: `design/dashboard-v8/a-desk-v2/` (dark + light screenshots in tha
    Charts: grid `var(--grid)`, axis text `var(--axis)`, tooltips `var(--tip)` with light text.
    Green or red *text* (P&L, chips, badges, icons) uses `var(--g-tx)` / `var(--r-tx)`: equal to
    `--g`/`--r` in dark, darker in light so small text keeps 4.5:1. Fills, bars and lines keep
-   `--g`/`--r`. Inside a tooltip use `--g-tip` / `--r-tip`.
+   `--g`/`--r`. Inside a tooltip use `--g-tip` / `--r-tip`. A red fill with white text on it
+   (sell buttons, the delete button, a danger hover) uses `var(--r-solid)`: white on `--r` is
+   only 3.6:1. Green fills take dark text (`--on-g`) instead.
 5. Typography: Satoshi 400/500 only (never 600/700/900, never `font-bold`/`font-black`), JetBrains
    Mono (`.m`) for numbers only (prices, P&L, counts, times); labels, dates and headings stay sans.
    Sentence case; no uppercase letter-spaced labels; no serif or italic accents.
