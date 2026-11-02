@@ -76,8 +76,8 @@ Legend:
 - [x] A2.9 `Stat`: label, big `.num` value, sub-line, optional thin bar, optional ⓘ `S` — `x-stat`
 - [x] A2.10 `StatStrip`: 3–4 stats split by hairlines, as in the reference (27 / 32 / 33) `S` — `x-strip`
 - [x] A2.11 `InfoTip` (ⓘ popover with "what it is / why it matters"). Replace `components/macro/info-tip.tsx` usage everywhere `S` — components/v6/ui/info-tip.tsx; macro re-exports it (2 Nov)
-- [ ] A2.12 `Well`: a dark framed thumbnail container for mini-charts, with a mono caption `S`
-- [ ] A2.13 `IconTile`: glossy rounded-square SVG master, palettes green/red/graphite `M`
+- [x] A2.12 `Well`: a dark framed thumbnail container for mini-charts, with a mono caption `S` — exists: the landing's framed wells (`.lp6 .tile-top`, dotted texture, captioned thumbnails in "How it works"); inside the app the same role is `x-inset`
+- [x] A2.13 `IconTile`: glossy rounded-square SVG master, palettes green/red/graphite `M` — exists: `IconTile` in `components/landing-v6/ui.tsx` (gloss, inner shadow, coloured underglow; green/red/gray; xs/sm/lg), used across the landing bento
 - [x] A2.14 Form set: `Field`, `Input`, `Select`, `Textarea`, `Checkbox`, `Switch`, `Radio`, `NumberStepper`, `SearchInput` (⌘K hint). Error and help text `M` — 2 Nov: a class set rather than React wrappers (native inputs stay simple): `x-field` (label, `x-help`, `x-err`), `x-input`, `x-select`, `x-textarea`, `x-check`, `x-radio` (new), `x-switch`, `cp-stepper` (number stepper), `x-search`; the ⌘K hint is on the frame's search button. All shown in /dev/ui
 - [x] A2.15 `Sheet`/`Dialog` (bottom sheet on mobile, centred dialog on desktop). Replace `components/confirm-dialog.tsx` and `components/v3/confirm-dialog.tsx` with one `M` — one ConfirmDialog (portal, Esc, bottom sheet on phones) already replaced both
 - [x] A2.16 `Menu`/`Dropdown` with keyboard support `S` — `useMenu` (components/v6/ui/use-menu.ts, tested): arrows, Home/End, type-ahead, Esc back to trigger; account switcher + user menu use it
