@@ -30,7 +30,7 @@ export function useSize<T extends HTMLElement>() {
   return [ref, size] as const;
 }
 
-function niceStep(range: number, count: number) {
+export function niceStep(range: number, count: number) {
   const raw = range / Math.max(1, count);
   if (raw <= 0 || !Number.isFinite(raw)) return 1;
   const p = Math.pow(10, Math.floor(Math.log10(raw)));
@@ -67,11 +67,11 @@ function DragHandle() {
 }
 
 /** Wraps an analytics card so it can be dragged by its header handle to reorder. */
-export function SortableCard({ id, className = '', children }: { id: string; className?: string; children: ReactNode }) {
+export function SortableCard({ id, span = 12, className = '', children }: { id: string; span?: number; className?: string; children: ReactNode }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
-  const style: CSSProperties = { transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 20 : undefined };
+  const style = { transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 20 : undefined, '--span': span } as CSSProperties;
   return (
-    <div ref={setNodeRef} style={style} data-testid={`sortable-${id}`} className={`an-cell ${className} ${isDragging ? 'is-drag' : ''}`}>
+    <div ref={setNodeRef} style={style} data-testid={`sortable-${id}`} className={`an-cell an-span ${className} ${isDragging ? 'is-drag' : ''}`}>
       <HandleCtx.Provider value={{ id, attributes: attributes as unknown as Record<string, unknown>, listeners }}>{children}</HandleCtx.Provider>
     </div>
   );

@@ -69,7 +69,7 @@ export default function OptionsOverviewPage() {
             <div className="ov-two">
               <section className="x-card" aria-label="Term structure">
                 <div className="x-ch"><h2>Term structure</h2><span className="x-sub">ATM IV by days to expiry</span></div>
-                <LineChart testId="op-ov-term" height={220} series={[{ key: 'atm', label: 'ATM IV', color: 'var(--sc-1)', points: d.term.filter((t) => t.atmIv != null).map((t) => [t.days, t.atmIv!] as [number, number]) }]}
+                <LineChart testId="op-ov-term" height={220} xLog series={[{ key: 'atm', label: 'ATM IV', color: 'var(--sc-1)', points: d.term.filter((t) => t.atmIv != null).map((t) => [t.days, t.atmIv!] as [number, number]) }]}
                   xFmt={(x) => `${x.toFixed(x < 3 ? 1 : 0)}d`} yFmt={(y) => ivPct(y)} />
               </section>
               <section className="x-card" aria-label="Smile">

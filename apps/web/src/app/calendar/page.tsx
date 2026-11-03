@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import EmptyState from '@/components/v6/ui/empty-state';
 import Link from '@/components/v6/ui/link';
 import AppShell from '@/components/app-shell';
 import ConnectBrokerModal from '@/components/connect-broker-modal';
@@ -67,6 +68,19 @@ export default function CalendarPage() {
   }, [selected, accountsLoading, loadTrades]);
 
   const byDay = useMemo(() => aggregateByCloseDate(trades), [trades]);
+  // On a fresh load, open on the latest month with a closed trade when this month has none,
+  // rather than a blank calendar (the arrows still reach every month).
+  const jumped = useRef<string | null>(null);
+  useEffect(() => {
+    if (loading || !selected || jumped.current === selected.id) return;
+    jumped.current = selected.id;
+    const closes = trades.filter(t => t.status === 'CLOSED' && t.closeTime).map(t => new Date(t.closeTime!));
+    if (!closes.length) return;
+    const n = new Date();
+    if (closes.some(d => d.getFullYear() === n.getFullYear() && d.getMonth() === n.getMonth())) return;
+    const last = new Date(Math.max(...closes.map(d => d.getTime())));
+    setView({ year: last.getFullYear(), month: last.getMonth() });
+  }, [loading, selected, trades]);
   const { monthStats, maxAbs } = useMemo(() => buildMonthView(view.year, view.month, byDay), [byDay, view]);
   const weeks = useMemo(() => mondayMonth(view.year, view.month, byDay), [byDay, view]);
   const noted = useMemo(() => notedDays(journal, trades), [journal, trades]);
@@ -257,7 +271,7 @@ export default function CalendarPage() {
             <section className="x-card cl-wd" data-testid="calendar-weekday">
               <div className="x-ch"><h2>By weekday</h2><span className="x-sub">{monthLabel}</span></div>
               {has ? <VBars values bars={weekday} tipLabel={b => `${b.label} in ${MONTHS[view.month]}`} height={200} />
-                : <div className="cl-wd-empty">No closed trades this month.</div>}
+                : <EmptyState compact icon="calendar" title="No closed trades this month">Each weekday's net P&amp;L shows here once trades close.</EmptyState>}
             </section>
           </aside>
         </div>

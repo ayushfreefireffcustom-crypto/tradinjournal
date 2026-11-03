@@ -141,6 +141,10 @@ export function createRssProvider(): NewsProvider {
             const title = it.title?.trim();
             if (!url || !title) continue;
             const when = it.isoDate ?? it.pubDate;
+            const at = when ? new Date(when) : new Date();
+            // Feeds sometimes carry archive items with bad or future dates; a story
+            // dated ahead of now (or unparseable) would sit on top of the feed for weeks.
+            if (Number.isNaN(at.getTime()) || at.getTime() > Date.now() + 60 * 60_000) continue;
             items.push({
               source: sourceKey(feed.outlet),
               outlet: feed.outlet,
@@ -148,7 +152,7 @@ export function createRssProvider(): NewsProvider {
               title,
               summary: (it.contentSnippet ?? '').trim().slice(0, 500) || undefined,
               imageUrl: extractImage(it as unknown as Record<string, unknown>),
-              publishedAt: when ? new Date(when) : new Date(),
+              publishedAt: at,
               category: feed.category,
             });
           }

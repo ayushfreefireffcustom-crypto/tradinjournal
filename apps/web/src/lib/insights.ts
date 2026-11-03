@@ -32,7 +32,7 @@ export function buildInsights(stats: AccountStats, trades: Trade[], journal: Jou
   if (stats.byDay.length >= 2) {
     const best = [...stats.byDay].sort((a, b) => b.netPnl - a.netPnl)[0]!;
     const worst = [...stats.byDay].sort((a, b) => a.netPnl - b.netPnl)[0]!;
-    if (best.netPnl > 0) out.push({ id: 'best-day', tone: 'profit', icon: 'calendar', text: `${best.day} is your strongest day at ${money(best.netPnl)} across ${best.trades} trades.`, lead: `${best.day} is your strongest day`, detail: `${best.trades} trade${best.trades === 1 ? '' : 's'}`, amount: best.netPnl });
+    if (best.netPnl > 0) out.push({ id: 'best-day', tone: 'profit', icon: 'calendar', text: `${best.day} is your strongest day at ${money(best.netPnl)} across ${best.trades} trade${best.trades === 1 ? '' : 's'}.`, lead: `${best.day} is your strongest day`, detail: `${best.trades} trade${best.trades === 1 ? '' : 's'}`, amount: best.netPnl });
     if (worst.netPnl < 0 && worst.day !== best.day) out.push({ id: 'worst-day', tone: 'loss', icon: 'calendar', text: `${worst.day} bleeds the most — ${money(worst.netPnl)}. Consider sizing down.`, lead: `${worst.day}s bleed the most`, detail: 'Consider sizing down or sitting out', amount: worst.netPnl });
   }
 

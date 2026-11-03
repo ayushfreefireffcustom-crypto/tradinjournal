@@ -3,6 +3,7 @@
 // Copy-trading leaderboard (C4.1, C4.9, C4.10): verified leaders with real
 // stats from their exchange accounts, sort / range / search, and an FAQ.
 // Browsing works without a connected exchange.
+import ComingSoon from '@/components/v6/ui/coming-soon';
 import { useEffect, useState } from 'react';
 import Link from '@/components/v6/ui/link';
 import AppShell from '@/components/app-shell';
@@ -48,7 +49,7 @@ export default function LeadersPage() {
   const [comparing, setComparing] = useState(false);
   const togglePick = (id: string) => setPicked(p => (p.includes(id) ? p.filter(x => x !== id) : p.length >= 3 ? p : [...p, id]));
 
-  if (!TRADING_ENABLED) return <AppShell legacy={false} pageTitle="Copy trading"><div className="x-page"><div className="x-card x-empty"><b>Coming soon</b><p>Copy trading isn&rsquo;t available yet.</p></div></div></AppShell>;
+  if (!TRADING_ENABLED) return <ComingSoon title="Copy trading" what="Copy trading" />;
 
   const list = leaders.data ?? [];
   const copying = (mine.data ?? []).length;

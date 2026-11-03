@@ -21,6 +21,7 @@ import {
 } from '@/components/v6/analytics/cards';
 import DateRangePicker from '@/components/v6/ui/date-range';
 import { rangeText } from '@/lib/date-presets';
+import { packRows } from '@/lib/pack-rows';
 
 // Rearrangeable analytics blocks. Order is persisted per-account in localStorage.
 // Spans tile the 12-col grid in the default order; on reorder CSS grid
@@ -28,10 +29,11 @@ import { rangeText } from '@/lib/date-presets';
 const BLOCK_IDS = ['donut', 'pnldist', 'heatmap', 'timeofday', 'equity', 'rolling', 'scatter', 'yearheat', 'bysymbol', 'allocation', 'tag', 'emotion', 'byday', 'direction'] as const;
 type BlockId = (typeof BLOCK_IDS)[number];
 const DEFAULT_ORDER: BlockId[] = ['equity', 'donut', 'pnldist', 'rolling', 'heatmap', 'allocation', 'bysymbol', 'timeofday', 'direction', 'byday', 'emotion', 'tag', 'scatter', 'yearheat'];
-const SPANS: Record<BlockId, string> = {
-  equity: 'an-s12', donut: 'an-s5', pnldist: 'an-s7', rolling: 'an-s7', heatmap: 'an-s5',
-  allocation: 'an-s5', bysymbol: 'an-s7', timeofday: 'an-s12', direction: 'an-s6', byday: 'an-s6', emotion: 'an-s6', tag: 'an-s6', scatter: 'an-s12', yearheat: 'an-s12',
+const SPANS: Record<BlockId, number> = {
+  equity: 12, donut: 5, pnldist: 7, rolling: 7, heatmap: 5,
+  allocation: 5, bysymbol: 7, timeofday: 12, direction: 6, byday: 6, emotion: 6, tag: 6, scatter: 12, yearheat: 12,
 };
+const packSpans = (order: readonly BlockId[]) => packRows(order, SPANS);
 const orderKey = (accountId: string) => `tradelogs.analytics.order.${accountId}`;
 function sameOrder(a: BlockId[], b: BlockId[]) { return a.length === b.length && a.every((x, i) => x === b[i]); }
 function normalizeOrder(saved: string[]): BlockId[] {
@@ -90,6 +92,7 @@ export default function AnalyticsPage() {
   }, [selected]);
 
   const isDefaultOrder = sameOrder(order, DEFAULT_ORDER);
+  const spans = useMemo(() => packSpans(order), [order]);
 
   const loadStats = useCallback(async (acc: BrokerAccount) => {
     setLoading(true);
@@ -209,7 +212,7 @@ export default function AnalyticsPage() {
         ) : loading || !view ? (
           <div className="x-page" aria-busy="true" aria-label="Loading analytics">
             <div className="x-skel" style={{ height: 96 }} />
-            <div className="an-grid">{[12, 5, 7].map((n, i) => <div key={i} className={`x-skel an-s${n}`} style={{ height: n === 12 ? 380 : 340 }} />)}</div>
+            <div className="an-grid">{[12, 5, 7].map((n, i) => <div key={i} className="x-skel an-span" style={{ height: n === 12 ? 380 : 340, ['--span' as string]: n }} />)}</div>
           </div>
         ) : (
           <>
@@ -230,7 +233,7 @@ export default function AnalyticsPage() {
               <SortableContext items={order} strategy={rectSortingStrategy}>
                 <div className={`an-grid ${arranging ? 'is-arranging' : ''}`} data-testid="analytics-grid">
                   {order.map(id => (
-                    <SortableCard key={id} id={id} className={SPANS[id]}>
+                    <SortableCard key={id} id={id} span={spans[id]}>
                       {renderBlock(id)}
                     </SortableCard>
                   ))}

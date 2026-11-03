@@ -3,6 +3,7 @@
 // Multi-leg builder (G6–G8): templates, legs, the payoff at expiry and at a
 // chosen date with a target-price slider, the summary numbers and the
 // analysis panel. Legs are priced at the mark unless a price is typed.
+import EmptyState from '@/components/v6/ui/empty-state';
 import Link from '@/components/v6/ui/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import AppShell from '@/components/app-shell';
@@ -182,7 +183,7 @@ export default function OptionsBuilderPage() {
             <div className="op-bright">
               <section className="x-card" aria-label="Payoff" data-testid="op-payoff">
                 <div className="x-ch"><h2>Payoff</h2>{busy && <span className="x-muted" data-testid="op-busy">Updating…</span>}</div>
-                {aErr ? <p className="cp-err" data-testid="op-analyze-err">{aErr}</p> : !a ? <div className="op-empty x-muted">Add legs to see the payoff.</div> : (
+                {aErr ? <p className="cp-err" data-testid="op-analyze-err">{aErr}</p> : !a ? <EmptyState icon="chart" ghost="chart" title="Add legs to see the payoff" hints={['Pick a template', 'Add an option', 'Buy / Sell from the chain']}>Profit and loss at expiry and today, breakevens, chance of profit and the Greeks.</EmptyState> : (
                   <>
                     <LineChart testId="op-payoff-chart" height={300} zero fillZero="expiry"
                       series={[
@@ -205,11 +206,11 @@ export default function OptionsBuilderPage() {
               </section>
               {a && s && (
                 <>
-                  <section className="op-strip" aria-label="Summary" data-testid="op-summary">
+                  <section className="op-strip op-strip--3" aria-label="Summary" data-testid="op-summary">
                     <div><span>{s.netPremium >= 0 ? 'Premium paid' : 'Premium received'}</span><b className="m">{fmtUsd(Math.abs(s.netPremium))}</b></div>
                     <div><span>Max profit</span><b className="m pos">{s.maxProfit == null ? 'Unlimited' : fmtUsd(s.maxProfit)}</b></div>
                     <div><span>Max loss</span><b className="m neg">{s.maxLoss == null ? 'Unlimited' : fmtUsd(s.maxLoss)}</b></div>
-                    <div><span>Reward / risk</span><b className="m">{s.riskReward == null ? '—' : `${s.riskReward.toFixed(2)}×`}</b></div>
+                    <div><span>Reward / risk</span><b className="m">{s.riskReward == null ? (s.maxProfit == null ? 'Unlimited' : '—') : `${s.riskReward.toFixed(2)}×`}</b></div>
                     <div><span>Chance of profit</span><b className="m">{s.probProfit == null ? '—' : `${(s.probProfit * 100).toFixed(0)}%`}</b><small className="x-muted">{a.vol ? `at ${ivPct(a.vol)} IV` : ''}</small></div>
                     <div><span>Breakevens</span><b className="m">{s.breakevens.length ? s.breakevens.map(k0).join(' · ') : '—'}</b></div>
                   </section>

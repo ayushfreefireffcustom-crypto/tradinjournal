@@ -98,7 +98,7 @@ export default function DerivativesPage() {
               <section className="x-card" aria-label="Squeezes" data-testid="dv-squeezes">
                 <div className="x-ch"><h2>Squeezes and builds</h2><span className="x-sub">Price and open interest over 24h, top {data.detailFor} by volume</span></div>
                 {(() => {
-                  const sq = data.rows.filter(r => r.squeeze).sort((a, b) => Math.abs(b.oiChange24h ?? 0) - Math.abs(a.oiChange24h ?? 0));
+                  const sq = data.rows.filter(r => r.squeeze).sort((a, b) => Math.abs(b.oiChange24h ?? 0) - Math.abs(a.oiChange24h ?? 0)).slice(0, 12);
                   return !sq.length ? <EmptyState compact icon="pulse" title="No squeezes or builds" hints={['2% price move', '3% open-interest move']}>Nothing in the top {data.detailFor} has moved enough in both price and open interest over 24 hours.</EmptyState> : (
                     <ul className="ov-movers dv-list">
                       {sq.map(r => <li key={r.symbol} title={SQUEEZE[r.squeeze!].hint}><Pair base={r.base} quote={null} /><span className={`x-tag ${SQUEEZE[r.squeeze!].tone}`}>{SQUEEZE[r.squeeze!].label}</span><span className="m"><span className={toneOf(r.change24h)}>{fmtPct(r.change24h, 1)}</span> · OI <span className={toneOf(r.oiChange24h)}>{fmtPct(r.oiChange24h, 1)}</span></span></li>)}
@@ -110,8 +110,8 @@ export default function DerivativesPage() {
                 <div className="x-ch"><h2>Funding extremes</h2><span className="x-sub">Next funding, per period</span></div>
                 {(() => {
                   const f = data.rows.filter(r => r.funding != null).sort((a, b) => b.funding! - a.funding!);
-                  const hi = f.slice(0, 5);
-                  const lo = f.slice(-5).reverse();
+                  const hi = f.slice(0, 6);
+                  const lo = f.slice(-6).reverse();
                   const li = (r: DerivRow) => <li key={r.symbol}><Pair base={r.base} quote={null} /><span className="m x-muted" style={{ whiteSpace: 'nowrap' }}>{fmtPct(r.annualised, 0)} / yr</span><span className={`m ${toneOf(r.funding)}`}>{fmtFunding(r.funding)}</span></li>;
                   return <div className="dv-ext"><div><div className="ov-macro-h">Highest: longs pay most</div><ul className="ov-movers">{hi.map(li)}</ul></div><div><div className="ov-macro-h">Lowest: shorts pay most</div><ul className="ov-movers">{lo.map(li)}</ul></div></div>;
                 })()}
@@ -142,7 +142,7 @@ export default function DerivativesPage() {
               <div className="x-tblwrap">
                 <table className="x-tbl trd-tbl sc-tbl" data-testid="dv-table">
                   <thead><tr>
-                    <th>Pair</th><th className="r">Price</th>{head('change', '24h')}{head('funding', 'Next funding')}<th className="r">Last</th>{head('annualised', 'Per year')}<th className="r">Next in</th>{head('oi', 'Open interest')}{head('oiChange', 'OI 24h')}{head('long', 'Long')}<th className="r">Since last look</th>
+                    <th>Pair</th><th className="r">Price</th>{head('change', '24h')}{head('funding', 'Next funding')}<th className="r">Last</th>{head('annualised', 'Per year')}<th className="r">Next in</th>{head('oi', 'Open interest')}{head('oiChange', 'OI 24h')}{head('long', 'Long')}{snap && <th className="r">Since last look</th>}
                   </tr></thead>
                   <tbody>
                     {(all || q.trim() ? rows : rows.slice(0, 25)).map(r => {
@@ -159,7 +159,7 @@ export default function DerivativesPage() {
                           <td className="r m" data-label="Open interest">{fmtUsd(r.oiValue)}</td>
                           <td className={`r m ${toneOf(r.oiChange24h)}`} data-label="OI 24h">{fmtPct(r.oiChange24h, 1)}</td>
                           <td className="r m" data-label="Long">{r.longRatio == null ? '—' : <Meter v={r.longRatio * 100} label={`${Math.round(r.longRatio * 100)}%`} t={r.longRatio >= 0.5 ? 'pos' : 'neg'} />}</td>
-                          <td className="r m" data-label="Since last look">{dl ? <><span className={toneOf(dl.f)}>{dl.f == null ? '—' : `${dl.f > 0 ? '+' : ''}${dl.f.toFixed(4)}`}</span> · <span className={toneOf(dl.oi)}>{fmtPct(dl.oi, 1)}</span></> : <span className="x-muted">—</span>}</td>
+{snap && (<td className="r m" data-label="Since last look">{dl ? <><span className={toneOf(dl.f)}>{dl.f == null ? '—' : `${dl.f > 0 ? '+' : ''}${dl.f.toFixed(4)}`}</span> · <span className={toneOf(dl.oi)}>{fmtPct(dl.oi, 1)}</span></> : <span className="x-muted">—</span>}</td>)}
                         </tr>
                       );
                     })}

@@ -3,6 +3,7 @@
 // Strategy marketplace (H1): published strategies with performance TRADElogs
 // computed itself. Filter by style, risk and market; sort by popularity,
 // return, drawdown or newest.
+import EmptyState from '@/components/v6/ui/empty-state';
 import Link from '@/components/v6/ui/link';
 import { useEffect, useState } from 'react';
 import AppShell from '@/components/app-shell';
@@ -39,7 +40,16 @@ export default function MarketplacePage() {
           <select className="x-input" value={sort} onChange={(e) => setSort(e.target.value as Sort)} aria-label="Sort" data-testid="mk-sort">{SORTS.map(([id, l]) => <option key={id} value={id}>{l}</option>)}</select>
         </div>
         {list.error ? <ErrorCard message={list.error} onRetry={list.reload} /> : !list.data ? <div className="mk-grid">{[0, 1, 2].map((i) => <div key={i} className="x-skel" style={{ height: 240 }} />)}</div> : !list.data.length ? (
-          <div className="x-card x-empty" data-testid="mk-empty"><b>{category || risk || debounced.symbol || debounced.q ? 'Nothing matches' : 'No strategies published yet'}</b><p>{category || risk || debounced.symbol || debounced.q ? 'Try fewer filters.' : 'Traders in the creator programme publish here once we’ve reviewed them.'} <Link className="x-link" href="/marketplace/creator">Publish one of yours</Link>.</p></div>
+          <div className="x-card">{category || risk || debounced.symbol || debounced.q ? (
+            <EmptyState icon="search" tone="warn" testId="mk-empty" title="Nothing matches"
+              actions={<button className="x-btn" onClick={() => { setCategory(''); setRisk(''); setSymbol(''); setQ(''); }}>Clear filters</button>}>No published strategy fits all of these filters.</EmptyState>
+          ) : (
+            <EmptyState icon="star" ghost="cards" testId="mk-empty" title="No strategies published yet"
+              hints={['Backtested by TRADElogs', 'Fees and slippage included', 'Run it on paper first']}
+              actions={<Link className="x-btn x-btn--hi" href="/marketplace/creator">Publish one of yours</Link>}>
+              Traders in the creator programme publish their strategies here once we&rsquo;ve reviewed them.
+            </EmptyState>
+          )}</div>
         ) : <div className="mk-grid" data-testid="mk-grid">{list.data.map((c) => <TemplateCard key={c.id} c={c} />)}</div>}
         <p className="x-muted mk-fine">Backtests are run by TRADElogs on each strategy’s rules over recent history, with fees and slippage. A creator’s track record is their own paper or live run. Past results don’t predict future ones.</p>
       </div>

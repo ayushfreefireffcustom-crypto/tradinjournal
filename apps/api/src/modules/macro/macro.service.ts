@@ -265,6 +265,7 @@ export async function buildMacroState(): Promise<MacroState> {
         },
       }),
       prisma.newsItem.findMany({
+        where: { publishedAt: { lte: new Date(Date.now() + 60 * 60_000) } },
         orderBy: { publishedAt: 'desc' },
         take: HEADLINES_LIMIT,
         select: { title: true, source: true, url: true, publishedAt: true },
@@ -356,10 +357,11 @@ export async function buildMacroState(): Promise<MacroState> {
     at: n.publishedAt.toISOString(),
   }));
 
+  // Forecast series (the FOMC median dot is dated years ahead) aren't "as of" anything; ignore future dates.
   const newest = [
     ...latestIndicators.map(r => r.asOf.getTime()),
     ...latestQuotes.map(r => r.asOf.getTime()),
-  ];
+  ].filter(t => t <= now.getTime());
   const asOf = newest.length > 0 ? new Date(Math.max(...newest)).toISOString() : now.toISOString();
 
   let fx: { code: string; rate: number; asOf: string }[] = [];

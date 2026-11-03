@@ -44,7 +44,12 @@ export const defaultBriefDeps: BriefDeps = {
   cache: true,
 };
 
-const pct = (v: number | null | undefined, d = 1) => (v == null ? 'n/a' : `${v > 0 ? '+' : ''}${v.toFixed(d)}%`);
+// Rounds first, so a tiny move reads "0.0%", never "-0.0%".
+const pct = (v: number | null | undefined, d = 1) => {
+  if (v == null) return 'n/a';
+  const r = Number(v.toFixed(d));
+  return r === 0 ? `${(0).toFixed(d)}%` : `${r > 0 ? '+' : ''}${r.toFixed(d)}%`;
+};
 
 export function factsFor(o: Overview, d: Derivatives | null) {
   return {

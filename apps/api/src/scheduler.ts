@@ -25,6 +25,7 @@ import { trainLgbmChallenger } from './modules/trader/trader.lgbm.service.js';
 import { tickPaperBook } from './modules/trader/trader.paper.service.js';
 import { refreshReferralStats } from './modules/partners/stats.service.js';
 import { queueDueSyncs } from './modules/sync/sync.jobs.js';
+import { ingestMacro } from './modules/macro/macro.service.js';
 import { createElector } from './lib/leader.js';
 
 const MIN = 60_000;
@@ -88,6 +89,11 @@ export function startInProcessScheduler(): void {
   every(6 * 60 * MIN, 'trader-meta', () => trainMetaModelFromDb());
   every(6 * 60 * MIN, 'trader-lgbm', () => trainLgbmChallenger());
   every(5 * MIN, 'trader-paper', () => tickPaperBook());
+  // Macro data (FRED, COT, quotes, FX): every 30 min plus once at boot. The separate
+  // worker used to own this; without it the Macro page froze on its last ingest.
+  // No-ops when the macro segment is off (no FRED key).
+  every(30 * MIN, 'macro-ingest', () => ingestMacro({ reason: 'in-process' }));
+  soon(45_000, () => ingestMacro({ reason: 'in-process:boot' }));
   // Trade sync: keep every account's stored deals at most SYNC_BACKGROUND_MIN old.
   every(5 * MIN, 'trade-sync', () => queueDueSyncs());
   // Copy-trading events to push and email (the in-app notification is written by the engine).

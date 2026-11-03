@@ -213,9 +213,26 @@ function Sectors({ sectors }: { sectors: SectorRow[] }) {
   const [ref, w] = useWidth<HTMLDivElement>();
   const h = 280;
   const pad = 30;
-  const lim = Math.max(5, ...pts.flatMap(s => [Math.abs(s.vsBtc7d!), Math.abs(s.vsBtc30d!)])) * 1.15;
-  const X = (v: number) => pad + ((v + lim) / (2 * lim)) * (w - pad * 2);
-  const Y = (v: number) => h - pad - ((v + lim) / (2 * lim)) * (h - pad * 2);
+  // Each axis scales to its own spread, so the points use the whole chart.
+  const limX = Math.max(2, ...pts.map(s => Math.abs(s.vsBtc30d!))) * 1.2;
+  const limY = Math.max(2, ...pts.map(s => Math.abs(s.vsBtc7d!))) * 1.2;
+  const X = (v: number) => pad + ((v + limX) / (2 * limX)) * (w - pad * 2);
+  const Y = (v: number) => h - pad - ((v + limY) / (2 * limY)) * (h - pad * 2);
+  // Labels: right of the dot, else left, else nudged down/up until they don't overlap another.
+  const placed: Array<{ x: number; y: number; w: number }> = [];
+  const labelAt = (s: SectorRow) => {
+    const cx = X(s.vsBtc30d!), cy = Y(s.vsBtc7d!), tw = s.sector.length * 6.6;
+    const hit = (x: number, y: number) => placed.some(p => x < p.x + p.w + 4 && x + tw + 4 > p.x && Math.abs(y - p.y) < 14)
+      || pts.some(o => o !== s && Math.abs(Y(o.vsBtc7d!) - (y - 4)) < 7 && X(o.vsBtc30d!) > x - 6 && X(o.vsBtc30d!) < x + tw + 6);
+    for (const dy of [0, 14, -14, 28, -28, 42]) {
+      for (const x of [cx + 9, cx - 9 - tw]) {
+        const y = cy + 4 + dy;
+        if (x >= pad && x + tw <= w - pad && !hit(x, y)) { placed.push({ x, y, w: tw }); return { x, y }; }
+      }
+    }
+    placed.push({ x: cx + 9, y: cy + 4, w: tw });
+    return { x: cx + 9, y: cy + 4 };
+  };
   const quad = (s: SectorRow) => (s.vsBtc30d! >= 0 ? (s.vsBtc7d! >= 0 ? 'Leading' : 'Weakening') : (s.vsBtc7d! >= 0 ? 'Improving' : 'Lagging'));
   return (
     <section className="x-card" aria-label="Sectors" data-testid="ov-sectors">
@@ -250,12 +267,15 @@ function Sectors({ sectors }: { sectors: SectorRow[] }) {
               <text x={pad} y={pad + 4} className="mk-pc-axis">Improving</text>
               <text x={pad} y={h - pad - 6} className="mk-pc-axis">Lagging</text>
               <text x={w - pad} y={h - pad - 6} textAnchor="end" className="mk-pc-axis">Weakening</text>
-              {pts.map(s => (
-                <g key={s.sector}>
-                  <circle cx={X(s.vsBtc30d!)} cy={Y(s.vsBtc7d!)} r={5} fill={s.vsBtc7d! >= 0 ? 'var(--g)' : 'var(--r)'} />
-                  <text x={X(s.vsBtc30d!) + 8} y={Y(s.vsBtc7d!) + 4} className="ov-rot-t">{s.sector}</text>
-                </g>
-              ))}
+              {(placed.length = 0, pts.map(s => {
+                const at = labelAt(s);
+                return (
+                  <g key={s.sector}>
+                    <circle cx={X(s.vsBtc30d!)} cy={Y(s.vsBtc7d!)} r={5} fill={s.vsBtc7d! >= 0 ? 'var(--g)' : 'var(--r)'} stroke="var(--s1)" strokeWidth={2} />
+                    <text x={at.x} y={at.y} className="ov-rot-t">{s.sector}</text>
+                  </g>
+                );
+              }))}
             </svg>
           )}
         </div>

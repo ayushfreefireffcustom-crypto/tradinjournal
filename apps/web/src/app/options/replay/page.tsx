@@ -3,6 +3,7 @@
 // Expiry replay (G10): the builder's legs as paper trades, walked to their
 // first expiry on a flat price (pure time decay) or on the index's own recent
 // moves replayed from today. Scrub, play at three speeds, or melt to expiry.
+import EmptyState from '@/components/v6/ui/empty-state';
 import Link from '@/components/v6/ui/link';
 import { useEffect, useRef, useState } from 'react';
 import AppShell from '@/components/app-shell';
@@ -73,11 +74,10 @@ export default function OptionsReplayPage() {
       <div className="x-page op-page" data-testid="op-replay-page">
         {ctx && <OptionsHead ctx={ctx} setCtx={setCtx} spot={r?.spot ?? base.data?.spot} />}
         {legs && !legs.length ? (
-          <div className="x-card x-empty" data-testid="op-replay-empty">
-            <b>Nothing to replay yet</b>
-            <p>Build a position in the <Link className="x-link" href="/options/builder">builder</Link>, or start from one of these.</p>
-            <div className="op-leg-add">{QUICK.map(([id, l]) => <button key={id} type="button" className="x-btn x-btn--sm" onClick={() => void quick(id)} disabled={!base.data} data-testid={`op-rq-${id}`}>{l}</button>)}</div>
-          </div>
+          <div className="x-card"><EmptyState icon="play" ghost="chart" testId="op-replay-empty" title="Nothing to replay yet"
+            actions={<>{QUICK.map(([id, l]) => <button key={id} type="button" className="x-btn x-btn--sm" onClick={() => void quick(id)} disabled={!base.data} data-testid={`op-rq-${id}`}>{l}</button>)}<Link className="x-btn x-btn--sm" href="/options/builder">Open the builder</Link></>}>
+            Walk a paper position to expiry and watch its P&amp;L move with the price. Start from a ready-made one or build your own.
+          </EmptyState></div>
         ) : err ? <ErrorCard message={err} /> : !r || !f ? <div className="x-skel" style={{ height: 520 }} /> : (
           <>
             <section className="x-card op-rp-ctl" aria-label="Replay controls" data-testid="op-rp-ctl">

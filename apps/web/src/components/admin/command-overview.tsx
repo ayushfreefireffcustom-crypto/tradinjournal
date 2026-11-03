@@ -202,7 +202,7 @@ export function CommandOverview({
           <div className="x-strip ad-cohorts">
             <div><span>Grant cohort</span><b className="m">{overview.cohorts.grantUsers}</b></div>
             <div><span>Elefin cohort</span><b className="m">{overview.cohorts.elefinUsers}</b></div>
-            <div><span>Median hours to broker / Elefin</span><b className="m">{overview.onboarding.medianHoursToBroker ?? '—'}h / {overview.onboarding.medianHoursToElefin ?? '—'}h</b></div>
+            <div><span>Median hours to broker / Elefin</span><b className="m">{overview.onboarding.medianHoursToBroker == null ? '—' : `${overview.onboarding.medianHoursToBroker}h`} / {overview.onboarding.medianHoursToElefin == null ? '—' : `${overview.onboarding.medianHoursToElefin}h`}</b></div>
           </div>
         </div>
       </section>

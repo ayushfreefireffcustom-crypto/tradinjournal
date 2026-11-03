@@ -461,8 +461,8 @@ export interface NotificationPrefs {
 export const NOTIFICATION_GROUPS = ['trades', 'risk', 'ai', 'news', 'reports', 'system'] as const;
 export type NotificationGroup = (typeof NOTIFICATION_GROUPS)[number];
 export const NOTIFICATION_GROUP_LABELS: Record<NotificationGroup, { label: string; hint: string }> = {
-  trades: { label: 'Trade fills', hint: 'Copied orders, fills and orders that could not be copied' },
-  risk: { label: 'Risk', hint: 'Loss limits, profit targets, paused leaders, broken exchange keys' },
+  trades: { label: 'Trades', hint: 'Strategy runs opening and closing trades, and orders that could not be placed' },
+  risk: { label: 'Risk', hint: 'Daily loss caps, losing-streak stops and runs that need attention' },
   ai: { label: 'AI', hint: 'SignalX and paper-strategy signals' },
   news: { label: 'News & alerts', hint: 'Economic events, news and your price alerts' },
   reports: { label: 'Reports', hint: 'Summaries and reports' },

@@ -59,7 +59,9 @@ export default function RegimeQuadrant({ regime }: { regime: MacroState['regime'
           <span className="mc-rq-x"><span>Inflation falling</span><span>Inflation rising</span></span>
         </div>
         <div className="mc-rq-read">
-          <b data-testid="regime-active-label">{active.name}</b>
+          {/* One name for the regime everywhere: the narrative's label, with the matrix cell it falls in. */}
+          <span className="mc-rq-q">{active.name} quadrant</span>
+          <b data-testid="regime-active-label">{regime.label || active.name}</b>
           <p>{active.read}</p>
           {odds != null && (
             <div className="mc-rq-odds">

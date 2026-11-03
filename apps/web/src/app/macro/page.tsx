@@ -108,7 +108,7 @@ export default function MacroPage() {
         </div>
       ) : (
         <div className="mc" data-testid="macro-page">
-          <MacroTicker markets={state?.markets ?? []} />
+          <MacroTicker markets={state?.markets ?? []} asOf={state?.markets?.length ? state.markets.map(m => m.asOf).sort().at(-1) : null} />
 
           {/* Sections as tabs, then the section's views (A4.10): no second sidebar, and on phones
               both rows scroll sideways instead of hiding behind a menu. */}

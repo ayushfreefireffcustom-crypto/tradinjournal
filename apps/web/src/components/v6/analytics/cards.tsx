@@ -9,7 +9,8 @@ import { fmtHold, fmtPct, fmtUsd, fmtUsdCompact } from '@/lib/dashboard-v6';
 import { fmtUsd as plainUsd } from '@/lib/format'; // unsigned amounts (std dev, peak)
 import { tickerMark } from '@/lib/desk';
 import { SideChip } from '@/components/v6/desk';
-import { ACard, Empty, Facts, MONO, Tip, ticks, useSize } from './kit';
+import { ACard, Empty, Facts, MONO, Tip, niceStep, ticks, useSize } from './kit';
+import EmptyState from '@/components/v6/ui/empty-state';
 import InfoTip from '@/components/v6/ui/info-tip';
 import { METRIC_HELP } from '@/lib/metric-help';
 import { allocationSlices } from '@/lib/allocation';
@@ -90,9 +91,12 @@ export function Strike({ view }: { view: AccountStats }) {
 export function Dist({ trades }: { trades: Trade[] }) {
   const pnls = trades.map(t => t.netPnl);
   if (!pnls.length) return <ACard title="P&L per trade" sub="distribution" testId="r-distribution"><Empty h={240}>No closed trades in this range.</Empty></ACard>;
-  const N = 10, absMax = Math.max(...pnls.map(Math.abs), 1), width = (2 * absMax) / N;
-  const buckets = Array.from({ length: N }, (_, i) => ({ lo: -absMax + i * width, hi: -absMax + (i + 1) * width, n: 0 }));
-  for (const v of pnls) buckets[Math.min(N - 1, Math.max(0, Math.floor((v + absMax) / width)))]!.n++;
+  // Round bins with an edge at $0, so every bar is all wins or all losses.
+  const lo0 = Math.min(...pnls, 0), hi0 = Math.max(...pnls, 0);
+  const width = niceStep(Math.max(hi0 - lo0, 1), Math.min(12, Math.max(6, Math.round(Math.sqrt(pnls.length) * 2))));
+  const start = Math.floor(lo0 / width) * width, N = Math.max(1, Math.ceil((hi0 - start) / width) + (hi0 % width === 0 && hi0 > 0 ? 1 : 0));
+  const buckets = Array.from({ length: N }, (_, i) => ({ lo: start + i * width, hi: start + (i + 1) * width, n: 0 }));
+  for (const v of pnls) buckets[Math.min(N - 1, Math.max(0, Math.floor((v - start) / width)))]!.n++;
   const exp = pnls.reduce((s, v) => s + v, 0) / pnls.length;
   // Best and worst trade are on the strike-rate card; this one describes the shape.
   const sorted = [...pnls].sort((a, b) => a - b), mid = sorted.length >> 1;
@@ -139,7 +143,7 @@ function DistChart({ buckets, total }: { buckets: { lo: number; hi: number; n: n
                 <rect x={L + i * slot} y={T} width={slot} height={h - B - T} fill="transparent" />
                 {b.n > 0 && <rect x={x} y={Y(b.n)} width={bw} height={h - B - Y(b.n)} rx={Math.min(4, bw / 4)} fill={mid < 0 ? 'var(--r)' : 'var(--g)'} opacity={hov == null || hov === i ? 0.9 : 0.4} />}
                 {b.n > 0 && <text x={x + bw / 2} y={Y(b.n) - 5} textAnchor="middle" fontSize="11" fill="var(--mut)" style={MONO}>{b.n}</text>}
-                {(i % every === 0) && <text x={L + i * slot + slot / 2} y={h - 5} textAnchor="middle" fontSize="11" fill="var(--axis)" style={MONO}>{sc(mid)}</text>}
+                {(i % every === 0) && <text x={L + i * slot} y={h - 5} textAnchor={i === 0 ? 'start' : 'middle'} fontSize="11" fill="var(--axis)" style={MONO}>{b.lo === 0 ? '$0' : sc(b.lo)}</text>}
               </g>
             );
           })}
@@ -207,8 +211,16 @@ function EquityChart({ pts, base }: { pts: EqPt[]; base: number }) {
   const yb = Y(base);
   const area = `${line} L${X(pts.length - 1).toFixed(1)} ${yb.toFixed(1)} L${X(0).toFixed(1)} ${yb.toFixed(1)}Z`;
   const nT = w > 640 ? 5 : 3;
-  const xt = Array.from({ length: nT }, (_, k) => Math.round((k / (nT - 1)) * (pts.length - 1)));
-  const label = (i: number) => (pts[i]!.time ? shortDate(pts[i]!.time) : 'Start');
+  const times = pts.map(p => (p.time ? new Date(p.time).getTime() : NaN)).filter(Number.isFinite);
+  const shortSpan = times.length > 1 && Math.max(...times) - Math.min(...times) < 2 * 86_400_000;
+  const label = (i: number) => {
+    const t = pts[i]!.time;
+    if (!t) return 'Start';
+    return shortSpan ? new Date(t).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }) : shortDate(t);
+  };
+  // Evenly spaced by trade, then drop any tick that would repeat its neighbour's label.
+  const xt = Array.from({ length: nT }, (_, k) => Math.round((k / (nT - 1)) * (pts.length - 1)))
+    .filter((i, k, a) => k === 0 || (i !== a[k - 1] && label(i) !== label(a[k - 1]!)));
   const onMove = (e: React.PointerEvent) => {
     const box = (e.currentTarget as HTMLElement).getBoundingClientRect();
     const i = Math.round(((e.clientX - box.left - L) / (w - L - R)) * (pts.length - 1));
@@ -270,40 +282,44 @@ function EquityChart({ pts, base }: { pts: EqPt[]; base: number }) {
 // ─── session × weekday ───────────────────────────────────────────────────────
 
 const SESS = ['Asia', 'London', 'NY'] as const;
-const WDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'] as const;
+const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const;
 const compact = (v: number) => { const a = Math.abs(v), body = a >= 1000 ? `${(a / 1000).toFixed(1)}k` : `${Math.round(a)}`; return body === '0' ? '0' : `${v > 0 ? '+' : '−'}${body}`; }; // no sign on what rounds to 0
 const tint = (v: number, max: number) => `${Math.round(10 + Math.min(1, Math.abs(v) / max) * 40)}%`;
 
+/** Session by the UTC hour of entry (markets keep UTC hours); day in your own time, like the other charts. */
 export function Sessions({ trades }: { trades: Trade[] }) {
-  const { grid, has, max } = useMemo(() => {
-    const g = SESS.map(() => WDAYS.map(() => ({ v: 0, n: 0 })));
+  const { grid, has, max, days } = useMemo(() => {
+    const g = SESS.map(() => DAYS.map(() => ({ v: 0, n: 0 })));
     for (const t of trades) {
-      const d = new Date(t.openTime), wd = d.getUTCDay();
-      if (wd < 1 || wd > 5) continue;
+      const d = new Date(t.openTime);
+      const wd = (d.getDay() + 6) % 7; // Mon = 0 … Sun = 6, local day
       const hh = d.getUTCHours(), s = hh < 7 || hh >= 22 ? 0 : hh < 13 ? 1 : 2;
-      g[s]![wd - 1]!.v += t.netPnl; g[s]![wd - 1]!.n++;
+      g[s]![wd]!.v += t.netPnl; g[s]![wd]!.n++;
     }
-    return { grid: g, has: g.flat().some(c => c.n), max: Math.max(...g.flat().map(c => Math.abs(c.v)), 1) };
+    const weekend = g.some(r => r[5]!.n || r[6]!.n);
+    const days = weekend ? [0, 1, 2, 3, 4, 5, 6] : [0, 1, 2, 3, 4];
+    return { grid: g, days, has: g.flat().some(c => c.n), max: Math.max(...g.flat().map(c => Math.abs(c.v)), 1) };
   }, [trades]);
-  if (!has) return <ACard title="Session × weekday" sub="UTC entry" testId="session-heatmap"><Empty h={200}>No weekday trades in this range.</Empty></ACard>;
+  if (!has) return <ACard title="Session × weekday" sub="net P&L" testId="session-heatmap"><Empty h={200}>No trades in this range.</Empty></ACard>;
   const totals = grid.map(r => r.reduce((s, c) => s + c.v, 0));
+  const counts = grid.map(r => r.reduce((s, c) => s + c.n, 0));
   let best = { s: 0, d: -1, v: -Infinity }, worst = { s: 0, d: -1, v: Infinity };
   grid.forEach((r, i) => r.forEach((c, j) => { if (!c.n) return; if (c.v > best.v) best = { s: i, d: j, v: c.v }; if (c.v < worst.v) worst = { s: i, d: j, v: c.v }; }));
   const bestSess = totals.indexOf(Math.max(...totals));
   return (
-    <ACard title="Session × weekday" sub="UTC entry, net P&L" testId="session-heatmap">
-      <div className="an-hm" role="table" aria-label="Net P&L by session and weekday">
-        <span />{WDAYS.map(d => <span key={d} className="h">{d}</span>)}<span className="h tot">Total</span>
+    <ACard title="Session × weekday" sub="session by UTC hour, day in your time" testId="session-heatmap">
+      <div className="an-hm" role="table" aria-label="Net P&L by session and weekday" style={{ ['--cols' as string]: days.length }}>
+        <span />{days.map(j => <span key={j} className="h">{DAYS[j]}</span>)}<span className="h tot">Total</span>
         {SESS.map((s, i) => (
           <Fragment key={s}>
             <span className="r">{s}</span>
-            {grid[i]!.map((c, j) => (
+            {days.map(j => { const c = grid[i]![j]!; return (
               <div key={j} className={`c m ${c.n ? (c.v >= 0 ? 'g' : 'l') : 'z'}`} style={c.n ? { ['--p' as string]: tint(c.v, max) } : undefined}
-                title={c.n ? `${s} · ${WDAYS[j]}: ${fmtUsd(c.v)} over ${plural(c.n, 'trade')}` : `${s} · ${WDAYS[j]}: no trades`}>
+                title={c.n ? `${s} · ${DAYS[j]}: ${fmtUsd(c.v)} over ${plural(c.n, 'trade')}` : `${s} · ${DAYS[j]}: no trades`}>
                 {c.n ? compact(c.v) : '—'}
               </div>
-            ))}
-            <div className="c m tot">{compact(totals[i]!)}</div>
+            ); })}
+            <div className={`c m tot ${counts[i] ? '' : 'z'}`}>{counts[i] ? compact(totals[i]!) : '—'}</div>
           </Fragment>
         ))}
       </div>
@@ -311,8 +327,8 @@ export function Sessions({ trades }: { trades: Trade[] }) {
       {(totals[bestSess]! > 0 || (worst.d >= 0 && worst.v < 0)) && (
         <p className="an-hm-note" data-testid="session-note">
           {totals[bestSess]! > 0 && <span>Best session <b>{SESS[bestSess]}</b></span>}
-          {best.d >= 0 && best.v > 0 && <span>Best cell <b>{SESS[best.s]} {WDAYS[best.d]}</b> <b className="m pos">{sc(best.v)}</b></span>}
-          {worst.d >= 0 && worst.v < 0 && <span>Worst cell <b>{SESS[worst.s]} {WDAYS[worst.d]}</b> <b className="m neg">{sc(worst.v)}</b></span>}
+          {best.d >= 0 && best.v > 0 && <span>Best cell <b>{SESS[best.s]} {DAYS[best.d]}</b> <b className="m pos">{sc(best.v)}</b></span>}
+          {worst.d >= 0 && worst.v < 0 && <span>Worst cell <b>{SESS[worst.s]} {DAYS[worst.d]}</b> <b className="m neg">{sc(worst.v)}</b></span>}
         </p>
       )}
     </ACard>
@@ -518,7 +534,8 @@ export function GroupBars({ title, sub, rows, empty, testId, order }: { title: s
   const list = order ? [...rows].sort((a, b) => (order.indexOf(a.label) + 1 || 99) - (order.indexOf(b.label) + 1 || 99)) : rows;
   return (
     <ACard title={title} sub={sub} testId={testId}>
-      {rows.length === 0 ? <Empty h={200}>{empty}</Empty> : (
+      {rows.length === 0 ? <EmptyState compact icon={title.startsWith('Psych') ? 'note' : 'chart'} title={title.startsWith('Psych') ? 'No moods logged yet' : 'No setups tagged yet'}
+        actions={<a className="x-btn x-btn--sm" href="/journal">Open the journal</a>}>{empty}</EmptyState> : (
         <Diverging rows={list.map(r => ({
           key: r.label, label: r.label, net: r.netPnl,
           sub: `${plural(r.trades, 'trade')} · ${fmtPct(r.wins / r.trades, 0)} won`,
@@ -582,9 +599,9 @@ export function VBars({ bars, labelEvery = 1, values = false, tipLabel, height }
             const x = L + i * slot + (slot - bw) / 2;
             const bh = b.net ? Math.max(2, Math.abs(Y(b.net) - y0)) : 0;
             return (
-              <g key={b.key} onPointerEnter={() => setHov(i)}>
+              <g key={b.key} onPointerEnter={() => setHov(b.n ? i : null)}>
                 <rect x={L + i * slot} y={T} width={slot} height={h - B - T + (values ? 20 : 0)} fill="transparent" />
-                {bh > 0 && <rect x={x} y={b.net >= 0 ? y0 - bh : y0} width={bw} height={bh} rx={Math.min(4, bw / 4)} fill={b.net >= 0 ? 'var(--g)' : 'var(--r)'} opacity={hov == null || hov === i ? 0.92 : 0.4} />}
+                {bh > 0 && <rect x={x} y={b.net >= 0 ? y0 - bh : y0} width={bw} height={bh} rx={Math.min(4, bw / 4)} fill={b.net >= 0 ? 'var(--g)' : 'var(--r)'} opacity={hov == null || hov === i ? 0.92 : 0.55} />}
                 {(i % labelEvery === 0) && <text x={x + bw / 2} y={h - (values ? 22 : 5)} textAnchor="middle" fontSize="11" fill="var(--axis)" style={values ? undefined : MONO}>{b.label}</text>}
                 {values && <text x={x + bw / 2} y={h - 5} textAnchor="middle" fontSize="11" fill={b.net > 0 ? 'var(--g)' : b.net < 0 ? 'var(--r)' : 'var(--dim)'} style={MONO}>{!b.n ? '—' : slot < 46 && b.net > 0 ? compact(b.net).slice(1) : compact(b.net)}</text>}
               </g>
@@ -605,13 +622,13 @@ export function VBars({ bars, labelEvery = 1, values = false, tipLabel, height }
 
 export function Hours({ trades }: { trades: Trade[] }) {
   const net = Array(24).fill(0) as number[], cnt = Array(24).fill(0) as number[];
-  for (const t of trades) { const x = new Date(t.openTime).getUTCHours(); net[x] = net[x]! + t.netPnl; cnt[x] = cnt[x]! + 1; }
+  for (const t of trades) { const x = new Date(t.openTime).getHours(); net[x] = net[x]! + t.netPnl; cnt[x] = cnt[x]! + 1; }
   const best = net.indexOf(Math.max(...net)), worst = net.indexOf(Math.min(...net)), busy = cnt.indexOf(Math.max(...cnt));
   const hh = (x: number) => `${String(x).padStart(2, '0')}:00`;
   const bars = net.map((v, i) => ({ key: String(i), label: String(i).padStart(2, '0'), net: v, n: cnt[i]! }));
   return (
-    <ACard title="Hour of day" sub="UTC entry hour" testId="time-of-day">
-      {!trades.length ? <Empty h={220}>No closed trades in this range.</Empty> : <VBars bars={bars} labelEvery={3} tipLabel={b => `${hh(Number(b.key))}–${hh((Number(b.key) + 1) % 24)} UTC`} />}
+    <ACard title="Hour of day" sub="entry hour, your time" testId="time-of-day">
+      {!trades.length ? <Empty h={220}>No closed trades in this range.</Empty> : <VBars bars={bars} labelEvery={3} tipLabel={b => `${hh(Number(b.key))}–${hh((Number(b.key) + 1) % 24)}`} />}
       <Facts items={[
         { l: 'Best hour', v: net[best]! > 0 ? hh(best) : '—', c: net[best]! > 0 ? 'pos' : '', why: trades.length ? 'No hour finished in profit' : 'No closed trades in this range' },
         { l: 'Worst hour', v: net[worst]! < 0 ? hh(worst) : '—', c: net[worst]! < 0 ? 'neg' : '', why: trades.length ? 'No hour finished at a loss' : 'No closed trades in this range' },
@@ -649,15 +666,17 @@ export function Scatter({ trades }: { trades: Trade[] }) {
 function ScatterChart({ pts }: { pts: Trade[] }) {
   const [ref, { w, h }] = useSize<HTMLDivElement>();
   const [hov, setHov] = useState<number | null>(null);
-  const L = 54, R = 12, T = 10, B = 24;
-  const lx = (s: number) => Math.log10(Math.max(s, 30));
+  const L = 54, R = 12, T = 14, B = 24, PAD = 18; // PAD keeps the biggest dots off the axes
+  const lx = (s: number) => Math.log10(Math.max(s, 1));
   const x0 = lx(Math.min(...pts.map(t => t.durationSecs!))), x1 = Math.max(lx(Math.max(...pts.map(t => t.durationSecs!))), x0 + 1);
+  // Signed square root: a few big trades don't squash every small one onto the $0 line.
+  const sq = (v: number) => Math.sign(v) * Math.sqrt(Math.abs(v));
   const ym = Math.max(...pts.map(t => Math.abs(t.netPnl)), 1);
-  const yt = ticks(-ym, ym, 4);
-  const mn = yt[0]!, mx = yt[yt.length - 1]!;
-  const X = (s: number) => L + ((lx(s) - x0) / (x1 - x0)) * (w - L - R);
-  const Y = (v: number) => h - B - ((v - mn) / (mx - mn)) * (h - B - T);
-  const xt = [60, 300, 900, 1800, 3600, 2 * 3600, 4 * 3600, 8 * 3600, 86400, 3 * 86400, 7 * 86400].filter(s => lx(s) >= x0 && lx(s) <= x1);
+  const top = ticks(0, ym, 2).at(-1)!;
+  const yt = [...new Set([top, niceStep(top / 4, 1), 0, -niceStep(top / 4, 1), -top])].filter(v => Math.abs(v) <= top).sort((a, b) => b - a);
+  const X = (s: number) => L + PAD + ((lx(s) - x0) / (x1 - x0)) * (w - L - R - PAD * 2);
+  const Y = (v: number) => T + PAD + ((sq(top) - sq(v)) / (2 * sq(top))) * (h - B - T - PAD * 2);
+  const xt = [10, 60, 300, 900, 1800, 3600, 2 * 3600, 4 * 3600, 8 * 3600, 86400, 3 * 86400, 7 * 86400].filter(s => lx(s) >= x0 - 0.05 && lx(s) <= x1 + 0.05);
   const minGap = 46;
   const shownX = xt.filter((s, i, a) => i === 0 || X(s) - X(a[i - 1]!) >= minGap);
   const ht = hov != null ? pts[hov] : null;

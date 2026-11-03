@@ -427,7 +427,7 @@
 .v6 .ac-limits li { display: grid; grid-template-columns: minmax(0, 1fr) minmax(40px, 2fr) 56px; gap: 12px; align-items: center; font-size: var(--t2); }
 .v6 .ac-limits i { height: 6px; border-radius: 3px; background: var(--track); overflow: hidden; display: block; }
 .v6 .ac-limits i b { display: block; height: 100%; background: var(--tx); border-radius: 3px; }
-.v6 .ac-limits i b.is-full { background: var(--r); }
+.v6 .ac-limits i b.is-full { background: var(--tx); }
 .v6 .ac-limits .m { text-align: right; color: var(--mut); }
 /* Narrow phones: label and count on one line, the bar under them. */
 @media (max-width: 420px) {

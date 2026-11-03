@@ -11,7 +11,7 @@ import { fmtUsd as plainUsd } from '@/lib/format';
 import DayDialog from '@/components/v6/calendar/day-dialog';
 import { ACard, Facts, useSize } from './kit';
 
-const RAIL = 30, TOP = 18, MIN_CELL = 8, MAX_CELL = 22;
+const RAIL = 30, TOP = 18, MIN_CELL = 8, MAX_CELL = 26;
 const WD = ['', 'Mon', '', 'Wed', '', 'Fri', ''];
 
 const fill = (v: number, max: number) => {
@@ -24,23 +24,12 @@ export default function YearHeatmap({ trades, accountId }: { trades: Trade[]; ac
   const [hover, setHover] = useState<{ x: number; y: number; date: Date; v: number | null; n: number } | null>(null);
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
 
-  const { weeks, monthLabels, maxAbs, totalNet, tradingDays, since } = useMemo(() => {
-    const v = buildYearView(aggregateByCloseDate(trades));
-    // Start at the first month with a trade, so a young account isn't mostly empty squares.
-    const firstCol = v.weeks.findIndex(w => w.some(c => c?.agg));
-    if (firstCol < 0) return { ...v, since: null };
-    const first = v.weeks[firstCol]!.find(c => c?.agg)!.date;
-    const monthStart = new Date(first.getFullYear(), first.getMonth(), 1);
-    let from = firstCol;
-    while (from > 0 && v.weeks[from - 1]!.some(c => c && c.date >= monthStart)) from--;
-    if (from === 0) return { ...v, since: null };
-    return {
-      ...v,
-      weeks: v.weeks.slice(from),
-      monthLabels: v.monthLabels.map(m => ({ ...m, col: m.col - from })).filter(m => m.col >= 0),
-      since: monthStart,
-    };
-  }, [trades]);
+  // Always the trailing year (52 weeks), so the grid spans the card like a contribution graph.
+  const { weeks, monthLabels, maxAbs, totalNet, tradingDays } = useMemo(() => buildYearView(aggregateByCloseDate(trades)), [trades]);
+  const since = useMemo(() => {
+    const firstCol = weeks.findIndex(w => w.some(c => c?.agg));
+    return firstCol < 0 ? null : weeks[firstCol]!.find(c => c?.agg)!.date;
+  }, [weeks]);
   const dayTrades = useMemo(() => {
     if (!selectedDay) return [];
     const key = dayKey(selectedDay.getFullYear(), selectedDay.getMonth(), selectedDay.getDate());
@@ -93,7 +82,7 @@ export default function YearHeatmap({ trades, accountId }: { trades: Trade[]; ac
   const fmtDay = (d: Date) => d.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
 
   return (
-    <ACard title="Consistency" sub={since ? `since ${since.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}` : 'trailing 12 months'} testId="year-heatmap"
+    <ACard title="Consistency" sub={since ? `last 12 months · first trade ${since.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}` : 'last 12 months'} testId="year-heatmap"
       right={<span className="an-yh-sum"><b className={`m ${totalNet > 0 ? 'pos' : totalNet < 0 ? 'neg' : ''}`}>{tradingDays ? fmtUsd(totalNet, 0) : '—'}</b> · {tradingDays} trading days</span>}>
       <div className="an-yh" ref={ref} onPointerLeave={() => setHover(null)}>
         <svg width={gridW} height={gridH} role="img" aria-label={`Daily net P&L heatmap, ${tradingDays} trading days`}>
@@ -119,26 +108,16 @@ export default function YearHeatmap({ trades, accountId }: { trades: Trade[]; ac
           </div>
         )}
       </div>
-      {tradingDays > 0 && (
-        <ul className="an-yh-months" aria-label="Net P&L by month" data-testid="year-months">
-          {months.map(mo => (
-            <li key={mo.label}>
-              <span>{mo.label}</span>
-              <b className={`m mny ${mo.days ? (mo.net > 0 ? 'pos' : mo.net < 0 ? 'neg' : '') : 'x-dim'}`}>{mo.days ? plainUsd(mo.net, { digits: 0, signed: true }) : '—'}</b>
-            </li>
-          ))}
-        </ul>
-      )}
-      <div className="an-yh-ft">
+      <div className="an-yh-row">
         {tradingDays > 0 ? (
-          <div data-testid="year-heatmap-stats" className="an-yh-stats">
-            <Facts items={[
-              { l: 'Green days', v: `${stats.green} / ${tradingDays}` },
-              { l: 'Best day', v: fmtUsd(stats.best, 0), c: stats.best > 0 ? 'pos' : 'neg' },
-              { l: 'Worst day', v: fmtUsd(stats.worst, 0), c: stats.worst < 0 ? 'neg' : 'pos' },
-              { l: 'Longest green run', v: `${stats.longest} day${stats.longest === 1 ? '' : 's'}` },
-            ]} />
-          </div>
+          <ul className="an-yh-months" aria-label="Net P&L by month" data-testid="year-months">
+            {months.map(mo => (
+              <li key={mo.label}>
+                <span>{mo.label}</span>
+                <b className={`m mny ${mo.days ? (mo.net > 0 ? 'pos' : mo.net < 0 ? 'neg' : '') : 'x-dim'}`}>{mo.days ? plainUsd(mo.net, { digits: 0, signed: true }) : '—'}</b>
+              </li>
+            ))}
+          </ul>
         ) : <p className="x-muted an-yh-none">No closed trades in the last 12 months.</p>}
         <div className="an-yh-lg" aria-hidden>
           <span>Loss</span>
@@ -148,6 +127,18 @@ export default function YearHeatmap({ trades, accountId }: { trades: Trade[]; ac
           <span>Profit</span>
         </div>
       </div>
+      {tradingDays > 0 && (
+        <div data-testid="year-heatmap-stats" className="an-yh-stats">
+          <Facts items={[
+            { l: 'Green days', v: `${stats.green} / ${tradingDays}` },
+            { l: 'Best day', v: fmtUsd(stats.best, 0), c: stats.best > 0 ? 'pos' : 'neg' },
+            stats.worst < 0
+              ? { l: 'Worst day', v: fmtUsd(stats.worst, 0), c: 'neg' }
+              : { l: 'Worst day', v: '—', why: 'No red days yet' },
+            { l: 'Longest green run', v: `${stats.longest} day${stats.longest === 1 ? '' : 's'}` },
+          ]} />
+        </div>
+      )}
       {selectedDay && <DayDialog date={selectedDay} trades={dayTrades} accountId={accountId} onClose={() => setSelectedDay(null)} />}
     </ACard>
   );

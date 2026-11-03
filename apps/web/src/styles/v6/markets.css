@@ -46,7 +46,7 @@
 .v6 .mk-tools-r { margin-left: auto; display: flex; align-items: center; gap: 6px; min-width: 0; }
 .v6 .mk-tools > .mk-tools-r { flex: 1 0 auto; justify-content: flex-end; }
 @container mk-tools (max-width: 808px) {
-  .v6 .mk-tools > .mk-tools-r { flex-basis: 100%; justify-content: space-between; margin-left: 0; }
+  .v6 .mk-tools > .mk-tools-r { flex-basis: 100%; justify-content: flex-start; margin-left: 0; gap: 8px; }
   .v6 .mk-tools .mk-ind-pop { right: auto; left: 0; }
 }
 .v6 .mk-tf button { font-family: var(--mono); font-size: var(--t2); padding: 0 9px; }

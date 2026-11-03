@@ -28,15 +28,21 @@ function TickItem({ m, hidden }: { m: MacroState['markets'][number]; hidden?: bo
 }
 
 /** Continuous right→left market tape (seamless loop; pauses on hover and for reduced motion). */
-export default function MacroTicker({ markets }: { markets: MacroState['markets'] }) {
+export default function MacroTicker({ markets, asOf }: { markets: MacroState['markets']; asOf?: string | null }) {
+  // "Live" only when the quotes are fresh; otherwise say how old they are.
+  const age = asOf ? Date.now() - new Date(asOf).getTime() : Infinity;
+  const live = age < 2 * 3600_000;
+  // Enough copies that one pass is wider than the screen, so the loop never shows a gap.
+  const reps = Math.max(1, Math.ceil(8 / Math.max(1, markets.length)));
+  const pass = Array.from({ length: reps }, () => markets).flat();
   return (
     <div className="mc-tk" data-testid="macro-ticker" aria-label="Market tape">
-      <span className="mc-tk-live"><i className="x-dot" />Live</span>
+      <span className={`mc-tk-live ${live ? '' : 'mc-tk-stale'}`}><i className="x-dot" />{live ? 'Live' : asOf ? `As of ${new Date(asOf).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}` : 'Waiting'}</span>
       {markets.length === 0 ? <span className="mc-tk-empty" data-testid="macro-ticker-empty">Waiting for the first data ingest</span> : (
         <div className="mc-tk-scroll">
-          <div className="mc-tk-track" style={{ ['--mc-dur' as string]: `${Math.max(30, markets.length * 7)}s` }}>
-            {markets.map(m => <TickItem key={m.symbol} m={m} />)}
-            {markets.map(m => <TickItem key={`${m.symbol}-2`} m={m} hidden />)}
+          <div className="mc-tk-track" style={{ ['--mc-dur' as string]: `${Math.max(30, pass.length * 7)}s` }}>
+            {pass.map((m, i) => <TickItem key={`${m.symbol}-a${i}`} m={m} hidden={i >= markets.length} />)}
+            {pass.map((m, i) => <TickItem key={`${m.symbol}-b${i}`} m={m} hidden />)}
           </div>
         </div>
       )}

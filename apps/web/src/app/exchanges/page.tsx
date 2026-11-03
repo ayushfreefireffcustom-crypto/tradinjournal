@@ -3,6 +3,7 @@
 // Exchange connections for trading and copy trading (B5): the venue catalogue,
 // one card per connected account (health, equity, Test / Rename / Remove), and
 // the connect wizard (pick exchange → paste key and secret → verify).
+import ComingSoon from '@/components/v6/ui/coming-soon';
 import { useEffect, useState } from 'react';
 import Link from '@/components/v6/ui/link';
 import AppShell from '@/components/app-shell';
@@ -26,7 +27,7 @@ export default function ExchangesPage() {
   const [removing, setRemoving] = useState<ExchangeConnection | null>(null);
   const [renaming, setRenaming] = useState<ExchangeConnection | null>(null);
 
-  if (!TRADING_ENABLED) return <AppShell legacy={false} pageTitle="Exchanges"><div className="x-page"><div className="x-card x-empty"><b>Coming soon</b><p>Exchange connections aren&rsquo;t available yet.</p></div></div></AppShell>;
+  if (!TRADING_ENABLED) return <ComingSoon title="Exchanges" what="Connecting an exchange" />;
 
   const list = conns.data ?? [];
   const live = (catalog.data ?? []).filter(c => c.availability !== 'COMING_SOON');

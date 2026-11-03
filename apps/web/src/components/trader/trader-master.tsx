@@ -1,5 +1,6 @@
 'use client';
 
+import EmptyState from '@/components/v6/ui/empty-state';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { marketApi, type MarketSymbol } from '@/lib/market-api';
 import {
@@ -163,15 +164,13 @@ export default function TraderMaster({
       {analysis && <AnalysisReport a={analysis} dim={analyzing} />}
 
       {!analysis && !analyzing && !error && (
-        <section className="x-card x-empty" data-testid="trader-empty">
-          <span className="x-ic"><IScan size={22} /></span>
-          <b>Pick a symbol and timeframe</b>
-          <p>SignalX returns a direction, entry zone, stop and three targets, then grades the call when the horizon closes.</p>
-          <div className="ai-ideas ai-ideas--c">
-            {['XAUUSD', 'BTCUSDT', 'EURUSD'].map(x => (
-              <button key={x} type="button" className="x-tag x-tag--m" onClick={() => { setQuery(x); setSymbol(x); setPicked(null); }}>{x}</button>
-            ))}
-          </div>
+        <section className="x-card">
+          <EmptyState icon="signal" ghost="chart" testId="trader-empty" title="Pick a symbol and timeframe"
+            actions={<>{['XAUUSD', 'BTCUSDT', 'EURUSD'].map(x => (
+              <button key={x} type="button" className="x-btn x-btn--sm" onClick={() => { setQuery(x); setSymbol(x); setPicked(null); }}>{x}</button>
+            ))}</>}>
+            SignalX returns a direction, entry zone, stop and three targets, then grades the call when the horizon closes.
+          </EmptyState>
         </section>
       )}
 

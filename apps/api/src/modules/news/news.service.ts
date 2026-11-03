@@ -197,6 +197,8 @@ export async function listNews(q: NewsQuery): Promise<NewsPage> {
   }
 
   const where: Prisma.NewsItemWhereInput = {
+    // Stories dated in the future came from bad feed dates; never lead the feed with them.
+    publishedAt: { lte: new Date(Date.now() + 60 * 60_000) },
     ...(sources.length ? { source: { in: sources } } : {}),
     ...(excludeSources.length ? { source: { notIn: excludeSources } } : {}),
     ...(q.category ? { category: q.category } : {}),

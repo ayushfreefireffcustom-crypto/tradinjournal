@@ -22,14 +22,14 @@ const PRESETS: Array<{ label: string; w: SessionWindow }> = [
 ];
 
 /** A number field that keeps what's typed and reports only valid numbers. */
-export function Num({ value, onChange, min, max, step, label, testId, suffix, allowEmpty }: { value: number | null; onChange: (n: number | null) => void; min?: number; max?: number; step?: number; label: string; testId?: string; suffix?: string; allowEmpty?: boolean }) {
+export function Num({ value, onChange, min, max, step, label, testId, suffix, allowEmpty, placeholder }: { value: number | null; onChange: (n: number | null) => void; min?: number; max?: number; step?: number; label: string; testId?: string; suffix?: string; allowEmpty?: boolean; placeholder?: string }) {
   const [text, setText] = useState(value == null ? '' : String(value));
   useEffect(() => { setText(value == null ? '' : String(value)); }, [value]);
   const n = Number(text);
   const bad = text.trim() === '' ? !allowEmpty : !Number.isFinite(n) || (min != null && n < min) || (max != null && n > max);
   return (
     <span className="sb-numwrap">
-      <input className={`x-input m sb-num ${bad ? 'is-bad' : ''}`} type="number" inputMode="decimal" aria-label={label} aria-invalid={bad} step={step ?? 'any'} min={min} max={max} value={text} data-testid={testId}
+      <input className={`x-input m sb-num ${bad ? 'is-bad' : ''}`} type="number" inputMode="decimal" aria-label={label} aria-invalid={bad} step={step ?? 'any'} min={min} max={max} value={text} placeholder={placeholder} title={placeholder ? `${label}: blank uses ${placeholder}` : undefined} data-testid={testId}
         onChange={e => { setText(e.target.value); const v = Number(e.target.value); if (e.target.value.trim() === '' && allowEmpty) onChange(null); else if (e.target.value.trim() !== '' && Number.isFinite(v) && (min == null || v >= min) && (max == null || v <= max)) onChange(v); }} />
       {suffix && <span className="x-muted">{suffix}</span>}
     </span>
@@ -64,7 +64,7 @@ export function MarketZone({ spec, set }: { spec: StrategySpec; set: Set }) {
           {m.symbols.map(x => (
             <span key={x.symbol} className="sb-sym">
               <b>{x.symbol}</b>
-              <Num value={x.leverage ?? null} allowEmpty min={1} max={max} label={`${x.symbol} leverage`} suffix="×" onChange={v => set(s => ({ ...s, market: { ...s.market, symbols: s.market.symbols.map(y => (y.symbol === x.symbol ? { symbol: y.symbol, ...(v == null ? {} : { leverage: v }) } : y)) } }))} />
+              <Num value={x.leverage ?? null} allowEmpty min={1} max={max} label={`${x.symbol} leverage`} placeholder={String(m.leverage ?? 1)} suffix="×" onChange={v => set(s => ({ ...s, market: { ...s.market, symbols: s.market.symbols.map(y => (y.symbol === x.symbol ? { symbol: y.symbol, ...(v == null ? {} : { leverage: v }) } : y)) } }))} />
               <button type="button" aria-label={`Remove ${x.symbol}`} onClick={() => set(s => ({ ...s, market: { ...s.market, symbols: s.market.symbols.filter(y => y.symbol !== x.symbol) } }))} data-testid={`sb-rm-${x.symbol}`}><X size={12} weight="bold" aria-hidden /></button>
             </span>
           ))}

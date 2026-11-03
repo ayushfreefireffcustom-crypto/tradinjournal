@@ -132,10 +132,10 @@ function EquityChart({ pts }: { pts: ReturnType<typeof withDrawdown> }) {
           <path d={ddLine} fill="none" stroke="var(--r)" strokeWidth="1.2" strokeLinejoin="round" />
           <text x={w - R + 8} y={ddTop + 4} fontSize="11" fill="var(--axis)" style={MONO}>0%</text>
           <text x={w - R + 8} y={ddB} fontSize="11" fill="var(--r)" style={MONO}>−{fmtPct(mdd)}</text>
-          {ticks.map((f, k) => {
-            const i = Math.round(f * (pts.length - 1));
-            return <text key={k} x={X(i)} y={h - 2} fontSize="11" fill="var(--axis)" textAnchor={k === 0 ? 'start' : k === ticks.length - 1 ? 'end' : 'middle'}>{shortDate(pts[i]!.time)}</text>;
-          })}
+          {ticks.map(f => Math.round(f * (pts.length - 1)))
+            // Several trades can close on one day: never print the same date twice.
+            .filter((i, k, a) => k === 0 || shortDate(pts[i]!.time) !== shortDate(pts[a[k - 1]!]!.time))
+            .map((i, k, a) => <text key={i} x={X(i)} y={h - 2} fontSize="11" fill="var(--axis)" textAnchor={k === 0 ? 'start' : k === a.length - 1 ? 'end' : 'middle'}>{shortDate(pts[i]!.time)}</text>)}
           {hp && hover != null ? (
             <g>
               <line x1={X(hover)} x2={X(hover)} y1={T} y2={ddB} stroke="var(--axis)" strokeOpacity=".6" strokeDasharray="3 3" />
@@ -288,7 +288,7 @@ function DailyChart({ days }: { days: DayBucket[] }) {
     <div className="dk-daily-chart" ref={ref} onPointerLeave={() => setHover(null)}>
       {w > 0 && h > 0 && (
         <svg width={w} height={h} role="img" aria-label={`Daily P&L for the last ${days.length} trading days`}>
-          {[top, top / 2, 0, -bot / 2, -bot].map((v, k) => (
+          {[top, top / 2, 0, -bot / 2, -bot].map((v, k) => ({ v, k })).filter(({ k }) => (k !== 3 || h - B - mid > 56) && (k !== 1 || mid - T > 56)).map(({ v, k }) => (
             <g key={k}>
               <line x1={L} x2={w - R} y1={yOf(v)} y2={yOf(v)} stroke={v === 0 ? 'var(--line-2)' : 'var(--grid)'} strokeDasharray={k === 1 || k === 3 ? '2 4' : undefined} />
               <text className="mny" x={L - 8} y={yOf(v) + 3.5} textAnchor="end" fontSize="11" fill="var(--axis)" style={MONO}>{v === 0 ? '$0' : fmtUsdCompact(v)}</text>
@@ -417,7 +417,8 @@ export function RecentTrades({ trades, journal, balance }: { trades: Trade[]; jo
   };
   const dayHead = (key: string, date: Date) => {
     const d = dayTotal.get(key);
-    return <><b>{dayLabel(date)}</b>{d && <>{d.n} trade{d.n === 1 ? '' : 's'} · <span className={`m ${d.pnl >= 0 ? 'pos' : 'neg'}`}>{fmtUsd(d.pnl)}</span></>}</>;
+    const shown = groups.find(g => g.key === key)?.trades.length ?? 0;
+    return <><b>{dayLabel(date)}</b>{d && <>{shown < d.n ? `${shown} of ${d.n} trades` : `${d.n} trade${d.n === 1 ? '' : 's'}`} · <span className={`m ${d.pnl >= 0 ? 'pos' : 'neg'}`}>{fmtUsd(d.pnl)}</span></>}</>;
   };
   const pctOf = (v: number) => (balance > 0 ? `${v >= 0 ? '+' : '−'}${((Math.abs(v) / balance) * 100).toFixed(2)}%` : '');
 

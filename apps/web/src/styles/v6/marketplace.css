@@ -1,7 +1,8 @@
 /* ── Strategy marketplace (H1–H3) ── */
 .v6 .mk-page { display: grid; gap: 16px; }
 .v6 .mk-filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-.v6 .mk-filters .x-input { width: auto; min-width: 140px; }
+.v6 .mk-filters .x-input { width: auto; min-width: 0; flex: 1 1 130px; }
+.v6 .mk-filters .mk-cats { flex: none; }
 .v6 .mk-cats { overflow-x: auto; max-width: 100%; }
 .v6 .mk-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
 .v6 .mk-card { display: grid; gap: 10px; text-decoration: none; color: var(--tx); align-content: start; }

@@ -24,10 +24,14 @@ export default function MacroCalendarPanel({ events }: { events: MacroState['eve
     return ['ALL', ...Array.from(set).sort()];
   }, [events]);
 
+  // Upcoming first (soonest at the top), then what already happened, most recent first.
   const filtered = events.filter(e => {
     if (impact !== 'ALL' && (e.impact ?? '').toUpperCase() !== impact) return false;
     if (country !== 'ALL' && e.country !== country) return false;
     return true;
+  }).sort((a, b) => {
+    const ta = Date.parse(a.at), tb = Date.parse(b.at), fa = ta >= now, fb = tb >= now;
+    return fa !== fb ? (fa ? -1 : 1) : fa ? ta - tb : tb - ta;
   });
 
   const upcoming = filtered.filter(e => Date.parse(e.at) >= now);

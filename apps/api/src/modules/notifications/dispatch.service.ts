@@ -27,10 +27,19 @@ const DEFAULT_PREFS: Prefs = {
   inApp: true, email: false, push: false, minImpact: 'HIGH', currencies: [], categories: [], leadMinutes: 15, timezone: 'UTC',
 };
 
-function whenLabel(eventTime: Date, now: Date): string {
+/** "14:30" in the user's own time zone (falls back to UTC for an unknown zone). */
+function clock(t: Date, timezone: string, withDay = false): string {
+  const opts: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit', hour12: false, ...(withDay ? { weekday: 'short', day: 'numeric', month: 'short' } : {}) };
+  try { return new Intl.DateTimeFormat('en-GB', { ...opts, timeZone: timezone }).format(t); }
+  catch { return new Intl.DateTimeFormat('en-GB', { ...opts, timeZone: 'UTC' }).format(t) + ' UTC'; }
+}
+const impactWord = (i: EventImpact) => i.charAt(0) + i.slice(1).toLowerCase();
+
+/** For push and email, read the moment they arrive: "in 15 minutes (14:30)". */
+function whenLabel(eventTime: Date, now: Date, timezone = 'UTC'): string {
   const mins = Math.max(0, Math.round((eventTime.getTime() - now.getTime()) / 60_000));
-  const hhmm = eventTime.toISOString().slice(11, 16);
-  return mins <= 1 ? `now (${hhmm} UTC)` : `in ${mins} minutes (${hhmm} UTC)`;
+  const hhmm = clock(eventTime, timezone);
+  return mins <= 1 ? `now (${hhmm})` : `in ${mins} minutes (${hhmm})`;
 }
 
 const DELIVERY_CONCURRENCY = 10;
@@ -93,7 +102,7 @@ export async function dispatchReminders(): Promise<{ events: number; delivered: 
   // few at a time instead of thousands of sequential round trips per tick.
   await mapLimit(work, DELIVERY_CONCURRENCY, async ({ userId, event, prefs }) => {
     const dedupKey = `reminder:${event.id}:${userId}`;
-    const label = whenLabel(event.eventTime, now);
+    const label = whenLabel(event.eventTime, now, prefs.timezone);
 
     if (prefs.inApp && (await claimDelivery(userId, dedupKey, 'in_app'))) {
       await prisma.notification.create({
@@ -101,7 +110,7 @@ export async function dispatchReminders(): Promise<{ events: number; delivered: 
           userId,
           kind: 'event_reminder',
           title: `${event.currency} · ${event.title}`,
-          body: `${event.impact} impact ${label}`,
+          body: `${impactWord(event.impact)} impact · ${clock(event.eventTime, prefs.timezone, true)}`,
           href: '/markets',
           eventId: event.id,
         },
@@ -113,7 +122,7 @@ export async function dispatchReminders(): Promise<{ events: number; delivered: 
       const subs = subsByUser.get(userId) ?? [];
       if (subs.length && (await claimDelivery(userId, dedupKey, 'push'))) {
         for (const sub of subs) {
-          const res = await sendPush(sub, { title: `${event.currency} · ${event.title}`, body: `${event.impact} impact ${label}`, url: '/markets' });
+          const res = await sendPush(sub, { title: `${event.currency} · ${event.title}`, body: `${impactWord(event.impact)} impact ${label}`, url: '/markets' });
           if (res === 'gone') await prisma.pushSubscription.deleteMany({ where: { endpoint: sub.endpoint } });
         }
         delivered += 1;
