@@ -46,6 +46,20 @@ function soon(ms: number, fn: () => Promise<unknown>): void {
   timers.push(setTimeout(() => { if (elector.isLeader()) void fn().catch(() => {}); }, ms));
 }
 
+/**
+ * Run once as soon as this instance holds the lease. A new deploy can't take the
+ * lease until the old instance's expires (up to LEASE_MS), so a fixed boot delay
+ * would usually be skipped.
+ */
+function onceLeader(label: string, fn: () => Promise<unknown>): void {
+  const t = setInterval(() => {
+    if (!elector.isLeader()) return;
+    clearInterval(t);
+    void fn().catch(e => logger.warn(`[scheduler] ${label} failed: ${(e as Error).message}`));
+  }, 15_000);
+  timers.push(t);
+}
+
 /** Recent-past → month-ahead window for calendar ingestion. */
 function calWindow(): { from: Date; to: Date } {
   const n = Date.now();
@@ -93,7 +107,7 @@ export function startInProcessScheduler(): void {
   // worker used to own this; without it the Macro page froze on its last ingest.
   // No-ops when the macro segment is off (no FRED key).
   every(30 * MIN, 'macro-ingest', () => ingestMacro({ reason: 'in-process' }));
-  soon(45_000, () => ingestMacro({ reason: 'in-process:boot' }));
+  onceLeader('macro-ingest:boot', () => ingestMacro({ reason: 'in-process:boot' }));
   // Trade sync: keep every account's stored deals at most SYNC_BACKGROUND_MIN old.
   every(5 * MIN, 'trade-sync', () => queueDueSyncs());
   // Copy-trading events to push and email (the in-app notification is written by the engine).
