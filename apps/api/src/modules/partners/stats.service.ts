@@ -6,6 +6,9 @@ import { logger } from '@tradinjournal/logger';
 import { fetchTrades } from '../trades/trades.service.js';
 import { nextActivity, snapshotFromTrades, type TradeLite } from './partner.logic.js';
 import { syncConnected } from './partners.service.js';
+import { isActiveTrader } from './ib/ib.logic.js';
+import { getProgramSettings } from './ib/settings.js';
+import { recomputeUser } from './ib/access.service.js';
 
 type FetchTrades = (userId: string, accountId: string) => Promise<TradeLite[]>;
 
@@ -30,8 +33,9 @@ export async function refreshReferralStats(opts: { limit?: number; fetch?: Fetch
       where: { connectedAt: { not: null }, OR: [{ statsCheckedAt: null }, { statsCheckedAt: { lt: stale } }] },
       orderBy: [{ statsCheckedAt: { sort: 'asc', nulls: 'first' } }],
       take: opts.limit ?? 25,
-      select: { id: true, userId: true, isActive: true, firstActiveAt: true, inactiveAt: true },
+      select: { id: true, userId: true, isActive: true, firstActiveAt: true, inactiveAt: true, attributedAt: true },
     });
+    const rule = await getProgramSettings();
     for (const r of due) {
       const accounts = await prisma.brokerAccount.findMany({ where: { userId: r.userId }, select: { id: true } });
       const trades: TradeLite[] = [];
@@ -46,12 +50,14 @@ export async function refreshReferralStats(opts: { limit?: number; fetch?: Fetch
         failed++;
         continue;
       }
-      const snap = snapshotFromTrades(trades, env.ACCESS_ACTIVITY_WINDOW_DAYS, now.getTime());
-      const flags = nextActivity(r, snap.tradeCount7d, env.ACCESS_MIN_TRADES_7D, now);
+      const { lotsWindow, ...snap } = snapshotFromTrades(trades, rule.activeWindowDays, now.getTime(), r.attributedAt);
+      const flags = nextActivity(r, isActiveTrader({ tradesInWindow: snap.tradeCount7d, lotsInWindow: lotsWindow }, rule), now);
       await prisma.referral.update({
         where: { id: r.id },
         data: { ...snap, ...flags, statsCheckedAt: now, statsError: errors.length ? errors[0]!.slice(0, 300) : null },
       });
+      // Activity drives package access.
+      if (flags.isActive !== r.isActive) await recomputeUser(r.userId, now);
       processed++;
     }
     if (due.length) logger.info('[partners] referral stats refreshed', { processed, failed });

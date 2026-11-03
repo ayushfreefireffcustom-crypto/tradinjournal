@@ -118,27 +118,27 @@ describe('status + stats', () => {
     expect(referralStatus({ connectedAt: t(new Date()), isActive: false, firstActiveAt: new Date() })).toBe('INACTIVE');
   });
 
-  it('counts closed trades in the window, 30-day trades and lots', () => {
+  it('counts closed trades in the window, 30-day trades, lots and P&L', () => {
     const now = Date.parse('2026-10-19T12:00:00Z');
     const iso = (daysAgo: number) => new Date(now - daysAgo * DAY).toISOString();
     const s = snapshotFromTrades([
-      { status: 'CLOSED', openTime: iso(2), closeTime: iso(1), volume: 0.5 },
-      { status: 'CLOSED', openTime: iso(6), closeTime: iso(6), volume: 1 },
-      { status: 'CLOSED', openTime: iso(20), closeTime: iso(20), volume: 0.25 },
-      { status: 'CLOSED', openTime: iso(40), closeTime: iso(40), volume: 3 },
-      { status: 'OPEN', openTime: iso(0.5), closeTime: null, volume: 2 },
-    ], 7, now);
-    expect(s).toEqual({ tradeCount7d: 2, trades30d: 3, lots30d: 1.75, lastTradeAt: new Date(now - 0.5 * DAY) });
-    expect(snapshotFromTrades([], 7, now)).toEqual({ tradeCount7d: 0, trades30d: 0, lots30d: 0, lastTradeAt: null });
+      { status: 'CLOSED', openTime: iso(2), closeTime: iso(1), volume: 0.5, netPnl: 120 },
+      { status: 'CLOSED', openTime: iso(6), closeTime: iso(6), volume: 1, netPnl: -40.5 },
+      { status: 'CLOSED', openTime: iso(20), closeTime: iso(20), volume: 0.25, netPnl: 10 },
+      { status: 'CLOSED', openTime: iso(40), closeTime: iso(40), volume: 3, netPnl: -500 },
+      { status: 'OPEN', openTime: iso(0.5), closeTime: null, volume: 2, netPnl: 999 },
+    ], 7, now, new Date(now - 10 * DAY));
+    expect(s).toEqual({ tradeCount7d: 2, trades30d: 3, lots30d: 1.75, lotsWindow: 1.5, lastTradeAt: new Date(now - 0.5 * DAY), pnl30d: 89.5, pnlTotal: 79.5 });
+    expect(snapshotFromTrades([], 7, now)).toEqual({ tradeCount7d: 0, trades30d: 0, lots30d: 0, lotsWindow: 0, lastTradeAt: null, pnl30d: 0, pnlTotal: 0 });
   });
 
   it('keeps firstActiveAt sticky and stamps inactiveAt on the drop', () => {
     const now = new Date('2026-10-19T00:00:00Z'), earlier = new Date('2026-10-01T00:00:00Z');
-    expect(nextActivity({ isActive: false, firstActiveAt: null, inactiveAt: null }, 3, 2, now)).toEqual({ isActive: true, firstActiveAt: now, inactiveAt: null });
-    expect(nextActivity({ isActive: true, firstActiveAt: earlier, inactiveAt: null }, 5, 2, now)).toEqual({ isActive: true, firstActiveAt: earlier, inactiveAt: null });
-    expect(nextActivity({ isActive: true, firstActiveAt: earlier, inactiveAt: null }, 1, 2, now)).toEqual({ isActive: false, firstActiveAt: earlier, inactiveAt: now });
-    expect(nextActivity({ isActive: false, firstActiveAt: earlier, inactiveAt: earlier }, 0, 2, now)).toEqual({ isActive: false, firstActiveAt: earlier, inactiveAt: earlier });
-    expect(nextActivity({ isActive: false, firstActiveAt: null, inactiveAt: null }, 1, 2, now)).toEqual({ isActive: false, firstActiveAt: null, inactiveAt: null });
+    expect(nextActivity({ isActive: false, firstActiveAt: null, inactiveAt: null }, true, now)).toEqual({ isActive: true, firstActiveAt: now, inactiveAt: null });
+    expect(nextActivity({ isActive: true, firstActiveAt: earlier, inactiveAt: null }, true, now)).toEqual({ isActive: true, firstActiveAt: earlier, inactiveAt: null });
+    expect(nextActivity({ isActive: true, firstActiveAt: earlier, inactiveAt: null }, false, now)).toEqual({ isActive: false, firstActiveAt: earlier, inactiveAt: now });
+    expect(nextActivity({ isActive: false, firstActiveAt: earlier, inactiveAt: earlier }, false, now)).toEqual({ isActive: false, firstActiveAt: earlier, inactiveAt: earlier });
+    expect(nextActivity({ isActive: false, firstActiveAt: null, inactiveAt: null }, false, now)).toEqual({ isActive: false, firstActiveAt: null, inactiveAt: null });
   });
 });
 

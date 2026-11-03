@@ -23,7 +23,7 @@ const str = (v: unknown) => (typeof v === 'string' ? v.slice(0, 60) : undefined)
 // Strategy marketplace (H1–H3).
 export const marketplaceRouter: IRouter = Router();
 marketplaceRouter.use(requireAuth, requirePlatformAccess);
-marketplaceRouter.get('/', wrap(async (req, res) => ok(res, await browse({ category: str(req.query.category), risk: str(req.query.risk), symbol: str(req.query.symbol), q: str(req.query.q), sort: str(req.query.sort) as Sort | undefined }))));
+marketplaceRouter.get('/', wrap(async (req, res) => ok(res, await browse({ category: str(req.query.category), risk: str(req.query.risk), symbol: str(req.query.symbol), q: str(req.query.q), sort: str(req.query.sort) as Sort | undefined }, uid(res)))));
 marketplaceRouter.get('/creator', wrap(async (_req, res) => ok(res, await getCreator(uid(res)))));
 marketplaceRouter.post('/creator', writeLimit, validateBody(creatorApplySchema), wrap(async (req, res) => ok(res, await applyCreator(uid(res), req.body))));
 marketplaceRouter.get('/mine', wrap(async (_req, res) => ok(res, await myTemplates(uid(res)))));

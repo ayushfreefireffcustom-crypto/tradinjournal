@@ -94,7 +94,7 @@ export const handleAdminLookup = h(async (req, res) => ok(res, await admin.looku
 export const handleAdminDetail = h(async (req, res) => ok(res, await admin.partnerDetail(param(req, 'id'), req.query.range as PartnerRange)));
 
 export const handleAdminClients = h(async (req, res) => {
-  const { items, counts, meta } = await listClients((await admin.partnerDetailExists(param(req, 'id'))), req.query as unknown as PartnerClientsQuery);
+  const { items, counts, meta } = await listClients((await admin.partnerDetailExists(param(req, 'id'))), req.query as unknown as PartnerClientsQuery, { admin: true });
   ok(res, { items, counts }, meta);
 });
 

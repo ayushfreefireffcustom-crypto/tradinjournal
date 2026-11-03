@@ -42,7 +42,8 @@ import { accessRouter } from './modules/admin/access.routes.js';
 import { usageRouter } from './modules/usage/usage.routes.js';
 import { meRouter } from './modules/me/me.routes.js';
 import { syncInternalRouter } from './modules/sync/sync.jobs.js';
-import { adminPartnersRouter, partnerRouter, partnersInternalRouter, referralPublicRouter } from './modules/partners/partners.routes.js';
+import { adminPartnersRouter, partnerAccessRouter, partnerRouter, partnersInternalRouter, referralPublicRouter } from './modules/partners/partners.routes.js';
+import { perkGates } from './modules/partners/ib/perk-gate.js';
 
 export function createApp(): Express {
   const app = express();
@@ -115,7 +116,10 @@ export function createApp(): Express {
   if (env.PARTNER_PROGRAM_ENABLED) {
     app.use('/api', referralPublicRouter);
     app.use('/api/partner', partnerRouter);
+    app.use('/api/partner-access', partnerAccessRouter);
     app.use('/api/admin', adminPartnersRouter);
+    // Features the admin locked to partner-package holders. No-op until something is locked.
+    for (const [prefix, gate] of perkGates()) app.use(prefix, gate);
   }
   app.use('/api/access', accessRouter);
   // Copy-trading admin first: the general admin router 404s anything it doesn't know.

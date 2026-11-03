@@ -316,8 +316,19 @@ async function cardsOf(rows: StrategyTemplate[]) {
   }));
 }
 
-export async function browse(q: { category?: string; risk?: string; symbol?: string; q?: string; sort?: Sort }) {
-  const where: Prisma.StrategyTemplateWhereInput = { status: 'published' };
+/**
+ * Partner-only templates are visible to their creator and to clients holding a
+ * partner package that lists them. Everyone else never sees them.
+ */
+async function audienceWhere(userId: string | null): Promise<Prisma.StrategyTemplateWhereInput> {
+  if (!userId) return { partnerOnly: false };
+  const held = await prisma.clientEntitlement.findMany({ where: { userId, status: { in: ['ACTIVE', 'GRACE'] } }, select: { package: { select: { templateIds: true } } } });
+  const ids = [...new Set(held.flatMap(h => h.package.templateIds))];
+  return { OR: [{ partnerOnly: false }, { creatorId: userId }, ...(ids.length ? [{ id: { in: ids } }] : [])] };
+}
+
+export async function browse(q: { category?: string; risk?: string; symbol?: string; q?: string; sort?: Sort }, userId: string | null = null) {
+  const where: Prisma.StrategyTemplateWhereInput = { status: 'published', AND: [await audienceWhere(userId)] };
   if (q.category && (CATEGORIES as readonly string[]).includes(q.category)) where.category = q.category;
   if (q.risk && (RISKS as readonly string[]).includes(q.risk)) where.risk = q.risk;
   if (q.symbol) where.symbols = { has: q.symbol.toUpperCase() };
@@ -336,7 +347,7 @@ export async function browse(q: { category?: string; risk?: string; symbol?: str
 
 /** One template as a subscriber sees it: everything except the rules. */
 export async function templateDetail(userId: string, id: string) {
-  const t = await prisma.strategyTemplate.findFirst({ where: { id, OR: [{ status: 'published' }, { creatorId: userId }] } });
+  const t = await prisma.strategyTemplate.findFirst({ where: { id, OR: [{ status: 'published' }, { creatorId: userId }], AND: [await audienceWhere(userId)] } });
   if (!t) throw new NotFoundError('Strategy not found');
   const [card] = await cardsOf([t]);
   const creator = await prisma.creatorProfile.findUnique({ where: { userId: t.creatorId }, select: { displayName: true, bio: true, links: true } });
@@ -354,7 +365,7 @@ export async function templateDetail(userId: string, id: string) {
 export interface SubscribeInput { mode: 'paper' | 'live'; capital?: number; connectionId?: string; confirmLive?: boolean; params?: Record<string, number> }
 
 export async function subscribe(userId: string, templateId: string, input: SubscribeInput) {
-  const t = await prisma.strategyTemplate.findFirst({ where: { id: templateId, status: 'published' } });
+  const t = await prisma.strategyTemplate.findFirst({ where: { id: templateId, status: 'published', AND: [await audienceWhere(userId)] } });
   if (!t) throw new NotFoundError('Strategy not found');
   if (t.creatorId === userId) throw new ConflictError('This is your own strategy; run it from your strategies instead.');
   if (await prisma.templateSubscription.findFirst({ where: { userId, templateId, status: { in: ACTIVE_SUBS } } })) throw new ConflictError('You’re already running this one. Manage it from Subscriptions.');

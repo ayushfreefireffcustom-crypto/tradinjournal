@@ -24,6 +24,7 @@ import { trainMetaModelFromDb } from './modules/trader/trader.meta.service.js';
 import { trainLgbmChallenger } from './modules/trader/trader.lgbm.service.js';
 import { tickPaperBook } from './modules/trader/trader.paper.service.js';
 import { refreshReferralStats } from './modules/partners/stats.service.js';
+import { runIbCycle } from './modules/partners/ib/cycle.js';
 import { queueDueSyncs } from './modules/sync/sync.jobs.js';
 import { ingestMacro } from './modules/macro/macro.service.js';
 import { createElector } from './lib/leader.js';
@@ -118,6 +119,8 @@ export function startInProcessScheduler(): void {
   if (env.TELEGRAM_ENABLED) every(MIN / 2, 'telegram', () => dispatchTelegram());
   // Partner dashboards: refresh referred clients' activity snapshots in small batches.
   if (env.PARTNER_PROGRAM_ENABLED) every(15 * MIN, 'partner-stats', () => refreshReferralStats({ limit: 25 }));
+  // IB lists (Google Sheets, hourly), re-verification and package access (grace, expiry).
+  if (env.PARTNER_PROGRAM_ENABLED) every(15 * MIN, 'partner-access', runIbCycle);
 
   // Warm the data shortly after boot so it's fresh without waiting a full interval.
   soon(4_000, dispatchReminders);

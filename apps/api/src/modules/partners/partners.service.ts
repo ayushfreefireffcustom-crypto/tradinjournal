@@ -8,6 +8,8 @@ import type {
 } from '@tradinjournal/contracts';
 import { env } from '@tradinjournal/config';
 import { AppError, ConflictError, NotFoundError, ValidationError } from '../../http/errors.js';
+import { settingsSnapshot } from './ib/settings.js';
+import { clientIb, partnerIbOverview } from './ib/reports.service.js';
 import {
   dayKeys, isBuiltinReserved, normalizeCode, primaryCodeCandidates, rangeStart, referralStatus, referralUrl, slugify,
 } from './partner.logic.js';
@@ -18,7 +20,7 @@ export const DEFAULT_CHANNEL_LABEL = 'Direct link';
 export type PartnerWithUser = Prisma.PartnerGetPayload<{ include: { user: { select: { id: true; name: true; email: true } }; codes: true } }>;
 const partnerInclude = { user: { select: { id: true, name: true, email: true } }, codes: { orderBy: { createdAt: 'asc' } } } as const;
 
-export const activeRule = () => ({ minTrades: env.ACCESS_MIN_TRADES_7D, windowDays: env.ACCESS_ACTIVITY_WINDOW_DAYS });
+export const activeRule = () => { const s = settingsSnapshot(); return { minTrades: s.activeMinTrades, windowDays: s.activeWindowDays }; };
 const appUrl = () => env.APP_URL;
 
 // ── Lookups ───────────────────────────────────────────────────────────────────
@@ -38,6 +40,8 @@ export async function requireActivePartner(userId: string): Promise<PartnerWithU
   const p = await findPartnerByUser(userId);
   if (!p) throw new AppError(403, 'NOT_A_PARTNER', 'You are not a TRADElogs partner.');
   if (p.status === 'PENDING') throw new AppError(403, 'PARTNER_PENDING', 'Your partner application is waiting for approval.');
+  if (p.status === 'NEEDS_INFO') throw new AppError(403, 'PARTNER_NEEDS_INFO', p.reviewNote ? `We need a little more before approving you: ${p.reviewNote}` : 'We need a little more before approving you. Update your application.');
+  if (p.status === 'REJECTED') throw new AppError(403, 'PARTNER_REJECTED', p.reviewNote ? `Your application wasn’t approved: ${p.reviewNote}` : 'Your application wasn’t approved.');
   if (p.status === 'SUSPENDED') throw new AppError(403, 'PARTNER_SUSPENDED', 'Your partner account is suspended. Contact support.');
   if (p.status === 'REVOKED') throw new AppError(403, 'PARTNER_REVOKED', 'Your partner access has ended.');
   return p;
@@ -51,6 +55,7 @@ export function toProfile(p: PartnerWithUser): PartnerProfileDto {
   return {
     id: p.id, name: p.user.name, status: p.status, code: primaryCode(p) ?? '',
     since: (p.approvedAt ?? p.createdAt).toISOString(), activeRule: activeRule(), cookieDays: env.PARTNER_COOKIE_DAYS,
+    reviewNote: p.status === 'NEEDS_INFO' || p.status === 'REJECTED' ? p.reviewNote : null,
   };
 }
 
@@ -74,6 +79,7 @@ function isUniqueViolation(err: unknown): boolean {
  */
 export async function createPartnerRecord(input: {
   userId: string; name: string; status: 'PENDING' | 'ACTIVE'; audience?: string | null; requestedCode?: string | null;
+  application?: Omit<PartnerApplyInput, 'audience' | 'code'>;
 }): Promise<PartnerWithUser> {
   const requested = input.requestedCode ? normalizeCode(input.requestedCode) : null;
   if (input.requestedCode && !requested) throw new ValidationError('Codes are 3–20 letters, numbers, hyphens or underscores.');
@@ -90,6 +96,7 @@ export async function createPartnerRecord(input: {
           data: {
             userId: input.userId, status: input.status, audience: input.audience ?? null,
             approvedAt: input.status === 'ACTIVE' ? new Date() : null,
+            ...(input.application ? applicationData(input.application) : {}),
           },
         });
         await tx.partnerCode.create({ data: { partnerId: partner.id, code, isPrimary: true } });
@@ -108,7 +115,14 @@ export async function createPartnerRecord(input: {
   throw new AppError(500, 'CODE_GENERATION_FAILED', 'Could not generate a partner code. Try again.');
 }
 
-/** Self-service application. Re-applying after a decline/revoke reopens the same record. */
+function applicationData(a: Omit<PartnerApplyInput, 'audience' | 'code'>) {
+  return { brokers: a.brokers ?? [], socials: a.socials ?? [], audienceSize: a.audienceSize || null, pitch: a.pitch || null };
+}
+
+/**
+ * Self-service application. Re-applying after a rejection or revoke, or answering an
+ * information request, reopens the same record as PENDING.
+ */
 export async function applyAsPartner(userId: string, name: string, input: PartnerApplyInput): Promise<PartnerProfileDto> {
   if (!env.PARTNER_SELF_SIGNUP) throw new AppError(403, 'PARTNER_SIGNUP_CLOSED', 'Partner applications are closed right now.');
   const existing = await findPartnerByUser(userId);
@@ -116,10 +130,11 @@ export async function applyAsPartner(userId: string, name: string, input: Partne
     if (existing.status === 'ACTIVE') throw new ConflictError('You are already a partner.');
     if (existing.status === 'PENDING') throw new ConflictError('Your application is already waiting for review.');
     if (existing.status === 'SUSPENDED') throw new ConflictError('Your partner account is suspended. Contact support.');
-    await prisma.partner.update({ where: { id: existing.id }, data: { status: 'PENDING', audience: input.audience, revokedAt: null } });
+    await prisma.partner.update({ where: { id: existing.id }, data: { status: 'PENDING', audience: input.audience, revokedAt: null, ...applicationData(input) } });
     return toProfile(await getPartnerById(existing.id));
   }
-  return toProfile(await createPartnerRecord({ userId, name, status: 'PENDING', audience: input.audience, requestedCode: input.code ?? null }));
+  const { audience, code, ...application } = input;
+  return toProfile(await createPartnerRecord({ userId, name, status: 'PENDING', audience, requestedCode: code ?? null, application }));
 }
 
 export async function reserveCode(p: PartnerWithUser, code: string): Promise<PartnerCodeDto> {
@@ -213,7 +228,7 @@ export function toClient(r: ReferralRow): PartnerClientDto {
   return {
     id: r.id, name: r.user.name, city: r.user.city, country: r.user.country,
     channel: r.channel?.label ?? DEFAULT_CHANNEL_LABEL,
-    via: r.source === 'LINK' ? 'link' : r.source === 'CODE' ? 'code' : 'admin',
+    via: r.source === 'LINK' ? 'link' : r.source === 'CODE' ? 'code' : r.source === 'LATE_CODE' ? 'late' : 'admin',
     signedUpAt: r.attributedAt.toISOString(), connectedAt: r.connectedAt?.toISOString() ?? null,
     status: referralStatus(r), trades30d: r.connectedAt ? r.trades30d : 0, lots30d: r.connectedAt ? r.lots30d : 0,
     lastActiveAt: r.lastTradeAt?.toISOString() ?? r.connectedAt?.toISOString() ?? null,
@@ -237,11 +252,18 @@ export async function clientCounts(partnerId: string): Promise<PartnerClientCoun
   return { all, SIGNED_UP: SIGNED_UP!, CONNECTED: CONNECTED!, ACTIVE: ACTIVE!, INACTIVE: INACTIVE! };
 }
 
-export async function listClients(partnerId: string, q: PartnerClientsQuery) {
+function ibWhere(ib: NonNullable<PartnerClientsQuery['ib']>, partnerId: string): Prisma.ReferralWhereInput {
+  if (ib === 'VERIFIED') return { user: { clientVerifications: { some: { status: 'VERIFIED', partnerId } } } };
+  if (ib === 'UNVERIFIED') return { connectedAt: { not: null }, user: { clientVerifications: { none: { status: 'VERIFIED', partnerId } } } };
+  return { user: { clientEntitlements: { some: { partnerId, status: { in: ['ACTIVE', 'GRACE'] } } } } };
+}
+
+export async function listClients(partnerId: string, q: PartnerClientsQuery, opts: { admin?: boolean } = {}) {
   await syncConnected(partnerId);
   const where: Prisma.ReferralWhereInput = {
     partnerId,
     ...(q.status ? statusWhere(q.status) : {}),
+    ...(q.ib ? { AND: [ibWhere(q.ib, partnerId)] } : {}),
     ...(q.channel ? { channelId: q.channel } : {}),
     ...(q.q ? { user: { OR: [
       { name: { contains: q.q, mode: 'insensitive' } },
@@ -258,8 +280,9 @@ export async function listClients(partnerId: string, q: PartnerClientsQuery) {
     prisma.referral.findMany({ where, orderBy, include: referralInclude, skip: (q.page - 1) * q.pageSize, take: q.pageSize }),
     clientCounts(partnerId),
   ]);
+  const ib = await clientIb(rows, !!opts.admin);
   return {
-    items: rows.map(toClient), counts,
+    items: rows.map(r => ({ ...toClient(r), ib: ib.get(r.id) })), counts,
     meta: { page: q.page, pageSize: q.pageSize, total, totalPages: Math.max(1, Math.ceil(total / q.pageSize)) },
   };
 }
@@ -355,12 +378,17 @@ export async function activity(partnerId: string, limit = 10): Promise<PartnerEv
 export async function overview(p: PartnerWithUser, range: PartnerRange): Promise<PartnerOverviewDto> {
   await syncConnected(p.id);
   const since = p.approvedAt ?? p.createdAt;
-  const [f, d, channels, events, recent, totalClients] = await Promise.all([
+  const [f, d, channels, events, recent, totalClients, ib] = await Promise.all([
     funnel(p.id, range, since), daily(p.id, range, since), channelStats(p), activity(p.id),
     prisma.referral.findMany({ where: { partnerId: p.id }, orderBy: { attributedAt: 'desc' }, take: 6, include: referralInclude }),
     prisma.referral.count({ where: { partnerId: p.id } }),
+    partnerIbOverview(p.id, range, since),
   ]);
-  return { partner: toProfile(p), funnel: f, daily: d, channels, activity: events, recentClients: recent.map(toClient), totalClients };
+  const ibRows = await clientIb(recent);
+  return {
+    partner: toProfile(p), funnel: f, daily: d, channels, activity: events,
+    recentClients: recent.map(r => ({ ...toClient(r), ib: ibRows.get(r.id) })), totalClients, ib,
+  };
 }
 
 export async function codeStats(p: PartnerWithUser): Promise<PartnerCodeDto[]> {

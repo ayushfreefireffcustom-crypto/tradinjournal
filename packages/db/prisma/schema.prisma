@@ -45,11 +45,13 @@ model User {
   /// Product tour progress (H9): { seen: string[], dismissed: boolean }.
   tour             Json?
 
-  sessions       Session[]
-  accounts       Account[]
-  brokerAccounts BrokerAccount[]
-  partner        Partner?
-  referral       Referral?
+  sessions            Session[]
+  accounts            Account[]
+  brokerAccounts      BrokerAccount[]
+  partner             Partner?
+  referral            Referral?
+  clientVerifications ClientVerification[]
+  clientEntitlements  ClientEntitlement[]
 
   exchangeConnections ExchangeConnection[]
   copyLeaders         CopyLeader[]
@@ -63,7 +65,7 @@ model User {
   indicatorAlerts   IndicatorAlert[]
   savedScreens      SavedScreen[]
   watchlistLists    WatchlistList[]
-  strategies        Strategy[]   
+  strategies        Strategy[]
   deployments       StrategyDeployment[]
   twoFactors        TwoFactor[]
   activity          ActivityEvent[]
@@ -202,9 +204,10 @@ model BrokerAccount {
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
-  syncRuns   SyncRun[]
-  executions Execution[]
-  trades     Trade[]
+  syncRuns     SyncRun[]
+  executions   Execution[]
+  trades       Trade[]
+  verification ClientVerification?
 
   @@unique([mt5Login, server])
   @@index([userId])
@@ -1090,8 +1093,12 @@ model UsageEvent {
 
 enum PartnerStatus {
   PENDING
+  /// The admin asked the applicant for more details.
+  NEEDS_INFO
   ACTIVE
   SUSPENDED
+  /// Application declined.
+  REJECTED
   REVOKED
 }
 
@@ -1099,26 +1106,42 @@ enum ReferralSource {
   LINK
   CODE
   ADMIN
+  /// Code entered after signup by a user who had no partner yet.
+  LATE_CODE
 }
 
 /// A TRADElogs user who refers others. One per user.
 model Partner {
-  id          String        @id @default(cuid())
-  userId      String        @unique
-  status      PartnerStatus @default(PENDING)
-  audience    String?
-  approvedAt  DateTime?
-  suspendedAt DateTime?
-  revokedAt   DateTime?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  id           String        @id @default(cuid())
+  userId       String        @unique
+  status       PartnerStatus @default(PENDING)
+  audience     String?
+  /// Application: broker keys the applicant is an IB with, e.g. ["xellion"].
+  brokers      String[]      @default([])
+  /// Application: [{ platform, url }].
+  socials      Json          @default("[]")
+  audienceSize String?
+  pitch        String?       @db.Text
+  /// Last review message shown to the applicant (rejection reason or what to add).
+  reviewNote   String?
+  reviewedAt   DateTime?
+  approvedAt   DateTime?
+  suspendedAt  DateTime?
+  revokedAt    DateTime?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 
-  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  codes     PartnerCode[]
-  channels  PartnerChannel[]
-  clicks    ReferralClick[]
-  referrals Referral[]
-  notes     PartnerNote[]
+  user          User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  codes         PartnerCode[]
+  channels      PartnerChannel[]
+  clicks        ReferralClick[]
+  referrals     Referral[]
+  notes         PartnerNote[]
+  ibBrokers     PartnerBroker[]
+  ibAccounts    IbAccount[]
+  verifications ClientVerification[]
+  packages      PartnerPackage[]
+  entitlements  ClientEntitlement[]
 
   @@index([status])
   @@map("partner")
@@ -1198,8 +1221,13 @@ model Referral {
   trades30d      Int       @default(0)
   lots30d        Float     @default(0)
   lastTradeAt    DateTime?
+  /// Net P&L of closed trades in the last 30 days / since the referral, in account currency.
+  pnl30d         Float     @default(0)
+  pnlTotal       Float     @default(0)
   statsCheckedAt DateTime?
   statsError     String?
+  /// The client agreed to show their own P&L to this partner. Null = totals only.
+  statsConsentAt DateTime?
 
   user    User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   partner Partner         @relation(fields: [partnerId], references: [id], onDelete: Cascade)
@@ -1223,6 +1251,207 @@ model PartnerNote {
 
   @@index([partnerId, createdAt])
   @@map("partner_note")
+}
+
+// ─── IB verification + partner packages (Phase 1 of the IB partner doc) ────────
+// Kept apart on purpose: attribution (Referral), broker verification
+// (PartnerBroker, IbAccount, ClientVerification), and access (PartnerPackage,
+// ClientEntitlement). Trading numbers stay on the Referral snapshot.
+
+enum IbMethod {
+  /// Partner uploads or pastes the referred-accounts list.
+  LIST
+  /// A published Google Sheet (CSV) the API re-reads on a schedule.
+  SHEET
+  /// A broker IB/affiliate API (adapter per broker).
+  API
+}
+
+enum IbConnectionStatus {
+  PENDING
+  OK
+  ERROR
+}
+
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  NOT_FOUND
+  MANUAL_REVIEW
+  REJECTED
+  /// The account's broker isn't one the partner has connected.
+  UNSUPPORTED_BROKER
+}
+
+enum PackageStatus {
+  DRAFT
+  LIVE
+  ARCHIVED
+}
+
+enum EntitlementStatus {
+  ACTIVE
+  /// Conditions failed; access continues until graceUntil.
+  GRACE
+  SUSPENDED
+  EXPIRED
+}
+
+/// A partner's IB connection at one broker: where their referred-accounts list comes from.
+model PartnerBroker {
+  id           String             @id @default(cuid())
+  partnerId    String
+  /// Catalog key (apps/api/src/modules/partners/ib/brokers.ts), e.g. "xellion".
+  broker       String
+  /// The partner's IB / affiliate id at that broker (shown to admins).
+  ibId         String?
+  method       IbMethod           @default(LIST)
+  sheetUrl     String?
+  /// Broker API key, encrypted with lib/secrets ("enc:v1:"). Never returned.
+  apiKey       String?
+  /// Extra server-name match for brokers outside the catalog ("other").
+  serverMatch  String?
+  status       IbConnectionStatus @default(PENDING)
+  lastSyncAt   DateTime?
+  lastError    String?
+  accountCount Int                @default(0)
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  partner  Partner     @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  accounts IbAccount[]
+
+  @@unique([partnerId, broker])
+  @@map("partner_broker")
+}
+
+/// One account the broker reports under a partner's IB.
+model IbAccount {
+  id              String    @id @default(cuid())
+  partnerBrokerId String
+  partnerId       String
+  broker          String
+  /// Trading account id / MT5 login as the broker shows it.
+  accountId       String
+  email           String?
+  firstSeenAt     DateTime  @default(now())
+  lastSeenAt      DateTime  @default(now())
+  /// No longer in the latest list.
+  removedAt       DateTime?
+
+  partnerBroker PartnerBroker @relation(fields: [partnerBrokerId], references: [id], onDelete: Cascade)
+  partner       Partner       @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  @@unique([partnerBrokerId, accountId])
+  @@index([broker, accountId])
+  @@index([broker, email])
+  @@map("ib_account")
+}
+
+/// Whether one connected broker account sits under the referring partner's IB.
+model ClientVerification {
+  id                String             @id @default(cuid())
+  userId            String
+  brokerAccountId   String             @unique
+  partnerId         String
+  broker            String?
+  status            VerificationStatus @default(PENDING)
+  /// "account" (login found in the IB list) or "manual" (admin decision).
+  method            String?
+  ibAccountId       String?
+  /// Email the client says the broker account is registered with (a signal only).
+  brokerEmail       String?
+  /// Why it isn't verified, in words the client sees.
+  reason            String?
+  /// Weak evidence worth a human look, e.g. "email-match".
+  signal            String?
+  attempts          Int                @default(0)
+  checkedAt         DateTime?
+  reviewRequestedAt DateTime?
+  reviewedById      String?
+  reviewedByEmail   String?
+  reviewedAt        DateTime?
+  reviewNote        String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  brokerAccount BrokerAccount @relation(fields: [brokerAccountId], references: [id], onDelete: Cascade)
+  partner       Partner       @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  @@index([partnerId, status])
+  @@index([status, updatedAt])
+  @@map("client_verification")
+}
+
+/// What a partner offers verified clients: TRADElogs features and their own strategies.
+model PartnerPackage {
+  id            String        @id @default(cuid())
+  partnerId     String
+  name          String
+  description   String?
+  /// Feature keys from the perk catalog (apps/api/src/modules/partners/ib/perks.ts).
+  perks         String[]      @default([])
+  /// The partner's own marketplace templates, visible only to holders.
+  templateIds   String[]      @default([])
+  /// Broker keys whose verified clients qualify. Empty = any of the partner's brokers.
+  brokers       String[]      @default([])
+  requireActive Boolean       @default(true)
+  /// Access lasts this many days after it's granted. Null = while the client qualifies.
+  accessDays    Int?
+  status        PackageStatus @default(DRAFT)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  partner      Partner             @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  entitlements ClientEntitlement[]
+
+  @@index([partnerId, status])
+  @@map("partner_package")
+}
+
+/// A client's access to one package. Recomputed on a schedule and after events.
+model ClientEntitlement {
+  id          String            @id @default(cuid())
+  userId      String
+  partnerId   String
+  packageId   String
+  status      EntitlementStatus @default(ACTIVE)
+  grantedAt   DateTime          @default(now())
+  expiresAt   DateTime?
+  graceUntil  DateTime?
+  suspendedAt DateTime?
+  /// Why it isn't ACTIVE, in words the client sees.
+  reason      String?
+  updatedAt   DateTime          @updatedAt
+
+  user    User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  partner Partner        @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  package PartnerPackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, packageId])
+  @@index([partnerId, status])
+  @@map("client_entitlement")
+}
+
+/// Audit trail for the IB side: list syncs, verifications, access changes, consent.
+/// No foreign keys so the trail outlives deleted rows.
+model PartnerEvent {
+  id         String   @id @default(cuid())
+  partnerId  String?
+  userId     String?
+  actorId    String?
+  actorEmail String?
+  /// e.g. ib.sync, ib.sync_failed, verify.verified, verify.review, access.grant, access.grace, consent.on
+  kind       String
+  message    String
+  detail     Json?
+  createdAt  DateTime @default(now())
+
+  @@index([partnerId, createdAt])
+  @@index([userId, createdAt])
+  @@index([kind, createdAt])
+  @@map("partner_event")
 }
 
 /// Names no partner may take as a code (beyond the built-in list in the API).
@@ -1908,6 +2137,8 @@ model StrategyTemplate {
   interval          String
   /// pending | published | rejected | unlisted
   status            String    @default("pending")
+  /// Only clients holding a partner package that lists this template can see it.
+  partnerOnly       Boolean   @default(false)
   reviewNote        String?
   /// The creator's own run shown as its track record (paper or live).
   trackDeploymentId String?

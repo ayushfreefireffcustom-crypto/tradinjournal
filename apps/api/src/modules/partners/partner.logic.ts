@@ -139,23 +139,38 @@ export function referralStatus(r: { connectedAt: Date | null; isActive: boolean;
   return 'CONNECTED';
 }
 
-export interface TradeLite { status: string; openTime: string; closeTime: string | null; volume: number }
-export interface ActivitySnapshot { tradeCount7d: number; trades30d: number; lots30d: number; lastTradeAt: Date | null }
+export interface TradeLite { status: string; openTime: string; closeTime: string | null; volume: number; netPnl?: number }
+export interface ActivitySnapshot {
+  /** Closed trades inside the active-trader window (column kept as tradeCount7d). */
+  tradeCount7d: number;
+  trades30d: number;
+  lots30d: number;
+  lastTradeAt: Date | null;
+  pnl30d: number;
+  pnlTotal: number;
+}
 
-/** Activity numbers from reconstructed trades. Window counts closed trades only. */
-export function snapshotFromTrades(trades: TradeLite[], windowDays: number, now = Date.now()): ActivitySnapshot {
-  const win = now - windowDays * DAY_MS, d30 = now - 30 * DAY_MS;
-  let tradeCount7d = 0, trades30d = 0, lots30d = 0, last = 0;
+/**
+ * Activity numbers from reconstructed trades. Windows count closed trades only;
+ * pnlTotal counts trades closed since `since` (the referral date).
+ */
+export function snapshotFromTrades(trades: TradeLite[], windowDays: number, now = Date.now(), since: Date | null = null): ActivitySnapshot & { lotsWindow: number } {
+  const win = now - windowDays * DAY_MS, d30 = now - 30 * DAY_MS, from = since?.getTime() ?? 0;
+  let tradeCount7d = 0, trades30d = 0, lots30d = 0, lotsWindow = 0, pnl30d = 0, pnlTotal = 0, last = 0;
   for (const t of trades) {
     const open = Date.parse(t.openTime);
     const close = t.closeTime ? Date.parse(t.closeTime) : NaN;
     const touched = Math.max(Number.isFinite(open) ? open : 0, Number.isFinite(close) ? close : 0);
     if (touched > last) last = touched;
     if (t.status !== 'CLOSED' || !Number.isFinite(close)) continue;
-    if (close >= win) tradeCount7d++;
-    if (close >= d30) { trades30d++; lots30d += Number.isFinite(t.volume) ? t.volume : 0; }
+    const vol = Number.isFinite(t.volume) ? t.volume : 0;
+    const pnl = Number.isFinite(t.netPnl) ? t.netPnl! : 0;
+    if (close >= win) { tradeCount7d++; lotsWindow += vol; }
+    if (close >= d30) { trades30d++; lots30d += vol; pnl30d += pnl; }
+    if (close >= from) pnlTotal += pnl;
   }
-  return { tradeCount7d, trades30d, lots30d: Math.round(lots30d * 100) / 100, lastTradeAt: last ? new Date(last) : null };
+  const r2 = (n: number) => Math.round(n * 100) / 100;
+  return { tradeCount7d, trades30d, lots30d: r2(lots30d), lotsWindow: r2(lotsWindow), lastTradeAt: last ? new Date(last) : null, pnl30d: r2(pnl30d), pnlTotal: r2(pnlTotal) };
 }
 
 /**
@@ -164,9 +179,8 @@ export function snapshotFromTrades(trades: TradeLite[], windowDays: number, now 
  */
 export function nextActivity(
   prev: { isActive: boolean; firstActiveAt: Date | null; inactiveAt: Date | null },
-  tradeCount7d: number, minTrades: number, now: Date,
+  active: boolean, now: Date,
 ): { isActive: boolean; firstActiveAt: Date | null; inactiveAt: Date | null } {
-  const active = tradeCount7d >= minTrades;
   if (active) return { isActive: true, firstActiveAt: prev.firstActiveAt ?? now, inactiveAt: null };
   return { isActive: false, firstActiveAt: prev.firstActiveAt, inactiveAt: prev.isActive ? now : prev.inactiveAt };
 }

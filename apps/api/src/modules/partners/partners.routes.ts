@@ -9,7 +9,13 @@ import { requireAuth } from '../../http/middleware/require-auth.js';
 import { requireAdmin } from '../../http/middleware/require-admin.js';
 import { requireInternalToken } from '../../http/middleware/require-internal-token.js';
 import { validateBody, validateQuery } from '../../http/middleware/validate.js';
+import {
+  accessConsentSchema, accessJoinSchema, accessReviewSchema, accessVerifySchema, adminVerificationActionSchema,
+  ibListUploadSchema, partnerBrokerUpsertSchema, partnerPackagePatchSchema, partnerPackageSchema,
+  programEventsQuerySchema, programExportQuerySchema, programRangeQuerySchema, programSettingsSchema,
+} from '@tradinjournal/contracts';
 import * as c from './partners.controller.js';
+import * as ib from './ib/ib.controller.js';
 
 // Public: the referral link itself and the signup-form code check.
 export const referralPublicRouter: IRouter = Router();
@@ -29,10 +35,28 @@ partnerRouter.post('/channels', validateBody(createPartnerChannelSchema), c.hand
 partnerRouter.delete('/channels/:channelId', c.handleArchiveChannel);
 partnerRouter.post('/codes', validateBody(reservePartnerCodeSchema), c.handleReserveCode);
 partnerRouter.delete('/codes/:codeId', c.handleReleaseCode);
+partnerRouter.get('/brokers', ib.handleBrokers);
+partnerRouter.post('/brokers', validateBody(partnerBrokerUpsertSchema), ib.handleUpsertBroker);
+partnerRouter.delete('/brokers/:id', ib.handleRemoveBroker);
+partnerRouter.post('/brokers/:id/accounts', validateBody(ibListUploadSchema), ib.handleUploadList);
+partnerRouter.post('/brokers/:id/sync', ib.handleSyncBroker);
+partnerRouter.get('/packages', ib.handlePackages);
+partnerRouter.post('/packages', validateBody(partnerPackageSchema), ib.handleCreatePackage);
+partnerRouter.patch('/packages/:id', validateBody(partnerPackagePatchSchema), ib.handleUpdatePackage);
+partnerRouter.post('/templates/:id/audience', ib.handleTemplateAudience);
+
+// A trader's side: their partner, verification, unlocked packages and consent.
+export const partnerAccessRouter: IRouter = Router();
+partnerAccessRouter.use(requireAuth);
+partnerAccessRouter.get('/', ib.handleAccess);
+partnerAccessRouter.post('/join', validateBody(accessJoinSchema), ib.handleJoin);
+partnerAccessRouter.post('/verify', validateBody(accessVerifySchema), ib.handleVerify);
+partnerAccessRouter.post('/review', validateBody(accessReviewSchema), ib.handleRequestReview);
+partnerAccessRouter.post('/consent', validateBody(accessConsentSchema), ib.handleConsent);
 
 // Admin.
 export const adminPartnersRouter: IRouter = Router();
-adminPartnersRouter.use(['/partners', '/partner-codes'], requireAuth, requireAdmin);
+adminPartnersRouter.use(['/partners', '/partner-codes', '/partner-program'], requireAuth, requireAdmin);
 adminPartnersRouter.get('/partners', validateQuery(adminPartnerListQuerySchema), c.handleAdminList);
 adminPartnersRouter.post('/partners', validateBody(adminCreatePartnerSchema), c.handleAdminCreate);
 adminPartnersRouter.get('/partners/lookup', validateQuery(adminLookupQuerySchema), c.handleAdminLookup);
@@ -44,6 +68,14 @@ adminPartnersRouter.post('/partners/:id/move-clients', validateBody(adminMoveCli
 adminPartnersRouter.post('/partners/:id/status', validateBody(adminPartnerStatusSchema), c.handleAdminStatus);
 adminPartnersRouter.post('/partners/:id/notes', validateBody(adminPartnerNoteSchema), c.handleAdminNote);
 adminPartnersRouter.delete('/partners/:id/codes/:codeId', c.handleAdminRevokeCode);
+adminPartnersRouter.post('/partners/:id/recheck', ib.handleAdminRecheck);
+adminPartnersRouter.get('/partner-program', validateQuery(programRangeQuerySchema), ib.handleProgram);
+adminPartnersRouter.get('/partner-program/reviews', ib.handleReviews);
+adminPartnersRouter.post('/partner-program/verifications/:id', validateBody(adminVerificationActionSchema), ib.handleReviewDecision);
+adminPartnersRouter.get('/partner-program/events', validateQuery(programEventsQuerySchema), ib.handleEvents);
+adminPartnersRouter.get('/partner-program/settings', ib.handleGetSettings);
+adminPartnersRouter.put('/partner-program/settings', validateBody(programSettingsSchema), ib.handleSaveSettings);
+adminPartnersRouter.get('/partner-program/export', validateQuery(programExportQuerySchema), ib.handleExport);
 adminPartnersRouter.get('/partner-codes/reserved', c.handleReservedList);
 adminPartnersRouter.post('/partner-codes/reserved', validateBody(adminReserveCodeSchema), c.handleReservedCreate);
 adminPartnersRouter.delete('/partner-codes/reserved/:reservedId', c.handleReservedDelete);
@@ -52,3 +84,4 @@ adminPartnersRouter.delete('/partner-codes/reserved/:reservedId', c.handleReserv
 export const partnersInternalRouter: IRouter = Router();
 partnersInternalRouter.use(requireInternalToken);
 partnersInternalRouter.post('/refresh-stats', validateBody(partnerRefreshStatsSchema), c.handleRefreshStats);
+partnersInternalRouter.post('/ib-cycle', ib.handleIbCycle);

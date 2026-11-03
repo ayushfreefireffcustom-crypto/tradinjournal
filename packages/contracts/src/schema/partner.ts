@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 // Partner programme — referral tracking only. See apps/api/openapi/partners.openapi.yaml.
 
-export const partnerStatusSchema = z.enum(['PENDING', 'ACTIVE', 'SUSPENDED', 'REVOKED']);
+export const partnerStatusSchema = z.enum(['PENDING', 'NEEDS_INFO', 'ACTIVE', 'SUSPENDED', 'REJECTED', 'REVOKED']);
 export type PartnerStatusDto = z.infer<typeof partnerStatusSchema>;
 
 export const referralStatusSchema = z.enum(['SIGNED_UP', 'CONNECTED', 'ACTIVE', 'INACTIVE']);
@@ -28,6 +28,8 @@ export const partnerRangeQuerySchema = z.object({
 
 export const partnerClientsQuerySchema = z.object({
   status: referralStatusSchema.optional(),
+  /** IB filter: verified under the partner's IB, not (yet), or holding a package. */
+  ib: z.enum(['VERIFIED', 'UNVERIFIED', 'ELIGIBLE']).optional(),
   channel: z.string().max(40).optional(),
   q: z.string().trim().max(80).optional(),
   sort: z.enum(['recent', 'trades', 'name']).default('recent'),
@@ -39,6 +41,10 @@ export type PartnerClientsQuery = z.infer<typeof partnerClientsQuerySchema>;
 export const partnerApplySchema = z.object({
   audience: z.string().trim().min(2).max(120),
   code: partnerCodeInputSchema.optional(),
+  brokers: z.array(z.string().trim().min(1).max(30)).max(10).default([]),
+  socials: z.array(z.object({ platform: z.string().trim().min(1).max(30), url: z.string().trim().url().max(300) })).max(8).default([]),
+  audienceSize: z.string().trim().max(40).optional(),
+  pitch: z.string().trim().max(2000).optional(),
 });
 export type PartnerApplyInput = z.infer<typeof partnerApplySchema>;
 
@@ -60,7 +66,7 @@ export type AdminCreatePartnerInput = z.infer<typeof adminCreatePartnerSchema>;
 export const adminPartnerListQuerySchema = z.object({ status: partnerStatusSchema.optional() });
 
 export const adminPartnerStatusSchema = z.object({
-  action: z.enum(['approve', 'decline', 'suspend', 'reinstate', 'revoke']),
+  action: z.enum(['approve', 'decline', 'reject', 'request_info', 'suspend', 'reinstate', 'revoke']),
   reason: z.string().trim().max(300).optional(),
 });
 export type AdminPartnerStatusInput = z.infer<typeof adminPartnerStatusSchema>;
@@ -100,6 +106,8 @@ export interface PartnerProfileDto {
   since: string;
   activeRule: { minTrades: number; windowDays: number };
   cookieDays: number;
+  /** The admin's last message on the application (why it was rejected, or what to add). */
+  reviewNote?: string | null;
 }
 
 export interface PartnerFunnelDto {
@@ -151,13 +159,15 @@ export interface PartnerClientDto {
   city: string | null;
   country: string | null;
   channel: string;
-  via: 'link' | 'code' | 'admin';
+  via: 'link' | 'code' | 'admin' | 'late';
   signedUpAt: string;
   connectedAt: string | null;
   status: ReferralStatusDto;
   trades30d: number;
   lots30d: number;
   lastActiveAt: string | null;
+  /** IB verification, access and consent-gated P&L. */
+  ib?: import('./partner-ib.js').ClientIbDto;
 }
 
 export interface PartnerClientCountsDto {
@@ -193,6 +203,8 @@ export interface PartnerOverviewDto {
   activity: PartnerEventDto[];
   recentClients: PartnerClientDto[];
   totalClients: number;
+  /** IB funnel, trading summary and broker health. */
+  ib?: import('./partner-ib.js').PartnerIbOverviewDto;
 }
 
 export interface PartnerLinksDto {
@@ -236,6 +248,9 @@ export interface AdminPartnerDetailDto extends PartnerOverviewDto {
   admin: AdminPartnerRowDto;
   codes: PartnerCodeDto[];
   notes: PartnerNoteDto[];
+  application?: import('./partner-ib.js').AdminPartnerIbDto['application'];
+  packages?: import('./partner-ib.js').PartnerPackageDto[];
+  events?: import('./partner-ib.js').PartnerEventDto2[];
 }
 
 export interface ReservedPartnerCodeDto {

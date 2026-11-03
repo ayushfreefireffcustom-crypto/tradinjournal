@@ -9,6 +9,11 @@ import type {
 import { ConflictError, NotFoundError } from '../../http/errors.js';
 import { logAdminAction } from '../admin/admin-audit.service.js';
 import { isBuiltinReserved, normalizeCode } from './partner.logic.js';
+import { recomputePartner, recomputeUser } from './ib/access.service.js';
+import { verifyUser } from './ib/ib.service.js';
+import { listPackageDtos } from './ib/packages.service.js';
+import { listEvents } from './ib/reports.service.js';
+import { logEvent } from './ib/events.js';
 import {
   codeStats, createPartnerRecord, getPartnerById, overview, primaryCode, referralInclude, releaseCode, rowCounters,
   toClient, type PartnerWithUser,
@@ -60,28 +65,37 @@ export async function createPartner(input: AdminCreatePartnerInput, actor: Actor
 
 export async function partnerDetail(id: string, range: PartnerRange): Promise<AdminPartnerDetailDto> {
   const p = await getPartnerById(id);
-  const [ov, row, codes, notes] = await Promise.all([
+  const [ov, row, codes, notes, packages, events] = await Promise.all([
     overview(p, range), rowFor(p), codeStats(p),
     prisma.partnerNote.findMany({ where: { partnerId: id }, orderBy: { createdAt: 'desc' }, take: 50 }),
+    listPackageDtos(id), listEvents({ partnerId: id, limit: 40 }),
   ]);
+  const full = await prisma.partner.findUniqueOrThrow({ where: { id } });
   return {
-    ...ov, admin: row, codes,
+    ...ov, admin: row, codes, packages, events,
+    application: {
+      brokers: full.brokers, socials: Array.isArray(full.socials) ? full.socials as { platform: string; url: string }[] : [],
+      audienceSize: full.audienceSize, pitch: full.pitch, reviewNote: full.reviewNote, reviewedAt: full.reviewedAt?.toISOString() ?? null,
+    },
     notes: notes.map((n): PartnerNoteDto => ({ id: n.id, body: n.body, authorEmail: n.authorEmail, createdAt: n.createdAt.toISOString() })),
   };
 }
 
 const TRANSITIONS: Record<AdminPartnerStatusInput['action'], { from: PartnerStatusDto[]; to: PartnerStatusDto; label: string }> = {
-  approve: { from: ['PENDING'], to: 'ACTIVE', label: 'Approved' },
-  decline: { from: ['PENDING'], to: 'REVOKED', label: 'Application declined' },
+  approve: { from: ['PENDING', 'NEEDS_INFO', 'REJECTED'], to: 'ACTIVE', label: 'Approved' },
+  decline: { from: ['PENDING', 'NEEDS_INFO'], to: 'REJECTED', label: 'Application declined' },
+  reject: { from: ['PENDING', 'NEEDS_INFO'], to: 'REJECTED', label: 'Application declined' },
+  request_info: { from: ['PENDING'], to: 'NEEDS_INFO', label: 'More information requested' },
   suspend: { from: ['ACTIVE'], to: 'SUSPENDED', label: 'Suspended' },
   reinstate: { from: ['SUSPENDED', 'REVOKED'], to: 'ACTIVE', label: 'Reinstated' },
-  revoke: { from: ['ACTIVE', 'SUSPENDED', 'PENDING'], to: 'REVOKED', label: 'Partner status revoked' },
+  revoke: { from: ['ACTIVE', 'SUSPENDED', 'PENDING', 'NEEDS_INFO'], to: 'REVOKED', label: 'Partner status revoked' },
 };
 
 export async function setStatus(id: string, input: AdminPartnerStatusInput, actor: Actor): Promise<AdminPartnerRowDto> {
   const p = await getPartnerById(id);
   const t = TRANSITIONS[input.action];
-  if (!t.from.includes(p.status)) throw new ConflictError(`Can’t ${input.action} a partner who is ${p.status.toLowerCase()}.`);
+  if (!t.from.includes(p.status)) throw new ConflictError(`Can’t ${input.action.replace('_', ' ')} a partner who is ${p.status.toLowerCase().replace('_', ' ')}.`);
+  if (input.action === 'request_info' && !input.reason) throw new ConflictError('Say what the applicant should add.');
   const now = new Date();
   await prisma.partner.update({
     where: { id },
@@ -90,8 +104,13 @@ export async function setStatus(id: string, input: AdminPartnerStatusInput, acto
       ...(t.to === 'ACTIVE' ? { approvedAt: p.approvedAt ?? now, suspendedAt: null, revokedAt: null } : {}),
       ...(t.to === 'SUSPENDED' ? { suspendedAt: now } : {}),
       ...(t.to === 'REVOKED' ? { revokedAt: now } : {}),
+      ...(['REJECTED', 'NEEDS_INFO'].includes(t.to) ? { reviewNote: input.reason ?? null, reviewedAt: now } : {}),
+      ...(t.to === 'ACTIVE' ? { reviewNote: null, reviewedAt: now } : {}),
     },
   });
+  // Suspending pauses clients' packages (grace first); reinstating restores them.
+  if (p.status === 'ACTIVE' || t.to === 'ACTIVE') await recomputePartner(id);
+  await logEvent({ kind: `partner.${input.action}`, partnerId: id, actor, message: `${t.label}${input.reason ? `: ${input.reason}` : ''}` });
   await note(id, actor, `${t.label}.${input.reason ? ` Reason: ${input.reason}` : ''}`);
   await audit(actor, `partner.${input.action}`, id, { from: p.status, to: t.to, reason: input.reason ?? null });
   return rowFor(await getPartnerById(id));
@@ -121,6 +140,9 @@ export async function assignClient(partnerId: string, input: AdminAssignClientIn
   await note(partnerId, actor, `Client assigned: ${user.name}${existing ? ` (moved from ${existing.partner.user.name})` : ''}.${input.reason ? ` Reason: ${input.reason}` : ''}`);
   if (existing) await note(existing.partnerId, actor, `Client moved to ${p.user.name}: ${user.name}.${input.reason ? ` Reason: ${input.reason}` : ''}`);
   await audit(actor, 'partner.client.assign', partnerId, { userId: user.id, fromPartnerId: existing?.partnerId ?? null, reason: input.reason ?? null });
+  await prisma.clientVerification.deleteMany({ where: { userId: user.id, NOT: { partnerId } } });
+  await verifyUser(user.id);
+  await recomputeUser(user.id);
   return toClient(r);
 }
 
@@ -128,6 +150,8 @@ export async function unlinkClient(partnerId: string, referralId: string, reason
   const r = await prisma.referral.findFirst({ where: { id: referralId, partnerId }, include: { user: { select: { name: true } } } });
   if (!r) throw new NotFoundError('Client not found for this partner');
   await prisma.referral.delete({ where: { id: r.id } });
+  await prisma.clientVerification.deleteMany({ where: { userId: r.userId, partnerId } });
+  await recomputeUser(r.userId);
   await note(partnerId, actor, `Client unlinked: ${r.user.name}.${reason ? ` Reason: ${reason}` : ''}`);
   await audit(actor, 'partner.client.unlink', partnerId, { userId: r.userId, reason: reason ?? null });
 }
@@ -145,6 +169,9 @@ export async function moveAllClients(fromId: string, toId: string, reason: strin
   await note(fromId, actor, `${count} client${count === 1 ? '' : 's'} moved to ${to.user.name}.${reason ? ` Reason: ${reason}` : ''}`);
   await note(toId, actor, `${count} client${count === 1 ? '' : 's'} moved in from ${from.user.name}.${reason ? ` Reason: ${reason}` : ''}`);
   await audit(actor, 'partner.client.move_all', fromId, { toPartnerId: toId, moved: count, reason: reason ?? null });
+  const moved = await prisma.referral.findMany({ where: { partnerId: toId }, select: { userId: true } });
+  await prisma.clientVerification.deleteMany({ where: { partnerId: fromId, userId: { in: moved.map(m => m.userId) } } });
+  for (const m of moved) { await verifyUser(m.userId); await recomputeUser(m.userId); }
   return { moved: count };
 }
 

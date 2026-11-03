@@ -899,3 +899,4 @@ export * from './schema/trading.js';
 export * from './schema/strategy.js';
 export * from './schema/options.js';
 export * from './schema/account.js';
+export * from './schema/partner-ib.js';

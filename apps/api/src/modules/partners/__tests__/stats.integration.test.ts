@@ -42,16 +42,18 @@ describe.skipIf(!local)('refreshReferralStats (integration)', () => {
   it('stamps connectedAt from the broker account and turns ACTIVE on enough closed trades', async () => {
     const now = new Date();
     const fetch = async (_u: string, acc: string) => acc === goodAccount ? [
-      { status: 'CLOSED', openTime: iso(now.getTime() - 2 * DAY), closeTime: iso(now.getTime() - DAY), volume: 0.5 },
-      { status: 'CLOSED', openTime: iso(now.getTime() - 3 * DAY), closeTime: iso(now.getTime() - 3 * DAY), volume: 1 },
+      { status: 'CLOSED', openTime: iso(now.getTime() - 2 * DAY), closeTime: iso(now.getTime() - DAY), volume: 0.5, netPnl: 40 },
+      { status: 'CLOSED', openTime: iso(now.getTime() - 3 * DAY), closeTime: iso(now.getTime() - 3 * DAY), volume: 1, netPnl: -15.5 },
       { status: 'CLOSED', openTime: iso(now.getTime() - 20 * DAY), closeTime: iso(now.getTime() - 20 * DAY), volume: 2 },
     ] : [];
     const out = await refresh({ fetch, now });
     expect(out).toMatchObject({ processed: 1, failed: 0, skipped: false });
     const r = await get();
     expect(r.connectedAt).not.toBeNull();
-    expect(r).toMatchObject({ isActive: true, tradeCount7d: 2, trades30d: 3, lots30d: 3.5, statsError: null });
+    // Default rule: 1 closed trade in 30 days, so all three count toward the window.
+    expect(r).toMatchObject({ isActive: true, tradeCount7d: 3, trades30d: 3, lots30d: 3.5, statsError: null });
     expect(r.firstActiveAt?.getTime()).toBe(now.getTime());
+    expect(r.pnl30d).toBe(24.5);
   });
 
   it('is not due again until the snapshot goes stale', async () => {
@@ -61,7 +63,7 @@ describe.skipIf(!local)('refreshReferralStats (integration)', () => {
 
   it('drops to INACTIVE, keeps firstActiveAt and stamps inactiveAt', async () => {
     const before = await get();
-    const later = new Date(Date.now() + 10 * DAY);
+    const later = new Date(Date.now() + 40 * DAY);
     await refresh({ fetch: async () => [], now: later });
     const r = await get();
     expect(r).toMatchObject({ isActive: false, tradeCount7d: 0, trades30d: 0 });
@@ -70,7 +72,7 @@ describe.skipIf(!local)('refreshReferralStats (integration)', () => {
   });
 
   it('keeps going when one of two accounts fails, and records the error', async () => {
-    const later = new Date(Date.now() + 20 * DAY);
+    const later = new Date(Date.now() + 50 * DAY);
     await refresh({
       fetch: async (_u, acc) => {
         if (acc === badAccount) throw new Error('Invalid account');
@@ -84,7 +86,7 @@ describe.skipIf(!local)('refreshReferralStats (integration)', () => {
 
   it('leaves the numbers untouched when every account fails', async () => {
     const before = await get();
-    const later = new Date(Date.now() + 30 * DAY);
+    const later = new Date(Date.now() + 60 * DAY);
     const out = await refresh({ fetch: async () => { throw new Error('bridge down'); }, now: later });
     expect(out.failed).toBe(1);
     const r = await get();
@@ -95,7 +97,7 @@ describe.skipIf(!local)('refreshReferralStats (integration)', () => {
   it('never runs two refreshes at once', async () => {
     let release!: () => void;
     const gate = new Promise<void>(r => { release = r; });
-    const later = new Date(Date.now() + 40 * DAY);
+    const later = new Date(Date.now() + 70 * DAY);
     const first = refresh({ fetch: async () => { await gate; return []; }, now: later });
     await new Promise(r => setTimeout(r, 50));
     const second = await refresh({ fetch: async () => [], now: later });

@@ -13,6 +13,8 @@ import { syncQueue, requestSyncWithin } from '../sync/sync.queue.js';
 import { prisma } from '@tradinjournal/db';
 import { assertWithinLimit } from '../../lib/plans.js';
 import { registerSecret } from '@tradinjournal/logger';
+import { env } from '@tradinjournal/config';
+import { onAccountsChanged } from '../partners/ib/cycle.js';
 
 
 // Prettify a broker name from an MT5 server string, e.g.
@@ -57,6 +59,8 @@ export async function connectAccount(userId: string, input: ConnectAccountInput)
   });
   // Start importing history now so the first dashboard visit finds it ready.
   void syncQueue().request(account.id, 'high');
+  // Referred clients: check the account against their partner's IB list.
+  if (env.PARTNER_PROGRAM_ENABLED) onAccountsChanged(userId, null);
   return account;
 }
 
@@ -96,6 +100,7 @@ export async function deleteAccount(userId: string, id: string): Promise<void> {
   const account = await findAccountById(id, userId);
   if (!account) throw new NotFoundError('Broker account not found');
   await deleteAccountById(id, userId);
+  if (env.PARTNER_PROGRAM_ENABLED) onAccountsChanged(userId, null);
 }
 
 /** Status of a manual sync as the client sees it. */
