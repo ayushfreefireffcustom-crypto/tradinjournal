@@ -24,7 +24,7 @@ Bybit and Binance futures refuse US servers, and the API runs in US East next to
 | `MARKET_RELAY_URL` | API | The relay's public URL |
 | `MARKET_RELAY_TOKEN` | API | Must equal the relay's `RELAY_TOKEN` |
 
-Deploy: `railway up apps/relay --path-as-root --service tradelogs-relay`. `GET /check` with the token reports what each exchange answers from Singapore. When trading is switched on, the engine can run in the same region so exchanges see a non-US IP.
+Deploy: `railway up apps/relay --path-as-root --service tradelogs-relay`. It must run in Singapore only: `railway scale --service tradelogs-relay sfo=0 southeast-asia=1` (a new service also gets a replica in the default `sfo` region, and the API in US East reaches that one first). `GET /whoami` with the token shows the outbound IP and country. `GET /check` with the token reports what each exchange answers from Singapore. When trading is switched on, the engine can run in the same region so exchanges see a non-US IP.
 
 ## Environment variables (names only)
 

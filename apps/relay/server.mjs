@@ -4,8 +4,10 @@
 //   GET /r/<host>/<path>?<query>  → GET https://<host>/<path>?<query>
 //   GET /health                   → ok
 //   GET /check                    → status of one public call per host (token)
+//   GET /whoami                   → outbound IP and its country (token)
 import { createServer } from 'node:http';
 import { timingSafeEqual } from 'node:crypto';
+import { get as httpsGet } from 'node:https';
 
 export const HOSTS = new Set(['api.bybit.com', 'fapi.binance.com', 'api.binance.com', 'api.india.delta.exchange']);
 const PROBES = {
@@ -32,10 +34,19 @@ export function target(reqUrl) {
   return `https://${m[1]}${m[2]}${u.search}`;
 }
 
-async function upstream(url) {
-  const res = await fetch(url, { headers: { accept: 'application/json' }, signal: AbortSignal.timeout(TIMEOUT_MS), redirect: 'error' });
-  const body = Buffer.from(await res.arrayBuffer());
-  return { status: res.status, type: res.headers.get('content-type') ?? 'application/json', body };
+/** One GET on its own connection (no keep-alive), so a retry can leave through another outbound IP. */
+function upstream(url) {
+  return new Promise((resolve, reject) => {
+    const req = httpsGet(url, { agent: false, headers: { accept: 'application/json', 'accept-encoding': 'identity' }, timeout: TIMEOUT_MS }, (res) => {
+      const chunks = [];
+      let size = 0;
+      res.on('data', (c) => { size += c.length; if (size > MAX_BYTES) { req.destroy(new Error('response too large')); return; } chunks.push(c); });
+      res.on('end', () => resolve({ status: res.statusCode ?? 502, type: res.headers['content-type'] ?? 'application/json', body: Buffer.concat(chunks) }));
+      res.on('error', reject);
+    });
+    req.on('timeout', () => req.destroy(new Error('timeout')));
+    req.on('error', reject);
+  });
 }
 
 export function handler(token) {
@@ -43,8 +54,13 @@ export function handler(token) {
     const send = (status, body, type = 'application/json') => { res.writeHead(status, { 'content-type': type, 'cache-control': 'no-store' }); res.end(body); };
     if (req.url === '/health') return send(200, '{"ok":true}');
     if (req.method !== 'GET') return send(405, '{"error":"GET only"}');
-    if (!authorised(req.headers['x-relay-token'], token)) return send(401, '{"error":"unauthorised"}');
+    if (!authorised(req.headers['x-relay-token'], token)) { console.warn(`[relay] 401 for ${req.url?.split('?')[0]}`); return send(401, '{"error":"unauthorised"}'); }
     try {
+      if (req.url === '/whoami') {
+        // Which outbound IPs (and where they geolocate) fresh connections use.
+        const seen = await Promise.all(Array.from({ length: 6 }, () => upstream('https://ipinfo.io/json').then((r) => { const j = JSON.parse(r.body.toString()); return `${j.ip} ${j.country} ${j.org}`; }).catch((e) => String(e?.message ?? e))));
+        return send(200, JSON.stringify(seen));
+      }
       if (req.url === '/check') {
         const out = {};
         await Promise.all(Object.entries(PROBES).map(async ([h, p]) => {
@@ -53,8 +69,10 @@ export function handler(token) {
         return send(200, JSON.stringify(out));
       }
       const url = target(req.url);
-      if (!url) return send(403, '{"error":"host not allowed"}');
+      if (!url) { console.warn(`[relay] 403 host not allowed: ${req.url?.split('?')[0]}`); return send(403, '{"error":"host not allowed"}'); }
+      const t0 = Date.now();
       const r = await upstream(url);
+      if (r.status >= 400) console.warn(`[relay] ${new URL(url).host}${new URL(url).pathname} ${r.status} ${Date.now() - t0}ms ${r.body.subarray(0, 160).toString().replace(/\s+/g, ' ')}`);
       if (r.body.length > MAX_BYTES) return send(502, '{"error":"response too large"}');
       return send(r.status, r.body, r.type);
     } catch (e) {
