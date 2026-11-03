@@ -1,5 +1,6 @@
 'use client';
 
+import EmptyState from '@/components/v6/ui/empty-state';
 import Link from '@/components/v6/ui/link';
 import type { MacroState } from '@/lib/macro-api';
 import { biasTone } from '@/lib/macro-format';
@@ -24,7 +25,7 @@ const SHORT: Record<string, string> = { XAU: 'Gold', DXY: 'US dollar', UST: 'US 
 
 /** Asset bias tiles: score marker on a 0–100 track; each opens the asset deep dive. */
 export default function AssetBiasGrid({ bias }: { bias: MacroState['bias'] }) {
-  if (!bias.length) return <div className="x-card x-empty" data-testid="macro-asset-bias-empty"><b>No asset bias scores yet</b><p>Scores appear after the first data ingest.</p></div>;
+  if (!bias.length) return <div className="x-card"><EmptyState icon="signal" ghost="cards" testId="macro-asset-bias-empty" title="No asset bias scores yet">Scores for each asset appear after the first macro update.</EmptyState></div>;
   return (
     <section className="x-card" data-testid="macro-asset-bias-grid" aria-labelledby="mc-ab-t">
       <div className="x-ch"><h2 id="mc-ab-t">Asset macro bias</h2><span className="x-sub">open an asset for the deep dive</span></div>

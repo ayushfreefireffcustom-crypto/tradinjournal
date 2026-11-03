@@ -1,5 +1,6 @@
 'use client';
 
+import EmptyState from '@/components/v6/ui/empty-state';
 import type { MacroState } from '@/lib/macro-api';
 import { biasTone } from '@/lib/macro-format';
 import { BiasTag, LeanTag, Meter, toneText } from '@/components/v6/macro/ui';
@@ -8,10 +9,7 @@ import CountUp from './count-up';
 export default function BullBearScanner({ bias }: { bias: MacroState['bias'] }) {
   if (!bias.length) {
     return (
-      <div className="x-card x-empty" data-testid="macro-scanner-empty">
-        <b>No bias scores yet</b>
-        <p>Scores appear after the next data ingest.</p>
-      </div>
+      <div className="x-card"><EmptyState icon="signal" ghost="table" testId="macro-scanner-empty" title="No bias scores yet">Bull and bear scores for each asset appear after the next macro update.</EmptyState></div>
     );
   }
 

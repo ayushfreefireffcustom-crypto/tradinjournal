@@ -3,6 +3,7 @@
 // Backtest beside the builder (F13): every edit re-runs a quick backtest of
 // the unsaved rules (debounced), compared with a pinned baseline run. "Run and
 // save" stores a run in the history (F14).
+import { CaretDown, CaretUp } from '@phosphor-icons/react';
 import Link from '@/components/v6/ui/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import EquityChart from './equity-chart';
@@ -34,7 +35,7 @@ export function MetricGrid({ m, base, testId }: { m: Metrics; base?: Metrics | n
           <div key={r.key} className="sb-metric">
             <span className="x-muted">{r.label}</span>
             <b className={`m ${r.key === 'totalReturnPct' ? tone(v) : r.key === 'maxDrawdownPct' ? 'neg' : ''}`}>{r.fmt(v)}</b>
-            {base && d != null && Math.abs(d) > 1e-9 && <span className={`m sb-delta ${d * r.better > 0 ? 'pos' : 'neg'}`}>{d > 0 ? '▲' : '▼'} {r.key === 'trades' ? Math.abs(d) : Math.abs(d).toFixed(2)}</span>}
+            {base && d != null && Math.abs(d) > 1e-9 && <span className={`m sb-delta ${d * r.better > 0 ? 'pos' : 'neg'}`}>{d > 0 ? <CaretUp size={10} weight="fill" aria-hidden /> : <CaretDown size={10} weight="fill" aria-hidden />}{r.key === 'trades' ? Math.abs(d) : Math.abs(d).toFixed(2)}</span>}
           </div>
         );
       })}

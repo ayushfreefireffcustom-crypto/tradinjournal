@@ -1,5 +1,6 @@
 'use client';
 
+import EmptyState from '@/components/v6/ui/empty-state';
 import CoinMark from '@/components/v6/ui/coin-mark';
 import { useCallback, useRef, useState } from 'react';
 import { MARKET_SYMBOL_NAMES } from '@/lib/market-api';
@@ -108,7 +109,7 @@ export default function Watchlist({ activeSymbol, onPick }: { activeSymbol: stri
       {error && <p className="mk-none mk-wl-err" role="alert">{error}</p>}
       <div className="mk-side-bd">
         {loading ? Array.from({ length: 4 }).map((_, i) => <div key={i} className="x-skel x-skel--in mk-sk-row" />)
-          : symbols.length === 0 ? <p className="mk-none">Nothing in this list yet. Open a symbol and press Pin, or import a CSV.</p>
+          : symbols.length === 0 ? <EmptyState compact icon="star" title="Nothing in this list yet">Open a symbol and press Pin, or import a CSV.</EmptyState>
           : symbols.map(s => {
             const q = quotes[s];
             const tone = q?.chg == null ? 'x-muted' : q.chg >= 0 ? 'pos' : 'neg';

@@ -3,6 +3,7 @@
 // Option chain (G2, G3): calls | strike | puts for one expiry, with an expiry
 // carousel, the expiry's key numbers, and columns you can show, hide and
 // reorder. A contract opens in the side panel (G4).
+import { ArrowDown, ArrowUp } from '@phosphor-icons/react';
 import { Fragment, useEffect, useMemo, useState, type DragEvent } from 'react';
 import AppShell from '@/components/app-shell';
 import { useLoad, usePoll } from '@/components/v6/ui/data';
@@ -54,7 +55,7 @@ function ColumnSettings({ cols, onChange, onClose }: { cols: Col[]; onChange: (c
             <li key={c} draggable={on} onDragStart={() => setDrag(c)} onDragOver={(e) => e.preventDefault()} onDrop={(e) => onDrop(e, c)} className={drag === c ? 'is-drag' : ''} data-testid={`op-col-${c}`}>
               <span className="op-grip" aria-hidden>{on ? '⋮⋮' : ''}</span>
               <label><input type="checkbox" className="x-check" checked={on} onChange={() => onChange(on ? cols.filter((x) => x !== c) : [...cols, c])} disabled={on && cols.length === 1} /> {COLS[c].label}</label>
-              {on && <span className="op-col-mv"><button type="button" className="x-btn x-btn--sm x-btn--ghost" disabled={i === 0} onClick={() => move(c, i - 1)} aria-label={`Move ${COLS[c].label} up`}>↑</button><button type="button" className="x-btn x-btn--sm x-btn--ghost" disabled={i === cols.length - 1} onClick={() => move(c, i + 1)} aria-label={`Move ${COLS[c].label} down`}>↓</button></span>}
+              {on && <span className="op-col-mv"><button type="button" className="x-btn x-btn--sm x-btn--ghost" disabled={i === 0} onClick={() => move(c, i - 1)} aria-label={`Move ${COLS[c].label} up`}><ArrowUp size={13} weight="bold" aria-hidden /></button><button type="button" className="x-btn x-btn--sm x-btn--ghost" disabled={i === cols.length - 1} onClick={() => move(c, i + 1)} aria-label={`Move ${COLS[c].label} down`}><ArrowDown size={13} weight="bold" aria-hidden /></button></span>}
             </li>
           );
         })}

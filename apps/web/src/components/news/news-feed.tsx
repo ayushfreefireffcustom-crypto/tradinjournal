@@ -8,6 +8,7 @@
 // Personalization: when a user picks preferred outlets, the feed splits into
 // "From your sources" (those outlets) on top and "More headlines" (everything
 // else) below. With no preference it renders as one plain feed.
+import EmptyState from '@/components/v6/ui/empty-state';
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import MarkdownMessage from '@/components/coach/markdown-message';
 import NewsModal from '@/components/news/news-modal';
@@ -421,13 +422,13 @@ export default function NewsFeed({ userSymbols = EMPTY_SYMBOLS, symbolsReady = t
 
           {loading && items.length === 0 && topItems.length === 0 ? skel(7)
           : error ? (
-            <div className="x-empty"><b>News unavailable</b><p>{error}</p><button className="x-btn x-btn--sm" onClick={() => void load()}>Try again</button></div>
+            <EmptyState icon="news" ghost="news" tone="warn" title="News unavailable" actions={<button className="x-btn x-btn--sm" onClick={() => void load()}>Try again</button>}>{error}</EmptyState>
           ) : items.length === 0 && topItems.length === 0 ? (
-            <div className="x-empty"><b>No news yet</b><p>The feed fills in as headlines come in.</p></div>
+            <EmptyState icon="news" ghost="news" title="No headlines yet" hints={['Crypto', 'Macro', 'Regulation', 'Geopolitics']}>The feed fills in as stories land, each tagged with the markets it touches and how much it matters.</EmptyState>
           ) : symbolFilter ? (
             <div data-testid="news-symbol-view">
               {symbolMatched.length > 0 ? rows(symbolMatched)
-                : <div className="x-empty"><b>Nothing on {symbolFilter} yet</b><p>Headlines that mention it appear here as the feed updates.</p></div>}
+                : <EmptyState icon="news" ghost="news" title={`Nothing on ${symbolFilter} yet`}>Headlines that mention it appear here as the feed updates.</EmptyState>}
             </div>
           ) : (
             <>
@@ -465,7 +466,7 @@ export default function NewsFeed({ userSymbols = EMPTY_SYMBOLS, symbolsReady = t
                 <section data-testid="news-your-sources">
                   <h3 className="mk-h">From your sources<button className="x-btn x-btn--sm x-btn--ghost" onClick={() => setPickerOpen(true)}>Edit</button></h3>
                   {topLoading ? skel(2)
-                    : topItems.length === 0 ? <p className="mk-none">Nothing new from your sources yet.</p>
+                    : topItems.length === 0 ? <EmptyState compact icon="news" title="Nothing new from your sources">Stories from the sources you follow show up here first.</EmptyState>
                     : rows(topItems)}
                 </section>
               )}

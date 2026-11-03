@@ -1,11 +1,12 @@
 'use client';
 
 // Client-side paper blotter — educational only, no real orders.
+import EmptyState from '@/components/v6/ui/empty-state';
 import { useMemo, useState } from 'react';
 import type { MacroSignal } from '@/lib/macro-api';
 import { formatMacroNumber } from '@/lib/macro-format';
 import { tickerMark } from '@/lib/desk';
-import { INote, SideChip } from '@/components/v6/macro/ui';
+import { SideChip } from '@/components/v6/macro/ui';
 
 export interface PaperFill {
   id: string;
@@ -41,11 +42,11 @@ export default function PaperBlotter({
 
   if (!fills.length) {
     return (
-      <section className="x-card x-empty mc-paper-empty" data-testid="macro-paper-empty">
-        <span className="x-ic"><INote /></span>
-        <b>Paper blotter is empty</b>
-        <p>Fill a signal from SignalX signals (approved members) to track a simulated position here. It is a practice ledger only, with no real money at risk.</p>
-        {onOpenSignals && <button type="button" className="x-btn x-btn--sm" onClick={onOpenSignals} data-testid="macro-paper-open-signals">Open SignalX signals</button>}
+      <section className="x-card mc-paper-empty">
+        <EmptyState icon="note" ghost="table" testId="macro-paper-empty" title="Paper blotter is empty"
+          actions={onOpenSignals && <button type="button" className="x-btn x-btn--sm" onClick={onOpenSignals} data-testid="macro-paper-open-signals">Open SignalX signals</button>}>
+          Fill a SignalX signal (approved members) to track a simulated position here. It&rsquo;s a practice ledger, with no real money at risk.
+        </EmptyState>
       </section>
     );
   }

@@ -2,6 +2,7 @@
 
 // Signals (E7): a technical rating, Strong sell … Strong buy, for the most
 // traded pairs on 1h, 4h and 1d. Open a row to see every vote behind it.
+import EmptyState from '@/components/v6/ui/empty-state';
 import Link from '@/components/v6/ui/link';
 import { useMemo, useState } from 'react';
 import AppShell from '@/components/app-shell';
@@ -88,7 +89,10 @@ export default function SignalsPage() {
             </section>
             <section className={`x-card ${list.loading ? 'sc-stale' : ''}`} aria-label="Ratings" aria-busy={list.loading}>
               <div className="x-ch"><h2 data-testid="sg-count">{show === 'all' ? `${rows.length} pairs` : `${rows.length} ${show === 'buy' ? 'buys' : 'sells'} on ${sortTf}`}</h2><span className="x-sub">Ranked by the {sortTf} rating · open a pair to see why</span></div>
-              {!rows.length ? <div className="x-empty" data-testid="sg-empty"><b>None right now</b><p>Nothing in the top {universe} rates {show === 'buy' ? 'a buy' : 'a sell'} on {sortTf}.</p></div> : (
+              {!rows.length ? <EmptyState icon="signal" ghost="table" tone="warn" testId="sg-empty" title={`No ${show === 'buy' ? 'buys' : 'sells'} on ${sortTf} right now`}
+                  actions={<>{universe !== 100 && <button className="x-btn" onClick={() => setUniverse(100)}>Rate the top 100</button>}<button className="x-btn" onClick={() => setShow('all')}>Show every pair</button></>}>
+                  Nothing in the top {universe} rates {show === 'buy' ? 'a buy' : 'a sell'} on the {sortTf} bar. Ratings change as bars close.
+                </EmptyState> : (
                 <div className="x-tblwrap">
                   <table className="x-tbl trd-tbl sg-tbl" data-testid="sg-table">
                     <thead><tr><th>Pair</th><th className="r">Price</th><th className="r">24h</th>{SIGNAL_TFS.map(tf => <th key={tf} className={tf === sortTf ? 'sg-on' : ''}>{tf}</th>)}</tr></thead>

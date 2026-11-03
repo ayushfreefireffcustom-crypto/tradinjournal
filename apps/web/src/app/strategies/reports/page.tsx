@@ -3,6 +3,8 @@
 // Strategy reports and P&L (F23), with the paper / live switch (F22): KPIs,
 // equity and drawdown, the spread of trade results, and P&L by market and by
 // strategy. "Save as PDF" prints a clean page.
+import EmptyState from '@/components/v6/ui/empty-state';
+import Link from '@/components/v6/ui/link';
 import { useEffect, useMemo, useState } from 'react';
 import AppShell from '@/components/app-shell';
 import { useLoad } from '@/components/v6/ui/data';
@@ -93,7 +95,12 @@ export default function ReportsPage() {
           <span className="rp-print-h">{mode === 'live' ? 'Live' : 'Paper'} strategies · {RANGES.find(x => x[0] === days)![1]} · printed {new Date().toLocaleDateString()}</span>
         </div>
         {r.error ? <ErrorCard message={r.error} onRetry={r.reload} /> : !r.data || !s ? <div className="x-skel" style={{ height: 420 }} /> : !s.trades ? (
-          <div className="x-card x-empty" data-testid="rp-empty"><b>No closed {mode} trades in this period</b><p>{r.data.deployments.length ? 'Your strategies haven’t closed a trade in this range yet.' : `Run a strategy on ${mode} to see its results here.`}</p></div>
+          <div className="x-card"><EmptyState icon="report" ghost="bars" testId="rp-empty" title={`No closed ${mode} trades ${days === 'all' ? 'yet' : 'in this period'}`}
+            actions={r.data.deployments.length
+              ? (days !== 'all' ? <button className="x-btn" onClick={() => setDays('all')}>Show all time</button> : undefined)
+              : <Link className="x-btn x-btn--hi" href="/strategies">Run a strategy</Link>}>
+            {r.data.deployments.length ? 'Your strategies haven’t closed a trade in this range yet. Results appear here as each one closes.' : `Run a strategy on ${mode} and its trades, P&L and drawdown show up here.`}
+          </EmptyState></div>
         ) : (
           <>
             <section className="rp-kpis" aria-label="Summary" data-testid="rp-kpis">

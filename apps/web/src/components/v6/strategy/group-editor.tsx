@@ -3,6 +3,7 @@
 // Edits one signal group (F4): ALL/ANY of conditions like
 // "[RSI(14)] [crosses below] [30]", each optionally N bars ago or on a
 // higher timeframe.
+import { Plus } from '@phosphor-icons/react';
 import OperandPicker from '@/components/v6/indicators/operand-picker';
 import { comparable, IA_OPERATORS, OPERATOR_LABEL, type CatalogueItem, type IaOperator, type IndicatorOperand } from '@/lib/indicator-alerts-api';
 import { emptyCondition, INTERVALS, type Interval, type SignalGroup, type StrategyCondition } from '@/lib/strategies-api';
@@ -71,7 +72,7 @@ export default function GroupEditor({ group, onChange, catalogue, interval, test
           </div>
         );
       })}
-      <button type="button" className="x-btn x-btn--sm" onClick={() => onChange({ ...group, conditions: [...group.conditions, emptyCondition()] })} disabled={group.conditions.length >= 12} data-testid={`${testId}-add`}>+ Add condition</button>
+      <button type="button" className="x-btn x-btn--sm" onClick={() => onChange({ ...group, conditions: [...group.conditions, emptyCondition()] })} disabled={group.conditions.length >= 12} data-testid={`${testId}-add`}><Plus size={13} weight="bold" aria-hidden />Add condition</button>
     </div>
   );
 }

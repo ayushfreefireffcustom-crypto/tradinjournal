@@ -1,5 +1,6 @@
 'use client';
 
+import EmptyState from '@/components/v6/ui/empty-state';
 import type { MacroState } from '@/lib/macro-api';
 import { PanelHead } from '@/components/v6/macro/ui';
 import CountUp from './count-up';
@@ -43,7 +44,7 @@ export default function ForexMatrix({ fx }: { fx: MacroState['fx'] }) {
         lead="Relative strength against the USD cross-section from free official FX references (ER-API). Not a tick feed; an educational relative ranking only." />
 
       {!scores.length ? (
-        <div className="x-card x-empty"><b>No FX basket yet</b><p>It fills in on the next state build.</p></div>
+        <div className="x-card"><EmptyState icon="globe" ghost="bars" title="No FX basket yet">Currency strength scores fill in on the next macro update.</EmptyState></div>
       ) : (
         <>
           <div className="mc-fx">

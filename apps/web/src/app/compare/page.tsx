@@ -2,6 +2,8 @@
 
 // Compare (E13): up to six symbols rebased to 0 % on one chart, with a
 // relative-strength table and a CSV of the series.
+import { X } from '@phosphor-icons/react';
+import EmptyState from '@/components/v6/ui/empty-state';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import AppShell from '@/components/app-shell';
 import SymbolSearch from '@/components/charts/symbol-search';
@@ -79,7 +81,7 @@ export default function ComparePage() {
             {symbols.map((s, i) => (
               <span key={s} className="cmp-chip" style={{ borderColor: COLORS[i] }}>
                 <CoinMark symbol={s} />{s}
-                {symbols.length > 1 && <button type="button" aria-label={`Remove ${s}`} onClick={() => setSymbols(x => x.filter(y => y !== s))} data-testid={`cmp-rm-${s}`}>×</button>}
+                {symbols.length > 1 && <button type="button" aria-label={`Remove ${s}`} onClick={() => setSymbols(x => x.filter(y => y !== s))} data-testid={`cmp-rm-${s}`}><X size={11} weight="bold" aria-hidden /></button>}
               </span>
             ))}
             {symbols.length < MAX && <div className="cmp-add"><SymbolSearch value="" onSelect={s => setSymbols(x => (x.includes(s) || x.length >= MAX ? x : [...x, s]))} /></div>}
@@ -107,7 +109,10 @@ export default function ComparePage() {
         <section className="x-card" aria-label="Chart">
           {failed.length > 0 && <p className="cp-err">No data for {failed.join(', ')}.</p>}
           {loading && !enough ? <div className="x-skel" style={{ height: 360 }} /> : !enough ? (
-            <div className="x-empty"><b>Nothing to compare</b><p>These markets don’t share any bars in this range.</p></div>
+            <EmptyState icon="compare" ghost="chart" tone="warn" title={ready.length < 2 && !failed.length ? 'Add a second market' : 'Nothing to compare'}
+              actions={range !== '1y' ? <button className="x-btn" onClick={() => setRange('1y')}>Try 1Y</button> : undefined}>
+              {ready.length < 2 && !failed.length ? 'Pick another market above to line it up against this one.' : 'These markets don’t share at least two bars in this range. Markets that close at weekends need a longer range.'}
+            </EmptyState>
           ) : <Overlay cmp={cmp} symbols={ready} colors={ready.map(s => COLORS[symbols.indexOf(s)]!)} tf={rg.tf} hover={hover} setHover={setHover} />}
         </section>
 

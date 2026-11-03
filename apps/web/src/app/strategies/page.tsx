@@ -1,6 +1,8 @@
 'use client';
 
 // My strategies (F20) and the AI generator (F21).
+import { ArrowRight } from '@phosphor-icons/react';
+import EmptyState from '@/components/v6/ui/empty-state';
 import Link from '@/components/v6/ui/link';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
@@ -69,20 +71,31 @@ export default function StrategiesPage() {
         <button className="x-btn x-btn--hi" onClick={() => void createBlank()} disabled={creating} data-testid="st-new">{creating ? 'Creating…' : 'New strategy'}</button>
       </>}>
       <div className="x-page" data-testid="st-page">
-        <section className="lx-kpis" aria-label="Summary" data-testid="st-strip">
+        {(list.data?.length ?? 0) > 0 && <section className="lx-kpis" aria-label="Summary" data-testid="st-strip">
           <Kpi label="Strategies" value={<span className="m">{stats.total}</span>} sub={`${stats.ai} made with AI`} />
           <Kpi label="Running" value={<><span className="m">{stats.live}</span><small>live</small> <span className="m">{stats.paper}</span><small>paper</small></>}
             sub={pnl.any ? <>Closed P&amp;L <span className={`m ${tone(pnl.closed)}`}>{usd(pnl.closed)}</span> · open <span className={`m ${tone(pnl.open)}`}>{usd(pnl.open)}</span></> : <>No runs yet</>}
             viz={stats.live + stats.paper > 0 ? <Split g={stats.live} n={stats.paper} r={0} /> : undefined} />
           <Kpi label="Best backtest" value={stats.best ? <span className={`m ${tone(stats.best.lastBacktest!.metrics.totalReturnPct)}`}>{pct(stats.best.lastBacktest!.metrics.totalReturnPct)}</span> : <span className="x-muted">—</span>} sub={stats.best ? stats.best.name : 'No runs yet'} />
           <Kpi label="Worst backtest" value={stats.worst ? <span className={`m ${tone(stats.worst.lastBacktest!.metrics.totalReturnPct)}`}>{pct(stats.worst.lastBacktest!.metrics.totalReturnPct)}</span> : <span className="x-muted">—</span>} sub={stats.worst ? stats.worst.name : 'No runs yet'} />
-        </section>
+        </section>}
         <div className="st-bar">
           <div className="x-seg x-seg--in x-seg--sm" role="radiogroup" aria-label="Filter">{FILTERS.map(([f, l]) => <button key={f} type="button" role="radio" aria-checked={filter === f} onClick={() => setFilter(f)} data-testid={`st-f-${f}`}>{l}</button>)}</div>
           <select className="x-select st-sort" value={sort} onChange={e => setSort(e.target.value as Sort)} aria-label="Sort" data-testid="st-sort"><option value="updated">Recently edited</option><option value="name">Name</option><option value="return">Backtest return</option></select>
         </div>
         {list.error ? <ErrorCard message={list.error} onRetry={list.reload} /> : !list.data ? <div className="x-skel cp-skel-table" /> : !rows.length ? (
-          <div className="x-card x-empty" data-testid="st-empty"><b>{filter === 'all' ? 'No strategies yet' : 'Nothing here'}</b><p>{filter === 'all' ? 'Start from a blank strategy or describe an idea and let AI draft it. Every strategy can be backtested before it trades.' : 'Try another filter.'}</p></div>
+          <div className="x-card">{filter === 'all' ? (
+            <EmptyState icon="play" ghost="cards" testId="st-empty" title="Build your first strategy"
+              hints={['1 · Set entry and exit rules', '2 · Backtest on real candles', '3 · Run it on paper']}
+              actions={<><button className="x-btn x-btn--hi" onClick={() => void createBlank()} disabled={creating}>{creating ? 'Creating…' : 'New strategy'}</button><button className="x-btn" onClick={() => setAiOpen(true)}>Describe it to AI</button><Link className="x-btn" href="/marketplace">Browse the marketplace</Link></>}>
+              Turn a trading idea into rules, see how it would have done, then let it run on paper before any real money.
+            </EmptyState>
+          ) : (
+            <EmptyState icon="play" tone="warn" testId="st-empty" title={`No ${FILTERS.find(f => f[0] === filter)![1].toLowerCase()} strategies`}
+              actions={<button className="x-btn" onClick={() => setFilter('all')}>Show all strategies</button>}>
+              {filter === 'live' ? 'Open a strategy and run it live once its paper results look right.' : filter === 'ai' ? 'Strategies drafted with “Generate with AI” show up here.' : filter === 'archived' ? 'Archived strategies are kept here, out of the way.' : 'Nothing has this status right now.'}
+            </EmptyState>
+          )}</div>
         ) : (
           <div className="st-grid" data-testid="st-list">
             {rows.map(r => (
@@ -109,8 +122,8 @@ export default function StrategiesPage() {
                     <span><span className="x-muted">Trades</span><b className="m">{r.lastBacktest.metrics.trades}</b></span>
                     <span><span className="x-muted">Win</span><b className="m">{r.lastBacktest.metrics.winRatePct == null ? '—' : `${r.lastBacktest.metrics.winRatePct.toFixed(0)}%`}</b></span>
                   </div>
-                ) : <div className="st-card-none">Not backtested yet <span aria-hidden>→</span></div>}
-                <div className="st-card-f x-muted"><span>v{r.version} · edited {new Date(r.updatedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span><span className="st-open" aria-hidden>Open →</span></div>
+                ) : <div className="st-card-none">Not backtested yet <ArrowRight size={15} aria-hidden /></div>}
+                <div className="st-card-f x-muted"><span>v{r.version} · edited {new Date(r.updatedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span><span className="st-open" aria-hidden>Open <ArrowRight size={13} weight="bold" /></span></div>
               </Link>
             ))}
           </div>

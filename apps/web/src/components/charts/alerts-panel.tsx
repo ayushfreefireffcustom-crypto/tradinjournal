@@ -1,5 +1,6 @@
 'use client';
 
+import EmptyState from '@/components/v6/ui/empty-state';
 import { useEffect, useState } from 'react';
 import { alertsApi, type PriceAlert } from '@/lib/alerts-api';
 
@@ -32,7 +33,7 @@ export default function AlertsPanel({ activeSymbol, reloadToken, onNew }: { acti
       </div>
       <div className="mk-side-bd">
         {loading ? Array.from({ length: 2 }).map((_, i) => <div key={i} className="x-skel x-skel--in mk-sk-row" />)
-          : sorted.length === 0 ? <p className="mk-none">No alerts yet. Get pinged when {activeSymbol} crosses a price.</p>
+          : sorted.length === 0 ? <EmptyState compact icon="bell" title="No price alerts" actions={onNew ? <button className="x-btn x-btn--sm" onClick={onNew}>Alert me on {activeSymbol}</button> : undefined}>Get pinged when {activeSymbol} crosses a price.</EmptyState>
           : sorted.map(a => {
             const state = a.status === 'triggered' ? 'Triggered' : a.status === 'disabled' ? 'Paused' : a.recurring ? 'Recurring' : 'Once';
             return (

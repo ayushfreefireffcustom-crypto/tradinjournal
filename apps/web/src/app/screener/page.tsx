@@ -3,6 +3,8 @@
 // Screener (E5/E6): filter the most-traded crypto pairs by indicators and
 // market fields. Filters inside a group must all match; any group can match.
 // Quick screens, saved screens, CSV export and a Trade button per row.
+import { ArrowDown, ArrowUp, Plus, ChartBar, Funnel, Intersect, Lightning, MinusCircle, PlusCircle, TrendDown, TrendUp, X, type Icon } from '@phosphor-icons/react';
+import EmptyState from '@/components/v6/ui/empty-state';
 import Link from '@/components/v6/ui/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import AppShell from '@/components/app-shell';
@@ -85,17 +87,10 @@ const QUICK: Array<{ name: string; groups: ScreenerFilter[][]; sort: ScreenDefin
   { name: 'Golden cross', groups: [[i(ind('ema', 'value', { length: 50 }), 'crosses_above', ind('ema', 'value', { length: 200 }))]], sort: { by: 'volume24h', dir: 'desc' } },
 ];
 
-// One line icon per quick screen (24-unit paths, stroked).
-const QUICK_ICON: Record<string, string> = {
-  'Oversold': 'M4 6l6 6 4-4 6 8M20 16v-4M20 16h-4',
-  'Overbought': 'M4 18l6-6 4 4 6-8M20 8v4M20 8h-4',
-  'Top gainers': 'M12 19V5M6 11l6-6 6 6',
-  'Top losers': 'M12 5v14M6 13l6 6 6-6',
-  'Volume surge': 'M5 20v-6M10 20V9M15 20v-4M20 20V4',
-  'Positive funding': 'M12 6v12M6 12h12',
-  'Negative funding': 'M6 12h12',
-  'Momentum': 'M13 3L5 14h6l-1 7 8-11h-6z',
-  'Golden cross': 'M4 17C9 17 11 7 20 7M4 9c6 0 8 8 16 8',
+// One Phosphor icon per quick screen.
+const QUICK_ICON: Record<string, Icon> = {
+  'Oversold': TrendDown, 'Overbought': TrendUp, 'Top gainers': ArrowUp, 'Top losers': ArrowDown, 'Volume surge': ChartBar,
+  'Positive funding': PlusCircle, 'Negative funding': MinusCircle, 'Momentum': Lightning, 'Golden cross': Intersect,
 };
 
 // ── Formatting ────────────────────────────────────────────────────────────────
@@ -213,7 +208,7 @@ export default function ScreenerPage() {
     } catch (e) { toast.error(e instanceof Error ? e.message : 'Could not update the screen'); }
   }
   const sortHead = (by: string, label: string, cls = '') => (
-    <th key={by} className={cls}><button type="button" className={`sc-sort ${sort?.by === by ? 'on' : ''}`} onClick={() => clickSort(by)} aria-sort={sort?.by === by ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'} data-testid={`sc-sort-${by}`}>{label}{sort?.by === by ? (sort.dir === 'asc' ? ' ↑' : ' ↓') : ''}</button></th>
+    <th key={by} className={cls}><button type="button" className={`sc-sort ${sort?.by === by ? 'on' : ''}`} onClick={() => clickSort(by)} aria-sort={sort?.by === by ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'} data-testid={`sc-sort-${by}`}>{label}{sort?.by === by ? (sort.dir === 'asc' ? <ArrowUp size={11} weight="bold" aria-hidden /> : <ArrowDown size={11} weight="bold" aria-hidden />) : null}</button></th>
   );
 
   return (
@@ -229,7 +224,7 @@ export default function ScreenerPage() {
           <div className="sc-chips" role="list">
             {QUICK.map(q => (
               <button key={q.name} type="button" role="listitem" className={`x-btn x-btn--sm ${active?.kind === 'quick' && active.id === q.name ? 'sc-on' : ''}`} onClick={() => load(q.groups, q.sort, { kind: 'quick', id: q.name })} data-testid={`sc-quick-${q.name.replace(/\W+/g, '-').toLowerCase()}`}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d={QUICK_ICON[q.name] ?? 'M5 12h14'} /></svg>{q.name}
+                {(() => { const I = QUICK_ICON[q.name] ?? Funnel; return <I size={15} weight="bold" aria-hidden />; })()}{q.name}
               </button>
             ))}
           </div>
@@ -239,7 +234,7 @@ export default function ScreenerPage() {
               {saved.data.map(s => (
                 <span key={s.id} className={`sc-savedchip ${active?.kind === 'saved' && active.id === s.id ? 'sc-on' : ''}`} role="listitem">
                   <button type="button" onClick={() => load(s.definition.groups, s.definition.sort, { kind: 'saved', id: s.id }, s.definition.timeframe, s.definition.universe)} data-testid={`sc-open-${s.id}`}>{s.name}</button>
-                  <button type="button" className="sc-x" aria-label={`Delete ${s.name}`} onClick={() => setDeleting(s)} data-testid={`sc-del-${s.id}`}>×</button>
+                  <button type="button" className="sc-x" aria-label={`Delete ${s.name}`} onClick={() => setDeleting(s)} data-testid={`sc-del-${s.id}`}><X size={12} weight="bold" aria-hidden /></button>
                 </span>
               ))}
             </div>
@@ -265,11 +260,11 @@ export default function ScreenerPage() {
                   {gi > 0 && <div className="sc-or">or</div>}
                   <div className="sc-ghead"><b>{groups.length > 1 ? `Group ${gi + 1}: ` : ''}match all of</b></div>
                   {g.map(r => <FilterRow key={r.id} row={r} catalogue={cat.data!} onChange={p => patchRow(gi, r.id, p)} onRemove={() => removeRow(gi, r.id)} />)}
-                  <button type="button" className="x-btn x-btn--sm x-btn--ghost" onClick={() => edit(gs => gs.map((x, k) => (k === gi ? [...x, newRow()] : x)))} disabled={g.length >= 6} data-testid={`sc-add-${gi}`}>+ Add filter</button>
+                  <button type="button" className="x-btn x-btn--sm x-btn--ghost" onClick={() => edit(gs => gs.map((x, k) => (k === gi ? [...x, newRow()] : x)))} disabled={g.length >= 6} data-testid={`sc-add-${gi}`}><Plus size={13} weight="bold" aria-hidden />Add filter</button>
                 </div>
               ))}
               <div className="sc-actions">
-                <button type="button" className="x-btn x-btn--sm" onClick={() => edit(gs => [...gs, [newRow()]])} disabled={groups.length >= 5} data-testid="sc-add-group">{groups.length ? '+ Add an “or” group' : '+ Add a filter'}</button>
+                <button type="button" className="x-btn x-btn--sm" onClick={() => edit(gs => [...gs, [newRow()]])} disabled={groups.length >= 5} data-testid="sc-add-group"><Plus size={13} weight="bold" aria-hidden />{groups.length ? 'Add an “or” group' : 'Add a filter'}</button>
                 <button type="button" className="x-btn x-btn--hi" onClick={() => void run()} disabled={running || !valid} data-testid="sc-run">{running ? 'Scanning…' : 'Run screen'}</button>
               </div>
               {!valid && <p className="cp-err">Fill in every number.</p>}
@@ -289,7 +284,13 @@ export default function ScreenerPage() {
             </div>
             {res.noData.length > 0 && <p className="x-muted sc-nodata">No {res.timeframe} candles for {res.noData.length === 1 ? res.noData[0] : `${res.noData.length} pairs`}; left out.</p>}
             {!rows.length ? (
-              <div className="x-empty" data-testid="sc-empty"><b>Nothing matches right now</b><p>Try a longer timeframe, the top 200, or looser filters.</p></div>
+              <EmptyState icon="search" ghost="table" tone="warn" testId="sc-empty" title="Nothing matches right now"
+                actions={<>
+                  {universe !== 200 && <button className="x-btn" onClick={() => { setUniverse(200); void run({ ...definition, universe: 200 }); }}>Scan the top 200</button>}
+                  {tf !== '1d' && <button className="x-btn" onClick={() => { setTf('1d'); void run({ ...definition, timeframe: '1d' }); }}>Try daily bars</button>}
+                </>}>
+                None of the top {res.scanned} pairs pass every filter on the {res.timeframe} bar. Widen the scan, use a longer timeframe, or loosen a filter.
+              </EmptyState>
             ) : (
               <div className="x-tblwrap">
                 <table className="x-tbl trd-tbl sc-tbl" data-testid="sc-table">
@@ -388,7 +389,7 @@ function FilterRow({ row, catalogue, onChange, onRemove }: { row: Row; catalogue
             : <OperandPicker catalogue={catalogue} value={row.right} onChange={r => onChange({ right: r })} allow={allowRight} label="Than" testId="sc-right" />}
         </span>
       ) : numberInput(row.right.kind === 'value' ? row.right.value : 0, n => onChange({ right: val(n) }), 'Value', 'sc-value')}
-      <button type="button" className="x-btn x-btn--sm x-btn--ghost x-btn--icon sc-rm" aria-label="Remove filter" onClick={onRemove} data-testid="sc-remove">×</button>
+      <button type="button" className="x-btn x-btn--sm x-btn--ghost x-btn--icon sc-rm" aria-label="Remove filter" onClick={onRemove} data-testid="sc-remove"><X size={14} weight="bold" aria-hidden /></button>
     </div>
   );
 }

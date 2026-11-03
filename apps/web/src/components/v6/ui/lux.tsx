@@ -1,6 +1,9 @@
+'use client';
+
 // Small pieces of the lux finish (styles/v6/lux.css) shared by the markets and
 // strategy pages: a pair label with its coin mark, a change pill, a 0–100 meter, a hero stat tile and a sparkline for it.
 import type { CSSProperties, ReactNode } from 'react';
+import { CaretDown, CaretUp } from '@phosphor-icons/react';
 import CoinMark from './coin-mark';
 
 export function Pair({ base, quote = '/USDT', symbol, size }: { base: string; quote?: string | null; symbol?: string; size?: 'lg' }) {
@@ -38,7 +41,7 @@ export function Kpi({ label, value, sub, side, viz, testId, className }: { label
 
 export function Delta({ v, suffix = '%', digits = 1 }: { v: number | null | undefined; suffix?: string; digits?: number }) {
   if (v == null || !Number.isFinite(v)) return null;
-  return <span className={`lx-delta ${tone(v)}`}>{v > 0 ? '▲' : v < 0 ? '▼' : ''} {Math.abs(v).toFixed(digits)}{suffix}</span>;
+  return <span className={`lx-delta ${tone(v)}`}>{v > 0 ? <CaretUp size={10} weight="fill" aria-hidden /> : v < 0 ? <CaretDown size={10} weight="fill" aria-hidden /> : null}{Math.abs(v).toFixed(digits)}{suffix}</span>;
 }
 
 /** A line through `values`, green or red by its overall direction, with a soft fill. */

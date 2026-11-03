@@ -2,6 +2,7 @@
 
 // Deployments (F17): every paper and live run, with P&L, a sparkline, recent
 // trades and the size multiplier.
+import EmptyState from '@/components/v6/ui/empty-state';
 import Link from '@/components/v6/ui/link';
 import { Fragment, useMemo, useState } from 'react';
 import AppShell from '@/components/app-shell';
@@ -58,7 +59,18 @@ export default function DeploymentsPage() {
           {TABS.map(([t, l]) => <button key={t} type="button" role="tab" aria-selected={tab === t} aria-pressed={tab === t} onClick={() => setTab(t)} data-testid={`dpl-tab-${t}`}>{l}{list.data ? <span className="x-muted"> {count(t)}</span> : null}</button>)}
         </div>
         {list.error ? <ErrorCard message={list.error} onRetry={list.reload} /> : !list.data ? <div className="x-skel cp-skel-table" /> : !rows.length ? (
-          <div className="x-card x-empty" data-testid="dpl-empty"><b>{tab === 'all' ? 'Nothing running yet' : 'Nothing here'}</b><p>{tab === 'all' ? 'Open a strategy and press Run to start it on paper or live.' : 'Try another tab.'}</p></div>
+          <div className="x-card">{tab === 'all' ? (
+            <EmptyState icon="run" ghost="table" testId="dpl-empty" title="Nothing running yet"
+              hints={['Paper runs need no broker', 'Acts once per closed bar', 'Pause or stop any time']}
+              actions={<Link className="x-btn x-btn--hi" href="/strategies">Pick a strategy to run</Link>}>
+              Open a strategy and press Run. Every run, paper or live, shows its P&amp;L, trades and equity here.
+            </EmptyState>
+          ) : (
+            <EmptyState icon="run" tone="warn" testId="dpl-empty" title={`No ${TABS.find(t => t[0] === tab)![1].toLowerCase()} runs`}
+              actions={<button className="x-btn" onClick={() => setTab('all')}>Show all runs</button>}>
+              {tab === 'errored' ? 'Every run is healthy. Runs that hit a problem wait here for you.' : 'Nothing has this status right now.'}
+            </EmptyState>
+          )}</div>
         ) : (
           <section className="x-card" aria-label="Deployments">
             <div className="x-tblwrap">
@@ -82,7 +94,7 @@ export default function DeploymentsPage() {
                       {open === d.id && (
                         <tr className="dpl-inline"><td colSpan={10}>
                           {d.error && <p className="cp-err">{d.error}</p>}
-                          {!d.recentTrades?.length ? <p className="x-muted">No closed trades yet.</p> : (
+                          {!d.recentTrades?.length ? <EmptyState compact icon="run" title="No closed trades yet">Trades appear here as this run closes them.</EmptyState> : (
                             <ul className="dpl-trades">{d.recentTrades.map((t, k) => <li key={k}><b>{t.symbol}</b> {t.side} · {new Date(t.exitTime).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} · <span className={`m ${tone(t.pnl)}`}>{usd(t.pnl)}</span> <span className="x-muted">({t.reason})</span></li>)}</ul>
                           )}
                         </td></tr>

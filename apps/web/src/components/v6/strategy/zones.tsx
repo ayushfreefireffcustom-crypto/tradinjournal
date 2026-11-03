@@ -2,6 +2,7 @@
 
 // The builder's zones (F2–F8): market, session, entry, exit, risk, sizing,
 // advanced and limits. Each edits one slice of the spec.
+import { Plus, X } from '@phosphor-icons/react';
 import { useEffect, useState, type ReactNode } from 'react';
 import SymbolSearch from '@/components/charts/symbol-search';
 import GroupEditor from './group-editor';
@@ -64,7 +65,7 @@ export function MarketZone({ spec, set }: { spec: StrategySpec; set: Set }) {
             <span key={x.symbol} className="sb-sym">
               <b>{x.symbol}</b>
               <Num value={x.leverage ?? null} allowEmpty min={1} max={max} label={`${x.symbol} leverage`} suffix="×" onChange={v => set(s => ({ ...s, market: { ...s.market, symbols: s.market.symbols.map(y => (y.symbol === x.symbol ? { symbol: y.symbol, ...(v == null ? {} : { leverage: v }) } : y)) } }))} />
-              <button type="button" aria-label={`Remove ${x.symbol}`} onClick={() => set(s => ({ ...s, market: { ...s.market, symbols: s.market.symbols.filter(y => y.symbol !== x.symbol) } }))} data-testid={`sb-rm-${x.symbol}`}>×</button>
+              <button type="button" aria-label={`Remove ${x.symbol}`} onClick={() => set(s => ({ ...s, market: { ...s.market, symbols: s.market.symbols.filter(y => y.symbol !== x.symbol) } }))} data-testid={`sb-rm-${x.symbol}`}><X size={12} weight="bold" aria-hidden /></button>
             </span>
           ))}
           {m.symbols.length < 20 && <div className="sb-add"><SymbolSearch value="" onSelect={sym => set(s => (s.market.symbols.some(y => y.symbol === sym) ? s : { ...s, market: { ...s.market, symbols: [...s.market.symbols, { symbol: sym }] } }))} /></div>}
@@ -97,7 +98,7 @@ export function SessionZone({ spec, set }: { spec: StrategySpec; set: Set }) {
       </div>
       {se.mode === 'windows' && (
         <div className="sb-windows">
-          <div className="sb-presets">{PRESETS.map(p => <button key={p.label} type="button" className="x-btn x-btn--sm" onClick={() => set(s => ({ ...s, session: { ...s.session, windows: [...s.session.windows, p.w] } }))}>+ {p.label}</button>)}</div>
+          <div className="sb-presets">{PRESETS.map(p => <button key={p.label} type="button" className="x-btn x-btn--sm" onClick={() => set(s => ({ ...s, session: { ...s.session, windows: [...s.session.windows, p.w] } }))}><Plus size={13} weight="bold" aria-hidden />{p.label}</button>)}</div>
           {se.windows.map((w, k) => (
             <div key={k} className="sb-window" data-testid={`sb-window-${k}`}>
               <div className="sb-days">{DAYS.map((d, i) => <button key={d} type="button" aria-pressed={w.days.includes(i)} onClick={() => setW(k, { days: w.days.includes(i) ? w.days.filter(x => x !== i) : [...w.days, i].sort() })}>{d}</button>)}</div>
@@ -138,9 +139,9 @@ export function EntryZone({ spec, set, catalogue }: { spec: StrategySpec; set: S
       <Field label="Time trigger" hint="Only enter on bars opening at these times; conditions then act as filters.">
         <div className="sb-times">
           {(e.atTimes ?? []).map((t, k) => (
-            <span key={k} className="sb-sym"><input className="x-input m sb-time" type="time" value={t} onChange={ev => set(s => ({ ...s, entry: { ...s.entry, atTimes: (s.entry.atTimes ?? []).map((x, i) => (i === k ? ev.target.value : x)) } }))} /><button type="button" aria-label="Remove time" onClick={() => set(s => ({ ...s, entry: { ...s.entry, atTimes: (s.entry.atTimes ?? []).filter((_, i) => i !== k) || null } }))}>×</button></span>
+            <span key={k} className="sb-sym"><input className="x-input m sb-time" type="time" value={t} onChange={ev => set(s => ({ ...s, entry: { ...s.entry, atTimes: (s.entry.atTimes ?? []).map((x, i) => (i === k ? ev.target.value : x)) } }))} /><button type="button" aria-label="Remove time" onClick={() => set(s => ({ ...s, entry: { ...s.entry, atTimes: (s.entry.atTimes ?? []).filter((_, i) => i !== k) || null } }))}><X size={12} weight="bold" aria-hidden /></button></span>
           ))}
-          <button type="button" className="x-btn x-btn--sm" onClick={() => set(s => ({ ...s, entry: { ...s.entry, atTimes: [...(s.entry.atTimes ?? []), '09:00'] } }))} data-testid="sb-addtime">+ Time</button>
+          <button type="button" className="x-btn x-btn--sm" onClick={() => set(s => ({ ...s, entry: { ...s.entry, atTimes: [...(s.entry.atTimes ?? []), '09:00'] } }))} data-testid="sb-addtime"><Plus size={13} weight="bold" aria-hidden />Time</button>
         </div>
       </Field>
     </div>
@@ -154,7 +155,7 @@ export function ExitZone({ spec, set, catalogue }: { spec: StrategySpec; set: Se
       <label className="sb-check"><input type="checkbox" checked={x.onOppositeSignal} onChange={e => set(s => ({ ...s, exit: { ...s.exit, onOppositeSignal: e.target.checked } }))} data-testid="sb-opposite" /> Exit when the opposite entry signal fires</label>
       <Field label="Also exit a long when">
         {x.long ? <GroupEditor group={x.long} onChange={g => set(s => ({ ...s, exit: { ...s.exit, long: g.conditions.length ? g : null } }))} catalogue={catalogue} interval={spec.session.interval} testId="sb-xlong" />
-          : <button type="button" className="x-btn x-btn--sm" onClick={() => set(s => ({ ...s, exit: { ...s.exit, long: blank(), short: s.market.direction !== 'long' ? 'mirror' : s.exit.short } }))} data-testid="sb-addexit">+ Exit signal</button>}
+          : <button type="button" className="x-btn x-btn--sm" onClick={() => set(s => ({ ...s, exit: { ...s.exit, long: blank(), short: s.market.direction !== 'long' ? 'mirror' : s.exit.short } }))} data-testid="sb-addexit"><Plus size={13} weight="bold" aria-hidden />Exit signal</button>}
       </Field>
       {x.long && spec.market.direction !== 'long' && <span className="x-help">Short exits mirror the long exit.</span>}
     </div>
@@ -202,10 +203,10 @@ export function RiskZone({ spec, set }: { spec: StrategySpec; set: Set }) {
             <span key={k} className="sb-sym">
               <Num value={p.closePct} min={1} max={100} label="Close %" suffix="% at" onChange={v => v != null && R(x => ({ ...x, partials: x.partials.map((q, i) => (i === k ? { ...q, closePct: v } : q)) }))} />
               <Num value={p.atR} min={0.1} label="At R" suffix="R" onChange={v => v != null && R(x => ({ ...x, partials: x.partials.map((q, i) => (i === k ? { ...q, atR: v } : q)) }))} />
-              <button type="button" aria-label="Remove partial" onClick={() => R(x => ({ ...x, partials: x.partials.filter((_, i) => i !== k) }))}>×</button>
+              <button type="button" aria-label="Remove partial" onClick={() => R(x => ({ ...x, partials: x.partials.filter((_, i) => i !== k) }))}><X size={12} weight="bold" aria-hidden /></button>
             </span>
           ))}
-          {r.partials.length < 5 && <button type="button" className="x-btn x-btn--sm" onClick={() => R(x => ({ ...x, partials: [...x.partials, { atR: 1, closePct: 50 }] }))} data-testid="sb-addpartial">+ Partial</button>}
+          {r.partials.length < 5 && <button type="button" className="x-btn x-btn--sm" onClick={() => R(x => ({ ...x, partials: [...x.partials, { atR: 1, closePct: 50 }] }))} data-testid="sb-addpartial"><Plus size={13} weight="bold" aria-hidden />Partial</button>}
         </div>
       </Field>
     </div>

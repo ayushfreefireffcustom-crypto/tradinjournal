@@ -1,5 +1,6 @@
 'use client';
 
+import EmptyState from '@/components/v6/ui/empty-state';
 import type { MacroState } from '@/lib/macro-api';
 import { formatIndicatorValue, indicatorDelta } from '@/lib/macro-format';
 import { groupIndicators, blurbFor, formatObsDate, sourceLabel, type IndicatorGroup } from '@/lib/macro-meta';
@@ -37,7 +38,7 @@ function Panel({ g }: { g: IndicatorGroup }) {
 
 export default function IndicatorGroups({ macro }: { macro: MacroState['macro'] }) {
   if (!macro.length) {
-    return <div className="x-card x-empty" data-testid="macro-groups-empty"><b>No indicators yet</b><p>FRED indicators appear after the first data ingest.</p></div>;
+    return <div className="x-card"><EmptyState icon="globe" ghost="chart" testId="macro-groups-empty" title="No indicators yet" hints={['Rates', 'Inflation', 'Jobs', 'Liquidity']}>US economic indicators from FRED appear after the first macro update.</EmptyState></div>;
   }
   return (
     <div className="mc-igs" data-testid="macro-indicator-groups">

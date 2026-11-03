@@ -3,6 +3,8 @@
 // Indicator alerts (E4): rules like "RSI(14) crosses below 30 on BTCUSDT 1h",
 // checked at every bar close, with recent firings. Price-level alerts stay on
 // the Charts page.
+import { ChartBar, Lightning, Plus, TrendUp, Waveform, type Icon } from '@phosphor-icons/react';
+import EmptyState from '@/components/v6/ui/empty-state';
 import Link from '@/components/v6/ui/link';
 import { useEffect, useMemo, useState } from 'react';
 import AppShell from '@/components/app-shell';
@@ -79,11 +81,11 @@ export default function AlertsPage() {
           </section>
         )}
         {rules.error ? <ErrorCard message={rules.error} onRetry={rules.reload} /> : !rules.data ? <div className="x-skel cp-skel-table" /> : !rules.data.length ? (
-          <div className="x-card x-empty" data-testid="ia-empty">
-            <b>No indicator alerts yet</b>
-            <p>Pick a condition such as &ldquo;RSI crosses below 30&rdquo; or &ldquo;EMA 50 crosses above EMA 200&rdquo;. It&rsquo;s checked every time a bar closes, and you&rsquo;re notified in your inbox, by push and on Telegram if you&rsquo;ve linked it.</p>
-            <button className="x-btn x-btn--hi" onClick={() => setBuilding(true)} disabled={!cat.data}>Create your first alert</button>
-          </div>
+          <div className="x-card"><EmptyState icon="bell" ghost="list" testId="ia-empty" title="No indicator alerts yet"
+            hints={['RSI crosses below 30', 'EMA 50 crosses above EMA 200', 'Volume above its 20-bar average']}
+            actions={<><button className="x-btn x-btn--hi" onClick={() => setBuilding(true)} disabled={!cat.data}>Create your first alert</button><a className="x-btn" href="#ia-watch">Pick a ready-made rule</a></>}>
+            Get told the moment an indicator condition is met. It&rsquo;s checked at every bar close and reaches your inbox, push and Telegram.
+          </EmptyState></div>
         ) : (
           <section className="x-card" aria-label="Your alerts">
             <div className="x-ch"><h2>Your alerts</h2><span className="x-sub">{count} of {MAX_RULES}</span></div>
@@ -117,7 +119,7 @@ export default function AlertsPage() {
         <section className="x-card" aria-label="Recent alerts">
           <div className="x-ch"><h2>Recent alerts</h2><span className="x-sub">Last 30</span></div>
           {firings.error ? <p className="cp-err">{firings.error}</p> : !firings.data ? <div className="x-skel cp-skel-table" /> : !firings.data.length ? (
-            <p className="x-muted ia-none" data-testid="ia-firings-empty">Nothing has fired yet. Alerts are checked when each bar closes, so a 1h alert can take up to an hour to fire.</p>
+            <EmptyState compact icon="bell" testId="ia-firings-empty" title="Nothing has fired yet">Alerts are checked when each bar closes, so a 1h alert can take up to an hour to fire.</EmptyState>
           ) : (
             <ul className="ia-firings" data-testid="ia-firings">
               {firings.data.map(f => (
@@ -289,12 +291,7 @@ function RuleBuilder({ catalogue, onClose, onCreated }: { catalogue: CatalogueIt
 }
 
 // ── Watch rules (H12): well-known conditions, explained, one click to watch ──
-const CAT_ICON: Record<WatchRule['category'], string> = {
-  trend: 'M4 17l5-5 4 4 7-8M15 8h5v5',
-  momentum: 'M13 3L5 14h6l-1 7 8-11h-6z',
-  volatility: 'M3 12h3l3-7 4 14 3-7h5',
-  volume: 'M5 20v-6M10 20V9M15 20v-4M20 20V4',
-};
+const CAT_ICON: Record<WatchRule['category'], Icon> = { trend: TrendUp, momentum: Lightning, volatility: Waveform, volume: ChartBar };
 const CATS: Array<['all' | WatchRule['category'], string]> = [['all', 'All'], ['trend', 'Trend'], ['momentum', 'Momentum'], ['volatility', 'Volatility'], ['volume', 'Volume']];
 function WatchRules({ onCreated }: { onCreated: (a: IndicatorAlert) => void }) {
   const toast = useToast();
@@ -314,15 +311,15 @@ function WatchRules({ onCreated }: { onCreated: (a: IndicatorAlert) => void }) {
   if (!list.data?.length) return null;
   const shown = list.data.filter((r) => cat === 'all' || r.category === cat);
   return (
-    <section className="x-card" aria-label="Watch rules" data-testid="ia-watch">
+    <section className="x-card" aria-label="Watch rules" data-testid="ia-watch" id="ia-watch">
       <div className="x-ch"><h2>Watch rules</h2><span className="x-sub">Pick a signal and a market</span></div>
       <div className="x-seg x-seg--in x-seg--sm ia-watch-cats" role="radiogroup" aria-label="Kind">{CATS.map(([c, l]) => <button key={c} type="button" role="radio" aria-checked={cat === c} onClick={() => setCat(c)} data-testid={`ia-wcat-${c}`}>{l}</button>)}</div>
       <div className="ia-watch-grid">
         {shown.map((r) => (
           <article key={r.id} className="ia-wr" data-testid={`ia-wr-${r.id}`}>
-            <div className="ia-wr-h"><span className={`lx-ic ${r.bias === 'bullish' ? 'lx-ic--g' : ''}`} aria-hidden><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d={CAT_ICON[r.category]} /></svg></span><b>{r.name}</b><span className={`x-tag ${r.bias === 'bullish' ? 'x-tag--g' : r.bias === 'bearish' ? 'x-tag--r' : ''}`}>{r.bias === 'neutral' ? 'Either way' : r.bias === 'bullish' ? 'Bullish' : 'Bearish'}</span></div>
+            <div className="ia-wr-h"><span className={`lx-ic ${r.bias === 'bullish' ? 'lx-ic--g' : ''}`} aria-hidden>{(() => { const I = CAT_ICON[r.category]; return <I size={16} weight="duotone" />; })()}</span><b>{r.name}</b><span className={`x-tag ${r.bias === 'bullish' ? 'x-tag--g' : r.bias === 'bearish' ? 'x-tag--r' : ''}`}>{r.bias === 'neutral' ? 'Either way' : r.bias === 'bullish' ? 'Bullish' : 'Bearish'}</span></div>
             <p title={`${r.explain.why} ${r.explain.caution}`}>{r.explain.what}</p>
-            <button type="button" className="x-btn x-btn--sm" onClick={() => { setPick(r); setTf(r.timeframe); }} data-testid={`ia-wr-watch-${r.id}`}>+ Watch</button>
+            <button type="button" className="x-btn x-btn--sm" onClick={() => { setPick(r); setTf(r.timeframe); }} data-testid={`ia-wr-watch-${r.id}`}><Plus size={13} weight="bold" aria-hidden />Watch</button>
           </article>
         ))}
       </div>

@@ -1,5 +1,6 @@
 'use client';
 
+import EmptyState from '@/components/v6/ui/empty-state';
 import { useCallback, useEffect, useState } from 'react';
 import AppShell from '@/components/app-shell';
 import { useAccounts } from '@/lib/use-accounts';
@@ -135,7 +136,7 @@ export default function MacroPage() {
               )}
 
               {!error && state && state.macro.length === 0 && panel === 'dashboard' && (
-                <div className="x-card x-empty" data-testid="macro-empty"><b>No macro data yet</b><p>Indicators appear after the first data ingest.</p></div>
+                <div className="x-card"><EmptyState icon="globe" ghost="chart" testId="macro-empty" title="No macro data yet" hints={['Rates', 'Inflation', 'Jobs', 'Liquidity']}>Rates, inflation, jobs and liquidity readings, with a score for each asset, appear after the first macro update.</EmptyState></div>
               )}
 
               {/* No data yet: just say so, rather than a page of neutral 50s that were never measured. */}

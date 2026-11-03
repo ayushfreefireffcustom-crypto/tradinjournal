@@ -1,5 +1,6 @@
 'use client';
 
+import EmptyState from '@/components/v6/ui/empty-state';
 import { useMemo, useState } from 'react';
 import type { MacroState } from '@/lib/macro-api';
 import { formatWhen } from '@/lib/macro-format';
@@ -55,7 +56,7 @@ export default function MacroCalendarPanel({ events }: { events: MacroState['eve
         </div>
 
         {!filtered.length ? (
-          <div className="x-empty"><b>No events match</b><p>Try a different impact level or country.</p></div>
+          <EmptyState icon="calendar" ghost="calendar" tone="warn" title="No events match">Try a different impact level or country.</EmptyState>
         ) : (
           <ul className="mc-ev x-list">
             {filtered.map((e, i) => {

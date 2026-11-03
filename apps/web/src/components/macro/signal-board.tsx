@@ -1,10 +1,11 @@
 'use client';
 
+import EmptyState from '@/components/v6/ui/empty-state';
 import { useCallback, useEffect, useState } from 'react';
 import { macroApi, type MacroSignal } from '@/lib/macro-api';
 import { formatMacroNumber } from '@/lib/macro-format';
 import { tickerMark } from '@/lib/desk';
-import { ILock, ISpark, SideChip } from '@/components/v6/macro/ui';
+import { SideChip } from '@/components/v6/macro/ui';
 
 export default function SignalBoard({
   onPaperFill,
@@ -44,27 +45,19 @@ export default function SignalBoard({
 
   if (error) {
     return (
-      <section className="x-card x-empty" data-testid="macro-signals-locked">
-        <span className="x-ic"><ILock /></span>
-        <b>SignalX signals are for members</b>
-        <p>Entry, stop and target levels are computed on the server and never sent to non-members. Map a verified exchange account to unlock the full board with reasoning and risk sizing.</p>
-        <div className="mc-btns">
-          {onRequestAccess && (
-            <button type="button" onClick={onRequestAccess} className="x-btn x-btn--hi" data-testid="macro-signals-request-access">Request access</button>
-          )}
-          <button type="button" onClick={() => void load()} className="x-btn">Check again</button>
-        </div>
+      <section className="x-card">
+        <EmptyState icon="lock" ghost="cards" testId="macro-signals-locked" title="SignalX signals are for members"
+          hints={['Entry, stop and target', 'Reasoning for each call', 'Risk sizing']}
+          actions={<>{onRequestAccess && <button type="button" onClick={onRequestAccess} className="x-btn x-btn--hi" data-testid="macro-signals-request-access">Request access</button>}<button type="button" onClick={() => void load()} className="x-btn">Check again</button></>}>
+          Map a verified exchange account to unlock the full board. Levels are worked out on our server and never sent to non-members.
+        </EmptyState>
       </section>
     );
   }
 
   if (!signals?.length) {
     return (
-      <div className="x-card x-empty" data-testid="macro-signals-empty">
-        <span className="x-ic"><ISpark /></span>
-        <b>No signals this print</b>
-        <p>The engine holds when confluence is inconclusive. Check back after the next ingest.</p>
-      </div>
+      <div className="x-card"><EmptyState icon="signal" ghost="cards" testId="macro-signals-empty" title="No signals this print">The engine holds when the macro picture doesn&rsquo;t line up. Check back after the next update.</EmptyState></div>
     );
   }
 

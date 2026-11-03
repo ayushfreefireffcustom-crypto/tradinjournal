@@ -7,6 +7,8 @@
 // refetch design had, and it can never race itself. A data-range line makes the
 // available coverage explicit (the free ForexFactory feed only carries the
 // current week; add an FMP/Finnhub key for history + forecasts).
+import { CaretDown, CaretUp } from '@phosphor-icons/react';
+import EmptyState from '@/components/v6/ui/empty-state';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import EventModal from '@/components/calendar/event-modal';
 import {
@@ -153,7 +155,7 @@ export default function CalendarRail() {
             <span className="mk-ev-v">
               <span className="m">{ev.currency}</span>
               {hasData && <>
-                {ev.actual != null && <span className={`mk-ev-a ${fresh ? 'fresh' : ''} ${dir === 'up' ? 'pos' : dir === 'down' ? 'neg' : ''}`}>Actual <span className="m">{minus(ev.actual)}{dir === 'up' ? ' ▲' : dir === 'down' ? ' ▼' : ''}</span></span>}
+                {ev.actual != null && <span className={`mk-ev-a ${fresh ? 'fresh' : ''} ${dir === 'up' ? 'pos' : dir === 'down' ? 'neg' : ''}`}>Actual <span className="m">{minus(ev.actual)}{dir === 'up' ? <CaretUp size={10} weight="fill" aria-hidden /> : dir === 'down' ? <CaretDown size={10} weight="fill" aria-hidden /> : null}</span></span>}
                 <span>Forecast <span className="m">{minus(ev.forecast) ?? '—'}</span></span><span>Prior <span className="m">{minus(ev.previous) ?? '—'}</span></span>
               </>}
             </span>
@@ -224,12 +226,12 @@ export default function CalendarRail() {
         {loading ? (
           <div className="mk-skels" aria-label="Loading events">{Array.from({ length: 6 }).map((_, i) => <div key={i} className="mk-sk-ev"><i className="x-skel x-skel--in" /><span><i className="x-skel x-skel--in" /><i className="x-skel x-skel--in" /></span></div>)}</div>
         ) : error ? (
-          <div className="x-empty"><b>Calendar unavailable</b><p>{error}</p><button className="x-btn x-btn--sm" onClick={() => void load(true)}>Try again</button></div>
+          <EmptyState icon="calendar" ghost="calendar" tone="warn" title="Calendar unavailable" actions={<button className="x-btn x-btn--sm" onClick={() => void load(true)}>Try again</button>}>{error}</EmptyState>
         ) : events.length === 0 ? (
-          <div className="x-empty"><b>No calendar data yet</b><p>Events appear once the economic-calendar feed is connected.</p></div>
+          <EmptyState icon="calendar" ghost="calendar" title="No events yet" hints={['Rate decisions', 'CPI and jobs', 'Central-bank speeches']}>Economic releases show up here with their forecast, previous and actual numbers once the calendar feed is connected.</EmptyState>
         ) : totalShown === 0 ? (
-          <div className="x-empty"><b>No {FILTER_LABEL[filter].toLowerCase()} events{impacts.size < IMPACTS.length ? ' at these impact levels' : ''}</b>
-            <button onClick={() => setFilter('all')} className="x-btn x-btn--sm">Show all {coverage?.count ?? ''} events</button></div>
+          <EmptyState icon="calendar" tone="warn" title={`No ${FILTER_LABEL[filter].toLowerCase()} events${impacts.size < IMPACTS.length ? ' at these impact levels' : ''}`}
+            actions={<button onClick={() => setFilter('all')} className="x-btn x-btn--sm">Show all {coverage?.count ?? ''} events</button>}>Nothing scheduled matches these filters.</EmptyState>
         ) : groups.map(([day, rows]) => (
           <div key={day} className="mk-day">
             <div className="mk-dayh"><span>{dayTitle(day)}</span><span className="m">{rows.length}</span></div>

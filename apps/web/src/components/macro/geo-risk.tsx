@@ -1,5 +1,6 @@
 'use client';
 
+import EmptyState from '@/components/v6/ui/empty-state';
 import type { MacroState } from '@/lib/macro-api';
 import { formatWhen } from '@/lib/macro-format';
 import { IExt, PanelHead } from '@/components/v6/macro/ui';
@@ -42,7 +43,7 @@ export default function GeoRisk({ headlines }: { headlines: MacroState['headline
         lead="Keyword scoring over the free news wire. Educational triage, not a proprietary geopolitics terminal; structural and noise labels are model output only." />
 
       {!scored.length ? (
-        <div className="x-card x-empty"><b>Nothing flagged</b><p>No geopolitics-tagged headlines in the current window.</p></div>
+        <div className="x-card"><EmptyState icon="shield" ghost="news" title="Nothing flagged">No geopolitical headlines in the current window. Calm is good news.</EmptyState></div>
       ) : (
         <section className="x-card">
           <ul className="mc-hl mc-geo x-list" data-testid="macro-geo-list">

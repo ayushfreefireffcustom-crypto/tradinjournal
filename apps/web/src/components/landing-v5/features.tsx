@@ -6,6 +6,7 @@
 // scene per card that plays once when it scrolls in. Every figure is a sample.
 
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { ShieldCheck } from '@phosphor-icons/react';
 import { Reveal, useInViewOnce } from './ui';
 import { TRADING_ENABLED } from '@/lib/features';
 
@@ -332,7 +333,7 @@ function Ticket() {
         <p><span>Avg price</span><span className="l5-num">108,214.0</span></p>
         <p><span>Take-profit</span><span className="l5-num">111,720.0</span></p>
         <p><span>Stop (trail)</span><span className="l5-num">107,900.0</span></p>
-        <em>✓ Protected on the exchange</em>
+        <em><ShieldCheck size={14} weight="fill" aria-hidden /> Protected on the exchange</em>
       </div>
     </div>
   );

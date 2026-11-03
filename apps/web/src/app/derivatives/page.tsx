@@ -2,6 +2,8 @@
 
 // Derivatives (E11, E17): funding, open interest, long/short and squeezes for
 // USDT perpetuals (Bybit public data), with what changed since your last look.
+import { ArrowDown, ArrowUp } from '@phosphor-icons/react';
+import EmptyState from '@/components/v6/ui/empty-state';
 import Link from '@/components/v6/ui/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import AppShell from '@/components/app-shell';
@@ -71,14 +73,15 @@ export default function DerivativesPage() {
     return { f: p.f != null && r.funding != null ? r.funding - p.f : null, oi: p.oi && r.oiValue != null ? (r.oiValue / p.oi - 1) * 100 : null };
   };
   const head = (key: SortKey, label: string) => (
-    <th className="r"><button type="button" className={`sc-sort ${sort.key === key ? 'on' : ''}`} onClick={() => setSort(s => ({ key, dir: s.key === key ? (s.dir === 1 ? -1 : 1) : -1 }))} data-testid={`dv-sort-${key}`}>{label}{sort.key === key ? (sort.dir === 1 ? ' ↑' : ' ↓') : ''}</button></th>
+    <th className="r"><button type="button" className={`sc-sort ${sort.key === key ? 'on' : ''}`} onClick={() => setSort(s => ({ key, dir: s.key === key ? (s.dir === 1 ? -1 : 1) : -1 }))} data-testid={`dv-sort-${key}`}>{label}{sort.key === key ? (sort.dir === 1 ? <ArrowUp size={11} weight="bold" aria-hidden /> : <ArrowDown size={11} weight="bold" aria-hidden />) : null}</button></th>
   );
 
   return (
     <AppShell legacy={false} pageTitle="Derivatives" pageSubtitle={<>Funding, open interest and positioning across USDT perpetuals {d.data && <> · <Freshness at={d.data.asOf} /></>}</>}>
       <div className="x-page dv" data-testid="dv-page">
         {d.error ? <ErrorCard message={d.error} onRetry={d.reload} /> : !data ? <div className="x-skel" style={{ height: 420 }} /> : !data.source ? (
-          <div className="x-card x-empty" data-testid="dv-down"><b>No derivatives data right now</b><p>{data.note}</p><button className="x-btn" onClick={() => void d.reload()}>Try again</button></div>
+          <div className="x-card"><EmptyState icon="pulse" ghost="bars" tone="warn" testId="dv-down" title="No derivatives data right now"
+            actions={<button className="x-btn x-btn--hi" onClick={() => void d.reload()}>Try again</button>}>{data.note}</EmptyState></div>
         ) : (
           <>
             <section className="lx-kpis" aria-label="Totals">
@@ -96,7 +99,7 @@ export default function DerivativesPage() {
                 <div className="x-ch"><h2>Squeezes and builds</h2><span className="x-sub">Price and open interest over 24h, top {data.detailFor} by volume</span></div>
                 {(() => {
                   const sq = data.rows.filter(r => r.squeeze).sort((a, b) => Math.abs(b.oiChange24h ?? 0) - Math.abs(a.oiChange24h ?? 0));
-                  return !sq.length ? <p className="x-muted dv-none">Nothing big right now: no move of 2% in price with 3% in open interest.</p> : (
+                  return !sq.length ? <EmptyState compact icon="pulse" title="No squeezes or builds" hints={['2% price move', '3% open-interest move']}>Nothing in the top {data.detailFor} has moved enough in both price and open interest over 24 hours.</EmptyState> : (
                     <ul className="ov-movers dv-list">
                       {sq.map(r => <li key={r.symbol} title={SQUEEZE[r.squeeze!].hint}><Pair base={r.base} quote={null} /><span className={`x-tag ${SQUEEZE[r.squeeze!].tone}`}>{SQUEEZE[r.squeeze!].label}</span><span className="m"><span className={toneOf(r.change24h)}>{fmtPct(r.change24h, 1)}</span> · OI <span className={toneOf(r.oiChange24h)}>{fmtPct(r.oiChange24h, 1)}</span></span></li>)}
                     </ul>

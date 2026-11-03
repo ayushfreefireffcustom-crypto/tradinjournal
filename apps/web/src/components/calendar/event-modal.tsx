@@ -4,6 +4,7 @@
 // Investing.com's event detail — lead with what the event IS, show the
 // Previous → Forecast → Actual progression with a plain-English surprise read,
 // and keep actions understated. Provenance is fetched from the detail endpoint.
+import { ArrowDown, ArrowRight, ArrowUp } from '@phosphor-icons/react';
 import { useEffect, useMemo, useState } from 'react';
 import MkDialog, { MkClose } from '@/components/v6/markets/dialog';
 import { api, type CalendarEvent, type CalendarEventDetail, type EventImpact } from '@/lib/api';
@@ -91,14 +92,14 @@ export default function EventModal({
   const read = (() => {
     const a = num(event.actual), f = num(event.forecast), p = num(event.previous);
     if (event.actual && a != null && f != null) {
-      if (a > f) return { arrow: '↑', cls: 'pos', text: 'Actual came in above forecast' };
-      if (a < f) return { arrow: '↓', cls: 'neg', text: 'Actual came in below forecast' };
-      return { arrow: '→', cls: 'x-muted', text: 'Actual in line with forecast' };
+      if (a > f) return { arrow: 'up' as const, cls: 'pos', text: 'Actual came in above forecast' };
+      if (a < f) return { arrow: 'down' as const, cls: 'neg', text: 'Actual came in below forecast' };
+      return { arrow: 'flat' as const, cls: 'x-muted', text: 'Actual in line with forecast' };
     }
     if (!released && f != null && p != null) {
-      if (f > p) return { arrow: '↑', cls: 'x-muted', text: 'Forecast points higher than previous' };
-      if (f < p) return { arrow: '↓', cls: 'x-muted', text: 'Forecast points lower than previous' };
-      return { arrow: '→', cls: 'x-muted', text: 'Forecast unchanged from previous' };
+      if (f > p) return { arrow: 'up' as const, cls: 'x-muted', text: 'Forecast points higher than previous' };
+      if (f < p) return { arrow: 'down' as const, cls: 'x-muted', text: 'Forecast points lower than previous' };
+      return { arrow: 'flat' as const, cls: 'x-muted', text: 'Forecast unchanged from previous' };
     }
     return null;
   })();
@@ -135,7 +136,7 @@ export default function EventModal({
         {col('forecast', 'Forecast', event.forecast)}
         {col('actual', 'Actual', event.actual)}
       </div>
-      {read && <p className={`mk-em-read ${read.cls}`}><b>{read.arrow}</b> {read.text}</p>}
+      {read && <p className={`mk-em-read ${read.cls}`}><b aria-hidden>{read.arrow === 'up' ? <ArrowUp size={14} weight="bold" /> : read.arrow === 'down' ? <ArrowDown size={14} weight="bold" /> : <ArrowRight size={14} weight="bold" />}</b> {read.text}</p>}
       <p className="mk-em-meta">{impact.note}{prov.names.length > 0 && <> · Source: {prov.names.join(' + ')}</>}{prov.conflict && <> · Sources disagreed on impact</>}</p>
       {released ? (
         <div className="x-inset mk-em-done" data-testid="event-modal-released">Already released</div>
