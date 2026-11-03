@@ -1,5 +1,6 @@
 'use client';
 
+import CoinMark from '@/components/v6/ui/coin-mark';
 import { useCallback, useRef, useState } from 'react';
 import { MARKET_SYMBOL_NAMES } from '@/lib/market-api';
 import { tickerMark } from '@/lib/desk';
@@ -113,7 +114,7 @@ export default function Watchlist({ activeSymbol, onPick }: { activeSymbol: stri
             const tone = q?.chg == null ? 'x-muted' : q.chg >= 0 ? 'pos' : 'neg';
             return (
               <div key={s} role="button" tabIndex={0} className={`mk-wl ${s === activeSymbol ? 'on' : ''}`} onClick={() => onPick(s)} onKeyDown={e => { if (e.key === 'Enter') onPick(s); }} data-testid={`watchlist-item-${s}`} aria-current={s === activeSymbol || undefined}>
-                <span className="x-mk">{tickerMark(s)}</span>
+                {/USDT$|USDC$/.test(s) ? <CoinMark symbol={s} size="lg" /> : <span className="x-mk">{tickerMark(s)}</span>}
                 <span className="mk-wl-n"><b>{s}</b><small>{MARKET_SYMBOL_NAMES[s] ?? ' '}</small></span>
                 <span className="mk-wl-px m">{q ? fmtQuote(q.last) : '—'}<small className={tone}>{q ? fmtChg(q.chg) : ' '}</small></span>
                 <button className="mk-wl-x" onClick={e => { e.stopPropagation(); save(symbols.filter(x => x !== s)); }} onKeyDown={e => e.stopPropagation()} aria-label={`Unpin ${s}`} title={`Unpin ${s}`}><IClose size={12} /></button>

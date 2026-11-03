@@ -8,6 +8,8 @@ import SymbolSearch from '@/components/charts/symbol-search';
 import { compareCsv, compareSeries } from '@/lib/compare';
 import { marketApi, type Candle, type MarketTimeframe } from '@/lib/market-api';
 import { fmtPct, toneOf } from '@/lib/hub-api';
+import { Chg, Kpi, Pair, Spark } from '@/components/v6/ui/lux';
+import CoinMark from '@/components/v6/ui/coin-mark';
 import '@/styles/v6/kit.css';
 import '@/styles/v6/tools.css';
 import '@/styles/v6/markets.css';
@@ -76,7 +78,7 @@ export default function ComparePage() {
           <div className="cmp-chips" data-testid="cmp-chips">
             {symbols.map((s, i) => (
               <span key={s} className="cmp-chip" style={{ borderColor: COLORS[i] }}>
-                <i style={{ background: COLORS[i] }} />{s}
+                <CoinMark symbol={s} />{s}
                 {symbols.length > 1 && <button type="button" aria-label={`Remove ${s}`} onClick={() => setSymbols(x => x.filter(y => y !== s))} data-testid={`cmp-rm-${s}`}>×</button>}
               </span>
             ))}
@@ -86,6 +88,21 @@ export default function ComparePage() {
             {RANGES.map(r => <button key={r.id} type="button" role="radio" aria-checked={range === r.id} onClick={() => setRange(r.id)} data-testid={`cmp-r-${r.id}`}>{r.label}</button>)}
           </div>
         </section>
+
+        {enough && (
+          <section className="lx-kpis cmp-kpis" aria-label="Returns" data-testid="cmp-kpis">
+            {ready.map((s, k) => {
+              const st = cmp.stats[k]!;
+              return (
+                <Kpi key={s} label={<Pair base={s.replace(/USDT$/, '')} symbol={s} quote={/USDT$/.test(s) ? '/USDT' : null} />}
+                  side={<i className="cmp-key" style={{ background: COLORS[symbols.indexOf(s)] }} aria-hidden />}
+                  value={<span className={`m ${toneOf(st.ret)}`}>{fmtPct(st.ret)}</span>}
+                  sub={k === 0 ? `Over ${rg.label}` : <>vs {ready[0]} <span className={`m ${toneOf(st.vsFirst)}`}>{fmtPct(st.vsFirst)}</span></>}
+                  viz={<Spark values={cmp.pct[k]!} color={COLORS[symbols.indexOf(s)]} />} />
+              );
+            })}
+          </section>
+        )}
 
         <section className="x-card" aria-label="Chart">
           {failed.length > 0 && <p className="cp-err">No data for {failed.join(', ')}.</p>}
@@ -105,8 +122,8 @@ export default function ComparePage() {
                     const st = cmp.stats[k]!;
                     return (
                       <tr key={s} data-testid={`cmp-row-${s}`}>
-                        <td><i className="cmp-dot" style={{ background: COLORS[symbols.indexOf(s)] }} /><b>{s}</b></td>
-                        <td className={`r m ${toneOf(st.ret)}`} data-label="Return">{fmtPct(st.ret)}</td>
+                        <td><span className="cmp-mkt"><i className="cmp-dot" style={{ background: COLORS[symbols.indexOf(s)] }} /><Pair base={s} quote={null} /></span></td>
+                        <td className="r" data-label="Return"><Chg v={st.ret} /></td>
                         <td className={`r m ${k === 0 ? '' : toneOf(st.vsFirst)}`} data-label={`vs ${ready[0]}`}>{k === 0 ? '—' : fmtPct(st.vsFirst)}</td>
                         <td className={`r m ${st.maxDd ? 'neg' : ''}`} data-label="Max drawdown">{st.maxDd == null ? '—' : `${st.maxDd.toFixed(2)}%`}</td>
                         <td className="r m" data-label="Volatility / bar">{st.vol == null ? '—' : `${st.vol.toFixed(2)}%`}</td>

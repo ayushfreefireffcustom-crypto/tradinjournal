@@ -1,0 +1,140 @@
+/* Lux layer (3 Nov 2026): the approved dashboard's finish on the markets and
+   strategy pages: hairline edges with a soft top light, uppercase micro labels,
+   outlined status pills, coin marks, hero stat tiles. Scoped to `.lux`, which
+   frame.tsx puts on the content area for those routes. Same tokens and type
+   scale as the rest of v6; no new colours. Prefix `lx-` for new pieces. */
+.v6 .lux {
+  --lx-edge: rgba(255, 255, 255, .075);
+  --lx-edge-2: rgba(255, 255, 255, .12);
+  --lx-top: rgba(255, 255, 255, .03);
+  --lx-glow: rgba(8, 196, 101, .14);
+  --lx-row: rgba(255, 255, 255, .025);
+  --lx-g-edge: rgba(8, 196, 101, .32);
+  --lx-r-edge: rgba(254, 58, 49, .32);
+}
+html[data-theme=light] .v6 .lux {
+  --lx-edge: rgba(0, 0, 0, .08);
+  --lx-edge-2: rgba(0, 0, 0, .14);
+  --lx-top: rgba(0, 0, 0, 0);
+  --lx-glow: rgba(5, 166, 86, .10);
+  --lx-row: rgba(0, 0, 0, .025);
+  --lx-g-edge: rgba(5, 166, 86, .35);
+  --lx-r-edge: rgba(224, 52, 43, .3);
+}
+
+/* ── surfaces ─────────────────────────────────────────────────────────────── */
+.v6 .lux .x-page { gap: 20px; }
+.v6 .lux .x-card {
+  border: 1px solid var(--lx-edge);
+  background: linear-gradient(180deg, var(--lx-top), transparent 160px), var(--s1);
+}
+.v6 .lux .x-inset { box-shadow: inset 0 0 0 1px var(--lx-edge); }
+.v6 .lux .x-ch { margin-bottom: 16px; }
+.v6 .lux .x-ch h2, .v6 .lux .x-ch h3 { font-weight: 600; letter-spacing: -.01em; }
+.v6 .lux > .x-page > .x-seg, .v6 .lux .x-page > * > .x-seg:not(.x-seg--in) { box-shadow: inset 0 0 0 1px var(--lx-edge); }
+
+/* A card that leads its page: a green light from the top-left corner. */
+.v6 .lux .lx-feature { overflow: hidden; }
+.v6 .lux .lx-feature::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
+  background: radial-gradient(520px 220px at 0% 0%, var(--lx-glow), transparent 70%);
+}
+.v6 .lux .lx-feature > * { position: relative; }
+
+/* Uppercase micro label, the dashboard's "ONE THING TO FIX". */
+.v6 .lux .lx-eyebrow { display: inline-flex; align-items: center; gap: 8px; font: 600 var(--t1)/1 var(--sans); letter-spacing: .1em; text-transform: uppercase; color: var(--g-tx); }
+.v6 .lux .lx-eyebrow::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--g); box-shadow: 0 0 0 3px var(--g-soft); }
+.v6 .lux .lx-eyebrow--mut { color: var(--dim); }
+.v6 .lux .lx-eyebrow--mut::before { background: var(--dim); box-shadow: none; }
+
+/* ── tables ───────────────────────────────────────────────────────────────── */
+.v6 .lux .x-tbl th { font: 500 var(--t1)/1.2 var(--sans); text-transform: uppercase; letter-spacing: .07em; color: var(--dim); }
+.v6 .lux .x-tbl tbody tr td { transition: background-color .12s; }
+.v6 .lux .x-tbl tbody tr:hover td { background: var(--lx-row); }
+.v6 .lux .x-tbl tbody tr.x-click:hover td { background: var(--s2); }
+
+/* ── pills ────────────────────────────────────────────────────────────────── */
+.v6 .lux .x-tag { box-shadow: inset 0 0 0 1px var(--lx-edge); background: transparent; }
+.v6 .lux .x-tag--g { background: var(--g-soft); box-shadow: inset 0 0 0 1px var(--lx-g-edge); }
+.v6 .lux .x-tag--r { background: var(--r-soft); box-shadow: inset 0 0 0 1px var(--lx-r-edge); }
+.v6 .lux .x-tag--solid { box-shadow: none; background: var(--hi); }
+/* Ratings: outlined, with a dot; "strong" fills the dot's ring. */
+.v6 .lux .sg-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 8px; font-size: var(--t1); font-weight: 600; letter-spacing: .01em;
+  background: transparent; box-shadow: inset 0 0 0 1px var(--lx-edge); }
+.v6 .lux .sg-pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--dim); }
+.v6 .lux .sg-pill.sg-buy, .v6 .lux .sg-pill.sg-strong_buy { color: var(--g-tx); background: var(--g-soft); box-shadow: inset 0 0 0 1px var(--lx-g-edge); }
+.v6 .lux .sg-pill.sg-sell, .v6 .lux .sg-pill.sg-strong_sell { color: var(--r-tx); background: var(--r-soft); box-shadow: inset 0 0 0 1px var(--lx-r-edge); }
+.v6 .lux .sg-pill.sg-buy::before, .v6 .lux .sg-pill.sg-strong_buy::before { background: var(--g); }
+.v6 .lux .sg-pill.sg-sell::before, .v6 .lux .sg-pill.sg-strong_sell::before { background: var(--r); }
+.v6 .lux .sg-pill.sg-strong_buy::before { box-shadow: 0 0 0 3px var(--lx-g-edge); }
+.v6 .lux .sg-pill.sg-strong_sell::before { box-shadow: 0 0 0 3px var(--lx-r-edge); }
+.v6 .lux .sg-pill.sg-strong_buy, .v6 .lux .sg-pill.sg-strong_sell { font-weight: 700; }
+
+/* Status word with a dot (strategies, deployments, alerts); pages colour it. */
+.v6 .st-status { display: inline-flex; align-items: center; gap: 6px; font: 600 var(--t1)/1 var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--dim); }
+.v6 .st-status::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--s4); }
+@keyframes st-pulse { 50% { box-shadow: 0 0 0 6px transparent; } }
+
+/* ── coin mark: a logo when the CDN has one, initials otherwise ───────────── */
+.v6 .lx-coin { display: inline-grid; place-items: center; flex: none; width: 24px; height: 24px; border-radius: 50%; overflow: hidden;
+  background: var(--s3); color: var(--mut); font: 700 9px/1 var(--sans); letter-spacing: -.02em; box-shadow: inset 0 0 0 1px var(--lx-edge, var(--line)); }
+.v6 .lx-coin img { width: 100%; height: 100%; display: block; }
+.v6 .lx-coin--lg { width: 32px; height: 32px; font-size: var(--t1); }
+.v6 .lx-pair { display: inline-flex; align-items: center; gap: 10px; min-width: 0; }
+.v6 .lx-pair > span:last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+
+/* ── hero stat tiles ──────────────────────────────────────────────────────── */
+.v6 .lux .lx-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+.v6 .lux .lx-kpi { position: relative; display: grid; align-content: start; gap: 6px; min-width: 0; padding: 20px 22px; border-radius: var(--r-card);
+  border: 1px solid var(--lx-edge); background: linear-gradient(180deg, var(--lx-top), transparent 120px), var(--s1); box-shadow: var(--shadow); overflow: hidden; }
+.v6 .lux .lx-kpi-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: var(--t2); color: var(--mut); min-height: 22px; }
+.v6 .lux .lx-kpi-v { font: 800 var(--t5)/1.05 var(--sans); letter-spacing: -.035em; font-feature-settings: "tnum"; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.v6 .lux .lx-kpi-v small { font: 600 var(--t3)/1 var(--sans); letter-spacing: 0; color: var(--mut); margin-left: 4px; }
+.v6 .lux .lx-kpi-s { font-size: var(--t2); color: var(--mut); line-height: 1.4; }
+.v6 .lux .lx-kpi-viz { margin-top: 8px; height: 34px; }
+.v6 .lux .lx-kpi-viz:has(.lx-split) { height: auto; }
+.v6 .lux .lx-kpi-viz svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.v6 .lux .lx-delta { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 8px; font: 600 var(--t1)/1 var(--sans); font-feature-settings: "tnum";
+  background: var(--s2); color: var(--mut); }
+.v6 .lux .lx-delta.pos { background: var(--g-soft); color: var(--g-tx); }
+.v6 .lux .lx-delta.neg { background: var(--r-soft); color: var(--r-tx); }
+.v6 .lux .lx-ic { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 10px; background: var(--s2); color: var(--mut); box-shadow: inset 0 0 0 1px var(--lx-edge); flex: none; }
+.v6 .lux .lx-ic--g { background: var(--g-soft); color: var(--g-tx); box-shadow: inset 0 0 0 1px var(--lx-g-edge); }
+
+/* Split bar (buy / neutral / sell, long / short). */
+.v6 .lux .lx-split { display: flex; height: 6px; gap: 3px; margin-top: 10px; }
+.v6 .lux .lx-split i { display: block; height: 100%; border-radius: 3px; min-width: 3px; }
+.v6 .lux .lx-split i.g { background: var(--g); }
+.v6 .lux .lx-split i.n { background: var(--s4); }
+.v6 .lux .lx-split i.r { background: var(--r); }
+
+/* Signed change as a tinted pill, the dashboard's delta badge. */
+.v6 .lux .lx-chg { display: inline-block; min-width: 68px; padding: 4px 8px; border-radius: 8px; text-align: right; font-weight: 500; font-feature-settings: "tnum"; background: var(--s2); color: var(--mut); }
+.v6 .lux .lx-chg.pos { background: var(--g-soft); color: var(--g-tx); }
+.v6 .lux .lx-chg.neg { background: var(--r-soft); color: var(--r-tx); }
+
+/* Meter: a value on a 0–100 track (RSI, share long). */
+.v6 .lux .lx-meter { display: inline-flex; align-items: center; gap: 10px; justify-content: flex-end; }
+.v6 .lux .lx-meter i { position: relative; display: block; width: 64px; height: 4px; border-radius: 2px; background: var(--track); overflow: hidden; }
+.v6 .lux .lx-meter i::after { content: ""; position: absolute; inset: 0 auto 0 0; width: var(--v, 0%); border-radius: 2px; background: var(--mut); }
+.v6 .lux .lx-meter.pos i::after { background: var(--g); }
+.v6 .lux .lx-meter.neg i::after { background: var(--r); }
+
+@media (max-width: 760px) {
+  .v6 .lux .lx-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .v6 .lux .lx-kpi:last-child:nth-child(odd) { grid-column: 1 / -1; }
+  .v6 .lux .lx-kpi-h { flex-direction: column; align-items: flex-start; gap: 4px; }
+  .v6 .lux .lx-kpi-h > :last-child:not(:first-child) { font-size: var(--t1); }
+  .v6 .lux .lx-kpi { padding: 16px; }
+  .v6 .lux .lx-kpi-v { font-size: var(--t4); }
+  .v6 .lux .lx-kpi-viz { height: 26px; }
+  .v6 .lux .lx-meter i { width: 40px; }
+}
+
+/* ── page touches that only need CSS ──────────────────────────────────────── */
+/* Options: stat strip and expiry tabs read as tiles. */
+.v6 .lux .op-strip { gap: 16px; }
+.v6 .lux .op-strip > div { padding: 18px 20px; border-radius: var(--r-card); border: 1px solid var(--lx-edge); background: linear-gradient(180deg, var(--lx-top), transparent 100px), var(--s1); gap: 6px; }
+.v6 .lux .op-strip b { font-size: var(--t4); }
+.v6 .lux .op-exps button { border-color: var(--lx-edge); padding: 10px 14px; }
+.v6 .lux .op-exps button:hover { border-color: var(--lx-edge-2); }

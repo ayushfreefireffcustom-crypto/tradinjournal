@@ -15,6 +15,7 @@ import '@/styles/v6/kit.css';
 import '@/styles/v6/tools.css';
 import '@/styles/v6/markets.css';
 import Freshness from '@/components/v6/ui/freshness';
+import { Chg, Delta, Kpi, Pair, Spark, Split } from '@/components/v6/ui/lux';
 
 function useWidth<T extends HTMLElement>() {
   const ref = useRef<T>(null);
@@ -72,12 +73,12 @@ export default function OverviewPage() {
 
 function BriefCard({ b }: { b: MarketBrief }) {
   return (
-    <section className="x-card ov-brief" aria-label="Weekly market brief" data-testid="ov-brief">
-      <div className="ov-brief-k">This week in markets</div>
+    <section className="x-card ov-brief lx-feature" aria-label="Weekly market brief" data-testid="ov-brief">
+      <span className="lx-eyebrow">This week in markets</span>
       <h2>{b.headline}</h2>
-      <p>{b.summary}</p>
+      <p className="ov-brief-sum">{b.summary}</p>
       <ul>{b.bullets.map((x, i) => <li key={i}>{x}</li>)}</ul>
-      <p className="ov-watch"><b>Worth watching:</b> {b.watch}</p>
+      <div className="ov-watch"><span className="lx-eyebrow lx-eyebrow--mut">Worth watching</span><p>{b.watch}</p></div>
       <p className="cp-fine">Not financial advice.</p>
     </section>
   );
@@ -85,37 +86,26 @@ function BriefCard({ b }: { b: MarketBrief }) {
 
 function KpiStrip({ o }: { o: Overview }) {
   const b = o.breadth;
-  const tot = b.up + b.down + b.flat || 1;
   const fg = o.fearGreed;
   const alt = o.altSeason;
   return (
-    <section className="ov-kpis" aria-label="Market gauges">
-      <div className="x-card ov-kpi" data-testid="ov-breadth">
-        <div className="ov-kpi-h">Breadth · top 100</div>
-        <div className="ov-kpi-v"><span className="pos">{b.up}</span> up · <span className="neg">{b.down}</span> down</div>
-        <div className="sg-bar"><i className="g" style={{ width: `${(b.up / tot) * 100}%` }} /><i className="n" style={{ width: `${(b.flat / tot) * 100}%` }} /><i className="r" style={{ width: `${(b.down / tot) * 100}%` }} /></div>
-        <div className="ov-kpi-s">Median move <span className={`m ${toneOf(b.medianChange)}`}>{fmtPct(b.medianChange)}</span></div>
-      </div>
-      <div className="x-card ov-kpi" data-testid="ov-fng">
-        <div className="ov-kpi-h">Fear &amp; Greed</div>
-        {fg ? (
-          <>
-            <div className="ov-kpi-v"><b className="m">{fg.value}</b> {fg.label}</div>
-            <div className="ov-gauge"><i style={{ left: `${fg.value}%` }} /></div>
-            <div className="ov-kpi-s">30 days <Sparkline values={fg.history.map(h => h.value)} width={110} height={22} /></div>
-          </>
-        ) : <div className="x-muted">Unavailable right now</div>}
-      </div>
-      <div className="x-card ov-kpi" data-testid="ov-altseason">
-        <div className="ov-kpi-h">Altcoin season · {alt.window} days</div>
-        {alt.index != null ? (
-          <>
-            <div className="ov-kpi-v"><b className="m">{alt.index}</b> / 100 · {alt.label === 'neither' ? 'neither season' : alt.label}</div>
-            <div className="ov-gauge ov-gauge--alt"><i style={{ left: `${alt.index}%` }} /></div>
-            <div className="ov-kpi-s">{alt.index}% of {alt.counted} top alts beat BTC ({fmtPct(alt.btc90, 1)})</div>
-          </>
-        ) : <div className="x-muted">Not enough history yet</div>}
-      </div>
+    <section className="lx-kpis" aria-label="Market gauges">
+      <Kpi testId="ov-breadth" label="Breadth · top 100" side={<Delta v={b.medianChange} digits={2} />}
+        value={<><span className="pos">{b.up}</span><small>up</small> <span className="neg">{b.down}</span><small>down</small></>}
+        sub={<>Median move <span className={`m ${toneOf(b.medianChange)}`}>{fmtPct(b.medianChange)}</span></>}
+        viz={<Split g={b.up} n={b.flat} r={b.down} />} />
+      {fg ? (
+        <Kpi testId="ov-fng" label="Fear & Greed" side={<span className="x-muted">30 days</span>}
+          value={<span className={fg.value >= 55 ? 'pos' : fg.value <= 45 ? 'neg' : ''}>{fg.value}<small>{fg.label}</small></span>}
+          sub={<div className="ov-gauge"><i style={{ left: `${fg.value}%` }} /></div>}
+          viz={<Spark values={fg.history.map(h => h.value)} />} />
+      ) : <Kpi testId="ov-fng" label="Fear & Greed" value={<span className="x-muted">—</span>} sub="Unavailable right now" />}
+      {alt.index != null ? (
+        <Kpi testId="ov-altseason" label={`Altcoin season · ${alt.window} days`} side={<span className="x-muted">{alt.label === 'neither' ? 'Neither season' : alt.label}</span>}
+          value={<>{alt.index}<small>/ 100</small></>}
+          sub={<div className="ov-gauge ov-gauge--alt"><i style={{ left: `${alt.index}%` }} /></div>}
+          viz={<span className="lx-kpi-s">{alt.index}% of {alt.counted} top alts beat BTC ({fmtPct(alt.btc90, 1)})</span>} />
+      ) : <Kpi testId="ov-altseason" label={`Altcoin season · ${alt.window} days`} value={<span className="x-muted">—</span>} sub="Not enough history yet" />}
     </section>
   );
 }
@@ -202,11 +192,16 @@ function Movers({ title, rows, testId }: { title: string; rows: Overview['gainer
   return (
     <section className="x-card" aria-label={title} data-testid={testId}>
       <div className="x-ch"><h2>{title}</h2></div>
-      <ul className="ov-movers">
-        {rows.map(r => (
-          <li key={r.symbol}><Link href={`/charts?symbol=${r.symbol}&tf=1h`} className="x-link"><b>{r.base}</b></Link><span className="m x-muted">{fmtPrice(r.price)}</span><span className={`m ${toneOf(r.change24h)}`}>{fmtPct(r.change24h)}</span></li>
+      <ol className="ov-movers">
+        {rows.map((r, i) => (
+          <li key={r.symbol}>
+            <span className="ov-rank m">{i + 1}</span>
+            <Link href={`/charts?symbol=${r.symbol}&tf=1h`} className="ov-mv-pair"><Pair base={r.base} symbol={r.symbol} quote={null} /></Link>
+            <span className="m x-muted">{fmtPrice(r.price)}</span>
+            <Chg v={r.change24h} />
+          </li>
         ))}
-      </ul>
+      </ol>
     </section>
   );
 }

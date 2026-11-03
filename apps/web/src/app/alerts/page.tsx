@@ -18,6 +18,7 @@ import {
   type CatalogueItem, type IaOperator, type IaTimeframe, type IndicatorAlert, type IndicatorOperand, type Operand, type Preview, type RuleBody,
   type WatchRule,
 } from '@/lib/indicator-alerts-api';
+import { Kpi, Pair } from '@/components/v6/ui/lux';
 import '@/styles/v6/kit.css';
 import '@/styles/v6/tools.css';
 import '@/styles/v6/markets.css';
@@ -70,6 +71,13 @@ export default function AlertsPage() {
     <AppShell legacy={false} pageTitle="Indicator alerts" pageSubtitle="Get told when an indicator triggers"
       actions={<button className="x-btn x-btn--hi" onClick={() => setBuilding(true)} disabled={!cat.data || count >= MAX_RULES} title={count >= MAX_RULES ? `Up to ${MAX_RULES} alerts` : undefined} data-testid="ia-new">New alert</button>}>
       <div className="x-page" data-testid="ia-page">
+        {!!rules.data?.length && (
+          <section className="lx-kpis" aria-label="Summary" data-testid="ia-kpis">
+            <Kpi label="Watching" value={<span className="m">{rules.data.filter(r => r.status === 'active').length}<small>active</small></span>} sub={`${count} of ${MAX_RULES} alerts used`} />
+            <Kpi label="Fired in 24 hours" value={<span className="m">{(firings.data ?? []).filter(f => Date.now() - new Date(f.firedAt).getTime() < 86_400_000).length}</span>} sub="Checked at every bar close" />
+            <Kpi label="Waiting to re-arm" value={<span className="m">{rules.data.filter(r => r.status === 'triggered').length}</span>} sub="Fired once and stopped" />
+          </section>
+        )}
         {rules.error ? <ErrorCard message={rules.error} onRetry={rules.reload} /> : !rules.data ? <div className="x-skel cp-skel-table" /> : !rules.data.length ? (
           <div className="x-card x-empty" data-testid="ia-empty">
             <b>No indicator alerts yet</b>
@@ -85,12 +93,12 @@ export default function AlertsPage() {
                 <tbody>
                   {rules.data.map(r => (
                     <tr key={r.id} className={r.status === 'active' ? '' : 'ak-off'} data-testid={`ia-row-${r.id}`}>
-                      <td><Link className="x-link" href={`/charts?symbol=${encodeURIComponent(r.symbol)}&tf=${r.timeframe}`}><b>{r.symbol}</b></Link> <span className="x-tag x-tag--m">{r.timeframe}</span></td>
+                      <td><span className="ia-mkt"><Link className="sc-pair" href={`/charts?symbol=${encodeURIComponent(r.symbol)}&tf=${r.timeframe}`}><Pair base={r.symbol} quote={null} /></Link><span className="x-tag x-tag--m">{r.timeframe}</span></span></td>
                       <td>{r.rule && <b className="ia-rulename">{r.rule.name}</b>}<span data-testid="ia-desc">{r.description}</span>{r.note && <div className="x-muted ia-note">{r.note}</div>}<div className="x-muted ia-note">{repeatLabel(r)}</div>
                         <details className="ia-why" data-testid="ia-why"><summary>What it means</summary><p>{r.explanation.what}</p><p><b>Why it matters.</b> {r.explanation.why}</p><p><b>Where it misleads.</b> {r.explanation.caution}</p></details></td>
                       <td>{r.lastBarTime ? <span className="m">{fmt(r.lastLeft)}{r.right.kind === 'indicator' && <> vs {fmt(r.lastRight)}</>}</span> : <span className="x-muted">Waiting for a bar close</span>}</td>
                       <td>{r.lastFiredAt ? ago(r.lastFiredAt) : <span className="x-muted">Never</span>}</td>
-                      <td><span className={`x-tag ${r.status === 'active' ? 'x-tag--g' : r.status === 'triggered' ? 'x-tag--r' : ''}`} data-testid="ia-status">{r.status === 'active' ? 'Active' : r.status === 'paused' ? 'Paused' : 'Triggered'}</span></td>
+                      <td><span className={`st-status ia-st--${r.status}`} data-testid="ia-status">{r.status === 'active' ? 'Active' : r.status === 'paused' ? 'Paused' : 'Triggered'}</span></td>
                       <td className="trd-acts">
                         {r.status === 'active'
                           ? <button className="x-btn x-btn--sm" disabled={busyId === r.id} onClick={() => void setStatus(r, 'paused')} data-testid="ia-pause">Pause</button>
@@ -281,6 +289,12 @@ function RuleBuilder({ catalogue, onClose, onCreated }: { catalogue: CatalogueIt
 }
 
 // ── Watch rules (H12): well-known conditions, explained, one click to watch ──
+const CAT_ICON: Record<WatchRule['category'], string> = {
+  trend: 'M4 17l5-5 4 4 7-8M15 8h5v5',
+  momentum: 'M13 3L5 14h6l-1 7 8-11h-6z',
+  volatility: 'M3 12h3l3-7 4 14 3-7h5',
+  volume: 'M5 20v-6M10 20V9M15 20v-4M20 20V4',
+};
 const CATS: Array<['all' | WatchRule['category'], string]> = [['all', 'All'], ['trend', 'Trend'], ['momentum', 'Momentum'], ['volatility', 'Volatility'], ['volume', 'Volume']];
 function WatchRules({ onCreated }: { onCreated: (a: IndicatorAlert) => void }) {
   const toast = useToast();
@@ -306,9 +320,9 @@ function WatchRules({ onCreated }: { onCreated: (a: IndicatorAlert) => void }) {
       <div className="ia-watch-grid">
         {shown.map((r) => (
           <article key={r.id} className="ia-wr" data-testid={`ia-wr-${r.id}`}>
-            <div className="ia-wr-h"><b>{r.name}</b><span className={`x-tag ${r.bias === 'bullish' ? 'x-tag--g' : r.bias === 'bearish' ? 'x-tag--r' : ''}`}>{r.bias === 'neutral' ? 'Either way' : r.bias === 'bullish' ? 'Bullish' : 'Bearish'}</span></div>
+            <div className="ia-wr-h"><span className={`lx-ic ${r.bias === 'bullish' ? 'lx-ic--g' : ''}`} aria-hidden><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d={CAT_ICON[r.category]} /></svg></span><b>{r.name}</b><span className={`x-tag ${r.bias === 'bullish' ? 'x-tag--g' : r.bias === 'bearish' ? 'x-tag--r' : ''}`}>{r.bias === 'neutral' ? 'Either way' : r.bias === 'bullish' ? 'Bullish' : 'Bearish'}</span></div>
             <p title={`${r.explain.why} ${r.explain.caution}`}>{r.explain.what}</p>
-            <button type="button" className="x-btn x-btn--sm" onClick={() => { setPick(r); setTf(r.timeframe); }} data-testid={`ia-wr-watch-${r.id}`}>Watch</button>
+            <button type="button" className="x-btn x-btn--sm" onClick={() => { setPick(r); setTf(r.timeframe); }} data-testid={`ia-wr-watch-${r.id}`}>+ Watch</button>
           </article>
         ))}
       </div>

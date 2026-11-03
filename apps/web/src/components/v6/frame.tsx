@@ -21,6 +21,7 @@ import {
 import '@/styles/v6/tokens.css';
 import '@/styles/v6/components.css';
 import '@/styles/v6/frame.css';
+import '@/styles/v6/lux.css';
 import { useMenu } from './ui/use-menu';
 import { useDialog } from './ui/use-dialog';
 import IconButton from './ui/icon-button';
@@ -57,6 +58,9 @@ export const NAV: { title: string; items: FrameNavItem[] }[] = [
     { href: '/coach', label: 'AI coach', icon: ICoach },
   ] },
 ];
+// Pages that get the lux finish (styles/v6/lux.css): every Markets page and the strategy pages.
+const LUX = NAV.find(g => g.title === 'Markets')!.items.map(i => i.href);
+function isLux(href?: string) { return !!href && (LUX.includes(href) || href === '/strategies' || href.startsWith('/strategies/')); }
 const PARTNER: FrameNavItem[] = [
   { href: '/partner', label: 'Overview', icon: IPartner },
   { href: '/partner/link', label: 'My link', icon: ILink },
@@ -192,7 +196,7 @@ export default function Frame(p: Props) {
           </div>
         </header>
 
-        <main className="f-content">{p.children}</main>
+        <main className={`f-content${isLux(p.activeHref) ? ' lux' : ''}`}>{p.children}</main>
       </div>
 
       <nav className="f-tabbar" aria-label="Primary">

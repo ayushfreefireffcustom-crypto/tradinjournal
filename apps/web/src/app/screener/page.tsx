@@ -24,6 +24,7 @@ import { useExchangeConnections } from '@/lib/use-exchange-connections';
 import '@/styles/v6/kit.css';
 import '@/styles/v6/tools.css';
 import Freshness from '@/components/v6/ui/freshness';
+import { Chg, Meter, Pair } from '@/components/v6/ui/lux';
 
 // ── Editable rows ─────────────────────────────────────────────────────────────
 // A row is one filter in the editor; "between" is two filters when run.
@@ -83,6 +84,19 @@ const QUICK: Array<{ name: string; groups: ScreenerFilter[][]; sort: ScreenDefin
   { name: 'Momentum', groups: [[i(ind('price', 'close'), 'gt', ind('ema', 'value', { length: 50 })), i(RSI, 'gt', val(55)), i(ind('roc', 'value', { length: 10 }), 'gt', val(0))]], sort: { by: 'col:2', dir: 'desc' } },
   { name: 'Golden cross', groups: [[i(ind('ema', 'value', { length: 50 }), 'crosses_above', ind('ema', 'value', { length: 200 }))]], sort: { by: 'volume24h', dir: 'desc' } },
 ];
+
+// One line icon per quick screen (24-unit paths, stroked).
+const QUICK_ICON: Record<string, string> = {
+  'Oversold': 'M4 6l6 6 4-4 6 8M20 16v-4M20 16h-4',
+  'Overbought': 'M4 18l6-6 4 4 6-8M20 8v4M20 8h-4',
+  'Top gainers': 'M12 19V5M6 11l6-6 6 6',
+  'Top losers': 'M12 5v14M6 13l6 6 6-6',
+  'Volume surge': 'M5 20v-6M10 20V9M15 20v-4M20 20V4',
+  'Positive funding': 'M12 6v12M6 12h12',
+  'Negative funding': 'M6 12h12',
+  'Momentum': 'M13 3L5 14h6l-1 7 8-11h-6z',
+  'Golden cross': 'M4 17C9 17 11 7 20 7M4 9c6 0 8 8 16 8',
+};
 
 // ── Formatting ────────────────────────────────────────────────────────────────
 const num = (v: number | null | undefined) => (v == null ? '—' : Math.abs(v) >= 1000 ? v.toLocaleString('en-US', { maximumFractionDigits: 1 }) : Math.abs(v) >= 1 ? v.toFixed(2) : v === 0 ? '0' : v.toPrecision(3));
@@ -214,7 +228,9 @@ export default function ScreenerPage() {
         <section className="x-card sc-quick" aria-label="Screens">
           <div className="sc-chips" role="list">
             {QUICK.map(q => (
-              <button key={q.name} type="button" role="listitem" className={`x-btn x-btn--sm ${active?.kind === 'quick' && active.id === q.name ? 'sc-on' : ''}`} onClick={() => load(q.groups, q.sort, { kind: 'quick', id: q.name })} data-testid={`sc-quick-${q.name.replace(/\W+/g, '-').toLowerCase()}`}>{q.name}</button>
+              <button key={q.name} type="button" role="listitem" className={`x-btn x-btn--sm ${active?.kind === 'quick' && active.id === q.name ? 'sc-on' : ''}`} onClick={() => load(q.groups, q.sort, { kind: 'quick', id: q.name })} data-testid={`sc-quick-${q.name.replace(/\W+/g, '-').toLowerCase()}`}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d={QUICK_ICON[q.name] ?? 'M5 12h14'} /></svg>{q.name}
+              </button>
             ))}
           </div>
           {!!saved.data?.length && (
@@ -285,13 +301,13 @@ export default function ScreenerPage() {
                   <tbody>
                     {rows.map(r => (
                       <tr key={r.symbol} data-testid={`sc-row-${r.symbol}`}>
-                        <td><Link className="x-link" href={`/charts?symbol=${r.symbol}&tf=${res.timeframe}`}><b>{r.base}</b></Link><span className="x-muted sc-quote">/USDT</span></td>
+                        <td><Link className="sc-pair" href={`/charts?symbol=${r.symbol}&tf=${res.timeframe}`}><Pair base={r.base} symbol={r.symbol} /></Link></td>
                         <td className="r m" data-label="Price">{px(r.price)}</td>
-                        <td className={`r m ${tone(r.change24h)}`} data-label="24h">{pctS(r.change24h)}</td>
+                        <td className="r" data-label="24h"><Chg v={r.change24h} /></td>
                         <td className="r m" data-label="Volume 24h">{vol(r.volume24h)}</td>
                         <td className={`r m ${tone(r.funding)}`} data-label="Funding">{pctS(r.funding, 4)}</td>
                         <td className="r m" data-label="Open interest">{r.openInterest == null ? '—' : vol(r.openInterest)}</td>
-                        {r.values.map((v, k) => <td key={k} className="r m" data-label={res.columns[k]!.label}>{num(v)}</td>)}
+                        {r.values.map((v, k) => <td key={k} className="r m" data-label={res.columns[k]!.label}>{v != null && /^RSI|^MFI|^Stoch/i.test(res.columns[k]!.label) ? <Meter v={v} label={num(v)} t={v >= 70 ? 'pos' : v <= 30 ? 'neg' : ''} /> : num(v)}</td>)}
                         <td className="trd-acts">
                           <WatchStar symbol={r.symbol} label={r.base} />
                           <Link className="x-btn x-btn--sm" href={`/charts?symbol=${r.symbol}&tf=${res.timeframe}`}>Chart</Link>

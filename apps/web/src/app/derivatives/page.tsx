@@ -11,6 +11,7 @@ import { fmtPct, fmtPrice, fmtUsd, hubApi, toneOf, type DerivRow, type SqueezeKi
 import '@/styles/v6/kit.css';
 import '@/styles/v6/tools.css';
 import Freshness from '@/components/v6/ui/freshness';
+import { Chg, Kpi, Meter, Pair, Split } from '@/components/v6/ui/lux';
 
 const SNAP_KEY = 'tradelogs.derivatives.snapshot';
 interface Snapshot { at: number; rows: Record<string, { f: number | null; oi: number | null }> }
@@ -55,6 +56,7 @@ export default function DerivativesPage() {
   }, []);
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: 'turnover', dir: -1 });
   const [q, setQ] = useState('');
+  const [all, setAll] = useState(false);
 
   const rows = useMemo(() => {
     const list = (d.data?.rows ?? []).filter(r => !q.trim() || r.base.includes(q.trim().toUpperCase()));
@@ -79,10 +81,13 @@ export default function DerivativesPage() {
           <div className="x-card x-empty" data-testid="dv-down"><b>No derivatives data right now</b><p>{data.note}</p><button className="x-btn" onClick={() => void d.reload()}>Try again</button></div>
         ) : (
           <>
-            <section className="ov-kpis" aria-label="Totals">
-              <div className="x-card ov-kpi" data-testid="dv-oi"><div className="ov-kpi-h">Open interest · top {data.rows.length}</div><div className="ov-kpi-v"><b className="m">{fmtUsd(data.totals.oiValue)}</b></div><div className="ov-kpi-s">Value of open positions</div></div>
-              <div className="x-card ov-kpi" data-testid="dv-funding"><div className="ov-kpi-h">Average funding</div><div className="ov-kpi-v"><b className={`m ${toneOf(data.totals.weightedFunding)}`}>{fmtFunding(data.totals.weightedFunding)}</b></div><div className="ov-kpi-s">Per period, weighted by open interest{data.totals.weightedFunding != null ? ` · ${fmtPct(data.totals.weightedFunding * 3 * 365, 1)} a year` : ''}</div></div>
-              <div className="x-card ov-kpi" data-testid="dv-positive"><div className="ov-kpi-h">Longs paying shorts</div><div className="ov-kpi-v"><b className="m">{data.totals.positiveShare == null ? '—' : `${Math.round(data.totals.positiveShare * 100)}%`}</b> of contracts</div><div className="ov-kpi-s">Positive funding means longs pay shorts</div></div>
+            <section className="lx-kpis" aria-label="Totals">
+              <Kpi testId="dv-oi" label={`Open interest · top ${data.rows.length}`} value={<span className="m">{fmtUsd(data.totals.oiValue)}</span>} sub="Value of open positions" />
+              <Kpi testId="dv-funding" label="Average funding" value={<span className={`m ${toneOf(data.totals.weightedFunding)}`}>{fmtFunding(data.totals.weightedFunding)}</span>}
+                sub={<>Per period, weighted by open interest{data.totals.weightedFunding != null ? ` · ${fmtPct(data.totals.weightedFunding * 3 * 365, 1)} a year` : ''}</>} />
+              <Kpi testId="dv-positive" label="Longs paying shorts" value={<>{data.totals.positiveShare == null ? '—' : `${Math.round(data.totals.positiveShare * 100)}%`}<small>of contracts</small></>}
+                sub="Positive funding means longs pay shorts"
+                viz={data.totals.positiveShare == null ? undefined : <Split g={data.totals.positiveShare} r={1 - data.totals.positiveShare} />} />
             </section>
             {snap && <p className="cp-fine" data-testid="dv-since">Changes in the table are since your last look, {ago(Date.now() - snap.at)} ago.</p>}
 
@@ -93,7 +98,7 @@ export default function DerivativesPage() {
                   const sq = data.rows.filter(r => r.squeeze).sort((a, b) => Math.abs(b.oiChange24h ?? 0) - Math.abs(a.oiChange24h ?? 0));
                   return !sq.length ? <p className="x-muted dv-none">Nothing big right now: no move of 2% in price with 3% in open interest.</p> : (
                     <ul className="ov-movers dv-list">
-                      {sq.map(r => <li key={r.symbol} title={SQUEEZE[r.squeeze!].hint}><b>{r.base}</b><span className={`x-tag ${SQUEEZE[r.squeeze!].tone}`}>{SQUEEZE[r.squeeze!].label}</span><span className="m"><span className={toneOf(r.change24h)}>{fmtPct(r.change24h, 1)}</span> · OI <span className={toneOf(r.oiChange24h)}>{fmtPct(r.oiChange24h, 1)}</span></span></li>)}
+                      {sq.map(r => <li key={r.symbol} title={SQUEEZE[r.squeeze!].hint}><Pair base={r.base} quote={null} /><span className={`x-tag ${SQUEEZE[r.squeeze!].tone}`}>{SQUEEZE[r.squeeze!].label}</span><span className="m"><span className={toneOf(r.change24h)}>{fmtPct(r.change24h, 1)}</span> · OI <span className={toneOf(r.oiChange24h)}>{fmtPct(r.oiChange24h, 1)}</span></span></li>)}
                     </ul>
                   );
                 })()}
@@ -104,7 +109,7 @@ export default function DerivativesPage() {
                   const f = data.rows.filter(r => r.funding != null).sort((a, b) => b.funding! - a.funding!);
                   const hi = f.slice(0, 5);
                   const lo = f.slice(-5).reverse();
-                  const li = (r: DerivRow) => <li key={r.symbol}><b>{r.base}</b><span className="m x-muted" style={{ whiteSpace: 'nowrap' }}>{fmtPct(r.annualised, 0)} / yr</span><span className={`m ${toneOf(r.funding)}`}>{fmtFunding(r.funding)}</span></li>;
+                  const li = (r: DerivRow) => <li key={r.symbol}><Pair base={r.base} quote={null} /><span className="m x-muted" style={{ whiteSpace: 'nowrap' }}>{fmtPct(r.annualised, 0)} / yr</span><span className={`m ${toneOf(r.funding)}`}>{fmtFunding(r.funding)}</span></li>;
                   return <div className="dv-ext"><div><div className="ov-macro-h">Highest: longs pay most</div><ul className="ov-movers">{hi.map(li)}</ul></div><div><div className="ov-macro-h">Lowest: shorts pay most</div><ul className="ov-movers">{lo.map(li)}</ul></div></div>;
                 })()}
               </section>
@@ -118,11 +123,11 @@ export default function DerivativesPage() {
                   const max = top[0]?.oiValue ?? 1;
                   return top.map(r => (
                     <div key={r.symbol} className="dv-bar">
-                      <b>{r.base}</b>
+                      <Pair base={r.base} quote={null} />
                       <span className="dv-bar-t"><i style={{ width: `${(r.oiValue! / max) * 100}%` }} /></span>
                       <span className="m">{fmtUsd(r.oiValue)}</span>
                       <span className={`m ${toneOf(r.oiChange24h)}`}>{r.oiChange24h == null ? '—' : fmtPct(r.oiChange24h, 1)}</span>
-                      <span className="m x-muted">{r.longRatio == null ? '—' : `${Math.round(r.longRatio * 100)}% long`}</span>
+                      {r.longRatio == null ? <span className="m x-muted">—</span> : <Meter v={r.longRatio * 100} label={`${Math.round(r.longRatio * 100)}% long`} t={r.longRatio >= 0.5 ? 'pos' : 'neg'} />}
                     </div>
                   ));
                 })()}
@@ -137,20 +142,20 @@ export default function DerivativesPage() {
                     <th>Pair</th><th className="r">Price</th>{head('change', '24h')}{head('funding', 'Next funding')}<th className="r">Last</th>{head('annualised', 'Per year')}<th className="r">Next in</th>{head('oi', 'Open interest')}{head('oiChange', 'OI 24h')}{head('long', 'Long')}<th className="r">Since last look</th>
                   </tr></thead>
                   <tbody>
-                    {rows.map(r => {
+                    {(all || q.trim() ? rows : rows.slice(0, 25)).map(r => {
                       const dl = delta(r);
                       return (
                         <tr key={r.symbol} data-testid={`dv-row-${r.base}`}>
-                          <td><Link className="x-link" href={`/charts?symbol=${r.base.replace(/^1000/, '')}USDT&tf=1h`}><b>{r.base}</b></Link><span className="x-muted sc-quote">-PERP</span></td>
+                          <td><Link className="sc-pair" href={`/charts?symbol=${r.base.replace(/^1000/, '')}USDT&tf=1h`}><Pair base={r.base} quote="-PERP" /></Link></td>
                           <td className="r m" data-label="Price">{fmtPrice(r.price)}</td>
-                          <td className={`r m ${toneOf(r.change24h)}`} data-label="24h">{fmtPct(r.change24h)}</td>
+                          <td className="r" data-label="24h"><Chg v={r.change24h} /></td>
                           <td className={`r m ${toneOf(r.funding)}`} data-label="Next funding">{fmtFunding(r.funding)}</td>
                           <td className={`r m ${toneOf(r.lastFunding)}`} data-label="Last">{fmtFunding(r.lastFunding)}</td>
                           <td className={`r m ${toneOf(r.annualised)}`} data-label="Per year">{fmtPct(r.annualised, 1)}</td>
                           <td className="r m" data-label="Next in">{countdown(r.nextFundingTime, now)}{r.fundingIntervalH !== 8 ? <span className="x-muted"> · {r.fundingIntervalH}h</span> : null}</td>
                           <td className="r m" data-label="Open interest">{fmtUsd(r.oiValue)}</td>
                           <td className={`r m ${toneOf(r.oiChange24h)}`} data-label="OI 24h">{fmtPct(r.oiChange24h, 1)}</td>
-                          <td className="r m" data-label="Long">{r.longRatio == null ? '—' : `${Math.round(r.longRatio * 100)}%`}</td>
+                          <td className="r m" data-label="Long">{r.longRatio == null ? '—' : <Meter v={r.longRatio * 100} label={`${Math.round(r.longRatio * 100)}%`} t={r.longRatio >= 0.5 ? 'pos' : 'neg'} />}</td>
                           <td className="r m" data-label="Since last look">{dl ? <><span className={toneOf(dl.f)}>{dl.f == null ? '—' : `${dl.f > 0 ? '+' : ''}${dl.f.toFixed(4)}`}</span> · <span className={toneOf(dl.oi)}>{fmtPct(dl.oi, 1)}</span></> : <span className="x-muted">—</span>}</td>
                         </tr>
                       );
@@ -158,6 +163,7 @@ export default function DerivativesPage() {
                   </tbody>
                 </table>
               </div>
+              {!all && !q.trim() && rows.length > 25 && <button className="x-btn dv-more" onClick={() => setAll(true)} data-testid="dv-more">Show all {rows.length}</button>}
             </section>
             <p className="cp-fine">From Bybit’s public market data, updated {new Date(data.asOf).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}. Last funding, 24h open-interest change and long share are for the top {data.detailFor} by volume. Liquidations aren’t shown: there’s no public feed we can reach reliably, and we won’t estimate them.</p>
           </>

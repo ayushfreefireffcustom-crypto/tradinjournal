@@ -12,6 +12,8 @@ import Modal from '@/components/v6/ui/modal';
 import SymbolSearch from '@/components/charts/symbol-search';
 import { ApiError } from '@/lib/copy-api';
 import { INTERVALS, deploymentsApi, pct, strategiesApi, tone, usd, type Interval, type StrategyRow } from '@/lib/strategies-api';
+import { Kpi, Split } from '@/components/v6/ui/lux';
+import CoinMark from '@/components/v6/ui/coin-mark';
 import '@/styles/v6/kit.css';
 import '@/styles/v6/tools.css';
 import '@/styles/v6/strategy.css';
@@ -67,11 +69,13 @@ export default function StrategiesPage() {
         <button className="x-btn x-btn--hi" onClick={() => void createBlank()} disabled={creating} data-testid="st-new">{creating ? 'Creating…' : 'New strategy'}</button>
       </>}>
       <div className="x-page" data-testid="st-page">
-        <section className="st-strip" aria-label="Summary" data-testid="st-strip">
-          <div className="x-card ov-kpi"><div className="ov-kpi-h">Strategies</div><div className="ov-kpi-v"><b className="m">{stats.total}</b></div><div className="ov-kpi-s">{stats.ai} made with AI</div></div>
-          <div className="x-card ov-kpi"><div className="ov-kpi-h">Running</div><div className="ov-kpi-v"><b className="m">{stats.live}</b> live · <b className="m">{stats.paper}</b> paper</div><div className="ov-kpi-s">{pnl.any ? <>Closed P&amp;L <span className={`m ${tone(pnl.closed)}`}>{usd(pnl.closed)}</span> · open <span className={`m ${tone(pnl.open)}`}>{usd(pnl.open)}</span></> : <>No runs yet</>}</div></div>
-          <div className="x-card ov-kpi"><div className="ov-kpi-h">Best backtest</div>{stats.best ? <><div className="ov-kpi-v"><b className={`m ${tone(stats.best.lastBacktest!.metrics.totalReturnPct)}`}>{pct(stats.best.lastBacktest!.metrics.totalReturnPct)}</b></div><div className="ov-kpi-s">{stats.best.name}</div></> : <div className="x-muted">No runs yet</div>}</div>
-          <div className="x-card ov-kpi"><div className="ov-kpi-h">Worst backtest</div>{stats.worst ? <><div className="ov-kpi-v"><b className={`m ${tone(stats.worst.lastBacktest!.metrics.totalReturnPct)}`}>{pct(stats.worst.lastBacktest!.metrics.totalReturnPct)}</b></div><div className="ov-kpi-s">{stats.worst.name}</div></> : <div className="x-muted">No runs yet</div>}</div>
+        <section className="lx-kpis" aria-label="Summary" data-testid="st-strip">
+          <Kpi label="Strategies" value={<span className="m">{stats.total}</span>} sub={`${stats.ai} made with AI`} />
+          <Kpi label="Running" value={<><span className="m">{stats.live}</span><small>live</small> <span className="m">{stats.paper}</span><small>paper</small></>}
+            sub={pnl.any ? <>Closed P&amp;L <span className={`m ${tone(pnl.closed)}`}>{usd(pnl.closed)}</span> · open <span className={`m ${tone(pnl.open)}`}>{usd(pnl.open)}</span></> : <>No runs yet</>}
+            viz={stats.live + stats.paper > 0 ? <Split g={stats.live} n={stats.paper} r={0} /> : undefined} />
+          <Kpi label="Best backtest" value={stats.best ? <span className={`m ${tone(stats.best.lastBacktest!.metrics.totalReturnPct)}`}>{pct(stats.best.lastBacktest!.metrics.totalReturnPct)}</span> : <span className="x-muted">—</span>} sub={stats.best ? stats.best.name : 'No runs yet'} />
+          <Kpi label="Worst backtest" value={stats.worst ? <span className={`m ${tone(stats.worst.lastBacktest!.metrics.totalReturnPct)}`}>{pct(stats.worst.lastBacktest!.metrics.totalReturnPct)}</span> : <span className="x-muted">—</span>} sub={stats.worst ? stats.worst.name : 'No runs yet'} />
         </section>
         <div className="st-bar">
           <div className="x-seg x-seg--in x-seg--sm" role="radiogroup" aria-label="Filter">{FILTERS.map(([f, l]) => <button key={f} type="button" role="radio" aria-checked={filter === f} onClick={() => setFilter(f)} data-testid={`st-f-${f}`}>{l}</button>)}</div>
@@ -82,19 +86,31 @@ export default function StrategiesPage() {
         ) : (
           <div className="st-grid" data-testid="st-list">
             {rows.map(r => (
-              <Link key={r.id} href={`/strategies/${r.id}`} className="x-card st-card" data-testid={`st-card-${r.id}`}>
-                <div className="st-card-h"><b>{r.name}</b><span className={`x-tag ${r.status === 'live' ? 'x-tag--g' : ''}`}>{STATUS[r.status] ?? r.status}</span>{r.source === 'ai' && <span className="x-tag">AI</span>}{r.source === 'legacy' && <span className="x-tag">SignalX</span>}</div>
-                <div className="st-card-s x-muted">{r.symbols.slice(0, 3).join(', ')}{r.symbols.length > 3 ? ` +${r.symbols.length - 3}` : ''} · {r.interval} · {r.direction === 'both' ? 'long & short' : r.direction}</div>
+              <Link key={r.id} href={`/strategies/${r.id}`} className={`x-card st-card st-${r.status}`} data-testid={`st-card-${r.id}`}>
+                <div className="st-card-h">
+                  <span className="st-coins" aria-hidden>{r.symbols.slice(0, 3).map(sym => <CoinMark key={sym} symbol={sym} />)}</span>
+                  <span className={`st-status st-status--${r.status}`}>{STATUS[r.status] ?? r.status}</span>
+                </div>
+                <div className="st-card-t">
+                  <b>{r.name}</b>
+                  <div className="st-card-s">
+                    <span className="x-tag">{r.interval}</span>
+                    <span className="x-tag">{r.direction === 'both' ? 'Long & short' : r.direction === 'long' ? 'Long' : 'Short'}</span>
+                    {r.source === 'ai' && <span className="x-tag x-tag--g">AI</span>}
+                    {r.source === 'legacy' && <span className="x-tag">SignalX</span>}
+                    <span className="x-muted st-syms">{r.symbols.slice(0, 2).join(', ')}{r.symbols.length > 2 ? ` +${r.symbols.length - 2}` : ''}</span>
+                  </div>
+                </div>
                 {r.blockers > 0 && <div className="st-card-warn neg">{r.blockers} issue{r.blockers === 1 ? '' : 's'} to fix</div>}
                 {r.lastBacktest ? (
                   <div className="st-card-m">
-                    <span><span className="x-muted">Return</span><b className={`m ${tone(r.lastBacktest.metrics.totalReturnPct)}`}>{pct(r.lastBacktest.metrics.totalReturnPct)}</b></span>
+                    <span className="st-ret"><span className="x-muted">Backtest return</span><b className={`m ${tone(r.lastBacktest.metrics.totalReturnPct)}`}>{pct(r.lastBacktest.metrics.totalReturnPct)}</b></span>
                     <span><span className="x-muted">Max DD</span><b className="m neg">{pct(r.lastBacktest.metrics.maxDrawdownPct)}</b></span>
                     <span><span className="x-muted">Trades</span><b className="m">{r.lastBacktest.metrics.trades}</b></span>
                     <span><span className="x-muted">Win</span><b className="m">{r.lastBacktest.metrics.winRatePct == null ? '—' : `${r.lastBacktest.metrics.winRatePct.toFixed(0)}%`}</b></span>
                   </div>
-                ) : <div className="st-card-m x-muted">Not backtested yet</div>}
-                <div className="st-card-f x-muted">v{r.version} · edited {new Date(r.updatedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</div>
+                ) : <div className="st-card-none">Not backtested yet <span aria-hidden>→</span></div>}
+                <div className="st-card-f x-muted"><span>v{r.version} · edited {new Date(r.updatedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span><span className="st-open" aria-hidden>Open →</span></div>
               </Link>
             ))}
           </div>

@@ -83,18 +83,31 @@
 .v6 .st-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
 .v6 .st-bar { display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; align-items: center; }
 .v6 .st-sort { width: auto; }
-.v6 .st-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
-.v6 .st-card { display: grid; gap: 8px; color: inherit; text-decoration: none; transition: box-shadow .15s; }
-.v6 .st-card:hover { box-shadow: inset 0 0 0 1px var(--line-2); }
-.v6 .st-card-h { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
-.v6 .st-card-h b { font-weight: 500; font-size: var(--t3); margin-right: auto; }
-.v6 .st-card-s, .v6 .st-card-f { font-size: var(--t2); }
+.v6 .st-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+.v6 .st-card { display: grid; gap: 14px; align-content: start; color: inherit; text-decoration: none; transition: border-color .15s, transform .15s; }
+.v6 .st-card:hover { border-color: var(--line-2); transform: translateY(-1px); }
+.v6 .st-card-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.v6 .st-coins { display: inline-flex; }
+.v6 .st-coins .lx-coin { width: 30px; height: 30px; font-size: 10px; box-shadow: 0 0 0 2px var(--s1); }
+.v6 .st-coins .lx-coin + .lx-coin { margin-left: -8px; }
+.v6 .st-status--live { color: var(--g-tx); }
+.v6 .st-status--live::before { background: var(--g); box-shadow: 0 0 0 3px var(--g-soft); animation: st-pulse 2s var(--ease) infinite; }
+.v6 .st-status--paper { color: var(--tx); }
+.v6 .st-status--paper::before { background: var(--tx); }
+.v6 .st-status--paused::before { background: var(--mut); }
+.v6 .st-card-t { display: grid; gap: 8px; }
+.v6 .st-card-t b { font-weight: 700; font-size: var(--t4); letter-spacing: -.02em; line-height: 1.15; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.v6 .st-card-s { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: var(--t2); }
+.v6 .st-syms { margin-left: 2px; }
+.v6 .st-card-f { display: flex; justify-content: space-between; gap: 8px; font-size: var(--t2); padding-top: 12px; border-top: 1px solid var(--line); }
+.v6 .st-open { color: var(--tx); opacity: 0; transition: opacity .15s; }
+.v6 .st-card:hover .st-open, .v6 .st-card:focus-visible .st-open { opacity: 1; }
 .v6 .st-card-warn { font-size: var(--t2); }
-.v6 .st-card-m { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; font-size: var(--t1); }
-.v6 .st-card-m > span { display: grid; gap: 2px; }
+.v6 .st-card-m { display: grid; grid-template-columns: 1.6fr 1fr 1fr 1fr; gap: 8px; align-items: end; padding: 14px; border-radius: var(--r-inset); background: var(--s2); font-size: var(--t1); }
+.v6 .st-card-m > span { display: grid; gap: 4px; }
 .v6 .st-card-m b { font-size: var(--t3); font-weight: 700; }
-/* the empty state is one line of text, not four metric columns */
-.v6 .st-card-m.x-muted { display: block; font-size: var(--t2); }
+.v6 .st-card-m .st-ret b { font-size: var(--t4); font-weight: 800; letter-spacing: -.03em; }
+.v6 .st-card-none { display: flex; justify-content: space-between; align-items: center; padding: 14px; border-radius: var(--r-inset); border: 1px dashed var(--line-2); color: var(--mut); font-size: var(--t2); min-height: 58px; }
 /* Backtest report */
 .v6 .bt-cells { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
 .v6 .bt-cells > div { display: grid; gap: 2px; background: var(--s2); border-radius: var(--r-ctl); padding: 8px 10px; font-size: var(--t2); }
@@ -219,3 +232,14 @@
 .v6 .sc-lv { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: var(--t2); }
 .v6 .sc-lv-in { width: 120px; }
 .v6 .sc-lv-n { margin: 0; font-size: var(--t2); }
+
+/* Deployments list (lux) */
+.v6 .dpl-name { color: inherit; text-decoration: none; }
+.v6 .dpl-name:hover b { text-decoration: underline; }
+.v6 .dpl-st--running { color: var(--g-tx); }
+.v6 .dpl-st--running::before { background: var(--g); box-shadow: 0 0 0 3px var(--g-soft); animation: st-pulse 2s var(--ease) infinite; }
+.v6 .dpl-st--errored { color: var(--r-tx); }
+.v6 .dpl-st--errored::before { background: var(--r); }
+.v6 .dpl-st--paused::before { background: var(--mut); }
+.v6 .dpl-spark { display: block; width: 96px; height: 26px; }
+.v6 .dpl-spark svg { display: block; width: 100%; height: 100%; }

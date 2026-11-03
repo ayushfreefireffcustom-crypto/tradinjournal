@@ -17,6 +17,7 @@ import '@/styles/v6/kit.css';
 import '@/styles/v6/tools.css';
 import '@/styles/v6/markets.css';
 import Freshness from '@/components/v6/ui/freshness';
+import { Chg, Kpi, Pair, Split } from '@/components/v6/ui/lux';
 
 type Show = 'all' | 'buy' | 'sell';
 const isBuy = (l: RatingLabel | null | undefined) => l === 'buy' || l === 'strong_buy';
@@ -73,15 +74,15 @@ export default function SignalsPage() {
 
         {list.error ? <ErrorCard message={list.error} onRetry={list.reload} /> : !list.data ? <div className="x-skel cp-skel-table" /> : (
           <>
-            <section className="sg-breadth" aria-label="Breadth" data-testid="sg-breadth">
+            <section className="lx-kpis" aria-label="Breadth" data-testid="sg-breadth">
               {breadth.map(b => {
                 const total = b.buy + b.sell + b.neutral || 1;
+                const lean = b.buy >= b.sell ? { n: b.buy, w: 'buy', t: 'pos' } : { n: b.sell, w: 'sell', t: 'neg' };
                 return (
-                  <div key={b.tf} className="x-card sg-bcard">
-                    <div className="sg-bhead"><b>{b.tf}</b><span className="x-muted">bar from {when(list.data!.barTimes[b.tf])}</span></div>
-                    <div className="sg-bar" aria-hidden="true"><i className="g" style={{ width: `${(b.buy / total) * 100}%` }} /><i className="n" style={{ width: `${(b.neutral / total) * 100}%` }} /><i className="r" style={{ width: `${(b.sell / total) * 100}%` }} /></div>
-                    <div className="sg-bnums"><span className="pos">{b.buy} buy</span><span>{b.neutral} neutral</span><span className="neg">{b.sell} sell</span></div>
-                  </div>
+                  <Kpi key={b.tf} label={<span className="lx-eyebrow lx-eyebrow--mut">{b.tf} rating</span>} side={<span className="x-muted">bar from {when(list.data!.barTimes[b.tf])}</span>}
+                    value={<span className={lean.t}>{Math.round((lean.n / total) * 100)}%<small>{lean.w}</small></span>}
+                    sub={<><span className="pos">{b.buy} buy</span> · {b.neutral} neutral · <span className="neg">{b.sell} sell</span></>}
+                    viz={<Split g={b.buy} n={b.neutral} r={b.sell} />} />
                 );
               })}
             </section>
@@ -94,9 +95,9 @@ export default function SignalsPage() {
                     <tbody>
                       {rows.map(r => (
                         <tr key={r.symbol} className="x-click" tabIndex={0} onClick={() => setOpen(r.symbol)} onKeyDown={e => { if (e.key === 'Enter') setOpen(r.symbol); }} data-testid={`sg-row-${r.symbol}`}>
-                          <td><b>{r.base}</b><span className="x-muted sc-quote">/USDT</span></td>
+                          <td><Pair base={r.base} /></td>
                           <td className="r m" data-label="Price">{px(r.price)}</td>
-                          <td className={`r m ${r.change24h > 0 ? 'pos' : r.change24h < 0 ? 'neg' : ''}`} data-label="24h">{r.change24h > 0 ? '+' : ''}{r.change24h.toFixed(2)}%</td>
+                          <td className="r" data-label="24h"><Chg v={r.change24h} /></td>
                           {SIGNAL_TFS.map(tf => <td key={tf} data-label={tf}><Pill cell={r.ratings[tf]} testId={`sg-${r.symbol}-${tf}`} /></td>)}
                         </tr>
                       ))}
