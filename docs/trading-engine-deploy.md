@@ -14,6 +14,18 @@ accounts. Nothing here is live until you set `TRADING_ENABLED=true`.
 | Static outbound IPs | **On** (Settings → Networking). These are the IPs users whitelist on their exchange API keys. |
 | Region | Keep the same region as the database. The static IPs belong to the region, so moving regions changes them. |
 
+## Market-data relay (Singapore)
+
+Bybit and Binance futures refuse US servers, and the API runs in US East next to the database. `apps/relay` is a dependency-free Node service on Railway (`tradelogs-relay`, region southeast-asia) that forwards GET requests to a fixed list of exchange hosts. The API sends `api.bybit.com` and `fapi.binance.com` calls through it when both variables are set; without them it calls the exchanges directly.
+
+| Variable | Service | Notes |
+|---|---|---|
+| `RELAY_TOKEN` | relay | Random, 24+ characters |
+| `MARKET_RELAY_URL` | API | The relay's public URL |
+| `MARKET_RELAY_TOKEN` | API | Must equal the relay's `RELAY_TOKEN` |
+
+Deploy: `railway up apps/relay --path-as-root --service tradelogs-relay`. `GET /check` with the token reports what each exchange answers from Singapore. When trading is switched on, the engine can run in the same region so exchanges see a non-US IP.
+
 ## Environment variables (names only)
 
 | Variable | Service | Notes |

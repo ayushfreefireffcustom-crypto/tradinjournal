@@ -161,6 +161,10 @@ const envSchema = z.object({
   // USDT-M futures public REST for Trader Master Flow lane (funding / OI / aggTrades).
   BINANCE_FUTURES_REST_URL: z.string().url().default('https://fapi.binance.com'),
   TWELVEDATA_API_KEY: z.string().optional(),
+  // Relay in a non-US region (apps/relay, Railway Singapore). Bybit and Binance
+  // futures refuse US servers, so their public calls go through it when set.
+  MARKET_RELAY_URL: z.string().url().optional(),
+  MARKET_RELAY_TOKEN: z.string().min(24).optional(),
   // CSV of symbols kept "hot" by the warm cron (so popular symbols stay a cache
   // hit for everyone — 1 provider call per symbol per refresh, not per user).
   MARKET_WARM_SYMBOLS: z.string().optional(),
