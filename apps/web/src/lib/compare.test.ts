@@ -17,6 +17,18 @@ describe('compareSeries', () => {
     expect(c.stats[0]!.maxDd!).toBeCloseTo(-10);
     expect(c.stats[0]!.corrToFirst).toBe(1);
   });
+  it('lines up stock bars that open at :30 with crypto bars on the hour', () => {
+    const H = 3_600_000;
+    const btc = s([[14 * H, 100], [15 * H, 101], [16 * H, 102], [17 * H, 103]]);
+    const goog = s([[14.5 * H, 200], [15.5 * H, 210], [16.5 * H, 220]]);
+    const c = compareSeries([btc, goog], H);
+    expect(c.times).toEqual([14 * H, 15 * H, 16 * H]);
+    expect(c.pct[1]![2]).toBeCloseTo(10);
+    const D = 24 * H;
+    const day = compareSeries([s([[0, 1], [D, 2]]), s([[13.5 * H, 5], [D + 13.5 * H, 10]])], D);
+    expect(day.times).toEqual([0, D]);
+    expect(day.pct[1]![1]).toBeCloseTo(100);
+  });
   it('copes with an empty series', () => {
     const c = compareSeries([s([[1, 1]]), []]);
     expect(c.times).toEqual([]);

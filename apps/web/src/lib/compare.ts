@@ -1,6 +1,8 @@
-// Compare (E13): line several symbols up on the same timestamps and rebase to
-// 0 % at the first shared bar. Only bars every series has are used, so a
-// market that's closed at weekends doesn't skew the others. Pure.
+// Compare (E13): line several symbols up on the same time buckets and rebase to
+// 0 % at the first shared bucket. Only buckets every series has are used, so a
+// market that's closed at weekends doesn't skew the others. Bars are bucketed
+// rather than matched exactly because stocks open their bars at :30 (14:30 UTC)
+// while crypto opens on the hour. Pure.
 import type { Candle } from '@/lib/market-api';
 
 export interface Compared {
@@ -20,10 +22,12 @@ function corr(a: number[], b: number[]) {
   return xx && yy ? xy / Math.sqrt(xx * yy) : null;
 }
 
-export function compareSeries(series: Candle[][]): Compared {
+/** `bucketMs` is the bar length: each bar lands in the bucket its open falls in, the last close winning. */
+export function compareSeries(series: Candle[][], bucketMs = 1): Compared {
   if (!series.length || series.some((s) => !s.length)) return { times: [], pct: series.map(() => []), stats: series.map(() => ({ ret: null, maxDd: null, vol: null, corrToFirst: null, vsFirst: null })) };
-  const maps = series.map((s) => new Map(s.map((c) => [c.openTime, c.close])));
-  const times = series[0]!.map((c) => c.openTime).filter((t) => maps.every((m) => m.has(t))).sort((a, b) => a - b);
+  const bucket = (t: number) => Math.floor(t / bucketMs) * bucketMs;
+  const maps = series.map((s) => new Map([...s].sort((a, b) => a.openTime - b.openTime).map((c) => [bucket(c.openTime), c.close])));
+  const times = [...maps[0]!.keys()].filter((t) => maps.every((m) => m.has(t))).sort((a, b) => a - b);
   const closes = maps.map((m) => times.map((t) => m.get(t)!));
   const pct = closes.map((c) => c.map((v) => (c[0]! > 0 ? (v / c[0]! - 1) * 100 : 0)));
   const rets = closes.map((c) => c.slice(1).map((v, i) => (c[i]! > 0 ? v / c[i]! - 1 : 0)));

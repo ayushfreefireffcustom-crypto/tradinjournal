@@ -12,11 +12,12 @@ import '@/styles/v6/kit.css';
 import '@/styles/v6/tools.css';
 import '@/styles/v6/markets.css';
 
-const RANGES: Array<{ id: string; label: string; tf: MarketTimeframe; bars: number }> = [
-  { id: '7d', label: '7D', tf: '1h', bars: 168 },
-  { id: '30d', label: '30D', tf: '4h', bars: 180 },
-  { id: '90d', label: '90D', tf: '1d', bars: 90 },
-  { id: '1y', label: '1Y', tf: '1d', bars: 365 },
+const H = 3_600_000;
+const RANGES: Array<{ id: string; label: string; tf: MarketTimeframe; bars: number; ms: number }> = [
+  { id: '7d', label: '7D', tf: '1h', bars: 168, ms: H },
+  { id: '30d', label: '30D', tf: '4h', bars: 180, ms: 4 * H },
+  { id: '90d', label: '90D', tf: '1d', bars: 90, ms: 24 * H },
+  { id: '1y', label: '1Y', tf: '1d', bars: 365, ms: 24 * H },
 ];
 // The categorical series palette (tokens.css); red is kept for losses.
 const COLORS = [1, 2, 3, 4, 5, 6].map((i) => `var(--series-${i})`);
@@ -54,7 +55,9 @@ export default function ComparePage() {
   const ready = symbols.filter(s => Array.isArray(series[s]));
   const failed = symbols.filter(s => series[s] === 'error');
   const loading = symbols.some(s => series[s] === undefined);
-  const cmp = useMemo(() => compareSeries(ready.map(s => series[s] as Candle[])), [ready.join(','), series]); // eslint-disable-line react-hooks/exhaustive-deps
+  const cmp = useMemo(() => compareSeries(ready.map(s => series[s] as Candle[]), rg.ms), [ready.join(','), series, rg.ms]); // eslint-disable-line react-hooks/exhaustive-deps
+  // One shared bar is a dot, not a comparison.
+  const enough = cmp.times.length >= 2;
 
   function exportCsv() {
     const blob = new Blob([compareCsv(ready, cmp)], { type: 'text/csv' });
@@ -67,7 +70,7 @@ export default function ComparePage() {
 
   return (
     <AppShell legacy={false} pageTitle="Compare" pageSubtitle="Up to six markets, same start"
-      actions={<button className="x-btn" onClick={exportCsv} disabled={!cmp.times.length} data-testid="cmp-export">Export CSV</button>}>
+      actions={<button className="x-btn" onClick={exportCsv} disabled={!enough} data-testid="cmp-export">Export CSV</button>}>
       <div className="x-page" data-testid="cmp-page">
         <section className="x-card cmp-controls">
           <div className="cmp-chips" data-testid="cmp-chips">
@@ -86,12 +89,12 @@ export default function ComparePage() {
 
         <section className="x-card" aria-label="Chart">
           {failed.length > 0 && <p className="cp-err">No data for {failed.join(', ')}.</p>}
-          {loading && !cmp.times.length ? <div className="x-skel" style={{ height: 360 }} /> : !cmp.times.length ? (
+          {loading && !enough ? <div className="x-skel" style={{ height: 360 }} /> : !enough ? (
             <div className="x-empty"><b>Nothing to compare</b><p>These markets don’t share any bars in this range.</p></div>
           ) : <Overlay cmp={cmp} symbols={ready} colors={ready.map(s => COLORS[symbols.indexOf(s)]!)} tf={rg.tf} hover={hover} setHover={setHover} />}
         </section>
 
-        {cmp.times.length > 0 && (
+        {enough && (
           <section className="x-card" aria-label="Relative strength">
             <div className="x-ch"><h2>Relative strength</h2><span className="x-sub">Over {rg.label.toLowerCase()} on {rg.tf} bars, {cmp.times.length} shared bars</span></div>
             <div className="x-tblwrap">
@@ -105,7 +108,7 @@ export default function ComparePage() {
                         <td><i className="cmp-dot" style={{ background: COLORS[symbols.indexOf(s)] }} /><b>{s}</b></td>
                         <td className={`r m ${toneOf(st.ret)}`} data-label="Return">{fmtPct(st.ret)}</td>
                         <td className={`r m ${k === 0 ? '' : toneOf(st.vsFirst)}`} data-label={`vs ${ready[0]}`}>{k === 0 ? '—' : fmtPct(st.vsFirst)}</td>
-                        <td className="r m neg" data-label="Max drawdown">{st.maxDd == null ? '—' : `${st.maxDd.toFixed(2)}%`}</td>
+                        <td className={`r m ${st.maxDd ? 'neg' : ''}`} data-label="Max drawdown">{st.maxDd == null ? '—' : `${st.maxDd.toFixed(2)}%`}</td>
                         <td className="r m" data-label="Volatility / bar">{st.vol == null ? '—' : `${st.vol.toFixed(2)}%`}</td>
                         <td className="r m" data-label={`Corr. to ${ready[0]}`}>{st.corrToFirst == null ? '—' : st.corrToFirst.toFixed(2)}</td>
                       </tr>
