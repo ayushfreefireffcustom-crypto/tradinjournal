@@ -49,6 +49,7 @@ partnerRouter.post('/templates/:id/audience', ib.handleTemplateAudience);
 export const partnerAccessRouter: IRouter = Router();
 partnerAccessRouter.use(requireAuth);
 partnerAccessRouter.get('/', ib.handleAccess);
+partnerAccessRouter.get('/perks', ib.handlePerks);
 partnerAccessRouter.post('/join', validateBody(accessJoinSchema), ib.handleJoin);
 partnerAccessRouter.post('/verify', validateBody(accessVerifySchema), ib.handleVerify);
 partnerAccessRouter.post('/review', validateBody(accessReviewSchema), ib.handleRequestReview);

@@ -14,12 +14,14 @@ import { PARTNERS_ENABLED, TRADING_ENABLED } from '@/lib/features';
 import { UsageTracker } from '@/components/usage-tracker';
 import LocationGate from '@/components/location-gate';
 import Frame, { COPY, NAV, type FrameNavItem } from '@/components/v6/frame';
-import { IAdmin, IBell, IBrokers, ILink, IPartner, ISettings, IUsers } from '@/components/v6/icons';
+import { IAdmin, IBell, IBrokers, ILink, ILock, IPartner, ISettings, IStar, IUsers } from '@/components/v6/icons';
 import CommandPalette from '@/components/v6/command-palette';
 import '@/styles/v6/tokens.css';
 import '@/styles/v6/components.css';
 import Tour from '@/components/v6/tour';
 import { useShellAccounts } from '@/lib/use-accounts';
+import { perkFor, usePerks } from '@/lib/use-perks';
+import { LockedFeature } from '@/components/v6/account/locked-feature';
 
 interface Props {
   children: ReactNode;
@@ -55,10 +57,18 @@ const ALL: Item[] = [
   { href: '/partner', label: 'Partner overview', icon: IPartner, group: 'Partner' },
   { href: '/partner/link', label: 'My link', icon: ILink, group: 'Partner' },
   { href: '/partner/clients', label: 'Clients', icon: IUsers, group: 'Partner' },
+  { href: '/partner/brokers', label: 'Partner brokers', icon: IBrokers, group: 'Partner' },
+  { href: '/partner/packages', label: 'Packages', icon: IStar, group: 'Partner' },
   { href: '/admin', label: 'Admin', icon: IAdmin, group: 'Admin' },
-  ...(PARTNERS_ENABLED ? [{ href: '/admin/partners', label: 'Partners', icon: IPartner, group: 'Admin' }] : []),
+  ...(PARTNERS_ENABLED ? [
+    { href: '/admin/partners', label: 'Partners', icon: IPartner, group: 'Admin' },
+    { href: '/admin/partners/program', label: 'Partner programme', icon: IPartner, group: 'Admin' },
+    { href: '/admin/partners/reviews', label: 'Partner reviews', icon: IPartner, group: 'Admin' },
+    { href: '/admin/partners/settings', label: 'Partner settings', icon: ISettings, group: 'Admin' },
+  ] : []),
   ...(TRADING_ENABLED ? [{ href: '/admin/copy', label: 'Copy trading admin', icon: IAdmin, group: 'Admin' }] : []),
   { href: '/brokers', label: 'Brokers', icon: IBrokers, group: 'Account' },
+  ...(PARTNERS_ENABLED ? [{ href: '/access', label: 'Partner access', icon: ILock, group: 'Account' }] : []),
   { href: '/notifications', label: 'Notifications', icon: IBell, group: 'Account' },
   { href: '/settings', label: 'Settings', icon: ISettings, group: 'Account' },
 ];
@@ -85,6 +95,7 @@ export default function AppShell({
   const { data: session, isPending } = authClient.useSession();
   const { status: accessStatus, loading: accessLoading, blocked: accessBlocked } = usePlatformAccess();
   const [cmdk, setCmdk] = useState(false);
+  const perks = usePerks(!!session?.session);
 
   // Send signed-out visitors to sign in, remembering where they were headed.
   useEffect(() => {
@@ -128,6 +139,9 @@ export default function AppShell({
   const isAdmin = !!accessStatus?.isAdmin;
   const isPartner = PARTNERS_ENABLED && accessStatus?.partnerStatus === 'ACTIVE';
   const pages = ALL.filter(x => (x.group !== 'Partner' || isPartner) && (x.group !== 'Admin' || isAdmin));
+  // Features the admin locked to partner-package holders (none by default).
+  const guard = perkFor(pathname);
+  const lockedPerk = guard && perks && perks.locked.includes(guard.key) && !perks.mine.includes(guard.key) && !isAdmin ? guard : null;
 
   return (
     <>
@@ -140,7 +154,7 @@ export default function AppShell({
         onSync={onSync} syncing={syncing} syncedLabel={syncedAt ? `Synced ${timeAgo(syncedAt)}` : sel?.lastSyncAt ? `Synced ${timeAgo(sel.lastSyncAt)}` : null}
         actions={actions} onOpenSearch={() => setCmdk(true)} onSignOut={() => authClient.signOut()}
       >
-        {children}
+        {lockedPerk ? <LockedFeature label={lockedPerk.label} /> : children}
       </Frame>
       <Tour />
       {cmdk && (

@@ -6,7 +6,9 @@ const USE_MOCKS = process.env.NEXT_PUBLIC_USE_MOCKS === 'true';
 const API = USE_MOCKS ? '' : process.env.NEXT_PUBLIC_API_URL || '';
 const P = USE_MOCKS ? '/data' : '/api';
 
-export type PartnerStatus = 'PENDING' | 'ACTIVE' | 'SUSPENDED' | 'REVOKED';
+import type { ClientIb, IbEvent, PartnerIbOverview, PartnerPackage } from '@/lib/ib-api';
+
+export type PartnerStatus = 'PENDING' | 'NEEDS_INFO' | 'ACTIVE' | 'SUSPENDED' | 'REJECTED' | 'REVOKED';
 /**
  * SIGNED_UP — created an account, no broker yet.
  * CONNECTED — linked MT5 but hasn't traded enough to count as active.
@@ -24,6 +26,7 @@ export interface PartnerProfile {
   since: string;
   activeRule: { minTrades: number; windowDays: number };
   cookieDays: number;
+  reviewNote?: string | null;
 }
 /** `converted` = clicks in the range that led to a signup; click → signup % is converted / clicks. */
 export interface PartnerFunnel { range: PartnerRange; from: string | null; clicks: number; converted: number; signups: number; connected: number; active: number }
@@ -34,8 +37,9 @@ export interface PartnerChannel {
 }
 export interface PartnerCode { id: string; code: string; isPrimary: boolean; url: string; clicks: number; signups: number; createdAt: string }
 export interface PartnerClient {
-  id: string; name: string; city: string | null; country: string | null; channel: string; via: 'link' | 'code' | 'admin';
+  id: string; name: string; city: string | null; country: string | null; channel: string; via: 'link' | 'code' | 'admin' | 'late';
   signedUpAt: string; connectedAt: string | null; status: ReferralStatus; trades30d: number; lots30d: number; lastActiveAt: string | null;
+  ib?: ClientIb;
 }
 export interface PartnerClientCounts { all: number; SIGNED_UP: number; CONNECTED: number; ACTIVE: number; INACTIVE: number }
 export interface PartnerEvent { id: string; at: string; kind: 'signup' | 'connected' | 'active' | 'inactive'; client: string; channel: string }
@@ -43,6 +47,7 @@ export interface PartnerClick { id: string; at: string; channel: string; device:
 export interface PartnerOverview {
   partner: PartnerProfile; funnel: PartnerFunnel; daily: PartnerDailyPoint[]; channels: PartnerChannel[];
   activity: PartnerEvent[]; recentClients: PartnerClient[]; totalClients: number;
+  ib?: PartnerIbOverview;
 }
 export interface PartnerLinks {
   partner: PartnerProfile; baseUrl: string; codes: PartnerCode[]; channels: PartnerChannel[]; recentClicks: PartnerClick[];
@@ -51,7 +56,7 @@ export interface PartnerLinks {
 }
 export interface PaginationMeta { page: number; pageSize: number; total: number; totalPages: number }
 export interface ClientsPage { items: PartnerClient[]; counts: PartnerClientCounts; meta: PaginationMeta }
-export interface ClientsQuery { status?: ReferralStatus; channel?: string; q?: string; sort?: 'recent' | 'trades' | 'name'; page?: number; pageSize?: number }
+export interface ClientsQuery { status?: ReferralStatus; ib?: 'VERIFIED' | 'UNVERIFIED' | 'ELIGIBLE'; channel?: string; q?: string; sort?: 'recent' | 'trades' | 'name'; page?: number; pageSize?: number }
 
 export interface AdminPartnerRow {
   id: string; userId: string; name: string; email: string; code: string | null; status: PartnerStatus;
@@ -59,7 +64,14 @@ export interface AdminPartnerRow {
   clicks30d: number; converted30d: number; signups30d: number; clients: number; connected: number; active: number;
 }
 export interface PartnerNote { id: string; body: string; authorEmail: string; createdAt: string }
-export interface AdminPartnerDetail extends PartnerOverview { admin: AdminPartnerRow; codes: PartnerCode[]; notes: PartnerNote[] }
+export interface PartnerApplication { brokers: string[]; socials: { platform: string; url: string }[]; audienceSize: string | null; pitch: string | null; reviewNote: string | null; reviewedAt: string | null }
+export interface AdminPartnerDetail extends PartnerOverview {
+  admin: AdminPartnerRow; codes: PartnerCode[]; notes: PartnerNote[];
+  application?: PartnerApplication; packages?: PartnerPackage[]; events?: IbEvent[];
+}
+export interface ApplyInput {
+  audience: string; code?: string; brokers?: string[]; socials?: { platform: string; url: string }[]; audienceSize?: string; pitch?: string;
+}
 export interface ReservedCode { id: string; code: string; reason: string | null; createdByEmail: string; createdAt: string }
 export interface ReferrerLookup {
   query: string;
@@ -67,7 +79,7 @@ export interface ReferrerLookup {
   referredBy: { partner: AdminPartnerRow; client: PartnerClient } | null;
   codeOwner: AdminPartnerRow | null;
 }
-export type StatusAction = 'approve' | 'decline' | 'suspend' | 'reinstate' | 'revoke';
+export type StatusAction = 'approve' | 'decline' | 'reject' | 'request_info' | 'suspend' | 'reinstate' | 'revoke';
 
 /** Error with the API's machine code (e.g. PARTNER_PENDING) so pages can branch on it. */
 export class PartnerApiError extends Error {
@@ -104,7 +116,7 @@ async function clientsPage(base: string, q: ClientsQuery): Promise<ClientsPage> 
 
 export const partnerApi = {
   me: () => get<PartnerProfile | null>(`${P}/partner/me`),
-  apply: (input: { audience: string; code?: string }) => send<PartnerProfile>('POST', `${P}/partner/apply`, input),
+  apply: (input: ApplyInput) => send<PartnerProfile>('POST', `${P}/partner/apply`, input),
   overview: (range: PartnerRange = '30D') => get<PartnerOverview>(`${P}/partner/overview${qs({ range })}`),
   clients: (q: ClientsQuery = {}) => clientsPage(`${P}/partner/clients`, q),
   links: () => get<PartnerLinks>(`${P}/partner/links`),
@@ -134,5 +146,5 @@ export const STATUS_LABEL: Record<ReferralStatus, string> = {
   SIGNED_UP: 'Signed up', CONNECTED: 'MT5 connected', ACTIVE: 'Active trader', INACTIVE: 'Inactive',
 };
 export const PARTNER_STATUS_LABEL: Record<PartnerStatus, string> = {
-  PENDING: 'Pending', ACTIVE: 'Active', SUSPENDED: 'Suspended', REVOKED: 'Revoked',
+  PENDING: 'Pending', NEEDS_INFO: 'Needs info', ACTIVE: 'Active', SUSPENDED: 'Suspended', REJECTED: 'Rejected', REVOKED: 'Revoked',
 };

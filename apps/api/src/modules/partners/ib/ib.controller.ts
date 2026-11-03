@@ -4,7 +4,7 @@ import { ok, created, noContent } from '../../../http/response.js';
 import { requireActivePartner } from '../partners.service.js';
 import { catalog } from './brokers.js';
 import { listBrokers, recheckPartner, removeBroker, reviewVerification, syncBroker, uploadList, upsertBroker, verifyOne } from './ib.service.js';
-import { clearPerkCache, clientAccess, joinPartner, recomputePartner, recomputeUser, setConsent } from './access.service.js';
+import { clearPerkCache, clientAccess, perksFor, joinPartner, recomputePartner, recomputeUser, setConsent } from './access.service.js';
 import { createPackage, packagesPage, setTemplateAudience, updatePackage } from './packages.service.js';
 import { exportCsv, listEvents, programOverview, reviewQueue } from './reports.service.js';
 import { getProgramSettings, saveProgramSettings } from './settings.js';
@@ -64,6 +64,8 @@ export const handleTemplateAudience = h(async (req, res) => {
 // ── Client: access page ───────────────────────────────────────────────────────
 
 export const handleAccess = h(async (_req, res) => ok(res, await clientAccess(userOf(res).id, userOf(res).email)));
+/** Cheap check for the web shell: which features are locked and which this user may open. */
+export const handlePerks = h(async (_req, res) => ok(res, await perksFor(userOf(res).id, userOf(res).email)));
 export const handleJoin = h(async (req, res) => ok(res, await joinPartner(userOf(res), req.body.code)));
 export const handleVerify = h(async (req, res) => {
   const u = userOf(res);

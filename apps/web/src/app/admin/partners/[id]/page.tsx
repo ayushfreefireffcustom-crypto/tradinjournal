@@ -16,6 +16,9 @@ import {
   ActivityFeed, Avatar, ChannelTable, ClientRows, Funnel, PartnerStatusPill, RangeSeg, TrendCard, day, n,
 } from '@/components/v6/account/partner-parts';
 import { timeAgo } from '@/components/app-shell';
+import { AttentionCard, BrokerHealthRow, EventList, IbClientRows, IbFunnelCard, TradingCard } from '@/components/v6/account/ib-parts';
+import { ibApi } from '@/lib/ib-api';
+import type { PartnerApplication } from '@/lib/partner-api';
 import { useConfirm, type ConfirmOptions, type ConfirmResult } from '@/components/confirm-dialog';
 import '@/styles/v6/account.css';
 import '@/styles/v6/admin.css';
@@ -23,7 +26,9 @@ import '@/styles/v6/admin.css';
 const PAGE = 10;
 const msg = (e: unknown, f: string) => (e instanceof Error ? e.message : f);
 const ACTIONS: Record<string, { a: StatusAction; l: string; ink?: boolean; ask: string }[]> = {
-  PENDING: [{ a: 'decline', l: 'Decline', ask: 'Decline this application?' }, { a: 'approve', l: 'Approve', ink: true, ask: '' }],
+  PENDING: [{ a: 'reject', l: 'Reject', ask: 'They see your reason and can apply again.' }, { a: 'request_info', l: 'Ask for info', ask: 'Tell them what to add. They see this message and can update their application.' }, { a: 'approve', l: 'Approve', ink: true, ask: '' }],
+  NEEDS_INFO: [{ a: 'reject', l: 'Reject', ask: 'They see your reason and can apply again.' }, { a: 'approve', l: 'Approve', ink: true, ask: '' }],
+  REJECTED: [{ a: 'approve', l: 'Approve', ink: true, ask: 'Approve this partner after all?' }],
   ACTIVE: [{ a: 'suspend', l: 'Suspend', ask: 'Their links stop crediting new signups and their partner pages close until you reinstate them.' }, { a: 'revoke', l: 'Revoke', ask: 'Their partner pages close and links stop crediting signups. Existing clients stay on record.' }],
   SUSPENDED: [{ a: 'revoke', l: 'Revoke', ask: 'Their partner pages stay closed for good unless reinstated. Existing clients stay on record.' }, { a: 'reinstate', l: 'Reinstate', ink: true, ask: '' }],
   REVOKED: [{ a: 'reinstate', l: 'Reinstate', ink: true, ask: 'Their links start crediting signups again and their partner pages reopen.' }],
@@ -59,14 +64,14 @@ export default function AdminPartnerPage({ params }: { params: Promise<{ id: str
   }
 
   async function status(a: StatusAction, label: string, body: string) {
-    const destructive = a === 'decline' || a === 'suspend' || a === 'revoke';
+    const destructive = a === 'decline' || a === 'reject' || a === 'suspend' || a === 'revoke';
     let reason: string | undefined;
     if (body || destructive) {
-      const r = await ask({ title: `${label} ${d?.admin.name ?? 'this partner'}?`, body: body || undefined, confirmLabel: label, tone: destructive ? 'danger' : 'default', reason: destructive });
+      const r = await ask({ title: `${label} ${d?.admin.name ?? 'this partner'}?`, body: body || undefined, confirmLabel: label, tone: destructive ? 'danger' : 'default', reason: destructive || a === 'request_info' });
       if (!r) return;
       reason = r.reason;
     }
-    await act(`st:${a}`, () => partnerApi.adminStatus(id, a, reason), `Partner ${({ approve: 'approved', decline: 'declined', suspend: 'suspended', reinstate: 'reinstated', revoke: 'revoked' } as const)[a]}.`);
+    await act(`st:${a}`, () => partnerApi.adminStatus(id, a, reason), ({ approve: 'Partner approved.', decline: 'Application declined.', reject: 'Application declined.', request_info: 'Asked for more information.', suspend: 'Partner suspended. Their clients’ packages are on the grace period.', reinstate: 'Partner reinstated.', revoke: 'Partner revoked.' } as const)[a]);
   }
   async function unlink(c: PartnerClient) {
     const r = await ask({ title: `Unlink ${c.name}?`, body: 'They stop counting as this partner’s client. Their account and trades are untouched.', confirmLabel: 'Unlink', tone: 'danger', reason: true });
@@ -98,13 +103,34 @@ export default function AdminPartnerPage({ params }: { params: Promise<{ id: str
               </dl>
               <div className="ad-prof-btns">
                 {ACTIONS[p.status]!.map(x => {
-                  const danger = x.a === 'suspend' || x.a === 'revoke' || x.a === 'decline';
+                  const danger = x.a === 'suspend' || x.a === 'revoke' || x.a === 'decline' || x.a === 'reject';
                   return <button key={x.a} type="button" className={`x-btn ${x.ink ? 'x-btn--hi' : danger ? 'x-btn--danger' : ''}`} disabled={!!busy} onClick={() => status(x.a, x.l, x.ask)} data-testid={`status-${x.a}`}>{x.l}</button>;
                 })}
               </div>
             </section>
 
-            <Funnel f={d.funnel} rule={d.partner.activeRule} title="Funnel" />
+            {d.application && <ApplicationCard app={d.application} />}
+
+            {d.ib ? <IbFunnelCard f={d.ib.funnel} rule={d.partner.activeRule} title="Funnel" /> : <Funnel f={d.funnel} rule={d.partner.activeRule} title="Funnel" />}
+            {d.ib && (
+              <div className="ib-grid3">
+                <TradingCard t={d.ib.trading} note="Admins see per-client P&L in the table below whatever the client chose; partners only see it for clients who share it." />
+                <AttentionCard a={d.ib.needsAttention} />
+              </div>
+            )}
+            {d.ib && (
+              <section className="x-card" data-testid="admin-partner-brokers">
+                <div className="x-ch"><h2>Broker connections</h2><span className="x-sub"><span className="m">{d.ib.brokers.length}</span></span>
+                  <div className="x-r"><button type="button" className="x-btn x-btn--sm" disabled={!!busy} onClick={() => void act('recheck', () => ibApi.recheck(id), 'Every client account re-checked.')}>Re-check clients</button></div></div>
+                {d.ib.brokers.length ? <ul className="ib-brs">{d.ib.brokers.map(b => <BrokerHealthRow key={b.id} b={b} />)}</ul> : <p className="x-muted ib-pad">No broker connected yet, so no client can be verified.</p>}
+              </section>
+            )}
+            {d.packages && d.packages.length > 0 && (
+              <section className="x-card" data-testid="admin-partner-packages">
+                <div className="x-ch"><h2>Packages</h2><span className="x-sub"><span className="m">{d.packages.length}</span></span></div>
+                <ul className="ac-codes">{d.packages.map(pk => <li key={pk.id}><span><b>{pk.name}</b><small>{pk.status.toLowerCase()} · {pk.perks.length} features · {pk.templateIds.length} strategies · {pk.requireActive ? 'active trading · ' : ''}{pk.accessDays ? `${pk.accessDays} days` : 'while they qualify'}</small></span><span className="m">{n(pk.holders)} unlocked</span></li>)}</ul>
+              </section>
+            )}
             <div className="ac-g3">
               <TrendCard daily={d.daily} />
               <ActivityFeed events={d.activity} limit={7} empty="Signups and MT5 connections from this partner show up here." />
@@ -115,7 +141,7 @@ export default function AdminPartnerPage({ params }: { params: Promise<{ id: str
               <div className="x-ch"><h2>Clients</h2><span className="x-sub"><span className="m">{n(clients?.meta.total ?? d.totalClients)}</span></span></div>
               {!clients ? <div className="ad-tbl-sk">{[0, 1, 2, 3].map(i => <i key={i} className="x-skel x-skel--in" />)}</div>
                 : clients.items.length ? <>
-                  <ClientRows clients={clients.items} onUnlink={unlink} />
+                  {clients.items.some(c => c.ib) ? <IbClientRows clients={clients.items} onUnlink={unlink} admin /> : <ClientRows clients={clients.items} onUnlink={unlink} />}
                   <div className="ac-pager">
                     <span><span className="m">{(clients.meta.page - 1) * PAGE + 1}–{Math.min(clients.meta.total, clients.meta.page * PAGE)}</span> of <span className="m">{n(clients.meta.total)}</span></span>
                     <div><button type="button" className="x-btn x-btn--sm" disabled={page <= 1} onClick={() => setPage(x => x - 1)}>Previous</button><button type="button" className="x-btn x-btn--sm" disabled={page >= clients.meta.totalPages} onClick={() => setPage(x => x + 1)}>Next</button></div>
@@ -141,6 +167,12 @@ export default function AdminPartnerPage({ params }: { params: Promise<{ id: str
               </section>
               <NotesCard partnerId={id} notes={d.notes} onAdded={load} />
             </div>
+            {d.events && (
+              <section className="x-card" data-testid="admin-partner-events">
+                <div className="x-ch"><h2>Sync and access log</h2><span className="x-sub">latest <span className="m">{d.events.length}</span></span></div>
+                <EventList events={d.events} empty="List syncs, verifications and access changes for this partner show up here." />
+              </section>
+            )}
           </>}
         </div>
       </AdminOnly></div>
@@ -215,6 +247,25 @@ function NotesCard({ partnerId, notes, onAdded }: { partnerId: string; notes: Ad
           {notes.map(x => <li key={x.id}><p>{x.body}</p><small>{x.authorEmail} · {timeAgo(x.createdAt)}</small></li>)}
         </ul>
       )}
+    </section>
+  );
+}
+
+const BROKER_NAME: Record<string, string> = { xellion: 'Xellion', elefin: 'Elefin', exness: 'Exness', xm: 'XM', vantage: 'Vantage', icmarkets: 'IC Markets', pepperstone: 'Pepperstone', other: 'Other broker' };
+
+function ApplicationCard({ app }: { app: PartnerApplication }) {
+  const empty = !app.brokers.length && !app.socials.length && !app.audienceSize && !app.pitch;
+  if (empty && !app.reviewNote) return null;
+  return (
+    <section className="x-card ib-app" data-testid="admin-partner-application">
+      <div className="x-ch"><h2>Application</h2>{app.reviewedAt && <span className="x-sub">reviewed {timeAgo(app.reviewedAt)}</span>}</div>
+      <dl>
+        <dt>Broker IB with</dt><dd>{app.brokers.length ? app.brokers.map(b => BROKER_NAME[b] ?? b).join(', ') : '—'}</dd>
+        <dt>Audience size</dt><dd>{app.audienceSize ?? '—'}</dd>
+        <dt>Links</dt><dd>{app.socials.length ? app.socials.map(s => <span key={s.url}><a className="x-link" href={s.url} target="_blank" rel="noopener noreferrer nofollow">{s.platform}</a>{' '}</span>) : '—'}</dd>
+        <dt>About</dt><dd>{app.pitch ?? '—'}</dd>
+      </dl>
+      {app.reviewNote && <p className="ib-app-note">Last message to the applicant: {app.reviewNote}</p>}
     </section>
   );
 }

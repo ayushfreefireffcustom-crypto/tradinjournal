@@ -257,7 +257,8 @@ const created = (data: unknown): Res => ({ status: 201, body: { data } });
 const none: Res = { status: 204 };
 
 const TRANSITIONS: Record<StatusAction, [PartnerStatus[], PartnerStatus, string]> = {
-  approve: [['PENDING'], 'ACTIVE', 'Approved'], decline: [['PENDING'], 'REVOKED', 'Application declined'],
+  approve: [['PENDING', 'NEEDS_INFO', 'REJECTED'], 'ACTIVE', 'Approved'], decline: [['PENDING', 'NEEDS_INFO'], 'REJECTED', 'Application declined'],
+  reject: [['PENDING', 'NEEDS_INFO'], 'REJECTED', 'Application declined'], request_info: [['PENDING'], 'NEEDS_INFO', 'More information requested'],
   suspend: [['ACTIVE'], 'SUSPENDED', 'Suspended'], reinstate: [['SUSPENDED', 'REVOKED'], 'ACTIVE', 'Reinstated'],
   revoke: [['ACTIVE', 'SUSPENDED', 'PENDING'], 'REVOKED', 'Partner status revoked'],
 };

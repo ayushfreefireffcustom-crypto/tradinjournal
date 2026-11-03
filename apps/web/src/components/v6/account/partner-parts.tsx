@@ -32,7 +32,7 @@ export function StatusPill({ s }: { s: ReferralStatus }) {
   return <span className={`x-tag ${TONE[s]} ac-st-pill`}><i />{STATUS_LABEL[s]}</span>;
 }
 
-const PTONE: Record<PartnerStatus, string> = { ACTIVE: 'x-tag--g', PENDING: 'ac-tag-c', SUSPENDED: 'x-tag--r', REVOKED: '' };
+const PTONE: Record<PartnerStatus, string> = { ACTIVE: 'x-tag--g', PENDING: 'ac-tag-c', NEEDS_INFO: 'ac-tag-c', SUSPENDED: 'x-tag--r', REJECTED: 'x-tag--r', REVOKED: '' };
 export function PartnerStatusPill({ s }: { s: PartnerStatus }) {
   return <span className={`x-tag ${PTONE[s]} ac-st-pill`}><i />{PARTNER_STATUS_LABEL[s]}</span>;
 }
@@ -148,7 +148,9 @@ export function TrendCard({ daily }: { daily: PartnerDailyPoint[] }) {
           <TrendLine pts={pts} label={label} fmt={fmt} />
           <div className="ac-axis"><span>{label(0)}</span><span>{label(Math.floor((daily.length - 1) / 2))}</span><span>{label(daily.length - 1)}</span></div>
         </>
-        : <div className="x-empty ac-trend-empty"><b>No {m === 'clicks' ? 'clicks' : m === 'signups' ? 'clients' : 'active traders'} in this range</b><p>The line starts once the first one lands.</p></div>}
+        : has
+          ? <div className="x-empty ac-trend-empty"><b>The trend starts tomorrow</b><p>It needs at least two days of data. Today&rsquo;s numbers are in the funnel above.</p></div>
+          : <div className="x-empty ac-trend-empty"><b>No {m === 'clicks' ? 'clicks' : m === 'signups' ? 'clients' : 'active traders'} in this range</b><p>The line starts once the first one lands.</p></div>}
     </section>
   );
 }

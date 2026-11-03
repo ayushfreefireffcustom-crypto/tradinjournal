@@ -10,7 +10,6 @@ import { listBrokers } from './ib.service.js';
 
 const DAY_MS = 86_400_000;
 const scope = (partnerId?: string) => (partnerId ? Prisma.sql`AND r."partnerId" = ${partnerId}` : Prisma.empty);
-const since = (from: Date | null) => (from ? Prisma.sql`AND r."attributedAt" >= ${from}` : Prisma.empty);
 
 export async function tradingSummary(partnerId?: string): Promise<TradingSummaryDto> {
   const [row] = await prisma.$queryRaw<TradingSummaryDto[]>`
@@ -27,15 +26,19 @@ export async function tradingSummary(partnerId?: string): Promise<TradingSummary
 
 export async function ibFunnel(range: PartnerRange, partnerId?: string, partnerSince?: Date): Promise<IbFunnelDto> {
   const from = rangeStart(range, partnerSince ?? new Date(0));
-  const [counts] = await prisma.$queryRaw<{ signups: number; connected: number; verified: number; active: number; eligible: number }[]>`
-    SELECT COUNT(*)::int AS signups,
-           COUNT(r."connectedAt")::int AS connected,
-           COUNT(*) FILTER (WHERE EXISTS (SELECT 1 FROM "client_verification" v WHERE v."userId" = r."userId" AND v."partnerId" = r."partnerId" AND v.status = 'VERIFIED'))::int AS verified,
-           COUNT(*) FILTER (WHERE r."isActive" AND r."connectedAt" IS NOT NULL)::int AS active,
-           COUNT(*) FILTER (WHERE EXISTS (SELECT 1 FROM "client_entitlement" e WHERE e."userId" = r."userId" AND e."partnerId" = r."partnerId" AND e.status IN ('ACTIVE', 'GRACE')))::int AS eligible
-    FROM "referral" r WHERE TRUE ${scope(partnerId)} ${since(from)}`;
-  const clicks = await prisma.referralClick.count({ where: { ...(partnerId ? { partnerId } : {}), ...(from ? { createdAt: { gte: from } } : {}) } });
-  return { range, clicks, ...counts! };
+  // Typed counts, not raw SQL: the columns are timestamps without a zone, and a raw
+  // Date parameter would be compared in the database session's time zone.
+  const base: Prisma.ReferralWhereInput = { ...(partnerId ? { partnerId } : {}), ...(from ? { attributedAt: { gte: from } } : {}) };
+  const own = (extra: object) => (partnerId ? { partnerId, ...extra } : extra);
+  const [clicks, signups, connected, verified, active, eligible] = await Promise.all([
+    prisma.referralClick.count({ where: { ...(partnerId ? { partnerId } : {}), ...(from ? { createdAt: { gte: from } } : {}) } }),
+    prisma.referral.count({ where: base }),
+    prisma.referral.count({ where: { ...base, connectedAt: { not: null } } }),
+    prisma.referral.count({ where: { ...base, user: { clientVerifications: { some: own({ status: 'VERIFIED' }) } } } }),
+    prisma.referral.count({ where: { ...base, connectedAt: { not: null }, isActive: true } }),
+    prisma.referral.count({ where: { ...base, user: { clientEntitlements: { some: own({ status: { in: ['ACTIVE', 'GRACE'] } }) } } } }),
+  ]);
+  return { range, clicks, signups, connected, verified, active, eligible };
 }
 
 export async function partnerIbOverview(partnerId: string, range: PartnerRange, partnerSince: Date): Promise<PartnerIbOverviewDto> {
@@ -164,7 +167,7 @@ async function flagItems(): Promise<ReviewItemDto[]> {
   // 3. Several signups from one network for one partner within a day.
   const burst = await prisma.$queryRaw<{ partnerId: string; ipHash: string; n: number; last: Date }[]>`
     SELECT "partnerId", "ipHash", COUNT(*)::int AS n, MAX("createdAt") AS last FROM "referral_click"
-    WHERE "convertedUserId" IS NOT NULL AND "createdAt" >= ${new Date(Date.now() - 30 * DAY_MS)}
+    WHERE "convertedUserId" IS NOT NULL AND "createdAt" >= (now() AT TIME ZONE 'UTC') - interval '30 days'
     GROUP BY "partnerId", "ipHash", date_trunc('day', "createdAt") HAVING COUNT(*) >= 3 LIMIT 50`;
   if (burst.length) {
     const names = new Map((await prisma.partner.findMany({ where: { id: { in: burst.map(b => b.partnerId) } }, include: { user: { select: { name: true } } } })).map(p => [p.id, p.user.name]));

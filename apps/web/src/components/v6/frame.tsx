@@ -16,7 +16,7 @@ import { useExchangeConnections } from '@/lib/use-exchange-connections';
 import { venueName, type ExchangeConnection } from '@/lib/copy-api';
 import {
   IAdmin, IAnalytics, IBell, IBrokers, ICalendar, ICharts, ICheck, IChevronDown, IClose, ICoach, IDashboard, IJournal, ILink, IMacro, IMarkets, IPlay,
-  IPartner, IPlus, ISearch, ISettings, ISignalX, ISync, ITradeLog, ITrendUp, IUsers, IMirror, IExchange, ILeader, IMail,
+  IPartner, IPlus, ISearch, ISettings, ISignalX, ISync, ITradeLog, ITrendUp, IUsers, IMirror, IExchange, ILeader, IMail, ILock, IStar,
 } from '@/components/v6/icons';
 import '@/styles/v6/tokens.css';
 import '@/styles/v6/components.css';

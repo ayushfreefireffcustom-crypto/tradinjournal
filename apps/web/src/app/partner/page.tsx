@@ -10,11 +10,16 @@ import { useAccounts } from '@/lib/use-accounts';
 import { invalidateAccessCache } from '@/lib/use-platform-access';
 import { partnerApi, PartnerApiError, type PartnerOverview, type PartnerRange } from '@/lib/partner-api';
 import { IArrowRight } from '@/components/v6/icons';
+import EmptyState from '@/components/v6/ui/empty-state';
+import '@/styles/v6/lux.css';
 import PartnerGate, { GATE_CODES, type GateReason } from '@/components/v6/account/partner-gate';
 import {
   ActivityFeed, ChannelTable, ClientRows, CopyButton, Funnel, LinkBox, Qr, RangeSeg, ShareRow, TrendCard, day,
 } from '@/components/v6/account/partner-parts';
+import { AttentionCard, BrokerHealthRow, IbClientRows, IbFunnelCard, TradingCard } from '@/components/v6/account/ib-parts';
 import '@/styles/v6/account.css';
+
+const RANGE_SUB: Record<PartnerRange, string> = { '7D': 'last 7 days', '30D': 'last 30 days', '90D': 'last 90 days', ALL: 'all time' };
 
 function greeting() {
   const h = new Date().getHours();
@@ -59,7 +64,22 @@ export default function PartnerOverviewPage() {
 
           {o && (
             <div className={`x-page ${loading ? 'ac-refreshing' : ''}`}>
-              <Funnel f={o.funnel} rule={o.partner.activeRule} />
+              {o.ib ? <IbFunnelCard f={o.ib.funnel} rule={o.partner.activeRule} sub={RANGE_SUB[range]} /> : <Funnel f={o.funnel} rule={o.partner.activeRule} />}
+              {o.ib && (
+                <div className="ib-grid3">
+                  <TradingCard t={o.ib.trading} />
+                  <AttentionCard a={o.ib.needsAttention} links={{ brokers: '/partner/brokers', clients: '/partner/clients' }} />
+                </div>
+              )}
+              {o.ib && (
+                <section className="x-card" data-testid="partner-ib-brokers">
+                  <div className="x-ch"><h2>Broker lists</h2><span className="x-sub"><span className="m">{o.ib.packages.live}</span> live package{o.ib.packages.live === 1 ? '' : 's'} · <span className="m">{o.ib.packages.holders}</span> client{o.ib.packages.holders === 1 ? '' : 's'} unlocked</span>
+                    <div className="x-r"><Link href="/partner/packages" className="x-btn x-btn--sm x-btn--ghost">Packages <IArrowRight size={14} /></Link><Link href="/partner/brokers" className="x-btn x-btn--sm x-btn--ghost">Brokers <IArrowRight size={14} /></Link></div></div>
+                  {o.ib.brokers.length
+                    ? <ul className="ib-brs">{o.ib.brokers.map(b => <BrokerHealthRow key={b.id} b={b} />)}</ul>
+                    : <EmptyState compact icon="plug" title="Connect your broker">Add the broker you&rsquo;re an IB with and upload its client list, so we can confirm which signups opened accounts under you.</EmptyState>}
+                </section>
+              )}
               <div className="ac-g2">
                 <TrendCard daily={o.daily} />
                 <section className="x-card ac-sharecard" data-testid="partner-share">
@@ -76,7 +96,7 @@ export default function PartnerOverviewPage() {
               </div>
               <section className="x-card" data-testid="partner-recent-clients">
                 <div className="x-ch"><h2>Newest clients</h2><span className="x-sub"><span className="m">{o.totalClients}</span> total</span><div className="x-r"><Link href="/partner/clients" className="x-btn x-btn--sm x-btn--ghost">All clients <IArrowRight size={14} /></Link></div></div>
-                {o.recentClients.length ? <ClientRows clients={o.recentClients} /> : <div className="x-empty"><b>No clients yet</b><p>Share your link to get started.</p></div>}
+                {o.recentClients.length ? (o.ib ? <IbClientRows clients={o.recentClients} /> : <ClientRows clients={o.recentClients} />) : <div className="x-empty"><b>No clients yet</b><p>Share your link to get started.</p></div>}
               </section>
             </div>
           )}

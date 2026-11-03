@@ -335,16 +335,19 @@ export async function daily(partnerId: string, range: PartnerRange, since: Date)
   const from = rangeStart(range, since) ?? since;
   const keys = dayKeys(from, new Date());
   const first = new Date(`${keys[0]}T00:00:00.000Z`);
+  // Columns are timestamps without a zone (UTC); a Date parameter would be read in
+  // the database session's zone, so compare against a plain UTC timestamp.
+  const firstTs = Prisma.sql`${`${keys[0]} 00:00:00`}::timestamp`;
   const [clickRows, signupRows, activeRows, baseClients, baseActive] = await Promise.all([
     prisma.$queryRaw<{ d: string; n: number }[]>`
       SELECT to_char("createdAt", 'YYYY-MM-DD') AS d, COUNT(*)::int AS n FROM "referral_click"
-      WHERE "partnerId" = ${partnerId} AND "createdAt" >= ${first} GROUP BY 1`,
+      WHERE "partnerId" = ${partnerId} AND "createdAt" >= ${firstTs} GROUP BY 1`,
     prisma.$queryRaw<{ d: string; n: number }[]>`
       SELECT to_char("attributedAt", 'YYYY-MM-DD') AS d, COUNT(*)::int AS n FROM "referral"
-      WHERE "partnerId" = ${partnerId} AND "attributedAt" >= ${first} GROUP BY 1`,
+      WHERE "partnerId" = ${partnerId} AND "attributedAt" >= ${firstTs} GROUP BY 1`,
     prisma.$queryRaw<{ d: string; n: number }[]>`
       SELECT to_char("firstActiveAt", 'YYYY-MM-DD') AS d, COUNT(*)::int AS n FROM "referral"
-      WHERE "partnerId" = ${partnerId} AND "isActive" AND "connectedAt" IS NOT NULL AND "firstActiveAt" >= ${first} GROUP BY 1`,
+      WHERE "partnerId" = ${partnerId} AND "isActive" AND "connectedAt" IS NOT NULL AND "firstActiveAt" >= ${firstTs} GROUP BY 1`,
     prisma.referral.count({ where: { partnerId, attributedAt: { lt: first } } }),
     prisma.referral.count({ where: { partnerId, isActive: true, connectedAt: { not: null }, firstActiveAt: { lt: first } } }),
   ]);

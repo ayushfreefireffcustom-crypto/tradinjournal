@@ -21,7 +21,7 @@ import '@/styles/v6/admin.css';
 import '@/styles/v6/dialogs.css';
 
 type Sort = 'active' | 'signups30d' | 'clicks30d' | 'conv' | 'clients';
-type View = 'live' | 'SUSPENDED' | 'REVOKED';
+type View = 'live' | 'SUSPENDED' | 'REJECTED' | 'REVOKED';
 const msg = (e: unknown, f: string) => (e instanceof Error ? e.message : f);
 
 export default function AdminPartnersPage() {
@@ -44,21 +44,24 @@ export default function AdminPartnersPage() {
   useEffect(() => { void load(); }, [load]);
   useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(''), 2600); return () => clearTimeout(t); }, [toast]);
 
-  const pending = useMemo(() => (rows ?? []).filter(r => r.status === 'PENDING'), [rows]);
-  const live = useMemo(() => (rows ?? []).filter(r => r.status !== 'PENDING'), [rows]);
+  const pending = useMemo(() => (rows ?? []).filter(r => r.status === 'PENDING' || r.status === 'NEEDS_INFO'), [rows]);
+  const live = useMemo(() => (rows ?? []).filter(r => r.status !== 'PENDING' && r.status !== 'NEEDS_INFO' && (view !== 'live' || r.status !== 'REJECTED')), [rows, view]);
   const ranked = useMemo(() => [...live].sort((a, b) => sort === 'conv' ? (b.converted30d / (b.clicks30d || 1)) - (a.converted30d / (a.clicks30d || 1)) : b[sort] - a[sort]), [live, sort]);
   const sum = (k: keyof AdminPartnerRow) => live.reduce((a, r) => a + (r[k] as number), 0);
   const th = (k: Sort, l: string) => <th className="n" aria-sort={sort === k ? 'descending' : undefined}><button type="button" className={sort === k ? 'ad-sorted' : ''} onClick={() => setSort(k)}>{l}{sort === k && <span aria-hidden> ↓</span>}</button></th>;
 
-  async function decide(p: AdminPartnerRow, action: 'approve' | 'decline') {
+  async function decide(p: AdminPartnerRow, action: 'approve' | 'reject' | 'request_info') {
     let reason: string | undefined;
-    if (action === 'decline') {
-      const r = await ask({ title: `Decline ${p.name}?`, body: 'They can apply again later.', confirmLabel: 'Decline', tone: 'danger', reason: true });
+    if (action !== 'approve') {
+      const r = await ask(action === 'reject'
+        ? { title: `Decline ${p.name}?`, body: 'They see your reason and can apply again later.', confirmLabel: 'Decline', tone: 'danger', reason: true }
+        : { title: `Ask ${p.name} for more?`, body: 'Say what to add, e.g. their IB id at the broker. They see this on their partner page.', confirmLabel: 'Send', reason: true });
       if (!r) return;
       reason = r.reason;
+      if (action === 'request_info' && !reason?.trim()) { setToast('Write what they should add.'); return; }
     }
     setBusy(p.id);
-    try { await partnerApi.adminStatus(p.id, action, reason || undefined); setToast(action === 'approve' ? `${p.name} approved — their link is live.` : `${p.name} declined.`); await load(); }
+    try { await partnerApi.adminStatus(p.id, action, reason || undefined); setToast(action === 'approve' ? `${p.name} approved — their link is live.` : action === 'reject' ? `${p.name} declined.` : `Asked ${p.name} for more information.`); await load(); }
     catch (e) { setToast(msg(e, 'That didn’t work.')); }
     finally { setBusy(null); }
   }
@@ -68,10 +71,13 @@ export default function AdminPartnersPage() {
       pageSubtitle="Who brings traders in"
       actions={<>
         <div className="x-seg" role="group" aria-label="Show">
-          {([['live', 'Active & pending'], ['SUSPENDED', 'Suspended'], ['REVOKED', 'Revoked']] as const).map(([k, l]) => (
+          {([['live', 'Active & pending'], ['SUSPENDED', 'Suspended'], ['REJECTED', 'Rejected'], ['REVOKED', 'Revoked']] as const).map(([k, l]) => (
             <button key={k} type="button" aria-pressed={view === k} onClick={() => { setRows(null); setView(k); }}>{l}</button>
           ))}
         </div>
+        <Link href="/admin/partners/program" className="x-btn" data-testid="partners-program">Programme</Link>
+        <Link href="/admin/partners/reviews" className="x-btn">Reviews</Link>
+        <Link href="/admin/partners/settings" className="x-btn">Settings</Link>
         <button type="button" className="x-btn" onClick={() => { setRows(null); void load(); }} data-testid="partners-refresh">Refresh</button>
         {isAdmin && <button type="button" className="x-btn x-btn--hi" onClick={() => setAdding(true)} data-testid="partner-add"><IPlus size={15} />Add partner</button>}
       </>}>
@@ -99,9 +105,10 @@ export default function AdminPartnersPage() {
                     <li key={p.id}>
                       <Avatar name={p.name} size={38} />
                       <span className="ad-pending-who"><Link href={`/admin/partners/${p.id}`} className="x-link">{p.name}</Link><small>{p.email}{p.audience ? ` · ${p.audience}` : ''}</small></span>
-                      <span className="ad-pending-meta">Requested code <b className="m">{p.code ?? '—'}</b><small>Applied {day(p.joinedAt)}</small></span>
+                      <span className="ad-pending-meta">Requested code <b className="m">{p.code ?? '—'}</b><small>{p.status === 'NEEDS_INFO' ? 'Waiting on their answer' : `Applied ${day(p.joinedAt)}`}</small></span>
                       <span className="ad-pending-btns">
-                        <button type="button" className="x-btn x-btn--sm" disabled={busy === p.id} onClick={() => decide(p, 'decline')}>Decline</button>
+                        <button type="button" className="x-btn x-btn--sm" disabled={busy === p.id} onClick={() => decide(p, 'reject')}>Decline</button>
+                        {p.status === 'PENDING' && <button type="button" className="x-btn x-btn--sm" disabled={busy === p.id} onClick={() => decide(p, 'request_info')}>Ask for info</button>}
                         <button type="button" className="x-btn x-btn--sm x-btn--hi" disabled={busy === p.id} onClick={() => decide(p, 'approve')}>Approve</button>
                       </span>
                     </li>
@@ -111,7 +118,7 @@ export default function AdminPartnersPage() {
             )}
 
             <section className="x-card" data-testid="partner-leaderboard">
-              <div className="x-ch"><h2>{view === 'live' ? 'Leaderboard' : view === 'SUSPENDED' ? 'Suspended partners' : 'Revoked partners'}</h2><span className="x-sub">sorted by {({ active: 'active traders', signups30d: 'signups (30d)', clicks30d: 'clicks (30d)', conv: 'conversion', clients: 'total clients' })[sort]}</span></div>
+              <div className="x-ch"><h2>{view === 'live' ? 'Leaderboard' : view === 'SUSPENDED' ? 'Suspended partners' : view === 'REJECTED' ? 'Rejected applications' : 'Revoked partners'}</h2><span className="x-sub">sorted by {({ active: 'active traders', signups30d: 'signups (30d)', clicks30d: 'clicks (30d)', conv: 'conversion', clients: 'total clients' })[sort]}</span></div>
               {ranked.length === 0 ? <div className="x-empty"><b>No partners here yet</b><p>{view === 'live' ? 'Add one, or approve an application.' : 'Nothing in this list.'}</p></div> : (
                 <div className="x-tblwrap ad-scroll">
                   <table className="x-tbl ad-tbl ad-lb">
