@@ -110,6 +110,7 @@ export default function AdminPartnerPage({ params }: { params: Promise<{ id: str
             </section>
 
             {d.application && <ApplicationCard app={d.application} />}
+            <TermsCard partnerId={id} onToast={setToast} />
 
             {d.ib ? <IbFunnelCard f={d.ib.funnel} rule={d.partner.activeRule} title="Funnel" /> : <Funnel f={d.funnel} rule={d.partner.activeRule} title="Funnel" />}
             {d.ib && (
@@ -266,6 +267,48 @@ function ApplicationCard({ app }: { app: PartnerApplication }) {
         <dt>About</dt><dd>{app.pitch ?? '—'}</dd>
       </dl>
       {app.reviewNote && <p className="ib-app-note">Last message to the applicant: {app.reviewNote}</p>}
+    </section>
+  );
+}
+
+function TermsCard({ partnerId, onToast }: { partnerId: string; onToast: (s: string) => void }) {
+  const [t, setT] = useState<{ share: string; offer: boolean; sell: boolean; max: string } | null>(null);
+  const [adj, setAdj] = useState({ amount: '', note: '' });
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    ibApi.terms(partnerId).then(x => setT({ share: String(x.sharePct), offer: x.permissions.canOfferProducts, sell: x.permissions.canSellPackages, max: String(x.permissions.maxPackages) })).catch(() => {});
+  }, [partnerId]);
+  if (!t) return null;
+  return (
+    <section className="x-card" data-testid="admin-partner-terms">
+      <div className="x-ch"><h2>Terms and permissions</h2></div>
+      <div className="ib-settings">
+        <div className="x-field"><label htmlFor="tm-share">Partner keeps of each sale (%)</label><input id="tm-share" className="x-input m" type="number" min={0} max={100} value={t.share} onChange={e => setT({ ...t, share: e.target.value })} /><span className="x-help">Blank = the programme default</span></div>
+        <div className="x-field"><label htmlFor="tm-max">Packages allowed</label><input id="tm-max" className="x-input m" type="number" min={0} max={50} value={t.max} onChange={e => setT({ ...t, max: e.target.value })} /></div>
+        <label className="ib-check"><input type="checkbox" className="x-check" checked={t.offer} onChange={e => setT({ ...t, offer: e.target.checked })} /><span><b>Can offer own tools</b><small>Indicators, templates, EAs, guides</small></span></label>
+        <label className="ib-check"><input type="checkbox" className="x-check" checked={t.sell} onChange={e => setT({ ...t, sell: e.target.checked })} /><span><b>Can sell packages</b><small>Set a price on packages</small></span></label>
+      </div>
+      <div className="ib-acct-f">
+        <button type="button" className="x-btn x-btn--hi x-btn--sm" disabled={busy} data-testid="terms-save" onClick={async () => {
+          setBusy(true);
+          try {
+            await ibApi.saveTerms(partnerId, { revenueSharePct: t.share.trim() === '' ? null : Math.max(0, Math.min(100, Math.round(Number(t.share)))), permissions: { canOfferProducts: t.offer, canSellPackages: t.sell, maxPackages: Math.max(0, Math.round(Number(t.max) || 0)) } });
+            onToast('Terms saved.');
+          } catch (e) { onToast(e instanceof Error ? e.message : 'Could not save.'); } finally { setBusy(false); }
+        }}>Save terms</button>
+      </div>
+      <form className="ad-tool-form" onSubmit={async e => {
+        e.preventDefault();
+        const cents = Math.round(Number(adj.amount) * 100);
+        if (!cents || !adj.note.trim()) return;
+        setBusy(true);
+        try { await ibApi.adjust(partnerId, cents, adj.note.trim()); setAdj({ amount: '', note: '' }); onToast('Adjustment added to their balance.'); }
+        catch (x) { onToast(x instanceof Error ? x.message : 'Could not add it.'); } finally { setBusy(false); }
+      }}>
+        <input className="x-input m" inputMode="decimal" value={adj.amount} onChange={e => setAdj({ ...adj, amount: e.target.value.replace(/[^0-9.-]/g, '') })} placeholder="Adjustment, e.g. 25 or -10" aria-label="Adjustment amount" />
+        <input className="x-input" value={adj.note} maxLength={300} onChange={e => setAdj({ ...adj, note: e.target.value })} placeholder="Why (the partner sees this)" aria-label="Adjustment note" />
+        <button type="submit" className="x-btn" disabled={busy || !Number(adj.amount) || adj.note.trim().length < 2}>Add adjustment</button>
+      </form>
     </section>
   );
 }

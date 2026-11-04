@@ -10,7 +10,9 @@ import { DownloadSimple } from '@phosphor-icons/react';
 import AppShell from '@/components/app-shell';
 import AdminOnly from '@/components/v6/admin/admin-only';
 import { useAccounts } from '@/lib/use-accounts';
-import { ibApi, money, type ProgramOverview, type ProgramSettings, type Range } from '@/lib/ib-api';
+import { cash, ibApi, money, per, type AdminPackageRow, type CohortRow, type ProgramOverview, type ProgramSettings, type Range } from '@/lib/ib-api';
+import { CohortTable } from '@/components/v6/account/ib-charts';
+import { useConfirm } from '@/components/confirm-dialog';
 import { IArrowLeft } from '@/components/v6/icons';
 import { Avatar, RangeSeg, n, pct } from '@/components/v6/account/partner-parts';
 import { IbFunnelCard, TradingCard } from '@/components/v6/account/ib-parts';
@@ -30,6 +32,22 @@ export default function AdminPartnerProgramPage() {
   const [error, setError] = useState('');
   const [sort, setSort] = useState<Sort>('clients');
   const [q, setQ] = useState('');
+  const [status, setStatus] = useState<'all' | 'ACTIVE' | 'SUSPENDED' | 'errors'>('all');
+  const [cohorts, setCohorts] = useState<CohortRow[] | null>(null);
+  const [pkgs, setPkgs] = useState<AdminPackageRow[] | null>(null);
+  const [toast, setToast] = useState('');
+  const [dialog, ask] = useConfirm();
+  const loadPkgs = useCallback(() => ibApi.adminPackages().then(setPkgs).catch(() => setPkgs([])), []);
+  useEffect(() => { ibApi.cohorts().then(setCohorts).catch(() => setCohorts([])); void loadPkgs(); }, [loadPkgs]);
+  useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(''), 2800); return () => clearTimeout(t); }, [toast]);
+  async function hold(p: AdminPackageRow) {
+    const r = await ask(p.adminHold
+      ? { title: `Put “${p.name}” back on offer?`, confirmLabel: 'Release' }
+      : { title: `Pause “${p.name}”?`, body: `${p.partner}’s clients stop being able to unlock it; current holders move to the grace period. The partner sees your note.`, confirmLabel: 'Pause', tone: 'danger', reason: true });
+    if (!r) return;
+    try { await ibApi.holdPackage(p.id, !p.adminHold, r.reason); setToast(p.adminHold ? 'Back on offer.' : 'Paused.'); await loadPkgs(); }
+    catch (e) { setToast(e instanceof Error ? e.message : 'That didn’t work.'); }
+  }
   const [rule, setRule] = useState<ProgramSettings | null>(null);
   useEffect(() => { ibApi.settings().then(setRule).catch(() => {}); }, []);
 
@@ -39,6 +57,7 @@ export default function AdminPartnerProgramPage() {
   useEffect(() => { void load(); }, [load]);
 
   const rows = (d?.rows ?? []).filter(r => !q.trim() || `${r.name} ${r.email} ${r.code ?? ''}`.toLowerCase().includes(q.trim().toLowerCase()))
+    .filter(r => status === 'all' || (status === 'errors' ? r.brokerErrors > 0 : r.status === status))
     .sort((a, b) => b[sort] - a[sort]);
   const th = (k: Sort, l: string) => <th className="n" aria-sort={sort === k ? 'descending' : undefined}><button type="button" className={sort === k ? 'ad-sorted' : ''} onClick={() => setSort(k)}>{l}</button></th>;
 
@@ -70,7 +89,12 @@ export default function AdminPartnerProgramPage() {
 
             <section className="x-card" data-testid="program-rows">
               <div className="x-ch"><h2>Partners</h2><span className="x-sub"><span className="m">{rows.length}</span></span>
-                <div className="x-r"><input className="x-input" value={q} onChange={e => setQ(e.target.value)} placeholder="Search partners" aria-label="Search partners" /></div></div>
+                <div className="x-r">
+                  <select className="x-select" value={status} onChange={e => setStatus(e.target.value as typeof status)} aria-label="Filter partners">
+                    <option value="all">All</option><option value="ACTIVE">Active</option><option value="SUSPENDED">Suspended</option><option value="errors">With broker errors</option>
+                  </select>
+                  <input className="x-input" value={q} onChange={e => setQ(e.target.value)} placeholder="Search partners" aria-label="Search partners" />
+                </div></div>
               {rows.length === 0 ? <EmptyState compact icon="search" title={d.rows.length ? 'No partner matches' : 'No active partners yet'}>{d.rows.length ? 'Try another search.' : 'Approve an application or add a partner.'}</EmptyState> : (
                 <div className="x-tblwrap ad-scroll">
                   <table className="x-tbl ad-tbl">
@@ -94,9 +118,34 @@ export default function AdminPartnerProgramPage() {
                 </div>
               )}
             </section>
+
+            <section className="x-card" data-testid="program-cohorts">
+              <div className="x-ch"><h2>Retention by signup month</h2><span className="x-sub">every partner&rsquo;s referred clients</span></div>
+              {!cohorts ? <div className="x-skel x-skel--in" /> : cohorts.length ? <CohortTable rows={cohorts} /> : <p className="x-muted ib-pad">No referred signups in the last 12 months.</p>}
+            </section>
+
+            <section className="x-card" data-testid="program-packages">
+              <div className="x-ch"><h2>Packages on offer</h2><span className="x-sub"><span className="m">{pkgs?.length ?? 0}</span></span><div className="x-r"><Link href="/admin/partners/finance" className="x-btn x-btn--sm x-btn--ghost">Finance</Link></div></div>
+              {!pkgs ? <div className="x-skel x-skel--in" /> : pkgs.length === 0 ? <p className="x-muted ib-pad">No partner has created a package yet.</p> : (
+                <div className="x-tblwrap ad-scroll"><table className="x-tbl ad-tbl"><thead><tr><th>Package</th><th>Partner</th><th>Contents</th><th>Price</th><th className="n">Unlocked</th><th className="n">Paying</th><th>Status</th><th className="n"><span className="sr-only">Actions</span></th></tr></thead>
+                  <tbody>{pkgs.map(p => (
+                    <tr key={p.id}>
+                      <td><b>{p.name}</b></td>
+                      <td><Link className="x-link" href={`/admin/partners/${p.partnerId}`}>{p.partner}</Link></td>
+                      <td className="x-muted">{p.perks.length} features · {p.productIds.length} tools · {p.templateIds.length} strategies</td>
+                      <td className="m">{p.priceCents ? `${cash(p.priceCents, p.currency)} / ${per(p.periodDays)}` : 'Free'}</td>
+                      <td className="n m">{p.holders}</td><td className="n m">{p.subscribers}</td>
+                      <td>{p.adminHold ? <span className="x-tag x-tag--r">Paused by admin</span> : <span className={`x-tag ${p.status === 'LIVE' ? 'x-tag--g' : ''}`}>{p.status.toLowerCase()}</span>}</td>
+                      <td className="n"><button type="button" className="x-btn x-btn--sm x-btn--ghost" onClick={() => void hold(p)} data-testid={`pkg-hold-${p.name}`}>{p.adminHold ? 'Release' : 'Pause'}</button></td>
+                    </tr>
+                  ))}</tbody></table></div>
+              )}
+            </section>
           </>}
         </div>
       </AdminOnly></div>
+      {toast && <div className="ac-toast" role="status">{toast}</div>}
+      {dialog}
     </AppShell>
   );
 }

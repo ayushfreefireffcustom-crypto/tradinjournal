@@ -21,8 +21,9 @@ export default function AdminPartnerSettingsPage() {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState('');
+  const [hosts, setHosts] = useState('');
 
-  useEffect(() => { ibApi.settings().then(x => { setS(x); setSaved(x); }).catch(e => setError(e instanceof Error ? e.message : 'Could not load settings.')); }, []);
+  useEffect(() => { ibApi.settings().then(x => { setS(x); setSaved(x); setHosts(x.ibApiHosts.join('\n')); }).catch(e => setError(e instanceof Error ? e.message : 'Could not load settings.')); }, []);
   useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(''), 2800); return () => clearTimeout(t); }, [toast]);
 
   const dirty = !!s && JSON.stringify(s) !== JSON.stringify(saved);
@@ -61,6 +62,23 @@ export default function AdminPartnerSettingsPage() {
                 <div className="x-field"><label htmlFor="st-grace">Client lapses (days)</label><input id="st-grace" className="x-input m" type="number" min={0} max={90} value={s.graceDays} onChange={e => num('graceDays', e.target.value)} /><span className="x-help">Not verified any more, stopped trading, disconnected</span></div>
                 <div className="x-field"><label htmlFor="st-pgrace">Partner suspended (days)</label><input id="st-pgrace" className="x-input m" type="number" min={0} max={90} value={s.partnerGraceDays} onChange={e => num('partnerGraceDays', e.target.value)} /><span className="x-help">How long their clients keep access</span></div>
               </div>
+            </section>
+
+            <section className="x-card" data-testid="settings-money">
+              <div className="x-ch"><h2>Package sales and payouts</h2></div>
+              <p className="ac-p">TRADElogs keeps its share of each package sale; the partner keeps the rest (unless their terms say otherwise). Their share becomes payable after the refund window, and a payout is drafted once it reaches the minimum.</p>
+              <div className="ib-settings">
+                <div className="x-field"><label htmlFor="st-share">TRADElogs share (%)</label><input id="st-share" className="x-input m" type="number" min={0} max={100} value={s.platformSharePct} onChange={e => num('platformSharePct', e.target.value)} /></div>
+                <div className="x-field"><label htmlFor="st-refund">Refund window (days)</label><input id="st-refund" className="x-input m" type="number" min={0} max={90} value={s.refundDays} onChange={e => num('refundDays', e.target.value)} /></div>
+                <div className="x-field"><label htmlFor="st-min">Minimum payout</label><input id="st-min" className="x-input m" type="number" min={0} step={1} value={s.payoutMinimumCents / 100} onChange={e => setS(x => x && { ...x, payoutMinimumCents: Math.round(Number(e.target.value || 0) * 100) })} /></div>
+                <div className="x-field"><label htmlFor="st-cur">Currency</label><select id="st-cur" className="x-select" value={s.currency} onChange={e => setS(x => x && { ...x, currency: e.target.value })}>{['USD', 'INR', 'EUR'].map(c => <option key={c} value={c}>{c}</option>)}</select><span className="x-help">For new packages and payouts</span></div>
+              </div>
+            </section>
+
+            <section className="x-card" data-testid="settings-api-hosts">
+              <div className="x-ch"><h2>Approved broker API addresses</h2></div>
+              <p className="ac-p">Partners can only point the broker API connection at these hosts (and their subdomains), so nobody can make TRADElogs call an arbitrary server. One per line, e.g. my.exnessaffiliates.com.</p>
+              <textarea className="x-textarea m" rows={4} value={hosts} onChange={e => { setHosts(e.target.value); setS(x => x && { ...x, ibApiHosts: e.target.value.split(/\s+/).map(h => h.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '')).filter(h => h.length >= 3) }); }} aria-label="Approved API hosts" data-testid="settings-hosts" />
             </section>
 
             <section className="x-card" data-testid="settings-locks">

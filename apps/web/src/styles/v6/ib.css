@@ -174,3 +174,33 @@
   .v6 .ib-app dl { grid-template-columns: 1fr; }
   .v6 .ib-adm-strip { --n: 2; }
 }
+
+/* charts */
+.v6 .ib-chart { position: relative; }
+.v6 .ib-chart-svg { width: 100%; height: auto; display: block; }
+.v6 .ib-axis { stroke: var(--line); stroke-width: 1; }
+.v6 .ib-tick { font-size: 10px; fill: var(--mut); }
+.v6 .ib-bar { fill: var(--g); opacity: .85; }
+.v6 .ib-bar.on { opacity: 1; }
+.v6 .ib-bar.neg { fill: var(--r); }
+.v6 .ib-tip { position: absolute; top: 0; transform: translateX(-50%); padding: 6px 10px; border-radius: var(--r-tip); background: var(--tip); color: var(--inv); font-size: var(--t2); display: grid; gap: 2px; pointer-events: none; white-space: nowrap; box-shadow: var(--pop-shadow); }
+.v6 .ib-tip span { opacity: .7; }
+.v6 .ib-multis { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.v6 .ib-multi { display: grid; gap: 6px; padding: 12px 14px; border-radius: var(--r-inset); background: var(--s2); }
+.v6 .ib-multi-h { display: flex; justify-content: space-between; align-items: baseline; font-size: var(--t2); color: var(--mut); }
+.v6 .ib-multi-h b { font-size: var(--t3); font-weight: 800; color: var(--tx); }
+.v6 .ib-multi-svg { width: 100%; height: 56px; display: block; }
+.v6 .ib-multi-axis { grid-column: 1 / -1; display: flex; justify-content: space-between; font-size: var(--t1); color: var(--mut); }
+.v6 .ib-heat { background: color-mix(in srgb, var(--g) calc(var(--a, 0) * 45%), transparent); }
+.v6 .ib-code { font-family: var(--mono); font-size: var(--t2); }
+.v6 .ib-money span { display: inline-flex; align-items: center; gap: 5px; }
+.v6 .ib-pre { margin: 0; padding: 14px 16px; border-radius: var(--r-inset); background: var(--s2); font-family: var(--mono); font-size: var(--t2); white-space: pre-wrap; overflow-wrap: anywhere; max-height: 480px; overflow: auto; }
+.v6 .ib-url { display: flex; gap: 8px; align-items: center; }
+.v6 .ib-url code { flex: 1; min-width: 0; padding: 10px 12px; border-radius: var(--r-field); background: var(--s2); font-family: var(--mono); font-size: var(--t2); overflow-wrap: anywhere; }
+.v6 .ib-tabs-line { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 4px; flex-wrap: wrap; }
+.v6 .ib-tabs-line button { border: 0; background: none; color: var(--mut); font: inherit; font-size: var(--t3); padding: 8px 12px; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.v6 .ib-tabs-line button[aria-selected="true"] { color: var(--tx); border-bottom-color: var(--tx); }
+.v6 .ib-pkg-h h3 { display: flex; align-items: center; gap: 8px; }
+.v6 .ib-pkg-ft .ib-br-btns { flex-wrap: nowrap; }
+.v6 .ib-chart { max-width: 640px; }
+.v6 .ib-acct-h b { display: inline-flex; align-items: center; gap: 6px; }

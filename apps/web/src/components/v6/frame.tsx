@@ -65,6 +65,11 @@ const PARTNER: FrameNavItem[] = [
   { href: '/partner', label: 'Overview', icon: IPartner },
   { href: '/partner/link', label: 'My link', icon: ILink },
   { href: '/partner/clients', label: 'Clients', icon: IUsers },
+  { href: '/partner/brokers', label: 'Brokers', icon: IBrokers },
+  { href: '/partner/packages', label: 'Packages', icon: IStar },
+  { href: '/partner/tools', label: 'Tools', icon: ICharts },
+  { href: '/partner/earnings', label: 'Earnings', icon: ITrendUp },
+  { href: '/partner/reports', label: 'Reports', icon: IAnalytics },
 ];
 /** Copy trading (behind NEXT_PUBLIC_TRADING). */
 export const COPY: FrameNavItem[] = [
@@ -133,6 +138,7 @@ export default function Frame(p: Props) {
   ];
   const account: FrameNavItem[] = [
     { href: '/brokers', label: 'Brokers', icon: IBrokers },
+    ...(PARTNERS_ENABLED ? [{ href: '/access', label: 'Partner access', icon: ILock }] : []),
     { href: '/settings', label: 'Settings', icon: ISettings },
     { href: '/help', label: 'Help', icon: IMail },
     ...(p.isAdmin ? [{ href: '/admin', label: 'Admin', icon: IAdmin }] : []),
