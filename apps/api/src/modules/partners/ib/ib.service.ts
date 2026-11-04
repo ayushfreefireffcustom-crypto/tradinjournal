@@ -6,7 +6,7 @@ import type {
 import { logger } from '@tradinjournal/logger';
 import { AppError, ConflictError, NotFoundError, ValidationError } from '../../../http/errors.js';
 import { encryptSecret } from '../../../lib/secrets.js';
-import { API_ADAPTERS, brokerKeyFor, brokerLabel, isKnownBroker } from './brokers.js';
+import { brokerKeyFor, brokerLabel, isKnownBroker } from './brokers.js';
 import { decideVerification, parseIbList, type IbRow } from './ib.logic.js';
 import { fetchSheet, sheetCsvUrl, SourceError } from './sources.js';
 import { logEvent } from './events.js';
@@ -47,9 +47,7 @@ export async function upsertBroker(partner: PartnerLite, input: PartnerBrokerUps
   if (!isKnownBroker(broker)) throw new ValidationError('Pick a broker from the list (or “Other broker”).');
   if (broker === 'other' && !input.serverMatch) throw new ValidationError('For another broker, enter text its MT5 server name contains, e.g. “AcmeFX-Live”.');
   if (input.method === 'SHEET' && (!input.sheetUrl || !sheetCsvUrl(input.sheetUrl))) throw new ValidationError('Paste a Google Sheets link (docs.google.com) that anyone with the link can view.');
-  if (input.method === 'API' && !API_ADAPTERS.has(broker)) {
-    throw new AppError(422, 'IB_API_UNSUPPORTED', `We can’t connect to ${brokerLabel(broker)}’s IB API yet. Upload your client list or link a Google Sheet instead.`);
-  }
+  // API connections are set up in a second step (integrations.service saveApiConfig).
   const data = {
     ibId: input.ibId || null, method: input.method, sheetUrl: input.method === 'SHEET' ? input.sheetUrl! : null,
     serverMatch: broker === 'other' ? input.serverMatch! : null,
@@ -76,7 +74,7 @@ export async function removeBroker(partnerId: string, id: string, actor: Actor =
 
 // ── Lists ─────────────────────────────────────────────────────────────────────
 
-async function applyRows(b: BrokerRow, rows: IbRow[], mode: 'replace' | 'merge', skipped: number, source: string, actor: Actor): Promise<Omit<IbUploadResultDto, 'broker' | 'rechecked'>> {
+export async function applyRows(b: BrokerRow, rows: IbRow[], mode: 'replace' | 'merge', skipped: number, source: string, actor: Actor): Promise<Omit<IbUploadResultDto, 'broker' | 'rechecked'>> {
   const now = new Date();
   const existing = await prisma.ibAccount.findMany({ where: { partnerBrokerId: b.id } });
   const byId = new Map(existing.map(e => [e.accountId, e]));
@@ -123,6 +121,12 @@ export async function uploadList(partnerId: string, id: string, input: IbListUpl
 export async function syncBroker(id: string, actor: Actor = null): Promise<PartnerBrokerDto | null> {
   const b = await prisma.partnerBroker.findUnique({ where: { id } });
   if (!b) return null;
+  if (b.method === 'API') {
+    const { syncApi } = await import('./integrations.service.js');
+    await syncApi(b.id, actor);
+    await recheckPartner(b.partnerId, b.broker);
+    return (await listBrokers(b.partnerId)).find(x => x.id === id) ?? null;
+  }
   if (b.method !== 'SHEET' || !b.sheetUrl) {
     await recheckPartner(b.partnerId, b.broker);
     return (await listBrokers(b.partnerId)).find(x => x.id === id) ?? null;
@@ -153,18 +157,35 @@ export async function syncDueSheets(now = Date.now()): Promise<number> {
 // ── Verification ──────────────────────────────────────────────────────────────
 
 const ACCOUNT_SELECT = { id: true, userId: true, broker: true, server: true, mt5Login: true } as const;
-type AccountLite = { id: string; userId: string; broker: string; server: string; mt5Login: bigint };
 
-/** Checks one connected account against the referring partner's IB lists. */
+/** An account to check: synced MT5 (ownership proven by login) or added for checking only. */
+export type AccountRef = { kind: 'mt5' | 'external'; id: string; userId: string; broker: string; server: string; login: string; platform: string };
+
+const mt5Ref = (a: { id: string; userId: string; broker: string; server: string; mt5Login: bigint }): AccountRef =>
+  ({ kind: 'mt5', id: a.id, userId: a.userId, broker: a.broker, server: a.server, login: a.mt5Login.toString(), platform: 'MT5' });
+const extRef = (a: { id: string; userId: string; broker: string; server: string; login: string; platform: string }): AccountRef =>
+  ({ kind: 'external', id: a.id, userId: a.userId, broker: a.broker, server: a.server, login: a.login, platform: a.platform });
+const keyOf = (a: AccountRef) => (a.kind === 'mt5' ? { brokerAccountId: a.id } : { externalAccountId: a.id });
+
+export async function accountsOf(userId: string): Promise<AccountRef[]> {
+  const [mt5, ext] = await Promise.all([
+    prisma.brokerAccount.findMany({ where: { userId }, select: ACCOUNT_SELECT, orderBy: { createdAt: 'asc' } }),
+    prisma.externalAccount.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } }),
+  ]);
+  return [...mt5.map(mt5Ref), ...ext.map(extRef)];
+}
+
+/** Checks one account against the referring partner's IB lists. */
 export async function verifyAccount(
-  account: AccountLite,
+  account: AccountRef,
   ref: { partnerId: string; partner: PartnerLite },
   opts: { brokerEmail?: string | null; requestReview?: boolean; userEmail?: string | null; counted?: boolean } = {},
 ): Promise<VerificationStatusDto> {
   const brokers = await prisma.partnerBroker.findMany({ where: { partnerId: ref.partnerId }, select: { broker: true, serverMatch: true } });
   const brokerKey = brokerKeyFor(account, brokers);
-  const login = account.mt5Login.toString();
-  const prev = await prisma.clientVerification.findUnique({ where: { brokerAccountId: account.id } });
+  const login = account.login;
+  const key = keyOf(account);
+  const prev = await prisma.clientVerification.findUnique({ where: key as { brokerAccountId: string } });
   const brokerEmail = opts.brokerEmail ?? prev?.brokerEmail ?? null;
   const emailToCheck = (brokerEmail ?? opts.userEmail ?? '').toLowerCase() || null;
   const [here, elsewhere, emailHit] = brokerKey ? await Promise.all([
@@ -177,21 +198,22 @@ export async function verifyAccount(
     partnerName: ref.partner.user.name.split(' ')[0] ?? ref.partner.user.name, brokerKey, brokerLabel: brokerKey ? brokerLabel(brokerKey) : 'this broker',
     partnerBrokers: brokers.map(b => b.broker), listedHere: here, listedElsewhere: elsewhere > 0, emailListed: emailHit > 0,
     prev: prev ? { status: prev.status, method: prev.method, reviewRequestedAt } : reviewRequestedAt ? { status: 'PENDING', method: null, reviewRequestedAt } : null,
+    ownershipProven: account.kind === 'mt5',
   });
   const data = {
     partnerId: ref.partnerId, broker: brokerKey, status: out.status, method: out.method, ibAccountId: out.ibAccountId,
     reason: out.reason, signal: out.signal, brokerEmail, checkedAt: new Date(), reviewRequestedAt,
   };
-  await prisma.clientVerification.upsert({
-    where: { brokerAccountId: account.id },
-    create: { userId: account.userId, brokerAccountId: account.id, ...data, attempts: opts.counted ? 1 : 0 },
-    update: { ...data, ...(opts.counted ? { attempts: { increment: 1 } } : {}) },
-  });
+  if (prev) {
+    await prisma.clientVerification.update({ where: { id: prev.id }, data: { ...data, ...(opts.counted ? { attempts: { increment: 1 } } : {}) } });
+  } else {
+    await prisma.clientVerification.create({ data: { userId: account.userId, ...key, ...data, attempts: opts.counted ? 1 : 0 } });
+  }
   if (prev?.status !== out.status) {
     await logEvent({
       kind: `verify.${out.status.toLowerCase()}`, partnerId: ref.partnerId, userId: account.userId,
-      message: `Account ${login} (${brokerKey ? brokerLabel(brokerKey) : account.broker}): ${prev?.status ?? 'new'} → ${out.status}`,
-      detail: { brokerAccountId: account.id, signal: out.signal },
+      message: `${account.platform} account ${login} (${brokerKey ? brokerLabel(brokerKey) : account.broker}): ${prev?.status ?? 'new'} → ${out.status}`,
+      detail: { ...key, signal: out.signal },
     });
   }
   return out.status;
@@ -205,20 +227,47 @@ async function referralFor(userId: string) {
 export async function verifyUser(userId: string, opts: { userEmail?: string | null } = {}): Promise<number> {
   const ref = await referralFor(userId);
   if (!ref) return 0;
-  const accounts = await prisma.brokerAccount.findMany({ where: { userId }, select: ACCOUNT_SELECT });
+  const accounts = await accountsOf(userId);
   for (const a of accounts) await verifyAccount(a, ref, opts);
   return accounts.length;
 }
 
 /** The client re-checks one account (optionally with the email the broker has). */
-export async function verifyOne(userId: string, brokerAccountId: string, input: { brokerEmail?: string; requestReview?: boolean; userEmail?: string }): Promise<VerificationStatusDto> {
+export async function verifyOne(userId: string, accountId: string, input: { brokerEmail?: string; requestReview?: boolean; userEmail?: string }): Promise<VerificationStatusDto> {
   const ref = await referralFor(userId);
   if (!ref) throw new ConflictError('Join a partner first: enter their code above.');
-  const account = await prisma.brokerAccount.findFirst({ where: { id: brokerAccountId, userId }, select: ACCOUNT_SELECT });
+  const account = (await accountsOf(userId)).find(a => a.id === accountId);
   if (!account) throw new NotFoundError('Broker account not found');
-  const prev = await prisma.clientVerification.findUnique({ where: { brokerAccountId } });
+  const prev = await prisma.clientVerification.findUnique({ where: keyOf(account) as { brokerAccountId: string } });
   if (prev && prev.attempts >= 30 && !input.requestReview) throw new AppError(429, 'VERIFY_LIMIT', 'Too many checks on this account. Ask for a review instead.');
   return verifyAccount(account, ref, { brokerEmail: input.brokerEmail, requestReview: input.requestReview, userEmail: input.userEmail, counted: true });
+}
+
+/** A client adds an account our bridge can't sync (MT4…) so it can be checked against the IB list. */
+export async function addExternalAccount(user: { id: string; email: string }, input: { platform: string; login: string; server: string; broker: string; brokerEmail?: string }) {
+  const ref = await referralFor(user.id);
+  if (!ref) throw new ConflictError('Join a partner first: enter their code above.');
+  const count = await prisma.externalAccount.count({ where: { userId: user.id } });
+  if (count >= 5) throw new ConflictError('You can add up to 5 accounts this way.');
+  const mt5 = input.platform === 'MT5' && await prisma.brokerAccount.findFirst({ where: { userId: user.id, mt5Login: BigInt(/^\d+$/.test(input.login) ? input.login : '0'), server: input.server } });
+  if (mt5) throw new ConflictError('This MT5 account is already connected.');
+  let ext;
+  try {
+    ext = await prisma.externalAccount.create({ data: { userId: user.id, platform: input.platform, login: input.login, server: input.server, broker: input.broker } });
+  } catch {
+    throw new ConflictError('That account has already been added by someone. Ask support if it’s yours.');
+  }
+  // Counts as "connected" for the partner's funnel.
+  await prisma.referral.updateMany({ where: { userId: user.id, connectedAt: null }, data: { connectedAt: new Date() } });
+  await logEvent({ kind: 'account.external_add', partnerId: ref.partnerId, userId: user.id, message: `${input.platform} account ${input.login} on ${input.server} added for checking` });
+  await verifyAccount(extRef(ext), ref, { brokerEmail: input.brokerEmail, userEmail: user.email, counted: true });
+  return ext.id;
+}
+
+export async function removeExternalAccount(userId: string, id: string): Promise<void> {
+  const ext = await prisma.externalAccount.findFirst({ where: { id, userId } });
+  if (!ext) throw new NotFoundError('Account not found');
+  await prisma.externalAccount.delete({ where: { id } });
 }
 
 /** Re-runs verification for a partner's clients (all, or those at one broker). */
@@ -229,10 +278,9 @@ export async function recheckPartner(partnerId: string, broker?: string): Promis
   });
   let n = 0;
   for (const ref of refs) {
-    const accounts = await prisma.brokerAccount.findMany({ where: { userId: ref.userId }, select: ACCOUNT_SELECT });
-    for (const a of accounts) {
+    for (const a of await accountsOf(ref.userId)) {
       if (broker) {
-        const prev = await prisma.clientVerification.findUnique({ where: { brokerAccountId: a.id }, select: { broker: true } });
+        const prev = await prisma.clientVerification.findUnique({ where: keyOf(a) as { brokerAccountId: string }, select: { broker: true } });
         if (prev && prev.broker && prev.broker !== broker) continue;
       }
       await verifyAccount(a, ref);
@@ -242,9 +290,26 @@ export async function recheckPartner(partnerId: string, broker?: string): Promis
   return n;
 }
 
+/** Re-checks the clients whose account matches one broker-reported account id (postbacks). */
+export async function recheckLogin(partnerId: string, login: string): Promise<string[]> {
+  const ref = await prisma.referral.findMany({ where: { partnerId }, include: { partner: { include: { user: { select: { name: true } } } } } });
+  const users = ref.map(r => r.userId);
+  if (!users.length) return [];
+  const [mt5, ext] = await Promise.all([
+    /^\d+$/.test(login) ? prisma.brokerAccount.findMany({ where: { userId: { in: users }, mt5Login: BigInt(login) }, select: ACCOUNT_SELECT }) : Promise.resolve([]),
+    prisma.externalAccount.findMany({ where: { userId: { in: users }, login } }),
+  ]);
+  const touched: string[] = [];
+  for (const a of [...mt5.map(mt5Ref), ...ext.map(extRef)]) {
+    await verifyAccount(a, ref.find(r => r.userId === a.userId)!);
+    touched.push(a.userId);
+  }
+  return touched;
+}
+
 /** Admin decision on a verification in review (or any verification). */
 export async function reviewVerification(id: string, action: 'approve' | 'reject', note: string | undefined, actor: { id: string; email: string }) {
-  const v = await prisma.clientVerification.findUnique({ where: { id }, include: { brokerAccount: { select: { mt5Login: true } } } });
+  const v = await prisma.clientVerification.findUnique({ where: { id }, include: { brokerAccount: { select: { mt5Login: true } }, externalAccount: { select: { login: true, platform: true } } } });
   if (!v) throw new NotFoundError('Verification not found');
   const status = action === 'approve' ? 'VERIFIED' : 'REJECTED';
   await prisma.clientVerification.update({
@@ -254,9 +319,10 @@ export async function reviewVerification(id: string, action: 'approve' | 'reject
       reason: status === 'REJECTED' ? (note ? `Reviewed: ${note}` : 'An admin reviewed this account and could not confirm it.') : null,
     },
   });
+  const label = v.brokerAccount ? `MT5 account ${v.brokerAccount.mt5Login.toString()}` : `${v.externalAccount?.platform ?? ''} account ${v.externalAccount?.login ?? ''}`;
   await logEvent({
     kind: `verify.manual_${action}`, partnerId: v.partnerId, userId: v.userId, actor,
-    message: `Account ${v.brokerAccount.mt5Login.toString()} ${action === 'approve' ? 'approved' : 'rejected'} by admin${note ? `: ${note}` : ''}`,
+    message: `${label} ${action === 'approve' ? 'approved' : 'rejected'} by admin${note ? `: ${note}` : ''}`,
   });
   return { userId: v.userId, partnerId: v.partnerId, status };
 }

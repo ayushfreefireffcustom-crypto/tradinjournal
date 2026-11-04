@@ -9,11 +9,13 @@ import { isAdmin } from '../../../lib/admin.js';
 import { resolveActiveCode } from '../attribution.service.js';
 import { firstName } from '../partner.logic.js';
 import { brokerKeyFor, brokerLabel } from './brokers.js';
-import { allowedPerks, evaluatePackage, nextEntitlement, sameState, type EntitlementState } from './ib.logic.js';
+import { allowedPerks, evaluatePackage, nextEntitlement, priceLabel, sameState, type EntitlementState } from './ib.logic.js';
+import { isPaidUp, paymentsEnabled, startCheckout, toSubDto } from './payments.service.js';
+import { clientProducts } from './products.service.js';
 import { PERKS, perkDtos } from './perks.js';
 import { getProgramSettings } from './settings.js';
 import { logEvent } from './events.js';
-import { verifyUser } from './ib.service.js';
+import { accountsOf, verifyUser } from './ib.service.js';
 
 const LIVE: EntitlementStatusDto[] = ['ACTIVE', 'GRACE'];
 
@@ -37,12 +39,14 @@ export async function recomputeUser(userId: string, now = new Date()): Promise<v
   const verified = await prisma.clientVerification.findMany({ where: { userId, partnerId: ref.partnerId, status: 'VERIFIED' }, select: { broker: true } });
   const verifiedBrokers = [...new Set(verified.map(v => v.broker).filter((b): b is string => !!b))];
   const name = firstName(ref.partner.user.name);
+  const subs = await prisma.packageSubscription.findMany({ where: { userId } });
   for (const pkg of ref.partner.packages) {
     const prevRow = existing.find(e => e.packageId === pkg.id) ?? null;
-    if (!prevRow && pkg.status !== 'LIVE') continue;
+    if (!prevRow && (pkg.status !== 'LIVE' || pkg.adminHold)) continue;
     const ev = evaluatePackage({
       partnerName: name, partnerActive: ref.partner.status === 'ACTIVE', pkg, verifiedBrokers,
       activeTrader: ref.isActive && !!ref.connectedAt, rule,
+      paid: isPaidUp(subs.find(x => x.packageId === pkg.id), now), priceLabel: priceLabel(pkg.priceCents, pkg.currency, pkg.periodDays),
     });
     const prev: EntitlementState | null = prevRow
       ? { status: prevRow.status, grantedAt: prevRow.grantedAt, expiresAt: prevRow.expiresAt, graceUntil: prevRow.graceUntil, suspendedAt: prevRow.suspendedAt, reason: prevRow.reason }
@@ -115,54 +119,73 @@ export async function visiblePartnerTemplates(userId: string): Promise<string[]>
 
 // ── The client's Access page ──────────────────────────────────────────────────
 
-export async function clientAccess(userId: string, email: string): Promise<ClientAccessDto> {
+/** Every condition a package checks, for one client, without writing anything. */
+async function packageContext(userId: string) {
   const rule = await getProgramSettings();
-  const [ref, accounts, verifs, ents, perks] = await Promise.all([
-    prisma.referral.findUnique({ where: { userId }, include: { partner: { include: { user: { select: { name: true } }, codes: true, packages: { where: { status: 'LIVE' } } } } } }),
-    prisma.brokerAccount.findMany({ where: { userId }, select: { id: true, broker: true, server: true, mt5Login: true }, orderBy: { createdAt: 'asc' } }),
+  const [ref, verifs, ents, subs] = await Promise.all([
+    prisma.referral.findUnique({ where: { userId }, include: { partner: { include: { user: { select: { name: true } }, codes: true, packages: { where: { status: 'LIVE', adminHold: false } } } } } }),
     prisma.clientVerification.findMany({ where: { userId } }),
     prisma.clientEntitlement.findMany({ where: { userId }, include: { package: true } }),
-    perksFor(userId, email),
+    prisma.packageSubscription.findMany({ where: { userId }, include: { package: { select: { name: true } } } }),
+  ]);
+  const verifiedBrokers = [...new Set(verifs.filter(v => v.status === 'VERIFIED' && v.partnerId === ref?.partnerId).map(v => v.broker).filter((b): b is string => !!b))];
+  const evaluate = (p: { status: string; brokers: string[]; requireActive: boolean; adminHold: boolean; priceCents: number; currency: string; periodDays: number; id: string }) => evaluatePackage({
+    partnerName: ref ? firstName(ref.partner.user.name) : '', partnerActive: ref?.partner.status === 'ACTIVE', pkg: p, verifiedBrokers,
+    activeTrader: !!ref?.isActive && !!ref?.connectedAt, rule,
+    paid: isPaidUp(subs.find(x => x.packageId === p.id)), priceLabel: priceLabel(p.priceCents, p.currency, p.periodDays),
+  });
+  return { rule, ref, verifs, ents, subs, evaluate };
+}
+
+export async function clientAccess(userId: string, email: string): Promise<ClientAccessDto> {
+  const [{ rule, ref, verifs, ents, subs, evaluate }, accounts, perks, products] = await Promise.all([
+    packageContext(userId), accountsOf(userId), perksFor(userId, email), clientProducts(userId),
   ]);
   const extra = ref ? await prisma.partnerBroker.findMany({ where: { partnerId: ref.partnerId }, select: { serverMatch: true } }) : [];
-  const name = ref ? firstName(ref.partner.user.name) : '';
 
   const accountDtos = accounts.map(a => {
-    const v = verifs.find(x => x.brokerAccountId === a.id);
+    const v = verifs.find(x => (a.kind === 'mt5' ? x.brokerAccountId : x.externalAccountId) === a.id);
     const key = v?.broker ?? brokerKeyFor(a, extra);
     return {
-      id: a.id, label: `${a.mt5Login.toString()} · ${a.server}`, broker: key ? brokerLabel(key) : a.broker, brokerKey: key,
+      id: a.id, label: `${a.login} · ${a.server}`, broker: key ? brokerLabel(key) : a.broker, brokerKey: key,
       status: v?.status ?? 'PENDING', reason: v ? v.reason : ref ? 'Not checked yet.' : null, brokerEmail: v?.brokerEmail ?? null,
       checkedAt: v?.checkedAt?.toISOString() ?? null, reviewRequested: !!v?.reviewRequestedAt,
       canRetry: !!ref && v?.status !== 'VERIFIED' && !(v?.method === 'manual' && v.status === 'REJECTED'),
+      kind: a.kind, platform: a.platform,
     };
   });
 
   // Live packages of the current partner, plus anything the client still holds.
   const pkgs = new Map<string, AccessPackageDto>();
-  const templateIds = new Set<string>();
-  for (const p of ref?.partner.packages ?? []) p.templateIds.forEach(t => templateIds.add(t));
-  for (const e of ents) e.package.templateIds.forEach(t => templateIds.add(t));
-  const templates = templateIds.size
-    ? await prisma.strategyTemplate.findMany({ where: { id: { in: [...templateIds] } }, select: { id: true, name: true } })
-    : [];
+  const templateIds = new Set<string>(), productIds = new Set<string>();
+  for (const p of [...(ref?.partner.packages ?? []), ...ents.map(e => e.package)]) {
+    p.templateIds.forEach(t => templateIds.add(t));
+    p.productIds.forEach(t => productIds.add(t));
+  }
+  const [templates, prods] = await Promise.all([
+    templateIds.size ? prisma.strategyTemplate.findMany({ where: { id: { in: [...templateIds] } }, select: { id: true, name: true } }) : [],
+    productIds.size ? prisma.partnerProduct.findMany({ where: { id: { in: [...productIds] }, status: 'APPROVED' }, select: { id: true, name: true, type: true } }) : [],
+  ]);
   const tpl = (ids: string[]) => templates.filter(t => ids.includes(t.id));
-  const verifiedBrokers = [...new Set(verifs.filter(v => v.status === 'VERIFIED' && v.partnerId === ref?.partnerId).map(v => v.broker).filter((b): b is string => !!b))];
+  const prd = (ids: string[]) => prods.filter(t => ids.includes(t.id));
+  const subOf = (id: string) => { const x = subs.find(s => s.packageId === id); return x ? toSubDto(x) : null; };
   for (const p of ref?.partner.packages ?? []) {
     const e = ents.find(x => x.packageId === p.id);
-    const ev = evaluatePackage({ partnerName: name, partnerActive: ref!.partner.status === 'ACTIVE', pkg: p, verifiedBrokers, activeTrader: ref!.isActive && !!ref!.connectedAt, rule });
+    const ev = evaluate(p);
     pkgs.set(p.id, {
-      id: p.id, name: p.name, description: p.description, perks: perkDtos(p.perks), templates: tpl(p.templateIds),
+      id: p.id, name: p.name, description: p.description, perks: perkDtos(p.perks), templates: tpl(p.templateIds), products: prd(p.productIds),
       status: e?.status ?? 'LOCKED', reasons: e && e.status === 'ACTIVE' ? [] : ev.reasons,
       grantedAt: e?.grantedAt.toISOString() ?? null, expiresAt: e?.expiresAt?.toISOString() ?? null, graceUntil: e?.graceUntil?.toISOString() ?? null,
+      priceCents: p.priceCents, currency: p.currency, periodDays: p.periodDays, canSubscribe: p.priceCents > 0 && ev.canSubscribe, subscription: subOf(p.id),
     });
   }
   for (const e of ents) {
     if (pkgs.has(e.packageId) || !LIVE.includes(e.status)) continue;
     pkgs.set(e.packageId, {
       id: e.packageId, name: e.package.name, description: e.package.description, perks: perkDtos(e.package.perks), templates: tpl(e.package.templateIds),
-      status: e.status, reasons: e.reason ? [e.reason] : [], grantedAt: e.grantedAt.toISOString(),
+      products: prd(e.package.productIds), status: e.status, reasons: e.reason ? [e.reason] : [], grantedAt: e.grantedAt.toISOString(),
       expiresAt: e.expiresAt?.toISOString() ?? null, graceUntil: e.graceUntil?.toISOString() ?? null,
+      priceCents: e.package.priceCents, currency: e.package.currency, periodDays: e.package.periodDays, canSubscribe: false, subscription: subOf(e.packageId),
     });
   }
 
@@ -179,7 +202,16 @@ export async function clientAccess(userId: string, email: string): Promise<Clien
     consent: { share: !!ref?.statsConsentAt, at: ref?.statsConsentAt?.toISOString() ?? null },
     lockedPerks: perks.locked,
     myPerks: perks.mine,
+    products,
+    paymentsEnabled: paymentsEnabled(),
   };
+}
+
+/** Starts paying for a package; only once every other condition is met. */
+export async function checkout(user: { id: string; email: string; name: string }, packageId: string) {
+  const { ref, evaluate } = await packageContext(user.id);
+  const pkg = ref?.partner.packages.find(p => p.id === packageId);
+  return startCheckout(user, packageId, !!pkg && evaluate(pkg).canSubscribe);
 }
 
 /** A user with no partner enters a code after signup. */

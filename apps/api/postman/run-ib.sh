@@ -35,7 +35,7 @@ curl -fsS "$BASE_URL/health" >/dev/null || { echo "API not reachable at $BASE_UR
 curl -fs -o /dev/null http://127.0.0.1:8999/__stats || { echo "Start the fake bridge: node fake-bridge.mjs 8999" >&2; exit 1; }
 
 echo "▸ Resetting test data"
-sql 'TRUNCATE "user", "verification", "reserved_partner_code", "admin_audit_log", "partner_event" CASCADE;'
+sql 'TRUNCATE "user", "verification", "reserved_partner_code", "admin_audit_log", "partner_event", "external_account" CASCADE;'
 sql "DELETE FROM system_setting WHERE key = 'partner.program';"
 
 node build-ib-collection.mjs >/dev/null
@@ -63,12 +63,14 @@ run "00 Sign in all" "05 Client verification" "06 Packages and access" "07 Featu
 
 echo "▸ Moving grace ends into the past"
 sql "UPDATE client_entitlement SET \"graceUntil\" = (now() AT TIME ZONE 'UTC') - interval '1 minute' WHERE status = 'GRACE';"
+VARS+=(--env-var "pkgStarter=$(q "SELECT id FROM partner_package WHERE \"partnerId\" = '$PID' AND name = 'Starter'")")
 for u in t1 t2 t3; do
   VARS+=(--env-var "${u}Acc=$(q "SELECT b.id FROM broker_account b JOIN \"user\" u ON u.id = b.\"userId\" WHERE u.email = '$u@partners.test'")")
 done
 
 echo "▸ D · after grace, join later, consent, admin, disconnect"
-run "00 Sign in all" "09b After grace" "10 Join later, consent, partner views" "11 Super admin" "12 Disconnect"
+run "00 Sign in all" "09b After grace" "10 Join later, consent, partner views" "11 Super admin" "12 Disconnect" \
+  "13 Broker integrations" "14 MT4 and other platforms" "15 Partner tools" "16 Paid packages" "17 Reports"
 
 echo "▸ Broker API keys are never stored in plain text"
 sql "SELECT COUNT(*) AS plain_api_keys FROM partner_broker WHERE \"apiKey\" IS NOT NULL AND \"apiKey\" NOT LIKE 'enc:v1:%';"

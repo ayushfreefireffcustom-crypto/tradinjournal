@@ -281,6 +281,12 @@ const envSchema = z.object({
   PARTNER_STATS_STALE_MIN: z.coerce.number().int().min(5).default(360),
   /** Clicks recorded per IP per 10 minutes; extra clicks still redirect. */
   PARTNER_CLICK_LIMIT: z.coerce.number().int().min(1).default(20),
+  /** Razorpay keys for paid partner packages. Without them, priced packages can only be granted by an admin. */
+  RAZORPAY_KEY_ID: z.string().optional(),
+  RAZORPAY_KEY_SECRET: z.string().optional(),
+  RAZORPAY_WEBHOOK_SECRET: z.string().optional(),
+  /** Tests only: point the Razorpay client at a fake. */
+  RAZORPAY_API_URL: z.string().url().default('https://api.razorpay.com/v1'),
 });
 
 export type Env = z.infer<typeof envSchema> & {

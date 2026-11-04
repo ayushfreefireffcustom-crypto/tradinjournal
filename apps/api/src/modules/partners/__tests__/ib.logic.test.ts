@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  extendPeriod, parseEarnings, parsePostback, priceLabel, splitSale, dig,
   DEFAULT_SETTINGS, allowedPerks, decideVerification, evaluatePackage, isActiveTrader, mergeSettings, nextEntitlement,
   parseIbList, ruleText, sameState, type EntitlementState, type VerifyInput,
 } from '../ib/ib.logic.js';
@@ -64,7 +65,7 @@ describe('evaluatePackage', () => {
   const pkg = { status: 'LIVE', brokers: [] as string[], requireActive: true };
   const base = { partnerName: 'Honey', partnerActive: true, pkg, verifiedBrokers: ['xellion'], activeTrader: true, rule: DEFAULT_SETTINGS };
   it('qualifies a verified active trader', () => {
-    expect(evaluatePackage(base)).toEqual({ qualifies: true, reasons: [], partnerPaused: false });
+    expect(evaluatePackage(base)).toEqual({ qualifies: true, reasons: [], partnerPaused: false, canSubscribe: true });
   });
   it('lists every reason it is locked', () => {
     const e = evaluatePackage({ ...base, partnerActive: false, verifiedBrokers: [], activeTrader: false });
@@ -147,5 +148,61 @@ describe('broker matching and sheet links', () => {
     expect(sheetCsvUrl('http://docs.google.com/spreadsheets/d/abc/edit')).toBeNull();
     expect(sheetCsvUrl('https://169.254.169.254/latest')).toBeNull();
     expect(sheetCsvUrl('https://docs.google.com.evil.io/spreadsheets/d/abc')).toBeNull();
+  });
+});
+
+describe('phase 2 rules', () => {
+  const base: VerifyInput = {
+    partnerName: 'Honey', brokerKey: 'xellion', brokerLabel: 'Xellion', partnerBrokers: ['xellion'],
+    listedHere: { id: 'ib1' }, listedElsewhere: false, emailListed: false, prev: null,
+  };
+  it('never auto-verifies an account we could not log into', () => {
+    const o = decideVerification({ ...base, ownershipProven: false });
+    expect(o).toMatchObject({ status: 'MANUAL_REVIEW', signal: 'listed-unproven', ibAccountId: 'ib1' });
+    expect(decideVerification({ ...base, ownershipProven: true }).status).toBe('VERIFIED');
+  });
+
+  it('asks for payment last, and only once everything else is met', () => {
+    const pkg = { status: 'LIVE', brokers: [] as string[], requireActive: false, priceCents: 1900 };
+    const ok = { partnerName: 'Honey', partnerActive: true, pkg, verifiedBrokers: ['xellion'], activeTrader: true, rule: DEFAULT_SETTINGS, priceLabel: '$19 / month' };
+    expect(evaluatePackage(ok)).toEqual({ qualifies: false, reasons: ['Subscribe ($19 / month) to unlock.'], partnerPaused: false, canSubscribe: true });
+    expect(evaluatePackage({ ...ok, paid: true }).qualifies).toBe(true);
+    const notVerified = evaluatePackage({ ...ok, verifiedBrokers: [] });
+    expect(notVerified.canSubscribe).toBe(false);
+    expect(evaluatePackage({ ...ok, paid: true, pkg: { ...pkg, adminHold: true } }).reasons).toContain('TRADElogs has paused this package.');
+  });
+
+  it('splits sales in the partner’s favour and extends paid periods', () => {
+    expect(splitSale(1999, 80)).toEqual({ partnerCents: 1600, platformCents: 399 });
+    expect(splitSale(1000, 100)).toEqual({ partnerCents: 1000, platformCents: 0 });
+    const now = new Date('2026-11-04T00:00:00Z');
+    expect(extendPeriod(null, 30, now)).toEqual(new Date('2026-12-04T00:00:00Z'));
+    expect(extendPeriod(new Date('2026-11-10T00:00:00Z'), 30, now)).toEqual(new Date('2026-12-10T00:00:00Z'));
+    expect(extendPeriod(new Date('2026-10-01T00:00:00Z'), 30, now)).toEqual(new Date('2026-12-04T00:00:00Z'));
+    expect(priceLabel(1900, 'USD', 30)).toBe('$19 / month');
+    expect(priceLabel(149950, 'INR', 365)).toBe('₹1,499.50 / year');
+  });
+
+  it('reads postbacks with different brokers’ parameter names', () => {
+    expect(parsePostback({ event: 'registration', login: '7001001', email: 'A@B.CO' })).toMatchObject({ kind: 'registration', accountId: '7001001', email: 'a@b.co' });
+    expect(parsePostback({ type: 'FTD', account_id: '55', amount: '250.5' })).toMatchObject({ kind: 'deposit', accountId: null, amount: 250.5 });
+    expect(parsePostback({ action: 'trade', uid: 'X9912', lots: '1.25', date: '1793750400' })).toMatchObject({ kind: 'trade', accountId: 'X9912', lots: 1.25, at: new Date(1793750400 * 1000) });
+    expect(parsePostback({ goal: 'commission', trader_id: '7001001', payout: '12.40', currency: 'usd', txn_id: 'T-1' })).toMatchObject({ kind: 'commission', amount: 12.4, currency: 'USD', eventId: 'T-1' });
+    expect(parsePostback({ foo: 'bar' }).kind).toBe('unknown');
+  });
+
+  it('reads commission reports and makes stable ids without one', () => {
+    const r = parseEarnings('Date,Client Account,Commission,Currency\n2026-10-01,7001001,"12.50",USD\n2026-10-02,7001002,-3,USD\nbad,1,x,USD\n', 'USD');
+    expect(r.rows).toHaveLength(2);
+    expect(r.rows[0]).toMatchObject({ accountId: '7001001', amount: 12.5, currency: 'USD', externalId: '2026-10-01:7001001:12.5' });
+    expect(r.rows[1]!.amount).toBe(-3);
+    expect(r.skipped).toBe(1);
+    expect(parseEarnings('account,amount\n1,2', 'USD').rows).toEqual([]);
+  });
+
+  it('reads nested API fields', () => {
+    expect(dig({ data: { items: [1] } }, 'data.items')).toEqual([1]);
+    expect(dig({ a: 1 }, '')).toEqual({ a: 1 });
+    expect(dig({ a: 1 }, 'b.c')).toBeUndefined();
   });
 });

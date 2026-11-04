@@ -21,8 +21,6 @@ export const BROKERS: BrokerDef[] = [
   { key: 'other', label: 'Other broker', match: /$^/, listHint: 'Account numbers (and emails) of the clients under your IB' },
 ];
 
-/** Broker API adapters that exist today. Empty until a broker hands over IB API access. */
-export const API_ADAPTERS = new Set<string>();
 
 export function brokerLabel(key: string): string {
   return BROKERS.find(b => b.key === key)?.label ?? key;
@@ -48,6 +46,7 @@ export function brokerKeyFor(account: { broker: string; server: string }, extra:
 export function catalog(): BrokerCatalogEntryDto[] {
   return BROKERS.map(b => ({
     key: b.key, label: b.label, listHint: b.listHint,
-    methods: ['LIST', 'SHEET', ...(API_ADAPTERS.has(b.key) ? ['API' as IbMethodDto] : [])] as IbMethodDto[],
+    // Broker postbacks work for every broker; the REST API needs the host approved by an admin.
+    methods: ['LIST', 'SHEET', 'API'] as IbMethodDto[],
   }));
 }

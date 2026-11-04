@@ -13,6 +13,11 @@ export const DEFAULT_SETTINGS: ProgramSettingsDto = {
   graceDays: 7,
   partnerGraceDays: 7,
   lockedPerks: [],
+  platformSharePct: 20,
+  refundDays: 7,
+  payoutMinimumCents: 5000,
+  currency: 'USD',
+  ibApiHosts: [],
 };
 
 export function mergeSettings(raw: unknown): ProgramSettingsDto {
@@ -29,6 +34,11 @@ export function mergeSettings(raw: unknown): ProgramSettingsDto {
     graceDays: int('graceDays', 0, 90),
     partnerGraceDays: int('partnerGraceDays', 0, 90),
     lockedPerks: Array.isArray(v.lockedPerks) ? v.lockedPerks.filter((x): x is string => typeof x === 'string') : [],
+    platformSharePct: int('platformSharePct', 0, 100),
+    refundDays: int('refundDays', 0, 90),
+    payoutMinimumCents: int('payoutMinimumCents', 0, 10_000_000),
+    currency: typeof v.currency === 'string' && /^[A-Za-z]{3}$/.test(v.currency) ? v.currency.toUpperCase() : DEFAULT_SETTINGS.currency,
+    ibApiHosts: Array.isArray(v.ibApiHosts) ? v.ibApiHosts.filter((x): x is string => typeof x === 'string').map(x => x.toLowerCase()) : [],
   };
 }
 
@@ -109,6 +119,8 @@ export interface VerifyInput {
   /** The email the client gave is in the referring partner's list. */
   emailListed: boolean;
   prev: { status: VerificationStatusDto; method: string | null; reviewRequestedAt: Date | null } | null;
+  /** False for accounts added for checking only (MT4…): we never logged in, so a match needs a human. */
+  ownershipProven?: boolean;
 }
 
 export interface VerifyOutcome {
@@ -126,6 +138,12 @@ export interface VerifyOutcome {
 export function decideVerification(i: VerifyInput): VerifyOutcome {
   if (i.prev?.method === 'manual' && (i.prev.status === 'VERIFIED' || i.prev.status === 'REJECTED')) {
     return { status: i.prev.status, method: 'manual', ibAccountId: null, reason: i.prev.status === 'REJECTED' ? 'An admin reviewed this account and could not confirm it.' : null, signal: null };
+  }
+  if (i.listedHere && i.ownershipProven === false) {
+    return {
+      status: 'MANUAL_REVIEW', method: null, ibAccountId: i.listedHere.id, signal: 'listed-unproven',
+      reason: `This account is on ${i.partnerName}’s list. Because it isn’t connected to TRADElogs, our team confirms it’s yours before it counts.`,
+    };
   }
   if (i.listedHere) return { status: 'VERIFIED', method: 'account', ibAccountId: i.listedHere.id, reason: null, signal: null };
   if (!i.brokerKey || !i.partnerBrokers.includes(i.brokerKey)) {
@@ -158,17 +176,21 @@ export function decideVerification(i: VerifyInput): VerifyOutcome {
 export interface EligibilityInput {
   partnerName: string;
   partnerActive: boolean;
-  pkg: { status: string; brokers: string[]; requireActive: boolean };
+  pkg: { status: string; brokers: string[]; requireActive: boolean; adminHold?: boolean; priceCents?: number };
+  /** Priced packages: the client has a paid, current subscription. */
+  paid?: boolean;
+  priceLabel?: string;
   /** Broker keys of this client's VERIFIED accounts. */
   verifiedBrokers: string[];
   activeTrader: boolean;
   rule: ProgramSettingsDto;
 }
 
-export function evaluatePackage(i: EligibilityInput): { qualifies: boolean; reasons: string[]; partnerPaused: boolean } {
+export function evaluatePackage(i: EligibilityInput): { qualifies: boolean; reasons: string[]; partnerPaused: boolean; canSubscribe: boolean } {
   const reasons: string[] = [];
   if (!i.partnerActive) reasons.push(`${i.partnerName}’s partner programme is paused.`);
   if (i.pkg.status !== 'LIVE') reasons.push(`${i.partnerName} has withdrawn this package.`);
+  if (i.pkg.adminHold) reasons.push('TRADElogs has paused this package.');
   const ok = i.pkg.brokers.length ? i.verifiedBrokers.filter(b => i.pkg.brokers.includes(b)) : i.verifiedBrokers;
   if (!ok.length) {
     reasons.push(i.pkg.brokers.length
@@ -176,7 +198,10 @@ export function evaluatePackage(i: EligibilityInput): { qualifies: boolean; reas
       : `Verify a broker account opened under ${i.partnerName}.`);
   }
   if (i.pkg.requireActive && !i.activeTrader) reasons.push(`Trade at least ${ruleText(i.rule)}.`);
-  return { qualifies: reasons.length === 0, reasons, partnerPaused: !i.partnerActive };
+  // Payment comes last: a client only pays once everything else is met.
+  const canSubscribe = reasons.length === 0;
+  if ((i.pkg.priceCents ?? 0) > 0 && !i.paid) reasons.push(`Subscribe${i.priceLabel ? ` (${i.priceLabel})` : ''} to unlock.`);
+  return { qualifies: reasons.length === 0, reasons, partnerPaused: !i.partnerActive, canSubscribe };
 }
 
 export interface EntitlementState {
@@ -230,4 +255,120 @@ export function sameState(a: EntitlementState, b: EntitlementState): boolean {
 export function allowedPerks(locked: string[], held: { status: string; perks: string[] }[], all: string[]): string[] {
   const mine = new Set(held.filter(h => h.status === 'ACTIVE' || h.status === 'GRACE').flatMap(h => h.perks));
   return all.filter(k => !locked.includes(k) || mine.has(k));
+}
+
+// ── Money ─────────────────────────────────────────────────────────────────────
+
+export function priceLabel(cents: number, currency: string, days: number): string {
+  const amount = (cents / 100).toLocaleString('en-US', { minimumFractionDigits: cents % 100 ? 2 : 0, maximumFractionDigits: 2 });
+  const per = days === 30 ? 'month' : days === 365 ? 'year' : days === 7 ? 'week' : `${days} days`;
+  return `${currency === 'USD' ? '$' : currency === 'INR' ? '₹' : `${currency} `}${amount} / ${per}`;
+}
+
+/** Splits a sale: the partner keeps sharePct, TRADElogs keeps the rest (rounded in the partner's favour). */
+export function splitSale(amountCents: number, partnerSharePct: number): { partnerCents: number; platformCents: number } {
+  const partnerCents = Math.ceil((amountCents * partnerSharePct) / 100);
+  return { partnerCents, platformCents: amountCents - partnerCents };
+}
+
+/** Next period end when a payment lands: extends from the later of now and the current end. */
+export function extendPeriod(currentEnd: Date | null, periodDays: number, now: Date): Date {
+  const base = currentEnd && currentEnd > now ? currentEnd : now;
+  return new Date(base.getTime() + periodDays * DAY_MS);
+}
+
+// ── Broker postbacks ──────────────────────────────────────────────────────────
+
+export type PostbackKind = 'registration' | 'deposit' | 'trade' | 'commission' | 'unknown';
+export interface PostbackEvent {
+  kind: PostbackKind;
+  accountId: string | null;
+  email: string | null;
+  lots: number | null;
+  amount: number | null;
+  currency: string | null;
+  eventId: string | null;
+  at: Date | null;
+  platform: string | null;
+}
+
+const pick = (p: Record<string, unknown>, keys: string[]): string | null => {
+  const lower = new Map(Object.entries(p).map(([k, v]) => [k.toLowerCase(), v]));
+  for (const k of keys) {
+    const v = lower.get(k);
+    if (v !== undefined && v !== null && String(v).trim() !== '') return String(v).trim();
+  }
+  return null;
+};
+const num = (v: string | null) => {
+  if (v == null) return null;
+  const n = Number(v.replace(/[, ]/g, ''));
+  return Number.isFinite(n) ? n : null;
+};
+
+/**
+ * Reads one postback from a broker or IB platform (Cellxpert, MyAffiliates, own
+ * systems…). Parameter names differ between brokers, so common aliases are accepted.
+ */
+export function parsePostback(params: Record<string, unknown>): PostbackEvent {
+  const raw = (pick(params, ['event', 'type', 'action', 'event_type', 'status', 'goal']) ?? '').toLowerCase();
+  const kind: PostbackKind = /reg|sign|lead|open|account/.test(raw) ? 'registration'
+    : /dep|ftd|fund/.test(raw) ? 'deposit'
+    : /trade|volume|lot|position/.test(raw) ? 'trade'
+    : /comm|rebate|reward|payout|cpa|revshare/.test(raw) ? 'commission'
+    : 'unknown';
+  const accountId = pick(params, ['account_id', 'accountid', 'account', 'login', 'mt_login', 'trading_account', 'client_account', 'uid', 'client_uid', 'trader_id', 'client_id']);
+  const email = pick(params, ['email', 'client_email', 'user_email'])?.toLowerCase() ?? null;
+  const at = pick(params, ['date', 'time', 'timestamp', 'event_time', 'created_at']);
+  let when: Date | null = null;
+  if (at) {
+    const n = Number(at);
+    when = Number.isFinite(n) && /^\d{9,13}$/.test(at) ? new Date(at.length > 10 ? n : n * 1000) : new Date(at);
+    if (Number.isNaN(when.getTime())) when = null;
+  }
+  return {
+    kind,
+    accountId: accountId && /^[A-Za-z0-9_-]{3,30}$/.test(accountId) ? accountId : null,
+    email: email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : null,
+    lots: num(pick(params, ['lots', 'volume', 'lot', 'volume_lots'])),
+    amount: num(pick(params, ['commission', 'amount', 'payout', 'reward', 'deposit', 'value', 'sum'])),
+    currency: pick(params, ['currency', 'cur', 'ccy'])?.toUpperCase().slice(0, 3) ?? null,
+    eventId: pick(params, ['event_id', 'transaction_id', 'txn_id', 'id', 'deal_id', 'reference']),
+    at: when,
+    platform: pick(params, ['platform', 'server_type'])?.toUpperCase() ?? null,
+  };
+}
+
+// ── Commission report upload ──────────────────────────────────────────────────
+
+export interface EarningRow { externalId: string; accountId: string | null; amount: number; currency: string | null; at: Date }
+
+/** Reads a commission / rebate report export: date, amount, and (optionally) account, id, currency. */
+export function parseEarnings(text: string, fallbackCurrency: string): { rows: EarningRow[]; skipped: number } {
+  const lines = text.replace(/^\uFEFF/, '').split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  if (lines.length < 2) return { rows: [], skipped: lines.length };
+  const delim = lines[0]!.includes('\t') ? '\t' : lines[0]!.includes(';') && !lines[0]!.includes(',') ? ';' : ',';
+  const head = lines[0]!.split(delim).map(h => h.trim().toLowerCase().replace(/^"|"$/g, ''));
+  const col = (re: RegExp) => head.findIndex(h => re.test(h));
+  const iDate = col(/date|time|day|period/), iAmt = col(/commission|amount|reward|rebate|payout|earning|profit/);
+  const iAcc = col(/account|login|uid|client/), iId = col(/^id$|transaction|reference|ticket/), iCur = col(/currency|ccy/);
+  if (iDate < 0 || iAmt < 0) return { rows: [], skipped: lines.length - 1 };
+  const rows: EarningRow[] = [];
+  let skipped = 0;
+  for (const line of lines.slice(1)) {
+    const c = line.split(delim).map(x => x.trim().replace(/^"|"$/g, ''));
+    const at = new Date(c[iDate] ?? '');
+    const amount = Number((c[iAmt] ?? '').replace(/[^0-9.-]/g, ''));
+    if (Number.isNaN(at.getTime()) || !Number.isFinite(amount) || (c[iAmt] ?? '').trim() === '') { skipped++; continue; }
+    const accountId = iAcc >= 0 && c[iAcc] ? c[iAcc]! : null;
+    const externalId = iId >= 0 && c[iId] ? c[iId]! : `${at.toISOString().slice(0, 10)}:${accountId ?? '-'}:${amount}`;
+    rows.push({ externalId, accountId, amount, currency: iCur >= 0 && c[iCur] ? c[iCur]!.toUpperCase().slice(0, 3) : fallbackCurrency, at });
+  }
+  return { rows, skipped };
+}
+
+/** Reads a value from a JSON object by a dot path ("a.b.c"). */
+export function dig(obj: unknown, path: string | undefined): unknown {
+  if (!path) return obj;
+  return path.split('.').reduce<unknown>((o, k) => (o && typeof o === 'object' ? (o as Record<string, unknown>)[k] : undefined), obj);
 }

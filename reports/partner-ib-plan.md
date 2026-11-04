@@ -42,5 +42,15 @@ PARTNER_PROGRAM_ENABLED). This is Phase 1 (the MVP) of that doc.
 - Partner: Overview funnel adds verified and eligible stages, plus volume, P&L and profitable vs losing; **Brokers** (connect, upload or sync the list, health); **Packages**; Clients get verification and consent-gated P&L
 - Admin: application review (approve / reject / ask for info), **Programme** overview (funnel across all partners, partner-wise trading table, CSV export), **Reviews** queue (manual verifications plus suspicious attribution), **Settings**
 
-## Not in this phase
-Commissions and payouts, real broker API adapters (need credentials), partner-uploaded indicators or algorithms, paid subscriptions.
+## Phase 2 (built 4 Nov 2026)
+- **Broker integrations**: postback URL per broker connection (registration / deposit / trade / commission, common parameter names, repeats counted once), a REST adapter for broker partner APIs (login→token like Exness, bearer, API-key header, basic; paginated; only hosts an admin approves), commission-report upload. Exness/Cellxpert client-list endpoints aren't public, so the endpoint path and field names are entered from the broker's own API schema.
+- **MT4 and other platforms**: clients add the account for checking only. A list match still goes to manual review (we can't sign in to prove ownership); activity comes from what the broker reports.
+- **Partner tools**: indicators, chart templates, journal templates, algorithms/EAs (files up to 2 MB, stored in the DB), guides. Every version is approved by an admin first; clients open or download them from their Access page; opens are counted.
+- **Paid packages**: price per period, Razorpay checkout + webhook, only purchasable once every other condition is met, renew / cancel (access runs to the period end), admin grant for offline payments, refunds end access and claw back the partner's share.
+- **Revenue share and payouts**: TRADElogs share (default 20%, per-partner override), refund window, automatic payout drafts at a minimum, admin marks paid with the transfer reference, adjustments, encrypted payout details.
+- **Reports**: daily series for every funnel step, signup-month retention cohorts, channels to unlocked, tool and feature usage, paid and strategy subscriptions, IB earnings by month, consent-aware client CSV. Admin: cohorts, package moderation (pause / release), partner terms and permissions, finance page, filters.
+
+## Still needs from the business
+- Razorpay keys (RAZORPAY_KEY_ID / _SECRET / _WEBHOOK_SECRET) and the webhook URL `https://api.tradelogs.com/api/payments/razorpay/webhook` set in the Razorpay dashboard.
+- Each broker's postback set-up (partners paste their URL in the broker's partner area; some brokers need the account manager to enable it) or API access and the API host approved in Settings.
+- Decisions the doc lists; the defaults above stand until then.

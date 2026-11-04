@@ -38,6 +38,8 @@ export async function refreshReferralStats(opts: { limit?: number; fetch?: Fetch
     const rule = await getProgramSettings();
     for (const r of due) {
       const accounts = await prisma.brokerAccount.findMany({ where: { userId: r.userId }, select: { id: true } });
+      // Accounts our bridge can't sync (MT4…) count through what the broker reports for them.
+      const reported = await brokerReported(r.userId, now);
       const trades: TradeLite[] = [];
       const errors: string[] = [];
       for (const a of accounts) {
@@ -51,7 +53,13 @@ export async function refreshReferralStats(opts: { limit?: number; fetch?: Fetch
         continue;
       }
       const { lotsWindow, ...snap } = snapshotFromTrades(trades, rule.activeWindowDays, now.getTime(), r.attributedAt);
-      const flags = nextActivity(r, isActiveTrader({ tradesInWindow: snap.tradeCount7d, lotsInWindow: lotsWindow }, rule), now);
+      const inWindow = reported.lastTradeAt && now.getTime() - reported.lastTradeAt.getTime() <= rule.activeWindowDays * 86_400_000;
+      if (inWindow) {
+        snap.tradeCount7d += reported.trades30d; snap.trades30d += reported.trades30d;
+        snap.lots30d = Math.round((snap.lots30d + reported.lots30d) * 100) / 100;
+        if (!snap.lastTradeAt || reported.lastTradeAt! > snap.lastTradeAt) snap.lastTradeAt = reported.lastTradeAt;
+      }
+      const flags = nextActivity(r, isActiveTrader({ tradesInWindow: snap.tradeCount7d, lotsInWindow: lotsWindow + (inWindow ? reported.lots30d : 0) }, rule), now);
       await prisma.referral.update({
         where: { id: r.id },
         data: { ...snap, ...flags, statsCheckedAt: now, statsError: errors.length ? errors[0]!.slice(0, 300) : null },
@@ -65,4 +73,17 @@ export async function refreshReferralStats(opts: { limit?: number; fetch?: Fetch
   } finally {
     running = false;
   }
+}
+
+/** Activity the broker reported for this user's verified check-only accounts (MT4 and others). */
+async function brokerReported(userId: string, now: Date): Promise<{ trades30d: number; lots30d: number; lastTradeAt: Date | null }> {
+  const v = await prisma.clientVerification.findMany({ where: { userId, status: 'VERIFIED', externalAccountId: { not: null }, ibAccountId: { not: null } }, select: { ibAccountId: true } });
+  if (!v.length) return { trades30d: 0, lots30d: 0, lastTradeAt: null };
+  const rows = await prisma.ibAccount.findMany({ where: { id: { in: v.map(x => x.ibAccountId!) } }, select: { trades30d: true, lots30d: true, lastTradeAt: true } });
+  const fresh = rows.filter(r => r.lastTradeAt && now.getTime() - r.lastTradeAt.getTime() <= 30 * 86_400_000);
+  return {
+    trades30d: fresh.reduce((n, r) => n + (r.trades30d ?? 0), 0),
+    lots30d: fresh.reduce((n, r) => n + (r.lots30d ?? 0), 0),
+    lastTradeAt: fresh.reduce<Date | null>((d, r) => (!d || r.lastTradeAt! > d ? r.lastTradeAt : d), null),
+  };
 }

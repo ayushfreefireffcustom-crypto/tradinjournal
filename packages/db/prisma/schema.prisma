@@ -52,6 +52,8 @@ model User {
   referral            Referral?
   clientVerifications ClientVerification[]
   clientEntitlements  ClientEntitlement[]
+  externalAccounts    ExternalAccount[]
+  packageSubs         PackageSubscription[]
 
   exchangeConnections ExchangeConnection[]
   copyLeaders         CopyLeader[]
@@ -1125,6 +1127,12 @@ model Partner {
   /// Last review message shown to the applicant (rejection reason or what to add).
   reviewNote   String?
   reviewedAt   DateTime?
+  /// Share of package sales the partner keeps, in percent. Null = programme default.
+  revenueSharePct Int?
+  /// { canOfferProducts, canSellPackages, maxPackages } — null = defaults.
+  permissions     Json?
+  /// Where payouts go (UPI / bank / crypto address), encrypted with lib/secrets.
+  payoutDetails   String?
   approvedAt   DateTime?
   suspendedAt  DateTime?
   revokedAt    DateTime?
@@ -1142,6 +1150,11 @@ model Partner {
   verifications ClientVerification[]
   packages      PartnerPackage[]
   entitlements  ClientEntitlement[]
+  products      PartnerProduct[]
+  earnings      IbEarning[]
+  subscriptions PackageSubscription[]
+  commissions   PartnerCommission[]
+  payouts       Payout[]
 
   @@index([status])
   @@map("partner")
@@ -1311,6 +1324,10 @@ model PartnerBroker {
   apiKey       String?
   /// Extra server-name match for brokers outside the catalog ("other").
   serverMatch  String?
+  /// Secret in the postback URL the broker calls (server-to-server events).
+  postbackToken String?   @unique
+  /// REST adapter: { baseUrl, auth, username, clientsPath, fields } (secret in apiKey).
+  apiConfig     Json?
   status       IbConnectionStatus @default(PENDING)
   lastSyncAt   DateTime?
   lastError    String?
@@ -1320,6 +1337,8 @@ model PartnerBroker {
 
   partner  Partner     @relation(fields: [partnerId], references: [id], onDelete: Cascade)
   accounts IbAccount[]
+  events   BrokerEvent[]
+  earnings IbEarning[]
 
   @@unique([partnerId, broker])
   @@map("partner_broker")
@@ -1338,6 +1357,14 @@ model IbAccount {
   lastSeenAt      DateTime  @default(now())
   /// No longer in the latest list.
   removedAt       DateTime?
+  /// Activity the broker reports for this account (postback / API / upload), when it does.
+  platform        String?
+  depositTotal    Float?
+  lotsTotal       Float?
+  lots30d         Float?
+  trades30d       Int?
+  lastTradeAt     DateTime?
+  reportedAt      DateTime?
 
   partnerBroker PartnerBroker @relation(fields: [partnerBrokerId], references: [id], onDelete: Cascade)
   partner       Partner       @relation(fields: [partnerId], references: [id], onDelete: Cascade)
@@ -1352,7 +1379,10 @@ model IbAccount {
 model ClientVerification {
   id                String             @id @default(cuid())
   userId            String
-  brokerAccountId   String             @unique
+  /// An MT5 account synced through our bridge…
+  brokerAccountId   String?            @unique
+  /// …or an account the client added for checking only (MT4 and other platforms).
+  externalAccountId String?            @unique
   partnerId         String
   broker            String?
   status            VerificationStatus @default(PENDING)
@@ -1376,7 +1406,8 @@ model ClientVerification {
   updatedAt         DateTime           @updatedAt
 
   user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  brokerAccount BrokerAccount @relation(fields: [brokerAccountId], references: [id], onDelete: Cascade)
+  brokerAccount   BrokerAccount?   @relation(fields: [brokerAccountId], references: [id], onDelete: Cascade)
+  externalAccount ExternalAccount? @relation(fields: [externalAccountId], references: [id], onDelete: Cascade)
   partner       Partner       @relation(fields: [partnerId], references: [id], onDelete: Cascade)
 
   @@index([partnerId, status])
@@ -1399,12 +1430,23 @@ model PartnerPackage {
   requireActive Boolean       @default(true)
   /// Access lasts this many days after it's granted. Null = while the client qualifies.
   accessDays    Int?
+  /// Partner tools (PartnerProduct ids) included.
+  productIds    String[]      @default([])
+  /// Price per period in the smallest unit (cents). 0 = free: unlocks on eligibility alone.
+  priceCents    Int           @default(0)
+  currency      String        @default("USD")
+  /// Length of one paid period in days.
+  periodDays    Int           @default(30)
+  /// Set by an admin: pulled from sale; holders lose it after grace.
+  adminHold     Boolean       @default(false)
+  adminNote     String?
   status        PackageStatus @default(DRAFT)
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
   partner      Partner             @relation(fields: [partnerId], references: [id], onDelete: Cascade)
-  entitlements ClientEntitlement[]
+  entitlements  ClientEntitlement[]
+  subscriptions PackageSubscription[]
 
   @@index([partnerId, status])
   @@map("partner_package")
@@ -1432,6 +1474,230 @@ model ClientEntitlement {
   @@unique([userId, packageId])
   @@index([partnerId, status])
   @@map("client_entitlement")
+}
+
+/// An account a client adds only to be checked (MT4 and platforms our bridge can't sync).
+/// Ownership can't be proven by login, so a list match still goes to manual review.
+model ExternalAccount {
+  id        String   @id @default(cuid())
+  userId    String
+  /// MT4 | MT5 | CTRADER | OTHER
+  platform  String
+  login     String
+  server    String
+  broker    String
+  createdAt DateTime @default(now())
+
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  verification ClientVerification?
+
+  @@unique([platform, login, server])
+  @@index([userId])
+  @@map("external_account")
+}
+
+/// One server-to-server call from a broker (postback) or adapter sync, kept for the log.
+model BrokerEvent {
+  id              String   @id @default(cuid())
+  partnerBrokerId String
+  /// registration | deposit | trade | commission | unknown
+  kind            String
+  accountId       String?
+  payload         Json
+  /// ok | ignored | error
+  status          String
+  error           String?
+  createdAt       DateTime @default(now())
+
+  partnerBroker PartnerBroker @relation(fields: [partnerBrokerId], references: [id], onDelete: Cascade)
+
+  @@index([partnerBrokerId, createdAt])
+  @@map("broker_event")
+}
+
+/// IB commission the broker reports for a partner (postback, API or uploaded report).
+model IbEarning {
+  id              String   @id @default(cuid())
+  partnerId       String
+  partnerBrokerId String
+  accountId       String?
+  amount          Float
+  currency        String   @default("USD")
+  earnedAt        DateTime
+  /// POSTBACK | API | UPLOAD
+  source          String
+  /// The broker's id for this line, so a re-sent event is counted once.
+  externalId      String
+  createdAt       DateTime @default(now())
+
+  partner       Partner       @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  partnerBroker PartnerBroker @relation(fields: [partnerBrokerId], references: [id], onDelete: Cascade)
+
+  @@unique([partnerBrokerId, externalId])
+  @@index([partnerId, earnedAt])
+  @@map("ib_earning")
+}
+
+enum ProductStatus {
+  DRAFT
+  PENDING
+  APPROVED
+  REJECTED
+  ARCHIVED
+}
+
+/// A tool a partner offers their clients: indicator, chart template, journal template,
+/// algorithm / EA, or a guide. An admin reviews it before clients can use it.
+model PartnerProduct {
+  id          String        @id @default(cuid())
+  partnerId   String
+  /// INDICATOR | CHART_TEMPLATE | JOURNAL_TEMPLATE | ALGORITHM | GUIDE
+  type        String
+  name        String
+  description String?
+  /// TradingView | MT4 | MT5 | TRADElogs | Other
+  platform    String?
+  /// Source code, template JSON or guide text.
+  content     String?       @db.Text
+  url         String?
+  fileName    String?
+  fileType    String?
+  fileSize    Int?
+  fileData    Bytes?
+  version     Int           @default(1)
+  status      ProductStatus @default(DRAFT)
+  reviewNote  String?
+  reviewedBy  String?
+  reviewedAt  DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  partner Partner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  @@index([partnerId, status])
+  @@index([status, updatedAt])
+  @@map("partner_product")
+}
+
+enum SubscriptionStatus {
+  PENDING
+  ACTIVE
+  CANCELLED
+  EXPIRED
+}
+
+/// A client's paid (or admin-granted) subscription to a priced package.
+model PackageSubscription {
+  id               String             @id @default(cuid())
+  userId           String
+  partnerId        String
+  packageId        String
+  status           SubscriptionStatus @default(PENDING)
+  priceCents       Int
+  currency         String
+  periodDays       Int
+  /// razorpay | manual
+  provider         String
+  startedAt        DateTime?
+  currentPeriodEnd DateTime?
+  /// Set when the client cancels: access runs to the period end, then stops.
+  cancelledAt      DateTime?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  user     User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  partner  Partner        @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  package  PartnerPackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  payments Payment[]
+
+  @@unique([userId, packageId])
+  @@index([partnerId, status])
+  @@map("package_subscription")
+}
+
+enum PaymentStatus {
+  CREATED
+  PAID
+  FAILED
+  REFUNDED
+}
+
+model Payment {
+  id                 String        @id @default(cuid())
+  subscriptionId     String
+  userId             String
+  partnerId          String
+  amountCents        Int
+  currency           String
+  provider           String
+  providerOrderId    String        @unique
+  providerPaymentId  String?
+  status             PaymentStatus @default(CREATED)
+  paidAt             DateTime?
+  partnerShareCents  Int           @default(0)
+  platformShareCents Int           @default(0)
+  createdAt          DateTime      @default(now())
+
+  subscription PackageSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  commission   PartnerCommission?
+
+  @@index([partnerId, createdAt])
+  @@map("payment")
+}
+
+enum CommissionStatus {
+  PENDING
+  PAYABLE
+  PAID
+  VOID
+}
+
+/// The partner's ledger: their share of each package sale, plus admin adjustments.
+model PartnerCommission {
+  id          String           @id @default(cuid())
+  partnerId   String
+  /// SALE | ADJUSTMENT
+  kind        String
+  amountCents Int
+  currency    String
+  paymentId   String?          @unique
+  payoutId    String?
+  status      CommissionStatus @default(PENDING)
+  note        String?
+  /// PENDING becomes PAYABLE after the refund window.
+  payableAt   DateTime
+  createdAt   DateTime         @default(now())
+
+  partner Partner  @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  payment Payment? @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+  payout  Payout?  @relation(fields: [payoutId], references: [id], onDelete: SetNull)
+
+  @@index([partnerId, status])
+  @@map("partner_commission")
+}
+
+enum PayoutStatus {
+  DRAFT
+  PAID
+  CANCELLED
+}
+
+model Payout {
+  id          String       @id @default(cuid())
+  partnerId   String
+  amountCents Int
+  currency    String
+  status      PayoutStatus @default(DRAFT)
+  reference   String?
+  paidAt      DateTime?
+  paidBy      String?
+  createdAt   DateTime     @default(now())
+
+  partner     Partner             @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  commissions PartnerCommission[]
+
+  @@index([partnerId, status])
+  @@map("payout")
 }
 
 /// Audit trail for the IB side: list syncs, verifications, access changes, consent.

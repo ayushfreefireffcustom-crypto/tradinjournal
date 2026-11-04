@@ -52,6 +52,8 @@ createServer((req, res) => {
       deals.push({ deal_ticket: ++ticket, order_ticket: ticket, position_id: pos, symbol: 'EURUSD', type: 1, entry: 1, volume: '0.10', price: '1.102', profit: '20.00', commission: '-0.35', swap: '0', fee: '0', deal_time: t + 600, comment: '' });
       return json(res, 200, { total: deals.length });
     }
+    // Fake Razorpay Orders API for the IB partner suite.
+    if (req.url === '/v1/orders') return json(res, 200, { id: `order_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, entity: 'order', amount: body.amount, currency: body.currency, receipt: body.receipt, status: 'created' });
     if (body.password !== SECRET_PASSWORD) return json(res, 401, { detail: 'Authorization failed (-6)' });
     if (req.url === '/verify') {
       calls.verify++;

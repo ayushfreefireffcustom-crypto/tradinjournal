@@ -1,4 +1,4 @@
-import express, { type Express, type Request, type Response } from 'express';
+import express, { type Express, type NextFunction, type Request, type Response } from 'express';
 import cors from 'cors';
 import compression from 'compression';
 import helmet from 'helmet';
@@ -42,7 +42,7 @@ import { accessRouter } from './modules/admin/access.routes.js';
 import { usageRouter } from './modules/usage/usage.routes.js';
 import { meRouter } from './modules/me/me.routes.js';
 import { syncInternalRouter } from './modules/sync/sync.jobs.js';
-import { adminPartnersRouter, partnerAccessRouter, partnerRouter, partnersInternalRouter, referralPublicRouter } from './modules/partners/partners.routes.js';
+import { adminPartnersRouter, ibPublicRouter, partnerAccessRouter, partnerRouter, partnersInternalRouter, referralPublicRouter } from './modules/partners/partners.routes.js';
 import { perkGates } from './modules/partners/ib/perk-gate.js';
 
 export function createApp(): Express {
@@ -83,7 +83,17 @@ export function createApp(): Express {
   // better-auth handles all /api/auth/* — must come before express.json()
   app.all('/api/auth/*', toNodeHandler(auth));
 
-  app.use(express.json());
+  // Bigger bodies only where they're expected: partner list / report / file uploads (≤2 MB
+  // decoded, base64 inflates ~33%). The Razorpay webhook needs the raw body for its signature,
+  // and broker postbacks may arrive form-encoded.
+  const bigJson = express.json({ limit: '4mb' }), smallJson = express.json();
+  app.use('/api/payments/razorpay/webhook', express.raw({ type: '*/*', limit: '1mb' }));
+  app.use('/api/ib/postback', express.urlencoded({ extended: false, limit: '64kb' }));
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    if (req.path === '/api/payments/razorpay/webhook') return next();
+    const big = req.method !== 'GET' && /^\/api\/partner\/(brokers\/[^/]+\/(accounts|earnings)|products(\/[^/]+\/file)?)$/.test(req.path);
+    return (big ? bigJson : smallJson)(req, res, next);
+  });
 
   // Cookie-authenticated writes must come from the web app (see the middleware).
   app.use('/api', requireSameOrigin);
@@ -117,6 +127,7 @@ export function createApp(): Express {
     app.use('/api', referralPublicRouter);
     app.use('/api/partner', partnerRouter);
     app.use('/api/partner-access', partnerAccessRouter);
+    app.use('/api', ibPublicRouter);
     app.use('/api/admin', adminPartnersRouter);
     // Features the admin locked to partner-package holders. No-op until something is locked.
     for (const [prefix, gate] of perkGates()) app.use(prefix, gate);

@@ -133,20 +133,30 @@ export async function programOverview(range: PartnerRange): Promise<ProgramOverv
 
 // ── Review queue ──────────────────────────────────────────────────────────────
 
+type VerifAccounts = {
+  brokerAccount: { id: string; mt5Login: bigint; broker: string; server: string } | null;
+  externalAccount: { id: string; login: string; broker: string; server: string; platform: string } | null;
+};
+function acct(v: VerifAccounts): ReviewItemDto['account'] {
+  if (v.brokerAccount) return { id: v.brokerAccount.id, login: v.brokerAccount.mt5Login.toString(), broker: v.brokerAccount.broker, server: v.brokerAccount.server, platform: 'MT5' };
+  if (v.externalAccount) return { id: v.externalAccount.id, login: v.externalAccount.login, broker: v.externalAccount.broker, server: v.externalAccount.server, platform: v.externalAccount.platform };
+  return null;
+}
+
 /** Things a human should look at that aren't a pending verification. */
 async function flagItems(): Promise<ReviewItemDto[]> {
   const items: ReviewItemDto[] = [];
   // 1. Account listed under another partner's IB than the one who referred the client.
   const other = await prisma.clientVerification.findMany({
     where: { signal: 'other-partner', status: { not: 'VERIFIED' } },
-    include: { partner: { include: { user: { select: { name: true } } } }, user: { select: { id: true, name: true, email: true } }, brokerAccount: { select: { id: true, mt5Login: true, broker: true, server: true } } },
+    include: { partner: { include: { user: { select: { name: true } } } }, user: { select: { id: true, name: true, email: true } }, brokerAccount: { select: { id: true, mt5Login: true, broker: true, server: true } }, externalAccount: { select: { id: true, login: true, broker: true, server: true, platform: true } } },
     take: 100, orderBy: { updatedAt: 'desc' },
   });
   for (const v of other) {
     items.push({
       id: `flag:other:${v.id}`, kind: 'flag', flag: 'Account is under a different partner’s IB than the one who referred this client',
       partner: { id: v.partnerId, name: v.partner.user.name }, client: v.user,
-      account: { id: v.brokerAccount.id, login: v.brokerAccount.mt5Login.toString(), broker: v.brokerAccount.broker, server: v.brokerAccount.server },
+      account: acct(v),
       status: v.status, signal: v.signal, reason: v.reason, brokerEmail: v.brokerEmail, note: null, at: v.updatedAt.toISOString(),
     });
   }
@@ -186,12 +196,12 @@ async function flagItems(): Promise<ReviewItemDto[]> {
 export async function reviewQueue(): Promise<ReviewItemDto[]> {
   const pending = await prisma.clientVerification.findMany({
     where: { status: 'MANUAL_REVIEW' },
-    include: { partner: { include: { user: { select: { name: true } } } }, user: { select: { id: true, name: true, email: true } }, brokerAccount: { select: { id: true, mt5Login: true, broker: true, server: true } } },
+    include: { partner: { include: { user: { select: { name: true } } } }, user: { select: { id: true, name: true, email: true } }, brokerAccount: { select: { id: true, mt5Login: true, broker: true, server: true } }, externalAccount: { select: { id: true, login: true, broker: true, server: true, platform: true } } },
     orderBy: { updatedAt: 'asc' }, take: 200,
   });
   const items: ReviewItemDto[] = pending.map(v => ({
     id: v.id, kind: 'verification', flag: null, partner: { id: v.partnerId, name: v.partner.user.name }, client: v.user,
-    account: { id: v.brokerAccount.id, login: v.brokerAccount.mt5Login.toString(), broker: v.brokerAccount.broker, server: v.brokerAccount.server },
+    account: acct(v),
     status: v.status, signal: v.signal, reason: v.reason, brokerEmail: v.brokerEmail, note: v.reviewNote,
     at: (v.reviewRequestedAt ?? v.updatedAt).toISOString(),
   }));
@@ -236,6 +246,24 @@ export async function exportCsv(type: 'clients' | 'partners'): Promise<string> {
       return [r.user.name, r.user.email, r.user.country, r.partner.user.name, r.source.toLowerCase(), r.attributedAt.toISOString().slice(0, 10),
         r.connectedAt?.toISOString().slice(0, 10) ?? '', x.verification, x.eligible ? 'yes' : 'no', x.packages.map(p => `${p.name} (${p.status.toLowerCase()})`).join('; '),
         r.isActive && r.connectedAt ? 'yes' : 'no', r.trades30d, r.lots30d, r.pnl30d, r.pnlTotal, x.consent ? 'yes' : 'no'];
+    }),
+  ]);
+}
+
+/** The partner's own client list as CSV. Same privacy as the portal: no emails, P&L only with consent. */
+export async function partnerClientsCsv(partnerId: string): Promise<string> {
+  const refs = await prisma.referral.findMany({
+    where: { partnerId }, include: { user: { select: { name: true, city: true, country: true } }, channel: { select: { label: true } } },
+    orderBy: { attributedAt: 'desc' }, take: 50_000,
+  });
+  const ib = await clientIb(refs, false);
+  return csv([
+    ['client', 'city', 'country', 'channel', 'source', 'signed_up', 'connected', 'broker_check', 'unlocked', 'packages', 'active', 'trades_30d', 'lots_30d', 'net_pnl_30d'],
+    ...refs.map(r => {
+      const x = ib.get(r.id)!;
+      return [r.user.name, r.user.city, r.user.country, r.channel?.label ?? 'Direct link', r.source.toLowerCase(), r.attributedAt.toISOString().slice(0, 10),
+        r.connectedAt?.toISOString().slice(0, 10) ?? '', x.verification, x.eligible ? 'yes' : 'no', x.packages.map(p => `${p.name} (${p.status.toLowerCase()})`).join('; '),
+        r.isActive && r.connectedAt ? 'yes' : 'no', r.trades30d, r.lots30d, x.pnl30d ?? 'private'];
     }),
   ]);
 }

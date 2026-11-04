@@ -1,41 +1,54 @@
 // What a partner offers their verified clients.
 import { prisma } from '@tradinjournal/db';
-import type { PartnerPackageDto, PartnerPackageInput, PartnerPackagesDto } from '@tradinjournal/contracts';
-import { ConflictError, NotFoundError, ValidationError } from '../../../http/errors.js';
+import type { AdminPackageRowDto, PartnerPackageDto, PartnerPackageInput, PartnerPackagesDto } from '@tradinjournal/contracts';
+import { AppError, ConflictError, NotFoundError, ValidationError } from '../../../http/errors.js';
+import { paymentsEnabled } from './payments.service.js';
+import { termsOf } from './terms.js';
 import { BROKERS, brokerLabel } from './brokers.js';
 import { isPerk, perkDtos } from './perks.js';
 import { getProgramSettings } from './settings.js';
 import { logEvent } from './events.js';
 import { recomputePartner } from './access.service.js';
 
-const MAX_PACKAGES = 10;
 
 type Actor = { id: string; email: string } | null;
 
-export async function listPackageDtos(partnerId: string): Promise<PartnerPackageDto[]> {
-  const [rows, counts] = await Promise.all([
-    prisma.partnerPackage.findMany({ where: { partnerId }, orderBy: [{ status: 'asc' }, { createdAt: 'asc' }] }),
-    prisma.clientEntitlement.groupBy({ by: ['packageId', 'status'], where: { partnerId }, _count: { _all: true } }),
+type PkgRow = Awaited<ReturnType<typeof prisma.partnerPackage.findFirstOrThrow>>;
+
+async function toDtos(rows: PkgRow[], partnerId?: string): Promise<PartnerPackageDto[]> {
+  const ids = rows.map(r => r.id);
+  const [counts, subs] = await Promise.all([
+    prisma.clientEntitlement.groupBy({ by: ['packageId', 'status'], where: { ...(partnerId ? { partnerId } : { packageId: { in: ids } }) }, _count: { _all: true } }),
+    prisma.packageSubscription.groupBy({ by: ['packageId'], where: { packageId: { in: ids }, status: { in: ['ACTIVE', 'CANCELLED'] }, currentPeriodEnd: { gt: new Date() } }, _count: { _all: true } }),
   ]);
   const n = (id: string, s: string) => counts.find(c => c.packageId === id && c.status === s)?._count._all ?? 0;
   return rows.map(p => ({
-    id: p.id, name: p.name, description: p.description, perks: p.perks, templateIds: p.templateIds, brokers: p.brokers,
-    requireActive: p.requireActive, accessDays: p.accessDays, status: p.status,
+    id: p.id, name: p.name, description: p.description, perks: p.perks, templateIds: p.templateIds, productIds: p.productIds, brokers: p.brokers,
+    requireActive: p.requireActive, accessDays: p.accessDays, status: p.status, priceCents: p.priceCents, currency: p.currency, periodDays: p.periodDays,
+    adminHold: p.adminHold, adminNote: p.adminNote, subscribers: subs.find(x => x.packageId === p.id)?._count._all ?? 0,
     holders: n(p.id, 'ACTIVE') + n(p.id, 'GRACE'), inGrace: n(p.id, 'GRACE'), createdAt: p.createdAt.toISOString(),
   }));
 }
 
+export async function listPackageDtos(partnerId: string): Promise<PartnerPackageDto[]> {
+  const rows = await prisma.partnerPackage.findMany({ where: { partnerId }, orderBy: [{ status: 'asc' }, { createdAt: 'asc' }] });
+  return toDtos(rows, partnerId);
+}
+
 export async function packagesPage(partner: { id: string; userId: string }): Promise<PartnerPackagesDto> {
-  const [packages, templates, brokers, settings] = await Promise.all([
+  const [packages, templates, brokers, settings, products, terms] = await Promise.all([
     listPackageDtos(partner.id),
     prisma.strategyTemplate.findMany({ where: { creatorId: partner.userId }, select: { id: true, name: true, status: true, partnerOnly: true }, orderBy: { createdAt: 'desc' } }),
     prisma.partnerBroker.findMany({ where: { partnerId: partner.id }, select: { broker: true } }),
     getProgramSettings(),
+    prisma.partnerProduct.findMany({ where: { partnerId: partner.id, status: { not: 'ARCHIVED' } }, select: { id: true, name: true, type: true, status: true }, orderBy: { name: 'asc' } }),
+    termsOf(partner.id),
   ]);
   return {
     packages, perks: perkDtos(), templates,
     brokers: brokers.map(b => ({ key: b.broker, label: brokerLabel(b.broker) })),
-    lockedPerks: settings.lockedPerks,
+    lockedPerks: settings.lockedPerks, products, permissions: terms.permissions, currency: settings.currency,
+    revenueSharePct: terms.sharePct, paymentsEnabled: paymentsEnabled(),
   };
 }
 
@@ -48,6 +61,15 @@ async function clean(partner: { id: string; userId: string }, input: Partial<Par
     const bad = input.brokers.filter(b => !BROKERS.some(x => x.key === b));
     if (bad.length) throw new ValidationError(`Unknown broker: ${bad.join(', ')}`);
   }
+  if (input.productIds?.length) {
+    const mine = await prisma.partnerProduct.count({ where: { id: { in: input.productIds }, partnerId: partner.id, status: { not: 'ARCHIVED' } } });
+    if (mine !== new Set(input.productIds).size) throw new ValidationError('Packages can only include your own tools.');
+  }
+  if (input.priceCents && input.priceCents > 0) {
+    const { permissions } = await termsOf(partner.id);
+    if (!permissions.canSellPackages) throw new AppError(403, 'SALES_NOT_ALLOWED', 'Selling packages isn’t enabled for your account. Ask TRADElogs to switch it on.');
+    if (input.priceCents < 100) throw new ValidationError('A paid package costs at least 1.00.');
+  }
   if (input.templateIds?.length) {
     const mine = await prisma.strategyTemplate.count({ where: { id: { in: input.templateIds }, creatorId: partner.userId } });
     if (mine !== new Set(input.templateIds).size) throw new ValidationError('Packages can only include your own marketplace strategies.');
@@ -57,6 +79,9 @@ async function clean(partner: { id: string; userId: string }, input: Partial<Par
     ...(input.description !== undefined ? { description: input.description || null } : {}),
     ...(input.perks ? { perks: [...new Set(input.perks)] } : {}),
     ...(input.templateIds ? { templateIds: [...new Set(input.templateIds)] } : {}),
+    ...(input.productIds ? { productIds: [...new Set(input.productIds)] } : {}),
+    ...(input.priceCents !== undefined ? { priceCents: input.priceCents } : {}),
+    ...(input.periodDays !== undefined ? { periodDays: input.periodDays } : {}),
     ...(input.brokers ? { brokers: [...new Set(input.brokers)] } : {}),
     ...(input.requireActive !== undefined ? { requireActive: input.requireActive } : {}),
     ...(input.accessDays !== undefined ? { accessDays: input.accessDays ?? null } : {}),
@@ -64,16 +89,18 @@ async function clean(partner: { id: string; userId: string }, input: Partial<Par
   };
 }
 
-function assertHasContent(p: { perks: string[]; templateIds: string[] }) {
-  if (!p.perks.length && !p.templateIds.length) throw new ValidationError('Add at least one feature or strategy to the package.');
+function assertHasContent(p: { perks: string[]; templateIds: string[]; productIds: string[] }) {
+  if (!p.perks.length && !p.templateIds.length && !p.productIds.length) throw new ValidationError('Add at least one feature, tool or strategy to the package.');
 }
 
 export async function createPackage(partner: { id: string; userId: string }, input: PartnerPackageInput, actor: Actor = null): Promise<PartnerPackageDto> {
-  const live = await prisma.partnerPackage.count({ where: { partnerId: partner.id, status: { not: 'ARCHIVED' } } });
-  if (live >= MAX_PACKAGES) throw new ConflictError(`You can have up to ${MAX_PACKAGES} packages. Archive one first.`);
+  const [live, { permissions }, settings] = await Promise.all([
+    prisma.partnerPackage.count({ where: { partnerId: partner.id, status: { not: 'ARCHIVED' } } }), termsOf(partner.id), getProgramSettings(),
+  ]);
+  if (live >= permissions.maxPackages) throw new ConflictError(`You can have up to ${permissions.maxPackages} packages. Archive one first.`);
   const data = await clean(partner, input);
-  assertHasContent({ perks: data.perks ?? [], templateIds: data.templateIds ?? [] });
-  const p = await prisma.partnerPackage.create({ data: { partnerId: partner.id, name: input.name, ...data } });
+  assertHasContent({ perks: data.perks ?? [], templateIds: data.templateIds ?? [], productIds: data.productIds ?? [] });
+  const p = await prisma.partnerPackage.create({ data: { partnerId: partner.id, name: input.name, currency: settings.currency, ...data } });
   await logEvent({ kind: 'package.create', partnerId: partner.id, actor, message: `Package “${p.name}” created (${p.status.toLowerCase()})` });
   if (p.status === 'LIVE') await recomputePartner(partner.id);
   return (await listPackageDtos(partner.id)).find(x => x.id === p.id)!;
@@ -83,7 +110,7 @@ export async function updatePackage(partner: { id: string; userId: string }, id:
   const prev = await prisma.partnerPackage.findFirst({ where: { id, partnerId: partner.id } });
   if (!prev) throw new NotFoundError('Package not found');
   const data = await clean(partner, input);
-  assertHasContent({ perks: data.perks ?? prev.perks, templateIds: data.templateIds ?? prev.templateIds });
+  assertHasContent({ perks: data.perks ?? prev.perks, templateIds: data.templateIds ?? prev.templateIds, productIds: data.productIds ?? prev.productIds });
   const p = await prisma.partnerPackage.update({ where: { id }, data });
   await logEvent({ kind: 'package.update', partnerId: partner.id, actor, message: `Package “${p.name}” updated${prev.status !== p.status ? ` (${prev.status.toLowerCase()} → ${p.status.toLowerCase()})` : ''}` });
   await recomputePartner(partner.id);
@@ -97,4 +124,21 @@ export async function setTemplateAudience(partner: { userId: string; id: string 
   await prisma.strategyTemplate.update({ where: { id: t.id }, data: { partnerOnly } });
   await logEvent({ kind: 'template.audience', partnerId: partner.id, actor, message: `“${t.name}” is now ${partnerOnly ? 'for package holders only' : 'public'}` });
   return { id: t.id, name: t.name, status: t.status, partnerOnly };
+}
+
+// ── Admin ─────────────────────────────────────────────────────────────────────
+
+export async function adminPackages(): Promise<AdminPackageRowDto[]> {
+  const rows = await prisma.partnerPackage.findMany({ where: { status: { not: 'ARCHIVED' } }, include: { partner: { include: { user: { select: { name: true } } } } }, orderBy: { createdAt: 'desc' }, take: 500 });
+  const dtos = await toDtos(rows);
+  return dtos.map((d, i) => ({ ...d, partnerId: rows[i]!.partnerId, partner: rows[i]!.partner.user.name }));
+}
+
+/** Pulls a package from sale (or puts it back). Holders move to the grace period. */
+export async function setAdminHold(id: string, adminHold: boolean, note: string | undefined, actor: { id: string; email: string }) {
+  const p = await prisma.partnerPackage.findUnique({ where: { id } });
+  if (!p) throw new NotFoundError('Package not found');
+  await prisma.partnerPackage.update({ where: { id }, data: { adminHold, adminNote: adminHold ? note ?? null : null } });
+  await logEvent({ kind: adminHold ? 'package.hold' : 'package.release', partnerId: p.partnerId, actor, message: `“${p.name}” ${adminHold ? 'paused by TRADElogs' : 'back on offer'}${note ? `: ${note}` : ''}` });
+  await recomputePartner(p.partnerId);
 }

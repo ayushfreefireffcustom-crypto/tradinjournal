@@ -13,6 +13,9 @@ import {
   accessConsentSchema, accessJoinSchema, accessReviewSchema, accessVerifySchema, adminVerificationActionSchema,
   ibListUploadSchema, partnerBrokerUpsertSchema, partnerPackagePatchSchema, partnerPackageSchema,
   programEventsQuerySchema, programExportQuerySchema, programRangeQuerySchema, programSettingsSchema,
+  adminAdjustmentSchema, adminGrantSchema, adminPackageSchema, adminPartnerTermsSchema, adminPayoutPaidSchema, earningsUploadSchema,
+  externalAccountSchema, ibApiConnectSchema, partnerProductPatchSchema, partnerProductSchema, paymentVerifySchema, payoutDetailsSchema,
+  productFileSchema, productReviewSchema,
 } from '@tradinjournal/contracts';
 import * as c from './partners.controller.js';
 import * as ib from './ib/ib.controller.js';
@@ -44,6 +47,19 @@ partnerRouter.get('/packages', ib.handlePackages);
 partnerRouter.post('/packages', validateBody(partnerPackageSchema), ib.handleCreatePackage);
 partnerRouter.patch('/packages/:id', validateBody(partnerPackagePatchSchema), ib.handleUpdatePackage);
 partnerRouter.post('/templates/:id/audience', ib.handleTemplateAudience);
+partnerRouter.get('/brokers/:id/integration', ib.handleIntegration);
+partnerRouter.post('/brokers/:id/postback/rotate', ib.handleRotatePostback);
+partnerRouter.put('/brokers/:id/api', validateBody(ibApiConnectSchema), ib.handleApiConfig);
+partnerRouter.post('/brokers/:id/earnings', validateBody(earningsUploadSchema), ib.handleEarningsUpload);
+partnerRouter.get('/products', ib.handleProducts);
+partnerRouter.post('/products', validateBody(partnerProductSchema), ib.handleCreateProduct);
+partnerRouter.patch('/products/:id', validateBody(partnerProductPatchSchema), ib.handleUpdateProduct);
+partnerRouter.post('/products/:id/file', validateBody(productFileSchema), ib.handleProductFile);
+partnerRouter.post('/products/:id/submit', ib.handleSubmitProduct);
+partnerRouter.get('/earnings', ib.handleEarnings);
+partnerRouter.put('/payout-details', validateBody(payoutDetailsSchema), ib.handlePayoutDetails);
+partnerRouter.get('/reports', validateQuery(programRangeQuerySchema), ib.handleReports);
+partnerRouter.get('/export', ib.handlePartnerExport);
 
 // A trader's side: their partner, verification, unlocked packages and consent.
 export const partnerAccessRouter: IRouter = Router();
@@ -54,6 +70,19 @@ partnerAccessRouter.post('/join', validateBody(accessJoinSchema), ib.handleJoin)
 partnerAccessRouter.post('/verify', validateBody(accessVerifySchema), ib.handleVerify);
 partnerAccessRouter.post('/review', validateBody(accessReviewSchema), ib.handleRequestReview);
 partnerAccessRouter.post('/consent', validateBody(accessConsentSchema), ib.handleConsent);
+partnerAccessRouter.get('/products/:id', ib.handleClientProduct);
+partnerAccessRouter.get('/products/:id/file', ib.handleClientProductFile);
+partnerAccessRouter.post('/accounts', validateBody(externalAccountSchema), ib.handleAddAccount);
+partnerAccessRouter.delete('/accounts/:id', ib.handleRemoveAccount);
+partnerAccessRouter.post('/packages/:id/checkout', ib.handleCheckout);
+partnerAccessRouter.post('/payments/verify', validateBody(paymentVerifySchema), ib.handleVerifyPayment);
+partnerAccessRouter.post('/subscriptions/:id/cancel', ib.handleCancelSubscription);
+
+// Public, server-to-server: broker postbacks (secret token in the path) and the Razorpay webhook.
+export const ibPublicRouter: IRouter = Router();
+ibPublicRouter.get('/ib/postback/:token', ib.handlePostback);
+ibPublicRouter.post('/ib/postback/:token', ib.handlePostback);
+ibPublicRouter.post('/payments/razorpay/webhook', ib.handleRazorpayWebhook);
 
 // Admin.
 export const adminPartnersRouter: IRouter = Router();
@@ -77,6 +106,21 @@ adminPartnersRouter.get('/partner-program/events', validateQuery(programEventsQu
 adminPartnersRouter.get('/partner-program/settings', ib.handleGetSettings);
 adminPartnersRouter.put('/partner-program/settings', validateBody(programSettingsSchema), ib.handleSaveSettings);
 adminPartnersRouter.get('/partner-program/export', validateQuery(programExportQuerySchema), ib.handleExport);
+adminPartnersRouter.get('/partners/:id/terms', ib.handleAdminGetTerms);
+adminPartnersRouter.put('/partners/:id/terms', validateBody(adminPartnerTermsSchema), ib.handleAdminTerms);
+adminPartnersRouter.post('/partners/:id/adjustments', validateBody(adminAdjustmentSchema), ib.handleAdjustment);
+adminPartnersRouter.get('/partner-program/products', ib.handleProductQueue);
+adminPartnersRouter.get('/partner-program/products/:id', ib.handleAdminProduct);
+adminPartnersRouter.get('/partner-program/products/:id/file', ib.handleAdminProductFile);
+adminPartnersRouter.post('/partner-program/products/:id/review', validateBody(productReviewSchema), ib.handleProductReview);
+adminPartnersRouter.get('/partner-program/packages', ib.handleAdminPackages);
+adminPartnersRouter.post('/partner-program/packages/:id/hold', validateBody(adminPackageSchema), ib.handleAdminPackageHold);
+adminPartnersRouter.get('/partner-program/finance', ib.handleFinance);
+adminPartnersRouter.post('/partner-program/grants', validateBody(adminGrantSchema), ib.handleGrant);
+adminPartnersRouter.post('/partner-program/payments/:id/refund', ib.handleRefund);
+adminPartnersRouter.post('/partner-program/payouts/:id/paid', validateBody(adminPayoutPaidSchema), ib.handlePayoutPaid);
+adminPartnersRouter.post('/partner-program/payouts/:id/cancel', ib.handlePayoutCancel);
+adminPartnersRouter.get('/partner-program/cohorts', ib.handleCohorts);
 adminPartnersRouter.get('/partner-codes/reserved', c.handleReservedList);
 adminPartnersRouter.post('/partner-codes/reserved', validateBody(adminReserveCodeSchema), c.handleReservedCreate);
 adminPartnersRouter.delete('/partner-codes/reserved/:reservedId', c.handleReservedDelete);
@@ -86,3 +130,4 @@ export const partnersInternalRouter: IRouter = Router();
 partnersInternalRouter.use(requireInternalToken);
 partnersInternalRouter.post('/refresh-stats', validateBody(partnerRefreshStatsSchema), c.handleRefreshStats);
 partnersInternalRouter.post('/ib-cycle', ib.handleIbCycle);
+partnersInternalRouter.post('/money-cycle', ib.handleMoneyCycle);

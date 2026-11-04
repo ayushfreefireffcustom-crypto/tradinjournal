@@ -82,8 +82,10 @@ const folders = [
   ] },
 
   { name: '03 Broker IB connection', item: [
-    req('Catalog lists the brokers', 'GET', `${B}/partner/brokers`, { as: 'honey', tests: [status(200), json, t('xellion + other, no API yet', "const x = d.catalog.find(c => c.key === 'xellion'); pm.expect(x.methods).to.eql(['LIST','SHEET']); pm.expect(d.catalog.map(c => c.key)).to.include('other'); pm.expect(d.brokers).to.eql([]);")] }),
-    req('API method without an adapter → 422', 'POST', `${B}/partner/brokers`, { as: 'honey', body: { broker: 'xellion', method: 'API', apiKey: 'live-key-123456' }, tests: [status(422), code('IB_API_UNSUPPORTED')] }),
+    req('Catalog lists the brokers', 'GET', `${B}/partner/brokers`, { as: 'honey', tests: [status(200), json, t('xellion + other, all methods', "const x = d.catalog.find(c => c.key === 'xellion'); pm.expect(x.methods).to.eql(['LIST','SHEET','API']); pm.expect(d.catalog.map(c => c.key)).to.include('other'); pm.expect(d.brokers).to.eql([]);")] }),
+    req('API method: connection waits for its API setup', 'POST', `${B}/partner/brokers`, { as: 'honey', body: { broker: 'elefin', method: 'API', apiKey: 'live-key-123456' },
+      tests: [status(201), json, t('pending, key stored', "pm.expect(d.method).to.eql('API'); pm.expect(d.status).to.eql('PENDING'); pm.expect(d.hasApiKey).to.eql(true);"), "pm.collectionVariables.set('elefinId', d.id);"] }),
+    req('Remove it again', 'DELETE', `${B}/partner/brokers/{{elefinId}}`, { as: 'honey', tests: [status(204)] }),
     req('Sheet must be a Google Sheets link → 422', 'POST', `${B}/partner/brokers`, { as: 'honey', body: { broker: 'xellion', method: 'SHEET', sheetUrl: 'https://example.com/list.csv' }, tests: [status(422)] }),
     req('Other broker needs a server match → 422', 'POST', `${B}/partner/brokers`, { as: 'honey', body: { broker: 'other', method: 'LIST' }, tests: [status(422)] }),
     req('Unknown broker → 422', 'POST', `${B}/partner/brokers`, { as: 'honey', body: { broker: 'mystery', method: 'LIST' }, tests: [status(422)] }),
@@ -153,7 +155,7 @@ folders.push(
 
   { name: '07 Feature locks', item: [
     req('Non-admin cannot change settings', 'PUT', `${B}/admin/partner-program/settings`, { as: 'honey', body: { activeMinTrades: 1, activeWindowDays: 30, activeMinLots: 0, graceDays: 7, partnerGraceDays: 7, lockedPerks: [] }, tests: [status(403)] }),
-    req('Default settings', 'GET', `${B}/admin/partner-program/settings`, { as: 'admin', tests: [status(200), json, t('nothing locked, 1 trade / 30 days', "pm.expect(d).to.eql({ activeMinTrades: 1, activeWindowDays: 30, activeMinLots: 0, graceDays: 7, partnerGraceDays: 7, lockedPerks: [] });")] }),
+    req('Default settings', 'GET', `${B}/admin/partner-program/settings`, { as: 'admin', tests: [status(200), json, t('nothing locked, 1 trade / 30 days', "pm.expect(d).to.eql({ activeMinTrades: 1, activeWindowDays: 30, activeMinLots: 0, graceDays: 7, partnerGraceDays: 7, lockedPerks: [], platformSharePct: 20, refundDays: 7, payoutMinimumCents: 5000, currency: 'USD', ibApiHosts: [] });")] }),
     req('With nothing locked SignalX is open to t2', 'GET', `${B}/trader/strategies`, { as: 't2', tests: [t('not perk-locked', "pm.expect(pm.response.code).to.not.eql(403);")] }),
     req('Admin locks SignalX to package holders', 'PUT', `${B}/admin/partner-program/settings`, { as: 'admin', body: { activeMinTrades: 1, activeWindowDays: 30, activeMinLots: 0, graceDays: 7, partnerGraceDays: 3, lockedPerks: ['signalx', 'not-a-perk'] },
       tests: [status(200), json, t('unknown perks dropped', "pm.expect(d.lockedPerks).to.eql(['signalx']); pm.expect(d.partnerGraceDays).to.eql(3);")] }),
@@ -238,8 +240,179 @@ folders.push(
   ] },
 );
 
+
+// ── Phase 2 ───────────────────────────────────────────────────────────────────
+const P = '{{baseUrl}}/api';
+const SETTINGS = { activeMinTrades: 1, activeWindowDays: 30, activeMinLots: 0, graceDays: 7, partnerGraceDays: 3, lockedPerks: ['signalx'], platformSharePct: 20, refundDays: 0, payoutMinimumCents: 100, currency: 'USD', ibApiHosts: [] };
+const sigPre = (orderVar, payVar) => [
+  `const CryptoJS = require('crypto-js');`,
+  `const o = pm.collectionVariables.get('${orderVar}'), p = '${payVar}_' + Date.now();`,
+  `pm.collectionVariables.set('${payVar}', p);`,
+  `pm.collectionVariables.set('${payVar}Sig', CryptoJS.HmacSHA256(o + '|' + p, pm.variables.get('rzpSecret')).toString(CryptoJS.enc.Hex));`,
+];
+const hookPre = orderVar => [
+  `const CryptoJS = require('crypto-js');`,
+  `const body = JSON.stringify({ event: 'payment.captured', payload: { payment: { entity: { id: 'pay_hook_' + Date.now(), order_id: pm.collectionVariables.get('${orderVar}') } } } });`,
+  `pm.collectionVariables.set('hookBody', body);`,
+  `pm.collectionVariables.set('hookSig', CryptoJS.HmacSHA256(body, pm.variables.get('rzpHookSecret')).toString(CryptoJS.enc.Hex));`,
+];
+const pb = (name, query, tests) => req(name, 'GET', `${P}/ib/postback/{{pbToken}}`, { query, tests });
+const pkgOf = (n) => `const k = d.packages.find(p => p.name === '${n}');`;
+
+folders.push(
+  { name: '13 Broker integrations', item: [
+    req('Reconnect Xellion', 'POST', `${P}/partner/brokers`, { as: 'honey', body: { broker: 'xellion', method: 'LIST', ibId: 'XL-4471' }, tests: [status(201), json, "pm.collectionVariables.set('xl2', d.id);"] }),
+    req('Integration gives a secret postback URL', 'GET', `${P}/partner/brokers/{{xl2}}/integration`, { as: 'honey', tests: [status(200), json,
+      t('url with a long token', "pm.expect(d.postbackUrl).to.match(/\\/api\\/ib\\/postback\\/[A-Za-z0-9_-]{30,}$/); pm.expect(d.postbackParams.map(p => p.name)).to.include('account_id');"),
+      "pm.collectionVariables.set('pbToken', d.postbackUrl.split('/').pop());"] }),
+    req('A 300 KB list uploads (body limit raised for lists)', 'POST', `${P}/partner/brokers/{{xl2}}/accounts`, { as: 'honey',
+      pre: ["let rows = ['Account ID,Email','7001001,tara@broker.test']; for (let i = 0; i < 14000; i++) rows.push(String(8100000 + i) + ',bulk' + i + '@mail.test'); pm.collectionVariables.set('bigList', JSON.stringify({ text: rows.join('\\n'), mode: 'replace' }));"],
+      body: '{{bigList}}', tests: [status(200), json, t('all rows in', 'pm.expect(d.broker.accountCount).to.be.at.least(14001);')] }),
+    req('Wrong token → 404', 'GET', `${P}/ib/postback/not-a-real-token-at-all-xxxxxxxx`, { query: 'event=registration&login=1234567', tests: [status(404)] }),
+    pb('Unknown event is logged and ignored', 'foo=bar&login=7009998', [status(200), t('ignored', "pm.expect(pm.response.json().status).to.eql('ignored');")]),
+    pb('Registration postback for an MT4 account', 'event=registration&login=7002001&email=omar.mt4@mail.test&platform=MT4', [status(200), t('ok', "pm.expect(pm.response.json().status).to.eql('ok');")]),
+    pb('Trade postback', 'event=trade&account_id=7002001&lots=0.5', [status(200)]),
+    pb('Another trade', 'event=trade&account_id=7002001&lots=0.25', [status(200)]),
+    pb('Commission postback', 'event=commission&account_id=7002001&commission=12.5&currency=USD&event_id=C-1', [status(200)]),
+    pb('Same commission again (counted once)', 'event=commission&account_id=7002001&commission=12.5&currency=USD&event_id=C-1', [status(200)]),
+    (() => { const r = req('Form-encoded deposit postback', 'POST', `${P}/ib/postback/{{pbToken}}`, { tests: [status(200), t('ok', "pm.expect(pm.response.json().status).to.eql('ok');")] });
+      r.request.header = [{ key: 'Content-Type', value: 'application/x-www-form-urlencoded' }];
+      r.request.body = { mode: 'urlencoded', urlencoded: [{ key: 'type', value: 'deposit' }, { key: 'login', value: '7002001' }, { key: 'amount', value: '200' }] };
+      return r; })(),
+    req('Events are logged', 'GET', `${P}/partner/brokers/{{xl2}}/integration`, { as: 'honey', tests: [status(200), json,
+      t('kinds recorded', "const k = d.events.map(e => e.kind); ['registration','trade','commission','deposit','unknown'].forEach(x => pm.expect(k).to.include(x));"),
+      t('ignored one marked', "pm.expect(d.events.some(e => e.status === 'ignored')).to.eql(true);")] }),
+    req('Commission report upload', 'POST', `${P}/partner/brokers/{{xl2}}/earnings`, { as: 'honey',
+      body: { text: 'Date,Account,Commission,Currency,Transaction ID\n2026-10-01,7001001,20.00,USD,T-1\n2026-10-02,7001001,5.50,USD,T-2\n2026-10-02,7001001,5.50,USD,T-2\n', currency: 'USD' },
+      tests: [status(200), json, t('2 new, 1 repeat', 'pm.expect(d.added).to.eql(2); pm.expect(d.duplicates).to.eql(1);')] }),
+    req('Report without a date column → 422', 'POST', `${P}/partner/brokers/{{xl2}}/earnings`, { as: 'honey', body: { text: 'account,amount\n1,2\n', currency: 'USD' }, tests: [status(422)] }),
+    req('API at an unapproved host → 422', 'PUT', `${P}/partner/brokers/{{xl2}}/api`, { as: 'honey',
+      body: { config: { baseUrl: 'https://evil.example.com', auth: 'bearer', clientsPath: '/clients', fields: { accountId: 'id' } }, secret: 'k-123456789' }, tests: [status(422), code('IB_API_HOST')] }),
+    req('API over plain http → 422', 'PUT', `${P}/partner/brokers/{{xl2}}/api`, { as: 'honey',
+      body: { config: { baseUrl: 'http://169.254.169.254', auth: 'bearer', clientsPath: '/latest', fields: { accountId: 'id' } }, secret: 'k-123456789' }, tests: [status(422)] }),
+    req('Admin saves money settings', 'PUT', `${P}/admin/partner-program/settings`, { as: 'admin', body: SETTINGS, tests: [status(200), json, t('saved', "pm.expect(d.refundDays).to.eql(0); pm.expect(d.payoutMinimumCents).to.eql(100);")] }),
+    req('Partner earnings show reported IB commission', 'GET', `${P}/partner/earnings`, { as: 'honey', tests: [status(200), json, t('12.5 + 20 + 5.5', 'pm.expect(d.ib.total).to.eql(38);')] }),
+  ] },
+
+  { name: '14 MT4 and other platforms', item: [
+    req('Omar adds his MT4 account', 'POST', `${P}/partner-access/accounts`, { as: 't4', body: { platform: 'MT4', login: '7002001', server: 'Xellion-Real', broker: 'Xellion' },
+      tests: [status(201), json, "const a = d.accounts.find(x => x.label.startsWith('7002001'));",
+        t('listed but needs a human', "pm.expect(a.kind).to.eql('external'); pm.expect(a.platform).to.eql('MT4'); pm.expect(a.status).to.eql('MANUAL_REVIEW'); pm.expect(a.reason).to.include('isn’t connected');")] }),
+    req('Someone else can’t claim the same account', 'POST', `${P}/partner-access/accounts`, { as: 't2', body: { platform: 'MT4', login: '7002001', server: 'Xellion-Real', broker: 'Xellion' }, tests: [status(409)] }),
+    req('Bad account number → 422', 'POST', `${P}/partner-access/accounts`, { as: 't4', body: { platform: 'MT4', login: '7!', server: 'X', broker: 'Xellion' }, tests: [status(422)] }),
+    req('Admin sees it in review', 'GET', `${P}/admin/partner-program/reviews`, { as: 'admin', tests: [status(200), json,
+      "const v = d.find(x => x.kind === 'verification' && x.account && x.account.login === '7002001');",
+      t('MT4, unproven ownership', "pm.expect(v.account.platform).to.eql('MT4'); pm.expect(v.signal).to.eql('listed-unproven');"), "pm.collectionVariables.set('t4Verif', v.id);"] }),
+    req('Admin confirms it', 'POST', `${P}/admin/partner-program/verifications/{{t4Verif}}`, { as: 'admin', body: { action: 'approve', note: 'Checked with Xellion' }, tests: [status(200)] }),
+    req('Activity comes from broker reports', 'POST', `{{baseUrl}}/internal/partners/refresh-stats`, { body: { limit: 50 }, tests: [status(200)] }),
+    req('Omar is verified, active, and holds Starter', 'GET', `${P}/partner-access`, { as: 't4', tests: [status(200), json,
+      "const a = d.accounts.find(x => x.label.startsWith('7002001'));",
+      t('verified + active', "pm.expect(a.status).to.eql('VERIFIED'); pm.expect(d.activity.active).to.eql(true); pm.expect(d.activity.trades).to.be.at.least(2);"),
+      t('Starter unlocked', "pm.expect(d.packages.find(p => p.name === 'Starter').status).to.eql('ACTIVE');")] }),
+  ] },
+
+  { name: '15 Partner tools', item: [
+    req('Honey creates an indicator', 'POST', `${P}/partner/products`, { as: 'honey', body: { type: 'INDICATOR', name: 'Honey Ribbon', platform: 'TradingView', description: 'Trend ribbon', content: '//@version=5\nindicator("Honey Ribbon")\nplot(close)' },
+      tests: [status(201), json, t('draft', "pm.expect(d.status).to.eql('DRAFT');"), "pm.collectionVariables.set('prod1', d.id);"] }),
+    req('Honey creates an EA', 'POST', `${P}/partner/products`, { as: 'honey', body: { type: 'ALGORITHM', name: 'Honey EA', platform: 'MT5' }, tests: [status(201), json, "pm.collectionVariables.set('prod2', d.id);"] }),
+    req('An empty tool can’t be submitted → 422', 'POST', `${P}/partner/products/{{prod2}}/submit`, { as: 'honey', tests: [status(422)] }),
+    req('Attach the EA file (base64)', 'POST', `${P}/partner/products/{{prod2}}/file`, { as: 'honey', body: { fileName: 'HoneyEA.ex5', fileType: 'application/octet-stream', data: 'SG9uZXkgRUEgYmluYXJ5' },
+      tests: [status(200), json, t('file stored', "pm.expect(d.fileName).to.eql('HoneyEA.ex5'); pm.expect(d.fileSize).to.eql(15);")] }),
+    req('Submit the indicator', 'POST', `${P}/partner/products/{{prod1}}/submit`, { as: 'honey', tests: [status(200), json, t('pending', "pm.expect(d.status).to.eql('PENDING');")] }),
+    req('Submit the EA', 'POST', `${P}/partner/products/{{prod2}}/submit`, { as: 'honey', tests: [status(200)] }),
+    req('Admin queue has both', 'GET', `${P}/admin/partner-program/products`, { as: 'admin', tests: [status(200), json, t('2 pending', "pm.expect(d.filter(x => x.partner.name === pm.variables.get('honeyName')).length).to.eql(2);")] }),
+    req('Rejecting needs a note → 422', 'POST', `${P}/admin/partner-program/products/{{prod1}}/review`, { as: 'admin', body: { action: 'reject' }, tests: [status(422)] }),
+    req('Admin sends the indicator back', 'POST', `${P}/admin/partner-program/products/{{prod1}}/review`, { as: 'admin', body: { action: 'reject', note: 'Add a description of the inputs' }, tests: [status(200)] }),
+    req('Honey fixes and resubmits', 'PATCH', `${P}/partner/products/{{prod1}}`, { as: 'honey', body: { description: 'Trend ribbon. Inputs: length 20.' }, tests: [status(200)] }),
+    req('Resubmit', 'POST', `${P}/partner/products/{{prod1}}/submit`, { as: 'honey', tests: [status(200)] }),
+    req('Admin approves the indicator', 'POST', `${P}/admin/partner-program/products/{{prod1}}/review`, { as: 'admin', body: { action: 'approve' }, tests: [status(200)] }),
+    req('Admin downloads the EA to inspect', 'GET', `${P}/admin/partner-program/products/{{prod2}}/file`, { as: 'admin', tests: [status(200), t('raw bytes', "pm.expect(pm.response.text()).to.eql('Honey EA binary');")] }),
+    req('Admin approves the EA', 'POST', `${P}/admin/partner-program/products/{{prod2}}/review`, { as: 'admin', body: { action: 'approve' }, tests: [status(200)] }),
+    req('Not in a package yet → client 404', 'GET', `${P}/partner-access/products/{{prod1}}`, { as: 't1', tests: [status(404)] }),
+    req('Package with someone else’s tool → 422', 'PATCH', `${P}/partner/packages/{{pkgStarter}}`, { as: 'honey', body: { productIds: ['nope'] }, tests: [status(422)] }),
+    req('Honey adds both tools to Starter', 'PATCH', `${P}/partner/packages/{{pkgStarter}}`, { as: 'honey', body: { productIds: ['{{prod1}}', '{{prod2}}'] }, tests: [status(200), json, t('2 tools', 'pm.expect(d.productIds.length).to.eql(2);')] }),
+    req('t1 sees both tools', 'GET', `${P}/partner-access`, { as: 't1', tests: [status(200), json, t('2 tools', "pm.expect(d.products.map(p => p.name).sort()).to.eql(['Honey EA', 'Honey Ribbon']);")] }),
+    req('t1 opens the indicator', 'GET', `${P}/partner-access/products/{{prod1}}`, { as: 't1', tests: [status(200), json, t('code', "pm.expect(d.content).to.include('indicator(\"Honey Ribbon\")');")] }),
+    req('t1 downloads the EA', 'GET', `${P}/partner-access/products/{{prod2}}/file`, { as: 't1', tests: [status(200), t('attachment', "pm.expect(pm.response.headers.get('Content-Disposition')).to.include('HoneyEA.ex5'); pm.expect(pm.response.text()).to.eql('Honey EA binary');")] }),
+    req('t3 (no package) can’t download it', 'GET', `${P}/partner-access/products/{{prod2}}/file`, { as: 't3', tests: [status(404)] }),
+    req('Partner sees who used them', 'GET', `${P}/partner/products`, { as: 'honey', tests: [status(200), json, t('opens counted', "const p = d.find(x => x.name === 'Honey Ribbon'); pm.expect(p.opens30d).to.be.at.least(1); pm.expect(p.users30d).to.eql(1); pm.expect(p.packages).to.include('Starter');")] }),
+    req('Changing approved code needs a new review', 'PATCH', `${P}/partner/products/{{prod1}}`, { as: 'honey', body: { content: '//@version=5\nindicator("Honey Ribbon v2")' }, tests: [status(200), json, t('v2 pending', "pm.expect(d.status).to.eql('PENDING'); pm.expect(d.version).to.eql(2);")] }),
+    req('Until then clients only see the EA', 'GET', `${P}/partner-access`, { as: 't1', tests: [status(200), json, t('1 tool', "pm.expect(d.products.map(p => p.name)).to.eql(['Honey EA']);")] }),
+    req('Admin approves v2', 'POST', `${P}/admin/partner-program/products/{{prod1}}/review`, { as: 'admin', body: { action: 'approve' }, tests: [status(200)] }),
+    req('Admin turns tools off for Honey', 'PUT', `${P}/admin/partners/{{honeyPid}}/terms`, { as: 'admin', body: { revenueSharePct: null, permissions: { canOfferProducts: false, canSellPackages: true, maxPackages: 10 } }, tests: [status(200)] }),
+    req('Honey can’t add tools now → 403', 'POST', `${P}/partner/products`, { as: 'honey', body: { type: 'GUIDE', name: 'Playbook', url: 'https://example.com/guide.pdf' }, tests: [status(403), code('PRODUCTS_NOT_ALLOWED')] }),
+    req('Admin turns them back on', 'PUT', `${P}/admin/partners/{{honeyPid}}/terms`, { as: 'admin', body: { revenueSharePct: 80, permissions: { canOfferProducts: true, canSellPackages: true, maxPackages: 10 } }, tests: [status(200), json, t('80%', 'pm.expect(d.sharePct).to.eql(80);')] }),
+  ] },
+
+  { name: '16 Paid packages', item: [
+    req('Honey publishes VIP at $19 / month', 'POST', `${P}/partner/packages`, { as: 'honey', body: { name: 'VIP', perks: ['options'], requireActive: false, priceCents: 1900, periodDays: 30, status: 'LIVE' },
+      tests: [status(201), json, t('priced', "pm.expect(d.priceCents).to.eql(1900); pm.expect(d.currency).to.eql('USD'); pm.expect(d.holders).to.eql(0);"), "pm.collectionVariables.set('pkgVip', d.id);"] }),
+    req('t1 can subscribe (meets everything else)', 'GET', `${P}/partner-access`, { as: 't1', tests: [status(200), json, pkgOf('VIP'),
+      t('locked, subscribable, says the price', "pm.expect(k.status).to.eql('LOCKED'); pm.expect(k.canSubscribe).to.eql(true); pm.expect(k.reasons).to.eql(['Subscribe ($19 / month) to unlock.']); pm.expect(d.paymentsEnabled).to.eql(true);")] }),
+    req('t3 can’t pay for what they can’t use → 409', 'POST', `${P}/partner-access/packages/{{pkgVip}}/checkout`, { as: 't3', tests: [status(409)] }),
+    req('t1 starts checkout', 'POST', `${P}/partner-access/packages/{{pkgVip}}/checkout`, { as: 't1', tests: [status(200), json,
+      t('Razorpay order', "pm.expect(d.provider).to.eql('razorpay'); pm.expect(d.orderId).to.match(/^order_/); pm.expect(d.amount).to.eql(1900); pm.expect(d.keyId).to.eql('rzp_test_partnersuite');"),
+      "pm.collectionVariables.set('order1', d.orderId);"] }),
+    req('A forged signature is refused → 422', 'POST', `${P}/partner-access/payments/verify`, { as: 't1', body: { orderId: '{{order1}}', paymentId: 'pay_fake', signature: 'deadbeef' }, tests: [status(422)] }),
+    req('Valid payment unlocks VIP', 'POST', `${P}/partner-access/payments/verify`, { as: 't1', pre: sigPre('order1', 'pay1'), body: { orderId: '{{order1}}', paymentId: '{{pay1}}', signature: '{{pay1Sig}}' },
+      tests: [status(200), json, pkgOf('VIP'), t('unlocked, paid ~30 days', "pm.expect(k.status).to.eql('ACTIVE'); pm.expect(k.subscription.status).to.eql('ACTIVE'); const days = (Date.parse(k.subscription.currentPeriodEnd) - Date.now()) / 864e5; pm.expect(days).to.be.within(29.9, 30.01);")] }),
+    req('Same confirmation twice doesn’t double count', 'POST', `${P}/partner-access/payments/verify`, { as: 't1', body: { orderId: '{{order1}}', paymentId: '{{pay1}}', signature: '{{pay1Sig}}' }, tests: [status(200)] }),
+    req('Partner sees the sale (keeps 80%)', 'GET', `${P}/partner/earnings`, { as: 'honey', tests: [status(200), json, t('1 sale, 1520 share pending', "pm.expect(d.sales.count).to.eql(1); pm.expect(d.sales.grossCents).to.eql(1900); pm.expect(d.balance.pendingCents).to.eql(1520); pm.expect(d.revenueSharePct).to.eql(80);")] }),
+    req('t2 checkout', 'POST', `${P}/partner-access/packages/{{pkgVip}}/checkout`, { as: 't2', tests: [status(200), json, "pm.collectionVariables.set('order2', d.orderId);"] }),
+    req('Webhook with a bad signature → 400', 'POST', `${P}/payments/razorpay/webhook`, { pre: hookPre('order2'), body: '{{hookBody}}', tests: [status(400)] }),
+    req('Webhook confirms t2’s payment', 'POST', `${P}/payments/razorpay/webhook`, { pre: hookPre('order2'), body: '{{hookBody}}', tests: [status(200)] }),
+    req('t2 holds VIP', 'GET', `${P}/partner-access`, { as: 't2', tests: [status(200), json, pkgOf('VIP'), t('active', "pm.expect(k.status).to.eql('ACTIVE');")] }),
+    req('Money cycle: refund window over, payout drafted', 'POST', `{{baseUrl}}/internal/partners/money-cycle`, { body: {}, tests: [status(200), json, t('payable + 1 draft', 'pm.expect(d.payable).to.eql(2); pm.expect(d.drafts).to.eql(1);')] }),
+    req('Honey adds payout details', 'PUT', `${P}/partner/payout-details`, { as: 'honey', body: { details: 'UPI: honey@okicici' }, tests: [status(200)] }),
+    req('Finance shows the draft with where to pay', 'GET', `${P}/admin/partner-program/finance`, { as: 'admin', tests: [status(200), json,
+      "const p = d.payouts.find(x => x.status === 'DRAFT');",
+      t('3040 to UPI', "pm.expect(p.amountCents).to.eql(3040); pm.expect(p.payoutDetails).to.eql('UPI: honey@okicici'); pm.expect(d.totals.grossCents).to.eql(3800); pm.expect(d.totals.platformCents).to.eql(760);"),
+      "pm.collectionVariables.set('payout1', p.id);", "pm.collectionVariables.set('payT2', d.payments.find(x => x.client === pm.variables.get('t2Email')).id);"] }),
+    req('Non-admin can’t see finance', 'GET', `${P}/admin/partner-program/finance`, { as: 'honey', tests: [status(403)] }),
+    req('Marking paid needs a reference → 422', 'POST', `${P}/admin/partner-program/payouts/{{payout1}}/paid`, { as: 'admin', body: { reference: '' }, tests: [status(422)] }),
+    req('Admin marks the payout paid', 'POST', `${P}/admin/partner-program/payouts/{{payout1}}/paid`, { as: 'admin', body: { reference: 'UPI-TXN-889' }, tests: [status(200)] }),
+    req('Partner sees it paid', 'GET', `${P}/partner/earnings`, { as: 'honey', tests: [status(200), json, t('paid', "pm.expect(d.balance.paidCents).to.eql(3040); pm.expect(d.payouts[0].reference).to.eql('UPI-TXN-889'); pm.expect(d.hasPayoutDetails).to.eql(true);")] }),
+    req('Admin refunds t2', 'POST', `${P}/admin/partner-program/payments/{{payT2}}/refund`, { as: 'admin', tests: [status(200)] }),
+    req('t2 loses VIP straight away', 'GET', `${P}/partner-access`, { as: 't2', tests: [status(200), json, pkgOf('VIP'), t('suspended', "pm.expect(k.status).to.eql('SUSPENDED');")] }),
+    req('Clawback lands on Honey’s balance', 'GET', `${P}/partner/earnings`, { as: 'honey', tests: [status(200), json, t('-1520 adjustment payable', "pm.expect(d.ledger.some(l => l.amountCents === -1520 && l.status === 'PAYABLE')).to.eql(true);")] }),
+    req('t1 cancels', 'POST', `${P}/partner-access/subscriptions/{{t1Sub}}/cancel`, { as: 't1',
+      pre: ["pm.sendRequest({ url: pm.variables.get('baseUrl') + '/api/partner-access', header: { Cookie: pm.collectionVariables.get('t1Cookie') } }, (e, r) => pm.collectionVariables.set('t1Sub', r.json().data.packages.find(p => p.name === 'VIP').subscription.id));"],
+      tests: [status(200), json, pkgOf('VIP'), t('cancelled but still on until the end', "pm.expect(k.subscription.status).to.eql('CANCELLED'); pm.expect(k.status).to.eql('ACTIVE');")] }),
+    req('Admin grants t4 VIP for 10 days', 'POST', `${P}/admin/partner-program/grants`, { as: 'admin', body: { email: '{{t4Email}}', packageId: '{{pkgVip}}', days: 10, note: 'Paid by bank transfer' }, tests: [status(200)] }),
+    req('t4 holds VIP (manual)', 'GET', `${P}/partner-access`, { as: 't4', tests: [status(200), json, pkgOf('VIP'), t('active, manual', "pm.expect(k.status).to.eql('ACTIVE'); pm.expect(k.subscription.provider).to.eql('manual');")] }),
+    req('Admin pauses VIP', 'POST', `${P}/admin/partner-program/packages/{{pkgVip}}/hold`, { as: 'admin', body: { adminHold: true, note: 'Checking the claims in the description' }, tests: [status(200)] }),
+    req('t1’s VIP goes to grace', 'GET', `${P}/partner-access`, { as: 't1', tests: [status(200), json, "const k = d.packages.find(p => p.name === 'VIP');", t('grace with the reason', "pm.expect(k.status).to.eql('GRACE'); pm.expect(k.reasons.join(' ')).to.include('paused');")] }),
+    req('Admin releases VIP', 'POST', `${P}/admin/partner-program/packages/{{pkgVip}}/hold`, { as: 'admin', body: { adminHold: false }, tests: [status(200)] }),
+    req('t1’s VIP is back', 'GET', `${P}/partner-access`, { as: 't1', tests: [status(200), json, pkgOf('VIP'), t('active', "pm.expect(k.status).to.eql('ACTIVE');")] }),
+    req('Admin turns off paid packages for Honey', 'PUT', `${P}/admin/partners/{{honeyPid}}/terms`, { as: 'admin', body: { revenueSharePct: 80, permissions: { canOfferProducts: true, canSellPackages: false, maxPackages: 10 } }, tests: [status(200)] }),
+    req('Raising the price is refused → 403', 'PATCH', `${P}/partner/packages/{{pkgVip}}`, { as: 'honey', body: { priceCents: 2900 }, tests: [status(403), code('SALES_NOT_ALLOWED')] }),
+    req('Admin adds an adjustment', 'POST', `${P}/admin/partners/{{honeyPid}}/adjustments`, { as: 'admin', body: { amountCents: 2500, note: 'Launch bonus' }, tests: [status(200)] }),
+  ] },
+
+  { name: '17 Reports', item: [
+    req('Partner reports', 'GET', `${P}/partner/reports`, { as: 'honey', query: 'range=ALL', tests: [status(200), json,
+      t('daily series with every step', "pm.expect(d.daily.length).to.be.at.least(1); pm.expect(d.daily.reduce((n, x) => n + x.signups, 0)).to.eql(4); pm.expect(d.daily.reduce((n, x) => n + x.verified, 0)).to.be.at.least(3);"),
+      t('cohort', "pm.expect(d.cohorts[0].signups).to.eql(4); pm.expect(d.cohorts[0].verified).to.be.at.least(3);"),
+      t('tools used', "pm.expect(d.products.find(p => p.name === 'Honey Ribbon').opens).to.be.at.least(1);"),
+      t('subscriptions', "const v = d.marketplace.packageSubs.find(p => p.name === 'VIP'); pm.expect(v.total).to.eql(3); pm.expect(v.revenueCents).to.eql(1900);"),
+      t('IB earnings by month', "pm.expect(d.earningsByMonth.reduce((n, m) => n + m.ib, 0)).to.eql(38);")] }),
+    req('Partner CSV keeps P&L private without consent', 'GET', `${P}/partner/export`, { as: 'honey', tests: [status(200),
+      t('csv', "const txt = pm.response.text(); pm.expect(txt.split('\\n')[0]).to.include('broker_check'); pm.expect(txt).to.not.include('@partners.test'); pm.expect(txt).to.include('private');")] }),
+    req('Admin cohorts', 'GET', `${P}/admin/partner-program/cohorts`, { as: 'admin', tests: [status(200), json, t('rows', 'pm.expect(d[0].signups).to.eql(4);')] }),
+    req('Admin package list', 'GET', `${P}/admin/partner-program/packages`, { as: 'admin', tests: [status(200), json, t('VIP with subscribers', "const v = d.find(p => p.name === 'VIP'); pm.expect(v.partner).to.eql(pm.variables.get('honeyName')); pm.expect(v.subscribers).to.eql(2);")] }),
+    req('Event log has money events', 'GET', `${P}/admin/partner-program/events`, { as: 'admin', query: 'partnerId={{honeyPid}}&limit=500', tests: [status(200), json,
+      t('kinds', "const k = d.map(e => e.kind); ['sale.paid','sale.refund','payout.draft','payout.paid','product.approve','subscription.grant','package.hold','partner.terms','commission.adjust','account.external_add'].forEach(x => pm.expect(k).to.include(x));")] }),
+  ] },
+);
+
+// Internal calls carry the shared token; webhooks carry Razorpay's signature header.
+for (const f of folders) for (const r of f.item) {
+  if (r.request.url.raw.includes('/internal/partners/')) r.request.header.push(internal);
+  if (r.name === 'Webhook with a bad signature → 400') r.request.header.push({ key: 'X-Razorpay-Signature', value: 'bad' });
+  if (r.name === 'Webhook confirms t2’s payment') r.request.header.push({ key: 'X-Razorpay-Signature', value: '{{hookSig}}' });
+}
 const g = folders.find(f => f.name.startsWith('09b')).item;
-g[0].request.header.push(internal);
+if (!g[0].request.header.includes(internal)) g[0].request.header.push(internal);
 
 const variable = [
   { key: 'baseUrl', value: 'http://localhost:4300' },
@@ -247,6 +420,8 @@ const variable = [
   { key: 'appUrl', value: 'http://localhost:3060' },
   { key: 'password', value: 'Partner-test-Passw0rd!' },
   { key: 'internalToken', value: 'partner-test-internal-token' },
+  { key: 'rzpSecret', value: 'partner-suite-checkout-secret' },
+  { key: 'rzpHookSecret', value: 'partner-suite-webhook-secret' },
   ...Object.entries(USERS).flatMap(([k, n]) => [
     { key: `${k}Email`, value: k === 'admin' ? 'admin@partners.test' : `${k}@partners.test` },
     { key: `${k}Name`, value: n },

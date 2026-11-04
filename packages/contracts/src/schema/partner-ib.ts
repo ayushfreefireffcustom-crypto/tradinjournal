@@ -56,6 +56,10 @@ export const partnerPackageSchema = z.object({
   brokers: z.array(z.string().min(1).max(30)).max(10).default([]),
   requireActive: z.boolean().default(true),
   accessDays: z.number().int().min(1).max(3650).nullable().optional(),
+  productIds: z.array(z.string().min(1).max(40)).max(30).default([]),
+  /** 0 = free (unlocks on eligibility); otherwise clients pay this per period. */
+  priceCents: z.number().int().min(0).max(100_000_00).default(0),
+  periodDays: z.number().int().min(1).max(366).default(30),
   status: z.enum(['DRAFT', 'LIVE', 'ARCHIVED']).default('DRAFT'),
 });
 export type PartnerPackageInput = z.infer<typeof partnerPackageSchema>;
@@ -79,6 +83,16 @@ export const programSettingsSchema = z.object({
   graceDays: z.number().int().min(0).max(90),
   partnerGraceDays: z.number().int().min(0).max(90),
   lockedPerks: z.array(z.string().min(1).max(40)).max(40),
+  /** TRADElogs' cut of package sales, in percent; partners keep the rest unless an admin overrides it. */
+  platformSharePct: z.number().int().min(0).max(100).default(20),
+  /** Days a sale stays refundable before the partner's share becomes payable. */
+  refundDays: z.number().int().min(0).max(90).default(7),
+  /** Smallest payout an automatic draft is created for, in cents. */
+  payoutMinimumCents: z.number().int().min(0).max(10_000_000).default(5000),
+  /** Currency for new packages and payouts. */
+  currency: z.string().trim().length(3).toUpperCase().default('USD'),
+  /** Hosts partners may point the broker REST adapter at (admin-controlled, stops SSRF). */
+  ibApiHosts: z.array(z.string().trim().toLowerCase().min(3).max(120)).max(30).default([]),
 });
 export type ProgramSettingsDto = z.infer<typeof programSettingsSchema>;
 
@@ -147,6 +161,13 @@ export interface PartnerPackageDto {
   description: string | null;
   perks: string[];
   templateIds: string[];
+  productIds: string[];
+  priceCents: number;
+  currency: string;
+  periodDays: number;
+  adminHold: boolean;
+  adminNote: string | null;
+  subscribers: number;
   brokers: string[];
   requireActive: boolean;
   accessDays: number | null;
@@ -169,6 +190,11 @@ export interface PartnerPackagesDto {
   templates: PartnerTemplateOptionDto[];
   brokers: { key: string; label: string }[];
   lockedPerks: string[];
+  products: { id: string; name: string; type: string; status: string }[];
+  permissions: PartnerPermissionsDto;
+  currency: string;
+  revenueSharePct: number;
+  paymentsEnabled: boolean;
 }
 
 export interface TradingSummaryDto {
@@ -223,6 +249,9 @@ export interface AccessAccountDto {
   checkedAt: string | null;
   reviewRequested: boolean;
   canRetry: boolean;
+  /** MT5 synced through TRADElogs, or an account added for checking only (MT4 and others). */
+  kind: 'mt5' | 'external';
+  platform: string;
 }
 
 export interface AccessPackageDto {
@@ -231,11 +260,18 @@ export interface AccessPackageDto {
   description: string | null;
   perks: PerkDto[];
   templates: { id: string; name: string }[];
+  products: { id: string; name: string; type: string }[];
   status: EntitlementStatusDto | 'LOCKED';
   reasons: string[];
   grantedAt: string | null;
   expiresAt: string | null;
   graceUntil: string | null;
+  priceCents: number;
+  currency: string;
+  periodDays: number;
+  /** Set when every condition except payment is met: the client can subscribe now. */
+  canSubscribe: boolean;
+  subscription: SubscriptionDto | null;
 }
 
 export interface ClientAccessDto {
@@ -249,6 +285,9 @@ export interface ClientAccessDto {
   /** Perks the admin has locked to package holders, and the ones this user may use. */
   lockedPerks: string[];
   myPerks: string[];
+  /** Partner tools the client can open now. */
+  products: ClientProductDto[];
+  paymentsEnabled: boolean;
 }
 
 export interface ProgramPartnerRowDto {
@@ -286,7 +325,7 @@ export interface ReviewItemDto {
   flag: string | null;
   partner: { id: string; name: string };
   client: { id: string; name: string; email: string } | null;
-  account: { id: string; login: string; broker: string; server: string } | null;
+  account: { id: string; login: string; broker: string; server: string; platform: string } | null;
   status: VerificationStatusDto | null;
   signal: string | null;
   reason: string | null;
@@ -311,3 +350,151 @@ export interface AdminPartnerIbDto {
   packages: PartnerPackageDto[];
   events: PartnerEventDto2[];
 }
+
+// ── Phase 2: broker adapters, partner tools, subscriptions, payouts, reports ──
+
+export const ibApiConfigSchema = z.object({
+  baseUrl: z.string().trim().url().max(300),
+  /** jwt-login: POST {login, password} to authPath, use the returned token (Exness style). */
+  auth: z.enum(['jwt-login', 'bearer', 'header', 'basic']),
+  authPath: z.string().trim().max(200).optional(),
+  username: z.string().trim().max(200).optional(),
+  headerName: z.string().trim().max(60).optional(),
+  /** Path of the endpoint that lists referred clients, from the broker's API schema. */
+  clientsPath: z.string().trim().min(1).max(300),
+  /** Dot path to the array in the response, e.g. "data" or "results". Empty = the response itself. */
+  listKey: z.string().trim().max(60).optional(),
+  fields: z.object({
+    accountId: z.string().trim().min(1).max(60),
+    email: z.string().trim().max(60).optional(),
+    lots: z.string().trim().max(60).optional(),
+    deposit: z.string().trim().max(60).optional(),
+  }),
+});
+export type IbApiConfig = z.infer<typeof ibApiConfigSchema>;
+
+export const ibApiConnectSchema = z.object({
+  config: ibApiConfigSchema,
+  /** Password / API key. Stored encrypted, never returned. Omit to keep the saved one. */
+  secret: z.string().min(1).max(500).optional(),
+});
+
+export const earningsUploadSchema = z.object({ text: z.string().max(2_000_000), currency: z.string().trim().length(3).toUpperCase().default('USD') });
+
+export const externalAccountSchema = z.object({
+  platform: z.enum(['MT4', 'MT5', 'CTRADER', 'OTHER']),
+  login: z.string().trim().regex(/^[A-Za-z0-9_-]{3,30}$/, 'Account number: 3–30 letters or digits'),
+  server: z.string().trim().min(2).max(80),
+  broker: z.string().trim().min(2).max(60),
+  brokerEmail: z.string().trim().toLowerCase().email().optional(),
+});
+
+export const PRODUCT_TYPES = ['INDICATOR', 'CHART_TEMPLATE', 'JOURNAL_TEMPLATE', 'ALGORITHM', 'GUIDE'] as const;
+export type ProductType = (typeof PRODUCT_TYPES)[number];
+export type ProductStatusDto = 'DRAFT' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'ARCHIVED';
+
+export const partnerProductSchema = z.object({
+  type: z.enum(PRODUCT_TYPES),
+  name: z.string().trim().min(2).max(80),
+  description: z.string().trim().max(1000).optional(),
+  platform: z.enum(['TradingView', 'MT4', 'MT5', 'TRADElogs', 'Other']).optional(),
+  content: z.string().max(200_000).optional(),
+  url: z.string().trim().url().max(500).optional().or(z.literal('')),
+});
+export const partnerProductPatchSchema = partnerProductSchema.partial().extend({ archived: z.boolean().optional() });
+export const productFileSchema = z.object({
+  fileName: z.string().trim().min(1).max(120).regex(/^[^/\\]+$/),
+  fileType: z.string().trim().max(100).optional(),
+  /** Base64, at most 2 MB once decoded. */
+  data: z.string().min(4).max(2_800_000),
+});
+export const productReviewSchema = z.object({ action: z.enum(['approve', 'reject']), note: z.string().trim().max(500).optional() });
+
+export const payoutDetailsSchema = z.object({ details: z.string().trim().min(4).max(500) });
+export const paymentVerifySchema = z.object({
+  orderId: z.string().min(1).max(80), paymentId: z.string().min(1).max(80), signature: z.string().min(1).max(200),
+});
+export const adminPackageSchema = z.object({ adminHold: z.boolean(), note: z.string().trim().max(300).optional() });
+export const adminPartnerTermsSchema = z.object({
+  revenueSharePct: z.number().int().min(0).max(100).nullable(),
+  permissions: z.object({
+    canOfferProducts: z.boolean(),
+    canSellPackages: z.boolean(),
+    maxPackages: z.number().int().min(0).max(50),
+  }),
+});
+export const adminGrantSchema = z.object({ email: z.string().trim().toLowerCase().email(), packageId: z.string().min(1), days: z.number().int().min(1).max(3650), note: z.string().trim().max(300).optional() });
+export const adminAdjustmentSchema = z.object({ amountCents: z.number().int().min(-10_000_000).max(10_000_000).refine(v => v !== 0, 'Not zero'), note: z.string().trim().min(2).max(300) });
+export const adminPayoutPaidSchema = z.object({ reference: z.string().trim().min(2).max(120) });
+
+export interface PartnerPermissionsDto { canOfferProducts: boolean; canSellPackages: boolean; maxPackages: number }
+
+export interface BrokerEventDto { id: string; at: string; kind: string; accountId: string | null; status: string; error: string | null }
+export interface BrokerIntegrationDto {
+  postbackUrl: string;
+  /** Parameter names the postback understands, for the broker's setup form. */
+  postbackParams: { name: string; meaning: string }[];
+  api: { config: IbApiConfig | null; hasSecret: boolean; allowedHosts: string[] };
+  events: BrokerEventDto[];
+}
+
+export interface PartnerProductDto {
+  id: string; type: ProductType; name: string; description: string | null; platform: string | null;
+  content: string | null; url: string | null; fileName: string | null; fileSize: number | null;
+  version: number; status: ProductStatusDto; reviewNote: string | null; updatedAt: string;
+  /** Packages that include it, and how many clients opened it in the last 30 days. */
+  packages: string[]; opens30d: number; users30d: number;
+}
+export interface ClientProductDto {
+  id: string; type: ProductType; name: string; description: string | null; platform: string | null;
+  hasContent: boolean; url: string | null; fileName: string | null; fileSize: number | null; version: number; partner: string;
+}
+export interface ClientProductDetailDto extends ClientProductDto { content: string | null }
+
+export interface SubscriptionDto {
+  id: string; packageId: string; packageName: string; status: 'PENDING' | 'ACTIVE' | 'CANCELLED' | 'EXPIRED';
+  priceCents: number; currency: string; periodDays: number; provider: string;
+  startedAt: string | null; currentPeriodEnd: string | null; cancelledAt: string | null;
+}
+export interface CheckoutDto {
+  /** razorpay: open Checkout with these; free: nothing to pay. */
+  provider: 'razorpay';
+  keyId: string; orderId: string; amount: number; currency: string; name: string; description: string;
+  prefill: { name: string; email: string };
+}
+
+export interface MoneyLineDto { id: string; at: string; amountCents: number; currency: string; status: string; label: string }
+export interface PartnerEarningsDto {
+  currency: string;
+  revenueSharePct: number;
+  ib: { total: number; currency: string; byMonth: { month: string; amount: number }[]; recent: { id: string; at: string; accountId: string | null; amount: number; currency: string; source: string }[] };
+  sales: { count: number; grossCents: number; shareCents: number };
+  balance: { pendingCents: number; payableCents: number; paidCents: number };
+  ledger: MoneyLineDto[];
+  payouts: { id: string; at: string; amountCents: number; currency: string; status: string; reference: string | null; paidAt: string | null }[];
+  hasPayoutDetails: boolean;
+  payoutMinimumCents: number;
+}
+
+export interface CohortRowDto { month: string; signups: number; connected: number; verified: number; everActive: number; activeNow: number; unlockedNow: number }
+export interface PartnerReportsDto {
+  range: PartnerRange;
+  daily: { date: string; clicks: number; signups: number; connected: number; verified: number; unlocked: number }[];
+  cohorts: CohortRowDto[];
+  channels: { label: string; clicks: number; signups: number; verified: number; unlocked: number }[];
+  products: { id: string; name: string; type: string; opens: number; users: number }[];
+  features: { key: string; label: string; users: number; views: number }[];
+  marketplace: { packageSubs: { name: string; active: number; total: number; revenueCents: number; currency: string }[]; strategySubs: { name: string; active: number; total: number }[] };
+  earningsByMonth: { month: string; ib: number; salesShareCents: number }[];
+}
+
+export interface AdminFinanceDto {
+  currency: string;
+  totals: { grossCents: number; platformCents: number; partnerCents: number; payableCents: number; paidOutCents: number; ibReported: number };
+  payments: { id: string; at: string; partner: string; client: string; packageName: string; amountCents: number; currency: string; status: string; provider: string }[];
+  payouts: { id: string; partnerId: string; partner: string; amountCents: number; currency: string; status: string; createdAt: string; paidAt: string | null; reference: string | null; payoutDetails: string | null }[];
+  balances: { partnerId: string; partner: string; payableCents: number; pendingCents: number }[];
+  paymentsEnabled: boolean;
+}
+
+export interface AdminPackageRowDto extends PartnerPackageDto { partnerId: string; partner: string; adminHold: boolean; adminNote: string | null }
