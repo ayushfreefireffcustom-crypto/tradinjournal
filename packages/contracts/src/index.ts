@@ -829,6 +829,8 @@ export {
   type AdminPartnerDetailDto,
   type ReservedPartnerCodeDto,
   type AdminReferrerLookupDto,
+  type PartnerRangeQuery,
+  MAX_RANGE_DAYS,
 } from './schema/partner.js';
 
 export {

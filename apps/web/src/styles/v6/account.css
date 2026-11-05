@@ -441,3 +441,6 @@
 .v6 .ac-test-out.is-warn { color: var(--tx); }
 @media (max-width: 760px) { .v6 .ac-test { justify-items: start; max-width: none; } .v6 .ac-test-out { text-align: left; } }
 
+
+/* Partner range control: preset chips + custom dates */
+.v6 .ac-range { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }

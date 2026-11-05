@@ -1,6 +1,6 @@
 // Pure rules for the partner programme — no I/O, so every decision here is unit-tested.
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'crypto';
-import type { ReferralStatusDto, PartnerRange } from '@tradinjournal/contracts';
+import type { ReferralStatusDto, PartnerRange, PartnerRangeQuery } from '@tradinjournal/contracts';
 
 const DAY_MS = 86_400_000;
 export const REF_COOKIE = 'tl_ref';
@@ -186,10 +186,38 @@ export function nextActivity(
 }
 
 export function rangeStart(range: PartnerRange, partnerSince: Date, now = Date.now()): Date | null {
-  const days = { '7D': 7, '30D': 30, '90D': 90, ALL: 0 }[range];
+  const days = { '7D': 7, '30D': 30, '90D': 90, ALL: 0, CUSTOM: 0 }[range];
   if (!days) return null;
   const d = new Date(now - days * DAY_MS);
   return d < partnerSince ? partnerSince : d;
+}
+
+/** A reporting window. `from` is inclusive, `to` exclusive; null = open (all time / up to now). */
+export interface RangeWindow { from: Date | null; to: Date | null }
+
+/**
+ * The window a range query covers. Presets end now and never start before the partner
+ * joined; a custom range covers whole UTC days `from`..`to`, both inclusive.
+ */
+export function resolveWindow(q: PartnerRangeQuery, partnerSince: Date, now = Date.now()): RangeWindow {
+  if (q.range === 'CUSTOM' && q.from && q.to) {
+    return { from: new Date(`${q.from}T00:00:00.000Z`), to: new Date(Date.parse(`${q.to}T00:00:00.000Z`) + DAY_MS) };
+  }
+  return { from: rangeStart(q.range, partnerSince, now), to: null };
+}
+
+/** Day keys for a window's daily series: its first day (or `since`) to its last day, never past today. */
+export function windowDays(w: RangeWindow, since: Date, now = Date.now()): string[] {
+  const end = w.to ? new Date(Math.min(w.to.getTime() - 1, now)) : new Date(now);
+  const start = w.from ?? since;
+  if (start.getTime() > end.getTime()) return [];
+  return dayKeys(start, end);
+}
+
+/** Prisma filter for a timestamp column inside a window, or {} when the window is open. */
+export function within(w: RangeWindow): { gte?: Date; lt?: Date } | undefined {
+  if (!w.from && !w.to) return undefined;
+  return { ...(w.from ? { gte: w.from } : {}), ...(w.to ? { lt: w.to } : {}) };
 }
 
 /** UTC day keys from `from` to `to` inclusive, capped at `max` days (most recent kept). */

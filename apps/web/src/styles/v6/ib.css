@@ -238,3 +238,5 @@
 .v6 .ib-pkg-ft .ib-br-btns { flex-wrap: nowrap; }
 .v6 .ib-chart { max-width: 640px; }
 .v6 .ib-acct-h b { display: inline-flex; align-items: center; gap: 6px; }
+.v6 .ib-date-row { display: flex; align-items: center; gap: 8px; }
+.v6 .ib-date-row .x-input { flex: 1 1 auto; min-width: 0; }

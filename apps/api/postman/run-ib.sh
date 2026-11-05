@@ -72,5 +72,16 @@ echo "▸ D · after grace, join later, consent, admin, disconnect"
 run "00 Sign in all" "09b After grace" "10 Join later, consent, partner views" "11 Super admin" "12 Disconnect" \
   "13 Broker integrations" "14 MT4 and other platforms" "15 Partner tools" "16 Package moderation" "17 Reports"
 
+end_limited() { sql "UPDATE partner_package SET \"endsAt\" = (now() AT TIME ZONE 'UTC') - interval '1 minute' WHERE name = 'Limited';"; }
+
+echo "▸ E · custom date ranges, package end dates"
+run "00 Sign in all" "18a Custom ranges" "18b Package end dates"
+echo "▸ Moving Limited's end into the past"
+end_limited
+run "00 Sign in all" "18c After the last day"
+echo "▸ Its new last day passes too"
+end_limited
+run "00 Sign in all" "18d The last day passes"
+
 echo "▸ Broker API keys are never stored in plain text"
 sql "SELECT COUNT(*) AS plain_api_keys FROM partner_broker WHERE \"apiKey\" IS NOT NULL AND \"apiKey\" NOT LIKE 'enc:v1:%';"

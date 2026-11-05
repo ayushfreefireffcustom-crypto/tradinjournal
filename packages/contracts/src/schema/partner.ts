@@ -8,8 +8,27 @@ export type PartnerStatusDto = z.infer<typeof partnerStatusSchema>;
 export const referralStatusSchema = z.enum(['SIGNED_UP', 'CONNECTED', 'ACTIVE', 'INACTIVE']);
 export type ReferralStatusDto = z.infer<typeof referralStatusSchema>;
 
-export const partnerRangeSchema = z.enum(['7D', '30D', '90D', 'ALL']);
+export const partnerRangeSchema = z.enum(['7D', '30D', '90D', 'ALL', 'CUSTOM']);
 export type PartnerRange = z.infer<typeof partnerRangeSchema>;
+
+/** Longest custom range, in days (inclusive). Daily series are capped to this. */
+export const MAX_RANGE_DAYS = 366;
+export const isoDaySchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD')
+  .refine(s => !Number.isNaN(Date.parse(`${s}T00:00:00Z`)) && new Date(`${s}T00:00:00Z`).toISOString().slice(0, 10) === s, 'Not a real date');
+
+/**
+ * A reporting window: a preset (7D / 30D / 90D / ALL), or CUSTOM with `from` and `to`
+ * (UTC calendar days, both inclusive). `from` / `to` are ignored for presets.
+ */
+export const rangeFields = { range: partnerRangeSchema.default('30D'), from: isoDaySchema.optional(), to: isoDaySchema.optional() };
+export function checkRange(v: { range: PartnerRange; from?: string; to?: string }, ctx: z.RefinementCtx): void {
+  if (v.range !== 'CUSTOM') return;
+  if (!v.from || !v.to) { ctx.addIssue({ code: z.ZodIssueCode.custom, path: [v.from ? 'to' : 'from'], message: 'A custom range needs a from and a to date' }); return; }
+  if (v.from > v.to) { ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['to'], message: 'The end date is before the start date' }); return; }
+  const days = (Date.parse(`${v.to}T00:00:00Z`) - Date.parse(`${v.from}T00:00:00Z`)) / 86_400_000 + 1;
+  if (days > MAX_RANGE_DAYS) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['to'], message: `A custom range can be at most ${MAX_RANGE_DAYS} days` });
+}
+export type PartnerRangeQuery = { range: PartnerRange; from?: string; to?: string };
 
 /** 3–20 letters, numbers, hyphens or underscores. Stored upper-case. */
 export const partnerCodeInputSchema = z
@@ -22,9 +41,7 @@ export const partnerCodeInputSchema = z
 
 // ── Inputs ────────────────────────────────────────────────────────────────────
 
-export const partnerRangeQuerySchema = z.object({
-  range: partnerRangeSchema.default('30D'),
-});
+export const partnerRangeQuerySchema = z.object(rangeFields).superRefine(checkRange);
 
 export const partnerClientsQuerySchema = z.object({
   status: referralStatusSchema.optional(),
@@ -113,6 +130,8 @@ export interface PartnerProfileDto {
 export interface PartnerFunnelDto {
   range: PartnerRange;
   from: string | null;
+  /** Exclusive end of the window (start of the day after `to`); null = up to now. */
+  to: string | null;
   clicks: number;
   /** Clicks in the range that led to a signup — the basis for click → signup %. */
   converted: number;

@@ -10,7 +10,7 @@ import { DownloadSimple } from '@phosphor-icons/react';
 import AppShell from '@/components/app-shell';
 import AdminOnly from '@/components/v6/admin/admin-only';
 import { useAccounts } from '@/lib/use-accounts';
-import { ibApi, money, type AdminPackageRow, type CohortRow, type ProgramOverview, type ProgramSettings, type Range } from '@/lib/ib-api';
+import { dayUtc, ibApi, money, type AdminPackageRow, type CohortRow, type ProgramOverview, type ProgramSettings, type RangeSel } from '@/lib/ib-api';
 import { CohortTable } from '@/components/v6/account/ib-charts';
 import { useConfirm } from '@/components/confirm-dialog';
 import { IArrowLeft } from '@/components/v6/icons';
@@ -29,7 +29,7 @@ const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? o
 export default function AdminPartnerProgramPage() {
   const router = useRouter();
   const { accounts, selected, select } = useAccounts();
-  const [range, setRange] = useState<Range>('30D');
+  const [range, setRange] = useState<RangeSel>('30D');
   const [d, setD] = useState<ProgramOverview | null>(null);
   const [error, setError] = useState('');
   const [sort, setSort] = useState<Sort>('clients');
@@ -68,8 +68,8 @@ export default function AdminPartnerProgramPage() {
       pageSubtitle={<Link href="/admin/partners" className="ad-back"><IArrowLeft size={13} />All partners</Link>}
       actions={<>
         <RangeSeg value={range} onChange={setRange} />
-        <a className="x-btn" href={ibApi.exportUrl('clients')} download data-testid="export-clients"><DownloadSimple size={15} weight="bold" />Clients CSV</a>
-        <a className="x-btn" href={ibApi.exportUrl('partners')} download><DownloadSimple size={15} weight="bold" />Partners CSV</a>
+        <a className="x-btn" href={ibApi.exportUrl('clients', range)} download data-testid="export-clients"><DownloadSimple size={15} weight="bold" />Clients CSV</a>
+        <a className="x-btn" href={ibApi.exportUrl('partners', range)} download><DownloadSimple size={15} weight="bold" />Partners CSV</a>
       </>}>
       <div className="x-page" data-testid="admin-program"><AdminOnly>
         <div className="x-page">
@@ -136,7 +136,7 @@ export default function AdminPartnerProgramPage() {
                       <td><Link className="x-link" href={`/admin/partners/${p.partnerId}`}>{p.partner}</Link></td>
                       <td className="x-muted">{plural(p.perks.length, 'feature')} · {plural(p.productIds.length, 'tool')} · {plural(p.templateIds.length, 'strategy', 'strategies')}</td>
                       <td className="n m">{p.holders}</td>
-                      <td>{p.adminHold ? <span className="x-tag x-tag--r">Paused by admin</span> : <span className={`x-tag ${p.status === 'LIVE' ? 'x-tag--g' : ''}`}>{p.status.toLowerCase()}</span>}</td>
+                      <td>{p.adminHold ? <span className="x-tag x-tag--r">Paused by admin</span> : p.ended ? <span className="x-tag" title={p.endsOn ? `Last day ${dayUtc(p.endsOn)}` : ''}>ended</span> : <span className={`x-tag ${p.status === 'LIVE' ? 'x-tag--g' : ''}`} title={p.endsOn ? `Last day ${dayUtc(p.endsOn)}` : ''}>{p.status.toLowerCase()}</span>}</td>
                       <td className="n"><button type="button" className="x-btn x-btn--sm x-btn--ghost" onClick={() => void hold(p)} data-testid={`pkg-hold-${p.name}`}>{p.adminHold ? 'Release' : 'Pause'}</button></td>
                     </tr>
                   ))}</tbody></table></div>

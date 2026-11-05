@@ -8613,6 +8613,3322 @@
           }
         }
       ]
+    },
+    {
+      "name": "18a Custom ranges",
+      "item": [
+        {
+          "name": "Range: custom needs both dates → 422",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const D = 864e5, iso = t => new Date(t).toISOString().slice(0, 10), now = Date.now();",
+                  "pm.collectionVariables.set('today', iso(now)); pm.collectionVariables.set('yesterday', iso(now - D)); pm.collectionVariables.set('plus30', iso(now + 30 * D));",
+                  "pm.collectionVariables.set('tomorrowStart', iso(now + D) + 'T00:00:00.000Z'); pm.collectionVariables.set('plus31Start', iso(now + 31 * D) + 'T00:00:00.000Z');",
+                  "pm.collectionVariables.set('tooLongTo', iso(Date.parse('2025-01-01') + 366 * D));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 422', () => pm.response.to.have.status(422));",
+                  "pm.test(\"says which\", () => { pm.expect(pm.response.json().error.details).to.have.property('to'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{honeyCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/overview?range=CUSTOM&from=2026-10-01",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "overview"
+              ],
+              "query": [
+                {
+                  "key": "range",
+                  "value": "CUSTOM"
+                },
+                {
+                  "key": "from",
+                  "value": "2026-10-01"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Range: end before start → 422",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const D = 864e5, iso = t => new Date(t).toISOString().slice(0, 10), now = Date.now();",
+                  "pm.collectionVariables.set('today', iso(now)); pm.collectionVariables.set('yesterday', iso(now - D)); pm.collectionVariables.set('plus30', iso(now + 30 * D));",
+                  "pm.collectionVariables.set('tomorrowStart', iso(now + D) + 'T00:00:00.000Z'); pm.collectionVariables.set('plus31Start', iso(now + 31 * D) + 'T00:00:00.000Z');",
+                  "pm.collectionVariables.set('tooLongTo', iso(Date.parse('2025-01-01') + 366 * D));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 422', () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{honeyCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/overview?range=CUSTOM&from=2026-10-31&to=2026-10-01",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "overview"
+              ],
+              "query": [
+                {
+                  "key": "range",
+                  "value": "CUSTOM"
+                },
+                {
+                  "key": "from",
+                  "value": "2026-10-31"
+                },
+                {
+                  "key": "to",
+                  "value": "2026-10-01"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Range: more than 366 days → 422",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const D = 864e5, iso = t => new Date(t).toISOString().slice(0, 10), now = Date.now();",
+                  "pm.collectionVariables.set('today', iso(now)); pm.collectionVariables.set('yesterday', iso(now - D)); pm.collectionVariables.set('plus30', iso(now + 30 * D));",
+                  "pm.collectionVariables.set('tomorrowStart', iso(now + D) + 'T00:00:00.000Z'); pm.collectionVariables.set('plus31Start', iso(now + 31 * D) + 'T00:00:00.000Z');",
+                  "pm.collectionVariables.set('tooLongTo', iso(Date.parse('2025-01-01') + 366 * D));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 422', () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{honeyCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/reports?range=CUSTOM&from=2025-01-01&to={{tooLongTo}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "reports"
+              ],
+              "query": [
+                {
+                  "key": "range",
+                  "value": "CUSTOM"
+                },
+                {
+                  "key": "from",
+                  "value": "2025-01-01"
+                },
+                {
+                  "key": "to",
+                  "value": "{{tooLongTo}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Range: exactly 366 days is fine",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const D = 864e5, iso = t => new Date(t).toISOString().slice(0, 10), now = Date.now();",
+                  "pm.collectionVariables.set('today', iso(now)); pm.collectionVariables.set('yesterday', iso(now - D)); pm.collectionVariables.set('plus30', iso(now + 30 * D));",
+                  "pm.collectionVariables.set('tomorrowStart', iso(now + D) + 'T00:00:00.000Z'); pm.collectionVariables.set('plus31Start', iso(now + 31 * D) + 'T00:00:00.000Z');",
+                  "pm.collectionVariables.set('tooLongTo', iso(Date.parse('2025-01-01') + 366 * D));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"366 days\", () => { pm.expect(d.daily).to.have.length(366); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{honeyCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/reports?range=CUSTOM&from=2025-01-01&to=2026-01-01",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "reports"
+              ],
+              "query": [
+                {
+                  "key": "range",
+                  "value": "CUSTOM"
+                },
+                {
+                  "key": "from",
+                  "value": "2025-01-01"
+                },
+                {
+                  "key": "to",
+                  "value": "2026-01-01"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Range: not a real date → 422",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const D = 864e5, iso = t => new Date(t).toISOString().slice(0, 10), now = Date.now();",
+                  "pm.collectionVariables.set('today', iso(now)); pm.collectionVariables.set('yesterday', iso(now - D)); pm.collectionVariables.set('plus30', iso(now + 30 * D));",
+                  "pm.collectionVariables.set('tomorrowStart', iso(now + D) + 'T00:00:00.000Z'); pm.collectionVariables.set('plus31Start', iso(now + 31 * D) + 'T00:00:00.000Z');",
+                  "pm.collectionVariables.set('tooLongTo', iso(Date.parse('2025-01-01') + 366 * D));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 422', () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/partner-program?range=CUSTOM&from=2026-02-30&to=2026-03-01",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "partner-program"
+              ],
+              "query": [
+                {
+                  "key": "range",
+                  "value": "CUSTOM"
+                },
+                {
+                  "key": "from",
+                  "value": "2026-02-30"
+                },
+                {
+                  "key": "to",
+                  "value": "2026-03-01"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Range: wrong format → 422",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const D = 864e5, iso = t => new Date(t).toISOString().slice(0, 10), now = Date.now();",
+                  "pm.collectionVariables.set('today', iso(now)); pm.collectionVariables.set('yesterday', iso(now - D)); pm.collectionVariables.set('plus30', iso(now + 30 * D));",
+                  "pm.collectionVariables.set('tomorrowStart', iso(now + D) + 'T00:00:00.000Z'); pm.collectionVariables.set('plus31Start', iso(now + 31 * D) + 'T00:00:00.000Z');",
+                  "pm.collectionVariables.set('tooLongTo', iso(Date.parse('2025-01-01') + 366 * D));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 422', () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/partner-program/export?type=clients&range=CUSTOM&from=1-10-2026&to=2026-10-31",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "partner-program",
+                "export"
+              ],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "clients"
+                },
+                {
+                  "key": "range",
+                  "value": "CUSTOM"
+                },
+                {
+                  "key": "from",
+                  "value": "1-10-2026"
+                },
+                {
+                  "key": "to",
+                  "value": "2026-10-31"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Range: unknown preset → 422",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const D = 864e5, iso = t => new Date(t).toISOString().slice(0, 10), now = Date.now();",
+                  "pm.collectionVariables.set('today', iso(now)); pm.collectionVariables.set('yesterday', iso(now - D)); pm.collectionVariables.set('plus30', iso(now + 30 * D));",
+                  "pm.collectionVariables.set('tomorrowStart', iso(now + D) + 'T00:00:00.000Z'); pm.collectionVariables.set('plus31Start', iso(now + 31 * D) + 'T00:00:00.000Z');",
+                  "pm.collectionVariables.set('tooLongTo', iso(Date.parse('2025-01-01') + 366 * D));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 422', () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{honeyCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/overview?range=YTD",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "overview"
+              ],
+              "query": [
+                {
+                  "key": "range",
+                  "value": "YTD"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Overview, all time (baseline)",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const D = 864e5, iso = t => new Date(t).toISOString().slice(0, 10), now = Date.now();",
+                  "pm.collectionVariables.set('today', iso(now)); pm.collectionVariables.set('yesterday', iso(now - D)); pm.collectionVariables.set('plus30', iso(now + 30 * D));",
+                  "pm.collectionVariables.set('tomorrowStart', iso(now + D) + 'T00:00:00.000Z'); pm.collectionVariables.set('plus31Start', iso(now + 31 * D) + 'T00:00:00.000Z');",
+                  "pm.collectionVariables.set('tooLongTo', iso(Date.parse('2025-01-01') + 366 * D));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.collectionVariables.set('allSignups', d.funnel.signups); pm.collectionVariables.set('allClicks', d.funnel.clicks); pm.collectionVariables.set('allIbVerified', d.ib.funnel.verified);",
+                  "pm.test(\"has signups\", () => { pm.expect(d.funnel.signups).to.be.at.least(4); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{honeyCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/overview?range=ALL",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "overview"
+              ],
+              "query": [
+                {
+                  "key": "range",
+                  "value": "ALL"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Overview, custom = today (every test signup happened today)",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const D = 864e5, iso = t => new Date(t).toISOString().slice(0, 10), now = Date.now();",
+                  "pm.collectionVariables.set('today', iso(now)); pm.collectionVariables.set('yesterday', iso(now - D)); pm.collectionVariables.set('plus30', iso(now + 30 * D));",
+                  "pm.collectionVariables.set('tomorrowStart', iso(now + D) + 'T00:00:00.000Z'); pm.collectionVariables.set('plus31Start', iso(now + 31 * D) + 'T00:00:00.000Z');",
+                  "pm.collectionVariables.set('tooLongTo', iso(Date.parse('2025-01-01') + 366 * D));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"same as all time\", () => { pm.expect(d.funnel.signups).to.eql(Number(pm.collectionVariables.get('allSignups'))); pm.expect(d.funnel.clicks).to.eql(Number(pm.collectionVariables.get('allClicks'))); pm.expect(d.ib.funnel.verified).to.eql(Number(pm.collectionVariables.get('allIbVerified'))); });",
+                  "pm.test(\"window echoed\", () => { pm.expect(d.funnel.range).to.eql('CUSTOM'); pm.expect(d.funnel.from).to.eql(pm.collectionVariables.get('today') + 'T00:00:00.000Z'); pm.expect(d.funnel.to).to.eql(pm.collectionVariables.get('tomorrowStart')); });",
+                  "pm.test(\"one day in the series\", () => { pm.expect(d.daily.map(x => x.date)).to.eql([pm.collectionVariables.get('today')]); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{honeyCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/overview?range=CUSTOM&from={{today}}&to={{today}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "overview"
+              ],
+              "query": [
+                {
+                  "key": "range",
+                  "value": "CUSTOM"
+                },
+                {
+                  "key": "from",
+                  "value": "{{today}}"
+                },
+                {
+                  "key": "to",
+                  "value": "{{today}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Overview, custom = Jan 2020 (before anything)",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const D = 864e5, iso = t => new Date(t).toISOString().slice(0, 10), now = Date.now();",
+                  "pm.collectionVariables.set('today', iso(now)); pm.collectionVariables.set('yesterday', iso(now - D)); pm.collectionVariables.set('plus30', iso(now + 30 * D));",
+                  "pm.collectionVariables.set('tomorrowStart', iso(now + D) + 'T00:00:00.000Z'); pm.collectionVariables.set('plus31Start', iso(now + 31 * D) + 'T00:00:00.000Z');",
+                  "pm.collectionVariables.set('tooLongTo', iso(Date.parse('2025-01-01') + 366 * D));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"zeros\", () => { pm.expect(d.funnel.signups).to.eql(0); pm.expect(d.funnel.clicks).to.eql(0); pm.expect(d.funnel.connected).to.eql(0); pm.expect(d.ib.funnel.verified).to.eql(0); pm.expect(d.ib.funnel.eligible).to.eql(0); });",
+                  "pm.test(\"31 days, all zero\", () => { pm.expect(d.daily).to.have.length(31); pm.expect(d.daily[0].date).to.eql('2020-01-01'); pm.expect(d.daily[30].date).to.eql('2020-01-31'); pm.expect(d.daily.reduce((n, x) => n + x.signups + x.clicks, 0)).to.eql(0); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{honeyCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/overview?range=CUSTOM&from=2020-01-01&to=2020-01-31",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "overview"
+              ],
+              "query": [
+                {
+                  "key": "range",
+                  "value": "CUSTOM"
+                },
+                {
+                  "key": "from",
+                  "value": "2020-01-01"
+                },
+                {
+                  "key": "to",
+                  "value": "2020-01-31"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Overview, custom range in the future: empty, not an error",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const D = 864e5, iso = t => new Date(t).toISOString().slice(0, 10), now = Date.now();",
+                  "pm.collectionVariables.set('today', iso(now)); pm.collectionVariables.set('yesterday', iso(now - D)); pm.collectionVariables.set('plus30', iso(now + 30 * D));",
+                  "pm.collectionVariables.set('tomorrowStart', iso(now + D) + 'T00:00:00.000Z'); pm.collectionVariables.set('plus31Start', iso(now + 31 * D) + 'T00:00:00.000Z');",
+                  "pm.collectionVariables.set('tooLongTo', iso(Date.parse('2025-01-01') + 366 * D));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"nothing\", () => { pm.expect(d.daily).to.eql([]); pm.expect(d.funnel.signups).to.eql(0); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{honeyCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/overview?range=CUSTOM&from=2099-01-01&to=2099-01-05",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "overview"
+              ],
+              "query": [
+                {
+                  "key": "range",
+                  "value": "CUSTOM"
+                },
+                {
+                  "key": "from",
+                  "value": "2099-01-01"
+                },
+                {
+                  "key": "to",
+                  "value": "2099-01-05"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Reports, custom = today",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const D = 864e5, iso = t => new Date(t).toISOString().slice(0, 10), now = Date.now();",
+                  "pm.collectionVariables.set('today', iso(now)); pm.collectionVariables.set('yesterday', iso(now - D)); pm.collectionVariables.set('plus30', iso(now + 30 * D));",
+                  "pm.collectionVariables.set('tomorrowStart', iso(now + D) + 'T00:00:00.000Z'); pm.collectionVariables.set('plus31Start', iso(now + 31 * D) + 'T00:00:00.000Z');",
+                  "pm.collectionVariables.set('tooLongTo', iso(Date.parse('2025-01-01') + 366 * D));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"every step today\", () => { pm.expect(d.range).to.eql('CUSTOM'); pm.expect(d.daily).to.have.length(1); pm.expect(d.daily[0].signups).to.eql(4); pm.expect(d.daily[0].verified).to.be.at.least(3); });",
+                  "pm.test(\"channels counted in the window\", () => { pm.expect(d.channels.reduce((n, c) => n + c.signups, 0)).to.eql(4); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{honeyCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/reports?range=CUSTOM&from={{today}}&to={{today}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "reports"
+              ],
+              "query": [
+                {
+                  "key": "range",
+                  "value": "CUSTOM"
+                },
+                {
+                  "key": "from",
+                  "value": "{{today}}"
+                },
+                {
+                  "key": "to",
+                  "value": "{{today}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Reports, custom = Jan 2020",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const D = 864e5, iso = t => new Date(t).toISOString().slice(0, 10), now = Date.now();",
+                  "pm.collectionVariables.set('today', iso(now)); pm.collectionVariables.set('yesterday', iso(now - D)); pm.collectionVariables.set('plus30', iso(now + 30 * D));",
+                  "pm.collectionVariables.set('tomorrowStart', iso(now + D) + 'T00:00:00.000Z'); pm.collectionVariables.set('plus31Start', iso(now + 31 * D) + 'T00:00:00.000Z');",
+                  "pm.collectionVariables.set('tooLongTo', iso(Date.parse('2025-01-01') + 366 * D));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"all zero\", () => { pm.expect(d.daily).to.have.length(31); pm.expect(d.daily.reduce((n, x) => n + x.clicks + x.signups + x.connected + x.verified + x.unlocked, 0)).to.eql(0); pm.expect(d.channels.reduce((n, c) => n + c.signups + c.clicks, 0)).to.eql(0); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{honeyCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/reports?range=CUSTOM&from=2020-01-01&to=2020-01-31",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "reports"
+              ],
+              "query": [
+                {
+                  "key": "range",
+                  "value": "CUSTOM"
+                },
+                {
+                  "key": "from",
+                  "value": "2020-01-01"
+                },
+                {
+                  "key": "to",
+                  "value": "2020-01-31"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Reports, a range ending today",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const D = 864e5, iso = t => new Date(t).toISOString().slice(0, 10), now = Date.now();",
+                  "pm.collectionVariables.set('today', iso(now)); pm.collectionVariables.set('yesterday', iso(now - D)); pm.collectionVariables.set('plus30', iso(now + 30 * D));",
+                  "pm.collectionVariables.set('tomorrowStart', iso(now + D) + 'T00:00:00.000Z'); pm.collectionVariables.set('plus31Start', iso(now + 31 * D) + 'T00:00:00.000Z');",
+                  "pm.collectionVariables.set('tooLongTo', iso(Date.parse('2025-01-01') + 366 * D));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"two days\", () => { pm.expect(d.daily.map(x => x.date)).to.eql([pm.collectionVariables.get('yesterday'), pm.collectionVariables.get('today')]); pm.expect(d.daily[1].signups).to.eql(4); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{honeyCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/reports?range=CUSTOM&from={{yesterday}}&to={{today}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "reports"
+              ],
+              "query": [
+                {
+                  "key": "range",
+                  "value": "CUSTOM"
+                },
+                {
+                  "key": "from",
+                  "value": "{{yesterday}}"
+                },
+                {
+                  "key": "to",
+                  "value": "{{today}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin programme, all time (baseline)",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const D = 864e5, iso = t => new Date(t).toISOString().slice(0, 10), now = Date.now();",
+                  "pm.collectionVariables.set('today', iso(now)); pm.collectionVariables.set('yesterday', iso(now - D)); pm.collectionVariables.set('plus30', iso(now + 30 * D));",
+                  "pm.collectionVariables.set('tomorrowStart', iso(now + D) + 'T00:00:00.000Z'); pm.collectionVariables.set('plus31Start', iso(now + 31 * D) + 'T00:00:00.000Z');",
+                  "pm.collectionVariables.set('tooLongTo', iso(Date.parse('2025-01-01') + 366 * D));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.collectionVariables.set('progSignups', d.funnel.signups);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/partner-program?range=ALL",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "partner-program"
+              ],
+              "query": [
+                {
+                  "key": "range",
+                  "value": "ALL"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin programme, custom = today",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const D = 864e5, iso = t => new Date(t).toISOString().slice(0, 10), now = Date.now();",
+                  "pm.collectionVariables.set('today', iso(now)); pm.collectionVariables.set('yesterday', iso(now - D)); pm.collectionVariables.set('plus30', iso(now + 30 * D));",
+                  "pm.collectionVariables.set('tomorrowStart', iso(now + D) + 'T00:00:00.000Z'); pm.collectionVariables.set('plus31Start', iso(now + 31 * D) + 'T00:00:00.000Z');",
+                  "pm.collectionVariables.set('tooLongTo', iso(Date.parse('2025-01-01') + 366 * D));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"same as all time\", () => { pm.expect(d.range).to.eql('CUSTOM'); pm.expect(d.funnel.signups).to.eql(Number(pm.collectionVariables.get('progSignups'))); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/partner-program?range=CUSTOM&from={{today}}&to={{today}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "partner-program"
+              ],
+              "query": [
+                {
+                  "key": "range",
+                  "value": "CUSTOM"
+                },
+                {
+                  "key": "from",
+                  "value": "{{today}}"
+                },
+                {
+                  "key": "to",
+                  "value": "{{today}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin programme, custom = Jan 2020",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const D = 864e5, iso = t => new Date(t).toISOString().slice(0, 10), now = Date.now();",
+                  "pm.collectionVariables.set('today', iso(now)); pm.collectionVariables.set('yesterday', iso(now - D)); pm.collectionVariables.set('plus30', iso(now + 30 * D));",
+                  "pm.collectionVariables.set('tomorrowStart', iso(now + D) + 'T00:00:00.000Z'); pm.collectionVariables.set('plus31Start', iso(now + 31 * D) + 'T00:00:00.000Z');",
+                  "pm.collectionVariables.set('tooLongTo', iso(Date.parse('2025-01-01') + 366 * D));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"zero\", () => { pm.expect(d.funnel.signups).to.eql(0); pm.expect(d.funnel.clicks).to.eql(0); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/partner-program?range=CUSTOM&from=2020-01-01&to=2020-01-31",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "partner-program"
+              ],
+              "query": [
+                {
+                  "key": "range",
+                  "value": "CUSTOM"
+                },
+                {
+                  "key": "from",
+                  "value": "2020-01-01"
+                },
+                {
+                  "key": "to",
+                  "value": "2020-01-31"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin partner drill-down, custom = Jan 2020",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const D = 864e5, iso = t => new Date(t).toISOString().slice(0, 10), now = Date.now();",
+                  "pm.collectionVariables.set('today', iso(now)); pm.collectionVariables.set('yesterday', iso(now - D)); pm.collectionVariables.set('plus30', iso(now + 30 * D));",
+                  "pm.collectionVariables.set('tomorrowStart', iso(now + D) + 'T00:00:00.000Z'); pm.collectionVariables.set('plus31Start', iso(now + 31 * D) + 'T00:00:00.000Z');",
+                  "pm.collectionVariables.set('tooLongTo', iso(Date.parse('2025-01-01') + 366 * D));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"zero\", () => { pm.expect(d.funnel.signups).to.eql(0); pm.expect(d.daily).to.have.length(31); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/partners/{{honeyPid}}?range=CUSTOM&from=2020-01-01&to=2020-01-31",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "partners",
+                "{{honeyPid}}"
+              ],
+              "query": [
+                {
+                  "key": "range",
+                  "value": "CUSTOM"
+                },
+                {
+                  "key": "from",
+                  "value": "2020-01-01"
+                },
+                {
+                  "key": "to",
+                  "value": "2020-01-31"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin partner drill-down, custom = today",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const D = 864e5, iso = t => new Date(t).toISOString().slice(0, 10), now = Date.now();",
+                  "pm.collectionVariables.set('today', iso(now)); pm.collectionVariables.set('yesterday', iso(now - D)); pm.collectionVariables.set('plus30', iso(now + 30 * D));",
+                  "pm.collectionVariables.set('tomorrowStart', iso(now + D) + 'T00:00:00.000Z'); pm.collectionVariables.set('plus31Start', iso(now + 31 * D) + 'T00:00:00.000Z');",
+                  "pm.collectionVariables.set('tooLongTo', iso(Date.parse('2025-01-01') + 366 * D));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"all\", () => { pm.expect(d.funnel.signups).to.eql(Number(pm.collectionVariables.get('allSignups'))); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/partners/{{honeyPid}}?range=CUSTOM&from={{today}}&to={{today}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "partners",
+                "{{honeyPid}}"
+              ],
+              "query": [
+                {
+                  "key": "range",
+                  "value": "CUSTOM"
+                },
+                {
+                  "key": "from",
+                  "value": "{{today}}"
+                },
+                {
+                  "key": "to",
+                  "value": "{{today}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Clients CSV, Jan 2020: header only",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const D = 864e5, iso = t => new Date(t).toISOString().slice(0, 10), now = Date.now();",
+                  "pm.collectionVariables.set('today', iso(now)); pm.collectionVariables.set('yesterday', iso(now - D)); pm.collectionVariables.set('plus30', iso(now + 30 * D));",
+                  "pm.collectionVariables.set('tomorrowStart', iso(now + D) + 'T00:00:00.000Z'); pm.collectionVariables.set('plus31Start', iso(now + 31 * D) + 'T00:00:00.000Z');",
+                  "pm.collectionVariables.set('tooLongTo', iso(Date.parse('2025-01-01') + 366 * D));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"no rows\", () => { pm.expect(pm.response.text().trim().split('\\n')).to.have.length(1); });",
+                  "pm.test(\"file named after the range\", () => { pm.expect(pm.response.headers.get('Content-Disposition')).to.include('2020-01-01_to_2020-01-31'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/partner-program/export?type=clients&range=CUSTOM&from=2020-01-01&to=2020-01-31",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "partner-program",
+                "export"
+              ],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "clients"
+                },
+                {
+                  "key": "range",
+                  "value": "CUSTOM"
+                },
+                {
+                  "key": "from",
+                  "value": "2020-01-01"
+                },
+                {
+                  "key": "to",
+                  "value": "2020-01-31"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Clients CSV, today: every referred client",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const D = 864e5, iso = t => new Date(t).toISOString().slice(0, 10), now = Date.now();",
+                  "pm.collectionVariables.set('today', iso(now)); pm.collectionVariables.set('yesterday', iso(now - D)); pm.collectionVariables.set('plus30', iso(now + 30 * D));",
+                  "pm.collectionVariables.set('tomorrowStart', iso(now + D) + 'T00:00:00.000Z'); pm.collectionVariables.set('plus31Start', iso(now + 31 * D) + 'T00:00:00.000Z');",
+                  "pm.collectionVariables.set('tooLongTo', iso(Date.parse('2025-01-01') + 366 * D));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"rows\", () => { pm.expect(pm.response.text().trim().split('\\n').length - 1).to.eql(Number(pm.collectionVariables.get('progSignups'))); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/partner-program/export?type=clients&range=CUSTOM&from={{today}}&to={{today}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "partner-program",
+                "export"
+              ],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "clients"
+                },
+                {
+                  "key": "range",
+                  "value": "CUSTOM"
+                },
+                {
+                  "key": "from",
+                  "value": "{{today}}"
+                },
+                {
+                  "key": "to",
+                  "value": "{{today}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Clients CSV, no range: all time as before",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const D = 864e5, iso = t => new Date(t).toISOString().slice(0, 10), now = Date.now();",
+                  "pm.collectionVariables.set('today', iso(now)); pm.collectionVariables.set('yesterday', iso(now - D)); pm.collectionVariables.set('plus30', iso(now + 30 * D));",
+                  "pm.collectionVariables.set('tomorrowStart', iso(now + D) + 'T00:00:00.000Z'); pm.collectionVariables.set('plus31Start', iso(now + 31 * D) + 'T00:00:00.000Z');",
+                  "pm.collectionVariables.set('tooLongTo', iso(Date.parse('2025-01-01') + 366 * D));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"rows\", () => { pm.expect(pm.response.text().trim().split('\\n').length - 1).to.eql(Number(pm.collectionVariables.get('progSignups'))); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/partner-program/export?type=clients",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "partner-program",
+                "export"
+              ],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "clients"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Partners CSV with a range adds range columns",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const D = 864e5, iso = t => new Date(t).toISOString().slice(0, 10), now = Date.now();",
+                  "pm.collectionVariables.set('today', iso(now)); pm.collectionVariables.set('yesterday', iso(now - D)); pm.collectionVariables.set('plus30', iso(now + 30 * D));",
+                  "pm.collectionVariables.set('tomorrowStart', iso(now + D) + 'T00:00:00.000Z'); pm.collectionVariables.set('plus31Start', iso(now + 31 * D) + 'T00:00:00.000Z');",
+                  "pm.collectionVariables.set('tooLongTo', iso(Date.parse('2025-01-01') + 366 * D));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"columns + zero\", () => { const [h, r] = pm.response.text().trim().split('\\n'); const cols = h.split(','); pm.expect(cols).to.include('signups_in_range'); pm.expect(r.split(',')[cols.indexOf('range')]).to.eql('2020-01-01..2020-01-31'); pm.expect(r.split(',')[cols.indexOf('signups_in_range')]).to.eql('0'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/partner-program/export?type=partners&range=CUSTOM&from=2020-01-01&to=2020-01-31",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "partner-program",
+                "export"
+              ],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "partners"
+                },
+                {
+                  "key": "range",
+                  "value": "CUSTOM"
+                },
+                {
+                  "key": "from",
+                  "value": "2020-01-01"
+                },
+                {
+                  "key": "to",
+                  "value": "2020-01-31"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Partners CSV without a range has no range columns",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const D = 864e5, iso = t => new Date(t).toISOString().slice(0, 10), now = Date.now();",
+                  "pm.collectionVariables.set('today', iso(now)); pm.collectionVariables.set('yesterday', iso(now - D)); pm.collectionVariables.set('plus30', iso(now + 30 * D));",
+                  "pm.collectionVariables.set('tomorrowStart', iso(now + D) + 'T00:00:00.000Z'); pm.collectionVariables.set('plus31Start', iso(now + 31 * D) + 'T00:00:00.000Z');",
+                  "pm.collectionVariables.set('tooLongTo', iso(Date.parse('2025-01-01') + 366 * D));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"plain\", () => { pm.expect(pm.response.text().split('\\n')[0]).to.not.include('in_range'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/partner-program/export?type=partners",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "partner-program",
+                "export"
+              ],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "partners"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Partner’s own CSV, Jan 2020: header only",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const D = 864e5, iso = t => new Date(t).toISOString().slice(0, 10), now = Date.now();",
+                  "pm.collectionVariables.set('today', iso(now)); pm.collectionVariables.set('yesterday', iso(now - D)); pm.collectionVariables.set('plus30', iso(now + 30 * D));",
+                  "pm.collectionVariables.set('tomorrowStart', iso(now + D) + 'T00:00:00.000Z'); pm.collectionVariables.set('plus31Start', iso(now + 31 * D) + 'T00:00:00.000Z');",
+                  "pm.collectionVariables.set('tooLongTo', iso(Date.parse('2025-01-01') + 366 * D));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"no rows\", () => { pm.expect(pm.response.text().trim().split('\\n')).to.have.length(1); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{honeyCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/export?range=CUSTOM&from=2020-01-01&to=2020-01-31",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "export"
+              ],
+              "query": [
+                {
+                  "key": "range",
+                  "value": "CUSTOM"
+                },
+                {
+                  "key": "from",
+                  "value": "2020-01-01"
+                },
+                {
+                  "key": "to",
+                  "value": "2020-01-31"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Partner’s own CSV, today",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const D = 864e5, iso = t => new Date(t).toISOString().slice(0, 10), now = Date.now();",
+                  "pm.collectionVariables.set('today', iso(now)); pm.collectionVariables.set('yesterday', iso(now - D)); pm.collectionVariables.set('plus30', iso(now + 30 * D));",
+                  "pm.collectionVariables.set('tomorrowStart', iso(now + D) + 'T00:00:00.000Z'); pm.collectionVariables.set('plus31Start', iso(now + 31 * D) + 'T00:00:00.000Z');",
+                  "pm.collectionVariables.set('tooLongTo', iso(Date.parse('2025-01-01') + 366 * D));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"4 clients\", () => { pm.expect(pm.response.text().trim().split('\\n').length - 1).to.eql(4); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{honeyCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/export?range=CUSTOM&from={{today}}&to={{today}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "export"
+              ],
+              "query": [
+                {
+                  "key": "range",
+                  "value": "CUSTOM"
+                },
+                {
+                  "key": "from",
+                  "value": "{{today}}"
+                },
+                {
+                  "key": "to",
+                  "value": "{{today}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Partner’s own CSV, bad range → 422",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const D = 864e5, iso = t => new Date(t).toISOString().slice(0, 10), now = Date.now();",
+                  "pm.collectionVariables.set('today', iso(now)); pm.collectionVariables.set('yesterday', iso(now - D)); pm.collectionVariables.set('plus30', iso(now + 30 * D));",
+                  "pm.collectionVariables.set('tomorrowStart', iso(now + D) + 'T00:00:00.000Z'); pm.collectionVariables.set('plus31Start', iso(now + 31 * D) + 'T00:00:00.000Z');",
+                  "pm.collectionVariables.set('tooLongTo', iso(Date.parse('2025-01-01') + 366 * D));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 422', () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{honeyCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/export?range=CUSTOM&from=2026-10-05&to=2026-10-01",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "export"
+              ],
+              "query": [
+                {
+                  "key": "range",
+                  "value": "CUSTOM"
+                },
+                {
+                  "key": "from",
+                  "value": "2026-10-05"
+                },
+                {
+                  "key": "to",
+                  "value": "2026-10-01"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "18b Package end dates",
+      "item": [
+        {
+          "name": "Admin locks the screener to package holders",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const D = 864e5, iso = t => new Date(t).toISOString().slice(0, 10), now = Date.now();",
+                  "pm.collectionVariables.set('today', iso(now)); pm.collectionVariables.set('yesterday', iso(now - D)); pm.collectionVariables.set('plus30', iso(now + 30 * D));",
+                  "pm.collectionVariables.set('tomorrowStart', iso(now + D) + 'T00:00:00.000Z'); pm.collectionVariables.set('plus31Start', iso(now + 31 * D) + 'T00:00:00.000Z');",
+                  "pm.collectionVariables.set('tooLongTo', iso(Date.parse('2025-01-01') + 366 * D));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/partner-program/settings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "partner-program",
+                "settings"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"activeMinTrades\": 1,\n  \"activeWindowDays\": 30,\n  \"activeMinLots\": 0,\n  \"graceDays\": 7,\n  \"partnerGraceDays\": 3,\n  \"lockedPerks\": [\n    \"signalx\",\n    \"screener\"\n  ],\n  \"ibApiHosts\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "A last day in the past is refused → 422",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const D = 864e5, iso = t => new Date(t).toISOString().slice(0, 10), now = Date.now();",
+                  "pm.collectionVariables.set('today', iso(now)); pm.collectionVariables.set('yesterday', iso(now - D)); pm.collectionVariables.set('plus30', iso(now + 30 * D));",
+                  "pm.collectionVariables.set('tomorrowStart', iso(now + D) + 'T00:00:00.000Z'); pm.collectionVariables.set('plus31Start', iso(now + 31 * D) + 'T00:00:00.000Z');",
+                  "pm.collectionVariables.set('tooLongTo', iso(Date.parse('2025-01-01') + 366 * D));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 422', () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{honeyCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/packages",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "packages"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Old\",\n  \"perks\": [\n    \"screener\"\n  ],\n  \"requireActive\": false,\n  \"endsOn\": \"{{yesterday}}\",\n  \"status\": \"DRAFT\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "A last day that isn’t a date → 422",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const D = 864e5, iso = t => new Date(t).toISOString().slice(0, 10), now = Date.now();",
+                  "pm.collectionVariables.set('today', iso(now)); pm.collectionVariables.set('yesterday', iso(now - D)); pm.collectionVariables.set('plus30', iso(now + 30 * D));",
+                  "pm.collectionVariables.set('tomorrowStart', iso(now + D) + 'T00:00:00.000Z'); pm.collectionVariables.set('plus31Start', iso(now + 31 * D) + 'T00:00:00.000Z');",
+                  "pm.collectionVariables.set('tooLongTo', iso(Date.parse('2025-01-01') + 366 * D));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 422', () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{honeyCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/packages",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "packages"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Old\",\n  \"perks\": [\n    \"screener\"\n  ],\n  \"endsOn\": \"31/12/2026\",\n  \"status\": \"DRAFT\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Honey drafts “Limited”, last day today, 365 days of access",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const D = 864e5, iso = t => new Date(t).toISOString().slice(0, 10), now = Date.now();",
+                  "pm.collectionVariables.set('today', iso(now)); pm.collectionVariables.set('yesterday', iso(now - D)); pm.collectionVariables.set('plus30', iso(now + 30 * D));",
+                  "pm.collectionVariables.set('tomorrowStart', iso(now + D) + 'T00:00:00.000Z'); pm.collectionVariables.set('plus31Start', iso(now + 31 * D) + 'T00:00:00.000Z');",
+                  "pm.collectionVariables.set('tooLongTo', iso(Date.parse('2025-01-01') + 366 * D));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', () => pm.response.to.have.status(201));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"end date kept\", () => { pm.expect(d.endsOn).to.eql(pm.collectionVariables.get('today')); pm.expect(d.ended).to.eql(false); });",
+                  "pm.collectionVariables.set('pkgLtd', d.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{honeyCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/packages",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "packages"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Limited\",\n  \"perks\": [\n    \"screener\"\n  ],\n  \"requireActive\": false,\n  \"accessDays\": 365,\n  \"endsOn\": \"{{today}}\",\n  \"status\": \"DRAFT\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "18c After the last day",
+      "item": [
+        {
+          "name": "The package shows as ended to Honey",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const D = 864e5, iso = t => new Date(t).toISOString().slice(0, 10), now = Date.now();",
+                  "pm.collectionVariables.set('today', iso(now)); pm.collectionVariables.set('yesterday', iso(now - D)); pm.collectionVariables.set('plus30', iso(now + 30 * D));",
+                  "pm.collectionVariables.set('tomorrowStart', iso(now + D) + 'T00:00:00.000Z'); pm.collectionVariables.set('plus31Start', iso(now + 31 * D) + 'T00:00:00.000Z');",
+                  "pm.collectionVariables.set('tooLongTo', iso(Date.parse('2025-01-01') + 366 * D));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "const k = d.packages.find(p => p.name === 'Limited');",
+                  "pm.test(\"ended, nobody holds it\", () => { pm.expect(k.ended).to.eql(true); pm.expect(k.holders).to.eql(0); });",
+                  "pm.collectionVariables.set('ltdEnds', k.endsOn); pm.collectionVariables.set('pkgLtd', k.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{honeyCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/packages",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "packages"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Going live after it ended",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const D = 864e5, iso = t => new Date(t).toISOString().slice(0, 10), now = Date.now();",
+                  "pm.collectionVariables.set('today', iso(now)); pm.collectionVariables.set('yesterday', iso(now - D)); pm.collectionVariables.set('plus30', iso(now + 30 * D));",
+                  "pm.collectionVariables.set('tomorrowStart', iso(now + D) + 'T00:00:00.000Z'); pm.collectionVariables.set('plus31Start', iso(now + 31 * D) + 'T00:00:00.000Z');",
+                  "pm.collectionVariables.set('tooLongTo', iso(Date.parse('2025-01-01') + 366 * D));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{honeyCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/packages/{{pkgLtd}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "packages",
+                "{{pkgLtd}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"LIVE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "t1 qualifies but can’t unlock an ended package",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const D = 864e5, iso = t => new Date(t).toISOString().slice(0, 10), now = Date.now();",
+                  "pm.collectionVariables.set('today', iso(now)); pm.collectionVariables.set('yesterday', iso(now - D)); pm.collectionVariables.set('plus30', iso(now + 30 * D));",
+                  "pm.collectionVariables.set('tomorrowStart', iso(now + D) + 'T00:00:00.000Z'); pm.collectionVariables.set('plus31Start', iso(now + 31 * D) + 'T00:00:00.000Z');",
+                  "pm.collectionVariables.set('tooLongTo', iso(Date.parse('2025-01-01') + 366 * D));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"not offered\", () => { pm.expect(d.packages.map(p => p.name)).to.not.include('Limited'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{t1Cookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner-access",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner-access"
+              ]
+            }
+          }
+        },
+        {
+          "name": "…and the screener stays locked for t1",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const D = 864e5, iso = t => new Date(t).toISOString().slice(0, 10), now = Date.now();",
+                  "pm.collectionVariables.set('today', iso(now)); pm.collectionVariables.set('yesterday', iso(now - D)); pm.collectionVariables.set('plus30', iso(now + 30 * D));",
+                  "pm.collectionVariables.set('tomorrowStart', iso(now + D) + 'T00:00:00.000Z'); pm.collectionVariables.set('plus31Start', iso(now + 31 * D) + 'T00:00:00.000Z');",
+                  "pm.collectionVariables.set('tooLongTo', iso(Date.parse('2025-01-01') + 366 * D));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"locked\", () => { pm.expect(d.locked).to.include('screener'); pm.expect(d.mine).to.not.include('screener'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{t1Cookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner-access/perks",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner-access",
+                "perks"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Re-saving the date it already has is allowed",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const D = 864e5, iso = t => new Date(t).toISOString().slice(0, 10), now = Date.now();",
+                  "pm.collectionVariables.set('today', iso(now)); pm.collectionVariables.set('yesterday', iso(now - D)); pm.collectionVariables.set('plus30', iso(now + 30 * D));",
+                  "pm.collectionVariables.set('tomorrowStart', iso(now + D) + 'T00:00:00.000Z'); pm.collectionVariables.set('plus31Start', iso(now + 31 * D) + 'T00:00:00.000Z');",
+                  "pm.collectionVariables.set('tooLongTo', iso(Date.parse('2025-01-01') + 366 * D));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{honeyCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/packages/{{pkgLtd}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "packages",
+                "{{pkgLtd}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Limited\",\n  \"endsOn\": \"{{ltdEnds}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Moving it to another past day is refused → 422",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const D = 864e5, iso = t => new Date(t).toISOString().slice(0, 10), now = Date.now();",
+                  "pm.collectionVariables.set('today', iso(now)); pm.collectionVariables.set('yesterday', iso(now - D)); pm.collectionVariables.set('plus30', iso(now + 30 * D));",
+                  "pm.collectionVariables.set('tomorrowStart', iso(now + D) + 'T00:00:00.000Z'); pm.collectionVariables.set('plus31Start', iso(now + 31 * D) + 'T00:00:00.000Z');",
+                  "pm.collectionVariables.set('tooLongTo', iso(Date.parse('2025-01-01') + 366 * D));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 422', () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{honeyCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/packages/{{pkgLtd}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "packages",
+                "{{pkgLtd}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"endsOn\": \"2020-01-01\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Honey extends it by 30 days",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const D = 864e5, iso = t => new Date(t).toISOString().slice(0, 10), now = Date.now();",
+                  "pm.collectionVariables.set('today', iso(now)); pm.collectionVariables.set('yesterday', iso(now - D)); pm.collectionVariables.set('plus30', iso(now + 30 * D));",
+                  "pm.collectionVariables.set('tomorrowStart', iso(now + D) + 'T00:00:00.000Z'); pm.collectionVariables.set('plus31Start', iso(now + 31 * D) + 'T00:00:00.000Z');",
+                  "pm.collectionVariables.set('tooLongTo', iso(Date.parse('2025-01-01') + 366 * D));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"live again\", () => { pm.expect(d.ended).to.eql(false); pm.expect(d.endsOn).to.eql(pm.collectionVariables.get('plus30')); pm.expect(d.holders).to.be.at.least(1); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{honeyCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/packages/{{pkgLtd}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "packages",
+                "{{pkgLtd}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"endsOn\": \"{{plus30}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "t1 unlocks it; access stops at the end date, not after 365 days",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const D = 864e5, iso = t => new Date(t).toISOString().slice(0, 10), now = Date.now();",
+                  "pm.collectionVariables.set('today', iso(now)); pm.collectionVariables.set('yesterday', iso(now - D)); pm.collectionVariables.set('plus30', iso(now + 30 * D));",
+                  "pm.collectionVariables.set('tomorrowStart', iso(now + D) + 'T00:00:00.000Z'); pm.collectionVariables.set('plus31Start', iso(now + 31 * D) + 'T00:00:00.000Z');",
+                  "pm.collectionVariables.set('tooLongTo', iso(Date.parse('2025-01-01') + 366 * D));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "const k = d.packages.find(p => p.name === 'Limited');",
+                  "pm.test(\"active until the last day\", () => { pm.expect(k.status).to.eql('ACTIVE'); pm.expect(k.endsOn).to.eql(pm.collectionVariables.get('plus30')); pm.expect(k.expiresAt).to.eql(pm.collectionVariables.get('plus31Start')); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{t1Cookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner-access",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner-access"
+              ]
+            }
+          }
+        },
+        {
+          "name": "t1 can use the screener now",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const D = 864e5, iso = t => new Date(t).toISOString().slice(0, 10), now = Date.now();",
+                  "pm.collectionVariables.set('today', iso(now)); pm.collectionVariables.set('yesterday', iso(now - D)); pm.collectionVariables.set('plus30', iso(now + 30 * D));",
+                  "pm.collectionVariables.set('tomorrowStart', iso(now + D) + 'T00:00:00.000Z'); pm.collectionVariables.set('plus31Start', iso(now + 31 * D) + 'T00:00:00.000Z');",
+                  "pm.collectionVariables.set('tooLongTo', iso(Date.parse('2025-01-01') + 366 * D));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"unlocked\", () => { pm.expect(d.mine).to.include('screener'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{t1Cookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner-access/perks",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner-access",
+                "perks"
+              ]
+            }
+          }
+        },
+        {
+          "name": "t3 (not verified) sees when the offer ends",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const D = 864e5, iso = t => new Date(t).toISOString().slice(0, 10), now = Date.now();",
+                  "pm.collectionVariables.set('today', iso(now)); pm.collectionVariables.set('yesterday', iso(now - D)); pm.collectionVariables.set('plus30', iso(now + 30 * D));",
+                  "pm.collectionVariables.set('tomorrowStart', iso(now + D) + 'T00:00:00.000Z'); pm.collectionVariables.set('plus31Start', iso(now + 31 * D) + 'T00:00:00.000Z');",
+                  "pm.collectionVariables.set('tooLongTo', iso(Date.parse('2025-01-01') + 366 * D));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "const k = d.packages.find(p => p.name === 'Limited');",
+                  "pm.test(\"locked, with the end\", () => { pm.expect(k.status).to.eql('LOCKED'); pm.expect(k.endsOn).to.eql(pm.collectionVariables.get('plus30')); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{t3Cookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner-access",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner-access"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "18d The last day passes",
+      "item": [
+        {
+          "name": "Right away, before any scheduled pass: t1’s access has ended",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const D = 864e5, iso = t => new Date(t).toISOString().slice(0, 10), now = Date.now();",
+                  "pm.collectionVariables.set('today', iso(now)); pm.collectionVariables.set('yesterday', iso(now - D)); pm.collectionVariables.set('plus30', iso(now + 30 * D));",
+                  "pm.collectionVariables.set('tomorrowStart', iso(now + D) + 'T00:00:00.000Z'); pm.collectionVariables.set('plus31Start', iso(now + 31 * D) + 'T00:00:00.000Z');",
+                  "pm.collectionVariables.set('tooLongTo', iso(Date.parse('2025-01-01') + 366 * D));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "const k = d.packages.find(p => p.name === 'Limited');",
+                  "pm.test(\"expired, with the reason\", () => { pm.expect(k.status).to.eql('EXPIRED'); pm.expect(k.reasons).to.eql(['This package has ended.']); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{t1Cookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner-access",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner-access"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Ended packages vanish for clients who never held them",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const D = 864e5, iso = t => new Date(t).toISOString().slice(0, 10), now = Date.now();",
+                  "pm.collectionVariables.set('today', iso(now)); pm.collectionVariables.set('yesterday', iso(now - D)); pm.collectionVariables.set('plus30', iso(now + 30 * D));",
+                  "pm.collectionVariables.set('tomorrowStart', iso(now + D) + 'T00:00:00.000Z'); pm.collectionVariables.set('plus31Start', iso(now + 31 * D) + 'T00:00:00.000Z');",
+                  "pm.collectionVariables.set('tooLongTo', iso(Date.parse('2025-01-01') + 366 * D));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"gone\", () => { pm.expect(d.packages.map(p => p.name)).to.not.include('Limited'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{t3Cookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner-access",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner-access"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The scheduled pass records it",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const D = 864e5, iso = t => new Date(t).toISOString().slice(0, 10), now = Date.now();",
+                  "pm.collectionVariables.set('today', iso(now)); pm.collectionVariables.set('yesterday', iso(now - D)); pm.collectionVariables.set('plus30', iso(now + 30 * D));",
+                  "pm.collectionVariables.set('tomorrowStart', iso(now + D) + 'T00:00:00.000Z'); pm.collectionVariables.set('plus31Start', iso(now + 31 * D) + 'T00:00:00.000Z');",
+                  "pm.collectionVariables.set('tooLongTo', iso(Date.parse('2025-01-01') + 366 * D));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Internal-Token",
+                "value": "{{internalToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/internal/partners/ib-cycle",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "internal",
+                "partners",
+                "ib-cycle"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Screener locked again for t1",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const D = 864e5, iso = t => new Date(t).toISOString().slice(0, 10), now = Date.now();",
+                  "pm.collectionVariables.set('today', iso(now)); pm.collectionVariables.set('yesterday', iso(now - D)); pm.collectionVariables.set('plus30', iso(now + 30 * D));",
+                  "pm.collectionVariables.set('tomorrowStart', iso(now + D) + 'T00:00:00.000Z'); pm.collectionVariables.set('plus31Start', iso(now + 31 * D) + 'T00:00:00.000Z');",
+                  "pm.collectionVariables.set('tooLongTo', iso(Date.parse('2025-01-01') + 366 * D));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"locked\", () => { pm.expect(d.mine).to.not.include('screener'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{t1Cookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner-access/perks",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner-access",
+                "perks"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Still expired after the pass",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const D = 864e5, iso = t => new Date(t).toISOString().slice(0, 10), now = Date.now();",
+                  "pm.collectionVariables.set('today', iso(now)); pm.collectionVariables.set('yesterday', iso(now - D)); pm.collectionVariables.set('plus30', iso(now + 30 * D));",
+                  "pm.collectionVariables.set('tomorrowStart', iso(now + D) + 'T00:00:00.000Z'); pm.collectionVariables.set('plus31Start', iso(now + 31 * D) + 'T00:00:00.000Z');",
+                  "pm.collectionVariables.set('tooLongTo', iso(Date.parse('2025-01-01') + 366 * D));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "const k = d.packages.find(p => p.name === 'Limited');",
+                  "pm.test(\"expired\", () => { pm.expect(k.status).to.eql('EXPIRED'); pm.expect(k.reasons).to.eql(['This package has ended.']); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{t1Cookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner-access",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner-access"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin sees it ended",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const D = 864e5, iso = t => new Date(t).toISOString().slice(0, 10), now = Date.now();",
+                  "pm.collectionVariables.set('today', iso(now)); pm.collectionVariables.set('yesterday', iso(now - D)); pm.collectionVariables.set('plus30', iso(now + 30 * D));",
+                  "pm.collectionVariables.set('tomorrowStart', iso(now + D) + 'T00:00:00.000Z'); pm.collectionVariables.set('plus31Start', iso(now + 31 * D) + 'T00:00:00.000Z');",
+                  "pm.collectionVariables.set('tooLongTo', iso(Date.parse('2025-01-01') + 366 * D));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"ended\", () => { const v = d.find(p => p.name === 'Limited'); pm.expect(v.ended).to.eql(true); pm.expect(v.holders).to.eql(0); pm.collectionVariables.set('pkgLtd', v.id); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/partner-program/packages",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "partner-program",
+                "packages"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Honey removes the end date",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const D = 864e5, iso = t => new Date(t).toISOString().slice(0, 10), now = Date.now();",
+                  "pm.collectionVariables.set('today', iso(now)); pm.collectionVariables.set('yesterday', iso(now - D)); pm.collectionVariables.set('plus30', iso(now + 30 * D));",
+                  "pm.collectionVariables.set('tomorrowStart', iso(now + D) + 'T00:00:00.000Z'); pm.collectionVariables.set('plus31Start', iso(now + 31 * D) + 'T00:00:00.000Z');",
+                  "pm.collectionVariables.set('tooLongTo', iso(Date.parse('2025-01-01') + 366 * D));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"no end\", () => { pm.expect(d.endsOn).to.eql(null); pm.expect(d.ended).to.eql(false); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{honeyCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/packages/{{pkgLtd}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "packages",
+                "{{pkgLtd}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"endsOn\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "t1 gets it back (their own 365 days aren’t over)",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const D = 864e5, iso = t => new Date(t).toISOString().slice(0, 10), now = Date.now();",
+                  "pm.collectionVariables.set('today', iso(now)); pm.collectionVariables.set('yesterday', iso(now - D)); pm.collectionVariables.set('plus30', iso(now + 30 * D));",
+                  "pm.collectionVariables.set('tomorrowStart', iso(now + D) + 'T00:00:00.000Z'); pm.collectionVariables.set('plus31Start', iso(now + 31 * D) + 'T00:00:00.000Z');",
+                  "pm.collectionVariables.set('tooLongTo', iso(Date.parse('2025-01-01') + 366 * D));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "const k = d.packages.find(p => p.name === 'Limited');",
+                  "pm.test(\"active again\", () => { pm.expect(k.status).to.eql('ACTIVE'); pm.expect(k.reasons).to.eql([]); pm.expect(k.endsOn).to.eql(null); pm.expect(Date.parse(k.expiresAt) - Date.now()).to.be.above(300 * 864e5); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{t1Cookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner-access",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner-access"
+              ]
+            }
+          }
+        },
+        {
+          "name": "…and the screener with it",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const D = 864e5, iso = t => new Date(t).toISOString().slice(0, 10), now = Date.now();",
+                  "pm.collectionVariables.set('today', iso(now)); pm.collectionVariables.set('yesterday', iso(now - D)); pm.collectionVariables.set('plus30', iso(now + 30 * D));",
+                  "pm.collectionVariables.set('tomorrowStart', iso(now + D) + 'T00:00:00.000Z'); pm.collectionVariables.set('plus31Start', iso(now + 31 * D) + 'T00:00:00.000Z');",
+                  "pm.collectionVariables.set('tooLongTo', iso(Date.parse('2025-01-01') + 366 * D));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"unlocked\", () => { pm.expect(d.mine).to.include('screener'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{t1Cookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner-access/perks",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner-access",
+                "perks"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The event log shows the end and the return",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const D = 864e5, iso = t => new Date(t).toISOString().slice(0, 10), now = Date.now();",
+                  "pm.collectionVariables.set('today', iso(now)); pm.collectionVariables.set('yesterday', iso(now - D)); pm.collectionVariables.set('plus30', iso(now + 30 * D));",
+                  "pm.collectionVariables.set('tomorrowStart', iso(now + D) + 'T00:00:00.000Z'); pm.collectionVariables.set('plus31Start', iso(now + 31 * D) + 'T00:00:00.000Z');",
+                  "pm.collectionVariables.set('tooLongTo', iso(Date.parse('2025-01-01') + 366 * D));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"kinds\", () => { const k = d.filter(e => e.message.includes('Limited') || e.kind.startsWith('access.')).map(e => e.kind); ['access.expire', 'access.restore', 'package.update'].forEach(x => pm.expect(k).to.include(x)); });",
+                  "pm.test(\"end change logged\", () => { pm.expect(d.some(e => e.kind === 'package.update' && e.message.includes('last day removed'))).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/partner-program/events?partnerId={{honeyPid}}&limit=500",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "partner-program",
+                "events"
+              ],
+              "query": [
+                {
+                  "key": "partnerId",
+                  "value": "{{honeyPid}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "500"
+                }
+              ]
+            }
+          }
+        }
+      ]
     }
   ],
   "variable": [

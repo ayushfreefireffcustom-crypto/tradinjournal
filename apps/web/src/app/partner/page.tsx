@@ -8,18 +8,17 @@ import { useCallback, useEffect, useState } from 'react';
 import AppShell from '@/components/app-shell';
 import { useAccounts } from '@/lib/use-accounts';
 import { invalidateAccessCache } from '@/lib/use-platform-access';
-import { partnerApi, PartnerApiError, type PartnerOverview, type PartnerRange } from '@/lib/partner-api';
+import { partnerApi, PartnerApiError, type PartnerOverview, type RangeSel } from '@/lib/partner-api';
 import { IArrowRight } from '@/components/v6/icons';
 import EmptyState from '@/components/v6/ui/empty-state';
 import '@/styles/v6/lux.css';
 import PartnerGate, { GATE_CODES, type GateReason } from '@/components/v6/account/partner-gate';
 import {
-  ActivityFeed, ChannelTable, ClientRows, CopyButton, Funnel, LinkBox, Qr, RangeSeg, ShareRow, TrendCard, day,
+  ActivityFeed, ChannelTable, ClientRows, CopyButton, Funnel, LinkBox, Qr, RangeSeg, rangeLabel, ShareRow, TrendCard, day,
 } from '@/components/v6/account/partner-parts';
 import { AttentionCard, BrokerHealthRow, IbClientRows, IbFunnelCard, TradingCard } from '@/components/v6/account/ib-parts';
 import '@/styles/v6/account.css';
 
-const RANGE_SUB: Record<PartnerRange, string> = { '7D': 'last 7 days', '30D': 'last 30 days', '90D': 'last 90 days', ALL: 'all time' };
 
 function greeting() {
   const h = new Date().getHours();
@@ -31,10 +30,10 @@ export default function PartnerOverviewPage() {
   const [o, setO] = useState<PartnerOverview | null>(null);
   const [gate, setGate] = useState<GateReason | null>(null);
   const [error, setError] = useState('');
-  const [range, setRange] = useState<PartnerRange>('30D');
+  const [range, setRange] = useState<RangeSel>('30D');
   const [loading, setLoading] = useState(true);
 
-  const load = useCallback(async (r: PartnerRange) => {
+  const load = useCallback(async (r: RangeSel) => {
     setLoading(true); setError('');
     try {
       setO(await partnerApi.overview(r));
@@ -64,7 +63,7 @@ export default function PartnerOverviewPage() {
 
           {o && (
             <div className={`x-page ${loading ? 'ac-refreshing' : ''}`}>
-              {o.ib ? <IbFunnelCard f={o.ib.funnel} rule={o.partner.activeRule} sub={RANGE_SUB[range]} /> : <Funnel f={o.funnel} rule={o.partner.activeRule} />}
+              {o.ib ? <IbFunnelCard f={o.ib.funnel} rule={o.partner.activeRule} sub={rangeLabel(range)} /> : <Funnel f={o.funnel} rule={o.partner.activeRule} />}
               {o.ib && (
                 <div className="ib-grid3">
                   <TradingCard t={o.ib.trading} />

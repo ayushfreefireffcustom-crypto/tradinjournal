@@ -3,6 +3,7 @@ import {
   parseEarnings, parsePostback, dig,
   DEFAULT_SETTINGS, allowedPerks, decideVerification, evaluatePackage, isActiveTrader, mergeSettings, nextEntitlement,
   parseIbList, ruleText, sameState, type EntitlementState, type VerifyInput,
+  PACKAGE_ENDED, effectiveExpiry, endsAtFromDay, humanDay, lastDayOf, packageEnded,
 } from '../ib/ib.logic.js';
 import { brokerKeyFor } from '../ib/brokers.js';
 import { sheetCsvUrl } from '../ib/sources.js';
@@ -192,3 +193,78 @@ describe('phase 2 rules', () => {
     expect(dig({ a: 1 }, 'b.c')).toBeUndefined();
   });
 });
+
+describe('package end dates', () => {
+  const DAY_MS = 86_400_000;
+  const rule = { ...DEFAULT_SETTINGS, graceDays: 7 };
+  const yes = { qualifies: true, reasons: [], partnerPaused: false };
+  const no = { qualifies: false, reasons: ['Verify a broker account.'], partnerPaused: false };
+  const ends = endsAtFromDay('2026-12-31'); // access stops at 2027-01-01T00:00Z
+  const before = new Date('2026-12-31T23:59:59Z');
+  const after = new Date('2027-01-01T00:00:00Z');
+  const held = (over: Partial<EntitlementState> = {}): EntitlementState => ({ status: 'ACTIVE', grantedAt: new Date('2026-12-01T00:00:00Z'), expiresAt: null, graceUntil: null, suspendedAt: null, reason: null, ...over });
+
+  it('converts between the last day and the exclusive end', () => {
+    expect(ends.toISOString()).toBe('2027-01-01T00:00:00.000Z');
+    expect(lastDayOf(ends)).toBe('2026-12-31');
+    expect(humanDay('2026-12-31')).toBe('31 Dec 2026');
+    expect(packageEnded(ends, before)).toBe(false);
+    expect(packageEnded(ends, after)).toBe(true);
+    expect(packageEnded(null, after)).toBe(false);
+  });
+
+  it('access stops at the earlier of the holder’s own period and the package end', () => {
+    const own = new Date('2026-12-15T00:00:00Z');
+    expect(effectiveExpiry(null, null)).toBeNull();
+    expect(effectiveExpiry(own, null)).toEqual(own);
+    expect(effectiveExpiry(null, ends)).toEqual(ends);
+    expect(effectiveExpiry(own, ends)).toEqual(own);
+    expect(effectiveExpiry(new Date('2027-03-01T00:00:00Z'), ends)).toEqual(ends);
+  });
+
+  it('says why a package can’t be unlocked once it has ended', () => {
+    const pkg = { status: 'LIVE', brokers: [] as string[], requireActive: false, endsAt: ends };
+    const base = { partnerName: 'Honey', partnerActive: true, pkg, verifiedBrokers: ['xellion'], activeTrader: true, rule };
+    expect(evaluatePackage({ ...base, now: before })).toEqual({ qualifies: true, reasons: [], partnerPaused: false });
+    expect(evaluatePackage({ ...base, now: after })).toEqual({ qualifies: false, reasons: ['This package ended on 31 Dec 2026.'], partnerPaused: false });
+  });
+
+  it('can be unlocked up to the last second, never after', () => {
+    expect(nextEntitlement(null, yes, null, rule, before, ends)).toMatchObject({ status: 'ACTIVE', expiresAt: null });
+    expect(nextEntitlement(null, yes, null, rule, after, ends)).toBeNull();
+  });
+
+  it('ends access for every holder at once, with no grace period', () => {
+    expect(nextEntitlement(held(), yes, null, rule, before, ends)).toMatchObject({ status: 'ACTIVE' });
+    expect(nextEntitlement(held(), yes, null, rule, after, ends)).toMatchObject({ status: 'EXPIRED', reason: PACKAGE_ENDED, graceUntil: null });
+    expect(nextEntitlement(held({ status: 'GRACE', graceUntil: new Date('2027-01-05T00:00:00Z') }), no, null, rule, after, ends))
+      .toMatchObject({ status: 'EXPIRED', reason: PACKAGE_ENDED, graceUntil: null });
+    expect(nextEntitlement(held({ status: 'SUSPENDED', suspendedAt: new Date('2026-12-20T00:00:00Z') }), no, null, rule, after, ends))
+      .toMatchObject({ status: 'EXPIRED', reason: PACKAGE_ENDED });
+  });
+
+  it('the holder’s own period ending first keeps its own reason', () => {
+    const own = held({ expiresAt: new Date('2026-12-20T00:00:00Z') });
+    expect(nextEntitlement(own, yes, 30, rule, after, ends)).toMatchObject({ status: 'EXPIRED', reason: 'Your access period has ended.' });
+  });
+
+  it('comes back when the partner moves or removes the end date', () => {
+    const expired = held({ status: 'EXPIRED', reason: PACKAGE_ENDED });
+    const later = endsAtFromDay('2027-03-31');
+    expect(nextEntitlement(expired, yes, null, rule, after, later)).toMatchObject({ status: 'ACTIVE', reason: null, suspendedAt: null });
+    expect(nextEntitlement(expired, yes, null, rule, after, null)).toMatchObject({ status: 'ACTIVE' });
+    // Back, but no longer qualifying: paused rather than active.
+    expect(nextEntitlement(expired, no, null, rule, after, later)).toMatchObject({ status: 'SUSPENDED', reason: 'Verify a broker account.' });
+    // Still past the (unchanged) end: stays expired.
+    expect(nextEntitlement(expired, yes, null, rule, after, ends)).toBe(expired);
+  });
+
+  it('never revives access that ran out on its own', () => {
+    const own = held({ status: 'EXPIRED', reason: 'Your access period has ended.', expiresAt: new Date('2026-12-20T00:00:00Z') });
+    expect(nextEntitlement(own, yes, null, rule, after, null)).toBe(own);
+    // Package end moved, but the holder's own 30 days are also over: stays expired.
+    const both = held({ status: 'EXPIRED', reason: PACKAGE_ENDED, expiresAt: new Date(after.getTime() - DAY_MS) });
+    expect(nextEntitlement(both, yes, null, rule, after, null)).toBe(both);
+  });
+});
+

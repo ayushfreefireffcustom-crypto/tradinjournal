@@ -1,7 +1,7 @@
 // Client for the IB partner layer: broker IB connections, client verification, partner
 // packages, the trader's Access page and the admin programme view. Types mirror
 // packages/contracts/src/schema/partner-ib.ts.
-import { PartnerApiError } from '@/lib/partner-api';
+import { PartnerApiError, rangeQuery, type RangeSel } from '@/lib/partner-api';
 
 const USE_MOCKS = process.env.NEXT_PUBLIC_USE_MOCKS === 'true';
 const API = USE_MOCKS ? '' : process.env.NEXT_PUBLIC_API_URL || '';
@@ -11,7 +11,9 @@ export type IbMethod = 'LIST' | 'SHEET' | 'API';
 export type VerificationStatus = 'PENDING' | 'VERIFIED' | 'NOT_FOUND' | 'MANUAL_REVIEW' | 'REJECTED' | 'UNSUPPORTED_BROKER';
 export type EntitlementStatus = 'ACTIVE' | 'GRACE' | 'SUSPENDED' | 'EXPIRED';
 export type PackageStatus = 'DRAFT' | 'LIVE' | 'ARCHIVED';
-export type Range = '7D' | '30D' | '90D' | 'ALL';
+export type Range = '7D' | '30D' | '90D' | 'ALL' | 'CUSTOM';
+export type { RangeSel };
+const rq = (r: RangeSel, extra: Record<string, string> = {}) => new URLSearchParams(Object.entries({ ...extra, ...rangeQuery(r) }).filter(([, v]) => v !== undefined) as [string, string][]).toString();
 
 export interface BrokerCatalogEntry { key: string; label: string; listHint: string; methods: IbMethod[] }
 export interface Perk { key: string; label: string; description: string; href: string }
@@ -24,11 +26,11 @@ export interface UploadResult { broker: PartnerBroker; added: number; updated: n
 export interface PartnerPackage {
   id: string; name: string; description: string | null; perks: string[]; templateIds: string[]; productIds: string[]; brokers: string[];
   adminHold: boolean; adminNote: string | null;
-  requireActive: boolean; accessDays: number | null; status: PackageStatus; holders: number; inGrace: number; createdAt: string;
+  requireActive: boolean; accessDays: number | null; endsOn: string | null; ended: boolean; status: PackageStatus; holders: number; inGrace: number; createdAt: string;
 }
 export interface PackageInput {
   name: string; description?: string; perks: string[]; templateIds: string[]; productIds: string[]; brokers: string[];
-  requireActive: boolean; accessDays: number | null; status: PackageStatus;
+  requireActive: boolean; accessDays: number | null; endsOn: string | null; status: PackageStatus;
 }
 export interface PackagesPage {
   packages: PartnerPackage[]; perks: Perk[];
@@ -56,6 +58,8 @@ export interface AccessPackage {
   id: string; name: string; description: string | null; perks: Perk[]; templates: { id: string; name: string }[];
   products: { id: string; name: string; type: string }[];
   status: EntitlementStatus | 'LOCKED'; reasons: string[]; grantedAt: string | null; expiresAt: string | null; graceUntil: string | null;
+  /** Last day the package is on offer (YYYY-MM-DD, UTC), or null. */
+  endsOn: string | null;
 }
 export interface ClientAccess {
   partner: { name: string; code: string; status: 'ACTIVE' | 'PAUSED' } | null; canJoin: boolean; accounts: AccessAccount[];
@@ -158,13 +162,13 @@ export const ibApi = {
   review: (brokerAccountId: string, note?: string) => send<ClientAccess>('POST', `${P}/partner-access/review`, { brokerAccountId, ...(note ? { note } : {}) }),
   consent: (share: boolean) => send<ClientAccess>('POST', `${P}/partner-access/consent`, { share }),
   // Admin
-  program: (range: Range = '30D') => call<ProgramOverview>(`${P}/admin/partner-program?range=${range}`),
+  program: (range: RangeSel = '30D') => call<ProgramOverview>(`${P}/admin/partner-program?${rq(range)}`),
   reviews: () => call<ReviewItem[]>(`${P}/admin/partner-program/reviews`),
   decide: (id: string, action: 'approve' | 'reject', note?: string) => send<{ status: VerificationStatus }>('POST', `${P}/admin/partner-program/verifications/${enc(id)}`, { action, ...(note ? { note } : {}) }),
   events: (q: { partnerId?: string; kind?: string; limit?: number } = {}) => call<IbEvent[]>(`${P}/admin/partner-program/events?${new URLSearchParams(Object.entries(q).filter(([, v]) => v !== undefined).map(([k, v]) => [k, String(v)])).toString()}`),
   settings: () => call<ProgramSettings>(`${P}/admin/partner-program/settings`),
   saveSettings: (s: ProgramSettings) => send<ProgramSettings>('PUT', `${P}/admin/partner-program/settings`, s),
-  exportUrl: (type: 'clients' | 'partners') => `${API}${P}/admin/partner-program/export?type=${type}`,
+  exportUrl: (type: 'clients' | 'partners', range: RangeSel = 'ALL') => `${API}${P}/admin/partner-program/export?${rq(range, { type })}`,
   recheck: (partnerId: string) => send<{ rechecked: number }>('POST', `${P}/admin/partners/${enc(partnerId)}/recheck`, {}),
 
   // Partner: integrations, tools, money, reports
@@ -178,8 +182,8 @@ export const ibApi = {
   productFile: (id: string, fileName: string, fileType: string, data: string) => send<PartnerProduct>('POST', `${P}/partner/products/${enc(id)}/file`, { fileName, fileType, data }),
   submitProduct: (id: string) => send<PartnerProduct>('POST', `${P}/partner/products/${enc(id)}/submit`, {}),
   earnings: () => call<Earnings>(`${P}/partner/earnings`),
-  reports: (range: Range) => call<Reports>(`${P}/partner/reports?range=${range}`),
-  partnerExportUrl: () => `${API}${P}/partner/export`,
+  reports: (range: RangeSel) => call<Reports>(`${P}/partner/reports?${rq(range)}`),
+  partnerExportUrl: (range: RangeSel = 'ALL') => `${API}${P}/partner/export?${rq(range)}`,
   // Trader
   clientProduct: (id: string) => call<ClientProduct & { content: string | null }>(`${P}/partner-access/products/${enc(id)}`),
   clientProductFileUrl: (id: string) => `${API}${P}/partner-access/products/${enc(id)}/file`,
@@ -200,6 +204,11 @@ export const ibApi = {
 export const PRODUCT_TYPE_LABEL: Record<ProductType, string> = {
   INDICATOR: 'Indicator', CHART_TEMPLATE: 'Chart template', JOURNAL_TEMPLATE: 'Journal template', ALGORITHM: 'Algorithm / EA', GUIDE: 'Guide',
 };
+
+/** "2026-12-31" → "31 Dec 2026", read as a UTC calendar day. */
+export const dayUtc = (d: string) => new Date(`${d}T00:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+/** Today's UTC calendar day, "YYYY-MM-DD". */
+export const todayUtc = () => new Date().toISOString().slice(0, 10);
 
 export const VERIFY_LABEL: Record<VerificationStatus | 'NO_ACCOUNT', string> = {
   PENDING: 'Not checked', VERIFIED: 'Verified', NOT_FOUND: 'Not found', MANUAL_REVIEW: 'In review', REJECTED: 'Rejected',

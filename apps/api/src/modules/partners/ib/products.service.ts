@@ -6,10 +6,10 @@ import type { ClientProductDetailDto, ClientProductDto, PartnerProductDto, Produ
 import { AppError, ConflictError, NotFoundError, ValidationError } from '../../../http/errors.js';
 import { logEvent } from './events.js';
 import { termsOf } from './terms.js';
+import { heldNow } from './held.js';
 
 const MAX_PRODUCTS = 50;
 const MAX_FILE = 2 * 1024 * 1024;
-const LIVE = ['ACTIVE', 'GRACE'] as const;
 type Actor = { id: string; email: string } | null;
 type Row = Awaited<ReturnType<typeof prisma.partnerProduct.findFirstOrThrow>>;
 
@@ -161,7 +161,7 @@ export async function productFileForAdmin(id: string) {
 
 /** Approved tools in the packages this user holds right now. */
 export async function clientProducts(userId: string): Promise<ClientProductDto[]> {
-  const held = await prisma.clientEntitlement.findMany({ where: { userId, status: { in: [...LIVE] } }, include: { package: { select: { productIds: true } } } });
+  const held = await prisma.clientEntitlement.findMany({ where: heldNow(userId), include: { package: { select: { productIds: true } } } });
   const ids = [...new Set(held.flatMap(h => h.package.productIds))];
   if (!ids.length) return [];
   const rows = await prisma.partnerProduct.findMany({

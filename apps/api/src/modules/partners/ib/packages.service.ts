@@ -3,6 +3,7 @@ import { prisma } from '@tradinjournal/db';
 import type { AdminPackageRowDto, PartnerPackageDto, PartnerPackageInput, PartnerPackagesDto } from '@tradinjournal/contracts';
 import { ConflictError, NotFoundError, ValidationError } from '../../../http/errors.js';
 import { termsOf } from './terms.js';
+import { endsAtFromDay, lastDayOf, packageEnded } from './ib.logic.js';
 import { BROKERS, brokerLabel } from './brokers.js';
 import { isPerk, perkDtos } from './perks.js';
 import { getProgramSettings } from './settings.js';
@@ -18,12 +19,17 @@ async function toDtos(rows: PkgRow[], partnerId?: string): Promise<PartnerPackag
   const ids = rows.map(r => r.id);
   const counts = await prisma.clientEntitlement.groupBy({ by: ['packageId', 'status'], where: { ...(partnerId ? { partnerId } : { packageId: { in: ids } }) }, _count: { _all: true } });
   const n = (id: string, s: string) => counts.find(c => c.packageId === id && c.status === s)?._count._all ?? 0;
-  return rows.map(p => ({
-    id: p.id, name: p.name, description: p.description, perks: p.perks, templateIds: p.templateIds, productIds: p.productIds, brokers: p.brokers,
-    requireActive: p.requireActive, accessDays: p.accessDays, status: p.status,
-    adminHold: p.adminHold, adminNote: p.adminNote,
-    holders: n(p.id, 'ACTIVE') + n(p.id, 'GRACE'), inGrace: n(p.id, 'GRACE'), createdAt: p.createdAt.toISOString(),
-  }));
+  const now = new Date();
+  return rows.map(p => {
+    const ended = packageEnded(p.endsAt, now);
+    return {
+      id: p.id, name: p.name, description: p.description, perks: p.perks, templateIds: p.templateIds, productIds: p.productIds, brokers: p.brokers,
+      requireActive: p.requireActive, accessDays: p.accessDays, endsOn: p.endsAt ? lastDayOf(p.endsAt) : null, ended, status: p.status,
+      adminHold: p.adminHold, adminNote: p.adminNote,
+      // Once it has ended nobody holds it, even before the next cycle records that.
+      holders: ended ? 0 : n(p.id, 'ACTIVE') + n(p.id, 'GRACE'), inGrace: ended ? 0 : n(p.id, 'GRACE'), createdAt: p.createdAt.toISOString(),
+    };
+  });
 }
 
 export async function listPackageDtos(partnerId: string): Promise<PartnerPackageDto[]> {
@@ -47,7 +53,15 @@ export async function packagesPage(partner: { id: string; userId: string }): Pro
   };
 }
 
-async function clean(partner: { id: string; userId: string }, input: Partial<PartnerPackageInput>) {
+async function clean(partner: { id: string; userId: string }, input: Partial<PartnerPackageInput>, prevEndsAt: Date | null = null) {
+  let endsAt: Date | null | undefined;
+  // Re-sending the last day a package already has changes nothing, so an ended
+  // package can still be edited. A new last day can't be in the past (today is fine:
+  // it runs to midnight UTC).
+  if (input.endsOn !== undefined && input.endsOn !== (prevEndsAt ? lastDayOf(prevEndsAt) : null)) {
+    endsAt = input.endsOn ? endsAtFromDay(input.endsOn) : null;
+    if (endsAt && packageEnded(endsAt, new Date())) throw new ValidationError('The last day can’t be in the past.');
+  }
   if (input.perks) {
     const bad = input.perks.filter(p => !isPerk(p));
     if (bad.length) throw new ValidationError(`Unknown feature: ${bad.join(', ')}`);
@@ -73,6 +87,7 @@ async function clean(partner: { id: string; userId: string }, input: Partial<Par
     ...(input.brokers ? { brokers: [...new Set(input.brokers)] } : {}),
     ...(input.requireActive !== undefined ? { requireActive: input.requireActive } : {}),
     ...(input.accessDays !== undefined ? { accessDays: input.accessDays ?? null } : {}),
+    ...(endsAt !== undefined ? { endsAt } : {}),
     ...(input.status ? { status: input.status } : {}),
   };
 }
@@ -89,7 +104,7 @@ export async function createPackage(partner: { id: string; userId: string }, inp
   const data = await clean(partner, input);
   assertHasContent({ perks: data.perks ?? [], templateIds: data.templateIds ?? [], productIds: data.productIds ?? [] });
   const p = await prisma.partnerPackage.create({ data: { partnerId: partner.id, name: input.name, ...data } });
-  await logEvent({ kind: 'package.create', partnerId: partner.id, actor, message: `Package “${p.name}” created (${p.status.toLowerCase()})` });
+  await logEvent({ kind: 'package.create', partnerId: partner.id, actor, message: `Package “${p.name}” created (${p.status.toLowerCase()})${p.endsAt ? `, last day ${lastDayOf(p.endsAt)}` : ''}` });
   if (p.status === 'LIVE') await recomputePartner(partner.id);
   return (await listPackageDtos(partner.id)).find(x => x.id === p.id)!;
 }
@@ -97,10 +112,11 @@ export async function createPackage(partner: { id: string; userId: string }, inp
 export async function updatePackage(partner: { id: string; userId: string }, id: string, input: Partial<PartnerPackageInput>, actor: Actor = null): Promise<PartnerPackageDto> {
   const prev = await prisma.partnerPackage.findFirst({ where: { id, partnerId: partner.id } });
   if (!prev) throw new NotFoundError('Package not found');
-  const data = await clean(partner, input);
+  const data = await clean(partner, input, prev.endsAt);
   assertHasContent({ perks: data.perks ?? prev.perks, templateIds: data.templateIds ?? prev.templateIds, productIds: data.productIds ?? prev.productIds });
   const p = await prisma.partnerPackage.update({ where: { id }, data });
-  await logEvent({ kind: 'package.update', partnerId: partner.id, actor, message: `Package “${p.name}” updated${prev.status !== p.status ? ` (${prev.status.toLowerCase()} → ${p.status.toLowerCase()})` : ''}` });
+  const endChange = (prev.endsAt?.getTime() ?? null) !== (p.endsAt?.getTime() ?? null) ? `; last day ${p.endsAt ? lastDayOf(p.endsAt) : 'removed'}` : '';
+  await logEvent({ kind: 'package.update', partnerId: partner.id, actor, message: `Package “${p.name}” updated${prev.status !== p.status ? ` (${prev.status.toLowerCase()} → ${p.status.toLowerCase()})` : ''}${endChange}` });
   await recomputePartner(partner.id);
   return (await listPackageDtos(partner.id)).find(x => x.id === p.id)!;
 }

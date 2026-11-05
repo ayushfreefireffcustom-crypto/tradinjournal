@@ -9,12 +9,13 @@ import { isAdmin } from '../../../lib/admin.js';
 import { resolveActiveCode } from '../attribution.service.js';
 import { firstName } from '../partner.logic.js';
 import { brokerKeyFor, brokerLabel } from './brokers.js';
-import { allowedPerks, evaluatePackage, nextEntitlement, sameState, type EntitlementState } from './ib.logic.js';
+import { allowedPerks, effectiveExpiry, evaluatePackage, lastDayOf, nextEntitlement, packageEnded, PACKAGE_ENDED, sameState, type EntitlementState } from './ib.logic.js';
 import { clientProducts } from './products.service.js';
 import { PERKS, perkDtos } from './perks.js';
 import { getProgramSettings } from './settings.js';
 import { logEvent } from './events.js';
 import { accountsOf, verifyUser } from './ib.service.js';
+import { heldNow } from './held.js';
 
 const LIVE: EntitlementStatusDto[] = ['ACTIVE', 'GRACE'];
 
@@ -40,15 +41,15 @@ export async function recomputeUser(userId: string, now = new Date()): Promise<v
   const name = firstName(ref.partner.user.name);
   for (const pkg of ref.partner.packages) {
     const prevRow = existing.find(e => e.packageId === pkg.id) ?? null;
-    if (!prevRow && (pkg.status !== 'LIVE' || pkg.adminHold)) continue;
+    if (!prevRow && (pkg.status !== 'LIVE' || pkg.adminHold || packageEnded(pkg.endsAt, now))) continue;
     const ev = evaluatePackage({
       partnerName: name, partnerActive: ref.partner.status === 'ACTIVE', pkg, verifiedBrokers,
-      activeTrader: ref.isActive && !!ref.connectedAt, rule,
+      activeTrader: ref.isActive && !!ref.connectedAt, rule, now,
     });
     const prev: EntitlementState | null = prevRow
       ? { status: prevRow.status, grantedAt: prevRow.grantedAt, expiresAt: prevRow.expiresAt, graceUntil: prevRow.graceUntil, suspendedAt: prevRow.suspendedAt, reason: prevRow.reason }
       : null;
-    const next = nextEntitlement(prev, ev, pkg.accessDays, rule, now);
+    const next = nextEntitlement(prev, ev, pkg.accessDays, rule, now, pkg.endsAt);
     if (!next || (prev && sameState(prev, next))) continue;
     if (prevRow) await prisma.clientEntitlement.update({ where: { id: prevRow.id }, data: next });
     else await prisma.clientEntitlement.create({ data: { userId, partnerId: ref.partnerId, packageId: pkg.id, ...next } });
@@ -97,7 +98,7 @@ export async function perksFor(userId: string, email: string): Promise<{ locked:
   if (hit && Date.now() - hit.at < PERK_CACHE_MS) return { locked: lockedPerks, mine: hit.perks };
   const [partner, held] = await Promise.all([
     prisma.partner.findUnique({ where: { userId }, select: { status: true } }),
-    prisma.clientEntitlement.findMany({ where: { userId, status: { in: LIVE } }, include: { package: { select: { perks: true } } } }),
+    prisma.clientEntitlement.findMany({ where: heldNow(userId), include: { package: { select: { perks: true } } } }),
   ]);
   const mine = partner?.status === 'ACTIVE' ? all : allowedPerks(lockedPerks, held.map(h => ({ status: h.status, perks: h.package.perks })), all);
   perkCache.set(userId, { perks: mine, at: Date.now() });
@@ -110,7 +111,7 @@ export function clearPerkCache(): void {
 
 /** Templates marked partner-only that this user may see (as holder, creator or admin). */
 export async function visiblePartnerTemplates(userId: string): Promise<string[]> {
-  const held = await prisma.clientEntitlement.findMany({ where: { userId, status: { in: LIVE } }, include: { package: { select: { templateIds: true } } } });
+  const held = await prisma.clientEntitlement.findMany({ where: heldNow(userId), include: { package: { select: { templateIds: true } } } });
   return [...new Set(held.flatMap(h => h.package.templateIds))];
 }
 
@@ -125,7 +126,7 @@ async function packageContext(userId: string) {
     prisma.clientEntitlement.findMany({ where: { userId }, include: { package: true } }),
   ]);
   const verifiedBrokers = [...new Set(verifs.filter(v => v.status === 'VERIFIED' && v.partnerId === ref?.partnerId).map(v => v.broker).filter((b): b is string => !!b))];
-  const evaluate = (p: { status: string; brokers: string[]; requireActive: boolean; adminHold: boolean }) => evaluatePackage({
+  const evaluate = (p: { status: string; brokers: string[]; requireActive: boolean; adminHold: boolean; endsAt: Date | null }) => evaluatePackage({
     partnerName: ref ? firstName(ref.partner.user.name) : '', partnerActive: ref?.partner.status === 'ACTIVE', pkg: p, verifiedBrokers,
     activeTrader: !!ref?.isActive && !!ref?.connectedAt, rule,
   });
@@ -163,21 +164,37 @@ export async function clientAccess(userId: string, email: string): Promise<Clien
   ]);
   const tpl = (ids: string[]) => templates.filter(t => ids.includes(t.id));
   const prd = (ids: string[]) => prods.filter(t => ids.includes(t.id));
+  const now = new Date();
+  // What the client sees matches what they can use this second, even before the
+  // 15-minute cycle writes an expiry down.
+  const shown = (e: (typeof ents)[number]) => {
+    const until = effectiveExpiry(e.expiresAt, e.package.endsAt);
+    if (LIVE.includes(e.status) && until && now >= until) {
+      return { status: 'EXPIRED' as const, reason: packageEnded(e.package.endsAt, now) && (!e.expiresAt || e.expiresAt > now) ? PACKAGE_ENDED : 'Your access period has ended.', until };
+    }
+    return { status: e.status, reason: e.reason, until };
+  };
+  const endsOn = (p: { endsAt: Date | null }) => (p.endsAt ? lastDayOf(p.endsAt) : null);
   for (const p of ref?.partner.packages ?? []) {
     const e = ents.find(x => x.packageId === p.id);
+    // An ended package is only listed for clients who held it.
+    if (!e && packageEnded(p.endsAt, now)) continue;
     const ev = evaluate(p);
+    const sh = e ? shown(e) : null;
     pkgs.set(p.id, {
       id: p.id, name: p.name, description: p.description, perks: perkDtos(p.perks), templates: tpl(p.templateIds), products: prd(p.productIds),
-      status: e?.status ?? 'LOCKED', reasons: e && e.status === 'ACTIVE' ? [] : ev.reasons,
-      grantedAt: e?.grantedAt.toISOString() ?? null, expiresAt: e?.expiresAt?.toISOString() ?? null, graceUntil: e?.graceUntil?.toISOString() ?? null,
+      status: sh?.status ?? 'LOCKED', reasons: sh?.status === 'ACTIVE' ? [] : sh?.status === 'EXPIRED' && sh.reason ? [sh.reason] : ev.reasons,
+      grantedAt: e?.grantedAt.toISOString() ?? null, expiresAt: sh?.until?.toISOString() ?? null, graceUntil: e?.graceUntil?.toISOString() ?? null,
+      endsOn: endsOn(p),
     });
   }
   for (const e of ents) {
     if (pkgs.has(e.packageId) || !LIVE.includes(e.status)) continue;
+    const sh = shown(e);
     pkgs.set(e.packageId, {
       id: e.packageId, name: e.package.name, description: e.package.description, perks: perkDtos(e.package.perks), templates: tpl(e.package.templateIds),
-      products: prd(e.package.productIds), status: e.status, reasons: e.reason ? [e.reason] : [], grantedAt: e.grantedAt.toISOString(),
-      expiresAt: e.expiresAt?.toISOString() ?? null, graceUntil: e.graceUntil?.toISOString() ?? null,
+      products: prd(e.package.productIds), status: sh.status, reasons: sh.reason ? [sh.reason] : [], grantedAt: e.grantedAt.toISOString(),
+      expiresAt: sh.until?.toISOString() ?? null, graceUntil: e.graceUntil?.toISOString() ?? null, endsOn: endsOn(e.package),
     });
   }
 

@@ -12,6 +12,7 @@ import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from '.
 import { assertWithinLimit, requireFeatureFor } from '../../lib/plans.js';
 import { controlDeployment, createDeployment, setMultiplier, type DeployInput } from '../strategies/deployments.service.js';
 import { backtestSpec, defaultStrategyDeps, type StrategyDeps } from '../strategies/strategies.service.js';
+import { heldNow } from '../partners/ib/held.js';
 
 export const CATEGORIES = ['trend', 'reversion', 'breakout', 'momentum', 'range', 'scalping'] as const;
 export const RISKS = ['low', 'medium', 'high'] as const;
@@ -322,7 +323,7 @@ async function cardsOf(rows: StrategyTemplate[]) {
  */
 async function audienceWhere(userId: string | null): Promise<Prisma.StrategyTemplateWhereInput> {
   if (!userId) return { partnerOnly: false };
-  const held = await prisma.clientEntitlement.findMany({ where: { userId, status: { in: ['ACTIVE', 'GRACE'] } }, select: { package: { select: { templateIds: true } } } });
+  const held = await prisma.clientEntitlement.findMany({ where: heldNow(userId), select: { package: { select: { templateIds: true } } } });
   const ids = [...new Set(held.flatMap(h => h.package.templateIds))];
   return { OR: [{ partnerOnly: false }, { creatorId: userId }, ...(ids.length ? [{ id: { in: ids } }] : [])] };
 }

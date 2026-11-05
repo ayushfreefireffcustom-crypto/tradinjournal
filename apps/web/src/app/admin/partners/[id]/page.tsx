@@ -9,7 +9,7 @@ import AppShell from '@/components/app-shell';
 import AdminOnly from '@/components/v6/admin/admin-only';
 import { useAccounts } from '@/lib/use-accounts';
 import {
-  partnerApi, type AdminPartnerDetail, type AdminPartnerRow, type ClientsPage, type PartnerClient, type PartnerRange, type StatusAction,
+  partnerApi, type AdminPartnerDetail, type AdminPartnerRow, type ClientsPage, type PartnerClient, type RangeSel, type StatusAction,
 } from '@/lib/partner-api';
 import { IArrowLeft } from '@/components/v6/icons';
 import {
@@ -40,7 +40,7 @@ export default function AdminPartnerPage({ params }: { params: Promise<{ id: str
   const [d, setD] = useState<AdminPartnerDetail | null>(null);
   const [clients, setClients] = useState<ClientsPage | null>(null);
   const [error, setError] = useState('');
-  const [range, setRange] = useState<PartnerRange>('ALL');
+  const [range, setRange] = useState<RangeSel>('ALL');
   const [page, setPage] = useState(1);
   const [busy, setBusy] = useState<string | null>(null);
   const [toast, setToast] = useState('');

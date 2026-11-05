@@ -2,10 +2,10 @@
 // review queue, event log and CSV exports.
 import { prisma, Prisma } from '@tradinjournal/db';
 import type {
-  ClientIbDto, IbFunnelDto, PartnerEventDto2, PartnerIbOverviewDto, PartnerRange, ProgramOverviewDto,
+  ClientIbDto, IbFunnelDto, PartnerEventDto2, PartnerIbOverviewDto, PartnerRangeQuery, ProgramOverviewDto,
   ProgramPartnerRowDto, ReviewItemDto, TradingSummaryDto,
 } from '@tradinjournal/contracts';
-import { rangeStart } from '../partner.logic.js';
+import { resolveWindow, within } from '../partner.logic.js';
 import { listBrokers } from './ib.service.js';
 
 const DAY_MS = 86_400_000;
@@ -24,27 +24,27 @@ export async function tradingSummary(partnerId?: string): Promise<TradingSummary
   return { ...row!, lots30d: Math.round(row!.lots30d * 100) / 100, pnl30d: Math.round(row!.pnl30d * 100) / 100 };
 }
 
-export async function ibFunnel(range: PartnerRange, partnerId?: string, partnerSince?: Date): Promise<IbFunnelDto> {
-  const from = rangeStart(range, partnerSince ?? new Date(0));
+export async function ibFunnel(q: PartnerRangeQuery, partnerId?: string, partnerSince?: Date): Promise<IbFunnelDto> {
+  const at = within(resolveWindow(q, partnerSince ?? new Date(0)));
   // Typed counts, not raw SQL: the columns are timestamps without a zone, and a raw
   // Date parameter would be compared in the database session's time zone.
-  const base: Prisma.ReferralWhereInput = { ...(partnerId ? { partnerId } : {}), ...(from ? { attributedAt: { gte: from } } : {}) };
+  const base: Prisma.ReferralWhereInput = { ...(partnerId ? { partnerId } : {}), ...(at ? { attributedAt: at } : {}) };
   const own = (extra: object) => (partnerId ? { partnerId, ...extra } : extra);
   const [clicks, signups, connected, verified, active, eligible] = await Promise.all([
-    prisma.referralClick.count({ where: { ...(partnerId ? { partnerId } : {}), ...(from ? { createdAt: { gte: from } } : {}) } }),
+    prisma.referralClick.count({ where: { ...(partnerId ? { partnerId } : {}), ...(at ? { createdAt: at } : {}) } }),
     prisma.referral.count({ where: base }),
     prisma.referral.count({ where: { ...base, connectedAt: { not: null } } }),
     prisma.referral.count({ where: { ...base, user: { clientVerifications: { some: own({ status: 'VERIFIED' }) } } } }),
     prisma.referral.count({ where: { ...base, connectedAt: { not: null }, isActive: true } }),
     prisma.referral.count({ where: { ...base, user: { clientEntitlements: { some: own({ status: { in: ['ACTIVE', 'GRACE'] } }) } } } }),
   ]);
-  return { range, clicks, signups, connected, verified, active, eligible };
+  return { range: q.range, clicks, signups, connected, verified, active, eligible };
 }
 
-export async function partnerIbOverview(partnerId: string, range: PartnerRange, partnerSince: Date): Promise<PartnerIbOverviewDto> {
+export async function partnerIbOverview(partnerId: string, range: PartnerRangeQuery, partnerSince: Date): Promise<PartnerIbOverviewDto> {
   const [funnel, trading, brokers, pk, holders, v] = await Promise.all([
     ibFunnel(range, partnerId, partnerSince), tradingSummary(partnerId), listBrokers(partnerId),
-    prisma.partnerPackage.count({ where: { partnerId, status: 'LIVE' } }),
+    prisma.partnerPackage.count({ where: { partnerId, status: 'LIVE', OR: [{ endsAt: null }, { endsAt: { gt: new Date() } }] } }),
     prisma.clientEntitlement.findMany({ where: { partnerId, status: { in: ['ACTIVE', 'GRACE'] } }, distinct: ['userId'], select: { userId: true } }),
     prisma.clientVerification.groupBy({ by: ['status'], where: { partnerId }, _count: { _all: true } }),
   ]);
@@ -115,7 +115,7 @@ export async function programRows(): Promise<ProgramPartnerRowDto[]> {
   }).sort((a, b) => b.clients - a.clients || a.name.localeCompare(b.name));
 }
 
-export async function programOverview(range: PartnerRange): Promise<ProgramOverviewDto> {
+export async function programOverview(range: PartnerRangeQuery): Promise<ProgramOverviewDto> {
   const [statuses, funnel, trading, rows, reviews, flags, syncErrors] = await Promise.all([
     prisma.partner.groupBy({ by: ['status'], _count: { _all: true } }),
     ibFunnel(range), tradingSummary(), programRows(),
@@ -125,7 +125,7 @@ export async function programOverview(range: PartnerRange): Promise<ProgramOverv
   ]);
   const s = (k: string) => statuses.find(x => x.status === k)?._count._all ?? 0;
   return {
-    range,
+    range: range.range,
     partners: { pending: s('PENDING'), needsInfo: s('NEEDS_INFO'), active: s('ACTIVE'), suspended: s('SUSPENDED'), rejected: s('REJECTED'), revoked: s('REVOKED') },
     funnel, trading, rows, attention: { reviews, flags, syncErrors },
   };
@@ -226,15 +226,29 @@ function csvCell(v: unknown): string {
 }
 const csv = (rows: unknown[][]) => rows.map(r => r.map(csvCell).join(',')).join('\n') + '\n';
 
-export async function exportCsv(type: 'clients' | 'partners'): Promise<string> {
+/** "2026-10-01..2026-10-31" style label for a range, for CSV columns. */
+function rangeLabel(q: PartnerRangeQuery): string {
+  const w = resolveWindow(q, new Date(0));
+  if (!w.from) return 'all time';
+  const last = w.to ? new Date(w.to.getTime() - DAY_MS) : new Date();
+  return `${w.from.toISOString().slice(0, 10)}..${last.toISOString().slice(0, 10)}`;
+}
+
+export async function exportCsv(type: 'clients' | 'partners', q: PartnerRangeQuery = { range: 'ALL' }): Promise<string> {
+  const at = within(resolveWindow(q, new Date(0)));
   if (type === 'partners') {
     const rows = await programRows();
+    // Totals are all time; with a range, the funnel for that window is added per partner.
+    const ranged = at ? await Promise.all(rows.map(r => ibFunnel(q, r.id))) : null;
     return csv([
-      ['partner', 'email', 'code', 'status', 'clients', 'connected', 'verified', 'active', 'eligible', 'trades_30d', 'lots_30d', 'net_pnl_30d', 'profitable', 'losing', 'broker_errors'],
-      ...rows.map(r => [r.name, r.email, r.code, r.status, r.clients, r.connected, r.verified, r.active, r.eligible, r.trades30d, r.lots30d, r.pnl30d, r.profitable, r.losing, r.brokerErrors]),
+      ['partner', 'email', 'code', 'status', 'clients', 'connected', 'verified', 'active', 'eligible', 'trades_30d', 'lots_30d', 'net_pnl_30d', 'profitable', 'losing', 'broker_errors',
+        ...(ranged ? ['range', 'clicks_in_range', 'signups_in_range', 'connected_in_range', 'verified_in_range', 'active_in_range', 'eligible_in_range'] : [])],
+      ...rows.map((r, i) => [r.name, r.email, r.code, r.status, r.clients, r.connected, r.verified, r.active, r.eligible, r.trades30d, r.lots30d, r.pnl30d, r.profitable, r.losing, r.brokerErrors,
+        ...(ranged ? [rangeLabel(q), ranged[i]!.clicks, ranged[i]!.signups, ranged[i]!.connected, ranged[i]!.verified, ranged[i]!.active, ranged[i]!.eligible] : [])]),
     ]);
   }
   const refs = await prisma.referral.findMany({
+    ...(at ? { where: { attributedAt: at } } : {}),
     include: { user: { select: { name: true, email: true, country: true } }, partner: { include: { user: { select: { name: true } } } } },
     orderBy: { attributedAt: 'desc' }, take: 50_000,
   });
@@ -251,9 +265,10 @@ export async function exportCsv(type: 'clients' | 'partners'): Promise<string> {
 }
 
 /** The partner's own client list as CSV. Same privacy as the portal: no emails, P&L only with consent. */
-export async function partnerClientsCsv(partnerId: string): Promise<string> {
+export async function partnerClientsCsv(partnerId: string, q: PartnerRangeQuery = { range: 'ALL' }): Promise<string> {
+  const at = within(resolveWindow(q, new Date(0)));
   const refs = await prisma.referral.findMany({
-    where: { partnerId }, include: { user: { select: { name: true, city: true, country: true } }, channel: { select: { label: true } } },
+    where: { partnerId, ...(at ? { attributedAt: at } : {}) }, include: { user: { select: { name: true, city: true, country: true } }, channel: { select: { label: true } } },
     orderBy: { attributedAt: 'desc' }, take: 50_000,
   });
   const ib = await clientIb(refs, false);

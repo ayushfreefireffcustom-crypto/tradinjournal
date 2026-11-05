@@ -3,7 +3,7 @@
 import { prisma } from '@tradinjournal/db';
 import type {
   AdminCreatePartnerInput, AdminPartnerDetailDto, AdminPartnerRowDto, AdminPartnerStatusInput,
-  AdminAssignClientInput, AdminReferrerLookupDto, PartnerClientDto, PartnerNoteDto, PartnerRange,
+  AdminAssignClientInput, AdminReferrerLookupDto, PartnerClientDto, PartnerNoteDto, PartnerRangeQuery,
   PartnerStatusDto, ReservedPartnerCodeDto,
 } from '@tradinjournal/contracts';
 import { ConflictError, NotFoundError } from '../../http/errors.js';
@@ -63,7 +63,7 @@ export async function createPartner(input: AdminCreatePartnerInput, actor: Actor
   return rowFor(p);
 }
 
-export async function partnerDetail(id: string, range: PartnerRange): Promise<AdminPartnerDetailDto> {
+export async function partnerDetail(id: string, range: PartnerRangeQuery): Promise<AdminPartnerDetailDto> {
   const p = await getPartnerById(id);
   const [ov, row, codes, notes, packages, events] = await Promise.all([
     overview(p, range), rowFor(p), codeStats(p),

@@ -168,7 +168,8 @@ export function decideVerification(i: VerifyInput): VerifyOutcome {
 export interface EligibilityInput {
   partnerName: string;
   partnerActive: boolean;
-  pkg: { status: string; brokers: string[]; requireActive: boolean; adminHold?: boolean };
+  pkg: { status: string; brokers: string[]; requireActive: boolean; adminHold?: boolean; endsAt?: Date | null };
+  now?: Date;
   /** Broker keys of this client's VERIFIED accounts. */
   verifiedBrokers: string[];
   activeTrader: boolean;
@@ -180,6 +181,7 @@ export function evaluatePackage(i: EligibilityInput): { qualifies: boolean; reas
   if (!i.partnerActive) reasons.push(`${i.partnerName}’s partner programme is paused.`);
   if (i.pkg.status !== 'LIVE') reasons.push(`${i.partnerName} has withdrawn this package.`);
   if (i.pkg.adminHold) reasons.push('TRADElogs has paused this package.');
+  if (packageEnded(i.pkg.endsAt, i.now ?? new Date())) reasons.push(`This package ended on ${humanDay(lastDayOf(i.pkg.endsAt!))}.`);
   const ok = i.pkg.brokers.length ? i.verifiedBrokers.filter(b => i.pkg.brokers.includes(b)) : i.verifiedBrokers;
   if (!ok.length) {
     reasons.push(i.pkg.brokers.length
@@ -188,6 +190,24 @@ export function evaluatePackage(i: EligibilityInput): { qualifies: boolean; reas
   }
   if (i.pkg.requireActive && !i.activeTrader) reasons.push(`Trade at least ${ruleText(i.rule)}.`);
   return { qualifies: reasons.length === 0, reasons, partnerPaused: !i.partnerActive };
+}
+
+// ── Package end dates ─────────────────────────────────────────────────────────
+
+/** Reason stored on entitlements that expired only because the package ended. */
+export const PACKAGE_ENDED = 'This package has ended.';
+/** "2026-12-31" (the last day, UTC) → the exclusive end: 2027-01-01T00:00Z. */
+export const endsAtFromDay = (day: string): Date => new Date(Date.parse(`${day}T00:00:00.000Z`) + DAY_MS);
+/** Exclusive end → the last day "YYYY-MM-DD". */
+export const lastDayOf = (endsAt: Date): string => new Date(endsAt.getTime() - DAY_MS).toISOString().slice(0, 10);
+export const packageEnded = (endsAt: Date | null | undefined, now: Date): boolean => !!endsAt && now.getTime() >= endsAt.getTime();
+/** "2026-12-31" → "31 Dec 2026". */
+export const humanDay = (day: string): string => new Date(`${day}T00:00:00.000Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+/** When a holder's access stops: the earlier of their own access period and the package's end. */
+export function effectiveExpiry(expiresAt: Date | null, endsAt: Date | null | undefined): Date | null {
+  if (!endsAt) return expiresAt;
+  if (!expiresAt) return endsAt;
+  return expiresAt < endsAt ? expiresAt : endsAt;
 }
 
 export interface EntitlementState {
@@ -210,14 +230,30 @@ export function nextEntitlement(
   accessDays: number | null,
   rule: ProgramSettingsDto,
   now: Date,
+  /** The package's fixed end (exclusive), if it has one. */
+  endsAt: Date | null = null,
 ): EntitlementState | null {
   const reason = ev.reasons.join(' ') || null;
+  const ended = packageEnded(endsAt, now);
   if (!prev) {
-    if (!ev.qualifies) return null;
+    // Nobody can unlock a package after it has ended.
+    if (!ev.qualifies || ended) return null;
     return { status: 'ACTIVE', grantedAt: now, expiresAt: accessDays ? new Date(now.getTime() + accessDays * DAY_MS) : null, graceUntil: null, suspendedAt: null, reason: null };
   }
-  if (prev.status === 'EXPIRED') return prev;
+  if (prev.status === 'EXPIRED') {
+    // It ended only because of the package's end date, and the partner has since moved or
+    // removed that date: the holder's own access period decides again.
+    const ownPeriodOver = !!prev.expiresAt && now >= prev.expiresAt;
+    if (prev.reason === PACKAGE_ENDED && !ended && !ownPeriodOver) {
+      return ev.qualifies
+        ? { ...prev, status: 'ACTIVE', graceUntil: null, suspendedAt: null, reason: null }
+        : { ...prev, status: 'SUSPENDED', graceUntil: null, suspendedAt: now, reason };
+    }
+    return prev;
+  }
   if (prev.expiresAt && now >= prev.expiresAt) return { ...prev, status: 'EXPIRED', graceUntil: null, reason: 'Your access period has ended.' };
+  // The package's end date stops access for everyone at once, without a grace period.
+  if (ended) return { ...prev, status: 'EXPIRED', graceUntil: null, reason: PACKAGE_ENDED };
   if (ev.qualifies) return { ...prev, status: 'ACTIVE', graceUntil: null, suspendedAt: null, reason: null };
   if (prev.status === 'ACTIVE') {
     const days = ev.partnerPaused ? rule.partnerGraceDays : rule.graceDays;

@@ -16,7 +16,14 @@ export type PartnerStatus = 'PENDING' | 'NEEDS_INFO' | 'ACTIVE' | 'SUSPENDED' | 
  * INACTIVE  — was active, has since dropped below the rule.
  */
 export type ReferralStatus = 'SIGNED_UP' | 'CONNECTED' | 'ACTIVE' | 'INACTIVE';
-export type PartnerRange = '7D' | '30D' | '90D' | 'ALL';
+export type PartnerRange = '7D' | '30D' | '90D' | 'ALL' | 'CUSTOM';
+/** What a range control holds: a preset, or a custom window of UTC days (both inclusive). */
+export type RangeSel = Exclude<PartnerRange, 'CUSTOM'> | { from: string; to: string };
+/** Longest custom window the API accepts, in days. */
+export const MAX_RANGE_DAYS = 366;
+/** Query fields for a range selection. */
+export const rangeQuery = (r: RangeSel): { range: PartnerRange; from?: string; to?: string } =>
+  (typeof r === 'string' ? { range: r } : { range: 'CUSTOM', from: r.from, to: r.to });
 
 export interface PartnerProfile {
   id: string;
@@ -29,7 +36,7 @@ export interface PartnerProfile {
   reviewNote?: string | null;
 }
 /** `converted` = clicks in the range that led to a signup; click → signup % is converted / clicks. */
-export interface PartnerFunnel { range: PartnerRange; from: string | null; clicks: number; converted: number; signups: number; connected: number; active: number }
+export interface PartnerFunnel { range: PartnerRange; from: string | null; to: string | null; clicks: number; converted: number; signups: number; connected: number; active: number }
 export interface PartnerDailyPoint { date: string; clicks: number; signups: number; clients: number; active: number }
 export interface PartnerChannel {
   id: string; label: string; slug: string | null; url: string;
@@ -117,7 +124,7 @@ async function clientsPage(base: string, q: ClientsQuery): Promise<ClientsPage> 
 export const partnerApi = {
   me: () => get<PartnerProfile | null>(`${P}/partner/me`),
   apply: (input: ApplyInput) => send<PartnerProfile>('POST', `${P}/partner/apply`, input),
-  overview: (range: PartnerRange = '30D') => get<PartnerOverview>(`${P}/partner/overview${qs({ range })}`),
+  overview: (range: RangeSel = '30D') => get<PartnerOverview>(`${P}/partner/overview${qs(rangeQuery(range))}`),
   clients: (q: ClientsQuery = {}) => clientsPage(`${P}/partner/clients`, q),
   links: () => get<PartnerLinks>(`${P}/partner/links`),
   createChannel: (label: string) => send<PartnerChannel>('POST', `${P}/partner/channels`, { label }),
@@ -128,7 +135,7 @@ export const partnerApi = {
 
   adminList: (status?: PartnerStatus) => get<AdminPartnerRow[]>(`${P}/admin/partners${qs({ status })}`),
   adminCreate: (input: { email: string; code?: string; audience?: string }) => send<AdminPartnerRow>('POST', `${P}/admin/partners`, input),
-  adminDetail: (id: string, range: PartnerRange = 'ALL') => get<AdminPartnerDetail>(`${P}/admin/partners/${encodeURIComponent(id)}${qs({ range })}`),
+  adminDetail: (id: string, range: RangeSel = 'ALL') => get<AdminPartnerDetail>(`${P}/admin/partners/${encodeURIComponent(id)}${qs(rangeQuery(range))}`),
   adminClients: (id: string, q: ClientsQuery = {}) => clientsPage(`${P}/admin/partners/${encodeURIComponent(id)}/clients`, q),
   adminStatus: (id: string, action: StatusAction, reason?: string) => send<AdminPartnerRow>('POST', `${P}/admin/partners/${encodeURIComponent(id)}/status`, { action, ...(reason ? { reason } : {}) }),
   adminNote: (id: string, body: string) => send<PartnerNote>('POST', `${P}/admin/partners/${encodeURIComponent(id)}/notes`, { body }),

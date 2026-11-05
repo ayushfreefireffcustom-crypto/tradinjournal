@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { partnerCodeInputSchema, partnerRangeSchema, type PartnerRange } from './partner.js';
+import { checkRange, isoDaySchema, partnerCodeInputSchema, partnerRangeSchema, rangeFields, type PartnerRange } from './partner.js';
 
 // IB partner layer (Phase 1 of the IB partner doc): broker IB connections, client
 // verification, partner packages and access. See reports/partner-ib-plan.md.
@@ -56,6 +56,8 @@ export const partnerPackageSchema = z.object({
   brokers: z.array(z.string().min(1).max(30)).max(10).default([]),
   requireActive: z.boolean().default(true),
   accessDays: z.number().int().min(1).max(3650).nullable().optional(),
+  /** Last day of the package (YYYY-MM-DD, UTC). Access stops at the end of it for everyone. Null = no end date. */
+  endsOn: isoDaySchema.nullable().optional(),
   productIds: z.array(z.string().min(1).max(40)).max(30).default([]),
   status: z.enum(['DRAFT', 'LIVE', 'ARCHIVED']).default('DRAFT'),
 });
@@ -90,13 +92,15 @@ export const adminVerificationActionSchema = z.object({
   note: z.string().trim().max(500).optional(),
 });
 
-export const programRangeQuerySchema = z.object({ range: partnerRangeSchema.default('30D') });
+export const programRangeQuerySchema = z.object(rangeFields).superRefine(checkRange);
 export const programEventsQuerySchema = z.object({
   partnerId: z.string().max(40).optional(),
   kind: z.string().max(40).optional(),
   limit: z.coerce.number().int().min(1).max(500).default(100),
 });
-export const programExportQuerySchema = z.object({ type: z.enum(['clients', 'partners']).default('clients') });
+/** Exports default to all time; a range limits clients (and partner counts) to signups in that window. */
+export const programExportQuerySchema = z.object({ type: z.enum(['clients', 'partners']).default('clients'), ...rangeFields, range: partnerRangeSchema.default('ALL') }).superRefine(checkRange);
+export const partnerExportQuerySchema = z.object({ ...rangeFields, range: partnerRangeSchema.default('ALL') }).superRefine(checkRange);
 
 // ── DTOs ──────────────────────────────────────────────────────────────────────
 
@@ -156,6 +160,10 @@ export interface PartnerPackageDto {
   brokers: string[];
   requireActive: boolean;
   accessDays: number | null;
+  /** Last day of the package (YYYY-MM-DD), or null. */
+  endsOn: string | null;
+  /** True once that day is over. */
+  ended: boolean;
   status: PackageStatusDto;
   holders: number;
   inGrace: number;
@@ -248,6 +256,8 @@ export interface AccessPackageDto {
   grantedAt: string | null;
   expiresAt: string | null;
   graceUntil: string | null;
+  /** Last day the package is on offer (YYYY-MM-DD), or null. */
+  endsOn: string | null;
 }
 
 export interface ClientAccessDto {

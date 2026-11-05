@@ -9,13 +9,20 @@ import { ICheck, ICopy, IDownload } from '@/components/v6/icons';
 import { timeAgo } from '@/components/app-shell';
 import {
   PARTNER_STATUS_LABEL, STATUS_LABEL, type PartnerChannel, type PartnerClient, type PartnerDailyPoint, type PartnerEvent,
-  type PartnerFunnel, type PartnerRange, type PartnerStatus, type ReferralStatus,
+  type PartnerFunnel, type PartnerRange, type PartnerStatus, type ReferralStatus, type RangeSel, MAX_RANGE_DAYS,
 } from '@/lib/partner-api';
+import DateRangePicker from '@/components/v6/ui/date-range';
+import { rangeText } from '@/lib/date-presets';
 import '@/styles/v6/account.css';
 
-export const RANGES: PartnerRange[] = ['7D', '30D', '90D', 'ALL'];
+export const RANGES: Exclude<PartnerRange, 'CUSTOM'>[] = ['7D', '30D', '90D', 'ALL'];
 export type PRange = PartnerRange;
-export const RANGE_LABEL: Record<PartnerRange, string> = { '7D': 'last 7 days', '30D': 'last 30 days', '90D': 'last 90 days', ALL: 'all time' };
+export const RANGE_LABEL: Record<PartnerRange, string> = { '7D': 'last 7 days', '30D': 'last 30 days', '90D': 'last 90 days', ALL: 'all time', CUSTOM: 'custom range' };
+/** "last 30 days" or "1 Oct – 31 Oct" for a range selection. */
+export const rangeLabel = (r: RangeSel): string => (typeof r === 'string' ? RANGE_LABEL[r] : rangeText(r));
+/** Same, from what the API echoed back (`to` is the exclusive end). */
+export const echoedRange = (range: PartnerRange, from: string | null, to: string | null): string =>
+  range === 'CUSTOM' && from && to ? rangeText({ from: from.slice(0, 10), to: new Date(Date.parse(to) - 86_400_000).toISOString().slice(0, 10) }) : RANGE_LABEL[range];
 
 export const n = (v: number) => v.toLocaleString('en-US');
 export const pct = (a: number, b: number) => (b ? `${((a / b) * 100).toFixed(a / b < 0.1 ? 1 : 0)}%` : '—');
@@ -37,10 +44,15 @@ export function PartnerStatusPill({ s }: { s: PartnerStatus }) {
   return <span className={`x-tag ${PTONE[s]} ac-st-pill`}><i />{PARTNER_STATUS_LABEL[s]}</span>;
 }
 
-export function RangeSeg({ value, onChange, small = false }: { value: PartnerRange; onChange: (r: PartnerRange) => void; small?: boolean }) {
+/** Preset chips plus a custom from–to picker (UTC days, at most a year). */
+export function RangeSeg({ value, onChange, small = false }: { value: RangeSel; onChange: (r: RangeSel) => void; small?: boolean }) {
   return (
-    <div className={`x-seg ${small ? 'x-seg--sm' : ''}`} role="group" aria-label="Date range">
-      {RANGES.map(k => <button key={k} type="button" aria-pressed={value === k} onClick={() => onChange(k)}>{k === 'ALL' ? 'All' : k}</button>)}
+    <div className="ac-range">
+      <div className={`x-seg ${small ? 'x-seg--sm' : ''}`} role="group" aria-label="Date range">
+        {RANGES.map(k => <button key={k} type="button" aria-pressed={value === k} onClick={() => onChange(k)} data-testid={`range-${k}`}>{k === 'ALL' ? 'All' : k}</button>)}
+      </div>
+      <DateRangePicker value={typeof value === 'string' ? null : value} onChange={r => onChange({ from: r.from, to: r.to })}
+        maxDays={MAX_RANGE_DAYS} note="Days run midnight to midnight UTC." />
     </div>
   );
 }
@@ -67,7 +79,7 @@ export function Funnel({ f, rule, title = 'Your funnel' }: { f: PartnerFunnel; r
   ];
   return (
     <section className="x-card" aria-label="Referral funnel" data-testid="partner-funnel">
-      <div className="x-ch"><h2>{title}</h2><span className="x-sub">{RANGE_LABEL[f.range]}</span></div>
+      <div className="x-ch"><h2>{title}</h2><span className="x-sub">{echoedRange(f.range, f.from, f.to)}</span></div>
       <ol className="ac-funnel">
         {steps.map(s => (
           <li key={s.l}>
@@ -149,7 +161,7 @@ export function TrendCard({ daily }: { daily: PartnerDailyPoint[] }) {
           <div className="ac-axis"><span>{label(0)}</span><span>{label(Math.floor((daily.length - 1) / 2))}</span><span>{label(daily.length - 1)}</span></div>
         </>
         : has
-          ? <div className="x-empty ac-trend-empty"><b>The trend starts tomorrow</b><p>It needs at least two days of data. Today&rsquo;s numbers are in the funnel above.</p></div>
+          ? <div className="x-empty ac-trend-empty"><b>A trend needs two days</b><p>This range has one day so far. Its numbers are in the funnel above.</p></div>
           : <div className="x-empty ac-trend-empty"><b>No {m === 'clicks' ? 'clicks' : m === 'signups' ? 'clients' : 'active traders'} in this range</b><p>The line starts once the first one lands.</p></div>}
     </section>
   );

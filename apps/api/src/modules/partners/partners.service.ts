@@ -4,14 +4,14 @@ import { prisma, Prisma } from '@tradinjournal/db';
 import type {
   PartnerProfileDto, PartnerFunnelDto, PartnerDailyPointDto, PartnerChannelDto, PartnerCodeDto,
   PartnerClientDto, PartnerClientCountsDto, PartnerEventDto, PartnerClickDto, PartnerOverviewDto,
-  PartnerLinksDto, PartnerRange, PartnerClientsQuery, ReferralStatusDto, PartnerApplyInput,
+  PartnerLinksDto, PartnerRangeQuery, PartnerClientsQuery, ReferralStatusDto, PartnerApplyInput,
 } from '@tradinjournal/contracts';
 import { env } from '@tradinjournal/config';
 import { AppError, ConflictError, NotFoundError, ValidationError } from '../../http/errors.js';
 import { settingsSnapshot } from './ib/settings.js';
 import { clientIb, partnerIbOverview } from './ib/reports.service.js';
 import {
-  dayKeys, isBuiltinReserved, normalizeCode, primaryCodeCandidates, rangeStart, referralStatus, referralUrl, slugify,
+  isBuiltinReserved, normalizeCode, primaryCodeCandidates, referralStatus, referralUrl, resolveWindow, slugify, windowDays, within, type RangeWindow,
 } from './partner.logic.js';
 
 const DAY_MS = 86_400_000;
@@ -207,14 +207,17 @@ export async function syncConnected(partnerId?: string): Promise<number> {
 // A click counts as converted only while the person it brought in is still this
 // partner's client — after an admin moves or unlinks clients, the old partner's
 // click → signup % must not claim them (it read "0 signups · 86% convert").
-async function convertedBy(partnerIds: string[], key: 'channelId' | 'partnerId', from?: Date | null): Promise<Map<string | null, number>> {
+const utcTs = (d: Date) => Prisma.sql`${d.toISOString().slice(0, 23).replace('T', ' ')}::timestamp`;
+
+async function convertedBy(partnerIds: string[], key: 'channelId' | 'partnerId', w: RangeWindow = { from: null, to: null }): Promise<Map<string | null, number>> {
   if (!partnerIds.length) return new Map();
   const col = key === 'channelId' ? Prisma.sql`k."channelId"` : Prisma.sql`k."partnerId"`;
   const rows = await prisma.$queryRaw<{ k: string | null; n: number }[]>`
     SELECT ${col} AS k, COUNT(*)::int AS n
     FROM "referral_click" k
     JOIN "referral" r ON r."userId" = k."convertedUserId" AND r."partnerId" = k."partnerId"
-    WHERE k."partnerId" IN (${Prisma.join(partnerIds)}) ${from ? Prisma.sql`AND k."createdAt" >= ${from}` : Prisma.empty}
+    WHERE k."partnerId" IN (${Prisma.join(partnerIds)})
+      ${w.from ? Prisma.sql`AND k."createdAt" >= ${utcTs(w.from)}` : Prisma.empty} ${w.to ? Prisma.sql`AND k."createdAt" < ${utcTs(w.to)}` : Prisma.empty}
     GROUP BY 1`;
   return new Map(rows.map(r => [r.k, r.n]));
 }
@@ -318,36 +321,37 @@ export async function channelStats(p: { id: string; codes: { code: string; isPri
     .sort((a, b) => b.signups - a.signups || b.clicks - a.clicks);
 }
 
-export async function funnel(partnerId: string, range: PartnerRange, since: Date): Promise<PartnerFunnelDto> {
-  const from = rangeStart(range, since);
-  const at = from ? { gte: from } : undefined;
+export async function funnel(partnerId: string, q: PartnerRangeQuery, since: Date): Promise<PartnerFunnelDto> {
+  const w = resolveWindow(q, since);
+  const at = within(w);
   const [clicks, converted, signups, connected, active] = await Promise.all([
     prisma.referralClick.count({ where: { partnerId, ...(at ? { createdAt: at } : {}) } }),
-    convertedBy([partnerId], 'partnerId', from).then(m => m.get(partnerId) ?? 0),
+    convertedBy([partnerId], 'partnerId', w).then(m => m.get(partnerId) ?? 0),
     prisma.referral.count({ where: { partnerId, ...(at ? { attributedAt: at } : {}) } }),
     prisma.referral.count({ where: { partnerId, connectedAt: { not: null }, ...(at ? { attributedAt: at } : {}) } }),
     prisma.referral.count({ where: { partnerId, connectedAt: { not: null }, isActive: true, ...(at ? { attributedAt: at } : {}) } }),
   ]);
-  return { range, from: from?.toISOString() ?? null, clicks, converted, signups, connected, active };
+  return { range: q.range, from: w.from?.toISOString() ?? null, to: w.to?.toISOString() ?? null, clicks, converted, signups, connected, active };
 }
 
-export async function daily(partnerId: string, range: PartnerRange, since: Date): Promise<PartnerDailyPointDto[]> {
-  const from = rangeStart(range, since) ?? since;
-  const keys = dayKeys(from, new Date());
+export async function daily(partnerId: string, q: PartnerRangeQuery, since: Date): Promise<PartnerDailyPointDto[]> {
+  const keys = windowDays(resolveWindow(q, since), since);
+  if (!keys.length) return [];
   const first = new Date(`${keys[0]}T00:00:00.000Z`);
+  const end = new Date(Date.parse(`${keys[keys.length - 1]}T00:00:00.000Z`) + 86_400_000);
   // Columns are timestamps without a zone (UTC); a Date parameter would be read in
-  // the database session's zone, so compare against a plain UTC timestamp.
-  const firstTs = Prisma.sql`${`${keys[0]} 00:00:00`}::timestamp`;
+  // the database session's zone, so compare against plain UTC timestamps.
+  const firstTs = utcTs(first), endTs = utcTs(end);
   const [clickRows, signupRows, activeRows, baseClients, baseActive] = await Promise.all([
     prisma.$queryRaw<{ d: string; n: number }[]>`
       SELECT to_char("createdAt", 'YYYY-MM-DD') AS d, COUNT(*)::int AS n FROM "referral_click"
-      WHERE "partnerId" = ${partnerId} AND "createdAt" >= ${firstTs} GROUP BY 1`,
+      WHERE "partnerId" = ${partnerId} AND "createdAt" >= ${firstTs} AND "createdAt" < ${endTs} GROUP BY 1`,
     prisma.$queryRaw<{ d: string; n: number }[]>`
       SELECT to_char("attributedAt", 'YYYY-MM-DD') AS d, COUNT(*)::int AS n FROM "referral"
-      WHERE "partnerId" = ${partnerId} AND "attributedAt" >= ${firstTs} GROUP BY 1`,
+      WHERE "partnerId" = ${partnerId} AND "attributedAt" >= ${firstTs} AND "attributedAt" < ${endTs} GROUP BY 1`,
     prisma.$queryRaw<{ d: string; n: number }[]>`
       SELECT to_char("firstActiveAt", 'YYYY-MM-DD') AS d, COUNT(*)::int AS n FROM "referral"
-      WHERE "partnerId" = ${partnerId} AND "isActive" AND "connectedAt" IS NOT NULL AND "firstActiveAt" >= ${firstTs} GROUP BY 1`,
+      WHERE "partnerId" = ${partnerId} AND "isActive" AND "connectedAt" IS NOT NULL AND "firstActiveAt" >= ${firstTs} AND "firstActiveAt" < ${endTs} GROUP BY 1`,
     prisma.referral.count({ where: { partnerId, attributedAt: { lt: first } } }),
     prisma.referral.count({ where: { partnerId, isActive: true, connectedAt: { not: null }, firstActiveAt: { lt: first } } }),
   ]);
@@ -378,7 +382,7 @@ export async function activity(partnerId: string, limit = 10): Promise<PartnerEv
   ].filter((e): e is PartnerEventDto => !!e).sort((x, y) => y.at.localeCompare(x.at)).slice(0, limit);
 }
 
-export async function overview(p: PartnerWithUser, range: PartnerRange): Promise<PartnerOverviewDto> {
+export async function overview(p: PartnerWithUser, range: PartnerRangeQuery): Promise<PartnerOverviewDto> {
   await syncConnected(p.id);
   const since = p.approvedAt ?? p.createdAt;
   const [f, d, channels, events, recent, totalClients, ib] = await Promise.all([
@@ -439,7 +443,7 @@ export async function rowCounters(partnerIds: string[]) {
   const since = new Date(Date.now() - 30 * DAY_MS);
   const [clicks, conv, refs] = await Promise.all([
     prisma.referralClick.groupBy({ by: ['partnerId'], where: { partnerId: { in: partnerIds }, createdAt: { gte: since } }, _count: { _all: true } }),
-    convertedBy(partnerIds, 'partnerId', since),
+    convertedBy(partnerIds, 'partnerId', { from: since, to: null }),
     prisma.$queryRaw<{ partnerId: string; clients: number; signups30d: number; connected: number; active: number }[]>`
       SELECT "partnerId", COUNT(*)::int AS clients,
              COUNT(*) FILTER (WHERE "attributedAt" >= ${since})::int AS signups30d,

@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction, RequestHandler } from 'express';
-import type { PartnerRange } from '@tradinjournal/contracts';
+import type { PartnerRangeQuery } from '@tradinjournal/contracts';
 import { ok, created, noContent } from '../../../http/response.js';
 import { requireActivePartner } from '../partners.service.js';
 import { catalog } from './brokers.js';
@@ -25,6 +25,8 @@ const userOf = (res: Response) => res.locals.user as { id: string; email: string
 const actor = (res: Response) => ({ id: userOf(res).id, email: userOf(res).email });
 const param = (req: Request, k: string) => String(req.params[k] ?? '');
 const partner = (res: Response) => requireActivePartner(userOf(res).id);
+/** File-name suffix: the custom range, or today's date. */
+const csvSuffix = (q: PartnerRangeQuery) => (q.range === 'CUSTOM' && q.from && q.to ? `${q.from}_to_${q.to}` : new Date().toISOString().slice(0, 10));
 
 // ── Partner: brokers ──────────────────────────────────────────────────────────
 
@@ -91,7 +93,7 @@ export const handleConsent = h(async (req, res) => ok(res, await setConsent(user
 
 // ── Admin: programme ──────────────────────────────────────────────────────────
 
-export const handleProgram = h(async (req, res) => ok(res, await programOverview(req.query.range as PartnerRange)));
+export const handleProgram = h(async (req, res) => ok(res, await programOverview(req.query as unknown as PartnerRangeQuery)));
 export const handleReviews = h(async (_req, res) => ok(res, await reviewQueue()));
 export const handleReviewDecision = h(async (req, res) => {
   const out = await reviewVerification(param(req, 'id'), req.body.action, req.body.note, actor(res));
@@ -106,10 +108,10 @@ export const handleSaveSettings = h(async (req, res) => {
   ok(res, s);
 });
 export const handleExport = h(async (req, res) => {
-  const type = req.query.type === 'partners' ? 'partners' : 'clients';
+  const q = req.query as unknown as PartnerRangeQuery & { type: 'clients' | 'partners' };
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-  res.setHeader('Content-Disposition', `attachment; filename="tradelogs-${type}-${new Date().toISOString().slice(0, 10)}.csv"`);
-  res.send(await exportCsv(type));
+  res.setHeader('Content-Disposition', `attachment; filename="tradelogs-${q.type}-${csvSuffix(q)}.csv"`);
+  res.send(await exportCsv(q.type, q));
 });
 export const handleAdminRecheck = h(async (req, res) => {
   const n = await recheckPartner(param(req, 'id'));
@@ -164,12 +166,13 @@ export const handleSubmitProduct = h(async (req, res) => ok(res, await products.
 
 // Partner: IB earnings (as brokers report them) and reports
 export const handleEarnings = h(async (_req, res) => ok(res, await partnerEarnings((await partner(res)).id)));
-export const handleReports = h(async (req, res) => ok(res, await partnerReports(await partner(res), req.query.range as PartnerRange)));
-export const handlePartnerExport = h(async (_req, res) => {
+export const handleReports = h(async (req, res) => ok(res, await partnerReports(await partner(res), req.query as unknown as PartnerRangeQuery)));
+export const handlePartnerExport = h(async (req, res) => {
   const p = await partner(res);
+  const q = req.query as unknown as PartnerRangeQuery;
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-  res.setHeader('Content-Disposition', `attachment; filename="my-clients-${new Date().toISOString().slice(0, 10)}.csv"`);
-  res.send(await partnerClientsCsv(p.id));
+  res.setHeader('Content-Disposition', `attachment; filename="my-clients-${csvSuffix(q)}.csv"`);
+  res.send(await partnerClientsCsv(p.id, q));
 });
 
 // Client: tools and accounts

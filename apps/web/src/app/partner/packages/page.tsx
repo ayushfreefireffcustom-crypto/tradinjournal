@@ -4,11 +4,11 @@
 // TRADElogs features and their own marketplace strategies, with the rules a
 // client has to meet (verified broker, active trading) and how long access lasts.
 import { useCallback, useEffect, useState } from 'react';
-import { Archive, CheckCircle, Clock, Package, PauseCircle, PencilSimple, Pulse, ShieldCheck, Toolbox } from '@phosphor-icons/react';
+import { Archive, CalendarBlank, CalendarX, CheckCircle, Clock, Package, PauseCircle, PencilSimple, Pulse, ShieldCheck, Toolbox } from '@phosphor-icons/react';
 import AppShell from '@/components/app-shell';
 import { useAccounts } from '@/lib/use-accounts';
 import { PartnerApiError } from '@/lib/partner-api';
-import { ibApi, PRODUCT_TYPE_LABEL, type PackageInput, type PackagesPage, type PartnerPackage, type ProductType } from '@/lib/ib-api';
+import { dayUtc, ibApi, PRODUCT_TYPE_LABEL, todayUtc, type PackageInput, type PackagesPage, type PartnerPackage, type ProductType } from '@/lib/ib-api';
 import PartnerGate, { GATE_CODES, type GateReason } from '@/components/v6/account/partner-gate';
 import { n } from '@/components/v6/account/partner-parts';
 import EmptyState from '@/components/v6/ui/empty-state';
@@ -17,7 +17,7 @@ import '@/styles/v6/lux.css';
 import '@/styles/v6/ib.css';
 
 const msg = (e: unknown, f: string) => (e instanceof Error ? e.message : f);
-const BLANK: PackageInput = { name: '', description: '', perks: [], templateIds: [], productIds: [], brokers: [], requireActive: true, accessDays: null, status: 'LIVE' };
+const BLANK: PackageInput = { name: '', description: '', perks: [], templateIds: [], productIds: [], brokers: [], requireActive: true, accessDays: null, endsOn: null, status: 'LIVE' };
 
 export default function PartnerPackagesPage() {
   const { accounts, selected, select } = useAccounts();
@@ -78,6 +78,7 @@ export default function PartnerPackagesPage() {
                     <div><h3>{p.name}</h3>{p.description && <p>{p.description}</p>}</div>
                     {p.adminHold
                       ? <span className="x-tag x-tag--r ib-pill" title={p.adminNote ?? ''}><PauseCircle size={13} weight="bold" />Paused by TRADElogs</span>
+                      : p.ended ? <span className="x-tag ib-pill"><CalendarX size={13} weight="bold" />Ended</span>
                       : <span className={`x-tag ${p.status === 'LIVE' ? 'x-tag--g' : ''} ib-pill`}>{p.status === 'LIVE' ? <CheckCircle size={13} weight="bold" /> : <PencilSimple size={13} weight="bold" />}{p.status === 'LIVE' ? 'Live' : 'Draft'}</span>}
                   </div>
                   <ul className="ib-perks">
@@ -89,6 +90,7 @@ export default function PartnerPackagesPage() {
                     <span><ShieldCheck size={14} weight="duotone" />{p.brokers.length ? `Verified at ${p.brokers.map(brokerLabel).join(', ')}` : 'Verified at any of your brokers'}</span>
                     {p.requireActive && <span><Pulse size={14} weight="duotone" />Active trading</span>}
                     <span><Clock size={14} weight="duotone" />{p.accessDays ? `${p.accessDays} days of access` : 'While they qualify'}</span>
+                    {p.endsOn && <span className={p.ended ? 'neg' : ''} data-testid={`pk-ends-${p.name}`}>{p.ended ? <CalendarX size={14} weight="duotone" /> : <CalendarBlank size={14} weight="duotone" />}{p.ended ? `Ended ${dayUtc(p.endsOn)}` : `Last day ${dayUtc(p.endsOn)}`}</span>}
                   </div>
                   {p.adminHold && p.adminNote && <p className="ib-app-note">TRADElogs: {p.adminNote}</p>}
                   <div className="ib-pkg-ft">
@@ -126,13 +128,16 @@ export default function PartnerPackagesPage() {
 function Editor({ d, pkg, onCancel, onSaved }: { d: PackagesPage; pkg: PartnerPackage | null; onCancel: () => void; onSaved: (p: PartnerPackage) => void }) {
   const [f, setF] = useState<PackageInput>(pkg ? {
     name: pkg.name, description: pkg.description ?? '', perks: pkg.perks, templateIds: pkg.templateIds, productIds: pkg.productIds, brokers: pkg.brokers,
-    requireActive: pkg.requireActive, accessDays: pkg.accessDays, status: pkg.status === 'ARCHIVED' ? 'DRAFT' : pkg.status,
+    requireActive: pkg.requireActive, accessDays: pkg.accessDays, endsOn: pkg.endsOn, status: pkg.status === 'ARCHIVED' ? 'DRAFT' : pkg.status,
   } : BLANK);
+  const today = todayUtc();
+  // A new last day can't be in the past; the date a package already has can stay.
+  const endOk = !f.endsOn || f.endsOn >= today || f.endsOn === pkg?.endsOn;
   const [only, setOnly] = useState<Record<string, boolean>>(Object.fromEntries(d.templates.map(t => [t.id, t.partnerOnly])));
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const toggle = (k: 'perks' | 'templateIds' | 'brokers' | 'productIds', v: string) => setF(x => ({ ...x, [k]: x[k].includes(v) ? x[k].filter(y => y !== v) : [...x[k], v] }));
-  const valid = f.name.trim().length >= 2 && (f.perks.length + f.templateIds.length + f.productIds.length) > 0;
+  const valid = f.name.trim().length >= 2 && (f.perks.length + f.templateIds.length + f.productIds.length) > 0 && endOk;
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
@@ -208,6 +213,17 @@ function Editor({ d, pkg, onCancel, onSaved }: { d: PackagesPage; pkg: PartnerPa
             <select id="pk-days" className="x-select" value={f.accessDays ?? ''} onChange={e => setF({ ...f, accessDays: e.target.value ? Number(e.target.value) : null })}>
               <option value="">While they qualify</option><option value="30">30 days</option><option value="90">90 days</option><option value="180">180 days</option><option value="365">1 year</option>
             </select>
+          </div>
+          <div className="x-field">
+            <label htmlFor="pk-ends">Last day <span className="x-dim">(optional)</span></label>
+            <div className="ib-date-row">
+              <input id="pk-ends" className="x-input" type="date" min={pkg?.endsOn && pkg.endsOn < today ? pkg.endsOn : today} value={f.endsOn ?? ''}
+                onChange={e => setF({ ...f, endsOn: e.target.value || null })} data-testid="pk-ends" />
+              {f.endsOn && <button type="button" className="x-btn x-btn--sm x-btn--ghost" onClick={() => setF({ ...f, endsOn: null })} data-testid="pk-ends-clear">Clear</button>}
+            </div>
+            <span className={`x-help ${endOk ? '' : 'ib-err'}`}>{!endOk ? 'Pick today or a later day.' : f.endsOn
+              ? `Access stops for everyone at the end of ${dayUtc(f.endsOn)} (midnight UTC), even if “Access lasts” runs longer. Nobody can unlock it after that.`
+              : 'No end date: the package runs until you archive it.'}</span>
           </div>
           <div className="x-field">
             <label htmlFor="pk-status">Status</label>

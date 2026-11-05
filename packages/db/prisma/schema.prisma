@@ -1422,6 +1422,9 @@ model PartnerPackage {
   requireActive Boolean       @default(true)
   /// Access lasts this many days after it's granted. Null = while the client qualifies.
   accessDays    Int?
+  /// Fixed end of the package (exclusive: start of the day after its last day, UTC).
+  /// Access stops for every holder then, and nobody can unlock it after. Null = no end date.
+  endsAt        DateTime?
   /// Partner tools (PartnerProduct ids) included.
   productIds    String[]      @default([])
   /// Set by an admin: package paused; holders lose it after grace.

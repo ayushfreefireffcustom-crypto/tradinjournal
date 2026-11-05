@@ -367,6 +367,104 @@ folders.push(
   ] },
 );
 
+// ── Custom date ranges and package end dates ──────────────────────────────────
+// Dates are UTC days, worked out in a pre-request script on every request.
+const DATES = [
+  "const D = 864e5, iso = t => new Date(t).toISOString().slice(0, 10), now = Date.now();",
+  "pm.collectionVariables.set('today', iso(now)); pm.collectionVariables.set('yesterday', iso(now - D)); pm.collectionVariables.set('plus30', iso(now + 30 * D));",
+  "pm.collectionVariables.set('tomorrowStart', iso(now + D) + 'T00:00:00.000Z'); pm.collectionVariables.set('plus31Start', iso(now + 31 * D) + 'T00:00:00.000Z');",
+  "pm.collectionVariables.set('tooLongTo', iso(Date.parse('2025-01-01') + 366 * D));",
+];
+const dq = (name, method, url, o = {}) => req(name, method, url, { ...o, pre: [...DATES, ...(o.pre ?? [])] });
+const PAST = 'range=CUSTOM&from=2020-01-01&to=2020-01-31';
+const TODAY = 'range=CUSTOM&from={{today}}&to={{today}}';
+const ltd = `const k = d.packages.find(p => p.name === 'Limited');`;
+const SETTINGS_LOCK = { ...SETTINGS, lockedPerks: ['signalx', 'screener'] };
+
+folders.push(
+  { name: '18a Custom ranges', item: [
+    dq('Range: custom needs both dates → 422', 'GET', `${P}/partner/overview`, { as: 'honey', query: 'range=CUSTOM&from=2026-10-01', tests: [status(422), t('says which', "pm.expect(pm.response.json().error.details).to.have.property('to');")] }),
+    dq('Range: end before start → 422', 'GET', `${P}/partner/overview`, { as: 'honey', query: 'range=CUSTOM&from=2026-10-31&to=2026-10-01', tests: [status(422)] }),
+    dq('Range: more than 366 days → 422', 'GET', `${P}/partner/reports`, { as: 'honey', query: 'range=CUSTOM&from=2025-01-01&to={{tooLongTo}}', tests: [status(422)] }),
+    dq('Range: exactly 366 days is fine', 'GET', `${P}/partner/reports`, { as: 'honey', query: 'range=CUSTOM&from=2025-01-01&to=2026-01-01', tests: [status(200), json, t('366 days', 'pm.expect(d.daily).to.have.length(366);')] }),
+    dq('Range: not a real date → 422', 'GET', `${P}/admin/partner-program`, { as: 'admin', query: 'range=CUSTOM&from=2026-02-30&to=2026-03-01', tests: [status(422)] }),
+    dq('Range: wrong format → 422', 'GET', `${P}/admin/partner-program/export`, { as: 'admin', query: 'type=clients&range=CUSTOM&from=1-10-2026&to=2026-10-31', tests: [status(422)] }),
+    dq('Range: unknown preset → 422', 'GET', `${P}/partner/overview`, { as: 'honey', query: 'range=YTD', tests: [status(422)] }),
+    dq('Overview, all time (baseline)', 'GET', `${P}/partner/overview`, { as: 'honey', query: 'range=ALL', tests: [status(200), json,
+      "pm.collectionVariables.set('allSignups', d.funnel.signups); pm.collectionVariables.set('allClicks', d.funnel.clicks); pm.collectionVariables.set('allIbVerified', d.ib.funnel.verified);",
+      t('has signups', 'pm.expect(d.funnel.signups).to.be.at.least(4);')] }),
+    dq('Overview, custom = today (every test signup happened today)', 'GET', `${P}/partner/overview`, { as: 'honey', query: TODAY, tests: [status(200), json,
+      t('same as all time', "pm.expect(d.funnel.signups).to.eql(Number(pm.collectionVariables.get('allSignups'))); pm.expect(d.funnel.clicks).to.eql(Number(pm.collectionVariables.get('allClicks'))); pm.expect(d.ib.funnel.verified).to.eql(Number(pm.collectionVariables.get('allIbVerified')));"),
+      t('window echoed', "pm.expect(d.funnel.range).to.eql('CUSTOM'); pm.expect(d.funnel.from).to.eql(pm.collectionVariables.get('today') + 'T00:00:00.000Z'); pm.expect(d.funnel.to).to.eql(pm.collectionVariables.get('tomorrowStart'));"),
+      t('one day in the series', "pm.expect(d.daily.map(x => x.date)).to.eql([pm.collectionVariables.get('today')]);")] }),
+    dq('Overview, custom = Jan 2020 (before anything)', 'GET', `${P}/partner/overview`, { as: 'honey', query: PAST, tests: [status(200), json,
+      t('zeros', 'pm.expect(d.funnel.signups).to.eql(0); pm.expect(d.funnel.clicks).to.eql(0); pm.expect(d.funnel.connected).to.eql(0); pm.expect(d.ib.funnel.verified).to.eql(0); pm.expect(d.ib.funnel.eligible).to.eql(0);'),
+      t('31 days, all zero', "pm.expect(d.daily).to.have.length(31); pm.expect(d.daily[0].date).to.eql('2020-01-01'); pm.expect(d.daily[30].date).to.eql('2020-01-31'); pm.expect(d.daily.reduce((n, x) => n + x.signups + x.clicks, 0)).to.eql(0);")] }),
+    dq('Overview, custom range in the future: empty, not an error', 'GET', `${P}/partner/overview`, { as: 'honey', query: 'range=CUSTOM&from=2099-01-01&to=2099-01-05', tests: [status(200), json, t('nothing', 'pm.expect(d.daily).to.eql([]); pm.expect(d.funnel.signups).to.eql(0);')] }),
+    dq('Reports, custom = today', 'GET', `${P}/partner/reports`, { as: 'honey', query: TODAY, tests: [status(200), json,
+      t('every step today', "pm.expect(d.range).to.eql('CUSTOM'); pm.expect(d.daily).to.have.length(1); pm.expect(d.daily[0].signups).to.eql(4); pm.expect(d.daily[0].verified).to.be.at.least(3);"),
+      t('channels counted in the window', 'pm.expect(d.channels.reduce((n, c) => n + c.signups, 0)).to.eql(4);')] }),
+    dq('Reports, custom = Jan 2020', 'GET', `${P}/partner/reports`, { as: 'honey', query: PAST, tests: [status(200), json,
+      t('all zero', "pm.expect(d.daily).to.have.length(31); pm.expect(d.daily.reduce((n, x) => n + x.clicks + x.signups + x.connected + x.verified + x.unlocked, 0)).to.eql(0); pm.expect(d.channels.reduce((n, c) => n + c.signups + c.clicks, 0)).to.eql(0);")] }),
+    dq('Reports, a range ending today', 'GET', `${P}/partner/reports`, { as: 'honey', query: 'range=CUSTOM&from={{yesterday}}&to={{today}}', tests: [status(200), json, t('two days', "pm.expect(d.daily.map(x => x.date)).to.eql([pm.collectionVariables.get('yesterday'), pm.collectionVariables.get('today')]); pm.expect(d.daily[1].signups).to.eql(4);")] }),
+    dq('Admin programme, all time (baseline)', 'GET', `${P}/admin/partner-program`, { as: 'admin', query: 'range=ALL', tests: [status(200), json, "pm.collectionVariables.set('progSignups', d.funnel.signups);"] }),
+    dq('Admin programme, custom = today', 'GET', `${P}/admin/partner-program`, { as: 'admin', query: TODAY, tests: [status(200), json, t('same as all time', "pm.expect(d.range).to.eql('CUSTOM'); pm.expect(d.funnel.signups).to.eql(Number(pm.collectionVariables.get('progSignups')));")] }),
+    dq('Admin programme, custom = Jan 2020', 'GET', `${P}/admin/partner-program`, { as: 'admin', query: PAST, tests: [status(200), json, t('zero', 'pm.expect(d.funnel.signups).to.eql(0); pm.expect(d.funnel.clicks).to.eql(0);')] }),
+    dq('Admin partner drill-down, custom = Jan 2020', 'GET', `${P}/admin/partners/{{honeyPid}}`, { as: 'admin', query: PAST, tests: [status(200), json, t('zero', 'pm.expect(d.funnel.signups).to.eql(0); pm.expect(d.daily).to.have.length(31);')] }),
+    dq('Admin partner drill-down, custom = today', 'GET', `${P}/admin/partners/{{honeyPid}}`, { as: 'admin', query: TODAY, tests: [status(200), json, t('all', "pm.expect(d.funnel.signups).to.eql(Number(pm.collectionVariables.get('allSignups')));")] }),
+    dq('Clients CSV, Jan 2020: header only', 'GET', `${P}/admin/partner-program/export`, { as: 'admin', query: `type=clients&${PAST}`, tests: [status(200),
+      t('no rows', "pm.expect(pm.response.text().trim().split('\\n')).to.have.length(1);"),
+      t('file named after the range', "pm.expect(pm.response.headers.get('Content-Disposition')).to.include('2020-01-01_to_2020-01-31');")] }),
+    dq('Clients CSV, today: every referred client', 'GET', `${P}/admin/partner-program/export`, { as: 'admin', query: `type=clients&${TODAY}`, tests: [status(200), t('rows', "pm.expect(pm.response.text().trim().split('\\n').length - 1).to.eql(Number(pm.collectionVariables.get('progSignups')));")] }),
+    dq('Clients CSV, no range: all time as before', 'GET', `${P}/admin/partner-program/export`, { as: 'admin', query: 'type=clients', tests: [status(200), t('rows', "pm.expect(pm.response.text().trim().split('\\n').length - 1).to.eql(Number(pm.collectionVariables.get('progSignups')));")] }),
+    dq('Partners CSV with a range adds range columns', 'GET', `${P}/admin/partner-program/export`, { as: 'admin', query: `type=partners&${PAST}`, tests: [status(200),
+      t('columns + zero', "const [h, r] = pm.response.text().trim().split('\\n'); const cols = h.split(','); pm.expect(cols).to.include('signups_in_range'); pm.expect(r.split(',')[cols.indexOf('range')]).to.eql('2020-01-01..2020-01-31'); pm.expect(r.split(',')[cols.indexOf('signups_in_range')]).to.eql('0');")] }),
+    dq('Partners CSV without a range has no range columns', 'GET', `${P}/admin/partner-program/export`, { as: 'admin', query: 'type=partners', tests: [status(200), t('plain', "pm.expect(pm.response.text().split('\\n')[0]).to.not.include('in_range');")] }),
+    dq('Partner’s own CSV, Jan 2020: header only', 'GET', `${P}/partner/export`, { as: 'honey', query: PAST, tests: [status(200), t('no rows', "pm.expect(pm.response.text().trim().split('\\n')).to.have.length(1);")] }),
+    dq('Partner’s own CSV, today', 'GET', `${P}/partner/export`, { as: 'honey', query: TODAY, tests: [status(200), t('4 clients', "pm.expect(pm.response.text().trim().split('\\n').length - 1).to.eql(4);")] }),
+    dq('Partner’s own CSV, bad range → 422', 'GET', `${P}/partner/export`, { as: 'honey', query: 'range=CUSTOM&from=2026-10-05&to=2026-10-01', tests: [status(422)] }),
+  ] },
+
+  { name: '18b Package end dates', item: [
+    dq('Admin locks the screener to package holders', 'PUT', `${P}/admin/partner-program/settings`, { as: 'admin', body: SETTINGS_LOCK, tests: [status(200)] }),
+    dq('A last day in the past is refused → 422', 'POST', `${P}/partner/packages`, { as: 'honey', body: { name: 'Old', perks: ['screener'], requireActive: false, endsOn: '{{yesterday}}', status: 'DRAFT' }, tests: [status(422)] }),
+    dq('A last day that isn’t a date → 422', 'POST', `${P}/partner/packages`, { as: 'honey', body: { name: 'Old', perks: ['screener'], endsOn: '31/12/2026', status: 'DRAFT' }, tests: [status(422)] }),
+    dq('Honey drafts “Limited”, last day today, 365 days of access', 'POST', `${P}/partner/packages`, { as: 'honey',
+      body: { name: 'Limited', perks: ['screener'], requireActive: false, accessDays: 365, endsOn: '{{today}}', status: 'DRAFT' },
+      tests: [status(201), json, t('end date kept', "pm.expect(d.endsOn).to.eql(pm.collectionVariables.get('today')); pm.expect(d.ended).to.eql(false);"), "pm.collectionVariables.set('pkgLtd', d.id);"] }),
+  ] },
+
+  { name: '18c After the last day', item: [
+    dq('The package shows as ended to Honey', 'GET', `${P}/partner/packages`, { as: 'honey', tests: [status(200), json, ltd, t('ended, nobody holds it', 'pm.expect(k.ended).to.eql(true); pm.expect(k.holders).to.eql(0);'), "pm.collectionVariables.set('ltdEnds', k.endsOn); pm.collectionVariables.set('pkgLtd', k.id);"] }),
+    dq('Going live after it ended', 'PATCH', `${P}/partner/packages/{{pkgLtd}}`, { as: 'honey', body: { status: 'LIVE' }, tests: [status(200)] }),
+    dq('t1 qualifies but can’t unlock an ended package', 'GET', `${P}/partner-access`, { as: 't1', tests: [status(200), json, t('not offered', "pm.expect(d.packages.map(p => p.name)).to.not.include('Limited');")] }),
+    dq('…and the screener stays locked for t1', 'GET', `${P}/partner-access/perks`, { as: 't1', tests: [status(200), json, t('locked', "pm.expect(d.locked).to.include('screener'); pm.expect(d.mine).to.not.include('screener');")] }),
+    dq('Re-saving the date it already has is allowed', 'PATCH', `${P}/partner/packages/{{pkgLtd}}`, { as: 'honey', body: { name: 'Limited', endsOn: '{{ltdEnds}}' }, tests: [status(200)] }),
+    dq('Moving it to another past day is refused → 422', 'PATCH', `${P}/partner/packages/{{pkgLtd}}`, { as: 'honey', body: { endsOn: '2020-01-01' }, tests: [status(422)] }),
+    dq('Honey extends it by 30 days', 'PATCH', `${P}/partner/packages/{{pkgLtd}}`, { as: 'honey', body: { endsOn: '{{plus30}}' }, tests: [status(200), json, t('live again', "pm.expect(d.ended).to.eql(false); pm.expect(d.endsOn).to.eql(pm.collectionVariables.get('plus30')); pm.expect(d.holders).to.be.at.least(1);")] }),
+    dq('t1 unlocks it; access stops at the end date, not after 365 days', 'GET', `${P}/partner-access`, { as: 't1', tests: [status(200), json, ltd,
+      t('active until the last day', "pm.expect(k.status).to.eql('ACTIVE'); pm.expect(k.endsOn).to.eql(pm.collectionVariables.get('plus30')); pm.expect(k.expiresAt).to.eql(pm.collectionVariables.get('plus31Start'));")] }),
+    dq('t1 can use the screener now', 'GET', `${P}/partner-access/perks`, { as: 't1', tests: [status(200), json, t('unlocked', "pm.expect(d.mine).to.include('screener');")] }),
+    dq('t3 (not verified) sees when the offer ends', 'GET', `${P}/partner-access`, { as: 't3', tests: [status(200), json, ltd, t('locked, with the end', "pm.expect(k.status).to.eql('LOCKED'); pm.expect(k.endsOn).to.eql(pm.collectionVariables.get('plus30'));")] }),
+  ] },
+
+  { name: '18d The last day passes', item: [
+    dq('Right away, before any scheduled pass: t1’s access has ended', 'GET', `${P}/partner-access`, { as: 't1', tests: [status(200), json, ltd,
+      t('expired, with the reason', "pm.expect(k.status).to.eql('EXPIRED'); pm.expect(k.reasons).to.eql(['This package has ended.']);")] }),
+    dq('Ended packages vanish for clients who never held them', 'GET', `${P}/partner-access`, { as: 't3', tests: [status(200), json, t('gone', "pm.expect(d.packages.map(p => p.name)).to.not.include('Limited');")] }),
+    dq('The scheduled pass records it', 'POST', `${I}/ib-cycle`, { body: {}, tests: [status(200)] }),
+    dq('Screener locked again for t1', 'GET', `${P}/partner-access/perks`, { as: 't1', tests: [status(200), json, t('locked', "pm.expect(d.mine).to.not.include('screener');")] }),
+    dq('Still expired after the pass', 'GET', `${P}/partner-access`, { as: 't1', tests: [status(200), json, ltd, t('expired', "pm.expect(k.status).to.eql('EXPIRED'); pm.expect(k.reasons).to.eql(['This package has ended.']);")] }),
+    dq('Admin sees it ended', 'GET', `${P}/admin/partner-program/packages`, { as: 'admin', tests: [status(200), json, t('ended', "const v = d.find(p => p.name === 'Limited'); pm.expect(v.ended).to.eql(true); pm.expect(v.holders).to.eql(0); pm.collectionVariables.set('pkgLtd', v.id);")] }),
+    dq('Honey removes the end date', 'PATCH', `${P}/partner/packages/{{pkgLtd}}`, { as: 'honey', body: { endsOn: null }, tests: [status(200), json, t('no end', 'pm.expect(d.endsOn).to.eql(null); pm.expect(d.ended).to.eql(false);')] }),
+    dq('t1 gets it back (their own 365 days aren’t over)', 'GET', `${P}/partner-access`, { as: 't1', tests: [status(200), json, ltd, t('active again', "pm.expect(k.status).to.eql('ACTIVE'); pm.expect(k.reasons).to.eql([]); pm.expect(k.endsOn).to.eql(null); pm.expect(Date.parse(k.expiresAt) - Date.now()).to.be.above(300 * 864e5);")] }),
+    dq('…and the screener with it', 'GET', `${P}/partner-access/perks`, { as: 't1', tests: [status(200), json, t('unlocked', "pm.expect(d.mine).to.include('screener');")] }),
+    dq('The event log shows the end and the return', 'GET', `${P}/admin/partner-program/events`, { as: 'admin', query: 'partnerId={{honeyPid}}&limit=500', tests: [status(200), json,
+      t('kinds', "const k = d.filter(e => e.message.includes('Limited') || e.kind.startsWith('access.')).map(e => e.kind); ['access.expire', 'access.restore', 'package.update'].forEach(x => pm.expect(k).to.include(x));"),
+      t('end change logged', "pm.expect(d.some(e => e.kind === 'package.update' && e.message.includes('last day removed'))).to.eql(true);")] }),
+  ] },
+);
+
 // Internal calls carry the shared token.
 for (const f of folders) for (const r of f.item) {
   if (r.request.url.raw.includes('/internal/partners/')) r.request.header.push(internal);

@@ -15,7 +15,7 @@ import {
   programEventsQuerySchema, programExportQuerySchema, programRangeQuerySchema, programSettingsSchema,
   adminPackageSchema, adminPartnerTermsSchema, earningsUploadSchema,
   externalAccountSchema, ibApiConnectSchema, partnerProductPatchSchema, partnerProductSchema,
-  productFileSchema, productReviewSchema,
+  partnerExportQuerySchema, productFileSchema, productReviewSchema,
 } from '@tradinjournal/contracts';
 import * as c from './partners.controller.js';
 import * as ib from './ib/ib.controller.js';
@@ -58,7 +58,7 @@ partnerRouter.post('/products/:id/file', validateBody(productFileSchema), ib.han
 partnerRouter.post('/products/:id/submit', ib.handleSubmitProduct);
 partnerRouter.get('/earnings', ib.handleEarnings);
 partnerRouter.get('/reports', validateQuery(programRangeQuerySchema), ib.handleReports);
-partnerRouter.get('/export', ib.handlePartnerExport);
+partnerRouter.get('/export', validateQuery(partnerExportQuerySchema), ib.handlePartnerExport);
 
 // A trader's side: their partner, verification, unlocked packages and consent.
 export const partnerAccessRouter: IRouter = Router();

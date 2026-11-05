@@ -269,6 +269,7 @@ html[data-hide-money] .v6 :is(.mny, [data-testid=net-pnl], .dk-wl span, .dk-gl-l
 .v6 .x-dr-presets button:hover, .v6 .x-dr-presets button:focus-visible { background: var(--s2); }
 .v6 .x-dr-custom { display: grid; gap: 10px; align-content: start; padding-left: 12px; border-left: 1px solid var(--line); }
 .v6 .x-dr-custom .x-btn { justify-content: center; }
+.v6 .x-dr-err { color: var(--neg); }
 @media (max-width: 760px) {
   /* A bottom sheet above the phone tab bar (z 60) and its own dimmed backdrop. */
   .v6 .x-dr-pop { position: fixed; left: 12px; right: 12px; top: auto; bottom: calc(12px + env(safe-area-inset-bottom)); width: auto; grid-template-columns: 1fr; z-index: 80; box-shadow: 0 0 0 100vmax rgba(0, 0, 0, .5), var(--pop-shadow); }

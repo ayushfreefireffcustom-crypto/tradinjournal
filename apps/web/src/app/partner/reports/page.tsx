@@ -8,9 +8,9 @@ import { DownloadSimple } from '@phosphor-icons/react';
 import AppShell from '@/components/app-shell';
 import { useAccounts } from '@/lib/use-accounts';
 import { PartnerApiError } from '@/lib/partner-api';
-import { ibApi, PRODUCT_TYPE_LABEL, type ProductType, type Range, type Reports } from '@/lib/ib-api';
+import { ibApi, PRODUCT_TYPE_LABEL, type ProductType, type RangeSel, type Reports } from '@/lib/ib-api';
 import PartnerGate, { GATE_CODES, type GateReason } from '@/components/v6/account/partner-gate';
-import { RangeSeg, n, pct } from '@/components/v6/account/partner-parts';
+import { RangeSeg, n, pct, rangeLabel } from '@/components/v6/account/partner-parts';
 import { CohortTable, DailyMultiples, MonthBars } from '@/components/v6/account/ib-charts';
 import EmptyState from '@/components/v6/ui/empty-state';
 import '@/styles/v6/account.css';
@@ -20,7 +20,7 @@ import '@/styles/v6/ib.css';
 
 export default function PartnerReportsPage() {
   const { accounts, selected, select } = useAccounts();
-  const [range, setRange] = useState<Range>('30D');
+  const [range, setRange] = useState<RangeSel>('30D');
   const [d, setD] = useState<Reports | null>(null);
   const [gate, setGate] = useState<GateReason | null>(null);
   const [error, setError] = useState('');
@@ -37,7 +37,7 @@ export default function PartnerReportsPage() {
   return (
     <AppShell legacy={false} accounts={accounts} selectedAccount={selected} onSelectAccount={select} pageTitle="Reports"
       pageSubtitle="Funnel, retention, usage and earnings"
-      actions={!gate ? <><RangeSeg value={range} onChange={setRange} /><a className="x-btn" href={ibApi.partnerExportUrl()} download data-testid="partner-export"><DownloadSimple size={15} weight="bold" />Clients CSV</a></> : null}>
+      actions={!gate ? <><RangeSeg value={range} onChange={setRange} /><a className="x-btn" href={ibApi.partnerExportUrl(range)} download data-testid="partner-export"><DownloadSimple size={15} weight="bold" />Clients CSV</a></> : null}>
       <div className="x-page" data-testid="partner-reports">
         {gate ? <PartnerGate reason={gate} onApplied={() => {}} /> : <>
           {error && <div className="x-banner x-banner--err" role="alert"><span>{error}</span><button type="button" className="x-btn x-btn--sm" onClick={() => void load()}>Retry</button></div>}
@@ -61,7 +61,7 @@ export default function PartnerReportsPage() {
 
             <div className="ib-grid2">
               <section className="x-card" data-testid="reports-channels">
-                <div className="x-ch"><h2>Channels to unlocked</h2></div>
+                <div className="x-ch"><h2>Channels to unlocked</h2><span className="x-sub">{rangeLabel(range)}</span></div>
                 <div className="x-tblwrap"><table className="x-tbl ad-tbl ib-tbl ib-tbl-ch"><thead><tr><th>Channel</th><th className="n">Clicks</th><th className="n">Signups</th><th className="n">Verified</th><th className="n">Unlocked</th><th className="n">Signup → unlocked</th></tr></thead>
                   <tbody>{d.channels.map(c => <tr key={c.label}><td>{c.label}</td><td className="n m">{n(c.clicks)}</td><td className="n m">{n(c.signups)}</td><td className="n m">{n(c.verified)}</td><td className="n m">{n(c.unlocked)}</td><td className="n m x-muted">{pct(c.unlocked, c.signups)}</td></tr>)}</tbody></table></div>
               </section>

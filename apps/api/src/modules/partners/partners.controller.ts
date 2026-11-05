@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction, RequestHandler } from 'express';
-import type { PartnerClientsQuery, PartnerRange, PartnerStatusDto } from '@tradinjournal/contracts';
+import type { PartnerClientsQuery, PartnerRangeQuery, PartnerStatusDto } from '@tradinjournal/contracts';
 import { env } from '@tradinjournal/config';
 import { ok, created, noContent } from '../../http/response.js';
 import { clientIp, countryFromHeaders, deviceFromUa, readCookie, REF_COOKIE } from './partner.logic.js';
@@ -53,7 +53,7 @@ export const handleApply = h(async (req, res) => created(res, await applyAsPartn
 
 export const handleOverview = h(async (req, res) => {
   const p = await requireActivePartner(userOf(res).id);
-  ok(res, await overview(p, req.query.range as PartnerRange));
+  ok(res, await overview(p, req.query as unknown as PartnerRangeQuery));
 });
 
 export const handleClients = h(async (req, res) => {
@@ -91,7 +91,7 @@ export const handleReleaseCode = h(async (req, res) => {
 export const handleAdminList = h(async (req, res) => ok(res, await admin.listPartners(req.query.status as PartnerStatusDto | undefined)));
 export const handleAdminCreate = h(async (req, res) => created(res, await admin.createPartner(req.body, actor(res))));
 export const handleAdminLookup = h(async (req, res) => ok(res, await admin.lookup(String(req.query.q))));
-export const handleAdminDetail = h(async (req, res) => ok(res, await admin.partnerDetail(param(req, 'id'), req.query.range as PartnerRange)));
+export const handleAdminDetail = h(async (req, res) => ok(res, await admin.partnerDetail(param(req, 'id'), req.query as unknown as PartnerRangeQuery)));
 
 export const handleAdminClients = h(async (req, res) => {
   const { items, counts, meta } = await listClients((await admin.partnerDetailExists(param(req, 'id'))), req.query as unknown as PartnerClientsQuery, { admin: true });

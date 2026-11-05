@@ -150,7 +150,7 @@ const toClient = (p: State, c: Client): PartnerClient => ({
 });
 const profile = (p: State): PartnerProfile => ({ id: p.id, name: p.name, status: p.status, code: primary(p), since: p.approvedAt ?? p.createdAt, activeRule: RULE, cookieDays: COOKIE_DAYS });
 function rangeFrom(range: PartnerRange, p: State): number | null {
-  const days = { '7D': 7, '30D': 30, '90D': 90, ALL: 0 }[range];
+  const days = { '7D': 7, '30D': 30, '90D': 90, ALL: 0, CUSTOM: 0 }[range]; // demo data: custom shows all time
   if (!days) return null;
   return Math.max(Date.now() - days * DAY, Date.parse(p.approvedAt ?? p.createdAt));
 }
@@ -192,7 +192,7 @@ function overviewOf(p: State, range: PartnerRange): PartnerOverview {
   const sorted = [...p.clients].sort((a, b) => b.signedUpAt.localeCompare(a.signedUpAt));
   return {
     partner: profile(p),
-    funnel: { range, from: from ? iso(from) : null, clicks: p.clicks.filter(k => inRange(k.at)).length, converted: p.clicks.filter(k => inRange(k.at) && k.converted).length, signups: cl.length, connected: cl.filter(c => c.connectedAt).length, active: cl.filter(c => c.status === 'ACTIVE').length },
+    funnel: { range, from: from ? iso(from) : null, to: null, clicks: p.clicks.filter(k => inRange(k.at)).length, converted: p.clicks.filter(k => inRange(k.at) && k.converted).length, signups: cl.length, connected: cl.filter(c => c.connectedAt).length, active: cl.filter(c => c.status === 'ACTIVE').length },
     daily, channels: channels(p), activity: events, recentClients: sorted.slice(0, 6).map(c => toClient(p, c)), totalClients: p.clients.length,
   };
 }

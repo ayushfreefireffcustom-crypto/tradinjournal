@@ -8,7 +8,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { CheckCircle, Circle, Handshake, Package, Pulse, ShieldCheck, Toolbox, Trash } from '@phosphor-icons/react';
 import AppShell from '@/components/app-shell';
 import { useAccounts } from '@/lib/use-accounts';
-import { ibApi, PRODUCT_TYPE_LABEL, type AccessAccount, type ClientAccess } from '@/lib/ib-api';
+import { dayUtc, ibApi, PRODUCT_TYPE_LABEL, type AccessAccount, type ClientAccess } from '@/lib/ib-api';
 import { EntPill, VerifyPill } from '@/components/v6/account/ib-parts';
 import { day } from '@/components/v6/account/partner-parts';
 import { timeAgo } from '@/components/app-shell';
@@ -18,6 +18,9 @@ import '@/styles/v6/lux.css';
 import '@/styles/v6/ib.css';
 
 const msg = (e: unknown, f: string) => (e instanceof Error ? e.message : f);
+/** Access stops because the package ends (not the holder's own access period). */
+const endsByPackage = (p: { expiresAt: string | null; endsOn: string | null }) =>
+  !!p.expiresAt && !!p.endsOn && Date.parse(p.expiresAt) === Date.parse(`${p.endsOn}T00:00:00Z`) + 86_400_000;
 
 export default function AccessPage() {
   const { accounts, selected, select } = useAccounts();
@@ -111,7 +114,8 @@ export default function AccessPage() {
                       <div className="ib-rules">
                         {p.status === 'GRACE' && p.graceUntil && <span>Grace ends {day(p.graceUntil)}</span>}
                         {p.grantedAt && p.status !== 'LOCKED' && <span>Unlocked {day(p.grantedAt)}</span>}
-                        {p.expiresAt && <span>Access until {day(p.expiresAt)}</span>}
+                        {p.expiresAt && p.status !== 'EXPIRED' && p.status !== 'LOCKED' && <span>Access until {endsByPackage(p) ? `the end of ${dayUtc(p.endsOn!)} (UTC)` : day(p.expiresAt)}</span>}
+                        {p.endsOn && p.status === 'LOCKED' && <span data-testid={`access-ends-${p.name}`}>Offer ends {dayUtc(p.endsOn)}</span>}
                       </div>
                     </article>
                   ))}</div>}

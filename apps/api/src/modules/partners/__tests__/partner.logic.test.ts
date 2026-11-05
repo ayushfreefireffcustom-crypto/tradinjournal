@@ -3,7 +3,9 @@ import {
   normalizeCode, isBuiltinReserved, primaryCodeCandidates, slugify, referralUrl,
   signRefCookie, verifyRefCookie, readCookie, hashIp, clientIp, deviceFromUa, countryFromHeaders,
   chooseAttribution, referralStatus, snapshotFromTrades, nextActivity, rangeStart, dayKeys, firstName,
+  resolveWindow, windowDays, within,
 } from '../partner.logic.js';
+import { partnerRangeQuerySchema, programExportQuerySchema } from '@tradinjournal/contracts';
 
 const SECRET = 'test-secret';
 const DAY = 86_400_000;
@@ -162,3 +164,52 @@ describe('ranges', () => {
     expect(firstName('  Rohan  Mehta ')).toBe('Rohan');
   });
 });
+
+describe('custom date ranges', () => {
+  const now = Date.parse('2026-11-06T10:00:00Z');
+  const joined = new Date('2026-10-15T08:00:00Z');
+
+  it('covers whole UTC days, both ends inclusive', () => {
+    const w = resolveWindow({ range: 'CUSTOM', from: '2026-10-01', to: '2026-10-31' }, joined, now);
+    expect(w.from?.toISOString()).toBe('2026-10-01T00:00:00.000Z');
+    expect(w.to?.toISOString()).toBe('2026-11-01T00:00:00.000Z');
+    expect(within(w)).toEqual({ gte: w.from, lt: w.to });
+  });
+
+  it('presets end now and open ranges filter nothing', () => {
+    expect(resolveWindow({ range: '7D' }, new Date(0), now)).toEqual({ from: new Date(now - 7 * 86_400_000), to: null });
+    expect(resolveWindow({ range: 'ALL' }, joined, now)).toEqual({ from: null, to: null });
+    expect(within({ from: null, to: null })).toBeUndefined();
+    // A preset ignores stray from/to.
+    expect(resolveWindow({ range: '30D', from: '2020-01-01', to: '2020-01-02' }, joined, now).to).toBeNull();
+  });
+
+  it('daily series run from the first to the last day, never past today', () => {
+    expect(windowDays(resolveWindow({ range: 'CUSTOM', from: '2026-10-30', to: '2026-11-02' }, joined, now), joined, now))
+      .toEqual(['2026-10-30', '2026-10-31', '2026-11-01', '2026-11-02']);
+    const toFuture = windowDays(resolveWindow({ range: 'CUSTOM', from: '2026-11-04', to: '2026-11-30' }, joined, now), joined, now);
+    expect(toFuture).toEqual(['2026-11-04', '2026-11-05', '2026-11-06']);
+    expect(windowDays(resolveWindow({ range: 'CUSTOM', from: '2026-12-01', to: '2026-12-05' }, joined, now), joined, now)).toEqual([]);
+    expect(windowDays(resolveWindow({ range: 'ALL' }, joined, now), joined, now)[0]).toBe('2026-10-15');
+    expect(windowDays(resolveWindow({ range: 'CUSTOM', from: '2026-11-06', to: '2026-11-06' }, joined, now), joined, now)).toEqual(['2026-11-06']);
+  });
+
+  it('validates custom ranges', () => {
+    const ok = (q: object) => partnerRangeQuerySchema.safeParse(q).success;
+    expect(ok({})).toBe(true);
+    expect(partnerRangeQuerySchema.parse({}).range).toBe('30D');
+    expect(ok({ range: 'CUSTOM', from: '2026-10-01', to: '2026-10-31' })).toBe(true);
+    expect(ok({ range: 'CUSTOM', from: '2026-10-01', to: '2026-10-01' })).toBe(true);
+    expect(ok({ range: 'CUSTOM', from: '2026-10-01' })).toBe(false);
+    expect(ok({ range: 'CUSTOM', to: '2026-10-01' })).toBe(false);
+    expect(ok({ range: 'CUSTOM', from: '2026-10-31', to: '2026-10-01' })).toBe(false);
+    expect(ok({ range: 'CUSTOM', from: '2026-02-30', to: '2026-03-01' })).toBe(false);
+    expect(ok({ range: 'CUSTOM', from: '01-10-2026', to: '2026-10-31' })).toBe(false);
+    expect(ok({ range: 'CUSTOM', from: '2025-01-01', to: '2026-01-01' })).toBe(true); // 366 days
+    expect(ok({ range: 'CUSTOM', from: '2025-01-01', to: '2026-01-02' })).toBe(false); // 367
+    expect(ok({ range: 'YTD' })).toBe(false);
+    expect(programExportQuerySchema.parse({}).range).toBe('ALL');
+    expect(programExportQuerySchema.safeParse({ type: 'partners', range: 'CUSTOM', from: '2026-10-01', to: '2026-10-31' }).success).toBe(true);
+  });
+});
+

@@ -2,8 +2,8 @@
 // All time filters compare against UTC timestamps (the columns have no zone), never raw
 // Date parameters, so results don't depend on the database session's time zone.
 import { prisma, Prisma } from '@tradinjournal/db';
-import type { CohortRowDto, PartnerEarningsDto, PartnerRange, PartnerReportsDto } from '@tradinjournal/contracts';
-import { dayKeys, rangeStart } from '../partner.logic.js';
+import type { CohortRowDto, PartnerEarningsDto, PartnerRangeQuery, PartnerReportsDto } from '@tradinjournal/contracts';
+import { resolveWindow, windowDays } from '../partner.logic.js';
 import { PERKS } from './perks.js';
 import { DEFAULT_CHANNEL_LABEL } from '../partners.service.js';
 
@@ -26,37 +26,39 @@ export async function cohorts(partnerId?: string, months = 12): Promise<CohortRo
     GROUP BY 1 ORDER BY 1`;
 }
 
-export async function partnerReports(p: { id: string; userId: string; approvedAt: Date | null; createdAt: Date }, range: PartnerRange): Promise<PartnerReportsDto> {
+export async function partnerReports(p: { id: string; userId: string; approvedAt: Date | null; createdAt: Date }, range: PartnerRangeQuery): Promise<PartnerReportsDto> {
   const since = p.approvedAt ?? p.createdAt;
-  const from = rangeStart(range, since) ?? since;
-  const keys = dayKeys(from, new Date());
-  const first = new Date(`${keys[0]}T00:00:00.000Z`);
+  const keys = windowDays(resolveWindow(range, since), since);
+  // An empty window (e.g. a custom range in the future) still runs the queries over nothing.
+  const first = keys.length ? new Date(`${keys[0]}T00:00:00.000Z`) : new Date();
+  const end = keys.length ? new Date(Date.parse(`${keys[keys.length - 1]}T00:00:00.000Z`) + 86_400_000) : first;
+  const inWin = (col: Prisma.Sql) => Prisma.sql`${col} >= ${ts(first)} AND ${col} < ${ts(end)}`;
   const day = (col: Prisma.Sql) => Prisma.sql`to_char(${col}, 'YYYY-MM-DD')`;
   const series = (rows: { d: string; n: number }[]) => new Map(rows.map(r => [r.d, r.n]));
   const since30 = new Date(Date.now() - 30 * 86_400_000);
 
   const [clicks, signups, connected, verified, unlocked, coh, channels, products, featureRows, pkgSubs, stratSubs, ib] = await Promise.all([
-    prisma.$queryRaw<{ d: string; n: number }[]>`SELECT ${day(Prisma.sql`"createdAt"`)} AS d, COUNT(*)::int AS n FROM "referral_click" WHERE "partnerId" = ${p.id} AND "createdAt" >= ${ts(first)} GROUP BY 1`,
-    prisma.$queryRaw<{ d: string; n: number }[]>`SELECT ${day(Prisma.sql`"attributedAt"`)} AS d, COUNT(*)::int AS n FROM "referral" WHERE "partnerId" = ${p.id} AND "attributedAt" >= ${ts(first)} GROUP BY 1`,
-    prisma.$queryRaw<{ d: string; n: number }[]>`SELECT ${day(Prisma.sql`"connectedAt"`)} AS d, COUNT(*)::int AS n FROM "referral" WHERE "partnerId" = ${p.id} AND "connectedAt" >= ${ts(first)} GROUP BY 1`,
+    prisma.$queryRaw<{ d: string; n: number }[]>`SELECT ${day(Prisma.sql`"createdAt"`)} AS d, COUNT(*)::int AS n FROM "referral_click" WHERE "partnerId" = ${p.id} AND ${inWin(Prisma.sql`"createdAt"`)} GROUP BY 1`,
+    prisma.$queryRaw<{ d: string; n: number }[]>`SELECT ${day(Prisma.sql`"attributedAt"`)} AS d, COUNT(*)::int AS n FROM "referral" WHERE "partnerId" = ${p.id} AND ${inWin(Prisma.sql`"attributedAt"`)} GROUP BY 1`,
+    prisma.$queryRaw<{ d: string; n: number }[]>`SELECT ${day(Prisma.sql`"connectedAt"`)} AS d, COUNT(*)::int AS n FROM "referral" WHERE "partnerId" = ${p.id} AND ${inWin(Prisma.sql`"connectedAt"`)} GROUP BY 1`,
     // First time each client was verified, from the event trail.
     prisma.$queryRaw<{ d: string; n: number }[]>`
       SELECT ${day(Prisma.sql`f`)} AS d, COUNT(*)::int AS n FROM (
         SELECT "userId", MIN("createdAt") AS f FROM "partner_event"
         WHERE "partnerId" = ${p.id} AND kind IN ('verify.verified', 'verify.manual_approve') GROUP BY "userId") x
-      WHERE f >= ${ts(first)} GROUP BY 1`,
+      WHERE ${inWin(Prisma.sql`f`)} GROUP BY 1`,
     prisma.$queryRaw<{ d: string; n: number }[]>`
       SELECT ${day(Prisma.sql`f`)} AS d, COUNT(*)::int AS n FROM (
         SELECT "userId", MIN("grantedAt") AS f FROM "client_entitlement" WHERE "partnerId" = ${p.id} GROUP BY "userId") x
-      WHERE f >= ${ts(first)} GROUP BY 1`,
+      WHERE ${inWin(Prisma.sql`f`)} GROUP BY 1`,
     cohorts(p.id),
     prisma.$queryRaw<{ label: string | null; clicks: number; signups: number; verified: number; unlocked: number }[]>`
       SELECT c.label,
-             (SELECT COUNT(*) FROM "referral_click" k WHERE k."channelId" = c.id)::int AS clicks,
+             (SELECT COUNT(*) FROM "referral_click" k WHERE k."channelId" = c.id AND ${inWin(Prisma.sql`k."createdAt"`)})::int AS clicks,
              COUNT(r.id)::int AS signups,
              COUNT(r.id) FILTER (WHERE EXISTS (SELECT 1 FROM "client_verification" v WHERE v."userId" = r."userId" AND v."partnerId" = r."partnerId" AND v.status = 'VERIFIED'))::int AS verified,
              COUNT(r.id) FILTER (WHERE EXISTS (SELECT 1 FROM "client_entitlement" e WHERE e."userId" = r."userId" AND e."partnerId" = r."partnerId" AND e.status IN ('ACTIVE', 'GRACE')))::int AS unlocked
-      FROM "partner_channel" c LEFT JOIN "referral" r ON r."channelId" = c.id
+      FROM "partner_channel" c LEFT JOIN "referral" r ON r."channelId" = c.id AND ${inWin(Prisma.sql`r."attributedAt"`)}
       WHERE c."partnerId" = ${p.id} GROUP BY c.id, c.label ORDER BY signups DESC`,
     prisma.$queryRaw<{ id: string; name: string; type: string; opens: number; users: number }[]>`
       SELECT pp.id, pp.name, pp.type, COUNT(u.id)::int AS opens, COUNT(DISTINCT u."userId")::int AS users
@@ -82,7 +84,7 @@ export async function partnerReports(p: { id: string; userId: string; approvedAt
   const c = series(clicks), s = series(signups), cn = series(connected), v = series(verified), u = series(unlocked);
   const months = ib.map(x => x.month).sort().slice(-12);
   return {
-    range,
+    range: range.range,
     daily: keys.map(date => ({ date, clicks: c.get(date) ?? 0, signups: s.get(date) ?? 0, connected: cn.get(date) ?? 0, verified: v.get(date) ?? 0, unlocked: u.get(date) ?? 0 })),
     cohorts: coh,
     channels: channels.map(x => ({ ...x, label: x.label || DEFAULT_CHANNEL_LABEL })),
