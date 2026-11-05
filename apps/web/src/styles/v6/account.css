@@ -310,8 +310,8 @@
   .v6 .ac-strip3 > div:nth-child(odd)::before { display: block; }
   .v6 .ac-strip3 > div:nth-child(n+3) { border-top: 0; }
   .v6 .ac-tool-search { max-width: none; flex-basis: 100%; }
-  .v6 .ac-selects { margin-left: 0; width: 100%; }
-  .v6 .ac-selects .x-select { flex: 1; min-width: 0; }
+  .v6 .ac-selects { margin-left: 0; width: 100%; flex-wrap: wrap; }
+  .v6 .ac-selects .x-select { flex: 1 1 calc(50% - 4px); min-width: 0; }
   .v6 .ac-apply { padding: 18px 16px; }
   .v6 .ac-add-btns { width: 100%; }
   .v6 .ac-add-btns .x-btn { flex: 1; }

@@ -24,6 +24,8 @@ import '@/styles/v6/ib.css';
 
 type Sort = 'clients' | 'verified' | 'eligible' | 'trades30d' | 'lots30d' | 'pnl30d';
 
+const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+
 export default function AdminPartnerProgramPage() {
   const router = useRouter();
   const { accounts, selected, select } = useAccounts();
@@ -97,7 +99,7 @@ export default function AdminPartnerProgramPage() {
                 </div></div>
               {rows.length === 0 ? <EmptyState compact icon="search" title={d.rows.length ? 'No partner matches' : 'No active partners yet'}>{d.rows.length ? 'Try another search.' : 'Approve an application or add a partner.'}</EmptyState> : (
                 <div className="x-tblwrap ad-scroll">
-                  <table className="x-tbl ad-tbl">
+                  <table className="x-tbl ad-tbl ib-tbl ib-ptbl">
                     <thead><tr><th>Partner</th>{th('clients', 'Referred')}<th className="n">Connected</th>{th('verified', 'Verified')}<th className="n">Active</th>{th('eligible', 'Unlocked')}{th('trades30d', 'Trades, 30d')}{th('lots30d', 'Lots, 30d')}{th('pnl30d', 'Net P&L, 30d')}<th className="n">Win / lose</th><th className="n">Broker errors</th></tr></thead>
                     <tbody>{rows.map(r => (
                       <tr key={r.id} className="x-click" tabIndex={0} onClick={() => router.push(`/admin/partners/${r.id}`)} onKeyDown={e => { if (e.key === 'Enter') router.push(`/admin/partners/${r.id}`); }}>
@@ -127,12 +129,12 @@ export default function AdminPartnerProgramPage() {
             <section className="x-card" data-testid="program-packages">
               <div className="x-ch"><h2>Packages on offer</h2><span className="x-sub"><span className="m">{pkgs?.length ?? 0}</span></span><div className="x-r"><Link href="/admin/partners/finance" className="x-btn x-btn--sm x-btn--ghost">Finance</Link></div></div>
               {!pkgs ? <div className="x-skel x-skel--in" /> : pkgs.length === 0 ? <p className="x-muted ib-pad">No partner has created a package yet.</p> : (
-                <div className="x-tblwrap ad-scroll"><table className="x-tbl ad-tbl"><thead><tr><th>Package</th><th>Partner</th><th>Contents</th><th>Price</th><th className="n">Unlocked</th><th className="n">Paying</th><th>Status</th><th className="n"><span className="sr-only">Actions</span></th></tr></thead>
+                <div className="x-tblwrap ad-scroll"><table className="x-tbl ad-tbl ib-tbl ib-pkgtbl"><thead><tr><th>Package</th><th>Partner</th><th>Contents</th><th>Price</th><th className="n">Unlocked</th><th className="n">Paying</th><th>Status</th><th className="n"><span className="sr-only">Actions</span></th></tr></thead>
                   <tbody>{pkgs.map(p => (
                     <tr key={p.id}>
-                      <td><b>{p.name}</b></td>
+                      <td><b>{p.name}</b><small className="ad-small ib-m-only"><Link className="x-link" href={`/admin/partners/${p.partnerId}`}>{p.partner}</Link> · {p.holders} unlocked · {p.subscribers} paying</small></td>
                       <td><Link className="x-link" href={`/admin/partners/${p.partnerId}`}>{p.partner}</Link></td>
-                      <td className="x-muted">{p.perks.length} features · {p.productIds.length} tools · {p.templateIds.length} strategies</td>
+                      <td className="x-muted">{plural(p.perks.length, 'feature')} · {plural(p.productIds.length, 'tool')} · {plural(p.templateIds.length, 'strategy', 'strategies')}</td>
                       <td className="m">{p.priceCents ? `${cash(p.priceCents, p.currency)} / ${per(p.periodDays)}` : 'Free'}</td>
                       <td className="n m">{p.holders}</td><td className="n m">{p.subscribers}</td>
                       <td>{p.adminHold ? <span className="x-tag x-tag--r">Paused by admin</span> : <span className={`x-tag ${p.status === 'LIVE' ? 'x-tag--g' : ''}`}>{p.status.toLowerCase()}</span>}</td>

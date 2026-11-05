@@ -150,6 +150,9 @@
 .v6 .ib-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
 .v6 .ib-events { max-height: 420px; overflow: auto; }
 
+.v6 .ib-m-only, .v6 .x-tbl .ib-m-only { display: none; }
+.v6 .ib-sub { display: block; margin-top: 4px; }
+
 @media (max-width: 1100px) {
   .v6 .ib-funnel { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .v6 .ib-funnel li:nth-child(4)::before { display: none; }
@@ -173,6 +176,37 @@
   .v6 .ib-consent { flex-direction: column; align-items: flex-start; }
   .v6 .ib-app dl { grid-template-columns: 1fr; }
   .v6 .ib-adm-strip { --n: 2; }
+  /* Clients table on phones: name (with the broker check under it), lots and P&L. */
+  .v6 .ib-clients th:nth-child(4), .v6 .ib-clients td:nth-child(4) { display: none; }
+  .v6 .ib-clients { table-layout: fixed; width: 100%; }
+  .v6 .ib-clients th:nth-child(7) { width: 62px; }
+  .v6 .ib-clients th:nth-child(8) { width: 92px; }
+  .v6 .ib-clients th:nth-child(9) { width: 78px; }
+  .v6 .ib-clients .ac-who { max-width: none; }
+  .v6 .ib-m-only, .v6 .x-tbl .ib-m-only { display: block; margin-top: 4px; }
+  /* Report / earnings tables on phones: wrap text instead of scrolling sideways. */
+  .v6 .x-tbl.ib-tbl { width: 100%; }
+  .v6 .x-tbl.ib-tbl th, .v6 .x-tbl.ib-tbl td { white-space: normal; overflow-wrap: break-word; padding-left: 6px; padding-right: 6px; }
+  .v6 .x-tbl.ib-tbl th:first-child, .v6 .x-tbl.ib-tbl td:first-child { padding-left: 0; }
+  .v6 .x-tbl.ib-tbl th:last-child, .v6 .x-tbl.ib-tbl td:last-child { padding-right: 0; }
+  .v6 .x-tbl.ib-tbl th { font-size: var(--t1); }
+  .v6 .x-tbl.ib-tbl .n { white-space: nowrap; overflow-wrap: normal; }
+  .v6 .x-tbl.ib-tbl .ib-ref { word-break: break-all; }
+  /* Channel conversion: channel, signups, unlocked, rate. */
+  .v6 .ib-tbl-ch th:nth-child(2), .v6 .ib-tbl-ch td:nth-child(2),
+  .v6 .ib-tbl-ch th:nth-child(4), .v6 .ib-tbl-ch td:nth-child(4) { display: none; }
+  /* Admin programme: partner, referred, verified, unlocked. */
+  .v6 .ib-ptbl th:is(:nth-child(3), :nth-child(5), :nth-child(n+7)), .v6 .ib-ptbl td:is(:nth-child(3), :nth-child(5), :nth-child(n+7)) { display: none; }
+  /* Packages on offer: package (partner + counts under it), price, status, action. */
+  .v6 .ib-pkgtbl th:is(:nth-child(2), :nth-child(3), :nth-child(5), :nth-child(6)), .v6 .ib-pkgtbl td:is(:nth-child(2), :nth-child(3), :nth-child(5), :nth-child(6)) { display: none; }
+  /* Payouts: partner (pay-to under it), status, amount, actions. */
+  .v6 .ib-potbl th:is(:nth-child(2), :nth-child(3)), .v6 .ib-potbl td:is(:nth-child(2), :nth-child(3)) { display: none; }
+  .v6 .ib-potbl .ib-br-btns { flex-direction: column; align-items: stretch; }
+  /* Payments: client (package, partner, date under it), status, amount, action. */
+  .v6 .ib-paytbl th:is(:nth-child(1), :nth-child(3), :nth-child(4)), .v6 .ib-paytbl td:is(:nth-child(1), :nth-child(3), :nth-child(4)) { display: none; }
+  /* Cohorts: month, clients, verified, active now, unlocked now. */
+  .v6 .ib-cohorts th:nth-child(3), .v6 .ib-cohorts td:nth-child(3),
+  .v6 .ib-cohorts th:nth-child(5), .v6 .ib-cohorts td:nth-child(5) { display: none; }
 }
 
 /* charts */

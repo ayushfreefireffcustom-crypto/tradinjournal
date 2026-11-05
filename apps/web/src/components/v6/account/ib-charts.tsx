@@ -2,15 +2,33 @@
 
 // Small charts for the partner reports: monthly bars and per-metric daily small
 // multiples. One hue per chart (a single series needs no legend); hover shows the value.
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import '@/styles/v6/ib.css';
+
+/** The element's rendered width, so charts draw at 1:1 and labels stay readable on phones. */
+function useWidth<T extends HTMLElement>(fallback: number) {
+  const ref = useRef<T>(null);
+  const [w, setW] = useState(fallback);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => { if (el.clientWidth) setW(el.clientWidth); });
+    ro.observe(el);
+    if (el.clientWidth) setW(el.clientWidth);
+    return () => ro.disconnect();
+  }, []);
+  return [ref, w] as const;
+}
 
 export function MonthBars({ data, format }: { data: { label: string; value: number }[]; format: (v: number) => string }) {
   const [hover, setHover] = useState<number | null>(null);
+  const [ref, width] = useWidth<HTMLDivElement>(560);
   const max = Math.max(...data.map(d => Math.abs(d.value)), 1);
-  const W = 560, H = 140, gap = 6, bw = Math.min(44, Math.max(6, (W - gap * (data.length - 1)) / Math.max(data.length, 1)));
+  const W = Math.min(560, width), H = 140, gap = 6, bw = Math.min(44, Math.max(6, (W - gap * (data.length - 1)) / Math.max(data.length, 1)));
+  // Label every month when they fit (~44px each), otherwise just the first and last.
+  const allTicks = data.length * (bw + gap) >= data.length * 44;
   return (
-    <div className="ib-chart">
+    <div className="ib-chart" ref={ref}>
       <svg viewBox={`0 0 ${W} ${H + 20}`} role="img" aria-label="Monthly values" className="ib-chart-svg" onMouseLeave={() => setHover(null)}>
         <line x1={0} x2={W} y1={H} y2={H} className="ib-axis" />
         {data.map((d, i) => {
@@ -20,7 +38,7 @@ export function MonthBars({ data, format }: { data: { label: string; value: numb
             <g key={d.label} onMouseEnter={() => setHover(i)}>
               <rect x={x} y={0} width={bw} height={H} fill="transparent" />
               <rect x={x} y={H - h} width={bw} height={h} rx={4} className={d.value < 0 ? 'ib-bar neg' : hover === i ? 'ib-bar on' : 'ib-bar'} />
-              {(i === 0 || i === data.length - 1 || data.length <= 6) && <text x={x + bw / 2} y={H + 15} textAnchor="middle" className="ib-tick">{d.label}</text>}
+              {(i === 0 || i === data.length - 1 || allTicks) && <text x={x + bw / 2} y={H + 15} textAnchor="middle" className="ib-tick">{d.label}</text>}
             </g>
           );
         })}
@@ -69,7 +87,7 @@ export function CohortTable({ rows }: { rows: { month: string; signups: number; 
   };
   return (
     <div className="x-tblwrap ad-scroll">
-      <table className="x-tbl ad-tbl ib-cohorts">
+      <table className="x-tbl ad-tbl ib-tbl ib-cohorts">
         <thead><tr><th>Signed up in</th><th className="n">Clients</th><th className="n">Connected</th><th className="n">Verified</th><th className="n">Were active</th><th className="n">Active now</th><th className="n">Unlocked now</th></tr></thead>
         <tbody>{rows.map(r => (
           <tr key={r.month}>

@@ -47,10 +47,10 @@ export default function PartnerEarningsPage() {
           {!d && !error && <><div className="x-skel ad-sk-strip" /><div className="x-skel ac-sk-320" /></>}
           {d && <>
             <div className="x-strip x-strip--card ib-adm-strip ib-money" aria-label="Balance">
-              <div><span><Coins size={14} weight="duotone" /> IB commission reported</span><b className="m">{money(d.ib.total).replace('+', '')}</b><small className="ad-small">{d.ib.currency} · from your brokers</small></div>
-              <div><span><Wallet size={14} weight="duotone" /> Package sales</span><b className="m">{cash(d.sales.grossCents, d.currency)}</b><small className="ad-small">{n(d.sales.count)} payments · you keep {d.revenueSharePct}%</small></div>
+              <div><span><Coins size={14} weight="duotone" /> IB commission</span><b className="m">{money(d.ib.total).replace('+', '')}</b><small className="ad-small">{d.ib.currency} · from your brokers</small></div>
+              <div><span><Wallet size={14} weight="duotone" /> Package sales</span><b className="m">{cash(d.sales.grossCents, d.currency)}</b><small className="ad-small">{n(d.sales.count)} payment{d.sales.count === 1 ? '' : 's'} · you keep {d.revenueSharePct}%</small></div>
               <div><span><ClockCountdown size={14} weight="duotone" /> In refund window</span><b className="m">{cash(d.balance.pendingCents, d.currency)}</b></div>
-              <div><span>Payable</span><b className="m pos">{cash(d.balance.payableCents, d.currency)}</b><small className="ad-small">paid out from {cash(d.payoutMinimumCents, d.currency)}</small></div>
+              <div><span>Payable</span><b className="m pos">{cash(d.balance.payableCents, d.currency)}</b><small className="ad-small">paid out once it reaches {cash(d.payoutMinimumCents, d.currency)}</small></div>
               <div><span><Bank size={14} weight="duotone" /> Paid to you</span><b className="m">{cash(d.balance.paidCents, d.currency)}</b></div>
               <div><span>Your share so far</span><b className="m">{cash(d.sales.shareCents, d.currency)}</b></div>
             </div>
@@ -62,7 +62,7 @@ export default function PartnerEarningsPage() {
                   ? <MonthBars data={d.ib.byMonth.map(m => ({ label: m.month, value: m.amount }))} format={v => `${d.ib.currency} ${v.toFixed(2)}`} />
                   : <EmptyState compact icon="report" title="No commission reported yet">Set up your broker&rsquo;s postback, connect its API, or upload a commission report on the Brokers page.</EmptyState>}
                 {d.ib.recent.length > 0 && (
-                  <div className="x-tblwrap"><table className="x-tbl ad-tbl"><thead><tr><th>Date</th><th>Account</th><th>Source</th><th className="n">Amount</th></tr></thead>
+                  <div className="x-tblwrap"><table className="x-tbl ad-tbl ib-tbl"><thead><tr><th>Date</th><th>Account</th><th>Source</th><th className="n">Amount</th></tr></thead>
                     <tbody>{d.ib.recent.map(e => <tr key={e.id}><td className="x-muted">{day(e.at)}</td><td className="m">{e.accountId ?? '—'}</td><td className="x-muted">{e.source.toLowerCase()}</td><td className="n m">{e.amount.toFixed(2)} {e.currency}</td></tr>)}</tbody></table></div>
                 )}
               </section>
@@ -84,7 +84,7 @@ export default function PartnerEarningsPage() {
             <section className="x-card" data-testid="earnings-ledger">
               <div className="x-ch"><h2>Package sales and adjustments</h2></div>
               {d.ledger.length === 0 ? <EmptyState compact icon="report" title="No sales yet">When clients pay for one of your packages, your share shows up here. It becomes payable after the refund window.</EmptyState> : (
-                <div className="x-tblwrap"><table className="x-tbl ad-tbl"><thead><tr><th>Date</th><th>What</th><th>Status</th><th className="n">Your share</th></tr></thead>
+                <div className="x-tblwrap"><table className="x-tbl ad-tbl ib-tbl"><thead><tr><th>Date</th><th>What</th><th>Status</th><th className="n">Your share</th></tr></thead>
                   <tbody>{d.ledger.map(l => <tr key={l.id}><td className="x-muted">{day(l.at)}</td><td>{l.label}</td><td><span className={`x-tag ${LEDGER_TONE[l.status] ?? ''}`}>{LEDGER_LABEL[l.status] ?? l.status}</span></td><td className={`n m ${l.amountCents < 0 ? 'neg' : ''}`}>{cash(l.amountCents, l.currency)}</td></tr>)}</tbody></table></div>
               )}
             </section>
@@ -92,8 +92,8 @@ export default function PartnerEarningsPage() {
             <section className="x-card" data-testid="earnings-payouts">
               <div className="x-ch"><h2>Payouts</h2></div>
               {d.payouts.length === 0 ? <p className="x-muted ib-pad">No payouts yet. One is prepared automatically once your payable balance reaches {cash(d.payoutMinimumCents, d.currency)}.</p> : (
-                <div className="x-tblwrap"><table className="x-tbl ad-tbl"><thead><tr><th>Prepared</th><th>Status</th><th>Reference</th><th className="n">Amount</th></tr></thead>
-                  <tbody>{d.payouts.map(p => <tr key={p.id}><td className="x-muted">{day(p.at)}</td><td><span className={`x-tag ${p.status === 'PAID' ? 'x-tag--g' : 'ac-tag-c'}`}>{p.status === 'PAID' ? `Paid ${p.paidAt ? day(p.paidAt) : ''}` : 'Being processed'}</span></td><td className="m">{p.reference ?? '—'}</td><td className="n m">{cash(p.amountCents, p.currency)}</td></tr>)}</tbody></table></div>
+                <div className="x-tblwrap"><table className="x-tbl ad-tbl ib-tbl"><thead><tr><th>Prepared</th><th>Status</th><th>Reference</th><th className="n">Amount</th></tr></thead>
+                  <tbody>{d.payouts.map(p => <tr key={p.id}><td className="x-muted">{day(p.at)}</td><td><span className={`x-tag ${p.status === 'PAID' ? 'x-tag--g' : 'ac-tag-c'}`}>{p.status === 'PAID' ? 'Paid' : 'Being processed'}</span>{p.status === 'PAID' && p.paidAt && <small className="ad-small ib-sub">{day(p.paidAt)}</small>}</td><td className="m ib-ref">{p.reference ?? '—'}</td><td className="n m">{cash(p.amountCents, p.currency)}</td></tr>)}</tbody></table></div>
               )}
             </section>
           </>}

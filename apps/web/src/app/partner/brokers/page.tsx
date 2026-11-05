@@ -270,7 +270,7 @@ function IntegrationPanel({ b, onToast, onChanged }: { b: PartnerBroker; onToast
       {d && tab === 'postback' && <>
         <p className="ib-note">Paste this URL into the postback / S2S settings of your {b.label} partner area (or ask your account manager). Each registration, deposit, trade and commission then reaches us within seconds, and new accounts verify straight away.</p>
         <div className="ib-url"><code data-testid="ib-postback-url">{d.postbackUrl}</code><CopyButton text={d.postbackUrl} label="Copy" className="x-btn x-btn--sm" /></div>
-        <div className="x-tblwrap"><table className="x-tbl ad-tbl"><thead><tr><th>Parameter</th><th>Meaning</th></tr></thead>
+        <div className="x-tblwrap"><table className="x-tbl ad-tbl ib-tbl"><thead><tr><th>Parameter</th><th>Meaning</th></tr></thead>
           <tbody>{d.postbackParams.map(p => <tr key={p.name}><td className="m">{p.name}</td><td className="x-muted">{p.meaning}</td></tr>)}</tbody></table></div>
         <div className="ib-upload-row">
           <span className="x-help">Keep the URL private: anyone with it can send events for your account.</span>
@@ -278,7 +278,7 @@ function IntegrationPanel({ b, onToast, onChanged }: { b: PartnerBroker; onToast
         </div>
         <b>Latest events</b>
         {d.events.length === 0 ? <p className="x-muted">Nothing received yet.</p> : (
-          <div className="x-tblwrap"><table className="x-tbl ad-tbl"><thead><tr><th>When</th><th>Event</th><th>Account</th><th>Result</th></tr></thead>
+          <div className="x-tblwrap"><table className="x-tbl ad-tbl ib-tbl"><thead><tr><th>When</th><th>Event</th><th>Account</th><th>Result</th></tr></thead>
             <tbody>{d.events.map(e => <tr key={e.id}><td className="x-muted">{timeAgo(e.at)}</td><td>{e.kind}</td><td className="m">{e.accountId ?? '—'}</td><td className={e.status === 'error' ? 'neg' : e.status === 'ignored' ? 'x-muted' : ''}>{e.status}{e.error ? ` · ${e.error}` : ''}</td></tr>)}</tbody></table></div>
         )}
       </>}

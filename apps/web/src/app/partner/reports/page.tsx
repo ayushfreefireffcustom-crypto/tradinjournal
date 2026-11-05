@@ -44,7 +44,7 @@ export default function PartnerReportsPage() {
           {!d && !error && <div className="x-skel ac-sk-320" />}
           {d && <>
             <section className="x-card" data-testid="reports-daily">
-              <div className="x-ch"><h2>Day by day</h2><span className="x-sub">hover a day to read every step</span></div>
+              <div className="x-ch"><h2>Day by day</h2><span className="x-sub">tap or hover a day to read every step</span></div>
               <DailyMultiples days={d.daily.map(x => x.date)} series={[
                 { key: 'clicks', label: 'Link clicks', values: d.daily.map(x => x.clicks) },
                 { key: 'signups', label: 'Signed up', values: d.daily.map(x => x.signups) },
@@ -62,13 +62,13 @@ export default function PartnerReportsPage() {
             <div className="ib-grid2">
               <section className="x-card" data-testid="reports-channels">
                 <div className="x-ch"><h2>Channels to unlocked</h2></div>
-                <div className="x-tblwrap"><table className="x-tbl ad-tbl"><thead><tr><th>Channel</th><th className="n">Clicks</th><th className="n">Signups</th><th className="n">Verified</th><th className="n">Unlocked</th><th className="n">Signup → unlocked</th></tr></thead>
+                <div className="x-tblwrap"><table className="x-tbl ad-tbl ib-tbl ib-tbl-ch"><thead><tr><th>Channel</th><th className="n">Clicks</th><th className="n">Signups</th><th className="n">Verified</th><th className="n">Unlocked</th><th className="n">Signup → unlocked</th></tr></thead>
                   <tbody>{d.channels.map(c => <tr key={c.label}><td>{c.label}</td><td className="n m">{n(c.clicks)}</td><td className="n m">{n(c.signups)}</td><td className="n m">{n(c.verified)}</td><td className="n m">{n(c.unlocked)}</td><td className="n m x-muted">{pct(c.unlocked, c.signups)}</td></tr>)}</tbody></table></div>
               </section>
               <section className="x-card" data-testid="reports-features">
                 <div className="x-ch"><h2>What your clients use</h2><span className="x-sub">last 30 days</span></div>
                 {d.features.length === 0 ? <p className="x-muted ib-pad">No feature use recorded yet.</p> : (
-                  <div className="x-tblwrap"><table className="x-tbl ad-tbl"><thead><tr><th>Feature</th><th className="n">Clients</th><th className="n">Page views</th></tr></thead>
+                  <div className="x-tblwrap"><table className="x-tbl ad-tbl ib-tbl"><thead><tr><th>Feature</th><th className="n">Clients</th><th className="n">Page views</th></tr></thead>
                     <tbody>{d.features.map(f => <tr key={f.key}><td>{f.label}</td><td className="n m">{n(f.users)}</td><td className="n m">{n(f.views)}</td></tr>)}</tbody></table></div>
                 )}
               </section>
@@ -78,14 +78,14 @@ export default function PartnerReportsPage() {
               <section className="x-card" data-testid="reports-tools">
                 <div className="x-ch"><h2>Your tools</h2><span className="x-sub">opens, last 30 days</span></div>
                 {d.products.length === 0 ? <p className="x-muted ib-pad">Add tools on the Tools page to see who opens them.</p> : (
-                  <div className="x-tblwrap"><table className="x-tbl ad-tbl"><thead><tr><th>Tool</th><th>Type</th><th className="n">Clients</th><th className="n">Opens</th></tr></thead>
+                  <div className="x-tblwrap"><table className="x-tbl ad-tbl ib-tbl"><thead><tr><th>Tool</th><th>Type</th><th className="n">Clients</th><th className="n">Opens</th></tr></thead>
                     <tbody>{d.products.map(p => <tr key={p.id}><td>{p.name}</td><td className="x-muted">{PRODUCT_TYPE_LABEL[p.type as ProductType] ?? p.type}</td><td className="n m">{n(p.users)}</td><td className="n m">{n(p.opens)}</td></tr>)}</tbody></table></div>
                 )}
               </section>
               <section className="x-card" data-testid="reports-subs">
                 <div className="x-ch"><h2>Subscriptions</h2></div>
                 {d.marketplace.packageSubs.length + d.marketplace.strategySubs.length === 0 ? <p className="x-muted ib-pad">No paid packages or marketplace strategies yet.</p> : (
-                  <div className="x-tblwrap"><table className="x-tbl ad-tbl"><thead><tr><th>Name</th><th>Kind</th><th className="n">Active</th><th className="n">All time</th><th className="n">Revenue</th></tr></thead>
+                  <div className="x-tblwrap"><table className="x-tbl ad-tbl ib-tbl"><thead><tr><th>Name</th><th>Kind</th><th className="n">Active</th><th className="n">All time</th><th className="n">Revenue</th></tr></thead>
                     <tbody>
                       {d.marketplace.packageSubs.map(p => <tr key={`p-${p.name}`}><td>{p.name}</td><td className="x-muted">Paid package</td><td className="n m">{n(p.active)}</td><td className="n m">{n(p.total)}</td><td className="n m">{cash(p.revenueCents, p.currency)}</td></tr>)}
                       {d.marketplace.strategySubs.map(s => <tr key={`s-${s.name}`}><td>{s.name}</td><td className="x-muted">Marketplace strategy</td><td className="n m">{n(s.active)}</td><td className="n m">{n(s.total)}</td><td className="n m x-dim">—</td></tr>)}

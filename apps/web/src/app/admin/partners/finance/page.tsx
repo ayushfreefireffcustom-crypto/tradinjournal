@@ -55,19 +55,19 @@ export default function AdminFinancePage() {
               <div><span>Partners&rsquo; share</span><b className="m">{cash(d.totals.partnerCents, d.currency)}</b></div>
               <div><span>Payable now</span><b className="m pos">{cash(d.totals.payableCents, d.currency)}</b></div>
               <div><span>Paid out</span><b className="m">{cash(d.totals.paidOutCents, d.currency)}</b></div>
-              <div><span>IB commission reported</span><b className="m">{d.totals.ibReported.toFixed(2)}</b><small className="ad-small">brokers pay this to partners</small></div>
+              <div><span>IB commission</span><b className="m">{d.totals.ibReported.toFixed(2)}</b><small className="ad-small">brokers pay this to partners</small></div>
             </div>
 
             <section className="x-card" data-testid="finance-payouts">
               <div className="x-ch"><h2>Payouts</h2><span className="x-sub"><span className="m">{d.payouts.filter(p => p.status === 'DRAFT').length}</span> to pay</span></div>
               {d.payouts.length === 0 ? <EmptyState compact icon="report" title="Nothing to pay yet">A draft appears when a partner&rsquo;s payable balance reaches the minimum (Settings).</EmptyState> : (
-                <div className="x-tblwrap ad-scroll"><table className="x-tbl ad-tbl"><thead><tr><th>Partner</th><th>Prepared</th><th>Pay to</th><th>Status</th><th className="n">Amount</th><th className="n"><span className="sr-only">Actions</span></th></tr></thead>
+                <div className="x-tblwrap ad-scroll"><table className="x-tbl ad-tbl ib-tbl ib-potbl"><thead><tr><th>Partner</th><th>Prepared</th><th>Pay to</th><th>Status</th><th className="n">Amount</th><th className="n"><span className="sr-only">Actions</span></th></tr></thead>
                   <tbody>{d.payouts.map(p => (
                     <tr key={p.id}>
-                      <td><Link className="x-link" href={`/admin/partners/${p.partnerId}`}>{p.partner}</Link></td>
+                      <td><Link className="x-link" href={`/admin/partners/${p.partnerId}`}>{p.partner}</Link>{p.status === 'DRAFT' && <small className="ad-small ib-m-only ib-ref">{p.payoutDetails ?? <span className="neg">No payout details yet</span>}</small>}</td>
                       <td className="x-muted">{day(p.createdAt)}</td>
                       <td className="m">{p.status === 'DRAFT' ? (p.payoutDetails ?? <span className="neg">No payout details yet</span>) : <span className="x-dim">—</span>}</td>
-                      <td>{p.status === 'PAID' ? <span className="x-tag x-tag--g">Paid {p.paidAt ? day(p.paidAt) : ''} · {p.reference}</span> : <span className="x-tag ac-tag-c">To pay</span>}</td>
+                      <td>{p.status === 'PAID' ? <><span className="x-tag x-tag--g">Paid</span><small className="ad-small ib-sub ib-ref">{p.paidAt ? `${day(p.paidAt)} · ` : ''}{p.reference}</small></> : <span className="x-tag ac-tag-c">To pay</span>}</td>
                       <td className="n m">{cash(p.amountCents, p.currency)}</td>
                       <td className="n">{p.status === 'DRAFT' && <span className="ib-br-btns">
                         <button type="button" className="x-btn x-btn--sm x-btn--ghost" disabled={!!busy} onClick={() => void act(p.id, () => ibApi.payoutCancel(p.id), 'Draft cancelled.')}>Cancel</button>
@@ -97,10 +97,10 @@ export default function AdminFinancePage() {
             <section className="x-card" data-testid="finance-payments">
               <div className="x-ch"><h2>Payments</h2><span className="x-sub">latest <span className="m">{d.payments.length}</span></span></div>
               {d.payments.length === 0 ? <p className="x-muted ib-pad">No payments yet.</p> : (
-                <div className="x-tblwrap ad-scroll"><table className="x-tbl ad-tbl"><thead><tr><th>Date</th><th>Client</th><th>Package</th><th>Partner</th><th>Status</th><th className="n">Amount</th><th className="n"><span className="sr-only">Actions</span></th></tr></thead>
+                <div className="x-tblwrap ad-scroll"><table className="x-tbl ad-tbl ib-tbl ib-paytbl"><thead><tr><th>Date</th><th>Client</th><th>Package</th><th>Partner</th><th>Status</th><th className="n">Amount</th><th className="n"><span className="sr-only">Actions</span></th></tr></thead>
                   <tbody>{d.payments.map(p => (
                     <tr key={p.id}>
-                      <td className="x-muted">{day(p.at)}</td><td>{p.client}</td><td>{p.packageName}</td><td>{p.partner}</td>
+                      <td className="x-muted">{day(p.at)}</td><td><span className="ib-ref">{p.client}</span><small className="ad-small ib-m-only">{p.packageName} · {p.partner} · {day(p.at)}</small></td><td>{p.packageName}</td><td>{p.partner}</td>
                       <td><span className={`x-tag ${p.status === 'PAID' ? 'x-tag--g' : p.status === 'REFUNDED' || p.status === 'FAILED' ? 'x-tag--r' : ''}`}>{p.status.toLowerCase()}</span></td>
                       <td className="n m">{cash(p.amountCents, p.currency)}</td>
                       <td className="n">{p.status === 'PAID' && <button type="button" className="x-btn x-btn--sm x-btn--ghost" disabled={!!busy} onClick={async () => {

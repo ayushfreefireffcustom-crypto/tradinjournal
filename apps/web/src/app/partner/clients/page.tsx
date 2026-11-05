@@ -19,7 +19,7 @@ import '@/styles/v6/account.css';
 const PAGE = 12;
 type Filter = 'ALL' | ReferralStatus;
 type IbFilter = '' | 'VERIFIED' | 'UNVERIFIED' | 'ELIGIBLE';
-const IB_FILTERS: [IbFilter, string][] = [['', 'Any broker check'], ['VERIFIED', 'Verified'], ['UNVERIFIED', 'Not verified'], ['ELIGIBLE', 'Unlocked a package']];
+const IB_FILTERS: [IbFilter, string][] = [['', 'All checks'], ['VERIFIED', 'Verified'], ['UNVERIFIED', 'Not verified'], ['ELIGIBLE', 'Unlocked a package']];
 
 export default function PartnerClientsPage() {
   const { accounts, selected, select } = useAccounts();

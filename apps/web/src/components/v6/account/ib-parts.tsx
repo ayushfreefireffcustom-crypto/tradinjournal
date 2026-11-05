@@ -142,7 +142,7 @@ export function IbClientRows({ clients, onUnlink, admin = false }: { clients: Pa
           const live = ib?.packages.filter(p => p.status === 'ACTIVE' || p.status === 'GRACE') ?? [];
           return (
             <tr key={c.id}>
-              <td><div className="ac-who"><Avatar name={c.name} /><span><b>{c.name}</b><small>{place(c.city, c.country)} · {c.channel}{c.via !== 'link' ? ` · ${c.via === 'late' ? 'code after signup' : c.via}` : ''}</small></span></div></td>
+              <td><div className="ac-who"><Avatar name={c.name} /><span><b>{c.name}</b><small>{place(c.city, c.country)} · {c.channel}{c.via !== 'link' ? ` · ${c.via === 'late' ? 'code after signup' : c.via}` : ''}</small>{ib && <span className="ib-m-only"><VerifyPill s={ib.verification} /></span>}</span></div></td>
               <td className="x-muted">{day(c.signedUpAt)}</td>
               <td><StatusPill s={c.status} /></td>
               <td>{ib ? <VerifyPill s={ib.verification} /> : <span className="x-dim">—</span>}</td>
