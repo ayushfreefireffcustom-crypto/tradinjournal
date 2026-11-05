@@ -13,10 +13,6 @@ export const DEFAULT_SETTINGS: ProgramSettingsDto = {
   graceDays: 7,
   partnerGraceDays: 7,
   lockedPerks: [],
-  platformSharePct: 20,
-  refundDays: 7,
-  payoutMinimumCents: 5000,
-  currency: 'USD',
   ibApiHosts: [],
 };
 
@@ -34,10 +30,6 @@ export function mergeSettings(raw: unknown): ProgramSettingsDto {
     graceDays: int('graceDays', 0, 90),
     partnerGraceDays: int('partnerGraceDays', 0, 90),
     lockedPerks: Array.isArray(v.lockedPerks) ? v.lockedPerks.filter((x): x is string => typeof x === 'string') : [],
-    platformSharePct: int('platformSharePct', 0, 100),
-    refundDays: int('refundDays', 0, 90),
-    payoutMinimumCents: int('payoutMinimumCents', 0, 10_000_000),
-    currency: typeof v.currency === 'string' && /^[A-Za-z]{3}$/.test(v.currency) ? v.currency.toUpperCase() : DEFAULT_SETTINGS.currency,
     ibApiHosts: Array.isArray(v.ibApiHosts) ? v.ibApiHosts.filter((x): x is string => typeof x === 'string').map(x => x.toLowerCase()) : [],
   };
 }
@@ -176,17 +168,14 @@ export function decideVerification(i: VerifyInput): VerifyOutcome {
 export interface EligibilityInput {
   partnerName: string;
   partnerActive: boolean;
-  pkg: { status: string; brokers: string[]; requireActive: boolean; adminHold?: boolean; priceCents?: number };
-  /** Priced packages: the client has a paid, current subscription. */
-  paid?: boolean;
-  priceLabel?: string;
+  pkg: { status: string; brokers: string[]; requireActive: boolean; adminHold?: boolean };
   /** Broker keys of this client's VERIFIED accounts. */
   verifiedBrokers: string[];
   activeTrader: boolean;
   rule: ProgramSettingsDto;
 }
 
-export function evaluatePackage(i: EligibilityInput): { qualifies: boolean; reasons: string[]; partnerPaused: boolean; canSubscribe: boolean } {
+export function evaluatePackage(i: EligibilityInput): { qualifies: boolean; reasons: string[]; partnerPaused: boolean } {
   const reasons: string[] = [];
   if (!i.partnerActive) reasons.push(`${i.partnerName}’s partner programme is paused.`);
   if (i.pkg.status !== 'LIVE') reasons.push(`${i.partnerName} has withdrawn this package.`);
@@ -198,10 +187,7 @@ export function evaluatePackage(i: EligibilityInput): { qualifies: boolean; reas
       : `Verify a broker account opened under ${i.partnerName}.`);
   }
   if (i.pkg.requireActive && !i.activeTrader) reasons.push(`Trade at least ${ruleText(i.rule)}.`);
-  // Payment comes last: a client only pays once everything else is met.
-  const canSubscribe = reasons.length === 0;
-  if ((i.pkg.priceCents ?? 0) > 0 && !i.paid) reasons.push(`Subscribe${i.priceLabel ? ` (${i.priceLabel})` : ''} to unlock.`);
-  return { qualifies: reasons.length === 0, reasons, partnerPaused: !i.partnerActive, canSubscribe };
+  return { qualifies: reasons.length === 0, reasons, partnerPaused: !i.partnerActive };
 }
 
 export interface EntitlementState {
@@ -255,26 +241,6 @@ export function sameState(a: EntitlementState, b: EntitlementState): boolean {
 export function allowedPerks(locked: string[], held: { status: string; perks: string[] }[], all: string[]): string[] {
   const mine = new Set(held.filter(h => h.status === 'ACTIVE' || h.status === 'GRACE').flatMap(h => h.perks));
   return all.filter(k => !locked.includes(k) || mine.has(k));
-}
-
-// ── Money ─────────────────────────────────────────────────────────────────────
-
-export function priceLabel(cents: number, currency: string, days: number): string {
-  const amount = (cents / 100).toLocaleString('en-US', { minimumFractionDigits: cents % 100 ? 2 : 0, maximumFractionDigits: 2 });
-  const per = days === 30 ? 'month' : days === 365 ? 'year' : days === 7 ? 'week' : `${days} days`;
-  return `${currency === 'USD' ? '$' : currency === 'INR' ? '₹' : `${currency} `}${amount} / ${per}`;
-}
-
-/** Splits a sale: the partner keeps sharePct, TRADElogs keeps the rest (rounded in the partner's favour). */
-export function splitSale(amountCents: number, partnerSharePct: number): { partnerCents: number; platformCents: number } {
-  const partnerCents = Math.ceil((amountCents * partnerSharePct) / 100);
-  return { partnerCents, platformCents: amountCents - partnerCents };
-}
-
-/** Next period end when a payment lands: extends from the later of now and the current end. */
-export function extendPeriod(currentEnd: Date | null, periodDays: number, now: Date): Date {
-  const base = currentEnd && currentEnd > now ? currentEnd : now;
-  return new Date(base.getTime() + periodDays * DAY_MS);
 }
 
 // ── Broker postbacks ──────────────────────────────────────────────────────────

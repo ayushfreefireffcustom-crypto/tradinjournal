@@ -13,7 +13,7 @@ PARTNER_PROGRAM_ENABLED). This is Phase 1 (the MVP) of that doc.
 | More than one partner per client | No. The first partner keeps the client; the admin can move them | existing |
 | What partners see per client | Name, status, trades, volume. **P&L per client only with the client's consent** (toggle on the client's Access page); totals and profitable/losing counts are always shown | Access page |
 | Partner tools in the MVP | **Packages** of existing TRADElogs features (catalog), plus the partner's own marketplace strategies marked "my clients only". The admin decides which features are locked to package holders (none by default, so nothing changes for current users) | Admin › Partners › Settings |
-| Who pays | Nobody: access is free; no commissions or payouts (Phase 2) | n/a |
+| Who pays | Nobody: packages are free and unlock on eligibility. TRADElogs takes no payments; brokers pay IB commission directly | n/a |
 | Existing users | Can enter a partner code once on the Access page if they have no partner yet | n/a |
 | Several MT5 accounts | One verified account under the partner's IB is enough | eligibility logic |
 | Partner suspended | Their clients keep access for the grace period (7 days), then it is suspended | Settings › grace days |
@@ -46,11 +46,9 @@ PARTNER_PROGRAM_ENABLED). This is Phase 1 (the MVP) of that doc.
 - **Broker integrations**: postback URL per broker connection (registration / deposit / trade / commission, common parameter names, repeats counted once), a REST adapter for broker partner APIs (login→token like Exness, bearer, API-key header, basic; paginated; only hosts an admin approves), commission-report upload. Exness/Cellxpert client-list endpoints aren't public, so the endpoint path and field names are entered from the broker's own API schema.
 - **MT4 and other platforms**: clients add the account for checking only. A list match still goes to manual review (we can't sign in to prove ownership); activity comes from what the broker reports.
 - **Partner tools**: indicators, chart templates, journal templates, algorithms/EAs (files up to 2 MB, stored in the DB), guides. Every version is approved by an admin first; clients open or download them from their Access page; opens are counted.
-- **Paid packages**: price per period, Razorpay checkout + webhook, only purchasable once every other condition is met, renew / cancel (access runs to the period end), admin grant for offline payments, refunds end access and claw back the partner's share.
-- **Revenue share and payouts**: TRADElogs share (default 20%, per-partner override), refund window, automatic payout drafts at a minimum, admin marks paid with the transfer reference, adjustments, encrypted payout details.
-- **Reports**: daily series for every funnel step, signup-month retention cohorts, channels to unlocked, tool and feature usage, paid and strategy subscriptions, IB earnings by month, consent-aware client CSV. Admin: cohorts, package moderation (pause / release), partner terms and permissions, finance page, filters.
+- **No payments** (removed 6 Nov 2026, not in the doc): no paid packages, Razorpay, revenue share, ledger or payouts. Packages are free and unlock on eligibility; the Earnings page shows only the IB commission brokers report.
+- **Reports**: daily series for every funnel step, signup-month retention cohorts, channels to unlocked, tool and feature usage, paid and strategy package holders and strategy subscriptions, IB earnings by month, consent-aware client CSV. Admin: cohorts, package moderation (pause / release), partner permissions, filters.
 
 ## Still needs from the business
-- Razorpay keys (RAZORPAY_KEY_ID / _SECRET / _WEBHOOK_SECRET) and the webhook URL `https://api.tradelogs.com/api/payments/razorpay/webhook` set in the Razorpay dashboard.
 - Each broker's postback set-up (partners paste their URL in the broker's partner area; some brokers need the account manager to enable it) or API access and the API host approved in Settings.
 - Decisions the doc lists; the defaults above stand until then.

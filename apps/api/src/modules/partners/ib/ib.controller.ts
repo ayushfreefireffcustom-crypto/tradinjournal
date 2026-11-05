@@ -11,9 +11,7 @@ import { getProgramSettings, saveProgramSettings } from './settings.js';
 import { runIbCycle } from './cycle.js';
 import * as integ from './integrations.service.js';
 import * as products from './products.service.js';
-import * as pay from './payments.service.js';
-import { checkout } from './access.service.js';
-import { partnerReports, cohorts } from './analytics.service.js';
+import { partnerEarnings, partnerReports, cohorts } from './analytics.service.js';
 import { adminPackages, setAdminHold } from './packages.service.js';
 import { setTerms, termsOf } from './terms.js';
 import { addExternalAccount, removeExternalAccount } from './ib.service.js';
@@ -123,7 +121,7 @@ export const handleAdminRecheck = h(async (req, res) => {
 
 export const handleIbCycle = h(async (_req, res) => ok(res, (await runIbCycle()) ?? { skipped: true }));
 
-// ── Phase 2: integrations, tools, money, reports ──────────────────────────────
+// ── Phase 2: integrations, tools, reports ──────────────────────────────
 
 const sendFile = (res: Response, f: { name: string; type: string; data: Buffer }) => {
   res.setHeader('Content-Type', f.type);
@@ -164,9 +162,8 @@ export const handleUpdateProduct = h(async (req, res) => {
 export const handleProductFile = h(async (req, res) => ok(res, await products.setProductFile((await partner(res)).id, param(req, 'id'), req.body, actor(res))));
 export const handleSubmitProduct = h(async (req, res) => ok(res, await products.submitProduct((await partner(res)).id, param(req, 'id'), actor(res))));
 
-// Partner: money and reports
-export const handleEarnings = h(async (_req, res) => ok(res, await pay.partnerEarnings((await partner(res)).id)));
-export const handlePayoutDetails = h(async (req, res) => { await pay.setPayoutDetails((await partner(res)).id, req.body.details); ok(res, { saved: true }); });
+// Partner: IB earnings (as brokers report them) and reports
+export const handleEarnings = h(async (_req, res) => ok(res, await partnerEarnings((await partner(res)).id)));
 export const handleReports = h(async (req, res) => ok(res, await partnerReports(await partner(res), req.query.range as PartnerRange)));
 export const handlePartnerExport = h(async (_req, res) => {
   const p = await partner(res);
@@ -175,7 +172,7 @@ export const handlePartnerExport = h(async (_req, res) => {
   res.send(await partnerClientsCsv(p.id));
 });
 
-// Client: tools, accounts, subscriptions
+// Client: tools and accounts
 export const handleClientProduct = h(async (req, res) => ok(res, await products.clientProduct(userOf(res).id, param(req, 'id'))));
 export const handleClientProductFile = h(async (req, res) => sendFile(res, await products.clientProductFile(userOf(res).id, param(req, 'id'))));
 export const handleAddAccount = h(async (req, res) => {
@@ -190,27 +187,6 @@ export const handleRemoveAccount = h(async (req, res) => {
   await recomputeUser(u.id);
   ok(res, await clientAccess(u.id, u.email));
 });
-export const handleCheckout = h(async (req, res) => ok(res, await checkout(userOf(res), param(req, 'id'))));
-export const handleVerifyPayment = h(async (req, res) => {
-  const u = userOf(res);
-  await pay.verifyCheckout(u.id, req.body);
-  await recomputeUser(u.id);
-  ok(res, await clientAccess(u.id, u.email));
-});
-export const handleCancelSubscription = h(async (req, res) => {
-  const u = userOf(res);
-  await pay.cancelSubscription(u.id, param(req, 'id'));
-  ok(res, await clientAccess(u.id, u.email));
-});
-
-// Public: Razorpay webhook (raw body, signature checked).
-export const handleRazorpayWebhook = h(async (req, res) => {
-  const raw = Buffer.isBuffer(req.body) ? req.body : Buffer.from('');
-  const out = await pay.handleWebhook(raw, String(req.headers['x-razorpay-signature'] ?? ''));
-  if (out.userId) await recomputeUser(out.userId);
-  res.status(out.ok ? 200 : 400).json({ ok: out.ok });
-});
-
 // Admin
 export const handleProductQueue = h(async (_req, res) => ok(res, await products.productQueue()));
 export const handleProductReview = h(async (req, res) => {
@@ -229,15 +205,4 @@ export const handleAdminPackages = h(async (_req, res) => ok(res, await adminPac
 export const handleAdminPackageHold = h(async (req, res) => { await setAdminHold(param(req, 'id'), req.body.adminHold, req.body.note, actor(res)); ok(res, { ok: true }); });
 export const handleAdminTerms = h(async (req, res) => ok(res, await setTerms((await getPartnerById(param(req, 'id'))).id, req.body, actor(res))));
 export const handleAdminGetTerms = h(async (req, res) => ok(res, await termsOf((await getPartnerById(param(req, 'id'))).id)));
-export const handleFinance = h(async (_req, res) => ok(res, await pay.adminFinance()));
-export const handleGrant = h(async (req, res) => { const out = await pay.grantSubscription(req.body, actor(res)); await recomputeUser(out.userId); ok(res, out); });
-export const handleRefund = h(async (req, res) => { const out = await pay.refundPayment(param(req, 'id'), actor(res)); await recomputeUser(out.userId); ok(res, out); });
-export const handlePayoutPaid = h(async (req, res) => { await pay.markPayoutPaid(param(req, 'id'), req.body.reference, actor(res)); ok(res, { ok: true }); });
-export const handlePayoutCancel = h(async (req, res) => { await pay.cancelPayout(param(req, 'id'), actor(res)); ok(res, { ok: true }); });
-export const handleAdjustment = h(async (req, res) => { await pay.addAdjustment((await getPartnerById(param(req, 'id'))).id, req.body.amountCents, req.body.note, actor(res)); ok(res, { ok: true }); });
 export const handleCohorts = h(async (req, res) => ok(res, await cohorts(typeof req.query.partnerId === 'string' ? req.query.partnerId : undefined)));
-export const handleMoneyCycle = h(async (_req, res) => {
-  const out = await pay.moneyCycle();
-  for (const u of out.expired) await recomputeUser(u);
-  ok(res, { ...out, expired: out.expired.length });
-});

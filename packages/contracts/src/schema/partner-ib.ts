@@ -57,9 +57,6 @@ export const partnerPackageSchema = z.object({
   requireActive: z.boolean().default(true),
   accessDays: z.number().int().min(1).max(3650).nullable().optional(),
   productIds: z.array(z.string().min(1).max(40)).max(30).default([]),
-  /** 0 = free (unlocks on eligibility); otherwise clients pay this per period. */
-  priceCents: z.number().int().min(0).max(100_000_00).default(0),
-  periodDays: z.number().int().min(1).max(366).default(30),
   status: z.enum(['DRAFT', 'LIVE', 'ARCHIVED']).default('DRAFT'),
 });
 export type PartnerPackageInput = z.infer<typeof partnerPackageSchema>;
@@ -83,14 +80,6 @@ export const programSettingsSchema = z.object({
   graceDays: z.number().int().min(0).max(90),
   partnerGraceDays: z.number().int().min(0).max(90),
   lockedPerks: z.array(z.string().min(1).max(40)).max(40),
-  /** TRADElogs' cut of package sales, in percent; partners keep the rest unless an admin overrides it. */
-  platformSharePct: z.number().int().min(0).max(100).default(20),
-  /** Days a sale stays refundable before the partner's share becomes payable. */
-  refundDays: z.number().int().min(0).max(90).default(7),
-  /** Smallest payout an automatic draft is created for, in cents. */
-  payoutMinimumCents: z.number().int().min(0).max(10_000_000).default(5000),
-  /** Currency for new packages and payouts. */
-  currency: z.string().trim().length(3).toUpperCase().default('USD'),
   /** Hosts partners may point the broker REST adapter at (admin-controlled, stops SSRF). */
   ibApiHosts: z.array(z.string().trim().toLowerCase().min(3).max(120)).max(30).default([]),
 });
@@ -162,12 +151,8 @@ export interface PartnerPackageDto {
   perks: string[];
   templateIds: string[];
   productIds: string[];
-  priceCents: number;
-  currency: string;
-  periodDays: number;
   adminHold: boolean;
   adminNote: string | null;
-  subscribers: number;
   brokers: string[];
   requireActive: boolean;
   accessDays: number | null;
@@ -192,9 +177,6 @@ export interface PartnerPackagesDto {
   lockedPerks: string[];
   products: { id: string; name: string; type: string; status: string }[];
   permissions: PartnerPermissionsDto;
-  currency: string;
-  revenueSharePct: number;
-  paymentsEnabled: boolean;
 }
 
 export interface TradingSummaryDto {
@@ -266,12 +248,6 @@ export interface AccessPackageDto {
   grantedAt: string | null;
   expiresAt: string | null;
   graceUntil: string | null;
-  priceCents: number;
-  currency: string;
-  periodDays: number;
-  /** Set when every condition except payment is met: the client can subscribe now. */
-  canSubscribe: boolean;
-  subscription: SubscriptionDto | null;
 }
 
 export interface ClientAccessDto {
@@ -287,7 +263,6 @@ export interface ClientAccessDto {
   myPerks: string[];
   /** Partner tools the client can open now. */
   products: ClientProductDto[];
-  paymentsEnabled: boolean;
 }
 
 export interface ProgramPartnerRowDto {
@@ -351,7 +326,7 @@ export interface AdminPartnerIbDto {
   events: PartnerEventDto2[];
 }
 
-// ── Phase 2: broker adapters, partner tools, subscriptions, payouts, reports ──
+// ── Phase 2: broker adapters, partner tools, reports ──
 
 export const ibApiConfigSchema = z.object({
   baseUrl: z.string().trim().url().max(300),
@@ -410,24 +385,15 @@ export const productFileSchema = z.object({
 });
 export const productReviewSchema = z.object({ action: z.enum(['approve', 'reject']), note: z.string().trim().max(500).optional() });
 
-export const payoutDetailsSchema = z.object({ details: z.string().trim().min(4).max(500) });
-export const paymentVerifySchema = z.object({
-  orderId: z.string().min(1).max(80), paymentId: z.string().min(1).max(80), signature: z.string().min(1).max(200),
-});
 export const adminPackageSchema = z.object({ adminHold: z.boolean(), note: z.string().trim().max(300).optional() });
 export const adminPartnerTermsSchema = z.object({
-  revenueSharePct: z.number().int().min(0).max(100).nullable(),
   permissions: z.object({
     canOfferProducts: z.boolean(),
-    canSellPackages: z.boolean(),
     maxPackages: z.number().int().min(0).max(50),
   }),
 });
-export const adminGrantSchema = z.object({ email: z.string().trim().toLowerCase().email(), packageId: z.string().min(1), days: z.number().int().min(1).max(3650), note: z.string().trim().max(300).optional() });
-export const adminAdjustmentSchema = z.object({ amountCents: z.number().int().min(-10_000_000).max(10_000_000).refine(v => v !== 0, 'Not zero'), note: z.string().trim().min(2).max(300) });
-export const adminPayoutPaidSchema = z.object({ reference: z.string().trim().min(2).max(120) });
 
-export interface PartnerPermissionsDto { canOfferProducts: boolean; canSellPackages: boolean; maxPackages: number }
+export interface PartnerPermissionsDto { canOfferProducts: boolean; maxPackages: number }
 
 export interface BrokerEventDto { id: string; at: string; kind: string; accountId: string | null; status: string; error: string | null }
 export interface BrokerIntegrationDto {
@@ -451,29 +417,9 @@ export interface ClientProductDto {
 }
 export interface ClientProductDetailDto extends ClientProductDto { content: string | null }
 
-export interface SubscriptionDto {
-  id: string; packageId: string; packageName: string; status: 'PENDING' | 'ACTIVE' | 'CANCELLED' | 'EXPIRED';
-  priceCents: number; currency: string; periodDays: number; provider: string;
-  startedAt: string | null; currentPeriodEnd: string | null; cancelledAt: string | null;
-}
-export interface CheckoutDto {
-  /** razorpay: open Checkout with these; free: nothing to pay. */
-  provider: 'razorpay';
-  keyId: string; orderId: string; amount: number; currency: string; name: string; description: string;
-  prefill: { name: string; email: string };
-}
-
-export interface MoneyLineDto { id: string; at: string; amountCents: number; currency: string; status: string; label: string }
+/** IB commission the partner's brokers report (postback, API or uploaded report). TRADElogs takes no payments. */
 export interface PartnerEarningsDto {
-  currency: string;
-  revenueSharePct: number;
   ib: { total: number; currency: string; byMonth: { month: string; amount: number }[]; recent: { id: string; at: string; accountId: string | null; amount: number; currency: string; source: string }[] };
-  sales: { count: number; grossCents: number; shareCents: number };
-  balance: { pendingCents: number; payableCents: number; paidCents: number };
-  ledger: MoneyLineDto[];
-  payouts: { id: string; at: string; amountCents: number; currency: string; status: string; reference: string | null; paidAt: string | null }[];
-  hasPayoutDetails: boolean;
-  payoutMinimumCents: number;
 }
 
 export interface CohortRowDto { month: string; signups: number; connected: number; verified: number; everActive: number; activeNow: number; unlockedNow: number }
@@ -484,17 +430,9 @@ export interface PartnerReportsDto {
   channels: { label: string; clicks: number; signups: number; verified: number; unlocked: number }[];
   products: { id: string; name: string; type: string; opens: number; users: number }[];
   features: { key: string; label: string; users: number; views: number }[];
-  marketplace: { packageSubs: { name: string; active: number; total: number; revenueCents: number; currency: string }[]; strategySubs: { name: string; active: number; total: number }[] };
-  earningsByMonth: { month: string; ib: number; salesShareCents: number }[];
-}
-
-export interface AdminFinanceDto {
-  currency: string;
-  totals: { grossCents: number; platformCents: number; partnerCents: number; payableCents: number; paidOutCents: number; ibReported: number };
-  payments: { id: string; at: string; partner: string; client: string; packageName: string; amountCents: number; currency: string; status: string; provider: string }[];
-  payouts: { id: string; partnerId: string; partner: string; amountCents: number; currency: string; status: string; createdAt: string; paidAt: string | null; reference: string | null; payoutDetails: string | null }[];
-  balances: { partnerId: string; partner: string; payableCents: number; pendingCents: number }[];
-  paymentsEnabled: boolean;
+  /** Package holders (from entitlements) and strategy subscribers. */
+  marketplace: { packageSubs: { name: string; active: number; total: number }[]; strategySubs: { name: string; active: number; total: number }[] };
+  earningsByMonth: { month: string; ib: number }[];
 }
 
 export interface AdminPackageRowDto extends PartnerPackageDto { partnerId: string; partner: string; adminHold: boolean; adminNote: string | null }

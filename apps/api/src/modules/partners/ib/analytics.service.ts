@@ -2,7 +2,7 @@
 // All time filters compare against UTC timestamps (the columns have no zone), never raw
 // Date parameters, so results don't depend on the database session's time zone.
 import { prisma, Prisma } from '@tradinjournal/db';
-import type { CohortRowDto, PartnerRange, PartnerReportsDto } from '@tradinjournal/contracts';
+import type { CohortRowDto, PartnerEarningsDto, PartnerRange, PartnerReportsDto } from '@tradinjournal/contracts';
 import { dayKeys, rangeStart } from '../partner.logic.js';
 import { PERKS } from './perks.js';
 import { DEFAULT_CHANNEL_LABEL } from '../partners.service.js';
@@ -35,7 +35,7 @@ export async function partnerReports(p: { id: string; userId: string; approvedAt
   const series = (rows: { d: string; n: number }[]) => new Map(rows.map(r => [r.d, r.n]));
   const since30 = new Date(Date.now() - 30 * 86_400_000);
 
-  const [clicks, signups, connected, verified, unlocked, coh, channels, products, featureRows, pkgSubs, stratSubs, ib, sales] = await Promise.all([
+  const [clicks, signups, connected, verified, unlocked, coh, channels, products, featureRows, pkgSubs, stratSubs, ib] = await Promise.all([
     prisma.$queryRaw<{ d: string; n: number }[]>`SELECT ${day(Prisma.sql`"createdAt"`)} AS d, COUNT(*)::int AS n FROM "referral_click" WHERE "partnerId" = ${p.id} AND "createdAt" >= ${ts(first)} GROUP BY 1`,
     prisma.$queryRaw<{ d: string; n: number }[]>`SELECT ${day(Prisma.sql`"attributedAt"`)} AS d, COUNT(*)::int AS n FROM "referral" WHERE "partnerId" = ${p.id} AND "attributedAt" >= ${ts(first)} GROUP BY 1`,
     prisma.$queryRaw<{ d: string; n: number }[]>`SELECT ${day(Prisma.sql`"connectedAt"`)} AS d, COUNT(*)::int AS n FROM "referral" WHERE "partnerId" = ${p.id} AND "connectedAt" >= ${ts(first)} GROUP BY 1`,
@@ -67,23 +67,20 @@ export async function partnerReports(p: { id: string; userId: string; approvedAt
       SELECT split_part(u.path, '/', 2) AS path, COUNT(DISTINCT u."userId")::int AS users, COUNT(*)::int AS views
       FROM "usage_event" u JOIN "referral" r ON r."userId" = u."userId" AND r."partnerId" = ${p.id}
       WHERE u.type = 'page_view' AND u."createdAt" >= ${ts(since30)} GROUP BY 1`,
-    prisma.$queryRaw<{ name: string; active: number; total: number; revenueCents: number; currency: string }[]>`
-      SELECT pk.name, COUNT(s.id) FILTER (WHERE s.status IN ('ACTIVE', 'CANCELLED') AND s."currentPeriodEnd" > (now() AT TIME ZONE 'UTC'))::int AS active,
-             COUNT(s.id)::int AS total,
-             COALESCE((SELECT SUM(pay."amountCents") FROM "payment" pay JOIN "package_subscription" s2 ON s2.id = pay."subscriptionId" WHERE s2."packageId" = pk.id AND pay.status = 'PAID'), 0)::int AS "revenueCents",
-             pk.currency
-      FROM "partner_package" pk LEFT JOIN "package_subscription" s ON s."packageId" = pk.id
-      WHERE pk."partnerId" = ${p.id} AND pk."priceCents" > 0 GROUP BY pk.id, pk.name, pk.currency`,
+    // Package holders: clients the package is unlocked for now (incl. grace), and everyone it ever unlocked for.
+    prisma.$queryRaw<{ name: string; active: number; total: number }[]>`
+      SELECT pk.name, COUNT(e.id) FILTER (WHERE e.status IN ('ACTIVE', 'GRACE'))::int AS active, COUNT(e.id)::int AS total
+      FROM "partner_package" pk LEFT JOIN "client_entitlement" e ON e."packageId" = pk.id
+      WHERE pk."partnerId" = ${p.id} AND pk.status <> 'ARCHIVED' GROUP BY pk.id, pk.name ORDER BY total DESC`,
     prisma.$queryRaw<{ name: string; active: number; total: number }[]>`
       SELECT t.name, COUNT(s.id) FILTER (WHERE s.status IN ('active', 'paused'))::int AS active, COUNT(s.id)::int AS total
       FROM "strategy_template" t LEFT JOIN "template_subscription" s ON s."templateId" = t.id
       WHERE t."creatorId" = ${p.userId} GROUP BY t.id, t.name ORDER BY total DESC`,
     prisma.$queryRaw<{ month: string; amount: number }[]>`SELECT to_char("earnedAt", 'YYYY-MM') AS month, SUM(amount)::float AS amount FROM "ib_earning" WHERE "partnerId" = ${p.id} GROUP BY 1`,
-    prisma.$queryRaw<{ month: string; cents: number }[]>`SELECT to_char("paidAt", 'YYYY-MM') AS month, SUM("partnerShareCents")::int AS cents FROM "payment" WHERE "partnerId" = ${p.id} AND status = 'PAID' GROUP BY 1`,
   ]);
 
   const c = series(clicks), s = series(signups), cn = series(connected), v = series(verified), u = series(unlocked);
-  const months = [...new Set([...ib.map(x => x.month), ...sales.map(x => x.month)])].sort().slice(-12);
+  const months = ib.map(x => x.month).sort().slice(-12);
   return {
     range,
     daily: keys.map(date => ({ date, clicks: c.get(date) ?? 0, signups: s.get(date) ?? 0, connected: cn.get(date) ?? 0, verified: v.get(date) ?? 0, unlocked: u.get(date) ?? 0 })),
@@ -95,6 +92,20 @@ export async function partnerReports(p: { id: string; userId: string; approvedAt
       return { key: pk.key, label: pk.label, users: rows.reduce((n, r) => Math.max(n, r.users), 0), views: rows.reduce((n, r) => n + r.views, 0) };
     }).filter(f => f.views > 0).sort((a, b) => b.users - a.users),
     marketplace: { packageSubs: pkgSubs, strategySubs: stratSubs },
-    earningsByMonth: months.map(m => ({ month: m, ib: Math.round((ib.find(x => x.month === m)?.amount ?? 0) * 100) / 100, salesShareCents: sales.find(x => x.month === m)?.cents ?? 0 })),
+    earningsByMonth: months.map(m => ({ month: m, ib: Math.round((ib.find(x => x.month === m)?.amount ?? 0) * 100) / 100 })),
+  };
+}
+
+/** IB commission the partner's brokers reported (postback, API or uploaded report). */
+export async function partnerEarnings(partnerId: string): Promise<PartnerEarningsDto> {
+  const ib = await prisma.ibEarning.findMany({ where: { partnerId }, orderBy: { earnedAt: 'desc' }, take: 1000 });
+  const byMonth = new Map<string, number>();
+  for (const e of ib) { const m = e.earnedAt.toISOString().slice(0, 7); byMonth.set(m, (byMonth.get(m) ?? 0) + e.amount); }
+  return {
+    ib: {
+      total: Math.round(ib.reduce((n, e) => n + e.amount, 0) * 100) / 100, currency: ib[0]?.currency ?? 'USD',
+      byMonth: [...byMonth].sort((a, z) => a[0].localeCompare(z[0])).slice(-12).map(([month, amount]) => ({ month, amount: Math.round(amount * 100) / 100 })),
+      recent: ib.slice(0, 20).map(e => ({ id: e.id, at: e.earnedAt.toISOString(), accountId: e.accountId, amount: e.amount, currency: e.currency, source: e.source })),
+    },
   };
 }

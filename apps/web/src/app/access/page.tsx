@@ -8,8 +8,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { CheckCircle, Circle, Handshake, Package, Pulse, ShieldCheck, Toolbox, Trash } from '@phosphor-icons/react';
 import AppShell from '@/components/app-shell';
 import { useAccounts } from '@/lib/use-accounts';
-import { cash, ibApi, per, PRODUCT_TYPE_LABEL, type AccessAccount, type AccessPackage, type ClientAccess } from '@/lib/ib-api';
-import { payWithRazorpay } from '@/lib/razorpay';
+import { ibApi, PRODUCT_TYPE_LABEL, type AccessAccount, type ClientAccess } from '@/lib/ib-api';
 import { EntPill, VerifyPill } from '@/components/v6/account/ib-parts';
 import { day } from '@/components/v6/account/partner-parts';
 import { timeAgo } from '@/components/app-shell';
@@ -113,9 +112,7 @@ export default function AccessPage() {
                         {p.status === 'GRACE' && p.graceUntil && <span>Grace ends {day(p.graceUntil)}</span>}
                         {p.grantedAt && p.status !== 'LOCKED' && <span>Unlocked {day(p.grantedAt)}</span>}
                         {p.expiresAt && <span>Access until {day(p.expiresAt)}</span>}
-                        {p.priceCents > 0 && <span>{cash(p.priceCents, p.currency)} / {per(p.periodDays)}</span>}
                       </div>
-                      {p.priceCents > 0 && <PayRow p={p} paymentsOn={d.paymentsEnabled} onChange={x => setD(x)} onToast={setToast} />}
                     </article>
                   ))}</div>}
             </section>
@@ -195,38 +192,6 @@ function ConsentCard({ d, onChange }: { d: ClientAccess; onChange: (d: ClientAcc
         {d.consent.share ? 'Stop sharing' : 'Share my P&L'}
       </button>
     </section>
-  );
-}
-
-function PayRow({ p, paymentsOn, onChange, onToast }: { p: AccessPackage; paymentsOn: boolean; onChange: (d: ClientAccess) => void; onToast: (s: string) => void }) {
-  const [busy, setBusy] = useState(false);
-  const s = p.subscription;
-  const current = !!s && (s.status === 'ACTIVE' || s.status === 'CANCELLED') && !!s.currentPeriodEnd && new Date(s.currentPeriodEnd) > new Date();
-  async function pay() {
-    setBusy(true);
-    try {
-      const co = await ibApi.checkout(p.id);
-      const res = await payWithRazorpay(co);
-      if (!res) { onToast('Payment cancelled.'); return; }
-      onChange(await ibApi.verifyPayment(res.orderId, res.paymentId, res.signature));
-      onToast(`Paid. ${p.name} is unlocked.`);
-    } catch (x) { onToast(msg(x, 'The payment didn’t go through.')); } finally { setBusy(false); }
-  }
-  return (
-    <div className="ib-acct-f" data-testid={`access-pay-${p.name}`}>
-      {current && <span className="x-help">{s!.status === 'CANCELLED' ? `Cancelled · access until ${day(s!.currentPeriodEnd!)}` : `Paid until ${day(s!.currentPeriodEnd!)}`}{s!.provider === 'manual' ? ' (granted by TRADElogs)' : ''}</span>}
-      {(p.canSubscribe || current) && paymentsOn && (
-        <button type="button" className="x-btn x-btn--sm x-btn--hi" disabled={busy} onClick={() => void pay()}>{busy ? 'Opening payment…' : current ? 'Renew now' : `Subscribe · ${cash(p.priceCents, p.currency)}`}</button>
-      )}
-      {p.canSubscribe && !paymentsOn && !current && <span className="x-help">Online payment isn&rsquo;t switched on yet. Ask your partner or TRADElogs support to unlock it for you.</span>}
-      {current && s!.status === 'ACTIVE' && s!.provider !== 'manual' && (
-        <button type="button" className="x-btn x-btn--sm x-btn--ghost" disabled={busy} onClick={async () => {
-          setBusy(true);
-          try { onChange(await ibApi.cancelSubscription(s!.id)); onToast('Cancelled. You keep access until the end of the paid period.'); }
-          catch (x) { onToast(msg(x, 'Could not cancel.')); } finally { setBusy(false); }
-        }}>Cancel</button>
-      )}
-    </div>
   );
 }
 

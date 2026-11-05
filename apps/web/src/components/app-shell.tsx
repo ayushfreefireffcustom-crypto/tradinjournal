@@ -68,7 +68,6 @@ const ALL: Item[] = [
     { href: '/admin/partners/program', label: 'Partner programme', icon: IPartner, group: 'Admin' },
     { href: '/admin/partners/reviews', label: 'Partner reviews', icon: IPartner, group: 'Admin' },
     { href: '/admin/partners/settings', label: 'Partner settings', icon: ISettings, group: 'Admin' },
-    { href: '/admin/partners/finance', label: 'Partner finance', icon: IPartner, group: 'Admin' },
   ] : []),
   ...(TRADING_ENABLED ? [{ href: '/admin/copy', label: 'Copy trading admin', icon: IAdmin, group: 'Admin' }] : []),
   { href: '/brokers', label: 'Brokers', icon: IBrokers, group: 'Account' },

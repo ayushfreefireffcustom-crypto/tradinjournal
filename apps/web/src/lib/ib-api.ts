@@ -23,11 +23,11 @@ export interface PartnerBroker {
 export interface UploadResult { broker: PartnerBroker; added: number; updated: number; removed: number; skipped: number; rechecked: number }
 export interface PartnerPackage {
   id: string; name: string; description: string | null; perks: string[]; templateIds: string[]; productIds: string[]; brokers: string[];
-  priceCents: number; currency: string; periodDays: number; adminHold: boolean; adminNote: string | null; subscribers: number;
+  adminHold: boolean; adminNote: string | null;
   requireActive: boolean; accessDays: number | null; status: PackageStatus; holders: number; inGrace: number; createdAt: string;
 }
 export interface PackageInput {
-  name: string; description?: string; perks: string[]; templateIds: string[]; productIds: string[]; brokers: string[]; priceCents: number; periodDays: number;
+  name: string; description?: string; perks: string[]; templateIds: string[]; productIds: string[]; brokers: string[];
   requireActive: boolean; accessDays: number | null; status: PackageStatus;
 }
 export interface PackagesPage {
@@ -35,8 +35,7 @@ export interface PackagesPage {
   templates: { id: string; name: string; status: string; partnerOnly: boolean }[];
   brokers: { key: string; label: string }[]; lockedPerks: string[];
   products: { id: string; name: string; type: string; status: string }[];
-  permissions: { canOfferProducts: boolean; canSellPackages: boolean; maxPackages: number };
-  currency: string; revenueSharePct: number; paymentsEnabled: boolean;
+  permissions: { canOfferProducts: boolean; maxPackages: number };
 }
 export interface TradingSummary { connected: number; trading: number; trades30d: number; lots30d: number; pnl30d: number; profitable: number; losing: number }
 export interface IbFunnel { range: Range; clicks: number; signups: number; connected: number; verified: number; active: number; eligible: number }
@@ -57,17 +56,16 @@ export interface AccessPackage {
   id: string; name: string; description: string | null; perks: Perk[]; templates: { id: string; name: string }[];
   products: { id: string; name: string; type: string }[];
   status: EntitlementStatus | 'LOCKED'; reasons: string[]; grantedAt: string | null; expiresAt: string | null; graceUntil: string | null;
-  priceCents: number; currency: string; periodDays: number; canSubscribe: boolean; subscription: Subscription | null;
 }
 export interface ClientAccess {
   partner: { name: string; code: string; status: 'ACTIVE' | 'PAUSED' } | null; canJoin: boolean; accounts: AccessAccount[];
   activity: { active: boolean; trades: number; lots: number; rule: { minTrades: number; windowDays: number; minLots: number }; checkedAt: string | null };
   packages: AccessPackage[]; consent: { share: boolean; at: string | null }; lockedPerks: string[]; myPerks: string[];
-  products: ClientProduct[]; paymentsEnabled: boolean;
+  products: ClientProduct[];
 }
 export interface ProgramSettings {
   activeMinTrades: number; activeWindowDays: number; activeMinLots: number; graceDays: number; partnerGraceDays: number; lockedPerks: string[];
-  platformSharePct: number; refundDays: number; payoutMinimumCents: number; currency: string; ibApiHosts: string[];
+  ibApiHosts: string[];
 }
 export interface ProgramRow {
   id: string; name: string; email: string; code: string | null; status: string; clients: number; connected: number; verified: number;
@@ -94,11 +92,6 @@ export interface ClientProduct {
   id: string; type: ProductType; name: string; description: string | null; platform: string | null; hasContent: boolean;
   url: string | null; fileName: string | null; fileSize: number | null; version: number; partner: string;
 }
-export interface Subscription {
-  id: string; packageId: string; packageName: string; status: 'PENDING' | 'ACTIVE' | 'CANCELLED' | 'EXPIRED'; priceCents: number; currency: string;
-  periodDays: number; provider: string; startedAt: string | null; currentPeriodEnd: string | null; cancelledAt: string | null;
-}
-export interface Checkout { provider: 'razorpay'; keyId: string; orderId: string; amount: number; currency: string; name: string; description: string; prefill: { name: string; email: string } }
 export interface ApiConfig {
   baseUrl: string; auth: 'jwt-login' | 'bearer' | 'header' | 'basic'; authPath?: string; username?: string; headerName?: string;
   clientsPath: string; listKey?: string; fields: { accountId: string; email?: string; lots?: string; deposit?: string };
@@ -108,15 +101,9 @@ export interface Integration {
   api: { config: ApiConfig | null; hasSecret: boolean; allowedHosts: string[] };
   events: { id: string; at: string; kind: string; accountId: string | null; status: string; error: string | null }[];
 }
-export interface MoneyLine { id: string; at: string; amountCents: number; currency: string; status: string; label: string }
+/** IB commission as the partner's brokers report it. */
 export interface Earnings {
-  currency: string; revenueSharePct: number;
   ib: { total: number; currency: string; byMonth: { month: string; amount: number }[]; recent: { id: string; at: string; accountId: string | null; amount: number; currency: string; source: string }[] };
-  sales: { count: number; grossCents: number; shareCents: number };
-  balance: { pendingCents: number; payableCents: number; paidCents: number };
-  ledger: MoneyLine[];
-  payouts: { id: string; at: string; amountCents: number; currency: string; status: string; reference: string | null; paidAt: string | null }[];
-  hasPayoutDetails: boolean; payoutMinimumCents: number;
 }
 export interface CohortRow { month: string; signups: number; connected: number; verified: number; everActive: number; activeNow: number; unlockedNow: number }
 export interface Reports {
@@ -126,19 +113,11 @@ export interface Reports {
   channels: { label: string; clicks: number; signups: number; verified: number; unlocked: number }[];
   products: { id: string; name: string; type: string; opens: number; users: number }[];
   features: { key: string; label: string; users: number; views: number }[];
-  marketplace: { packageSubs: { name: string; active: number; total: number; revenueCents: number; currency: string }[]; strategySubs: { name: string; active: number; total: number }[] };
-  earningsByMonth: { month: string; ib: number; salesShareCents: number }[];
-}
-export interface Finance {
-  currency: string;
-  totals: { grossCents: number; platformCents: number; partnerCents: number; payableCents: number; paidOutCents: number; ibReported: number };
-  payments: { id: string; at: string; partner: string; client: string; packageName: string; amountCents: number; currency: string; status: string; provider: string }[];
-  payouts: { id: string; partnerId: string; partner: string; amountCents: number; currency: string; status: string; createdAt: string; paidAt: string | null; reference: string | null; payoutDetails: string | null }[];
-  balances: { partnerId: string; partner: string; payableCents: number; pendingCents: number }[];
-  paymentsEnabled: boolean;
+  marketplace: { packageSubs: { name: string; active: number; total: number }[]; strategySubs: { name: string; active: number; total: number }[] };
+  earningsByMonth: { month: string; ib: number }[];
 }
 export interface AdminPackageRow extends PartnerPackage { partnerId: string; partner: string }
-export interface Terms { permissions: { canOfferProducts: boolean; canSellPackages: boolean; maxPackages: number }; sharePct: number }
+export interface Terms { permissions: { canOfferProducts: boolean; maxPackages: number } }
 export interface AdminProduct extends PartnerProduct { partner: { id: string; name: string } }
 export interface IbEvent { id: string; at: string; kind: string; message: string; partnerId: string | null; userId: string | null; actorEmail: string | null }
 
@@ -199,7 +178,6 @@ export const ibApi = {
   productFile: (id: string, fileName: string, fileType: string, data: string) => send<PartnerProduct>('POST', `${P}/partner/products/${enc(id)}/file`, { fileName, fileType, data }),
   submitProduct: (id: string) => send<PartnerProduct>('POST', `${P}/partner/products/${enc(id)}/submit`, {}),
   earnings: () => call<Earnings>(`${P}/partner/earnings`),
-  payoutDetails: (details: string) => send<{ saved: boolean }>('PUT', `${P}/partner/payout-details`, { details }),
   reports: (range: Range) => call<Reports>(`${P}/partner/reports?range=${range}`),
   partnerExportUrl: () => `${API}${P}/partner/export`,
   // Trader
@@ -207,9 +185,6 @@ export const ibApi = {
   clientProductFileUrl: (id: string) => `${API}${P}/partner-access/products/${enc(id)}/file`,
   addAccount: (input: { platform: string; login: string; server: string; broker: string; brokerEmail?: string }) => send<ClientAccess>('POST', `${P}/partner-access/accounts`, input),
   removeAccount: (id: string) => send<ClientAccess>('DELETE', `${P}/partner-access/accounts/${enc(id)}`),
-  checkout: (packageId: string) => send<Checkout>('POST', `${P}/partner-access/packages/${enc(packageId)}/checkout`, {}),
-  verifyPayment: (orderId: string, paymentId: string, signature: string) => send<ClientAccess>('POST', `${P}/partner-access/payments/verify`, { orderId, paymentId, signature }),
-  cancelSubscription: (id: string) => send<ClientAccess>('POST', `${P}/partner-access/subscriptions/${enc(id)}/cancel`, {}),
   // Admin
   productQueue: () => call<AdminProduct[]>(`${P}/admin/partner-program/products`),
   adminProduct: (id: string) => call<{ id: string; name: string; type: string; platform: string | null; content: string | null; url: string | null; fileName: string | null; fileSize: number | null; description: string | null; version: number; status: string }>(`${P}/admin/partner-program/products/${enc(id)}`),
@@ -217,29 +192,14 @@ export const ibApi = {
   reviewProduct: (id: string, action: 'approve' | 'reject', note?: string) => send<{ status: string }>('POST', `${P}/admin/partner-program/products/${enc(id)}/review`, { action, ...(note ? { note } : {}) }),
   adminPackages: () => call<AdminPackageRow[]>(`${P}/admin/partner-program/packages`),
   holdPackage: (id: string, adminHold: boolean, note?: string) => send<{ ok: boolean }>('POST', `${P}/admin/partner-program/packages/${enc(id)}/hold`, { adminHold, ...(note ? { note } : {}) }),
-  finance: () => call<Finance>(`${P}/admin/partner-program/finance`),
-  grant: (input: { email: string; packageId: string; days: number; note?: string }) => send<{ userId: string }>('POST', `${P}/admin/partner-program/grants`, input),
-  refund: (paymentId: string) => send<{ userId: string }>('POST', `${P}/admin/partner-program/payments/${enc(paymentId)}/refund`, {}),
-  payoutPaid: (id: string, reference: string) => send<{ ok: boolean }>('POST', `${P}/admin/partner-program/payouts/${enc(id)}/paid`, { reference }),
-  payoutCancel: (id: string) => send<{ ok: boolean }>('POST', `${P}/admin/partner-program/payouts/${enc(id)}/cancel`, {}),
-  adjust: (partnerId: string, amountCents: number, note: string) => send<{ ok: boolean }>('POST', `${P}/admin/partners/${enc(partnerId)}/adjustments`, { amountCents, note }),
   terms: (partnerId: string) => call<Terms>(`${P}/admin/partners/${enc(partnerId)}/terms`),
-  saveTerms: (partnerId: string, input: { revenueSharePct: number | null; permissions: Terms['permissions'] }) => send<Terms>('PUT', `${P}/admin/partners/${enc(partnerId)}/terms`, input),
+  saveTerms: (partnerId: string, input: { permissions: Terms['permissions'] }) => send<Terms>('PUT', `${P}/admin/partners/${enc(partnerId)}/terms`, input),
   cohorts: (partnerId?: string) => call<CohortRow[]>(`${P}/admin/partner-program/cohorts${partnerId ? `?partnerId=${enc(partnerId)}` : ''}`),
 };
 
 export const PRODUCT_TYPE_LABEL: Record<ProductType, string> = {
   INDICATOR: 'Indicator', CHART_TEMPLATE: 'Chart template', JOURNAL_TEMPLATE: 'Journal template', ALGORITHM: 'Algorithm / EA', GUIDE: 'Guide',
 };
-
-/** "$19.00" / "₹1,499" from cents and a currency code. */
-export function cash(cents: number, currency = 'USD'): string {
-  const v = cents / 100;
-  const s = Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: v % 1 ? 2 : 0, maximumFractionDigits: 2 });
-  const sym = currency === 'USD' ? '$' : currency === 'INR' ? '₹' : currency === 'EUR' ? '€' : `${currency} `;
-  return `${v < 0 ? '−' : ''}${sym}${s}`;
-}
-export const per = (days: number) => (days === 30 ? 'month' : days === 365 ? 'year' : days === 7 ? 'week' : `${days} days`);
 
 export const VERIFY_LABEL: Record<VerificationStatus | 'NO_ACCOUNT', string> = {
   PENDING: 'Not checked', VERIFIED: 'Verified', NOT_FOUND: 'Not found', MANUAL_REVIEW: 'In review', REJECTED: 'Rejected',

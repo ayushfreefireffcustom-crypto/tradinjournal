@@ -2,9 +2,8 @@
 // recompute every client's package access so grace periods and expiries move on.
 import { logger } from '@tradinjournal/logger';
 import { recheckPartner, syncDueSheets } from './ib.service.js';
-import { recomputeAll, recomputePartner, recomputeUser } from './access.service.js';
+import { recomputeAll, recomputePartner } from './access.service.js';
 import { syncDueApis } from './integrations.service.js';
-import { moneyCycle } from './payments.service.js';
 import { prisma } from '@tradinjournal/db';
 
 let running = false;
@@ -24,11 +23,8 @@ export async function runIbCycle(): Promise<{ sheets: number; clients: number } 
         await recomputePartner(t.partnerId);
       }
     }
-    // Paid periods that ended, shares past the refund window, payout drafts.
-    const money = await moneyCycle();
-    for (const u of money.expired) await recomputeUser(u);
     const clients = await recomputeAll();
-    if (sheets || clients || money.drafts) logger.info('[partners] access cycle', { sheets, apis: apiPartners.length, clients, ...money, expired: money.expired.length });
+    if (sheets || clients) logger.info('[partners] access cycle', { sheets, apis: apiPartners.length, clients });
     return { sheets, clients };
   } finally {
     running = false;

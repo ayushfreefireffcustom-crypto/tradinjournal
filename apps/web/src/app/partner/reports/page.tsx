@@ -1,14 +1,14 @@
 'use client';
 
 // Advanced partner reports: every funnel step per day, signup-month cohorts
-// (retention), channels through to unlocked, tool and feature usage, paid
-// subscriptions and strategy subscribers, and earnings by month. CSV export of clients.
+// (retention), channels through to unlocked, tool and feature usage, package
+// holders and strategy subscribers, and IB earnings by month. CSV export of clients.
 import { useCallback, useEffect, useState } from 'react';
 import { DownloadSimple } from '@phosphor-icons/react';
 import AppShell from '@/components/app-shell';
 import { useAccounts } from '@/lib/use-accounts';
 import { PartnerApiError } from '@/lib/partner-api';
-import { cash, ibApi, PRODUCT_TYPE_LABEL, type ProductType, type Range, type Reports } from '@/lib/ib-api';
+import { ibApi, PRODUCT_TYPE_LABEL, type ProductType, type Range, type Reports } from '@/lib/ib-api';
 import PartnerGate, { GATE_CODES, type GateReason } from '@/components/v6/account/partner-gate';
 import { RangeSeg, n, pct } from '@/components/v6/account/partner-parts';
 import { CohortTable, DailyMultiples, MonthBars } from '@/components/v6/account/ib-charts';
@@ -83,12 +83,12 @@ export default function PartnerReportsPage() {
                 )}
               </section>
               <section className="x-card" data-testid="reports-subs">
-                <div className="x-ch"><h2>Subscriptions</h2></div>
-                {d.marketplace.packageSubs.length + d.marketplace.strategySubs.length === 0 ? <p className="x-muted ib-pad">No paid packages or marketplace strategies yet.</p> : (
-                  <div className="x-tblwrap"><table className="x-tbl ad-tbl ib-tbl"><thead><tr><th>Name</th><th>Kind</th><th className="n">Active</th><th className="n">All time</th><th className="n">Revenue</th></tr></thead>
+                <div className="x-ch"><h2>Subscriptions</h2><span className="x-sub">package holders and strategy followers</span></div>
+                {d.marketplace.packageSubs.length + d.marketplace.strategySubs.length === 0 ? <p className="x-muted ib-pad">No packages or marketplace strategies yet.</p> : (
+                  <div className="x-tblwrap"><table className="x-tbl ad-tbl ib-tbl"><thead><tr><th>Name</th><th>Kind</th><th className="n">Active</th><th className="n">All time</th></tr></thead>
                     <tbody>
-                      {d.marketplace.packageSubs.map(p => <tr key={`p-${p.name}`}><td>{p.name}</td><td className="x-muted">Paid package</td><td className="n m">{n(p.active)}</td><td className="n m">{n(p.total)}</td><td className="n m">{cash(p.revenueCents, p.currency)}</td></tr>)}
-                      {d.marketplace.strategySubs.map(s => <tr key={`s-${s.name}`}><td>{s.name}</td><td className="x-muted">Marketplace strategy</td><td className="n m">{n(s.active)}</td><td className="n m">{n(s.total)}</td><td className="n m x-dim">—</td></tr>)}
+                      {d.marketplace.packageSubs.map(p => <tr key={`p-${p.name}`}><td>{p.name}</td><td className="x-muted">Package</td><td className="n m">{n(p.active)}</td><td className="n m">{n(p.total)}</td></tr>)}
+                      {d.marketplace.strategySubs.map(s => <tr key={`s-${s.name}`}><td>{s.name}</td><td className="x-muted">Marketplace strategy</td><td className="n m">{n(s.active)}</td><td className="n m">{n(s.total)}</td></tr>)}
                     </tbody></table></div>
                 )}
               </section>

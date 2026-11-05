@@ -27,7 +27,7 @@ const SIGNAL: Record<string, string> = {
   'signup-burst': 'Many signups from one network',
   'listed-unproven': 'On the partner’s list, but it’s an account TRADElogs can’t sign in to (MT4 / other): confirm it belongs to this client',
 };
-const KINDS: [string, string][] = [['', 'Everything'], ['ib', 'List syncs'], ['verify', 'Verifications'], ['access', 'Access'], ['consent', 'Consent'], ['partner', 'Partner status'], ['product', 'Tools'], ['sale', 'Sales'], ['payout', 'Payouts'], ['subscription', 'Subscriptions']];
+const KINDS: [string, string][] = [['', 'Everything'], ['ib', 'List syncs'], ['verify', 'Verifications'], ['access', 'Access'], ['consent', 'Consent'], ['partner', 'Partner status'], ['product', 'Tools'], ['package', 'Packages']];
 
 export default function AdminPartnerReviewsPage() {
   const { accounts, selected, select } = useAccounts();

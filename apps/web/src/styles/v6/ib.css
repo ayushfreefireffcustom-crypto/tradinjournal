@@ -198,7 +198,7 @@
   /* Admin programme: partner, referred, verified, unlocked. */
   .v6 .ib-ptbl th:is(:nth-child(3), :nth-child(5), :nth-child(n+7)), .v6 .ib-ptbl td:is(:nth-child(3), :nth-child(5), :nth-child(n+7)) { display: none; }
   /* Packages on offer: package (partner + counts under it), price, status, action. */
-  .v6 .ib-pkgtbl th:is(:nth-child(2), :nth-child(3), :nth-child(5), :nth-child(6)), .v6 .ib-pkgtbl td:is(:nth-child(2), :nth-child(3), :nth-child(5), :nth-child(6)) { display: none; }
+  .v6 .ib-pkgtbl th:is(:nth-child(2), :nth-child(3), :nth-child(4)), .v6 .ib-pkgtbl td:is(:nth-child(2), :nth-child(3), :nth-child(4)) { display: none; }
   /* Payouts: partner (pay-to under it), status, amount, actions. */
   .v6 .ib-potbl th:is(:nth-child(2), :nth-child(3)), .v6 .ib-potbl td:is(:nth-child(2), :nth-child(3)) { display: none; }
   .v6 .ib-potbl .ib-br-btns { flex-direction: column; align-items: stretch; }

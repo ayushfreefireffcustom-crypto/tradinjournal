@@ -10,7 +10,7 @@ import { DownloadSimple } from '@phosphor-icons/react';
 import AppShell from '@/components/app-shell';
 import AdminOnly from '@/components/v6/admin/admin-only';
 import { useAccounts } from '@/lib/use-accounts';
-import { cash, ibApi, money, per, type AdminPackageRow, type CohortRow, type ProgramOverview, type ProgramSettings, type Range } from '@/lib/ib-api';
+import { ibApi, money, type AdminPackageRow, type CohortRow, type ProgramOverview, type ProgramSettings, type Range } from '@/lib/ib-api';
 import { CohortTable } from '@/components/v6/account/ib-charts';
 import { useConfirm } from '@/components/confirm-dialog';
 import { IArrowLeft } from '@/components/v6/icons';
@@ -127,16 +127,15 @@ export default function AdminPartnerProgramPage() {
             </section>
 
             <section className="x-card" data-testid="program-packages">
-              <div className="x-ch"><h2>Packages on offer</h2><span className="x-sub"><span className="m">{pkgs?.length ?? 0}</span></span><div className="x-r"><Link href="/admin/partners/finance" className="x-btn x-btn--sm x-btn--ghost">Finance</Link></div></div>
+              <div className="x-ch"><h2>Packages on offer</h2><span className="x-sub"><span className="m">{pkgs?.length ?? 0}</span></span></div>
               {!pkgs ? <div className="x-skel x-skel--in" /> : pkgs.length === 0 ? <p className="x-muted ib-pad">No partner has created a package yet.</p> : (
-                <div className="x-tblwrap ad-scroll"><table className="x-tbl ad-tbl ib-tbl ib-pkgtbl"><thead><tr><th>Package</th><th>Partner</th><th>Contents</th><th>Price</th><th className="n">Unlocked</th><th className="n">Paying</th><th>Status</th><th className="n"><span className="sr-only">Actions</span></th></tr></thead>
+                <div className="x-tblwrap ad-scroll"><table className="x-tbl ad-tbl ib-tbl ib-pkgtbl"><thead><tr><th>Package</th><th>Partner</th><th>Contents</th><th className="n">Unlocked</th><th>Status</th><th className="n"><span className="sr-only">Actions</span></th></tr></thead>
                   <tbody>{pkgs.map(p => (
                     <tr key={p.id}>
-                      <td><b>{p.name}</b><small className="ad-small ib-m-only"><Link className="x-link" href={`/admin/partners/${p.partnerId}`}>{p.partner}</Link> · {p.holders} unlocked · {p.subscribers} paying</small></td>
+                      <td><b>{p.name}</b><small className="ad-small ib-m-only"><Link className="x-link" href={`/admin/partners/${p.partnerId}`}>{p.partner}</Link> · {p.holders} unlocked</small></td>
                       <td><Link className="x-link" href={`/admin/partners/${p.partnerId}`}>{p.partner}</Link></td>
                       <td className="x-muted">{plural(p.perks.length, 'feature')} · {plural(p.productIds.length, 'tool')} · {plural(p.templateIds.length, 'strategy', 'strategies')}</td>
-                      <td className="m">{p.priceCents ? `${cash(p.priceCents, p.currency)} / ${per(p.periodDays)}` : 'Free'}</td>
-                      <td className="n m">{p.holders}</td><td className="n m">{p.subscribers}</td>
+                      <td className="n m">{p.holders}</td>
                       <td>{p.adminHold ? <span className="x-tag x-tag--r">Paused by admin</span> : <span className={`x-tag ${p.status === 'LIVE' ? 'x-tag--g' : ''}`}>{p.status.toLowerCase()}</span>}</td>
                       <td className="n"><button type="button" className="x-btn x-btn--sm x-btn--ghost" onClick={() => void hold(p)} data-testid={`pkg-hold-${p.name}`}>{p.adminHold ? 'Release' : 'Pause'}</button></td>
                     </tr>

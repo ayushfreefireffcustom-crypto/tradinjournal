@@ -84,13 +84,10 @@ export function createApp(): Express {
   app.all('/api/auth/*', toNodeHandler(auth));
 
   // Bigger bodies only where they're expected: partner list / report / file uploads (≤2 MB
-  // decoded, base64 inflates ~33%). The Razorpay webhook needs the raw body for its signature,
-  // and broker postbacks may arrive form-encoded.
+  // decoded, base64 inflates ~33%). Broker postbacks may arrive form-encoded.
   const bigJson = express.json({ limit: '4mb' }), smallJson = express.json();
-  app.use('/api/payments/razorpay/webhook', express.raw({ type: '*/*', limit: '1mb' }));
   app.use('/api/ib/postback', express.urlencoded({ extended: false, limit: '64kb' }));
   app.use((req: Request, res: Response, next: NextFunction) => {
-    if (req.path === '/api/payments/razorpay/webhook') return next();
     const big = req.method !== 'GET' && /^\/api\/partner\/(brokers\/[^/]+\/(accounts|earnings)|products(\/[^/]+\/file)?)$/.test(req.path);
     return (big ? bigJson : smallJson)(req, res, next);
   });

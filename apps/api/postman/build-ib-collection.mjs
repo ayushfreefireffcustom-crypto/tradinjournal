@@ -155,7 +155,7 @@ folders.push(
 
   { name: '07 Feature locks', item: [
     req('Non-admin cannot change settings', 'PUT', `${B}/admin/partner-program/settings`, { as: 'honey', body: { activeMinTrades: 1, activeWindowDays: 30, activeMinLots: 0, graceDays: 7, partnerGraceDays: 7, lockedPerks: [] }, tests: [status(403)] }),
-    req('Default settings', 'GET', `${B}/admin/partner-program/settings`, { as: 'admin', tests: [status(200), json, t('nothing locked, 1 trade / 30 days', "pm.expect(d).to.eql({ activeMinTrades: 1, activeWindowDays: 30, activeMinLots: 0, graceDays: 7, partnerGraceDays: 7, lockedPerks: [], platformSharePct: 20, refundDays: 7, payoutMinimumCents: 5000, currency: 'USD', ibApiHosts: [] });")] }),
+    req('Default settings', 'GET', `${B}/admin/partner-program/settings`, { as: 'admin', tests: [status(200), json, t('nothing locked, 1 trade / 30 days', "pm.expect(d).to.eql({ activeMinTrades: 1, activeWindowDays: 30, activeMinLots: 0, graceDays: 7, partnerGraceDays: 7, lockedPerks: [], ibApiHosts: [] });")] }),
     req('With nothing locked SignalX is open to t2', 'GET', `${B}/trader/strategies`, { as: 't2', tests: [t('not perk-locked', "pm.expect(pm.response.code).to.not.eql(403);")] }),
     req('Admin locks SignalX to package holders', 'PUT', `${B}/admin/partner-program/settings`, { as: 'admin', body: { activeMinTrades: 1, activeWindowDays: 30, activeMinLots: 0, graceDays: 7, partnerGraceDays: 3, lockedPerks: ['signalx', 'not-a-perk'] },
       tests: [status(200), json, t('unknown perks dropped', "pm.expect(d.lockedPerks).to.eql(['signalx']); pm.expect(d.partnerGraceDays).to.eql(3);")] }),
@@ -243,19 +243,7 @@ folders.push(
 
 // ── Phase 2 ───────────────────────────────────────────────────────────────────
 const P = '{{baseUrl}}/api';
-const SETTINGS = { activeMinTrades: 1, activeWindowDays: 30, activeMinLots: 0, graceDays: 7, partnerGraceDays: 3, lockedPerks: ['signalx'], platformSharePct: 20, refundDays: 0, payoutMinimumCents: 100, currency: 'USD', ibApiHosts: [] };
-const sigPre = (orderVar, payVar) => [
-  `const CryptoJS = require('crypto-js');`,
-  `const o = pm.collectionVariables.get('${orderVar}'), p = '${payVar}_' + Date.now();`,
-  `pm.collectionVariables.set('${payVar}', p);`,
-  `pm.collectionVariables.set('${payVar}Sig', CryptoJS.HmacSHA256(o + '|' + p, pm.variables.get('rzpSecret')).toString(CryptoJS.enc.Hex));`,
-];
-const hookPre = orderVar => [
-  `const CryptoJS = require('crypto-js');`,
-  `const body = JSON.stringify({ event: 'payment.captured', payload: { payment: { entity: { id: 'pay_hook_' + Date.now(), order_id: pm.collectionVariables.get('${orderVar}') } } } });`,
-  `pm.collectionVariables.set('hookBody', body);`,
-  `pm.collectionVariables.set('hookSig', CryptoJS.HmacSHA256(body, pm.variables.get('rzpHookSecret')).toString(CryptoJS.enc.Hex));`,
-];
+const SETTINGS = { activeMinTrades: 1, activeWindowDays: 30, activeMinLots: 0, graceDays: 7, partnerGraceDays: 3, lockedPerks: ['signalx'], ibApiHosts: [] };
 const pb = (name, query, tests) => req(name, 'GET', `${P}/ib/postback/{{pbToken}}`, { query, tests });
 const pkgOf = (n) => `const k = d.packages.find(p => p.name === '${n}');`;
 
@@ -290,8 +278,8 @@ folders.push(
       body: { config: { baseUrl: 'https://evil.example.com', auth: 'bearer', clientsPath: '/clients', fields: { accountId: 'id' } }, secret: 'k-123456789' }, tests: [status(422), code('IB_API_HOST')] }),
     req('API over plain http → 422', 'PUT', `${P}/partner/brokers/{{xl2}}/api`, { as: 'honey',
       body: { config: { baseUrl: 'http://169.254.169.254', auth: 'bearer', clientsPath: '/latest', fields: { accountId: 'id' } }, secret: 'k-123456789' }, tests: [status(422)] }),
-    req('Admin saves money settings', 'PUT', `${P}/admin/partner-program/settings`, { as: 'admin', body: SETTINGS, tests: [status(200), json, t('saved', "pm.expect(d.refundDays).to.eql(0); pm.expect(d.payoutMinimumCents).to.eql(100);")] }),
-    req('Partner earnings show reported IB commission', 'GET', `${P}/partner/earnings`, { as: 'honey', tests: [status(200), json, t('12.5 + 20 + 5.5', 'pm.expect(d.ib.total).to.eql(38);')] }),
+    req('Admin saves settings', 'PUT', `${P}/admin/partner-program/settings`, { as: 'admin', body: SETTINGS, tests: [status(200), json, t('saved, no money settings', "pm.expect(d.partnerGraceDays).to.eql(3); pm.expect(d).to.not.have.property('platformSharePct');")] }),
+    req('Partner earnings show reported IB commission only', 'GET', `${P}/partner/earnings`, { as: 'honey', tests: [status(200), json, t('12.5 + 20 + 5.5, nothing else', "pm.expect(d.ib.total).to.eql(38); pm.expect(Object.keys(d)).to.eql(['ib']);")] }),
   ] },
 
   { name: '14 MT4 and other platforms', item: [
@@ -339,54 +327,28 @@ folders.push(
     req('Changing approved code needs a new review', 'PATCH', `${P}/partner/products/{{prod1}}`, { as: 'honey', body: { content: '//@version=5\nindicator("Honey Ribbon v2")' }, tests: [status(200), json, t('v2 pending', "pm.expect(d.status).to.eql('PENDING'); pm.expect(d.version).to.eql(2);")] }),
     req('Until then clients only see the EA', 'GET', `${P}/partner-access`, { as: 't1', tests: [status(200), json, t('1 tool', "pm.expect(d.products.map(p => p.name)).to.eql(['Honey EA']);")] }),
     req('Admin approves v2', 'POST', `${P}/admin/partner-program/products/{{prod1}}/review`, { as: 'admin', body: { action: 'approve' }, tests: [status(200)] }),
-    req('Admin turns tools off for Honey', 'PUT', `${P}/admin/partners/{{honeyPid}}/terms`, { as: 'admin', body: { revenueSharePct: null, permissions: { canOfferProducts: false, canSellPackages: true, maxPackages: 10 } }, tests: [status(200)] }),
+    req('Admin turns tools off for Honey', 'PUT', `${P}/admin/partners/{{honeyPid}}/terms`, { as: 'admin', body: { permissions: { canOfferProducts: false, maxPackages: 10 } }, tests: [status(200)] }),
     req('Honey can’t add tools now → 403', 'POST', `${P}/partner/products`, { as: 'honey', body: { type: 'GUIDE', name: 'Playbook', url: 'https://example.com/guide.pdf' }, tests: [status(403), code('PRODUCTS_NOT_ALLOWED')] }),
-    req('Admin turns them back on', 'PUT', `${P}/admin/partners/{{honeyPid}}/terms`, { as: 'admin', body: { revenueSharePct: 80, permissions: { canOfferProducts: true, canSellPackages: true, maxPackages: 10 } }, tests: [status(200), json, t('80%', 'pm.expect(d.sharePct).to.eql(80);')] }),
+    req('Admin turns them back on', 'PUT', `${P}/admin/partners/{{honeyPid}}/terms`, { as: 'admin', body: { permissions: { canOfferProducts: true, maxPackages: 10 } }, tests: [status(200), json, t('on', 'pm.expect(d.permissions).to.eql({ canOfferProducts: true, maxPackages: 10 });')] }),
   ] },
 
-  { name: '16 Paid packages', item: [
-    req('Honey publishes VIP at $19 / month', 'POST', `${P}/partner/packages`, { as: 'honey', body: { name: 'VIP', perks: ['options'], requireActive: false, priceCents: 1900, periodDays: 30, status: 'LIVE' },
-      tests: [status(201), json, t('priced', "pm.expect(d.priceCents).to.eql(1900); pm.expect(d.currency).to.eql('USD'); pm.expect(d.holders).to.eql(0);"), "pm.collectionVariables.set('pkgVip', d.id);"] }),
-    req('t1 can subscribe (meets everything else)', 'GET', `${P}/partner-access`, { as: 't1', tests: [status(200), json, pkgOf('VIP'),
-      t('locked, subscribable, says the price', "pm.expect(k.status).to.eql('LOCKED'); pm.expect(k.canSubscribe).to.eql(true); pm.expect(k.reasons).to.eql(['Subscribe ($19 / month) to unlock.']); pm.expect(d.paymentsEnabled).to.eql(true);")] }),
-    req('t3 can’t pay for what they can’t use → 409', 'POST', `${P}/partner-access/packages/{{pkgVip}}/checkout`, { as: 't3', tests: [status(409)] }),
-    req('t1 starts checkout', 'POST', `${P}/partner-access/packages/{{pkgVip}}/checkout`, { as: 't1', tests: [status(200), json,
-      t('Razorpay order', "pm.expect(d.provider).to.eql('razorpay'); pm.expect(d.orderId).to.match(/^order_/); pm.expect(d.amount).to.eql(1900); pm.expect(d.keyId).to.eql('rzp_test_partnersuite');"),
-      "pm.collectionVariables.set('order1', d.orderId);"] }),
-    req('A forged signature is refused → 422', 'POST', `${P}/partner-access/payments/verify`, { as: 't1', body: { orderId: '{{order1}}', paymentId: 'pay_fake', signature: 'deadbeef' }, tests: [status(422)] }),
-    req('Valid payment unlocks VIP', 'POST', `${P}/partner-access/payments/verify`, { as: 't1', pre: sigPre('order1', 'pay1'), body: { orderId: '{{order1}}', paymentId: '{{pay1}}', signature: '{{pay1Sig}}' },
-      tests: [status(200), json, pkgOf('VIP'), t('unlocked, paid ~30 days', "pm.expect(k.status).to.eql('ACTIVE'); pm.expect(k.subscription.status).to.eql('ACTIVE'); const days = (Date.parse(k.subscription.currentPeriodEnd) - Date.now()) / 864e5; pm.expect(days).to.be.within(29.9, 30.01);")] }),
-    req('Same confirmation twice doesn’t double count', 'POST', `${P}/partner-access/payments/verify`, { as: 't1', body: { orderId: '{{order1}}', paymentId: '{{pay1}}', signature: '{{pay1Sig}}' }, tests: [status(200)] }),
-    req('Partner sees the sale (keeps 80%)', 'GET', `${P}/partner/earnings`, { as: 'honey', tests: [status(200), json, t('1 sale, 1520 share pending', "pm.expect(d.sales.count).to.eql(1); pm.expect(d.sales.grossCents).to.eql(1900); pm.expect(d.balance.pendingCents).to.eql(1520); pm.expect(d.revenueSharePct).to.eql(80);")] }),
-    req('t2 checkout', 'POST', `${P}/partner-access/packages/{{pkgVip}}/checkout`, { as: 't2', tests: [status(200), json, "pm.collectionVariables.set('order2', d.orderId);"] }),
-    req('Webhook with a bad signature → 400', 'POST', `${P}/payments/razorpay/webhook`, { pre: hookPre('order2'), body: '{{hookBody}}', tests: [status(400)] }),
-    req('Webhook confirms t2’s payment', 'POST', `${P}/payments/razorpay/webhook`, { pre: hookPre('order2'), body: '{{hookBody}}', tests: [status(200)] }),
-    req('t2 holds VIP', 'GET', `${P}/partner-access`, { as: 't2', tests: [status(200), json, pkgOf('VIP'), t('active', "pm.expect(k.status).to.eql('ACTIVE');")] }),
-    req('Money cycle: refund window over, payout drafted', 'POST', `{{baseUrl}}/internal/partners/money-cycle`, { body: {}, tests: [status(200), json, t('payable + 1 draft', 'pm.expect(d.payable).to.eql(2); pm.expect(d.drafts).to.eql(1);')] }),
-    req('Honey adds payout details', 'PUT', `${P}/partner/payout-details`, { as: 'honey', body: { details: 'UPI: honey@okicici' }, tests: [status(200)] }),
-    req('Finance shows the draft with where to pay', 'GET', `${P}/admin/partner-program/finance`, { as: 'admin', tests: [status(200), json,
-      "const p = d.payouts.find(x => x.status === 'DRAFT');",
-      t('3040 to UPI', "pm.expect(p.amountCents).to.eql(3040); pm.expect(p.payoutDetails).to.eql('UPI: honey@okicici'); pm.expect(d.totals.grossCents).to.eql(3800); pm.expect(d.totals.platformCents).to.eql(760);"),
-      "pm.collectionVariables.set('payout1', p.id);", "pm.collectionVariables.set('payT2', d.payments.find(x => x.client === pm.variables.get('t2Email')).id);"] }),
-    req('Non-admin can’t see finance', 'GET', `${P}/admin/partner-program/finance`, { as: 'honey', tests: [status(403)] }),
-    req('Marking paid needs a reference → 422', 'POST', `${P}/admin/partner-program/payouts/{{payout1}}/paid`, { as: 'admin', body: { reference: '' }, tests: [status(422)] }),
-    req('Admin marks the payout paid', 'POST', `${P}/admin/partner-program/payouts/{{payout1}}/paid`, { as: 'admin', body: { reference: 'UPI-TXN-889' }, tests: [status(200)] }),
-    req('Partner sees it paid', 'GET', `${P}/partner/earnings`, { as: 'honey', tests: [status(200), json, t('paid', "pm.expect(d.balance.paidCents).to.eql(3040); pm.expect(d.payouts[0].reference).to.eql('UPI-TXN-889'); pm.expect(d.hasPayoutDetails).to.eql(true);")] }),
-    req('Admin refunds t2', 'POST', `${P}/admin/partner-program/payments/{{payT2}}/refund`, { as: 'admin', tests: [status(200)] }),
-    req('t2 loses VIP straight away', 'GET', `${P}/partner-access`, { as: 't2', tests: [status(200), json, pkgOf('VIP'), t('suspended', "pm.expect(k.status).to.eql('SUSPENDED');")] }),
-    req('Clawback lands on Honey’s balance', 'GET', `${P}/partner/earnings`, { as: 'honey', tests: [status(200), json, t('-1520 adjustment payable', "pm.expect(d.ledger.some(l => l.amountCents === -1520 && l.status === 'PAYABLE')).to.eql(true);")] }),
-    req('t1 cancels', 'POST', `${P}/partner-access/subscriptions/{{t1Sub}}/cancel`, { as: 't1',
-      pre: ["pm.sendRequest({ url: pm.variables.get('baseUrl') + '/api/partner-access', header: { Cookie: pm.collectionVariables.get('t1Cookie') } }, (e, r) => pm.collectionVariables.set('t1Sub', r.json().data.packages.find(p => p.name === 'VIP').subscription.id));"],
-      tests: [status(200), json, pkgOf('VIP'), t('cancelled but still on until the end', "pm.expect(k.subscription.status).to.eql('CANCELLED'); pm.expect(k.status).to.eql('ACTIVE');")] }),
-    req('Admin grants t4 VIP for 10 days', 'POST', `${P}/admin/partner-program/grants`, { as: 'admin', body: { email: '{{t4Email}}', packageId: '{{pkgVip}}', days: 10, note: 'Paid by bank transfer' }, tests: [status(200)] }),
-    req('t4 holds VIP (manual)', 'GET', `${P}/partner-access`, { as: 't4', tests: [status(200), json, pkgOf('VIP'), t('active, manual', "pm.expect(k.status).to.eql('ACTIVE'); pm.expect(k.subscription.provider).to.eql('manual');")] }),
+  { name: '16 Package moderation', item: [
+    req('Honey publishes VIP (packages are free)', 'POST', `${P}/partner/packages`, { as: 'honey', body: { name: 'VIP', perks: ['options'], requireActive: false, status: 'LIVE' },
+      tests: [status(201), json, t('no price fields', "pm.expect(d).to.not.have.property('priceCents'); pm.expect(d).to.not.have.property('subscribers');"), "pm.collectionVariables.set('pkgVip', d.id);"] }),
+    req('A price is ignored', 'PATCH', `${P}/partner/packages/{{pkgVip}}`, { as: 'honey', body: { priceCents: 2900 }, tests: [status(200), json, t('still no price', "pm.expect(d).to.not.have.property('priceCents');")] }),
+    req('t1 unlocks VIP by qualifying', 'GET', `${P}/partner-access`, { as: 't1', tests: [status(200), json, pkgOf('VIP'),
+      t('active, nothing to pay', "pm.expect(k.status).to.eql('ACTIVE'); pm.expect(k.reasons).to.eql([]); pm.expect(k).to.not.have.property('canSubscribe'); pm.expect(d).to.not.have.property('paymentsEnabled');")] }),
+    req('Checkout is gone → 404', 'POST', `${P}/partner-access/packages/{{pkgVip}}/checkout`, { as: 't1', tests: [status(404)] }),
+    req('Razorpay webhook is gone → 404', 'POST', `${P}/payments/razorpay/webhook`, { body: {}, tests: [status(404)] }),
+    req('Payout details are gone → 404', 'PUT', `${P}/partner/payout-details`, { as: 'honey', body: { details: 'UPI: honey@okicici' }, tests: [status(404)] }),
+    req('Admin finance is gone → 404', 'GET', `${P}/admin/partner-program/finance`, { as: 'admin', tests: [status(404)] }),
     req('Admin pauses VIP', 'POST', `${P}/admin/partner-program/packages/{{pkgVip}}/hold`, { as: 'admin', body: { adminHold: true, note: 'Checking the claims in the description' }, tests: [status(200)] }),
-    req('t1’s VIP goes to grace', 'GET', `${P}/partner-access`, { as: 't1', tests: [status(200), json, "const k = d.packages.find(p => p.name === 'VIP');", t('grace with the reason', "pm.expect(k.status).to.eql('GRACE'); pm.expect(k.reasons.join(' ')).to.include('paused');")] }),
+    req('t1’s VIP goes to grace', 'GET', `${P}/partner-access`, { as: 't1', tests: [status(200), json, pkgOf('VIP'), t('grace with the reason', "pm.expect(k.status).to.eql('GRACE'); pm.expect(k.reasons.join(' ')).to.include('paused');")] }),
     req('Admin releases VIP', 'POST', `${P}/admin/partner-program/packages/{{pkgVip}}/hold`, { as: 'admin', body: { adminHold: false }, tests: [status(200)] }),
     req('t1’s VIP is back', 'GET', `${P}/partner-access`, { as: 't1', tests: [status(200), json, pkgOf('VIP'), t('active', "pm.expect(k.status).to.eql('ACTIVE');")] }),
-    req('Admin turns off paid packages for Honey', 'PUT', `${P}/admin/partners/{{honeyPid}}/terms`, { as: 'admin', body: { revenueSharePct: 80, permissions: { canOfferProducts: true, canSellPackages: false, maxPackages: 10 } }, tests: [status(200)] }),
-    req('Raising the price is refused → 403', 'PATCH', `${P}/partner/packages/{{pkgVip}}`, { as: 'honey', body: { priceCents: 2900 }, tests: [status(403), code('SALES_NOT_ALLOWED')] }),
-    req('Admin adds an adjustment', 'POST', `${P}/admin/partners/{{honeyPid}}/adjustments`, { as: 'admin', body: { amountCents: 2500, note: 'Launch bonus' }, tests: [status(200)] }),
+    req('Admin limits Honey to 1 package', 'PUT', `${P}/admin/partners/{{honeyPid}}/terms`, { as: 'admin', body: { permissions: { canOfferProducts: true, maxPackages: 1 } }, tests: [status(200)] }),
+    req('Another package is refused → 409', 'POST', `${P}/partner/packages`, { as: 'honey', body: { name: 'Extra', perks: ['options'], status: 'DRAFT' }, tests: [status(409)] }),
+    req('Admin restores the limit', 'PUT', `${P}/admin/partners/{{honeyPid}}/terms`, { as: 'admin', body: { permissions: { canOfferProducts: true, maxPackages: 10 } }, tests: [status(200)] }),
   ] },
 
   { name: '17 Reports', item: [
@@ -394,22 +356,20 @@ folders.push(
       t('daily series with every step', "pm.expect(d.daily.length).to.be.at.least(1); pm.expect(d.daily.reduce((n, x) => n + x.signups, 0)).to.eql(4); pm.expect(d.daily.reduce((n, x) => n + x.verified, 0)).to.be.at.least(3);"),
       t('cohort', "pm.expect(d.cohorts[0].signups).to.eql(4); pm.expect(d.cohorts[0].verified).to.be.at.least(3);"),
       t('tools used', "pm.expect(d.products.find(p => p.name === 'Honey Ribbon').opens).to.be.at.least(1);"),
-      t('subscriptions', "const v = d.marketplace.packageSubs.find(p => p.name === 'VIP'); pm.expect(v.total).to.eql(3); pm.expect(v.revenueCents).to.eql(1900);"),
-      t('IB earnings by month', "pm.expect(d.earningsByMonth.reduce((n, m) => n + m.ib, 0)).to.eql(38);")] }),
+      t('package holders', "const v = d.marketplace.packageSubs.find(p => p.name === 'VIP'); pm.expect(v.active).to.be.at.least(1); pm.expect(v).to.not.have.property('revenueCents');"),
+      t('IB earnings by month', "pm.expect(d.earningsByMonth.reduce((n, m) => n + m.ib, 0)).to.eql(38); pm.expect(d.earningsByMonth[0]).to.not.have.property('salesShareCents');")] }),
     req('Partner CSV keeps P&L private without consent', 'GET', `${P}/partner/export`, { as: 'honey', tests: [status(200),
       t('csv', "const txt = pm.response.text(); pm.expect(txt.split('\\n')[0]).to.include('broker_check'); pm.expect(txt).to.not.include('@partners.test'); pm.expect(txt).to.include('private');")] }),
     req('Admin cohorts', 'GET', `${P}/admin/partner-program/cohorts`, { as: 'admin', tests: [status(200), json, t('rows', 'pm.expect(d[0].signups).to.eql(4);')] }),
-    req('Admin package list', 'GET', `${P}/admin/partner-program/packages`, { as: 'admin', tests: [status(200), json, t('VIP with subscribers', "const v = d.find(p => p.name === 'VIP'); pm.expect(v.partner).to.eql(pm.variables.get('honeyName')); pm.expect(v.subscribers).to.eql(2);")] }),
-    req('Event log has money events', 'GET', `${P}/admin/partner-program/events`, { as: 'admin', query: 'partnerId={{honeyPid}}&limit=500', tests: [status(200), json,
-      t('kinds', "const k = d.map(e => e.kind); ['sale.paid','sale.refund','payout.draft','payout.paid','product.approve','subscription.grant','package.hold','partner.terms','commission.adjust','account.external_add'].forEach(x => pm.expect(k).to.include(x));")] }),
+    req('Admin package list', 'GET', `${P}/admin/partner-program/packages`, { as: 'admin', tests: [status(200), json, t('VIP with holders', "const v = d.find(p => p.name === 'VIP'); pm.expect(v.partner).to.eql(pm.variables.get('honeyName')); pm.expect(v.holders).to.be.at.least(1);")] }),
+    req('Event log has moderation events', 'GET', `${P}/admin/partner-program/events`, { as: 'admin', query: 'partnerId={{honeyPid}}&limit=500', tests: [status(200), json,
+      t('kinds', "const k = d.map(e => e.kind); ['product.approve','package.hold','package.release','partner.terms','account.external_add'].forEach(x => pm.expect(k).to.include(x));")] }),
   ] },
 );
 
-// Internal calls carry the shared token; webhooks carry Razorpay's signature header.
+// Internal calls carry the shared token.
 for (const f of folders) for (const r of f.item) {
   if (r.request.url.raw.includes('/internal/partners/')) r.request.header.push(internal);
-  if (r.name === 'Webhook with a bad signature → 400') r.request.header.push({ key: 'X-Razorpay-Signature', value: 'bad' });
-  if (r.name === 'Webhook confirms t2’s payment') r.request.header.push({ key: 'X-Razorpay-Signature', value: '{{hookSig}}' });
 }
 const g = folders.find(f => f.name.startsWith('09b')).item;
 if (!g[0].request.header.includes(internal)) g[0].request.header.push(internal);
@@ -420,8 +380,6 @@ const variable = [
   { key: 'appUrl', value: 'http://localhost:3060' },
   { key: 'password', value: 'Partner-test-Passw0rd!' },
   { key: 'internalToken', value: 'partner-test-internal-token' },
-  { key: 'rzpSecret', value: 'partner-suite-checkout-secret' },
-  { key: 'rzpHookSecret', value: 'partner-suite-webhook-secret' },
   ...Object.entries(USERS).flatMap(([k, n]) => [
     { key: `${k}Email`, value: k === 'admin' ? 'admin@partners.test' : `${k}@partners.test` },
     { key: `${k}Name`, value: n },

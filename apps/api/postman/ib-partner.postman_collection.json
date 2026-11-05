@@ -2978,7 +2978,7 @@
                 "exec": [
                   "pm.test('status 200', () => pm.response.to.have.status(200));",
                   "const d = pm.response.json().data;",
-                  "pm.test(\"nothing locked, 1 trade / 30 days\", () => { pm.expect(d).to.eql({ activeMinTrades: 1, activeWindowDays: 30, activeMinLots: 0, graceDays: 7, partnerGraceDays: 7, lockedPerks: [], platformSharePct: 20, refundDays: 7, payoutMinimumCents: 5000, currency: 'USD', ibApiHosts: [] }); });"
+                  "pm.test(\"nothing locked, 1 trade / 30 days\", () => { pm.expect(d).to.eql({ activeMinTrades: 1, activeWindowDays: 30, activeMinLots: 0, graceDays: 7, partnerGraceDays: 7, lockedPerks: [], ibApiHosts: [] }); });"
                 ]
               }
             }
@@ -5830,7 +5830,7 @@
           }
         },
         {
-          "name": "Admin saves money settings",
+          "name": "Admin saves settings",
           "protocolProfileBehavior": {
             "disableCookies": true,
             "followRedirects": false
@@ -5843,7 +5843,7 @@
                 "exec": [
                   "pm.test('status 200', () => pm.response.to.have.status(200));",
                   "const d = pm.response.json().data;",
-                  "pm.test(\"saved\", () => { pm.expect(d.refundDays).to.eql(0); pm.expect(d.payoutMinimumCents).to.eql(100); });"
+                  "pm.test(\"saved, no money settings\", () => { pm.expect(d.partnerGraceDays).to.eql(3); pm.expect(d).to.not.have.property('platformSharePct'); });"
                 ]
               }
             }
@@ -5874,7 +5874,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"activeMinTrades\": 1,\n  \"activeWindowDays\": 30,\n  \"activeMinLots\": 0,\n  \"graceDays\": 7,\n  \"partnerGraceDays\": 3,\n  \"lockedPerks\": [\n    \"signalx\"\n  ],\n  \"platformSharePct\": 20,\n  \"refundDays\": 0,\n  \"payoutMinimumCents\": 100,\n  \"currency\": \"USD\",\n  \"ibApiHosts\": []\n}",
+              "raw": "{\n  \"activeMinTrades\": 1,\n  \"activeWindowDays\": 30,\n  \"activeMinLots\": 0,\n  \"graceDays\": 7,\n  \"partnerGraceDays\": 3,\n  \"lockedPerks\": [\n    \"signalx\"\n  ],\n  \"ibApiHosts\": []\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -5884,7 +5884,7 @@
           }
         },
         {
-          "name": "Partner earnings show reported IB commission",
+          "name": "Partner earnings show reported IB commission only",
           "protocolProfileBehavior": {
             "disableCookies": true,
             "followRedirects": false
@@ -5897,7 +5897,7 @@
                 "exec": [
                   "pm.test('status 200', () => pm.response.to.have.status(200));",
                   "const d = pm.response.json().data;",
-                  "pm.test(\"12.5 + 20 + 5.5\", () => { pm.expect(d.ib.total).to.eql(38); });"
+                  "pm.test(\"12.5 + 20 + 5.5, nothing else\", () => { pm.expect(d.ib.total).to.eql(38); pm.expect(Object.keys(d)).to.eql(['ib']); });"
                 ]
               }
             }
@@ -7553,7 +7553,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"revenueSharePct\": null,\n  \"permissions\": {\n    \"canOfferProducts\": false,\n    \"canSellPackages\": true,\n    \"maxPackages\": 10\n  }\n}",
+              "raw": "{\n  \"permissions\": {\n    \"canOfferProducts\": false,\n    \"maxPackages\": 10\n  }\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -7628,7 +7628,7 @@
                 "exec": [
                   "pm.test('status 200', () => pm.response.to.have.status(200));",
                   "const d = pm.response.json().data;",
-                  "pm.test(\"80%\", () => { pm.expect(d.sharePct).to.eql(80); });"
+                  "pm.test(\"on\", () => { pm.expect(d.permissions).to.eql({ canOfferProducts: true, maxPackages: 10 }); });"
                 ]
               }
             }
@@ -7660,7 +7660,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"revenueSharePct\": 80,\n  \"permissions\": {\n    \"canOfferProducts\": true,\n    \"canSellPackages\": true,\n    \"maxPackages\": 10\n  }\n}",
+              "raw": "{\n  \"permissions\": {\n    \"canOfferProducts\": true,\n    \"maxPackages\": 10\n  }\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -7672,10 +7672,10 @@
       ]
     },
     {
-      "name": "16 Paid packages",
+      "name": "16 Package moderation",
       "item": [
         {
-          "name": "Honey publishes VIP at $19 / month",
+          "name": "Honey publishes VIP (packages are free)",
           "protocolProfileBehavior": {
             "disableCookies": true,
             "followRedirects": false
@@ -7688,7 +7688,7 @@
                 "exec": [
                   "pm.test('status 201', () => pm.response.to.have.status(201));",
                   "const d = pm.response.json().data;",
-                  "pm.test(\"priced\", () => { pm.expect(d.priceCents).to.eql(1900); pm.expect(d.currency).to.eql('USD'); pm.expect(d.holders).to.eql(0); });",
+                  "pm.test(\"no price fields\", () => { pm.expect(d).to.not.have.property('priceCents'); pm.expect(d).to.not.have.property('subscribers'); });",
                   "pm.collectionVariables.set('pkgVip', d.id);"
                 ]
               }
@@ -7719,7 +7719,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"VIP\",\n  \"perks\": [\n    \"options\"\n  ],\n  \"requireActive\": false,\n  \"priceCents\": 1900,\n  \"periodDays\": 30,\n  \"status\": \"LIVE\"\n}",
+              "raw": "{\n  \"name\": \"VIP\",\n  \"perks\": [\n    \"options\"\n  ],\n  \"requireActive\": false,\n  \"status\": \"LIVE\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -7729,7 +7729,7 @@
           }
         },
         {
-          "name": "t1 can subscribe (meets everything else)",
+          "name": "A price is ignored",
           "protocolProfileBehavior": {
             "disableCookies": true,
             "followRedirects": false
@@ -7742,319 +7742,13 @@
                 "exec": [
                   "pm.test('status 200', () => pm.response.to.have.status(200));",
                   "const d = pm.response.json().data;",
-                  "const k = d.packages.find(p => p.name === 'VIP');",
-                  "pm.test(\"locked, subscribable, says the price\", () => { pm.expect(k.status).to.eql('LOCKED'); pm.expect(k.canSubscribe).to.eql(true); pm.expect(k.reasons).to.eql(['Subscribe ($19 / month) to unlock.']); pm.expect(d.paymentsEnabled).to.eql(true); });"
+                  "pm.test(\"still no price\", () => { pm.expect(d).to.not.have.property('priceCents'); });"
                 ]
               }
             }
           ],
           "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Cookie",
-                "value": "{{t1Cookie}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/partner-access",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "partner-access"
-              ]
-            }
-          }
-        },
-        {
-          "name": "t3 can’t pay for what they can’t use → 409",
-          "protocolProfileBehavior": {
-            "disableCookies": true,
-            "followRedirects": false
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('status 409', () => pm.response.to.have.status(409));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Cookie",
-                "value": "{{t3Cookie}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/partner-access/packages/{{pkgVip}}/checkout",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "partner-access",
-                "packages",
-                "{{pkgVip}}",
-                "checkout"
-              ]
-            }
-          }
-        },
-        {
-          "name": "t1 starts checkout",
-          "protocolProfileBehavior": {
-            "disableCookies": true,
-            "followRedirects": false
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('status 200', () => pm.response.to.have.status(200));",
-                  "const d = pm.response.json().data;",
-                  "pm.test(\"Razorpay order\", () => { pm.expect(d.provider).to.eql('razorpay'); pm.expect(d.orderId).to.match(/^order_/); pm.expect(d.amount).to.eql(1900); pm.expect(d.keyId).to.eql('rzp_test_partnersuite'); });",
-                  "pm.collectionVariables.set('order1', d.orderId);"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Cookie",
-                "value": "{{t1Cookie}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/partner-access/packages/{{pkgVip}}/checkout",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "partner-access",
-                "packages",
-                "{{pkgVip}}",
-                "checkout"
-              ]
-            }
-          }
-        },
-        {
-          "name": "A forged signature is refused → 422",
-          "protocolProfileBehavior": {
-            "disableCookies": true,
-            "followRedirects": false
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('status 422', () => pm.response.to.have.status(422));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Cookie",
-                "value": "{{t1Cookie}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/partner-access/payments/verify",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "partner-access",
-                "payments",
-                "verify"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"orderId\": \"{{order1}}\",\n  \"paymentId\": \"pay_fake\",\n  \"signature\": \"deadbeef\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
-          "name": "Valid payment unlocks VIP",
-          "protocolProfileBehavior": {
-            "disableCookies": true,
-            "followRedirects": false
-          },
-          "event": [
-            {
-              "listen": "prerequest",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "const CryptoJS = require('crypto-js');",
-                  "const o = pm.collectionVariables.get('order1'), p = 'pay1_' + Date.now();",
-                  "pm.collectionVariables.set('pay1', p);",
-                  "pm.collectionVariables.set('pay1Sig', CryptoJS.HmacSHA256(o + '|' + p, pm.variables.get('rzpSecret')).toString(CryptoJS.enc.Hex));"
-                ]
-              }
-            },
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('status 200', () => pm.response.to.have.status(200));",
-                  "const d = pm.response.json().data;",
-                  "const k = d.packages.find(p => p.name === 'VIP');",
-                  "pm.test(\"unlocked, paid ~30 days\", () => { pm.expect(k.status).to.eql('ACTIVE'); pm.expect(k.subscription.status).to.eql('ACTIVE'); const days = (Date.parse(k.subscription.currentPeriodEnd) - Date.now()) / 864e5; pm.expect(days).to.be.within(29.9, 30.01); });"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Cookie",
-                "value": "{{t1Cookie}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/partner-access/payments/verify",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "partner-access",
-                "payments",
-                "verify"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"orderId\": \"{{order1}}\",\n  \"paymentId\": \"{{pay1}}\",\n  \"signature\": \"{{pay1Sig}}\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
-          "name": "Same confirmation twice doesn’t double count",
-          "protocolProfileBehavior": {
-            "disableCookies": true,
-            "followRedirects": false
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('status 200', () => pm.response.to.have.status(200));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Cookie",
-                "value": "{{t1Cookie}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/partner-access/payments/verify",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "partner-access",
-                "payments",
-                "verify"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"orderId\": \"{{order1}}\",\n  \"paymentId\": \"{{pay1}}\",\n  \"signature\": \"{{pay1Sig}}\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
-          "name": "Partner sees the sale (keeps 80%)",
-          "protocolProfileBehavior": {
-            "disableCookies": true,
-            "followRedirects": false
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('status 200', () => pm.response.to.have.status(200));",
-                  "const d = pm.response.json().data;",
-                  "pm.test(\"1 sale, 1520 share pending\", () => { pm.expect(d.sales.count).to.eql(1); pm.expect(d.sales.grossCents).to.eql(1900); pm.expect(d.balance.pendingCents).to.eql(1520); pm.expect(d.revenueSharePct).to.eql(80); });"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
+            "method": "PATCH",
             "header": [
               {
                 "key": "Content-Type",
@@ -8066,20 +7760,30 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/partner/earnings",
+              "raw": "{{baseUrl}}/api/partner/packages/{{pkgVip}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
                 "partner",
-                "earnings"
+                "packages",
+                "{{pkgVip}}"
               ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"priceCents\": 2900\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           }
         },
         {
-          "name": "t2 checkout",
+          "name": "t1 unlocks VIP by qualifying",
           "protocolProfileBehavior": {
             "disableCookies": true,
             "followRedirects": false
@@ -8092,7 +7796,49 @@
                 "exec": [
                   "pm.test('status 200', () => pm.response.to.have.status(200));",
                   "const d = pm.response.json().data;",
-                  "pm.collectionVariables.set('order2', d.orderId);"
+                  "const k = d.packages.find(p => p.name === 'VIP');",
+                  "pm.test(\"active, nothing to pay\", () => { pm.expect(k.status).to.eql('ACTIVE'); pm.expect(k.reasons).to.eql([]); pm.expect(k).to.not.have.property('canSubscribe'); pm.expect(d).to.not.have.property('paymentsEnabled'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{t1Cookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner-access",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner-access"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Checkout is gone → 404",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 404', () => pm.response.to.have.status(404));"
                 ]
               }
             }
@@ -8106,7 +7852,7 @@
               },
               {
                 "key": "Cookie",
-                "value": "{{t2Cookie}}"
+                "value": "{{t1Cookie}}"
               }
             ],
             "url": {
@@ -8125,30 +7871,18 @@
           }
         },
         {
-          "name": "Webhook with a bad signature → 400",
+          "name": "Razorpay webhook is gone → 404",
           "protocolProfileBehavior": {
             "disableCookies": true,
             "followRedirects": false
           },
           "event": [
             {
-              "listen": "prerequest",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "const CryptoJS = require('crypto-js');",
-                  "const body = JSON.stringify({ event: 'payment.captured', payload: { payment: { entity: { id: 'pay_hook_' + Date.now(), order_id: pm.collectionVariables.get('order2') } } } });",
-                  "pm.collectionVariables.set('hookBody', body);",
-                  "pm.collectionVariables.set('hookSig', CryptoJS.HmacSHA256(body, pm.variables.get('rzpHookSecret')).toString(CryptoJS.enc.Hex));"
-                ]
-              }
-            },
-            {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('status 400', () => pm.response.to.have.status(400));"
+                  "pm.test('status 404', () => pm.response.to.have.status(404));"
                 ]
               }
             }
@@ -8159,10 +7893,6 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
-              },
-              {
-                "key": "X-Razorpay-Signature",
-                "value": "bad"
               }
             ],
             "url": {
@@ -8175,167 +7905,6 @@
                 "payments",
                 "razorpay",
                 "webhook"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{{hookBody}}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
-          "name": "Webhook confirms t2’s payment",
-          "protocolProfileBehavior": {
-            "disableCookies": true,
-            "followRedirects": false
-          },
-          "event": [
-            {
-              "listen": "prerequest",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "const CryptoJS = require('crypto-js');",
-                  "const body = JSON.stringify({ event: 'payment.captured', payload: { payment: { entity: { id: 'pay_hook_' + Date.now(), order_id: pm.collectionVariables.get('order2') } } } });",
-                  "pm.collectionVariables.set('hookBody', body);",
-                  "pm.collectionVariables.set('hookSig', CryptoJS.HmacSHA256(body, pm.variables.get('rzpHookSecret')).toString(CryptoJS.enc.Hex));"
-                ]
-              }
-            },
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('status 200', () => pm.response.to.have.status(200));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "X-Razorpay-Signature",
-                "value": "{{hookSig}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/payments/razorpay/webhook",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "payments",
-                "razorpay",
-                "webhook"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{{hookBody}}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
-          "name": "t2 holds VIP",
-          "protocolProfileBehavior": {
-            "disableCookies": true,
-            "followRedirects": false
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('status 200', () => pm.response.to.have.status(200));",
-                  "const d = pm.response.json().data;",
-                  "const k = d.packages.find(p => p.name === 'VIP');",
-                  "pm.test(\"active\", () => { pm.expect(k.status).to.eql('ACTIVE'); });"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Cookie",
-                "value": "{{t2Cookie}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/partner-access",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "partner-access"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Money cycle: refund window over, payout drafted",
-          "protocolProfileBehavior": {
-            "disableCookies": true,
-            "followRedirects": false
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('status 200', () => pm.response.to.have.status(200));",
-                  "const d = pm.response.json().data;",
-                  "pm.test(\"payable + 1 draft\", () => { pm.expect(d.payable).to.eql(2); pm.expect(d.drafts).to.eql(1); });"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "X-Internal-Token",
-                "value": "{{internalToken}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/internal/partners/money-cycle",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "internal",
-                "partners",
-                "money-cycle"
               ]
             },
             "body": {
@@ -8350,7 +7919,7 @@
           }
         },
         {
-          "name": "Honey adds payout details",
+          "name": "Payout details are gone → 404",
           "protocolProfileBehavior": {
             "disableCookies": true,
             "followRedirects": false
@@ -8361,7 +7930,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                  "pm.test('status 404', () => pm.response.to.have.status(404));"
                 ]
               }
             }
@@ -8401,7 +7970,7 @@
           }
         },
         {
-          "name": "Finance shows the draft with where to pay",
+          "name": "Admin finance is gone → 404",
           "protocolProfileBehavior": {
             "disableCookies": true,
             "followRedirects": false
@@ -8412,12 +7981,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('status 200', () => pm.response.to.have.status(200));",
-                  "const d = pm.response.json().data;",
-                  "const p = d.payouts.find(x => x.status === 'DRAFT');",
-                  "pm.test(\"3040 to UPI\", () => { pm.expect(p.amountCents).to.eql(3040); pm.expect(p.payoutDetails).to.eql('UPI: honey@okicici'); pm.expect(d.totals.grossCents).to.eql(3800); pm.expect(d.totals.platformCents).to.eql(760); });",
-                  "pm.collectionVariables.set('payout1', p.id);",
-                  "pm.collectionVariables.set('payT2', d.payments.find(x => x.client === pm.variables.get('t2Email')).id);"
+                  "pm.test('status 404', () => pm.response.to.have.status(404));"
                 ]
               }
             }
@@ -8444,486 +8008,6 @@
                 "admin",
                 "partner-program",
                 "finance"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Non-admin can’t see finance",
-          "protocolProfileBehavior": {
-            "disableCookies": true,
-            "followRedirects": false
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('status 403', () => pm.response.to.have.status(403));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Cookie",
-                "value": "{{honeyCookie}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/admin/partner-program/finance",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "admin",
-                "partner-program",
-                "finance"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Marking paid needs a reference → 422",
-          "protocolProfileBehavior": {
-            "disableCookies": true,
-            "followRedirects": false
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('status 422', () => pm.response.to.have.status(422));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Cookie",
-                "value": "{{adminCookie}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/admin/partner-program/payouts/{{payout1}}/paid",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "admin",
-                "partner-program",
-                "payouts",
-                "{{payout1}}",
-                "paid"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"reference\": \"\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
-          "name": "Admin marks the payout paid",
-          "protocolProfileBehavior": {
-            "disableCookies": true,
-            "followRedirects": false
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('status 200', () => pm.response.to.have.status(200));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Cookie",
-                "value": "{{adminCookie}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/admin/partner-program/payouts/{{payout1}}/paid",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "admin",
-                "partner-program",
-                "payouts",
-                "{{payout1}}",
-                "paid"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"reference\": \"UPI-TXN-889\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
-          "name": "Partner sees it paid",
-          "protocolProfileBehavior": {
-            "disableCookies": true,
-            "followRedirects": false
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('status 200', () => pm.response.to.have.status(200));",
-                  "const d = pm.response.json().data;",
-                  "pm.test(\"paid\", () => { pm.expect(d.balance.paidCents).to.eql(3040); pm.expect(d.payouts[0].reference).to.eql('UPI-TXN-889'); pm.expect(d.hasPayoutDetails).to.eql(true); });"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Cookie",
-                "value": "{{honeyCookie}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/partner/earnings",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "partner",
-                "earnings"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Admin refunds t2",
-          "protocolProfileBehavior": {
-            "disableCookies": true,
-            "followRedirects": false
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('status 200', () => pm.response.to.have.status(200));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Cookie",
-                "value": "{{adminCookie}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/admin/partner-program/payments/{{payT2}}/refund",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "admin",
-                "partner-program",
-                "payments",
-                "{{payT2}}",
-                "refund"
-              ]
-            }
-          }
-        },
-        {
-          "name": "t2 loses VIP straight away",
-          "protocolProfileBehavior": {
-            "disableCookies": true,
-            "followRedirects": false
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('status 200', () => pm.response.to.have.status(200));",
-                  "const d = pm.response.json().data;",
-                  "const k = d.packages.find(p => p.name === 'VIP');",
-                  "pm.test(\"suspended\", () => { pm.expect(k.status).to.eql('SUSPENDED'); });"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Cookie",
-                "value": "{{t2Cookie}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/partner-access",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "partner-access"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Clawback lands on Honey’s balance",
-          "protocolProfileBehavior": {
-            "disableCookies": true,
-            "followRedirects": false
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('status 200', () => pm.response.to.have.status(200));",
-                  "const d = pm.response.json().data;",
-                  "pm.test(\"-1520 adjustment payable\", () => { pm.expect(d.ledger.some(l => l.amountCents === -1520 && l.status === 'PAYABLE')).to.eql(true); });"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Cookie",
-                "value": "{{honeyCookie}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/partner/earnings",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "partner",
-                "earnings"
-              ]
-            }
-          }
-        },
-        {
-          "name": "t1 cancels",
-          "protocolProfileBehavior": {
-            "disableCookies": true,
-            "followRedirects": false
-          },
-          "event": [
-            {
-              "listen": "prerequest",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.sendRequest({ url: pm.variables.get('baseUrl') + '/api/partner-access', header: { Cookie: pm.collectionVariables.get('t1Cookie') } }, (e, r) => pm.collectionVariables.set('t1Sub', r.json().data.packages.find(p => p.name === 'VIP').subscription.id));"
-                ]
-              }
-            },
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('status 200', () => pm.response.to.have.status(200));",
-                  "const d = pm.response.json().data;",
-                  "const k = d.packages.find(p => p.name === 'VIP');",
-                  "pm.test(\"cancelled but still on until the end\", () => { pm.expect(k.subscription.status).to.eql('CANCELLED'); pm.expect(k.status).to.eql('ACTIVE'); });"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Cookie",
-                "value": "{{t1Cookie}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/partner-access/subscriptions/{{t1Sub}}/cancel",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "partner-access",
-                "subscriptions",
-                "{{t1Sub}}",
-                "cancel"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Admin grants t4 VIP for 10 days",
-          "protocolProfileBehavior": {
-            "disableCookies": true,
-            "followRedirects": false
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('status 200', () => pm.response.to.have.status(200));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Cookie",
-                "value": "{{adminCookie}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/admin/partner-program/grants",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "admin",
-                "partner-program",
-                "grants"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"{{t4Email}}\",\n  \"packageId\": \"{{pkgVip}}\",\n  \"days\": 10,\n  \"note\": \"Paid by bank transfer\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
-          "name": "t4 holds VIP (manual)",
-          "protocolProfileBehavior": {
-            "disableCookies": true,
-            "followRedirects": false
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('status 200', () => pm.response.to.have.status(200));",
-                  "const d = pm.response.json().data;",
-                  "const k = d.packages.find(p => p.name === 'VIP');",
-                  "pm.test(\"active, manual\", () => { pm.expect(k.status).to.eql('ACTIVE'); pm.expect(k.subscription.provider).to.eql('manual'); });"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Cookie",
-                "value": "{{t4Cookie}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/partner-access",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "partner-access"
               ]
             }
           }
@@ -9125,7 +8209,7 @@
           }
         },
         {
-          "name": "Admin turns off paid packages for Honey",
+          "name": "Admin limits Honey to 1 package",
           "protocolProfileBehavior": {
             "disableCookies": true,
             "followRedirects": false
@@ -9168,7 +8252,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"revenueSharePct\": 80,\n  \"permissions\": {\n    \"canOfferProducts\": true,\n    \"canSellPackages\": false,\n    \"maxPackages\": 10\n  }\n}",
+              "raw": "{\n  \"permissions\": {\n    \"canOfferProducts\": true,\n    \"maxPackages\": 1\n  }\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -9178,7 +8262,7 @@
           }
         },
         {
-          "name": "Raising the price is refused → 403",
+          "name": "Another package is refused → 409",
           "protocolProfileBehavior": {
             "disableCookies": true,
             "followRedirects": false
@@ -9189,14 +8273,13 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('status 403', () => pm.response.to.have.status(403));",
-                  "pm.test('error code SALES_NOT_ALLOWED', () => pm.expect(pm.response.json().error.code).to.eql('SALES_NOT_ALLOWED'));"
+                  "pm.test('status 409', () => pm.response.to.have.status(409));"
                 ]
               }
             }
           ],
           "request": {
-            "method": "PATCH",
+            "method": "POST",
             "header": [
               {
                 "key": "Content-Type",
@@ -9208,20 +8291,19 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/partner/packages/{{pkgVip}}",
+              "raw": "{{baseUrl}}/api/partner/packages",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
                 "partner",
-                "packages",
-                "{{pkgVip}}"
+                "packages"
               ]
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"priceCents\": 2900\n}",
+              "raw": "{\n  \"name\": \"Extra\",\n  \"perks\": [\n    \"options\"\n  ],\n  \"status\": \"DRAFT\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -9231,7 +8313,7 @@
           }
         },
         {
-          "name": "Admin adds an adjustment",
+          "name": "Admin restores the limit",
           "protocolProfileBehavior": {
             "disableCookies": true,
             "followRedirects": false
@@ -9248,7 +8330,7 @@
             }
           ],
           "request": {
-            "method": "POST",
+            "method": "PUT",
             "header": [
               {
                 "key": "Content-Type",
@@ -9260,7 +8342,7 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/admin/partners/{{honeyPid}}/adjustments",
+              "raw": "{{baseUrl}}/api/admin/partners/{{honeyPid}}/terms",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -9269,12 +8351,12 @@
                 "admin",
                 "partners",
                 "{{honeyPid}}",
-                "adjustments"
+                "terms"
               ]
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"amountCents\": 2500,\n  \"note\": \"Launch bonus\"\n}",
+              "raw": "{\n  \"permissions\": {\n    \"canOfferProducts\": true,\n    \"maxPackages\": 10\n  }\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -9305,8 +8387,8 @@
                   "pm.test(\"daily series with every step\", () => { pm.expect(d.daily.length).to.be.at.least(1); pm.expect(d.daily.reduce((n, x) => n + x.signups, 0)).to.eql(4); pm.expect(d.daily.reduce((n, x) => n + x.verified, 0)).to.be.at.least(3); });",
                   "pm.test(\"cohort\", () => { pm.expect(d.cohorts[0].signups).to.eql(4); pm.expect(d.cohorts[0].verified).to.be.at.least(3); });",
                   "pm.test(\"tools used\", () => { pm.expect(d.products.find(p => p.name === 'Honey Ribbon').opens).to.be.at.least(1); });",
-                  "pm.test(\"subscriptions\", () => { const v = d.marketplace.packageSubs.find(p => p.name === 'VIP'); pm.expect(v.total).to.eql(3); pm.expect(v.revenueCents).to.eql(1900); });",
-                  "pm.test(\"IB earnings by month\", () => { pm.expect(d.earningsByMonth.reduce((n, m) => n + m.ib, 0)).to.eql(38); });"
+                  "pm.test(\"package holders\", () => { const v = d.marketplace.packageSubs.find(p => p.name === 'VIP'); pm.expect(v.active).to.be.at.least(1); pm.expect(v).to.not.have.property('revenueCents'); });",
+                  "pm.test(\"IB earnings by month\", () => { pm.expect(d.earningsByMonth.reduce((n, m) => n + m.ib, 0)).to.eql(38); pm.expect(d.earningsByMonth[0]).to.not.have.property('salesShareCents'); });"
                 ]
               }
             }
@@ -9444,7 +8526,7 @@
                 "exec": [
                   "pm.test('status 200', () => pm.response.to.have.status(200));",
                   "const d = pm.response.json().data;",
-                  "pm.test(\"VIP with subscribers\", () => { const v = d.find(p => p.name === 'VIP'); pm.expect(v.partner).to.eql(pm.variables.get('honeyName')); pm.expect(v.subscribers).to.eql(2); });"
+                  "pm.test(\"VIP with holders\", () => { const v = d.find(p => p.name === 'VIP'); pm.expect(v.partner).to.eql(pm.variables.get('honeyName')); pm.expect(v.holders).to.be.at.least(1); });"
                 ]
               }
             }
@@ -9476,7 +8558,7 @@
           }
         },
         {
-          "name": "Event log has money events",
+          "name": "Event log has moderation events",
           "protocolProfileBehavior": {
             "disableCookies": true,
             "followRedirects": false
@@ -9489,7 +8571,7 @@
                 "exec": [
                   "pm.test('status 200', () => pm.response.to.have.status(200));",
                   "const d = pm.response.json().data;",
-                  "pm.test(\"kinds\", () => { const k = d.map(e => e.kind); ['sale.paid','sale.refund','payout.draft','payout.paid','product.approve','subscription.grant','package.hold','partner.terms','commission.adjust','account.external_add'].forEach(x => pm.expect(k).to.include(x)); });"
+                  "pm.test(\"kinds\", () => { const k = d.map(e => e.kind); ['product.approve','package.hold','package.release','partner.terms','account.external_add'].forEach(x => pm.expect(k).to.include(x)); });"
                 ]
               }
             }
@@ -9553,14 +8635,6 @@
     {
       "key": "internalToken",
       "value": "partner-test-internal-token"
-    },
-    {
-      "key": "rzpSecret",
-      "value": "partner-suite-checkout-secret"
-    },
-    {
-      "key": "rzpHookSecret",
-      "value": "partner-suite-webhook-secret"
     },
     {
       "key": "adminEmail",

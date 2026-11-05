@@ -30,7 +30,7 @@ describe.skipIf(!local)('broker REST adapter (integration)', () => {
     brokerId = (await prisma.partnerBroker.create({ data: { partnerId, broker: 'exness' } })).id;
     await saveSettings({
       activeMinTrades: 1, activeWindowDays: 30, activeMinLots: 0, graceDays: 7, partnerGraceDays: 7, lockedPerks: [],
-      platformSharePct: 20, refundDays: 7, payoutMinimumCents: 5000, currency: 'USD', ibApiHosts: ['exnessaffiliates.com'],
+      ibApiHosts: ['exnessaffiliates.com'],
     }, 'test');
     // Fake broker: login → token, then two pages of clients.
     globalThis.fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {

@@ -53,7 +53,6 @@ model User {
   clientVerifications ClientVerification[]
   clientEntitlements  ClientEntitlement[]
   externalAccounts    ExternalAccount[]
-  packageSubs         PackageSubscription[]
 
   exchangeConnections ExchangeConnection[]
   copyLeaders         CopyLeader[]
@@ -1127,12 +1126,8 @@ model Partner {
   /// Last review message shown to the applicant (rejection reason or what to add).
   reviewNote   String?
   reviewedAt   DateTime?
-  /// Share of package sales the partner keeps, in percent. Null = programme default.
-  revenueSharePct Int?
-  /// { canOfferProducts, canSellPackages, maxPackages } — null = defaults.
+  /// { canOfferProducts, maxPackages } — null = defaults.
   permissions     Json?
-  /// Where payouts go (UPI / bank / crypto address), encrypted with lib/secrets.
-  payoutDetails   String?
   approvedAt   DateTime?
   suspendedAt  DateTime?
   revokedAt    DateTime?
@@ -1152,9 +1147,6 @@ model Partner {
   entitlements  ClientEntitlement[]
   products      PartnerProduct[]
   earnings      IbEarning[]
-  subscriptions PackageSubscription[]
-  commissions   PartnerCommission[]
-  payouts       Payout[]
 
   @@index([status])
   @@map("partner")
@@ -1432,12 +1424,7 @@ model PartnerPackage {
   accessDays    Int?
   /// Partner tools (PartnerProduct ids) included.
   productIds    String[]      @default([])
-  /// Price per period in the smallest unit (cents). 0 = free: unlocks on eligibility alone.
-  priceCents    Int           @default(0)
-  currency      String        @default("USD")
-  /// Length of one paid period in days.
-  periodDays    Int           @default(30)
-  /// Set by an admin: pulled from sale; holders lose it after grace.
+  /// Set by an admin: package paused; holders lose it after grace.
   adminHold     Boolean       @default(false)
   adminNote     String?
   status        PackageStatus @default(DRAFT)
@@ -1445,8 +1432,7 @@ model PartnerPackage {
   updatedAt     DateTime      @updatedAt
 
   partner      Partner             @relation(fields: [partnerId], references: [id], onDelete: Cascade)
-  entitlements  ClientEntitlement[]
-  subscriptions PackageSubscription[]
+  entitlements ClientEntitlement[]
 
   @@index([partnerId, status])
   @@map("partner_package")
@@ -1577,127 +1563,6 @@ model PartnerProduct {
   @@index([partnerId, status])
   @@index([status, updatedAt])
   @@map("partner_product")
-}
-
-enum SubscriptionStatus {
-  PENDING
-  ACTIVE
-  CANCELLED
-  EXPIRED
-}
-
-/// A client's paid (or admin-granted) subscription to a priced package.
-model PackageSubscription {
-  id               String             @id @default(cuid())
-  userId           String
-  partnerId        String
-  packageId        String
-  status           SubscriptionStatus @default(PENDING)
-  priceCents       Int
-  currency         String
-  periodDays       Int
-  /// razorpay | manual
-  provider         String
-  startedAt        DateTime?
-  currentPeriodEnd DateTime?
-  /// Set when the client cancels: access runs to the period end, then stops.
-  cancelledAt      DateTime?
-  createdAt        DateTime           @default(now())
-  updatedAt        DateTime           @updatedAt
-
-  user     User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  partner  Partner        @relation(fields: [partnerId], references: [id], onDelete: Cascade)
-  package  PartnerPackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
-  payments Payment[]
-
-  @@unique([userId, packageId])
-  @@index([partnerId, status])
-  @@map("package_subscription")
-}
-
-enum PaymentStatus {
-  CREATED
-  PAID
-  FAILED
-  REFUNDED
-}
-
-model Payment {
-  id                 String        @id @default(cuid())
-  subscriptionId     String
-  userId             String
-  partnerId          String
-  amountCents        Int
-  currency           String
-  provider           String
-  providerOrderId    String        @unique
-  providerPaymentId  String?
-  status             PaymentStatus @default(CREATED)
-  paidAt             DateTime?
-  partnerShareCents  Int           @default(0)
-  platformShareCents Int           @default(0)
-  createdAt          DateTime      @default(now())
-
-  subscription PackageSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
-  commission   PartnerCommission?
-
-  @@index([partnerId, createdAt])
-  @@map("payment")
-}
-
-enum CommissionStatus {
-  PENDING
-  PAYABLE
-  PAID
-  VOID
-}
-
-/// The partner's ledger: their share of each package sale, plus admin adjustments.
-model PartnerCommission {
-  id          String           @id @default(cuid())
-  partnerId   String
-  /// SALE | ADJUSTMENT
-  kind        String
-  amountCents Int
-  currency    String
-  paymentId   String?          @unique
-  payoutId    String?
-  status      CommissionStatus @default(PENDING)
-  note        String?
-  /// PENDING becomes PAYABLE after the refund window.
-  payableAt   DateTime
-  createdAt   DateTime         @default(now())
-
-  partner Partner  @relation(fields: [partnerId], references: [id], onDelete: Cascade)
-  payment Payment? @relation(fields: [paymentId], references: [id], onDelete: SetNull)
-  payout  Payout?  @relation(fields: [payoutId], references: [id], onDelete: SetNull)
-
-  @@index([partnerId, status])
-  @@map("partner_commission")
-}
-
-enum PayoutStatus {
-  DRAFT
-  PAID
-  CANCELLED
-}
-
-model Payout {
-  id          String       @id @default(cuid())
-  partnerId   String
-  amountCents Int
-  currency    String
-  status      PayoutStatus @default(DRAFT)
-  reference   String?
-  paidAt      DateTime?
-  paidBy      String?
-  createdAt   DateTime     @default(now())
-
-  partner     Partner             @relation(fields: [partnerId], references: [id], onDelete: Cascade)
-  commissions PartnerCommission[]
-
-  @@index([partnerId, status])
-  @@map("payout")
 }
 
 /// Audit trail for the IB side: list syncs, verifications, access changes, consent.

@@ -64,17 +64,6 @@ export default function AdminPartnerSettingsPage() {
               </div>
             </section>
 
-            <section className="x-card" data-testid="settings-money">
-              <div className="x-ch"><h2>Package sales and payouts</h2></div>
-              <p className="ac-p">TRADElogs keeps its share of each package sale; the partner keeps the rest (unless their terms say otherwise). Their share becomes payable after the refund window, and a payout is drafted once it reaches the minimum.</p>
-              <div className="ib-settings">
-                <div className="x-field"><label htmlFor="st-share">TRADElogs share (%)</label><input id="st-share" className="x-input m" type="number" min={0} max={100} value={s.platformSharePct} onChange={e => num('platformSharePct', e.target.value)} /></div>
-                <div className="x-field"><label htmlFor="st-refund">Refund window (days)</label><input id="st-refund" className="x-input m" type="number" min={0} max={90} value={s.refundDays} onChange={e => num('refundDays', e.target.value)} /></div>
-                <div className="x-field"><label htmlFor="st-min">Minimum payout</label><input id="st-min" className="x-input m" type="number" min={0} step={1} value={s.payoutMinimumCents / 100} onChange={e => setS(x => x && { ...x, payoutMinimumCents: Math.round(Number(e.target.value || 0) * 100) })} /></div>
-                <div className="x-field"><label htmlFor="st-cur">Currency</label><select id="st-cur" className="x-select" value={s.currency} onChange={e => setS(x => x && { ...x, currency: e.target.value })}>{['USD', 'INR', 'EUR'].map(c => <option key={c} value={c}>{c}</option>)}</select><span className="x-help">For new packages and payouts</span></div>
-              </div>
-            </section>
-
             <section className="x-card" data-testid="settings-api-hosts">
               <div className="x-ch"><h2>Approved broker API addresses</h2></div>
               <p className="ac-p">Partners can only point the broker API connection at these hosts (and their subdomains), so nobody can make TRADElogs call an arbitrary server. One per line, e.g. my.exnessaffiliates.com.</p>

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  extendPeriod, parseEarnings, parsePostback, priceLabel, splitSale, dig,
+  parseEarnings, parsePostback, dig,
   DEFAULT_SETTINGS, allowedPerks, decideVerification, evaluatePackage, isActiveTrader, mergeSettings, nextEntitlement,
   parseIbList, ruleText, sameState, type EntitlementState, type VerifyInput,
 } from '../ib/ib.logic.js';
@@ -65,7 +65,7 @@ describe('evaluatePackage', () => {
   const pkg = { status: 'LIVE', brokers: [] as string[], requireActive: true };
   const base = { partnerName: 'Honey', partnerActive: true, pkg, verifiedBrokers: ['xellion'], activeTrader: true, rule: DEFAULT_SETTINGS };
   it('qualifies a verified active trader', () => {
-    expect(evaluatePackage(base)).toEqual({ qualifies: true, reasons: [], partnerPaused: false, canSubscribe: true });
+    expect(evaluatePackage(base)).toEqual({ qualifies: true, reasons: [], partnerPaused: false });
   });
   it('lists every reason it is locked', () => {
     const e = evaluatePackage({ ...base, partnerActive: false, verifiedBrokers: [], activeTrader: false });
@@ -162,25 +162,11 @@ describe('phase 2 rules', () => {
     expect(decideVerification({ ...base, ownershipProven: true }).status).toBe('VERIFIED');
   });
 
-  it('asks for payment last, and only once everything else is met', () => {
-    const pkg = { status: 'LIVE', brokers: [] as string[], requireActive: false, priceCents: 1900 };
-    const ok = { partnerName: 'Honey', partnerActive: true, pkg, verifiedBrokers: ['xellion'], activeTrader: true, rule: DEFAULT_SETTINGS, priceLabel: '$19 / month' };
-    expect(evaluatePackage(ok)).toEqual({ qualifies: false, reasons: ['Subscribe ($19 / month) to unlock.'], partnerPaused: false, canSubscribe: true });
-    expect(evaluatePackage({ ...ok, paid: true }).qualifies).toBe(true);
-    const notVerified = evaluatePackage({ ...ok, verifiedBrokers: [] });
-    expect(notVerified.canSubscribe).toBe(false);
-    expect(evaluatePackage({ ...ok, paid: true, pkg: { ...pkg, adminHold: true } }).reasons).toContain('TRADElogs has paused this package.');
-  });
-
-  it('splits sales in the partner’s favour and extends paid periods', () => {
-    expect(splitSale(1999, 80)).toEqual({ partnerCents: 1600, platformCents: 399 });
-    expect(splitSale(1000, 100)).toEqual({ partnerCents: 1000, platformCents: 0 });
-    const now = new Date('2026-11-04T00:00:00Z');
-    expect(extendPeriod(null, 30, now)).toEqual(new Date('2026-12-04T00:00:00Z'));
-    expect(extendPeriod(new Date('2026-11-10T00:00:00Z'), 30, now)).toEqual(new Date('2026-12-10T00:00:00Z'));
-    expect(extendPeriod(new Date('2026-10-01T00:00:00Z'), 30, now)).toEqual(new Date('2026-12-04T00:00:00Z'));
-    expect(priceLabel(1900, 'USD', 30)).toBe('$19 / month');
-    expect(priceLabel(149950, 'INR', 365)).toBe('₹1,499.50 / year');
+  it('a paused package stays locked even when everything else is met', () => {
+    const pkg = { status: 'LIVE', brokers: [] as string[], requireActive: false, adminHold: true };
+    const ok = { partnerName: 'Honey', partnerActive: true, pkg, verifiedBrokers: ['xellion'], activeTrader: true, rule: DEFAULT_SETTINGS };
+    expect(evaluatePackage(ok)).toEqual({ qualifies: false, reasons: ['TRADElogs has paused this package.'], partnerPaused: false });
+    expect(evaluatePackage({ ...ok, pkg: { ...pkg, adminHold: false } }).qualifies).toBe(true);
   });
 
   it('reads postbacks with different brokers’ parameter names', () => {
