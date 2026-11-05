@@ -15,6 +15,8 @@ export interface AccessStatusDto {
   isAdmin: boolean;
   /** The caller's partner record status, or null when they aren't a partner. */
   partnerStatus: 'PENDING' | 'ACTIVE' | 'SUSPENDED' | 'REVOKED' | null;
+  /** 'broker' = connect an MT5 account on an Elefin server; 'api' = Elefin's partner API check. */
+  elefinCheck?: 'broker' | 'api';
   maintenance: { enabled: boolean; message: string | null };
 }
 

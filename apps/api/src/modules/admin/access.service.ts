@@ -1,5 +1,5 @@
 // Platform access rules — manual grants, Elefin verification, activity checks.
-import { prisma } from '@tradinjournal/db';
+import { prisma, type UserAccess } from '@tradinjournal/db';
 import type {
   AccessStatusDto,
   ActivityCheckResult,
@@ -20,10 +20,34 @@ function normEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
-function isElefinBroker(broker: string, server: string): boolean {
-  const b = broker.toLowerCase();
-  const s = server.toLowerCase();
-  return b.includes('elefin') || s.includes('elefin');
+/**
+ * An Elefin account is one on an Elefin MT5 server ("Elefin-Trade", …). Only the server
+ * counts: it's what the bridge actually logged in to, whereas the broker name is picked
+ * by the user in a dropdown and could say "Elefin" for any account.
+ */
+export function isElefinServer(server: string): boolean {
+  return /^elefin/i.test(server.trim());
+}
+
+const brokerMode = () => env.ELEFIN_VERIFY_MODE === 'broker';
+const elefinCheck = (): 'broker' | 'api' => (brokerMode() ? 'broker' : 'api');
+
+/**
+ * Broker mode: the user's Elefin status follows their connected accounts — VERIFIED while
+ * they have an MT5 account on an Elefin server, PENDING otherwise. Manual grants are left alone.
+ */
+async function syncElefinFromAccounts(row: UserAccess): Promise<UserAccess> {
+  if (row.source === 'MANUAL_GRANT') return row;
+  const accounts = await prisma.brokerAccount.findMany({ where: { userId: row.userId }, select: { server: true } });
+  const has = accounts.some(a => isElefinServer(a.server));
+  const want = has ? 'VERIFIED' : 'PENDING';
+  if (row.elefinStatus === want) return row;
+  return prisma.userAccess.update({
+    where: { userId: row.userId },
+    data: has
+      ? { elefinStatus: 'VERIFIED', source: 'ELEFIN_VERIFIED', elefinVerifiedAt: new Date(), lastDeniedReason: null }
+      : { elefinStatus: 'PENDING', source: null, lastDeniedReason: 'No MT5 account on an Elefin server connected' },
+  });
 }
 
 async function getActiveGrant(email: string) {
@@ -50,7 +74,7 @@ function resolvePlatformStatus(input: {
   if (input.maintenance && !input.isAdminUser) return 'MAINTENANCE';
   if (input.hasGrant || input.isAdminUser) return 'FULL_ACCESS';
   if (input.elefinStatus !== 'VERIFIED') return 'ELEFIN_REQUIRED';
-  if (input.activityStatus !== 'ACTIVE') return 'INACTIVE';
+  if (env.ACCESS_REQUIRE_ACTIVITY && input.activityStatus !== 'ACTIVE') return 'INACTIVE';
   return 'FULL_ACCESS';
 }
 
@@ -106,12 +130,14 @@ export async function getAccessStatus(userId: string, email: string): Promise<Ac
       activityWindowDays: env.ACCESS_ACTIVITY_WINDOW_DAYS,
       isAdmin: adminUser,
       partnerStatus,
+      elefinCheck: elefinCheck(),
       maintenance: { enabled: maintenance.enabled, message: maintenance.message },
     };
   }
 
   await syncManualGrant(userId, email);
-  const row = await ensureUserAccess(userId);
+  let row = await ensureUserAccess(userId);
+  if (brokerMode()) row = await syncElefinFromAccounts(row);
   const grant = await getActiveGrant(email);
 
   // First-time / new signups: Elefin-verified users are admitted without trade
@@ -119,6 +145,8 @@ export async function getAccessStatus(userId: string, email: string): Promise<Ac
   // Grace is computed in-memory only — never persist ACTIVE here or the gate
   // stays unlocked forever after the window ends.
   let activityStatus = row.activityStatus;
+  // Activity isn't part of the rule: an Elefin account alone gives access.
+  if (!env.ACCESS_REQUIRE_ACTIVITY && row.elefinStatus === 'VERIFIED') activityStatus = 'ACTIVE';
   if (
     !grant &&
     !adminUser &&
@@ -147,6 +175,7 @@ export async function getAccessStatus(userId: string, email: string): Promise<Ac
     activityWindowDays: env.ACCESS_ACTIVITY_WINDOW_DAYS,
     isAdmin: adminUser,
     partnerStatus,
+    elefinCheck: elefinCheck(),
     maintenance: { enabled: maintenance.enabled, message: maintenance.message },
   };
 }
@@ -157,6 +186,9 @@ export async function verifyElefin(userId: string, email: string, input: VerifyE
     await syncManualGrant(userId, email);
     return getAccessStatus(userId, email);
   }
+
+  // Broker mode has nothing to call: connecting an Elefin MT5 account is the check.
+  if (brokerMode()) return getAccessStatus(userId, email);
 
   const verifyEmail = input.email?.trim().toLowerCase() ?? email;
   try {
@@ -212,7 +244,7 @@ export async function verifyElefin(userId: string, email: string, input: VerifyE
 
 async function countElefinTrades7d(userId: string): Promise<number> {
   const accounts = await findAccountsByUser(userId);
-  const elefinAccounts = accounts.filter(a => isElefinBroker(a.broker, a.server));
+  const elefinAccounts = accounts.filter(a => isElefinServer(a.server));
   if (!elefinAccounts.length) return 0;
 
   const windowMs = env.ACCESS_ACTIVITY_WINDOW_DAYS * 24 * 60 * 60 * 1000;
@@ -330,6 +362,7 @@ export async function assertPlatformAccess(
   // Elefin-verified users may look FULL_ACCESS during grace (in-memory) or from a
   // stale ACTIVE row written by older builds — always re-check activity once past grace.
   const privileged = status.isAdmin || status.source === 'MANUAL_GRANT';
+  if (!env.ACCESS_REQUIRE_ACTIVITY) return;
   if (opts?.requireActivity !== false && !privileged && status.elefinStatus === 'VERIFIED') {
     if (!(await isWithinSignupGrace(userId))) {
       const activity = await checkActivity(userId, email);
@@ -358,8 +391,9 @@ export async function recheckUserAccess(userId: string): Promise<void> {
   await syncManualGrant(userId, user.email);
   const row = await prisma.userAccess.findUnique({ where: { userId } });
   if (!row || row.source === 'MANUAL_GRANT') return;
-  if (row.elefinStatus !== 'VERIFIED') {
+  if (brokerMode()) await syncElefinFromAccounts(row);
+  else if (row.elefinStatus !== 'VERIFIED') {
     await verifyElefin(userId, user.email, { email: user.email });
   }
-  await checkActivity(userId, user.email, true);
+  if (env.ACCESS_REQUIRE_ACTIVITY) await checkActivity(userId, user.email, true);
 }

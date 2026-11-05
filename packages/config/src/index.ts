@@ -216,11 +216,22 @@ const envSchema = z.object({
     .string()
     .default('false')
     .transform(v => v.toLowerCase() === 'true' || v === '1'),
-  ELEFIN_VERIFY_MODE: z.enum(['stub', 'live']).default('stub'),
+  // How a user proves they're an Elefin client:
+  //   broker — they connected an MT5 account on an Elefin server (the bridge logged in with
+  //            their password, so they own it). No Elefin API needed. Default.
+  //   live   — Elefin's partner API confirms the account is under our referral.
+  //   stub   — tests / local dev only.
+  ELEFIN_VERIFY_MODE: z.enum(['broker', 'stub', 'live']).default('broker'),
   ELEFIN_API_URL: z.string().url().optional(),
   ELEFIN_API_KEY: z.string().optional(),
   ACCESS_MIN_TRADES_7D: z.coerce.number().int().positive().default(2),
   ACCESS_ACTIVITY_WINDOW_DAYS: z.coerce.number().int().positive().default(7),
+  // When true, Elefin users also need ACCESS_MIN_TRADES_7D closed trades in the window
+  // (after a signup grace). Off by default: an Elefin account alone is enough.
+  ACCESS_REQUIRE_ACTIVITY: z
+    .string()
+    .default('false')
+    .transform(v => v.toLowerCase() === 'true' || v === '1'),
 
   // ── Trade sync (MT5 deals stored in Postgres) ─────────────────────────────
   /** A user-facing read older than this triggers a background refresh. */

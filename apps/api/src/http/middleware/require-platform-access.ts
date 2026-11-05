@@ -77,6 +77,13 @@ export async function requirePlatformAccess(
       mount.includes('/accounts') ||
       full.includes('/api/accounts');
 
+    // Broker mode: connecting an Elefin MT5 account IS the check, so a locked-out user
+    // must still reach their accounts (list, connect, remove) to get in.
+    if (allowWithoutActivity && env.ELEFIN_VERIFY_MODE === 'broker') {
+      next();
+      return;
+    }
+
     await checkAccessCached(user.id, user.email, !allowWithoutActivity);
     next();
   } catch (err) {

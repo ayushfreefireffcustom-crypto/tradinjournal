@@ -142,3 +142,21 @@ export async function handleAdminGeo(_req: Request, res: Response, next: NextFun
     next(err);
   }
 }
+
+/**
+ * Signs every user out by deleting all sessions except the admin's own. Sessions are
+ * also cached in a signed cookie for up to 5 minutes, so the last few clear within that.
+ */
+export async function handleSignOutEveryone(_req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const { prisma } = await import('@tradinjournal/db');
+    const { logAdminAction } = await import('./admin-audit.service.js');
+    const keep = res.locals.session?.id;
+    const out = await prisma.session.deleteMany({ where: keep ? { id: { not: keep } } : {} });
+    const a = actor(res);
+    await logAdminAction({ action: 'sessions.sign_out_everyone', actorId: a.id, actorEmail: a.email, details: { signedOut: out.count } });
+    ok(res, { signedOut: out.count });
+  } catch (err) {
+    next(err);
+  }
+}

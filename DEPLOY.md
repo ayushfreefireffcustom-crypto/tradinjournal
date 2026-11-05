@@ -125,7 +125,7 @@ Never `prisma migrate dev`, `db push` or `migrate reset` against Neon, and never
 | Internal calls (worker → API) | `INTERNAL_API_TOKEN`, `API_INTERNAL_URL`, `IN_PROCESS_SCHEDULER` |
 | Encryption | `CREDENTIAL_ENCRYPTION_KEY` (64 hex characters; must equal the engine's; **never rotate**: stored exchange keys and broker passwords would become unreadable) |
 | MT5 | `MT5_BRIDGE_URL`, `MT5_BRIDGE_SHARED_SECRET`, `SYNC_BATCH`, `SYNC_CONCURRENCY`, `SYNC_STALE_MIN`, `SYNC_BACKGROUND_MIN`, `SYNC_OVERLAP_DAYS`, `SYNC_FIRST_WAIT_MS`, `TRADE_SYNC_CRON` |
-| Access gate | `PLATFORM_ACCESS_ENABLED`, `ACCESS_MIN_TRADES_7D`, `ACCESS_ACTIVITY_WINDOW_DAYS`, `ELEFIN_API_URL`, `ELEFIN_API_KEY`, `ELEFIN_VERIFY_MODE` |
+| Access gate | `PLATFORM_ACCESS_ENABLED` (true = Elefin clients only), `ELEFIN_VERIFY_MODE` (`broker` default: an MT5 account on an Elefin server), `ACCESS_REQUIRE_ACTIVITY` (new, default false), `ACCESS_MIN_TRADES_7D`, `ACCESS_ACTIVITY_WINDOW_DAYS`, `ELEFIN_API_URL`, `ELEFIN_API_KEY` |
 | Trading | `TRADING_ENABLED`, `EXCHANGE_LIVE_ENABLED`, `EXCHANGE_EGRESS_IPS` (new), `EXCHANGE_MAX_CONNECTIONS` (new), `TRADINGVIEW_IP_ALLOWLIST` (new) |
 | Plans | `PLANS_ENABLED`, `PLAN_ASSIGNMENTS` (new) |
 | Telegram | `TELEGRAM_BOT_TOKEN` (new), `TELEGRAM_BOT_USERNAME` (new), `TELEGRAM_WEBHOOK_SECRET` (new) |

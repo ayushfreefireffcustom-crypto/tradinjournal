@@ -17,6 +17,7 @@ import {
   handleRecheckUser,
   handleAdminGeo,
   handleAdminTraderOps,
+  handleSignOutEveryone,
 } from './admin.controller.js';
 
 export const adminRouter: IRouter = Router();
@@ -35,3 +36,4 @@ adminRouter.get('/maintenance', handleGetMaintenance);
 adminRouter.post('/maintenance', validateBody(maintenanceModeSchema), handleSetMaintenance);
 adminRouter.get('/audit', handleListAudit);
 adminRouter.post('/users/:id/recheck', handleRecheckUser);
+adminRouter.post('/sessions/sign-out-everyone', handleSignOutEveryone);

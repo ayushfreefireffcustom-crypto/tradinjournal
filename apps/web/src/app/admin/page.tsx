@@ -18,6 +18,7 @@ import {
 import { AdminTabs, type AdminTab } from '@/components/admin/admin-tabs';
 import { CommandOverview } from '@/components/admin/command-overview';
 import { AdminMaintenancePanel } from '@/components/admin/admin-maintenance';
+import { AdminSignOutEveryone } from '@/components/admin/admin-sign-out-everyone';
 import { AdminGrantsSection } from '@/components/admin/admin-grants';
 import { AdminUsersSection } from '@/components/admin/admin-users';
 import { auditLabel, fmtRelative, sentence } from '@/components/admin/admin-utils';
@@ -258,6 +259,8 @@ export default function AdminPage() {
                   onMessageChange={setMaintMessage}
                   onToggle={() => void toggleMaintenance()}
                 />
+
+                <AdminSignOutEveryone />
 
                 <div className="x-strip x-strip--card ad-strip4">
                   <div><span>Auth sessions</span><b className="m">{overview.activeSessionsNow}</b></div>

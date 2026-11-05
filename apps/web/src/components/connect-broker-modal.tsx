@@ -12,13 +12,14 @@ import '@/styles/v6/dialogs.css';
 interface Props {
   onClose: () => void;
   onConnected: (account: BrokerAccount) => void;
+  /** Broker picked when the form opens (defaults to the first in the list). */
+  initialBroker?: string;
 }
 
-const FIRST = BROKERS[0]!;
-
-export default function ConnectBrokerModal({ onClose, onConnected }: Props) {
-  const [brokerName, setBrokerName] = useState<string>(FIRST.name);
-  const [serverSel, setServerSel] = useState<string>(FIRST.servers[0]!);
+export default function ConnectBrokerModal({ onClose, onConnected, initialBroker }: Props) {
+  const first = BROKERS.find(b => b.name === initialBroker) ?? BROKERS[0]!;
+  const [brokerName, setBrokerName] = useState<string>(first.name);
+  const [serverSel, setServerSel] = useState<string>(first.servers[0] ?? CUSTOM_SERVER);
   const [customServer, setCustomServer] = useState('');
   const [mt5Login, setMt5Login] = useState('');
   const [password, setPassword] = useState('');

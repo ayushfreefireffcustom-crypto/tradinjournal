@@ -242,4 +242,6 @@ export const adminApi = {
     ),
   recheckUser: (id: string) =>
     req<{ ok: boolean }>(`${P}/admin/users/${id}/recheck`, { method: 'POST' }),
+  signOutEveryone: () =>
+    req<{ signedOut: number }>(`${P}/admin/sessions/sign-out-everyone`, { method: 'POST' }),
 };

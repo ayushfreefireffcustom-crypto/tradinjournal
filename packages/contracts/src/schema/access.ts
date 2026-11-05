@@ -29,12 +29,17 @@ export const accessStatusDtoSchema = z.object({
   isAdmin: z.boolean(),
   /** The caller's partner record status, or null when they aren't a partner. */
   partnerStatus: partnerStatusSchema.nullable(),
+  /** How Elefin is checked: 'broker' = connect an MT5 account on an Elefin server; 'api' = Elefin's partner API. */
+  elefinCheck: z.enum(['broker', 'api']),
   maintenance: z.object({
     enabled: z.boolean(),
     message: z.string().nullable(),
   }),
 });
 export type AccessStatusDto = z.infer<typeof accessStatusDtoSchema>;
+
+export const signOutEveryoneResultSchema = z.object({ signedOut: z.number().int() });
+export type SignOutEveryoneResultDto = z.infer<typeof signOutEveryoneResultSchema>;
 
 export const verifyElefinSchema = z.object({
   email: z.string().email().optional(),
