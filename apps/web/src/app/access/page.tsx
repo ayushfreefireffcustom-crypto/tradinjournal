@@ -5,17 +5,20 @@
 // anything is still locked, plus the choice to share their P&L with the partner.
 import Link from '@/components/v6/ui/link';
 import { useCallback, useEffect, useState } from 'react';
-import { CheckCircle, Circle, Handshake, Package, Pulse, ShieldCheck, Toolbox, Trash } from '@phosphor-icons/react';
+import { ArrowRight, ChartLineUp, Eye, EyeSlash, Handshake, LockKeyOpen, Megaphone, Package, PlugsConnected, Pulse, ShieldCheck, ToggleRight, Toolbox, Trash, WarningCircle } from '@phosphor-icons/react';
 import AppShell from '@/components/app-shell';
 import { useAccounts } from '@/lib/use-accounts';
 import { dayUtc, ibApi, PRODUCT_TYPE_LABEL, type AccessAccount, type ClientAccess } from '@/lib/ib-api';
 import { EntPill, VerifyPill } from '@/components/v6/account/ib-parts';
 import { day } from '@/components/v6/account/partner-parts';
 import { timeAgo } from '@/components/app-shell';
+import { CodeTicket, Journey, type Station, type TicketState } from '@/components/v6/account/access-art';
+import { partnerApi, type PartnerProfile } from '@/lib/partner-api';
 import EmptyState from '@/components/v6/ui/empty-state';
 import '@/styles/v6/account.css';
 import '@/styles/v6/lux.css';
 import '@/styles/v6/ib.css';
+import '@/styles/v6/access.css';
 
 const msg = (e: unknown, f: string) => (e instanceof Error ? e.message : f);
 /** Access stops because the package ends (not the holder's own access period). */
@@ -34,47 +37,30 @@ export default function AccessPage() {
   useEffect(() => { void load(); }, [load]);
   useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(''), 3000); return () => clearTimeout(t); }, [toast]);
 
-  const verified = d?.accounts.some(a => a.status === 'VERIFIED') ?? false;
-  const steps = d ? [
-    { done: d.accounts.length > 0, l: 'Connect MT5', s: d.accounts.length ? `${d.accounts.length} account${d.accounts.length === 1 ? '' : 's'} connected` : 'Link the account you opened with the broker' },
-    { done: verified, l: 'Broker check', s: verified ? 'Opened under your partner' : 'We match your account number to the partner’s list' },
-    { done: d.activity.active, l: 'Active trading', s: `${d.activity.rule.minTrades}+ closed trade${d.activity.rule.minTrades === 1 ? '' : 's'} in ${d.activity.rule.windowDays} days · you have ${d.activity.trades}` },
-  ] : [];
+  const [me, setMe] = useState<PartnerProfile | null | undefined>(undefined);
+  useEffect(() => { partnerApi.me().then(setMe).catch(() => setMe(null)); }, []);
+
+  // The steps to a partner's tools, filled in from where this trader actually is.
+  const stations: Station[] = d ? journey(d) : [];
 
   return (
     <AppShell legacy={false} accounts={accounts} selectedAccount={selected} onSelectAccount={select} pageTitle="Partner access"
       pageSubtitle="Your partner, your broker check and what you’ve unlocked">
       <div className="x-page" data-testid="access-page">
         {error && <div className="x-banner x-banner--err" role="alert"><span>{error}</span><button type="button" className="x-btn x-btn--sm" onClick={() => void load()}>Retry</button></div>}
-        {!d && !error && <><div className="x-skel ac-sk-168" /><div className="x-skel ac-sk-320" /></>}
+        {!d && !error && <><div className="x-skel ac-sk-320" /><div className="x-skel ac-sk-168" /></>}
 
         {d && <>
-          <section className="x-card ib-hero" data-testid="access-partner">
-            <span className="ib-hero-ic"><Handshake size={28} weight="duotone" aria-hidden /></span>
-            {d.partner ? (
-              <div>
-                <h2>Referred by {d.partner.name}</h2>
-                <p>Code <b className="m">{d.partner.code}</b>{d.partner.status === 'PAUSED' && <> · their programme is paused, so anything you unlocked runs on its grace period</>}</p>
-              </div>
-            ) : (
-              <div>
-                <h2>Joined through a partner?</h2>
-                <p>If someone sent you to TRADElogs and you didn&rsquo;t use their link, enter their code to link up. You can do this once.</p>
-              </div>
-            )}
-            {d.canJoin ? <JoinForm onJoined={x => { setD(x); setToast(`You’re now linked to ${x.partner?.name ?? 'your partner'}.`); }} /> : <span />}
+          {d.partner
+            ? <LinkedHero d={d} />
+            : <JoinHero canJoin={d.canJoin} onJoined={x => { setD(x); setToast(`You’re now linked to ${x.partner?.name ?? 'your partner'}.`); }} />}
+
+          <section className="x-card ax-journey-card" data-testid="access-progress">
+            <div className="ax-h"><h2>{d.partner ? 'Your progress' : 'How it works'}</h2><span>{d.partner ? `${stations.filter(s => s.state === 'done').length} of ${stations.length} done` : 'Four steps, most of them automatic'}</span></div>
+            <Journey stations={stations} />
           </section>
 
           {d.partner && <>
-            <ol className="ib-steps-row" aria-label="Progress">
-              {steps.map(s => (
-                <li key={s.l} className={s.done ? 'done' : ''}>
-                  {s.done ? <CheckCircle size={22} weight="fill" aria-hidden /> : <Circle size={22} weight="bold" aria-hidden />}
-                  <span><b>{s.l}</b><small>{s.s}</small></span>
-                </li>
-              ))}
-            </ol>
-
             <section className="x-card" data-testid="access-accounts">
               <div className="x-ch"><h2>Broker accounts</h2>{d.activity.checkedAt && <span className="x-sub">activity checked {timeAgo(d.activity.checkedAt)}</span>}</div>
               {d.accounts.length === 0
@@ -124,9 +110,11 @@ export default function AccessPage() {
             <ConsentCard d={d} onChange={x => { setD(x); setToast(x.consent.share ? 'Your partner can now see your P&L.' : 'Your P&L is private again.'); }} />
           </>}
 
+          {!d.partner && <WhatTheySee />}
           {!d.partner && d.lockedPerks.length > 0 && (
-            <p className="ac-br-note"><ShieldCheck size={14} weight="duotone" aria-hidden />Some features are available through a partner package: {d.lockedPerks.join(', ')}.</p>
+            <p className="ac-br-note"><ShieldCheck size={14} weight="duotone" aria-hidden />Some features come with a partner package: {d.lockedPerks.join(', ')}.</p>
           )}
+          {me !== undefined && <PartnerBand me={me} />}
         </>}
       </div>
       {toast && <div className="ac-toast" role="status">{toast}</div>}
@@ -134,19 +122,129 @@ export default function AccessPage() {
   );
 }
 
-function JoinForm({ onJoined }: { onJoined: (d: ClientAccess) => void }) {
+/** Step states for the journey. The first unfinished step is the one to do next. */
+function journey(d: ClientAccess): Station[] {
+  const acct = d.accounts[0];
+  const verified = d.accounts.some(a => a.status === 'VERIFIED');
+  const unlocked = d.packages.filter(p => p.status === 'ACTIVE' || p.status === 'GRACE').length;
+  const first = (n: string) => n.split(' ')[0];
+  const raw = [
+    { key: 'partner', done: !!d.partner, icon: <Handshake weight="duotone" />, title: d.partner ? 'Partner linked' : 'Link your partner',
+      sub: d.partner ? `${d.partner.name} · code ${d.partner.code}` : 'Sign up through their link, or enter their code above' },
+    { key: 'account', done: d.accounts.length > 0, icon: <PlugsConnected weight="duotone" />, title: 'Connect your broker account',
+      sub: acct ? `${acct.label}${d.accounts.length > 1 ? ` +${d.accounts.length - 1} more` : ''}` : 'The MT5 account you opened through your partner',
+      action: d.accounts.length ? undefined : <Link href="/brokers" className="x-btn x-btn--sm">Connect MT5</Link> },
+    { key: 'check', done: verified, icon: <ShieldCheck weight="duotone" />, title: 'Broker check',
+      sub: verified ? 'Opened under your partner' : d.partner && d.accounts.length ? 'Matching your account to their client list' : 'We match your account to your partner’s client list' },
+    ...(d.partner ? [{ key: 'active', done: d.activity.active, icon: <ChartLineUp weight="duotone" />, title: 'Active trading',
+      sub: `${d.activity.rule.minTrades}+ closed trade${d.activity.rule.minTrades === 1 ? '' : 's'} in ${d.activity.rule.windowDays} days · you have ${d.activity.trades}` }] : []),
+    { key: 'unlock', done: unlocked > 0, icon: <LockKeyOpen weight="duotone" />, title: d.partner ? `Unlock ${first(d.partner.name)}’s tools` : 'Unlock their tools',
+      sub: unlocked ? `${unlocked} package${unlocked === 1 ? '' : 's'} unlocked` : d.partner ? (d.packages.length ? `${d.packages.length} package${d.packages.length === 1 ? '' : 's'} on offer` : 'Nothing on offer yet') : 'Packages, indicators and strategies from your partner' },
+  ];
+  const next = raw.findIndex(r => !r.done);
+  return raw.map((r, i) => ({ ...r, state: r.done ? 'done' : i === next ? 'now' : 'todo' }));
+}
+
+const initials = (n: string) => n.replace(/\(.*\)/, '').split(/\s+/).filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase();
+
+/** No partner yet: the code is the key. Typing fills the ticket and checks the code live. */
+function JoinHero({ canJoin, onJoined }: { canJoin: boolean; onJoined: (d: ClientAccess) => void }) {
   const [code, setCode] = useState('');
+  const [check, setCheck] = useState<{ code: string; valid: boolean; name: string | null } | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  useEffect(() => {
+    if (code.length < 3) { setCheck(null); return; }
+    const t = setTimeout(() => {
+      partnerApi.checkCode(code).then(r => setCheck({ code, valid: r.valid, name: r.partnerName })).catch(() => setCheck(null));
+    }, 350);
+    return () => clearTimeout(t);
+  }, [code]);
+  const current = check?.code === code ? check : null;
+  const state: TicketState = !code ? 'idle' : code.length < 3 ? 'typing' : !current ? 'checking' : current.valid ? 'found' : 'missing';
   return (
-    <form className="ib-join" onSubmit={async e => {
-      e.preventDefault(); setBusy(true); setErr('');
-      try { onJoined(await ibApi.join(code)); } catch (x) { setErr(msg(x, 'That code didn’t work.')); } finally { setBusy(false); }
-    }}>
-      <input className="x-input m" value={code} maxLength={20} onChange={e => setCode(e.target.value.replace(/[^A-Za-z0-9_-]/g, '').toUpperCase())} placeholder="PARTNER CODE" aria-label="Partner code" data-testid="access-join-code" />
-      <button type="submit" className="x-btn x-btn--hi" disabled={code.length < 3 || busy} data-testid="access-join">{busy ? 'Linking…' : 'Link partner'}</button>
-      {err && <span className="x-help ib-err" role="alert">{err}</span>}
-    </form>
+    <section className="x-card ax-hero" data-testid="access-partner">
+      <div>
+        <span className="ax-eyebrow-l"><Handshake size={14} weight="bold" aria-hidden />Partner access</span>
+        <h2>Your partner&rsquo;s code is <em>the key</em></h2>
+        <p className="ax-hero-p">Joined because a trader, coach or community sent you? Link up with them to unlock the tools, indicators and strategies they share with their clients.</p>
+        {canJoin && (
+          <form className="ax-join" onSubmit={async e => {
+            e.preventDefault(); setBusy(true); setErr('');
+            try { onJoined(await ibApi.join(code)); } catch (x) { setErr(msg(x, 'That code didn’t work.')); } finally { setBusy(false); }
+          }}>
+            <input className="x-input" value={code} maxLength={20} autoComplete="off" spellCheck={false}
+              onChange={e => { setErr(''); setCode(e.target.value.replace(/[^A-Za-z0-9_-]/g, '').toUpperCase()); }}
+              placeholder="Partner code" aria-label="Partner code" aria-describedby="ax-join-st" data-testid="access-join-code" />
+            <button type="submit" className="x-btn x-btn--hi" disabled={code.length < 3 || busy || current?.valid === false} data-testid="access-join">{busy ? 'Linking…' : <>Link partner<ArrowRight size={15} weight="bold" aria-hidden /></>}</button>
+            <span id="ax-join-st" role="status" className={`ax-join-st ${err || current?.valid === false ? 'bad' : current?.valid ? 'ok' : ''}`} data-testid="access-join-status">
+              {err ? <><WarningCircle size={14} weight="bold" aria-hidden />{err}</>
+                : current?.valid ? <><Handshake size={14} weight="bold" aria-hidden />{current.name ?? 'A partner'} uses this code</>
+                : current ? <><WarningCircle size={14} weight="bold" aria-hidden />No active partner uses this code</>
+                : 'You can link a partner once.'}
+            </span>
+          </form>
+        )}
+        <p className="ax-hint">No code? Ask the person who sent you to TRADElogs. Everything else on TRADElogs works without one.</p>
+      </div>
+      <CodeTicket code={code} state={state} partner={current?.valid ? current.name : null} />
+    </section>
+  );
+}
+
+/** Linked: who the partner is, the code, and how much is unlocked. */
+function LinkedHero({ d }: { d: ClientAccess }) {
+  const p = d.partner!;
+  const unlocked = d.packages.filter(x => x.status === 'ACTIVE' || x.status === 'GRACE').length;
+  return (
+    <section className="x-card ax-hero" data-testid="access-partner">
+      <div>
+        <span className="ax-eyebrow-l"><Handshake size={14} weight="bold" aria-hidden />Your partner</span>
+        <div className="ax-who"><span className="ax-av" aria-hidden>{initials(p.name)}</span><h2>Referred by {p.name}</h2></div>
+        <div className="ax-chips">
+          <span className="ax-chip">Code <b className="m">{p.code}</b></span>
+          <span className="ax-chip"><b className="m">{unlocked}</b> of <b className="m">{d.packages.length}</b> package{d.packages.length === 1 ? '' : 's'} unlocked</span>
+          {d.products.length > 0 && <span className="ax-chip"><b className="m">{d.products.length}</b> tool{d.products.length === 1 ? '' : 's'}</span>}
+          {p.status === 'PAUSED' && <span className="ax-chip warn"><WarningCircle size={13} weight="bold" aria-hidden />Programme paused: unlocked packages are on their grace period</span>}
+        </div>
+        <p className="ax-hero-p">{unlocked ? `Everything ${p.name.split(' ')[0]} unlocked for you is listed below.` : 'Finish the steps below and their packages unlock by themselves.'}</p>
+      </div>
+      <CodeTicket code={p.code} state="linked" partner={p.name.split(' ')[0]} />
+    </section>
+  );
+}
+
+/** Plain-language privacy: what a partner can and can't see about a client. */
+function WhatTheySee() {
+  return (
+    <section className="x-card" data-testid="access-privacy">
+      <div className="ax-h"><h2>What a partner sees about you</h2><span>Your account stays yours</span></div>
+      <div className="ax-see">
+        <div className="is-always"><h3><span className="ax-see-ic"><Eye size={16} weight="bold" /></span>Always</h3>
+          <ul><li>Your name, city and country</li><li>Whether your broker account checks out</li><li>How many trades and lots in the last 30 days</li></ul></div>
+        <div className="is-choice"><h3><span className="ax-see-ic"><ToggleRight size={16} weight="bold" /></span>Only if you turn it on</h3>
+          <ul><li>Your net P&amp;L, so they can coach you</li><li>You can switch it off any time</li></ul></div>
+        <div className="is-never"><h3><span className="ax-see-ic"><EyeSlash size={16} weight="bold" /></span>Never</h3>
+          <ul><li>Your email</li><li>Balance and equity</li><li>Individual trades</li><li>Your MT5 password</li></ul></div>
+      </div>
+    </section>
+  );
+}
+
+/** Invite to the partner programme, or a way back to the partner dashboard. */
+function PartnerBand({ me }: { me: PartnerProfile | null }) {
+  const title = me?.status === 'ACTIVE' ? 'Your partner dashboard' : me?.status === 'PENDING' || me?.status === 'NEEDS_INFO' ? 'Your partner application' : 'Run a trading community?';
+  const body = me?.status === 'ACTIVE' ? 'See who joined through you, their broker checks and what they’ve unlocked.'
+    : me?.status === 'PENDING' ? 'It’s with our team. You’ll get an email when it’s reviewed.'
+    : me?.status === 'NEEDS_INFO' ? 'Our team asked for a little more. Open it to see what.'
+    : 'Become a TRADElogs partner: share your link, verify your clients at your broker and give them your own tools.';
+  const cta = me?.status === 'ACTIVE' ? 'Open dashboard' : me?.status === 'PENDING' || me?.status === 'NEEDS_INFO' ? 'View application' : 'Become a partner';
+  return (
+    <section className="x-card ax-band" data-testid="access-partner-band">
+      <span className="ax-band-ic"><Megaphone size={26} weight="duotone" aria-hidden /></span>
+      <div><h3>{title}</h3><p>{body}</p></div>
+      <Link href="/partner" className="x-btn x-btn--hi">{cta}<ArrowRight size={15} weight="bold" aria-hidden /></Link>
+    </section>
   );
 }
 

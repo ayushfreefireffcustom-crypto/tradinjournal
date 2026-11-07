@@ -1,0 +1,151 @@
+/* Trader's Partner access page: hero with the code ticket, journey, privacy, band.
+   Tokens only, so both themes work. Motion stops under prefers-reduced-motion. */
+
+.v6 .ax-hero { position: relative; overflow: hidden; display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr); gap: 28px; align-items: center; padding: 32px; }
+.v6 .ax-hero::before { content: ''; position: absolute; inset: -40% auto auto -20%; width: 70%; height: 140%; background: radial-gradient(closest-side, var(--g-soft), transparent); pointer-events: none; }
+.v6 .ax-hero > * { position: relative; }
+.v6 .ax-eyebrow-l { display: inline-flex; align-items: center; gap: 6px; font-size: var(--t1); font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--g-tx); }
+.v6 .ax-hero h2 { margin: 10px 0 0; font-size: var(--t5); font-weight: 800; letter-spacing: -.025em; line-height: 1.08; }
+.v6 .ax-hero h2 em { font-style: normal; color: var(--g-tx); }
+.v6 .ax-hero-p { margin: 12px 0 0; color: var(--mut); font-size: var(--t3); line-height: 1.55; max-width: 46ch; }
+.v6 .ax-join { margin-top: 22px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; max-width: 460px; }
+.v6 .ax-join .x-input { height: 52px; font-size: var(--t4); font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+.v6 .ax-join .x-input::placeholder { font-weight: 700; letter-spacing: .08em; color: var(--dim); }
+.v6 .ax-join .x-btn { height: 52px; padding: 0 22px; }
+.v6 .ax-join-st { grid-column: 1 / -1; display: inline-flex; align-items: center; gap: 6px; font-size: var(--t2); color: var(--mut); min-height: 18px; }
+.v6 .ax-join-st.ok { color: var(--g-tx); }
+.v6 .ax-join-st.bad { color: var(--r-tx); }
+.v6 .ax-hint { margin: 14px 0 0; font-size: var(--t2); color: var(--dim); }
+
+/* Linked partner identity */
+.v6 .ax-who { display: flex; align-items: center; gap: 14px; margin-top: 14px; }
+.v6 .ax-av { width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; font-weight: 900; font-size: var(--t4); background: var(--g-soft); color: var(--g-tx); box-shadow: 0 0 0 2px var(--g), 0 0 0 6px var(--g-soft); flex: none; }
+.v6 .ax-who h2 { margin: 0; }
+.v6 .ax-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.v6 .ax-chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: var(--r-pill); background: var(--s2); border: 1px solid var(--line); font-size: var(--t2); color: var(--mut); }
+.v6 .ax-chip b { color: var(--tx); font-weight: 800; }
+.v6 .ax-chip.warn { color: var(--r-tx); border-color: var(--r-soft); }
+
+/* ── Code ticket ── */
+.v6 .ax-ticket { position: relative; width: 100%; max-width: 460px; justify-self: center; aspect-ratio: 400 / 230; container-type: inline-size; }
+.v6 .ax-ticket-svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.v6 .ax-dot { fill: var(--line-2); }
+.v6 .ax-tkt { fill: var(--s2); stroke: var(--line-2); stroke-width: 1.5; }
+.v6 .ax-perf { stroke: var(--line-2); stroke-width: 1.5; stroke-dasharray: 4 5; }
+.v6 .ax-bar { fill: var(--s4); }
+.v6 .ax-bar-fill { fill: var(--g); transform-box: fill-box; transform-origin: left center; transform: scaleX(0); transition: transform .5s var(--ease), fill .2s; }
+.v6 .ax-glow-in { stop-color: var(--g); stop-opacity: .38; }
+.v6 .ax-glow-out { stop-color: var(--g); stop-opacity: 0; }
+.v6 .ax-glow { opacity: 0; transition: opacity .6s var(--ease); }
+.v6 .ax-shackle { fill: none; stroke: var(--mut); stroke-width: 7; stroke-linecap: round; transform-box: view-box; transform-origin: 334px 116px; transition: transform .7s cubic-bezier(.34, 1.56, .64, 1), stroke .3s; }
+.v6 .ax-body { fill: var(--s3); stroke: var(--line-2); stroke-width: 1.5; transition: fill .3s, stroke .3s; }
+.v6 .ax-hole { fill: var(--dim); transition: fill .3s; }
+.v6 .ax-sparks path { fill: var(--g); opacity: 0; transform-box: fill-box; transform-origin: center; }
+.v6 .ax-ticket.is-found .ax-glow, .v6 .ax-ticket.is-linked .ax-glow { opacity: 1; }
+.v6 .ax-ticket.is-found .ax-shackle, .v6 .ax-ticket.is-linked .ax-shackle { stroke: var(--g); transform: translateY(-9px) rotate(-30deg); }
+.v6 .ax-ticket.is-found .ax-body, .v6 .ax-ticket.is-linked .ax-body { fill: var(--g-soft); stroke: var(--g); }
+.v6 .ax-ticket.is-found .ax-hole, .v6 .ax-ticket.is-linked .ax-hole { fill: var(--g); }
+.v6 .ax-ticket.is-found .ax-sparks path, .v6 .ax-ticket.is-linked .ax-sparks path { animation: ax-twinkle 2.4s var(--ease) infinite; }
+.v6 .ax-ticket .ax-sparks path:nth-child(2) { animation-delay: .5s; }
+.v6 .ax-ticket .ax-sparks path:nth-child(3) { animation-delay: 1.1s; }
+.v6 .ax-ticket.is-found .ax-bar-fill, .v6 .ax-ticket.is-linked .ax-bar-fill { transform: scaleX(1); }
+.v6 .ax-ticket.is-checking .ax-bar-fill { animation: ax-load 1s var(--ease) infinite; }
+.v6 .ax-ticket.is-missing .ax-bar-fill { fill: var(--r); transform: scaleX(1); }
+.v6 .ax-ticket.is-missing .ax-shackle { stroke: var(--r); }
+.v6 .ax-ticket.is-missing .ax-float { animation: ax-shake .45s var(--ease) 1; }
+.v6 .ax-float { animation: ax-float 6s ease-in-out infinite; }
+.v6 .ax-sheen { animation: ax-sheen 6.5s var(--ease) infinite; }
+
+.v6 .ax-ticket-txt { position: absolute; inset: 0; pointer-events: none; }
+.v6 .ax-stub { position: absolute; left: 15%; top: 50%; transform: translate(-50%, -50%); width: 13cqi; height: 13cqi; border-radius: 50%; display: grid; place-items: center; background: var(--s3); color: var(--g-tx); }
+.v6 .ax-stub svg { width: 7cqi; height: 7cqi; }
+.v6 .ax-eyebrow { position: absolute; left: 29.5%; top: 28%; font-size: max(9px, 2.6cqi); font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--dim); }
+.v6 .ax-code { position: absolute; left: 29.5%; top: 35%; max-width: 47%; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; font-weight: 900; letter-spacing: .04em; line-height: 1.1; color: var(--tx); font-variant-numeric: tabular-nums; }
+.v6 .ax-code--lg { font-size: 8.4cqi; }
+.v6 .ax-code--md { font-size: 6cqi; top: 37%; }
+.v6 .ax-code--sm { font-size: 4.3cqi; top: 39%; }
+.v6 .ax-code.is-ph { color: var(--dim); }
+.v6 .ax-caret { display: inline-block; width: .09em; height: .85em; margin-left: .06em; vertical-align: -.06em; background: var(--g); animation: ax-blink 1s steps(1) infinite; }
+.v6 .ax-line { position: absolute; left: 29.5%; top: 70%; max-width: 48%; display: inline-flex; align-items: center; gap: 4px; font-size: max(10px, 3cqi); color: var(--mut); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.v6 .ax-ticket.is-found .ax-line, .v6 .ax-ticket.is-linked .ax-line { color: var(--g-tx); font-weight: 700; }
+.v6 .ax-ticket.is-missing .ax-line { color: var(--r-tx); }
+
+/* ── Journey ── */
+.v6 .ax-journey-card { padding: 26px 24px 22px; }
+.v6 .ax-journey { --n: 4; list-style: none; margin: 18px 0 0; padding: 0; display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); gap: 12px; }
+.v6 .ax-st { position: relative; display: grid; justify-items: center; align-content: start; text-align: center; gap: 12px; }
+.v6 .ax-st:not(:last-child)::after { content: ''; position: absolute; top: 31px; left: calc(50% + 40px); width: calc(100% - 80px + 12px); height: 2px; border-radius: 2px;
+  background: repeating-linear-gradient(90deg, var(--line-2) 0 6px, transparent 6px 12px); }
+/* Solid green only between two finished steps; flowing into the next step; dashed otherwise. */
+.v6 .ax-st.is-done:has(+ .is-done)::after { background: linear-gradient(90deg, var(--g), color-mix(in srgb, var(--g) 55%, transparent)); }
+.v6 .ax-st.is-done:has(+ .is-now)::after { background: repeating-linear-gradient(90deg, var(--g) 0 6px, transparent 6px 12px); background-size: 24px 2px; animation: ax-flow .9s linear infinite; }
+.v6 .ax-node { position: relative; width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; background: var(--s2); border: 1px solid var(--line-2); color: var(--dim); transition: box-shadow .3s, background .3s; }
+.v6 .ax-node > svg { width: 28px; height: 28px; }
+.v6 .ax-st.is-done .ax-node { background: var(--g-soft); border-color: var(--g); color: var(--g-tx); }
+.v6 .ax-st.is-now .ax-node { background: var(--s3); border-color: var(--hi); color: var(--tx); animation: ax-pulse 2.2s var(--ease) infinite; }
+.v6 .ax-badge { position: absolute; right: -2px; bottom: -2px; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: var(--g); color: var(--on-g); box-shadow: 0 0 0 3px var(--s1); }
+.v6 .ax-st-txt { display: grid; gap: 4px; justify-items: center; }
+.v6 .ax-step-n { font-size: var(--t1); font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--dim); }
+.v6 .ax-st.is-done .ax-step-n { color: var(--g-tx); }
+.v6 .ax-st.is-now .ax-step-n { color: var(--tx); }
+.v6 .ax-st b { font-size: var(--t3); font-weight: 800; }
+.v6 .ax-st small { font-size: var(--t2); color: var(--mut); line-height: 1.45; max-width: 26ch; overflow-wrap: anywhere; }
+.v6 .ax-st .x-btn { margin-top: 6px; }
+
+/* ── What your partner sees ── */
+.v6 .ax-see { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }
+.v6 .ax-see > div { padding: 16px; border-radius: var(--r-inset); background: var(--s2); border: 1px solid var(--line); }
+.v6 .ax-see h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; font-size: var(--t3); font-weight: 800; }
+.v6 .ax-see-ic { width: 30px; height: 30px; border-radius: 10px; display: grid; place-items: center; background: var(--s3); color: var(--mut); }
+.v6 .ax-see .is-always .ax-see-ic { color: var(--tx); }
+.v6 .ax-see .is-choice .ax-see-ic { background: var(--g-soft); color: var(--g-tx); }
+.v6 .ax-see .is-never .ax-see-ic { color: var(--r-tx); }
+.v6 .ax-see ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 7px; }
+.v6 .ax-see li { display: flex; gap: 8px; align-items: baseline; font-size: var(--t2); color: var(--mut); }
+.v6 .ax-see li::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: var(--line-2); flex: none; transform: translateY(-2px); }
+.v6 .ax-see .is-choice li::before { background: var(--g); }
+.v6 .ax-see .is-never li { text-decoration: line-through; text-decoration-color: var(--line-2); }
+.v6 .ax-see-f { margin: 12px 0 0; font-size: var(--t2); color: var(--dim); }
+
+/* ── Become a partner band ── */
+.v6 .ax-band { position: relative; overflow: hidden; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 18px; align-items: center; padding: 22px 24px; }
+.v6 .ax-band::after { content: ''; position: absolute; right: -60px; top: -80px; width: 260px; height: 260px; border-radius: 50%; background: radial-gradient(closest-side, var(--g-soft), transparent); pointer-events: none; }
+.v6 .ax-band-ic { width: 52px; height: 52px; border-radius: 16px; display: grid; place-items: center; background: var(--g-soft); color: var(--g-tx); }
+.v6 .ax-band h3 { margin: 0; font-size: var(--t4); font-weight: 800; letter-spacing: -.015em; }
+.v6 .ax-band p { margin: 4px 0 0; color: var(--mut); font-size: var(--t2); }
+.v6 .ax-band .x-btn { position: relative; z-index: 1; }
+
+.v6 .ax-h { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.v6 .ax-h h2 { margin: 0; font-size: var(--t4); font-weight: 800; letter-spacing: -.015em; }
+.v6 .ax-h span { color: var(--mut); font-size: var(--t2); }
+
+@keyframes ax-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+@keyframes ax-sheen { 0%, 55% { transform: translateX(0); } 100% { transform: translateX(560px); } }
+@keyframes ax-twinkle { 0%, 100% { opacity: 0; transform: scale(.4); } 40% { opacity: 1; transform: scale(1); } 70% { opacity: .2; transform: scale(.8); } }
+@keyframes ax-load { 0% { transform: scaleX(0); } 70% { transform: scaleX(1); } 100% { transform: scaleX(1); opacity: .3; } }
+@keyframes ax-shake { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-6px); } 40% { transform: translateX(5px); } 60% { transform: translateX(-3px); } 80% { transform: translateX(2px); } }
+@keyframes ax-blink { 50% { opacity: 0; } }
+@keyframes ax-flow { to { background-position: 24px 0; } }
+@keyframes ax-pulse { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--hi) 22%, transparent); } 50% { box-shadow: 0 0 0 9px transparent; } }
+
+@media (max-width: 900px) {
+  .v6 .ax-hero { grid-template-columns: 1fr; padding: 24px 20px; gap: 18px; }
+  .v6 .ax-see { grid-template-columns: 1fr; }
+}
+@media (max-width: 720px) {
+  .v6 .ax-journey { grid-template-columns: 1fr; gap: 0; }
+  .v6 .ax-st { grid-template-columns: 64px minmax(0, 1fr); justify-items: start; text-align: left; gap: 14px; padding-bottom: 22px; }
+  .v6 .ax-st-txt { justify-items: start; padding-top: 6px; }
+  .v6 .ax-st small { max-width: none; }
+  .v6 .ax-st:not(:last-child)::after { top: 70px; left: 31px; width: 2px; height: calc(100% - 76px);
+    background: repeating-linear-gradient(180deg, var(--line-2) 0 6px, transparent 6px 12px); }
+  .v6 .ax-st.is-done:has(+ .is-done)::after { background: linear-gradient(180deg, var(--g), color-mix(in srgb, var(--g) 55%, transparent)); }
+  .v6 .ax-st.is-done:has(+ .is-now)::after { background: repeating-linear-gradient(180deg, var(--g) 0 6px, transparent 6px 12px); background-size: 2px 24px; animation: ax-flow-v .9s linear infinite; }
+  .v6 .ax-band { grid-template-columns: auto minmax(0, 1fr); }
+  .v6 .ax-band .x-btn { grid-column: 1 / -1; justify-content: center; }
+  .v6 .ax-join { grid-template-columns: 1fr; }
+}
+@keyframes ax-flow-v { to { background-position: 0 24px; } }
+@media (prefers-reduced-motion: reduce) {
+  .v6 .ax-ticket *, .v6 .ax-journey *, .v6 .ax-journey li::after { animation: none !important; transition: none !important; }
+}
