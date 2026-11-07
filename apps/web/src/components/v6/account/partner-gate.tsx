@@ -11,7 +11,7 @@ import '@/styles/v6/ib.css';
 export type GateReason = 'NOT_A_PARTNER' | 'PARTNER_PENDING' | 'PARTNER_NEEDS_INFO' | 'PARTNER_REJECTED' | 'PARTNER_SUSPENDED' | 'PARTNER_REVOKED';
 export const GATE_CODES: string[] = ['NOT_A_PARTNER', 'PARTNER_PENDING', 'PARTNER_NEEDS_INFO', 'PARTNER_REJECTED', 'PARTNER_SUSPENDED', 'PARTNER_REVOKED'];
 
-const BROKERS = [['xellion', 'Xellion'], ['elefin', 'Elefin'], ['exness', 'Exness'], ['xm', 'XM'], ['vantage', 'Vantage'], ['icmarkets', 'IC Markets'], ['pepperstone', 'Pepperstone'], ['other', 'Other']] as const;
+const BROKERS = [['elefin', 'Elefin'], ['xellion', 'Xellion'], ['exness', 'Exness'], ['xm', 'XM'], ['vantage', 'Vantage'], ['icmarkets', 'IC Markets'], ['pepperstone', 'Pepperstone'], ['other', 'Other']] as const;
 const PLATFORMS = ['YouTube', 'Telegram', 'Instagram', 'X', 'Website'] as const;
 
 const IClock = () => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" aria-hidden><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>;
@@ -19,7 +19,8 @@ const IClock = () => <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
 export default function PartnerGate({ reason, onApplied }: { reason: GateReason; onApplied: () => void }) {
   const [audience, setAudience] = useState('');
   const [code, setCode] = useState('');
-  const [brokers, setBrokers] = useState<string[]>([]);
+  // TRADElogs is for Elefin clients, so Elefin starts ticked.
+  const [brokers, setBrokers] = useState<string[]>(['elefin']);
   const [socials, setSocials] = useState<Record<string, string>>({});
   const [size, setSize] = useState('');
   const [pitch, setPitch] = useState('');

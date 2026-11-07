@@ -46,9 +46,13 @@ export async function partnerIbOverview(partnerId: string, range: PartnerRangeQu
     ibFunnel(range, partnerId, partnerSince), tradingSummary(partnerId), listBrokers(partnerId),
     prisma.partnerPackage.count({ where: { partnerId, status: 'LIVE', OR: [{ endsAt: null }, { endsAt: { gt: new Date() } }] } }),
     prisma.clientEntitlement.findMany({ where: { partnerId, status: { in: ['ACTIVE', 'GRACE'] } }, distinct: ['userId'], select: { userId: true } }),
-    prisma.clientVerification.groupBy({ by: ['status'], where: { partnerId }, _count: { _all: true } }),
+    prisma.clientVerification.findMany({ where: { partnerId }, select: { status: true, userId: true } }),
   ]);
-  const n = (s: string) => v.find(x => x.status === s)?._count._all ?? 0;
+  // Clients, not accounts: someone with two accounts is one client. A client who already
+  // has a verified account isn't "not found" or "at another broker", even if one of
+  // their other accounts is.
+  const verifiedUsers = new Set(v.filter(x => x.status === 'VERIFIED').map(x => x.userId));
+  const n = (s: string) => new Set(v.filter(x => x.status === s && (s === 'MANUAL_REVIEW' || !verifiedUsers.has(x.userId))).map(x => x.userId)).size;
   return {
     funnel, trading, brokers, packages: { live: pk, holders: holders.length },
     needsAttention: { notFound: n('NOT_FOUND'), inReview: n('MANUAL_REVIEW'), unsupported: n('UNSUPPORTED_BROKER'), syncErrors: brokers.filter(b => b.status === 'ERROR').length },

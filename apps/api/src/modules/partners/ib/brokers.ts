@@ -1,6 +1,7 @@
 // Brokers a partner can be an IB with. Matching a client's MT5 account to a broker
 // uses the broker name and server the account was connected with.
 import type { BrokerCatalogEntryDto, IbMethodDto } from '@tradinjournal/contracts';
+import { env } from '@tradinjournal/config';
 
 interface BrokerDef {
   key: string;
@@ -11,8 +12,8 @@ interface BrokerDef {
 }
 
 export const BROKERS: BrokerDef[] = [
-  { key: 'xellion', label: 'Xellion', match: /xellion/i, listHint: 'Account ID and email from your Xellion partner list' },
   { key: 'elefin', label: 'Elefin', match: /elefin/i, listHint: 'Account ID and email from your Elefin partner area' },
+  { key: 'xellion', label: 'Xellion', match: /xellion/i, listHint: 'Account ID and email from your Xellion partner list' },
   { key: 'exness', label: 'Exness', match: /exness/i, listHint: 'Client account numbers from Exness Partnership › Clients' },
   { key: 'xm', label: 'XM', match: /\bxm(global|trading)?\b|xmglobal|trading point/i, listHint: 'MT5 account IDs from the XM Partners client report' },
   { key: 'vantage', label: 'Vantage', match: /vantage/i, listHint: 'Account numbers from the Vantage IB portal' },
@@ -43,8 +44,11 @@ export function brokerKeyFor(account: { broker: string; server: string }, extra:
   return null;
 }
 
+/** Elefin only: while the platform gate is on, clients can only use Elefin accounts, so Elefin is the only IB broker worth connecting. */
+export const ibBrokersOnlyElefin = (): boolean => env.PLATFORM_ACCESS_ENABLED;
+
 export function catalog(): BrokerCatalogEntryDto[] {
-  return BROKERS.map(b => ({
+  return BROKERS.filter(b => !ibBrokersOnlyElefin() || b.key === 'elefin').map(b => ({
     key: b.key, label: b.label, listHint: b.listHint,
     // Broker postbacks work for every broker; the REST API needs the host approved by an admin.
     methods: ['LIST', 'SHEET', 'API'] as IbMethodDto[],

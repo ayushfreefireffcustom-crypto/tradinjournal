@@ -87,8 +87,8 @@ export default function PartnerToolsPage() {
                       {t.url && <span>Link</span>}
                       <span>{t.packages.length ? `In ${t.packages.join(', ')}` : 'Not in a package yet'}</span>
                     </div>
+                    <p className="ib-tool-stats" data-testid={`tool-stats-${t.name}`}><b className="m">{n(t.users30d)}</b> {t.users30d === 1 ? 'client' : 'clients'} opened it · <b className="m">{n(t.opens30d)}</b> {t.opens30d === 1 ? 'open' : 'opens'} in 30 days</p>
                     <div className="ib-pkg-ft">
-                      <span><b className="m">{n(t.users30d)}</b> {t.users30d === 1 ? 'client' : 'clients'} opened it · <b className="m">{n(t.opens30d)}</b> {t.opens30d === 1 ? 'open' : 'opens'}, 30d</span>
                       <span className="ib-br-btns">
                         <button type="button" className="x-btn x-btn--sm x-btn--ghost" onClick={() => setEditing(t)}><PencilSimple size={14} weight="bold" />Edit</button>
                         {(t.status === 'DRAFT' || t.status === 'REJECTED') && <button type="button" className="x-btn x-btn--sm x-btn--hi" onClick={() => void act(() => ibApi.submitProduct(t.id), 'Sent for review.')} data-testid={`tool-submit-${t.name}`}><PaperPlaneTilt size={14} weight="bold" />Send for review</button>}

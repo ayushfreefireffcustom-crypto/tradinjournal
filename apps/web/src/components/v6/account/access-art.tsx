@@ -187,3 +187,35 @@ export function PartnerRowPreview({ partner, name, place, verified, trades, shar
     </Well>
   );
 }
+
+// ── Partner tool: where you'll use it ─────────────────────────────────────────
+
+const PLACE: Record<string, { app: string; action: string }> = {
+  TradingView: { app: 'Pine Editor', action: 'Add to chart' },
+  MT5: { app: 'MetaEditor 5', action: 'Compile' },
+  MT4: { app: 'MetaEditor 4', action: 'Compile' },
+  TRADElogs: { app: 'TRADElogs', action: 'Use' },
+};
+
+/** Mini window of the app the tool goes into, with its first lines and the action. */
+export function ToolPreview({ name, platform, content, fileName, url, isGuide }: {
+  name: string; platform: string | null; content: string | null; fileName: string | null; url: string | null; isGuide: boolean;
+}) {
+  const base = isGuide && !content ? { app: 'Guide', action: 'Open' } : PLACE[platform ?? ''] ?? { app: 'Preview', action: 'Copy' };
+  // A ready-made file (an .ex5, a template) is attached, not compiled or pasted.
+  const place = !content && fileName && !isGuide ? { app: base.app, action: 'Attach to chart' } : base;
+  const lines = (content ?? '').split('\n').slice(0, 9);
+  return (
+    <Well tall className="axw-tool">
+      <Win title={place.app} right={<span className="axlp-cta axtool-cta">{place.action}<Cursor className="axcur--cta" /></span>} className="axwin--tool">
+        {content ? (
+          <ol className="axcode">{lines.map((l, i) => <li key={i}><span>{l || ' '}</span></li>)}</ol>
+        ) : fileName ? (
+          <ul className="axrows"><li><b>{fileName}</b><span className="axmute">{name}</span><span className="axmute">ready</span></li><li><i className="axline w60" /><span /><span /></li><li><i className="axline w40" /><span /><span /></li></ul>
+        ) : url ? (
+          <div className="axform"><i className="axfield is-on" style={{ letterSpacing: 0, fontWeight: 600 }}>{url.replace(/^https?:\/\//, '').slice(0, 48)}</i><i className="axline w70" /><i className="axline w50" /><i className="axline w60" /></div>
+        ) : <div className="axform"><i className="axline w70" /><i className="axline w50" /></div>}
+      </Win>
+    </Well>
+  );
+}

@@ -10406,6 +10406,252 @@
           }
         },
         {
+          "name": "Attention counts clients, not accounts (baseline)",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const D = 864e5, iso = t => new Date(t).toISOString().slice(0, 10), now = Date.now();",
+                  "pm.collectionVariables.set('today', iso(now)); pm.collectionVariables.set('yesterday', iso(now - D)); pm.collectionVariables.set('plus30', iso(now + 30 * D));",
+                  "pm.collectionVariables.set('tomorrowStart', iso(now + D) + 'T00:00:00.000Z'); pm.collectionVariables.set('plus31Start', iso(now + 31 * D) + 'T00:00:00.000Z');",
+                  "pm.collectionVariables.set('tooLongTo', iso(Date.parse('2025-01-01') + 366 * D));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.collectionVariables.set('unsup0', d.ib.needsAttention.unsupported);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{honeyCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/overview?range=ALL",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "overview"
+              ],
+              "query": [
+                {
+                  "key": "range",
+                  "value": "ALL"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Verified t1 adds an account at a broker Honey hasn’t connected",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const D = 864e5, iso = t => new Date(t).toISOString().slice(0, 10), now = Date.now();",
+                  "pm.collectionVariables.set('today', iso(now)); pm.collectionVariables.set('yesterday', iso(now - D)); pm.collectionVariables.set('plus30', iso(now + 30 * D));",
+                  "pm.collectionVariables.set('tomorrowStart', iso(now + D) + 'T00:00:00.000Z'); pm.collectionVariables.set('plus31Start', iso(now + 31 * D) + 'T00:00:00.000Z');",
+                  "pm.collectionVariables.set('tooLongTo', iso(Date.parse('2025-01-01') + 366 * D));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', () => pm.response.to.have.status(201));",
+                  "const d = pm.response.json().data;",
+                  "const a = d.accounts.find(x => x.label.startsWith('6600123'));",
+                  "pm.test(\"unsupported account\", () => { pm.expect(a.status).to.eql('UNSUPPORTED_BROKER'); });",
+                  "pm.collectionVariables.set('t1Ext', a.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{t1Cookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner-access/accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner-access",
+                "accounts"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"platform\": \"MT4\",\n  \"login\": \"6600123\",\n  \"server\": \"Vantage-Live\",\n  \"broker\": \"Vantage\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "…t1 is still verified, so not counted as “at another broker”",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const D = 864e5, iso = t => new Date(t).toISOString().slice(0, 10), now = Date.now();",
+                  "pm.collectionVariables.set('today', iso(now)); pm.collectionVariables.set('yesterday', iso(now - D)); pm.collectionVariables.set('plus30', iso(now + 30 * D));",
+                  "pm.collectionVariables.set('tomorrowStart', iso(now + D) + 'T00:00:00.000Z'); pm.collectionVariables.set('plus31Start', iso(now + 31 * D) + 'T00:00:00.000Z');",
+                  "pm.collectionVariables.set('tooLongTo', iso(Date.parse('2025-01-01') + 366 * D));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"unchanged\", () => { pm.expect(d.ib.needsAttention.unsupported).to.eql(Number(pm.collectionVariables.get('unsup0'))); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{honeyCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/overview?range=ALL",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "overview"
+              ],
+              "query": [
+                {
+                  "key": "range",
+                  "value": "ALL"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "t1 removes that account again",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const D = 864e5, iso = t => new Date(t).toISOString().slice(0, 10), now = Date.now();",
+                  "pm.collectionVariables.set('today', iso(now)); pm.collectionVariables.set('yesterday', iso(now - D)); pm.collectionVariables.set('plus30', iso(now + 30 * D));",
+                  "pm.collectionVariables.set('tomorrowStart', iso(now + D) + 'T00:00:00.000Z'); pm.collectionVariables.set('plus31Start', iso(now + 31 * D) + 'T00:00:00.000Z');",
+                  "pm.collectionVariables.set('tooLongTo', iso(Date.parse('2025-01-01') + 366 * D));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{t1Cookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner-access/accounts/{{t1Ext}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner-access",
+                "accounts",
+                "{{t1Ext}}"
+              ]
+            }
+          }
+        },
+        {
           "name": "Partner’s own CSV, bad range → 422",
           "protocolProfileBehavior": {
             "disableCookies": true,

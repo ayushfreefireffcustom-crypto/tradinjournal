@@ -6,7 +6,7 @@ import type {
 import { logger } from '@tradinjournal/logger';
 import { AppError, ConflictError, NotFoundError, ValidationError } from '../../../http/errors.js';
 import { encryptSecret } from '../../../lib/secrets.js';
-import { brokerKeyFor, brokerLabel, isKnownBroker } from './brokers.js';
+import { brokerKeyFor, brokerLabel, isKnownBroker, ibBrokersOnlyElefin } from './brokers.js';
 import { decideVerification, parseIbList, type IbRow } from './ib.logic.js';
 import { fetchSheet, sheetCsvUrl, SourceError } from './sources.js';
 import { logEvent } from './events.js';
@@ -46,6 +46,7 @@ export async function listBrokers(partnerId: string): Promise<PartnerBrokerDto[]
 export async function upsertBroker(partner: PartnerLite, input: PartnerBrokerUpsertInput, actor: Actor = null): Promise<PartnerBrokerDto> {
   const broker = input.broker.toLowerCase();
   if (!isKnownBroker(broker)) throw new ValidationError('Pick a broker from the list (or “Other broker”).');
+  if (ibBrokersOnlyElefin() && broker !== 'elefin') throw new ValidationError('TRADElogs is for Elefin clients only, so Elefin is the only broker you can connect.');
   if (broker === 'other' && !input.serverMatch) throw new ValidationError('For another broker, enter text its MT5 server name contains, e.g. “AcmeFX-Live”.');
   if (input.method === 'SHEET' && (!input.sheetUrl || !sheetCsvUrl(input.sheetUrl))) throw new ValidationError('Paste a Google Sheets link (docs.google.com) that anyone with the link can view.');
   // API connections are set up in a second step (integrations.service saveApiConfig).

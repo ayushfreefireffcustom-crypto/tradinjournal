@@ -204,3 +204,16 @@ html[data-theme=light] .v6 .axfield { background: var(--s1); }
 @media (prefers-reduced-motion: reduce) {
   .v6 .axcaret, .v6 .axcur, .v6 .axline { animation: none !important; }
 }
+
+/* ── Partner tool page ── */
+.v6 .axtool-cta { height: 24px; padding: 0 12px; font-size: 11px; }
+.v6 .axwin--tool .axwin-h { height: 40px; }
+.v6 .axcode { list-style: none; margin: 0; padding: 12px 0; counter-reset: ln; font-size: 12px; line-height: 1.75; font-variant-numeric: tabular-nums; }
+.v6 .axcode li { counter-increment: ln; display: grid; grid-template-columns: 40px minmax(0, 1fr); }
+.v6 .axcode li::before { content: counter(ln); text-align: right; padding-right: 14px; color: var(--dim); }
+.v6 .axcode li span { white-space: pre; overflow: hidden; text-overflow: ellipsis; color: var(--tx); }
+.v6 .axdoc { max-height: 520px; overflow: auto; }
+.v6 .axdoc .axcode { padding: 14px 0 18px; font-size: 13px; }
+.v6 .axdoc .axcode li span { white-space: pre-wrap; overflow-wrap: anywhere; }
+.v6 .ax-tool-acts { margin-top: 22px; display: flex; flex-wrap: wrap; gap: 8px; }
+.v6 .ax-tool-foot { margin: 0; font-size: var(--t2); color: var(--dim); }

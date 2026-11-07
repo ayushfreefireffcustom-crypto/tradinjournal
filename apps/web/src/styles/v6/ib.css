@@ -240,3 +240,6 @@
 .v6 .ib-acct-h b { display: inline-flex; align-items: center; gap: 6px; }
 .v6 .ib-date-row { display: flex; align-items: center; gap: 8px; }
 .v6 .ib-date-row .x-input { flex: 1 1 auto; min-width: 0; }
+.v6 .ib-tool-stats { margin: auto 0 0; padding-top: 12px; font-size: var(--t2); color: var(--mut); }
+.v6 .ib-tool-stats b { color: var(--tx); }
+.v6 .ib-tool-stats + .ib-pkg-ft { margin-top: 10px; }

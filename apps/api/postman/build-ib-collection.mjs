@@ -422,6 +422,11 @@ folders.push(
     dq('Partners CSV without a range has no range columns', 'GET', `${P}/admin/partner-program/export`, { as: 'admin', query: 'type=partners', tests: [status(200), t('plain', "pm.expect(pm.response.text().split('\\n')[0]).to.not.include('in_range');")] }),
     dq('Partner’s own CSV, Jan 2020: header only', 'GET', `${P}/partner/export`, { as: 'honey', query: PAST, tests: [status(200), t('no rows', "pm.expect(pm.response.text().trim().split('\\n')).to.have.length(1);")] }),
     dq('Partner’s own CSV, today', 'GET', `${P}/partner/export`, { as: 'honey', query: TODAY, tests: [status(200), t('4 clients', "pm.expect(pm.response.text().trim().split('\\n').length - 1).to.eql(4);")] }),
+    dq('Attention counts clients, not accounts (baseline)', 'GET', `${P}/partner/overview`, { as: 'honey', query: 'range=ALL', tests: [status(200), json, "pm.collectionVariables.set('unsup0', d.ib.needsAttention.unsupported);"] }),
+    dq('Verified t1 adds an account at a broker Honey hasn’t connected', 'POST', `${P}/partner-access/accounts`, { as: 't1', body: { platform: 'MT4', login: '6600123', server: 'Vantage-Live', broker: 'Vantage' },
+      tests: [status(201), json, "const a = d.accounts.find(x => x.label.startsWith('6600123'));", t('unsupported account', "pm.expect(a.status).to.eql('UNSUPPORTED_BROKER');"), "pm.collectionVariables.set('t1Ext', a.id);"] }),
+    dq('…t1 is still verified, so not counted as “at another broker”', 'GET', `${P}/partner/overview`, { as: 'honey', query: 'range=ALL', tests: [status(200), json, t('unchanged', "pm.expect(d.ib.needsAttention.unsupported).to.eql(Number(pm.collectionVariables.get('unsup0')));")] }),
+    dq('t1 removes that account again', 'DELETE', `${P}/partner-access/accounts/{{t1Ext}}`, { as: 't1', tests: [status(200)] }),
     dq('Partner’s own CSV, bad range → 422', 'GET', `${P}/partner/export`, { as: 'honey', query: 'range=CUSTOM&from=2026-10-05&to=2026-10-01', tests: [status(422)] }),
   ] },
 

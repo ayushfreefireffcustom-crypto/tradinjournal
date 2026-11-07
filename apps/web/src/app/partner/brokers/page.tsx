@@ -98,7 +98,7 @@ export default function PartnerBrokersPage() {
               </ul>
               {uploadFor && brokers.find(b => b.id === uploadFor) && (
                 <UploadPanel b={brokers.find(b => b.id === uploadFor)!} hint={catalog.find(c => c.key === brokers.find(b => b.id === uploadFor)!.broker)?.listHint}
-                  onDone={async r => { setToast(`${r.broker.accountCount} accounts listed; ${r.rechecked} client accounts re-checked.`); await load(); }} />
+                  onDone={async r => { setToast(`${r.broker.accountCount} ${r.broker.accountCount === 1 ? 'account' : 'accounts'} listed; ${r.rechecked} client ${r.rechecked === 1 ? 'account' : 'accounts'} re-checked.`); await load(); }} />
               )}
               {integFor && brokers.find(b => b.id === integFor) && (
                 <IntegrationPanel b={brokers.find(b => b.id === integFor)!} onToast={setToast} onChanged={load} />
