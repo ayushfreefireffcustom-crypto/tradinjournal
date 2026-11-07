@@ -16,6 +16,7 @@ import { AppError, BrokerAuthError, BrokerConnectionError, NotFoundError } from 
 import { executionSelect, executionToDeal } from './sync.mapping.js';
 import { requestSyncWithin, syncQueue } from './sync.queue.js';
 import { computeStats, reconstructTrades } from '../trades/trades.service.js';
+import { assertAccountUsable } from '../../lib/broker-policy.js';
 
 export type ReadMode = 'interactive' | 'background' | 'readonly';
 
@@ -76,6 +77,7 @@ async function snapshot(account: BrokerAccount): Promise<Snapshot> {
 export async function loadAccountData(userId: string, accountId: string, mode: ReadMode = 'interactive') {
   let account = await prisma.brokerAccount.findFirst({ where: { id: accountId, userId } });
   if (!account) throw new NotFoundError('Broker account not found');
+  await assertAccountUsable(userId, account);
 
   if (mode === 'interactive' && !account.lastSyncAt) {
     account = await awaitFirstSync(account);

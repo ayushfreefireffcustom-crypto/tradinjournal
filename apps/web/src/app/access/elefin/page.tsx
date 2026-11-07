@@ -101,7 +101,11 @@ function ElefinBrokerCheck({ onSignOut }: { onSignOut: () => void }) {
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState('');
 
-  useEffect(() => { api.accounts.list().then(setAccounts).catch(() => setAccounts([])); }, []);
+  // Other brokers' accounts are locked (Elefin only), so they come from the locked list.
+  useEffect(() => {
+    Promise.all([api.accounts.list().catch(() => []), api.accounts.locked().catch(() => [])])
+      .then(([a, l]) => setAccounts([...a, ...l]));
+  }, []);
 
   async function onConnected(account: BrokerAccount) {
     setConnecting(false);

@@ -15,6 +15,7 @@ import { assertWithinLimit } from '../../lib/plans.js';
 import { registerSecret } from '@tradinjournal/logger';
 import { env } from '@tradinjournal/config';
 import { onAccountsChanged } from '../partners/ib/cycle.js';
+import { assertAccountUsable, ElefinOnlyError, isElefinServer, elefinOnlyFor, splitUsable } from '../../lib/broker-policy.js';
 
 
 // Prettify a broker name from an MT5 server string, e.g.
@@ -42,11 +43,17 @@ export async function connectAccount(userId: string, input: ConnectAccountInput)
   // How many MT5 accounts a user may connect comes from their plan (H15).
   if (!alreadyHave) await assertWithinLimit(userId, 'brokerAccounts', existing.length, 'Remove one first.');
 
+  // Elefin only: refuse other brokers before touching the bridge, then check again on
+  // the server the bridge actually logged in to (the typed one could differ).
+  const onlyElefin = await elefinOnlyFor(userId);
+  if (onlyElefin && !isElefinServer(input.server)) throw new ElefinOnlyError();
+
   const info = await verifyAccount({
     login: input.mt5Login,
     password: input.password,
     server: input.server,
   });
+  if (onlyElefin && !isElefinServer(info.server)) throw new ElefinOnlyError();
 
   const account = await upsertAccount({
     userId,
@@ -64,8 +71,14 @@ export async function connectAccount(userId: string, input: ConnectAccountInput)
   return account;
 }
 
+/** Accounts the user may use. Under Elefin only, other brokers' accounts are left out (see lockedAccounts). */
 export async function listAccounts(userId: string): Promise<BrokerAccount[]> {
-  return findAccountsByUser(userId);
+  return (await splitUsable(userId, await findAccountsByUser(userId))).usable;
+}
+
+/** Accounts kept but not usable under Elefin only, so the user can see and remove them. */
+export async function lockedAccounts(userId: string): Promise<BrokerAccount[]> {
+  return (await splitUsable(userId, await findAccountsByUser(userId))).locked;
 }
 
 // Update the stored MT5 password after the trader changes it at their broker.
@@ -79,6 +92,7 @@ export async function updateAccountCredentials(
   registerSecret(password);
   const account = await findAccountById(id, userId);
   if (!account) throw new NotFoundError('Broker account not found');
+  await assertAccountUsable(userId, account);
 
   const info = await verifyAccount({
     login: Number(account.mt5Login),
@@ -113,6 +127,7 @@ export type SyncNowResult = 'synced' | 'running' | 'failed';
 export async function syncNow(userId: string, id: string): Promise<{ account: BrokerAccount; result: SyncNowResult }> {
   const account = await findAccountById(id, userId);
   if (!account) throw new NotFoundError('Broker account not found');
+  await assertAccountUsable(userId, account);
   await prisma.brokerAccount.update({ where: { id }, data: { syncRetryAt: null } });
   const r = await requestSyncWithin(id, 'high', 25_000);
   if (r !== 'timeout' && r.status === 'failed') throw r.error;

@@ -10,6 +10,7 @@ import { brokerKeyFor, brokerLabel, isKnownBroker } from './brokers.js';
 import { decideVerification, parseIbList, type IbRow } from './ib.logic.js';
 import { fetchSheet, sheetCsvUrl, SourceError } from './sources.js';
 import { logEvent } from './events.js';
+import { assertAccountUsable, splitUsable } from '../../../lib/broker-policy.js';
 
 const SHEET_EVERY_MS = 60 * 60_000;
 
@@ -172,7 +173,8 @@ export async function accountsOf(userId: string): Promise<AccountRef[]> {
     prisma.brokerAccount.findMany({ where: { userId }, select: ACCOUNT_SELECT, orderBy: { createdAt: 'asc' } }),
     prisma.externalAccount.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } }),
   ]);
-  return [...mt5.map(mt5Ref), ...ext.map(extRef)];
+  // Elefin only: other brokers' accounts are hidden here too.
+  return (await splitUsable(userId, [...mt5.map(mt5Ref), ...ext.map(extRef)])).usable;
 }
 
 /** Checks one account against the referring partner's IB lists. */
@@ -247,6 +249,7 @@ export async function verifyOne(userId: string, accountId: string, input: { brok
 export async function addExternalAccount(user: { id: string; email: string }, input: { platform: string; login: string; server: string; broker: string; brokerEmail?: string }) {
   const ref = await referralFor(user.id);
   if (!ref) throw new ConflictError('Join a partner first: enter their code above.');
+  await assertAccountUsable(user.id, { server: input.server });
   const count = await prisma.externalAccount.count({ where: { userId: user.id } });
   if (count >= 5) throw new ConflictError('You can add up to 5 accounts this way.');
   const mt5 = input.platform === 'MT5' && await prisma.brokerAccount.findFirst({ where: { userId: user.id, mt5Login: BigInt(/^\d+$/.test(input.login) ? input.login : '0'), server: input.server } });

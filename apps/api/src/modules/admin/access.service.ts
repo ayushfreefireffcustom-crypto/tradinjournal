@@ -13,6 +13,8 @@ import { getElefinProvider } from './elefin.provider.js';
 import { getMaintenanceMode } from './settings.service.js';
 import { findAccountsByUser } from '../accounts/accounts.repository.js';
 import { fetchTrades } from '../trades/trades.service.js';
+import { isElefinServer } from '../../lib/broker-policy.js';
+export { isElefinServer };
 
 const ACTIVITY_CACHE_MS = 15 * 60 * 1000;
 
@@ -20,14 +22,6 @@ function normEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
-/**
- * An Elefin account is one on an Elefin MT5 server ("Elefin-Trade", …). Only the server
- * counts: it's what the bridge actually logged in to, whereas the broker name is picked
- * by the user in a dropdown and could say "Elefin" for any account.
- */
-export function isElefinServer(server: string): boolean {
-  return /^elefin/i.test(server.trim());
-}
 
 const brokerMode = () => env.ELEFIN_VERIFY_MODE === 'broker';
 const elefinCheck = (): 'broker' | 'api' => (brokerMode() ? 'broker' : 'api');

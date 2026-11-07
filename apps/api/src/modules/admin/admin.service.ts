@@ -13,6 +13,7 @@ import { ConflictError, NotFoundError } from '../../http/errors.js';
 import { logAdminAction } from './admin-audit.service.js';
 import { getMaintenanceMode, setMaintenanceMode } from './settings.service.js';
 import { recheckUserAccess, syncManualGrant } from './access.service.js';
+import { clearBrokerPolicyCache } from '../../lib/broker-policy.js';
 
 function grantToDto(row: {
   id: string;
@@ -408,6 +409,7 @@ export async function createGrant(
     targetId: row.id,
     details: { email, note: input.note },
   });
+  clearBrokerPolicyCache();
 
   return grantToDto(row);
 }
@@ -424,6 +426,7 @@ export async function revokeGrant(
     where: { id },
     data: { revokedAt: new Date() },
   });
+  clearBrokerPolicyCache();
 
   const user = await prisma.user.findUnique({ where: { email: row.email }, select: { id: true } });
   if (user) {

@@ -34,6 +34,7 @@ import {
   sendWeeklyReview,
   listDueRecipients,
 } from './ai.weekly-review.service.js';
+import { assertAccountUsable } from '../../lib/broker-policy.js';
 
 function sseWrite(res: Response, obj: unknown): void {
   res.write(`data: ${JSON.stringify(obj)}\n\n`);
@@ -306,7 +307,9 @@ export async function handleContextChips(_req: Request, res: Response, next: Nex
 export async function handleToolTurn(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const b = req.body as AiToolTurnInput;
-    if (!(await findAccountById(b.accountId, res.locals.user.id as string))) throw new NotFoundError('Account not found');
+    const acc = await findAccountById(b.accountId, res.locals.user.id as string);
+    if (!acc) throw new NotFoundError('Account not found');
+    await assertAccountUsable(res.locals.user.id as string, acc);
     const conversationId = await persistTurn({ userId: res.locals.user.id as string, brokerAccountId: b.accountId, conversationId: b.conversationId, userContent: b.user, assistantContent: b.assistant, lane: 'personal' });
     ok(res, { conversationId });
   } catch (err) { next(err); }

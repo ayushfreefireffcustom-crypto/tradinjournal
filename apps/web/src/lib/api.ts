@@ -506,6 +506,8 @@ export const api = {
     connect: (body: { mt5Login: number; password: string; server: string; broker?: string }) =>
       apiFetch<BrokerAccount>(`${PREFIX}/accounts`, { method: 'POST', body: JSON.stringify(body) }),
     list: () => apiFetch<BrokerAccount[]>(`${PREFIX}/accounts`),
+    /** Accounts kept but not usable (Elefin only: other brokers). Empty when nothing is locked. */
+    locked: () => apiFetch<(BrokerAccount & { lockedReason: string })[]>(`${PREFIX}/accounts/locked`),
     updateCredentials: (id: string, password: string) =>
       apiFetch<BrokerAccount>(`${PREFIX}/accounts/${id}/credentials`, { method: 'PATCH', body: JSON.stringify({ password }) }),
     delete: (id: string) => apiFetch<{ ok: boolean }>(`${PREFIX}/accounts/${id}`, { method: 'DELETE' }),

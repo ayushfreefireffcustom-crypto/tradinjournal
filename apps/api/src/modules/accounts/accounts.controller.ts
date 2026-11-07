@@ -1,6 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
 import type { ConnectAccountInput, UpdateCredentialsInput } from '@tradinjournal/contracts';
-import { connectAccount, listAccounts, deleteAccount, updateAccountCredentials, syncNow } from './accounts.service.js';
+import { connectAccount, listAccounts, lockedAccounts, deleteAccount, updateAccountCredentials, syncNow } from './accounts.service.js';
 
 function serializeAccount(account: { id: string; broker: string; mt5Login: bigint; server: string; baseCurrency: string; marginMode: string; status: string; lastSyncAt: Date | null; lastSyncError?: string | null; lastDealAt?: Date | null; createdAt: Date }) {
   return {
@@ -23,6 +23,16 @@ export async function handleConnect(req: Request, res: Response, next: NextFunct
     const userId = res.locals.user.id as string;
     const account = await connectAccount(userId, req.body as ConnectAccountInput);
     res.status(201).json({ data: serializeAccount(account) });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/** Accounts kept but not usable under Elefin only (other brokers), so the user can remove them. */
+export async function handleLocked(_req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const accounts = await lockedAccounts(res.locals.user.id as string);
+    res.json({ data: accounts.map(a => ({ ...serializeAccount(a), lockedReason: 'Only Elefin accounts can be used on TRADElogs.' })) });
   } catch (err) {
     next(err);
   }

@@ -50,6 +50,9 @@ export default function BrokersPage() {
   const [deleting, setDeleting] = useState(false);
   const [query, setQuery] = useState('');
   const [figures, setFigures] = useState<Record<string, AccountFigures | null>>({});
+  // Elefin only: other brokers' accounts are kept but can't be used; list them so they can be removed.
+  const [locked, setLocked] = useState<(BrokerAccount & { lockedReason: string })[]>([]);
+  useEffect(() => { api.accounts.locked().then(setLocked).catch(() => setLocked([])); }, []);
 
   const atLimit = accounts.length >= MAX_ACCOUNTS;
 
@@ -94,6 +97,7 @@ export default function BrokersPage() {
     try {
       await api.accounts.delete(pendingDelete.id);
       setAccounts(prev => prev.filter(a => a.id !== pendingDelete.id));
+      setLocked(prev => prev.filter(a => a.id !== pendingDelete.id));
       toast.success(`Removed · ${pendingDelete.broker} #${pendingDelete.mt5Login}`);
       setPendingDelete(null);
     } catch (err: unknown) {
@@ -202,6 +206,27 @@ export default function BrokersPage() {
             </>
           )}
         </section>
+
+        {locked.length > 0 && (
+          <section className="ac-br ac-br-locked" data-testid="brokers-locked" aria-label="Accounts you can't use">
+            <div className="x-banner" role="note"><ILock size={15} /><span>{locked[0]?.lockedReason} These accounts are kept but hidden. Remove them, or keep them in case that changes.</span></div>
+            <div className="ac-br-grid">
+              {locked.map(acc => (
+                <article key={acc.id} className="x-card ac-acct off" data-testid={`brokers-locked-${acc.mt5Login}`}>
+                  <header className="ac-acct-h">
+                    <span className="x-mk ac-acct-mk">{monogram(acc.broker)}</span>
+                    <div className="ac-acct-id"><b>{acc.broker} <span className="m x-muted">#{acc.mt5Login}</span></b><small>{acc.server} · {acc.baseCurrency}</small></div>
+                    <span className="x-tag ac-acct-st"><ILock size={12} />Not Elefin</span>
+                  </header>
+                  <footer className="ac-acct-f">
+                    <span className="ac-acct-sync">Not synced while it&rsquo;s locked</span>
+                    <span className="ac-acct-acts"><button className="x-btn x-btn--sm x-btn--ghost ac-del" onClick={() => setPendingDelete(acc)} aria-label={`Remove ${acc.broker} #${acc.mt5Login}`} data-testid={`brokers-locked-delete-${acc.mt5Login}`}><IBin />Remove</button></span>
+                  </footer>
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
 
         <p className="ac-br-note"><ILock size={14} />TRADElogs only reads your MT5 history. It can never place trades or move funds.</p>
       </div>

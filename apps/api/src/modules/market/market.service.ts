@@ -13,6 +13,7 @@ import { resolveProvider, searchAllSymbols } from '../../lib/market/providers/in
 import { findAccountById } from '../accounts/accounts.repository.js';
 import { firstListSymbols, setFirstListSymbols } from './watchlists.service.js';
 import type { BridgeCreds, GetCandlesOpts, NormalizedCandle, SymbolInfo } from '../../lib/market/types.js';
+import { accountUsable } from '../../lib/broker-policy.js';
 
 // Timeframes the warm cron keeps hot for the configured symbol set.
 const WARM_TFS: MarketTimeframe[] = ['1h', '1d'];
@@ -62,7 +63,9 @@ async function loadCandles(symbol: string, tf: MarketTimeframe, opts: GetCandles
 /** Resolve broker credentials for a candles request, if it targets an account. */
 export async function brokerCredsFor(accountId: string | undefined, userId: string): Promise<{ creds?: BridgeCreds; scope: string }> {
   if (!accountId) return { scope: 'public' };
-  const acc = await findAccountById(accountId, userId);
+  const found = await findAccountById(accountId, userId);
+  // Elefin only: a locked account's credentials are never used; fall back to public data.
+  const acc = found && (await accountUsable(userId, found)) ? found : null;
   const creds = acc ? credsOf(acc) : null;
   if (!acc || !creds) return { scope: 'public' };
   return { creds, scope: `mt5:${acc.server}` };

@@ -10,6 +10,7 @@ import { getDeals, HISTORY_START } from '../../lib/broker-connector.js';
 import { AppError, BrokerAuthError } from '../../http/errors.js';
 import { credsOf, type BridgeCreds } from '../accounts/accounts.credentials.js';
 import { dealToExecution } from './sync.mapping.js';
+import { usableAccountsWhere } from '../../lib/broker-policy.js';
 
 const DAY_MS = 86_400_000;
 /** Longer than the slowest bridge call, so a crashed sync frees the account. */
@@ -100,12 +101,15 @@ export async function syncAccount(accountId: string, opts: { fetch?: FetchDeals;
 /** Accounts the scheduler should refresh: never synced, or older than the background interval. */
 export async function dueAccounts(limit: number, now = new Date()): Promise<string[]> {
   const cutoff = new Date(now.getTime() - env.SYNC_BACKGROUND_MIN * 60_000);
+  // Elefin only: other brokers' accounts aren't usable, so don't spend bridge time on them.
+  const usable = await usableAccountsWhere();
   const rows = await prisma.brokerAccount.findMany({
     where: {
       password: { not: null },
       AND: [
         { OR: [{ lastSyncAt: null }, { lastSyncAt: { lt: cutoff } }] },
         { OR: [{ syncRetryAt: null }, { syncRetryAt: { lt: now } }] },
+        ...(usable ? [usable] : []),
       ],
     },
     orderBy: [{ lastSyncAt: { sort: 'asc', nulls: 'first' } }],
