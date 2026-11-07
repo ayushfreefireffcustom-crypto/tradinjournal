@@ -3,45 +3,47 @@
 // A trader's side of the partner programme: who referred them, whether each MT5
 // account checks out under that partner's IB, what they've unlocked and why
 // anything is still locked, plus the choice to share their P&L with the partner.
+// Each section holds a small render of the real screen (components/v6/account/access-art).
 import Link from '@/components/v6/ui/link';
 import { useCallback, useEffect, useState } from 'react';
-import { ArrowRight, ChartLineUp, Eye, EyeSlash, Handshake, LockKeyOpen, Megaphone, Package, PlugsConnected, Pulse, ShieldCheck, ToggleRight, Toolbox, Trash, WarningCircle } from '@phosphor-icons/react';
+import { ArrowRight, Check, Hourglass, LockSimple, Trash, WarningCircle } from '@phosphor-icons/react';
 import AppShell from '@/components/app-shell';
 import { useAccounts } from '@/lib/use-accounts';
-import { dayUtc, ibApi, PRODUCT_TYPE_LABEL, type AccessAccount, type ClientAccess } from '@/lib/ib-api';
-import { EntPill, VerifyPill } from '@/components/v6/account/ib-parts';
+import { authClient } from '@/lib/auth-client';
+import { dayUtc, ibApi, PRODUCT_TYPE_LABEL, type AccessAccount, type AccessPackage, type ClientAccess } from '@/lib/ib-api';
+import { VerifyPill } from '@/components/v6/account/ib-parts';
 import { day } from '@/components/v6/account/partner-parts';
 import { timeAgo } from '@/components/app-shell';
-import { CodeTicket, Journey, type Station, type TicketState } from '@/components/v6/account/access-art';
+import { Caption, LinkPreview, PartnerRowPreview, PathList, VMatch, VSignup, VUnlock, Win, type LookupState, type PathRow } from '@/components/v6/account/access-art';
 import { partnerApi, type PartnerProfile } from '@/lib/partner-api';
-import EmptyState from '@/components/v6/ui/empty-state';
 import '@/styles/v6/account.css';
 import '@/styles/v6/lux.css';
 import '@/styles/v6/ib.css';
 import '@/styles/v6/access.css';
 
 const msg = (e: unknown, f: string) => (e instanceof Error ? e.message : f);
+const first = (n: string) => n.split(' ')[0] ?? n;
 /** Access stops because the package ends (not the holder's own access period). */
 const endsByPackage = (p: { expiresAt: string | null; endsOn: string | null }) =>
   !!p.expiresAt && !!p.endsOn && Date.parse(p.expiresAt) === Date.parse(`${p.endsOn}T00:00:00Z`) + 86_400_000;
 
 export default function AccessPage() {
   const { accounts, selected, select } = useAccounts();
+  const { data: session } = authClient.useSession();
   const [d, setD] = useState<ClientAccess | null>(null);
   const [error, setError] = useState('');
   const [toast, setToast] = useState('');
+  const [me, setMe] = useState<PartnerProfile | null | undefined>(undefined);
 
   const load = useCallback(async () => {
     try { setD(await ibApi.access()); setError(''); } catch (e) { setError(msg(e, 'Could not load your access.')); }
   }, []);
   useEffect(() => { void load(); }, [load]);
+  useEffect(() => { partnerApi.me().then(setMe).catch(() => setMe(null)); }, []);
   useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(''), 3000); return () => clearTimeout(t); }, [toast]);
 
-  const [me, setMe] = useState<PartnerProfile | null | undefined>(undefined);
-  useEffect(() => { partnerApi.me().then(setMe).catch(() => setMe(null)); }, []);
-
-  // The steps to a partner's tools, filled in from where this trader actually is.
-  const stations: Station[] = d ? journey(d) : [];
+  const user = session?.user as { name?: string; city?: string | null; country?: string | null } | undefined;
+  const place = [user?.city, user?.country === 'IN' ? 'India' : user?.country].filter(Boolean).join(', ');
 
   return (
     <AppShell legacy={false} accounts={accounts} selectedAccount={selected} onSelectAccount={select} pageTitle="Partner access"
@@ -51,68 +53,30 @@ export default function AccessPage() {
         {!d && !error && <><div className="x-skel ac-sk-320" /><div className="x-skel ac-sk-168" /></>}
 
         {d && <>
-          {d.partner
-            ? <LinkedHero d={d} />
-            : <JoinHero canJoin={d.canJoin} onJoined={x => { setD(x); setToast(`You’re now linked to ${x.partner?.name ?? 'your partner'}.`); }} />}
+          {d.partner ? <LinkedHero d={d} /> : <JoinHero canJoin={d.canJoin} onJoined={x => { setD(x); setToast(`You’re now linked to ${x.partner?.name ?? 'your partner'}.`); }} />}
 
-          <section className="x-card ax-journey-card" data-testid="access-progress">
-            <div className="ax-h"><h2>{d.partner ? 'Your progress' : 'How it works'}</h2><span>{d.partner ? `${stations.filter(s => s.state === 'done').length} of ${stations.length} done` : 'Four steps, most of them automatic'}</span></div>
-            <Journey stations={stations} />
+          <section data-testid="access-progress">
+            <PathList title={d.partner ? `Your path to ${first(d.partner.name)}’s tools` : 'Your path to a partner’s tools'} {...path(d)} />
           </section>
 
-          {d.partner && <>
-            <section className="x-card" data-testid="access-accounts">
-              <div className="x-ch"><h2>Broker accounts</h2>{d.activity.checkedAt && <span className="x-sub">activity checked {timeAgo(d.activity.checkedAt)}</span>}</div>
-              {d.accounts.length === 0
-                ? <EmptyState compact icon="plug" title="Connect your MT5 account" actions={<Link href="/brokers" className="x-btn x-btn--hi">Connect MT5</Link>}>Use the account you opened with your partner&rsquo;s broker link. We check it against their list straight away.</EmptyState>
-                : <ul className="ib-accts">{d.accounts.map(a => <AccountRow key={a.id} a={a} onChange={x => { setD(x); }} onToast={setToast} />)}</ul>}
-              <AddAccount onAdded={x => { setD(x); setToast('Account added and checked.'); }} />
-            </section>
-
-            {d.products.length > 0 && (
-              <section className="x-card" data-testid="access-tools">
-                <div className="x-ch"><h2>Your tools from {d.partner.name.split(' ')[0]}</h2><span className="x-sub"><span className="m">{d.products.length}</span></span></div>
-                <ul className="ib-accts">{d.products.map(t => (
-                  <li key={t.id} className="ib-acct">
-                    <div className="ib-acct-h">
-                      <span><b><Toolbox size={15} weight="duotone" aria-hidden /> {t.name}</b><small>{PRODUCT_TYPE_LABEL[t.type]}{t.platform ? ` · ${t.platform}` : ''} · v{t.version}</small></span>
-                      <Link href={`/access/tools/${t.id}`} className="x-btn x-btn--sm x-btn--hi" data-testid={`access-tool-${t.name}`}>Open</Link>
-                    </div>
-                    {t.description && <p>{t.description}</p>}
-                  </li>
-                ))}</ul>
-              </section>
-            )}
-
-            <section className="x-card" data-testid="access-packages">
-              <div className="x-ch"><h2>What {d.partner.name.split(' ')[0]} offers</h2></div>
-              {d.packages.length === 0
-                ? <EmptyState compact icon="star" title="Nothing on offer yet">When your partner publishes a package, it shows up here with what you need to unlock it.</EmptyState>
-                : <div className="ib-pkgs">{d.packages.map(p => (
-                    <article key={p.id} className="x-inset ib-pkg" data-testid={`access-pkg-${p.name}`}>
-                      <div className="ib-pkg-h"><div><h3>{p.name}</h3>{p.description && <p>{p.description}</p>}</div><EntPill s={p.status} /></div>
-                      <ul className="ib-perks">
-                        {p.perks.map(k => <li key={k.key}><Package size={13} weight="bold" aria-hidden />{p.status === 'ACTIVE' || p.status === 'GRACE' ? <Link href={k.href} className="x-link">{k.label}</Link> : k.label}</li>)}
-                        {p.templates.map(t => <li key={t.id}><Pulse size={13} weight="bold" aria-hidden />{p.status === 'ACTIVE' || p.status === 'GRACE' ? <Link href={`/marketplace/${t.id}`} className="x-link">{t.name}</Link> : t.name}</li>)}
-                        {p.products.map(t => <li key={t.id}><Toolbox size={13} weight="bold" aria-hidden />{p.status === 'ACTIVE' || p.status === 'GRACE' ? <Link href={`/access/tools/${t.id}`} className="x-link">{t.name}</Link> : t.name}</li>)}
-                      </ul>
-                      {p.reasons.length > 0 && <ul className="ib-reasons">{p.reasons.map(r => <li key={r}>{r}</li>)}</ul>}
-                      <div className="ib-rules">
-                        {p.status === 'GRACE' && p.graceUntil && <span>Grace ends {day(p.graceUntil)}</span>}
-                        {p.grantedAt && p.status !== 'LOCKED' && <span>Unlocked {day(p.grantedAt)}</span>}
-                        {p.expiresAt && p.status !== 'EXPIRED' && p.status !== 'LOCKED' && <span>Access until {endsByPackage(p) ? `the end of ${dayUtc(p.endsOn!)} (UTC)` : day(p.expiresAt)}</span>}
-                        {p.endsOn && p.status === 'LOCKED' && <span data-testid={`access-ends-${p.name}`}>Offer ends {dayUtc(p.endsOn)}</span>}
-                      </div>
-                    </article>
-                  ))}</div>}
-            </section>
-
-            <ConsentCard d={d} onChange={x => { setD(x); setToast(x.consent.share ? 'Your partner can now see your P&L.' : 'Your P&L is private again.'); }} />
+          {!d.partner && <>
+            <div className="ax-sec"><h2>How it works</h2><p>Three things happen, and only the first one is up to you.</p></div>
+            <div className="ax-cards">
+              <article className="x-card ax-card"><VSignup /><h3>Link once.</h3><p>Sign up through your partner&rsquo;s link, or type their code. It sticks to your account for good.</p></article>
+              <article className="x-card ax-card"><VMatch /><h3>Checked at the broker.</h3><p>We look for your MT5 account on your partner&rsquo;s client list at the broker. A match is the proof; an email alone never is.</p></article>
+              <article className="x-card ax-card"><VUnlock /><h3>Their tools, yours.</h3><p>Packages unlock by themselves when the checks pass, and pause with a grace period if they stop passing.</p></article>
+            </div>
+            <Caption>Drawn from TRADElogs screens · demo names</Caption>
           </>}
 
-          {!d.partner && <WhatTheySee />}
+          {d.partner && <Accounts d={d} setD={setD} setToast={setToast} />}
+          {d.partner && d.products.length > 0 && <Tools d={d} />}
+          {d.partner && <Packages d={d} />}
+
+          <WhatTheySee d={d} name={user?.name ?? ''} place={place} onChange={x => { setD(x); setToast(x.consent.share ? `${first(x.partner?.name ?? 'Your partner')} can now see your P&L.` : 'Your P&L is private again.'); }} />
+
           {!d.partner && d.lockedPerks.length > 0 && (
-            <p className="ac-br-note"><ShieldCheck size={14} weight="duotone" aria-hidden />Some features come with a partner package: {d.lockedPerks.join(', ')}.</p>
+            <p className="ac-br-note"><LockSimple size={14} weight="bold" aria-hidden />Some features come with a partner package: {d.lockedPerks.join(', ')}.</p>
           )}
           {me !== undefined && <PartnerBand me={me} />}
         </>}
@@ -122,32 +86,25 @@ export default function AccessPage() {
   );
 }
 
-/** Step states for the journey. The first unfinished step is the one to do next. */
-function journey(d: ClientAccess): Station[] {
+/** The real steps, as checklist rows with their actual values. */
+function path(d: ClientAccess): { rows: PathRow[]; next: string | null; action?: React.ReactNode } {
   const acct = d.accounts[0];
-  const verified = d.accounts.some(a => a.status === 'VERIFIED');
+  const verified = d.accounts.find(a => a.status === 'VERIFIED');
   const unlocked = d.packages.filter(p => p.status === 'ACTIVE' || p.status === 'GRACE').length;
-  const first = (n: string) => n.split(' ')[0];
-  const raw = [
-    { key: 'partner', done: !!d.partner, icon: <Handshake weight="duotone" />, title: d.partner ? 'Partner linked' : 'Link your partner',
-      sub: d.partner ? `${d.partner.name} · code ${d.partner.code}` : 'Sign up through their link, or enter their code above' },
-    { key: 'account', done: d.accounts.length > 0, icon: <PlugsConnected weight="duotone" />, title: 'Connect your broker account',
-      sub: acct ? `${acct.label}${d.accounts.length > 1 ? ` +${d.accounts.length - 1} more` : ''}` : 'The MT5 account you opened through your partner',
-      action: d.accounts.length ? undefined : <Link href="/brokers" className="x-btn x-btn--sm">Connect MT5</Link> },
-    { key: 'check', done: verified, icon: <ShieldCheck weight="duotone" />, title: 'Broker check',
-      sub: verified ? 'Opened under your partner' : d.partner && d.accounts.length ? 'Matching your account to their client list' : 'We match your account to your partner’s client list' },
-    ...(d.partner ? [{ key: 'active', done: d.activity.active, icon: <ChartLineUp weight="duotone" />, title: 'Active trading',
-      sub: `${d.activity.rule.minTrades}+ closed trade${d.activity.rule.minTrades === 1 ? '' : 's'} in ${d.activity.rule.windowDays} days · you have ${d.activity.trades}` }] : []),
-    { key: 'unlock', done: unlocked > 0, icon: <LockKeyOpen weight="duotone" />, title: d.partner ? `Unlock ${first(d.partner.name)}’s tools` : 'Unlock their tools',
-      sub: unlocked ? `${unlocked} package${unlocked === 1 ? '' : 's'} unlocked` : d.partner ? (d.packages.length ? `${d.packages.length} package${d.packages.length === 1 ? '' : 's'} on offer` : 'Nothing on offer yet') : 'Packages, indicators and strategies from your partner' },
+  const rule = d.activity.rule;
+  const rows: PathRow[] = [
+    { key: 'partner', title: 'Link your partner', note: d.partner ? `${d.partner.name}` : 'Their link or their code', value: d.partner ? d.partner.code : '—', done: !!d.partner },
+    { key: 'account', title: 'Connect your MT5 account', note: acct ? `${acct.broker}${d.accounts.length > 1 ? ` + ${d.accounts.length - 1} more` : ''}` : 'The one you opened through your partner', value: acct ? acct.label.split(' · ')[0] : '—', done: d.accounts.length > 0 },
+    { key: 'check', title: 'Broker check', note: verified ? `Found on ${d.partner ? first(d.partner.name) + '’s' : 'the'} client list` : d.partner && acct ? 'Not on their list yet' : 'We match your account to their list', value: verified ? 'Verified' : d.partner && acct ? 'Waiting' : '—', done: !!verified },
+    ...(d.partner ? [{ key: 'active', title: 'Trade', note: `${rule.minTrades}+ closed trade${rule.minTrades === 1 ? '' : 's'} in ${rule.windowDays} days`, value: `${d.activity.trades} / ${rule.minTrades}`, done: d.activity.active, bar: rule.minTrades ? d.activity.trades / rule.minTrades : 1 }] : []),
+    { key: 'unlock', title: 'Unlock their tools', note: d.partner ? (d.packages.length ? `${d.packages.length} package${d.packages.length === 1 ? '' : 's'} on offer` : 'Nothing on offer yet') : 'Packages, guides and strategies', value: d.partner ? `${unlocked} / ${d.packages.length}` : '—', done: unlocked > 0 },
   ];
-  const next = raw.findIndex(r => !r.done);
-  return raw.map((r, i) => ({ ...r, state: r.done ? 'done' : i === next ? 'now' : 'todo' }));
+  const next = rows.find(r => !r.done);
+  const action = next?.key === 'account' ? <Link href="/brokers" className="x-btn x-btn--sm">Connect MT5</Link> : undefined;
+  return { rows, next: next ? next.title.toLowerCase() : null, action };
 }
 
-const initials = (n: string) => n.replace(/\(.*\)/, '').split(/\s+/).filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase();
-
-/** No partner yet: the code is the key. Typing fills the ticket and checks the code live. */
+/** No partner yet. Typing fills the link in the little browser and checks the code live. */
 function JoinHero({ canJoin, onJoined }: { canJoin: boolean; onJoined: (d: ClientAccess) => void }) {
   const [code, setCode] = useState('');
   const [check, setCheck] = useState<{ code: string; valid: boolean; name: string | null } | null>(null);
@@ -161,89 +118,172 @@ function JoinHero({ canJoin, onJoined }: { canJoin: boolean; onJoined: (d: Clien
     return () => clearTimeout(t);
   }, [code]);
   const current = check?.code === code ? check : null;
-  const state: TicketState = !code ? 'idle' : code.length < 3 ? 'typing' : !current ? 'checking' : current.valid ? 'found' : 'missing';
+  const state: LookupState = !code ? 'idle' : code.length < 3 ? 'typing' : !current ? 'checking' : current.valid ? 'found' : 'missing';
   return (
-    <section className="x-card ax-hero" data-testid="access-partner">
+    <section className="x-card ax-hero2" data-testid="access-partner">
       <div>
-        <span className="ax-eyebrow-l"><Handshake size={14} weight="bold" aria-hidden />Partner access</span>
-        <h2>Your partner&rsquo;s code is <em>the key</em></h2>
-        <p className="ax-hero-p">Joined because a trader, coach or community sent you? Link up with them to unlock the tools, indicators and strategies they share with their clients.</p>
+        <span className="ax-kicker">Partner access</span>
+        <h2>Who sent <em>you</em>?</h2>
+        <p className="ax-lede">If a trader, coach or community brought you to TRADElogs, link them once. Their tools unlock as soon as your broker account checks out.</p>
         {canJoin && (
-          <form className="ax-join" onSubmit={async e => {
+          <form className="ax-join2" onSubmit={async e => {
             e.preventDefault(); setBusy(true); setErr('');
             try { onJoined(await ibApi.join(code)); } catch (x) { setErr(msg(x, 'That code didn’t work.')); } finally { setBusy(false); }
           }}>
             <input className="x-input" value={code} maxLength={20} autoComplete="off" spellCheck={false}
               onChange={e => { setErr(''); setCode(e.target.value.replace(/[^A-Za-z0-9_-]/g, '').toUpperCase()); }}
-              placeholder="Partner code" aria-label="Partner code" aria-describedby="ax-join-st" data-testid="access-join-code" />
-            <button type="submit" className="x-btn x-btn--hi" disabled={code.length < 3 || busy || current?.valid === false} data-testid="access-join">{busy ? 'Linking…' : <>Link partner<ArrowRight size={15} weight="bold" aria-hidden /></>}</button>
-            <span id="ax-join-st" role="status" className={`ax-join-st ${err || current?.valid === false ? 'bad' : current?.valid ? 'ok' : ''}`} data-testid="access-join-status">
+              placeholder="Their code, e.g. MAYA" aria-label="Partner code" aria-describedby="ax-join-st" data-testid="access-join-code" />
+            <button type="submit" className="x-btn x-btn--hi" disabled={code.length < 3 || busy || current?.valid === false} data-testid="access-join">{busy ? 'Linking…' : <>Link<ArrowRight size={15} weight="bold" aria-hidden /></>}</button>
+            <span id="ax-join-st" role="status" className={`ax-st2 ${err || current?.valid === false ? 'bad' : current?.valid ? 'ok' : ''}`} data-testid="access-join-status">
               {err ? <><WarningCircle size={14} weight="bold" aria-hidden />{err}</>
-                : current?.valid ? <><Handshake size={14} weight="bold" aria-hidden />{current.name ?? 'A partner'} uses this code</>
+                : current?.valid ? <><Check size={14} weight="bold" aria-hidden />{current.name ?? 'A partner'} uses this code</>
                 : current ? <><WarningCircle size={14} weight="bold" aria-hidden />No active partner uses this code</>
                 : 'You can link a partner once.'}
             </span>
           </form>
         )}
-        <p className="ax-hint">No code? Ask the person who sent you to TRADElogs. Everything else on TRADElogs works without one.</p>
+        <ul className="ax-facts"><li>No code? Everything else on TRADElogs works without one.</li></ul>
       </div>
-      <CodeTicket code={code} state={state} partner={current?.valid ? current.name : null} />
+      <div>
+        <LinkPreview code={code} state={state} name={current?.valid ? current.name : null} />
+        <Caption live>Live · checks the code as you type</Caption>
+      </div>
     </section>
   );
 }
 
-/** Linked: who the partner is, the code, and how much is unlocked. */
+/** Linked: who the partner is and how far along the client is. */
 function LinkedHero({ d }: { d: ClientAccess }) {
   const p = d.partner!;
   const unlocked = d.packages.filter(x => x.status === 'ACTIVE' || x.status === 'GRACE').length;
   return (
-    <section className="x-card ax-hero" data-testid="access-partner">
+    <section className="x-card ax-hero2" data-testid="access-partner">
       <div>
-        <span className="ax-eyebrow-l"><Handshake size={14} weight="bold" aria-hidden />Your partner</span>
-        <div className="ax-who"><span className="ax-av" aria-hidden>{initials(p.name)}</span><h2>Referred by {p.name}</h2></div>
-        <div className="ax-chips">
-          <span className="ax-chip">Code <b className="m">{p.code}</b></span>
-          <span className="ax-chip"><b className="m">{unlocked}</b> of <b className="m">{d.packages.length}</b> package{d.packages.length === 1 ? '' : 's'} unlocked</span>
-          {d.products.length > 0 && <span className="ax-chip"><b className="m">{d.products.length}</b> tool{d.products.length === 1 ? '' : 's'}</span>}
-          {p.status === 'PAUSED' && <span className="ax-chip warn"><WarningCircle size={13} weight="bold" aria-hidden />Programme paused: unlocked packages are on their grace period</span>}
+        <span className="ax-kicker">Your partner</span>
+        <h2>{first(p.name)} brought <em>you</em> here.</h2>
+        <p className="ax-lede">Referred by {p.name}. {unlocked ? `${unlocked === d.packages.length ? 'Everything' : `${unlocked} of ${d.packages.length} packages`} they offer is unlocked for you.` : 'Finish the list below and their packages unlock by themselves.'}</p>
+        <ul className="ax-facts">
+          <li>Code <b>{p.code}</b></li>
+          <li><b>{unlocked}</b> of <b>{d.packages.length}</b> package{d.packages.length === 1 ? '' : 's'} unlocked</li>
+          {d.products.length > 0 && <li><b>{d.products.length}</b> tool{d.products.length === 1 ? '' : 's'}</li>}
+        </ul>
+        {p.status === 'PAUSED' && <p className="ax-st2 bad"><WarningCircle size={14} weight="bold" aria-hidden />Their programme is paused, so what you unlocked runs on its grace period.</p>}
+      </div>
+      <div>
+        <LinkPreview code={p.code} state="linked" name={p.name} />
+        <Caption live>Your link · {p.code}</Caption>
+      </div>
+    </section>
+  );
+}
+
+function Accounts({ d, setD, setToast }: { d: ClientAccess; setD: (x: ClientAccess) => void; setToast: (s: string) => void }) {
+  return (
+    <section data-testid="access-accounts">
+      <Win title="Your broker accounts" right={d.activity.checkedAt ? `activity checked ${timeAgo(d.activity.checkedAt)}` : `${d.accounts.length} connected`} className="axwin--path">
+        {d.accounts.length === 0
+          ? <div className="ax-list"><p className="ac-p" style={{ padding: 16, margin: 0 }}>Connect the MT5 account you opened through your partner. We check it against their list straight away. <Link href="/brokers" className="x-link">Connect MT5</Link></p></div>
+          : <ul className="ib-accts ax-list">{d.accounts.map(a => <AccountRow key={a.id} a={a} onChange={x => setD(x)} onToast={setToast} />)}</ul>}
+        <div style={{ padding: '0 16px 12px' }}><AddAccount onAdded={x => { setD(x); setToast('Account added and checked.'); }} /></div>
+      </Win>
+    </section>
+  );
+}
+
+function Tools({ d }: { d: ClientAccess }) {
+  return (
+    <section data-testid="access-tools">
+      <Win title={`Tools from ${first(d.partner!.name)}`} right={`${d.products.length}`} className="axwin--path">
+        <ul className="axrows">{d.products.map(t => (
+          <li key={t.id} style={{ gridTemplateColumns: 'minmax(0,1fr) auto auto' }}>
+            <span><b>{t.name}</b>{t.description && <span className="axmute"> · {t.description}</span>}</span>
+            <span className="axmute">{PRODUCT_TYPE_LABEL[t.type]}{t.platform ? ` · ${t.platform}` : ''} · v{t.version}</span>
+            <Link href={`/access/tools/${t.id}`} className="x-btn x-btn--sm x-btn--hi" data-testid={`access-tool-${t.name}`}>Open</Link>
+          </li>
+        ))}</ul>
+      </Win>
+    </section>
+  );
+}
+
+const ENT_CHIP: Record<string, { label: string; ok: boolean }> = {
+  ACTIVE: { label: 'Unlocked', ok: true }, GRACE: { label: 'Grace period', ok: false }, SUSPENDED: { label: 'Paused', ok: false },
+  EXPIRED: { label: 'Ended', ok: false }, LOCKED: { label: 'Locked', ok: false },
+};
+
+function Packages({ d }: { d: ClientAccess }) {
+  const live = (p: AccessPackage) => p.status === 'ACTIVE' || p.status === 'GRACE';
+  return (
+    <section data-testid="access-packages">
+      <div className="ax-sec"><h2>What {first(d.partner!.name)} offers</h2><p>{d.packages.length ? 'Unlocked packages open straight from here.' : 'When they publish a package, it shows up here.'}</p></div>
+      {d.packages.length > 0 && (
+        <div className="ax-pkgs2" style={{ padding: 0, marginTop: 12 }}>
+          {d.packages.map(p => {
+            const chip = ENT_CHIP[p.status] ?? ENT_CHIP.LOCKED!;
+            return (
+              <article key={p.id} className={`ax-pkg2 ${live(p) ? '' : 'is-off'}`} data-testid={`access-pkg-${p.name}`}>
+                <Win title={p.name} right={<span className={`axchip ${chip.ok ? 'ok' : ''}`}>{chip.ok ? <Check size={11} weight="bold" /> : p.status === 'GRACE' ? <Hourglass size={11} weight="bold" /> : <LockSimple size={11} weight="bold" />}{chip.label}</span>}>
+                  {p.description && <p className="ax-why" style={{ borderTop: 0 }}>{p.description}</p>}
+                  <ul className="axrows">
+                    {p.perks.map(k => <li key={k.key}><span className="axmute">Feature</span>{live(p) ? <Link href={k.href}>{k.label}</Link> : <span>{k.label}</span>}<span className="axmute">{live(p) ? 'Open' : ''}</span></li>)}
+                    {p.templates.map(t => <li key={t.id}><span className="axmute">Strategy</span>{live(p) ? <Link href={`/marketplace/${t.id}`}>{t.name}</Link> : <span>{t.name}</span>}<span className="axmute">{live(p) ? 'Open' : ''}</span></li>)}
+                    {p.products.map(t => <li key={t.id}><span className="axmute">Tool</span>{live(p) ? <Link href={`/access/tools/${t.id}`}>{t.name}</Link> : <span>{t.name}</span>}<span className="axmute">{live(p) ? 'Open' : ''}</span></li>)}
+                  </ul>
+                  {p.reasons.length > 0 && <p className="ax-why">{p.reasons.join(' ')}</p>}
+                  <div className="ax-meta">
+                    {p.status === 'GRACE' && p.graceUntil && <span>Grace ends {day(p.graceUntil)}</span>}
+                    {p.grantedAt && p.status !== 'LOCKED' && <span>Unlocked {day(p.grantedAt)}</span>}
+                    {p.expiresAt && p.status !== 'EXPIRED' && p.status !== 'LOCKED' && <span>Access until {endsByPackage(p) ? `the end of ${dayUtc(p.endsOn!)} (UTC)` : day(p.expiresAt)}</span>}
+                    {p.endsOn && p.status === 'LOCKED' && <span data-testid={`access-ends-${p.name}`}>Offer ends {dayUtc(p.endsOn)}</span>}
+                  </div>
+                </Win>
+              </article>
+            );
+          })}
         </div>
-        <p className="ax-hero-p">{unlocked ? `Everything ${p.name.split(' ')[0]} unlocked for you is listed below.` : 'Finish the steps below and their packages unlock by themselves.'}</p>
-      </div>
-      <CodeTicket code={p.code} state="linked" partner={p.name.split(' ')[0]} />
+      )}
     </section>
   );
 }
 
-/** Plain-language privacy: what a partner can and can't see about a client. */
-function WhatTheySee() {
+/** Your row as your partner sees it, with the switch that changes it. */
+function WhatTheySee({ d, name, place, onChange }: { d: ClientAccess; name: string; place: string; onChange: (x: ClientAccess) => void }) {
+  const [busy, setBusy] = useState(false);
+  const partner = d.partner ? first(d.partner.name) : null;
   return (
-    <section className="x-card" data-testid="access-privacy">
-      <div className="ax-h"><h2>What a partner sees about you</h2><span>Your account stays yours</span></div>
-      <div className="ax-see">
-        <div className="is-always"><h3><span className="ax-see-ic"><Eye size={16} weight="bold" /></span>Always</h3>
-          <ul><li>Your name, city and country</li><li>Whether your broker account checks out</li><li>How many trades and lots in the last 30 days</li></ul></div>
-        <div className="is-choice"><h3><span className="ax-see-ic"><ToggleRight size={16} weight="bold" /></span>Only if you turn it on</h3>
-          <ul><li>Your net P&amp;L, so they can coach you</li><li>You can switch it off any time</li></ul></div>
-        <div className="is-never"><h3><span className="ax-see-ic"><EyeSlash size={16} weight="bold" /></span>Never</h3>
-          <ul><li>Your email</li><li>Balance and equity</li><li>Individual trades</li><li>Your MT5 password</li></ul></div>
+    <section className="x-card ax-see2" data-testid="access-privacy">
+      <div>
+        <span className="ax-kicker">Privacy</span>
+        <h2 style={{ marginTop: 10 }}>What {partner ?? 'a partner'} sees.</h2>
+        <p>Your name, city, broker check and how much you trade. Your P&amp;L only if you switch it on.</p>
+        {d.partner ? (
+          <button type="button" role="switch" aria-checked={d.consent.share} className="ax-switch" disabled={busy} data-testid="access-consent-toggle"
+            onClick={async () => { setBusy(true); try { onChange(await ibApi.consent(!d.consent.share)); } finally { setBusy(false); } }}>
+            <span className="sw" aria-hidden />
+            <span><b>Share my P&amp;L with {partner}</b><small>{d.consent.share ? `On since ${d.consent.at ? day(d.consent.at) : 'today'} · turn off any time` : 'Off · so they can coach you, if you want'}</small></span>
+          </button>
+        ) : null}
+        <p className="ax-never-l">Never shown</p>
+        <ul className="ax-never"><li>Email</li><li>Balance</li><li>Equity</li><li>Individual trades</li><li>MT5 password</li></ul>
+      </div>
+      <div data-testid={d.partner ? 'access-consent' : undefined}>
+        <PartnerRowPreview partner={partner} name={name} place={place} verified={d.accounts.some(a => a.status === 'VERIFIED')} trades={d.activity.trades} shared={!!d.partner && d.consent.share} />
+        <Caption live>Your real row{d.partner ? ', updates as you switch' : ''}</Caption>
       </div>
     </section>
   );
 }
 
-/** Invite to the partner programme, or a way back to the partner dashboard. */
+/** Invite to the partner programme, or the way back to the partner dashboard. */
 function PartnerBand({ me }: { me: PartnerProfile | null }) {
-  const title = me?.status === 'ACTIVE' ? 'Your partner dashboard' : me?.status === 'PENDING' || me?.status === 'NEEDS_INFO' ? 'Your partner application' : 'Run a trading community?';
-  const body = me?.status === 'ACTIVE' ? 'See who joined through you, their broker checks and what they’ve unlocked.'
-    : me?.status === 'PENDING' ? 'It’s with our team. You’ll get an email when it’s reviewed.'
-    : me?.status === 'NEEDS_INFO' ? 'Our team asked for a little more. Open it to see what.'
-    : 'Become a TRADElogs partner: share your link, verify your clients at your broker and give them your own tools.';
-  const cta = me?.status === 'ACTIVE' ? 'Open dashboard' : me?.status === 'PENDING' || me?.status === 'NEEDS_INFO' ? 'View application' : 'Become a partner';
+  const active = me?.status === 'ACTIVE', review = me?.status === 'PENDING' || me?.status === 'NEEDS_INFO';
   return (
-    <section className="x-card ax-band" data-testid="access-partner-band">
-      <span className="ax-band-ic"><Megaphone size={26} weight="duotone" aria-hidden /></span>
-      <div><h3>{title}</h3><p>{body}</p></div>
-      <Link href="/partner" className="x-btn x-btn--hi">{cta}<ArrowRight size={15} weight="bold" aria-hidden /></Link>
+    <section className="ax-band2" data-testid="access-partner-band">
+      <span>
+        <b>{active ? 'Your partner dashboard' : review ? 'Your partner application' : 'Run a trading community?'}</b>
+        <span>{active ? 'Clients, broker checks and what they’ve unlocked.' : me?.status === 'NEEDS_INFO' ? 'Our team asked for a little more.' : review ? 'It’s with our team. You’ll get an email.' : 'Become a partner: share your link, verify clients at your broker, give them your tools.'}</span>
+      </span>
+      <Link href="/partner" className="x-btn">{active ? 'Open dashboard' : review ? 'View application' : 'Become a partner'}<ArrowRight size={15} weight="bold" aria-hidden /></Link>
     </section>
   );
 }
@@ -278,22 +318,6 @@ function AccountRow({ a, onChange, onToast }: { a: AccessAccount; onChange: (d: 
         </div>
       )}
     </li>
-  );
-}
-
-function ConsentCard({ d, onChange }: { d: ClientAccess; onChange: (d: ClientAccess) => void }) {
-  const [busy, setBusy] = useState(false);
-  return (
-    <section className="x-card ib-consent" data-testid="access-consent">
-      <div>
-        <h2 className="ib-h2">Share my P&amp;L with {d.partner?.name.split(' ')[0]}</h2>
-        <p>Your partner always sees your name, city, broker check and how many trades you placed. Turn this on to also show your net P&amp;L, so they can coach you. You can turn it off any time.{d.consent.at ? ` Shared since ${day(d.consent.at)}.` : ''}</p>
-      </div>
-      <button type="button" role="switch" aria-checked={d.consent.share} className={`x-btn ${d.consent.share ? '' : 'x-btn--hi'}`} disabled={busy} data-testid="access-consent-toggle"
-        onClick={async () => { setBusy(true); try { onChange(await ibApi.consent(!d.consent.share)); } finally { setBusy(false); } }}>
-        {d.consent.share ? 'Stop sharing' : 'Share my P&L'}
-      </button>
-    </section>
   );
 }
 
