@@ -91,6 +91,8 @@ interface Props {
   user: { name?: string | null; email?: string | null } | undefined;
   isAdmin: boolean;
   isPartner: boolean;
+  /** Admin: partner-programme items waiting (applications, tools, reviews, flags, sync errors). */
+  partnerTodo?: number;
   accounts: BrokerAccount[];
   selected: BrokerAccount | null;
   onSelectAccount?: (a: BrokerAccount) => void;
@@ -142,7 +144,10 @@ export default function Frame(p: Props) {
     { href: '/settings', label: 'Settings', icon: ISettings },
     { href: '/help', label: 'Help', icon: IMail },
     ...(p.isAdmin ? [{ href: '/admin', label: 'Admin', icon: IAdmin }] : []),
+    ...(p.isAdmin && PARTNERS_ENABLED ? [{ href: '/admin/partners', label: 'Partners', icon: IPartner, ...(p.partnerTodo ? { badge: String(p.partnerTodo) } : {}) }] : []),
   ];
+  // The admin partner pages all light up the one "Partners" link.
+  const isOn = (href: string) => p.activeHref === href || (href === '/admin/partners' && !!p.activeHref?.startsWith('/admin/partners'));
   const all = [...groups.flatMap(g => g.items), ...account];
   const tabs = TABS.map(h => all.find(i => i.href === h)!);
 
@@ -164,7 +169,7 @@ export default function Frame(p: Props) {
             </div>
           ))}
           <div className="f-grp f-grp--foot">
-            {account.map(i => <NavLink key={i.href} item={i} active={p.activeHref === i.href} />)}
+            {account.map(i => <NavLink key={i.href} item={i} active={isOn(i.href)} />)}
           </div>
         </nav>
         <UserCard user={p.user} theme={theme} onToggleTheme={toggleTheme} onSignOut={p.onSignOut} />

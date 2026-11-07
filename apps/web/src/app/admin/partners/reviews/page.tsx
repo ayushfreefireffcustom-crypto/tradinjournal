@@ -19,6 +19,7 @@ import '@/styles/v6/account.css';
 import '@/styles/v6/admin.css';
 import '@/styles/v6/lux.css';
 import '@/styles/v6/ib.css';
+import PartnerAdminTabs from '@/components/v6/admin/partner-tabs';
 
 const SIGNAL: Record<string, string> = {
   'email-match': 'Email is on the partner’s list, account number isn’t',
@@ -83,6 +84,7 @@ export default function AdminPartnerReviewsPage() {
       actions={<button type="button" className="x-btn" onClick={() => { setItems(null); void load(); }}>Refresh</button>}>
       <div className="x-page" data-testid="admin-reviews"><AdminOnly>
         <div className="x-page">
+          <PartnerAdminTabs />
           {error && <div className="x-banner x-banner--err" role="alert"><span>{error}</span></div>}
           {!items && !error && <div className="x-skel ad-sk-card" />}
           {items && <>

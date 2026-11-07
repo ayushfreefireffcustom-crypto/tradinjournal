@@ -2,11 +2,12 @@ import type { Request, Response, NextFunction, RequestHandler } from 'express';
 import type { PartnerRangeQuery } from '@tradinjournal/contracts';
 import { ok, created, noContent } from '../../../http/response.js';
 import { requireActivePartner } from '../partners.service.js';
+import { partnerUserId } from '../view-as.js';
 import { catalog } from './brokers.js';
 import { listBrokers, recheckPartner, removeBroker, reviewVerification, syncBroker, uploadList, upsertBroker, verifyOne } from './ib.service.js';
 import { clearPerkCache, clientAccess, perksFor, joinPartner, recomputePartner, recomputeUser, setConsent } from './access.service.js';
 import { createPackage, packagesPage, setTemplateAudience, updatePackage } from './packages.service.js';
-import { exportCsv, listEvents, programOverview, reviewQueue } from './reports.service.js';
+import { exportCsv, listEvents, programOverview, programSummary, reviewQueue } from './reports.service.js';
 import { getProgramSettings, saveProgramSettings } from './settings.js';
 import { runIbCycle } from './cycle.js';
 import * as integ from './integrations.service.js';
@@ -24,7 +25,7 @@ const h = (fn: Handler): RequestHandler => (req, res, next: NextFunction) => { f
 const userOf = (res: Response) => res.locals.user as { id: string; email: string; name: string };
 const actor = (res: Response) => ({ id: userOf(res).id, email: userOf(res).email });
 const param = (req: Request, k: string) => String(req.params[k] ?? '');
-const partner = (res: Response) => requireActivePartner(userOf(res).id);
+const partner = (res: Response) => requireActivePartner(partnerUserId(res));
 /** File-name suffix: the custom range, or today's date. */
 const csvSuffix = (q: PartnerRangeQuery) => (q.range === 'CUSTOM' && q.from && q.to ? `${q.from}_to_${q.to}` : new Date().toISOString().slice(0, 10));
 
@@ -93,6 +94,7 @@ export const handleConsent = h(async (req, res) => ok(res, await setConsent(user
 
 // ── Admin: programme ──────────────────────────────────────────────────────────
 
+export const handleProgramSummary = h(async (_req, res) => ok(res, await programSummary()));
 export const handleProgram = h(async (req, res) => ok(res, await programOverview(req.query as unknown as PartnerRangeQuery)));
 export const handleReviews = h(async (_req, res) => ok(res, await reviewQueue()));
 export const handleReviewDecision = h(async (req, res) => {

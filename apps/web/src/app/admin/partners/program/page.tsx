@@ -21,6 +21,7 @@ import '@/styles/v6/account.css';
 import '@/styles/v6/admin.css';
 import '@/styles/v6/lux.css';
 import '@/styles/v6/ib.css';
+import PartnerAdminTabs from '@/components/v6/admin/partner-tabs';
 
 type Sort = 'clients' | 'verified' | 'eligible' | 'trades30d' | 'lots30d' | 'pnl30d';
 
@@ -73,6 +74,7 @@ export default function AdminPartnerProgramPage() {
       </>}>
       <div className="x-page" data-testid="admin-program"><AdminOnly>
         <div className="x-page">
+          <PartnerAdminTabs />
           {error && <div className="x-banner x-banner--err" role="alert"><span>{error}</span><button type="button" className="x-btn x-btn--sm" onClick={() => void load()}>Retry</button></div>}
           {!d && !error && <><div className="x-skel ad-sk-strip" /><div className="x-skel ad-sk-card" /></>}
 

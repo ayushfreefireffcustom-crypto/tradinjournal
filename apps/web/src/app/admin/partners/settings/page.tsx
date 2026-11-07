@@ -13,6 +13,7 @@ import { IArrowLeft } from '@/components/v6/icons';
 import '@/styles/v6/account.css';
 import '@/styles/v6/admin.css';
 import '@/styles/v6/ib.css';
+import PartnerAdminTabs from '@/components/v6/admin/partner-tabs';
 
 export default function AdminPartnerSettingsPage() {
   const { accounts, selected, select } = useAccounts();
@@ -42,6 +43,7 @@ export default function AdminPartnerSettingsPage() {
       actions={s ? <button type="button" className="x-btn x-btn--hi" disabled={!dirty || busy} onClick={() => void save()} data-testid="settings-save">{busy ? 'Saving…' : 'Save'}</button> : null}>
       <div className="x-page" data-testid="admin-partner-settings"><AdminOnly>
         <div className="x-page">
+          <PartnerAdminTabs />
           {error && <div className="x-banner x-banner--err" role="alert"><span>{error}</span></div>}
           {!s && !error && <div className="x-skel ad-sk-card" />}
           {s && <>

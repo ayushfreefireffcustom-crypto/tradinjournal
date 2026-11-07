@@ -22,6 +22,8 @@ import Tour from '@/components/v6/tour';
 import { useShellAccounts } from '@/lib/use-accounts';
 import { perkFor, usePerks } from '@/lib/use-perks';
 import { LockedFeature } from '@/components/v6/account/locked-feature';
+import { getViewAs, type ViewAs } from '@/lib/view-as';
+import { ibApi } from '@/lib/ib-api';
 
 interface Props {
   children: ReactNode;
@@ -119,6 +121,12 @@ export default function AppShell({
   const current = useMemo(() => ALL.find(i => pathname === i.href)
     ?? [...ALL].sort((a, b) => b.href.length - a.href.length).find(i => pathname.startsWith(i.href + '/')), [pathname]);
 
+  // An admin viewing as a partner gets the partner section too (read-only, see lib/view-as).
+  const [viewAs, setViewAsState] = useState<ViewAs | null>(null);
+  useEffect(() => { const u = () => setViewAsState(getViewAs()); u(); window.addEventListener('tl:view-as', u); return () => window.removeEventListener('tl:view-as', u); }, []);
+  // Hooks above the early returns below (rules of hooks).
+  const partnerTodo = usePartnerTodo(PARTNERS_ENABLED && !!accessStatus?.isAdmin);
+
   const gatePending = isPending || (!session?.session && !isPending) || (accessLoading && !accessStatus);
   if (gatePending) {
     return <div className="h-dvh w-full" data-testid="app-shell-loading"><LoadingScreen /></div>;
@@ -140,7 +148,7 @@ export default function AppShell({
   const user = session?.user;
   const sel = selectedAccount ?? (pageAccounts === undefined ? shellAccounts.selected : accounts[0]) ?? null;
   const isAdmin = !!accessStatus?.isAdmin;
-  const isPartner = PARTNERS_ENABLED && accessStatus?.partnerStatus === 'ACTIVE';
+  const isPartner = PARTNERS_ENABLED && (accessStatus?.partnerStatus === 'ACTIVE' || (isAdmin && !!viewAs));
   const pages = ALL.filter(x => (x.group !== 'Partner' || isPartner) && (x.group !== 'Admin' || isAdmin));
   // Features the admin locked to partner-package holders (none by default).
   const guard = perkFor(pathname);
@@ -152,7 +160,7 @@ export default function AppShell({
       <LocationGate />
       <Frame
         activeHref={current?.href} pageTitle={pageTitle ?? current?.label ?? ''} subtitle={pageSubtitle} user={user}
-        isAdmin={isAdmin} isPartner={isPartner}
+        isAdmin={isAdmin} isPartner={isPartner} partnerTodo={partnerTodo}
         accounts={accounts} selected={sel} onSelectAccount={onSelectAccount ?? (pageAccounts === undefined ? shellAccounts.select : undefined)} onConnectClick={onConnectClick}
         onSync={onSync} syncing={syncing} syncedLabel={syncedAt ? `Synced ${timeAgo(syncedAt)}` : sel?.lastSyncAt ? `Synced ${timeAgo(sel.lastSyncAt)}` : null}
         actions={actions} onOpenSearch={() => setCmdk(true)} onSignOut={() => authClient.signOut()}
@@ -169,3 +177,20 @@ export default function AppShell({
     </>
   );
 }
+
+// Admin sidebar badge: partner-programme items waiting. Cached for a minute across pages.
+let todoCache: { n: number; at: number } | null = null;
+function usePartnerTodo(on: boolean): number {
+  const [n, setN] = useState(() => (todoCache ? todoCache.n : 0));
+  useEffect(() => {
+    if (!on) return;
+    if (todoCache && Date.now() - todoCache.at < 60_000) { setN(todoCache.n); return; }
+    let live = true;
+    ibApi.programSummary().then(s => { todoCache = { n: s.todo.total, at: Date.now() }; if (live) setN(s.todo.total); }).catch(() => {});
+    return () => { live = false; };
+  }, [on]);
+  return on ? n : 0;
+}
+
+/** Forget the cached badge count (after approving or reviewing something). */
+export function refreshPartnerTodo(): void { todoCache = null; }

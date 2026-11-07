@@ -470,6 +470,36 @@ folders.push(
   ] },
 );
 
+folders.push(
+  { name: '19 Admin summary and view as partner', item: [
+    req('Programme summary for admins', 'GET', `${P}/admin/partner-program/summary`, { as: 'admin', tests: [status(200), json,
+      t('shape', "['applications','tools','reviews','flags','syncErrors','total'].forEach(k => pm.expect(d.todo[k]).to.be.a('number')); pm.expect(d.todo.total).to.eql(d.todo.applications + d.todo.tools + d.todo.reviews + d.todo.flags + d.todo.syncErrors);"),
+      t('totals', 'pm.expect(d.totals.activePartners).to.be.at.least(1); pm.expect(d.totals.clients).to.be.at.least(4); pm.expect(d.totals.verified).to.be.at.least(1);')] }),
+    req('…not for partners or clients', 'GET', `${P}/admin/partner-program/summary`, { as: 'honey', tests: [t('refused', 'pm.expect([401, 403]).to.include(pm.response.code);')] }),
+    req('Honey’s own overview (baseline)', 'GET', `${P}/partner/overview`, { as: 'honey', query: 'range=ALL', tests: [status(200), json, "pm.collectionVariables.set('hSignups', d.funnel.signups); pm.collectionVariables.set('hVerified', d.ib.funnel.verified);"] }),
+    req('Honey’s own clients (baseline)', 'GET', `${P}/partner/clients`, { as: 'honey', tests: [status(200), "pm.collectionVariables.set('hClients', pm.response.json().meta.total);"] }),
+    req('Admin starts viewing as Honey (audited)', 'POST', `${P}/admin/partners/{{honeyPid}}/view-as`, { as: 'admin', body: {}, tests: [status(200), json, t('who', "pm.expect(d.name).to.eql(pm.variables.get('honeyName')); pm.expect(d.status).to.eql('ACTIVE');")] }),
+    req('The start is in the audit log', 'GET', `${P}/admin/audit`, { as: 'admin', tests: [status(200), t('logged', "const rows = pm.response.json().data; const list = Array.isArray(rows) ? rows : rows.items; pm.expect(list.some(r => r.action === 'partner.view_as')).to.eql(true);")] }),
+    req('As Honey: /me is Honey’s profile', 'GET', `${P}/partner/me`, { as: 'admin', query: 'viewAs={{honeyPid}}', tests: [status(200), json, t('honey', "pm.expect(d.code).to.eql(pm.variables.get('honeyCode')); pm.expect(d.status).to.eql('ACTIVE');")] }),
+    req('As Honey: the same overview Honey sees', 'GET', `${P}/partner/overview`, { as: 'admin', query: 'range=ALL&viewAs={{honeyPid}}', tests: [status(200), json, t('same numbers', "pm.expect(d.funnel.signups).to.eql(Number(pm.collectionVariables.get('hSignups'))); pm.expect(d.ib.funnel.verified).to.eql(Number(pm.collectionVariables.get('hVerified')));")] }),
+    req('As Honey: the same clients', 'GET', `${P}/partner/clients`, { as: 'admin', query: 'viewAs={{honeyPid}}', tests: [status(200), t('same count', "pm.expect(pm.response.json().meta.total).to.eql(Number(pm.collectionVariables.get('hClients')));")] }),
+    req('As Honey: reports, packages, brokers, tools, earnings all load', 'GET', `${P}/partner/reports`, { as: 'admin', query: 'range=30D&viewAs={{honeyPid}}', tests: [status(200)] }),
+    req('As Honey: packages', 'GET', `${P}/partner/packages`, { as: 'admin', query: 'viewAs={{honeyPid}}', tests: [status(200), json, t('honey’s', 'pm.expect(d.packages.length).to.be.at.least(1);')] }),
+    req('As Honey: brokers', 'GET', `${P}/partner/brokers`, { as: 'admin', query: 'viewAs={{honeyPid}}', tests: [status(200), json, t('honey’s', 'pm.expect(d.brokers.length).to.be.at.least(1);')] }),
+    req('As Honey: tools', 'GET', `${P}/partner/products`, { as: 'admin', query: 'viewAs={{honeyPid}}', tests: [status(200)] }),
+    req('As Honey: earnings', 'GET', `${P}/partner/earnings`, { as: 'admin', query: 'viewAs={{honeyPid}}', tests: [status(200), json, t('honey’s', 'pm.expect(d.ib.total).to.be.at.least(38);')] }),
+    req('As Honey: CSV export', 'GET', `${P}/partner/export`, { as: 'admin', query: 'viewAs={{honeyPid}}', tests: [status(200), t('rows', "pm.expect(pm.response.text().trim().split('\\n').length).to.be.at.least(2);")] }),
+    req('As Honey: changes are refused (new channel)', 'POST', `${P}/partner/channels`, { as: 'admin', query: 'viewAs={{honeyPid}}', body: { label: 'Should not exist' }, tests: [status(403), code('READ_ONLY')] }),
+    req('As Honey: changes are refused (package edit)', 'PATCH', `${P}/partner/packages/{{pkgVip}}`, { as: 'admin', query: 'viewAs={{honeyPid}}', body: { name: 'Hacked' }, tests: [status(403), code('READ_ONLY')] }),
+    req('As Honey: changes are refused (broker removal)', 'DELETE', `${P}/partner/brokers/{{xl2}}`, { as: 'admin', query: 'viewAs={{honeyPid}}', tests: [status(403), code('READ_ONLY')] }),
+    req('A client can’t view as Honey', 'GET', `${P}/partner/overview`, { as: 't1', query: 'viewAs={{honeyPid}}', tests: [status(403), code('FORBIDDEN')] }),
+    req('Honey can’t view as another partner either', 'GET', `${P}/partner/overview`, { as: 'honey', query: 'viewAs={{honeyPid}}', tests: [status(403), code('FORBIDDEN')] }),
+    req('Unknown partner → 404', 'GET', `${P}/partner/overview`, { as: 'admin', query: 'viewAs=not-a-partner', tests: [status(404)] }),
+    req('Without viewAs the admin is just themselves (not a partner)', 'GET', `${P}/partner/overview`, { as: 'admin', tests: [t('gate', 'pm.expect([403, 404]).to.include(pm.response.code);')] }),
+    req('Nothing changed for Honey', 'GET', `${P}/partner/links`, { as: 'honey', tests: [status(200), json, t('no stray channel', "pm.expect(JSON.stringify(d)).to.not.include('Should not exist');")] }),
+  ] },
+);
+
 // Internal calls carry the shared token.
 for (const f of folders) for (const r of f.item) {
   if (r.request.url.raw.includes('/internal/partners/')) r.request.header.push(internal);

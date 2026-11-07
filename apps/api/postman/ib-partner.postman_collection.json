@@ -12175,6 +12175,1142 @@
           }
         }
       ]
+    },
+    {
+      "name": "19 Admin summary and view as partner",
+      "item": [
+        {
+          "name": "Programme summary for admins",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"shape\", () => { ['applications','tools','reviews','flags','syncErrors','total'].forEach(k => pm.expect(d.todo[k]).to.be.a('number')); pm.expect(d.todo.total).to.eql(d.todo.applications + d.todo.tools + d.todo.reviews + d.todo.flags + d.todo.syncErrors); });",
+                  "pm.test(\"totals\", () => { pm.expect(d.totals.activePartners).to.be.at.least(1); pm.expect(d.totals.clients).to.be.at.least(4); pm.expect(d.totals.verified).to.be.at.least(1); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/partner-program/summary",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "partner-program",
+                "summary"
+              ]
+            }
+          }
+        },
+        {
+          "name": "…not for partners or clients",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"refused\", () => { pm.expect([401, 403]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{honeyCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/partner-program/summary",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "partner-program",
+                "summary"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Honey’s own overview (baseline)",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.collectionVariables.set('hSignups', d.funnel.signups); pm.collectionVariables.set('hVerified', d.ib.funnel.verified);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{honeyCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/overview?range=ALL",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "overview"
+              ],
+              "query": [
+                {
+                  "key": "range",
+                  "value": "ALL"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Honey’s own clients (baseline)",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('hClients', pm.response.json().meta.total);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{honeyCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/clients",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "clients"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin starts viewing as Honey (audited)",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"who\", () => { pm.expect(d.name).to.eql(pm.variables.get('honeyName')); pm.expect(d.status).to.eql('ACTIVE'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/partners/{{honeyPid}}/view-as",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "partners",
+                "{{honeyPid}}",
+                "view-as"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "The start is in the audit log",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"logged\", () => { const rows = pm.response.json().data; const list = Array.isArray(rows) ? rows : rows.items; pm.expect(list.some(r => r.action === 'partner.view_as')).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/audit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "audit"
+              ]
+            }
+          }
+        },
+        {
+          "name": "As Honey: /me is Honey’s profile",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"honey\", () => { pm.expect(d.code).to.eql(pm.variables.get('honeyCode')); pm.expect(d.status).to.eql('ACTIVE'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/me?viewAs={{honeyPid}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "me"
+              ],
+              "query": [
+                {
+                  "key": "viewAs",
+                  "value": "{{honeyPid}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "As Honey: the same overview Honey sees",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"same numbers\", () => { pm.expect(d.funnel.signups).to.eql(Number(pm.collectionVariables.get('hSignups'))); pm.expect(d.ib.funnel.verified).to.eql(Number(pm.collectionVariables.get('hVerified'))); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/overview?range=ALL&viewAs={{honeyPid}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "overview"
+              ],
+              "query": [
+                {
+                  "key": "range",
+                  "value": "ALL"
+                },
+                {
+                  "key": "viewAs",
+                  "value": "{{honeyPid}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "As Honey: the same clients",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"same count\", () => { pm.expect(pm.response.json().meta.total).to.eql(Number(pm.collectionVariables.get('hClients'))); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/clients?viewAs={{honeyPid}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "clients"
+              ],
+              "query": [
+                {
+                  "key": "viewAs",
+                  "value": "{{honeyPid}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "As Honey: reports, packages, brokers, tools, earnings all load",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/reports?range=30D&viewAs={{honeyPid}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "reports"
+              ],
+              "query": [
+                {
+                  "key": "range",
+                  "value": "30D"
+                },
+                {
+                  "key": "viewAs",
+                  "value": "{{honeyPid}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "As Honey: packages",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"honey’s\", () => { pm.expect(d.packages.length).to.be.at.least(1); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/packages?viewAs={{honeyPid}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "packages"
+              ],
+              "query": [
+                {
+                  "key": "viewAs",
+                  "value": "{{honeyPid}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "As Honey: brokers",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"honey’s\", () => { pm.expect(d.brokers.length).to.be.at.least(1); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/brokers?viewAs={{honeyPid}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "brokers"
+              ],
+              "query": [
+                {
+                  "key": "viewAs",
+                  "value": "{{honeyPid}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "As Honey: tools",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/products?viewAs={{honeyPid}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "products"
+              ],
+              "query": [
+                {
+                  "key": "viewAs",
+                  "value": "{{honeyPid}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "As Honey: earnings",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"honey’s\", () => { pm.expect(d.ib.total).to.be.at.least(38); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/earnings?viewAs={{honeyPid}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "earnings"
+              ],
+              "query": [
+                {
+                  "key": "viewAs",
+                  "value": "{{honeyPid}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "As Honey: CSV export",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"rows\", () => { pm.expect(pm.response.text().trim().split('\\n').length).to.be.at.least(2); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/export?viewAs={{honeyPid}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "export"
+              ],
+              "query": [
+                {
+                  "key": "viewAs",
+                  "value": "{{honeyPid}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "As Honey: changes are refused (new channel)",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 403', () => pm.response.to.have.status(403));",
+                  "pm.test('error code READ_ONLY', () => pm.expect(pm.response.json().error.code).to.eql('READ_ONLY'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/channels?viewAs={{honeyPid}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "channels"
+              ],
+              "query": [
+                {
+                  "key": "viewAs",
+                  "value": "{{honeyPid}}"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"label\": \"Should not exist\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "As Honey: changes are refused (package edit)",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 403', () => pm.response.to.have.status(403));",
+                  "pm.test('error code READ_ONLY', () => pm.expect(pm.response.json().error.code).to.eql('READ_ONLY'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/packages/{{pkgVip}}?viewAs={{honeyPid}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "packages",
+                "{{pkgVip}}"
+              ],
+              "query": [
+                {
+                  "key": "viewAs",
+                  "value": "{{honeyPid}}"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Hacked\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "As Honey: changes are refused (broker removal)",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 403', () => pm.response.to.have.status(403));",
+                  "pm.test('error code READ_ONLY', () => pm.expect(pm.response.json().error.code).to.eql('READ_ONLY'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/brokers/{{xl2}}?viewAs={{honeyPid}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "brokers",
+                "{{xl2}}"
+              ],
+              "query": [
+                {
+                  "key": "viewAs",
+                  "value": "{{honeyPid}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "A client can’t view as Honey",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 403', () => pm.response.to.have.status(403));",
+                  "pm.test('error code FORBIDDEN', () => pm.expect(pm.response.json().error.code).to.eql('FORBIDDEN'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{t1Cookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/overview?viewAs={{honeyPid}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "overview"
+              ],
+              "query": [
+                {
+                  "key": "viewAs",
+                  "value": "{{honeyPid}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Honey can’t view as another partner either",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 403', () => pm.response.to.have.status(403));",
+                  "pm.test('error code FORBIDDEN', () => pm.expect(pm.response.json().error.code).to.eql('FORBIDDEN'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{honeyCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/overview?viewAs={{honeyPid}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "overview"
+              ],
+              "query": [
+                {
+                  "key": "viewAs",
+                  "value": "{{honeyPid}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Unknown partner → 404",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/overview?viewAs=not-a-partner",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "overview"
+              ],
+              "query": [
+                {
+                  "key": "viewAs",
+                  "value": "not-a-partner"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Without viewAs the admin is just themselves (not a partner)",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"gate\", () => { pm.expect([403, 404]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/overview",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "overview"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Nothing changed for Honey",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"no stray channel\", () => { pm.expect(JSON.stringify(d)).to.not.include('Should not exist'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{honeyCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/links",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "links"
+              ]
+            }
+          }
+        }
+      ]
     }
   ],
   "variable": [

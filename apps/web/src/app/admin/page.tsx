@@ -24,6 +24,8 @@ import { AdminUsersSection } from '@/components/admin/admin-users';
 import { auditLabel, fmtRelative, sentence } from '@/components/admin/admin-utils';
 import { ISync } from '@/components/v6/icons';
 import '@/styles/v6/admin.css';
+import PartnerSummary from '@/components/v6/admin/partner-summary';
+import { PARTNERS_ENABLED } from '@/lib/features';
 
 export default function AdminPage() {
   const router = useRouter();
@@ -198,6 +200,7 @@ export default function AdminPage() {
           </div>
         ) : (
           <>
+            {overview && tab === 'overview' && PARTNERS_ENABLED && <PartnerSummary />}
             {overview && tab === 'overview' && (
               <CommandOverview
                 overview={overview}

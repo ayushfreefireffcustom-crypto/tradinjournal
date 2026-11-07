@@ -18,6 +18,7 @@ import {
   partnerExportQuerySchema, productFileSchema, productReviewSchema,
 } from '@tradinjournal/contracts';
 import * as c from './partners.controller.js';
+import { viewAsPartner } from './view-as.js';
 import * as ib from './ib/ib.controller.js';
 
 // Public: the referral link itself and the signup-form code check.
@@ -28,7 +29,7 @@ referralPublicRouter.get('/referrals/check', validateQuery(referralCheckQuerySch
 // Signed-in partner portal. /me and /apply work for anyone signed in; the rest
 // require an ACTIVE partner (checked in the service so the error says why).
 export const partnerRouter: IRouter = Router();
-partnerRouter.use(requireAuth);
+partnerRouter.use(requireAuth, viewAsPartner);
 partnerRouter.get('/me', c.handleMe);
 partnerRouter.post('/apply', validateBody(partnerApplySchema), c.handleApply);
 partnerRouter.get('/overview', validateQuery(partnerRangeQuerySchema), c.handleOverview);
@@ -94,6 +95,8 @@ adminPartnersRouter.post('/partners/:id/status', validateBody(adminPartnerStatus
 adminPartnersRouter.post('/partners/:id/notes', validateBody(adminPartnerNoteSchema), c.handleAdminNote);
 adminPartnersRouter.delete('/partners/:id/codes/:codeId', c.handleAdminRevokeCode);
 adminPartnersRouter.post('/partners/:id/recheck', ib.handleAdminRecheck);
+adminPartnersRouter.post('/partners/:id/view-as', c.handleAdminViewAs);
+adminPartnersRouter.get('/partner-program/summary', ib.handleProgramSummary);
 adminPartnersRouter.get('/partner-program', validateQuery(programRangeQuerySchema), ib.handleProgram);
 adminPartnersRouter.get('/partner-program/reviews', ib.handleReviews);
 adminPartnersRouter.post('/partner-program/verifications/:id', validateBody(adminVerificationActionSchema), ib.handleReviewDecision);

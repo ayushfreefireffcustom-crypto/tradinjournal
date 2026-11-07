@@ -445,4 +445,10 @@ export interface PartnerReportsDto {
   earningsByMonth: { month: string; ib: number }[];
 }
 
+/** Admin home: what needs attention in the partner programme, and headline totals. */
+export interface ProgramSummaryDto {
+  todo: { applications: number; tools: number; reviews: number; flags: number; syncErrors: number; total: number };
+  totals: { activePartners: number; suspendedPartners: number; clients: number; verified: number; unlocked: number };
+}
+
 export interface AdminPackageRowDto extends PartnerPackageDto { partnerId: string; partner: string; adminHold: boolean; adminNote: string | null }

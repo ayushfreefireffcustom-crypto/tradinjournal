@@ -40,6 +40,14 @@ async function audit(actor: Actor, action: string, partnerId: string, details: R
   await logAdminAction({ action, actorId: actor.id, actorEmail: actor.email, targetType: 'partner', targetId: partnerId, details });
 }
 
+/** Starts an admin's read-only "view as partner"; written to the audit log. */
+export async function startViewAs(id: string, actor: Actor): Promise<{ id: string; name: string; status: string }> {
+  const p = await prisma.partner.findUnique({ where: { id }, include: { user: { select: { name: true } } } });
+  if (!p) throw new NotFoundError('Partner not found');
+  await audit(actor, 'partner.view_as', p.id, { name: p.user.name });
+  return { id: p.id, name: p.user.name, status: p.status };
+}
+
 // ── Partners ──────────────────────────────────────────────────────────────────
 
 export async function listPartners(status?: PartnerStatusDto): Promise<AdminPartnerRowDto[]> {

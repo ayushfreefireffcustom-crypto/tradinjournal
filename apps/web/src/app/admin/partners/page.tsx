@@ -19,6 +19,7 @@ import { useDialog } from '@/components/v6/ui/use-dialog';
 import '@/styles/v6/account.css';
 import '@/styles/v6/admin.css';
 import '@/styles/v6/dialogs.css';
+import PartnerAdminTabs from '@/components/v6/admin/partner-tabs';
 
 type Sort = 'active' | 'signups30d' | 'clicks30d' | 'conv' | 'clients';
 type View = 'live' | 'SUSPENDED' | 'REJECTED' | 'REVOKED';
@@ -75,14 +76,12 @@ export default function AdminPartnersPage() {
             <button key={k} type="button" aria-pressed={view === k} onClick={() => { setRows(null); setView(k); }}>{l}</button>
           ))}
         </div>
-        <Link href="/admin/partners/program" className="x-btn" data-testid="partners-program">Programme</Link>
-        <Link href="/admin/partners/reviews" className="x-btn">Reviews</Link>
-        <Link href="/admin/partners/settings" className="x-btn">Settings</Link>
         <button type="button" className="x-btn" onClick={() => { setRows(null); void load(); }} data-testid="partners-refresh">Refresh</button>
         {isAdmin && <button type="button" className="x-btn x-btn--hi" onClick={() => setAdding(true)} data-testid="partner-add"><IPlus size={15} />Add partner</button>}
       </>}>
       <div className="x-page" data-testid="admin-partners"><AdminOnly>
         <div className="x-page">
+          <PartnerAdminTabs />
           {error && <div className="x-banner x-banner--err" role="alert"><span>Couldn&rsquo;t load partners. {error}</span><button type="button" className="x-btn x-btn--sm" onClick={() => void load()}>Retry</button></div>}
           {!rows && !error && <><div className="x-skel ad-sk-strip" /><div className="x-skel ad-sk-card" /></>}
 

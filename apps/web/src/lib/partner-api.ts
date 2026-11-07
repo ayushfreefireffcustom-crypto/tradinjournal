@@ -7,6 +7,7 @@ const API = USE_MOCKS ? '' : process.env.NEXT_PUBLIC_API_URL || '';
 const P = USE_MOCKS ? '/data' : '/api';
 
 import type { ClientIb, IbEvent, PartnerIbOverview, PartnerPackage } from '@/lib/ib-api';
+import { withViewAs } from '@/lib/view-as';
 
 export type PartnerStatus = 'PENDING' | 'NEEDS_INFO' | 'ACTIVE' | 'SUSPENDED' | 'REJECTED' | 'REVOKED';
 /**
@@ -94,7 +95,7 @@ export class PartnerApiError extends Error {
 }
 
 async function call<T>(path: string, init?: RequestInit): Promise<{ data: T; meta?: PaginationMeta }> {
-  const res = await fetch(`${API}${path}`, {
+  const res = await fetch(`${API}${withViewAs(path)}`, {
     ...(USE_MOCKS ? {} : { credentials: 'include' as const }),
     headers: { 'Content-Type': 'application/json' },
     ...init,

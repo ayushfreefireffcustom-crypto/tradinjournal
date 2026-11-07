@@ -83,5 +83,9 @@ echo "▸ Its new last day passes too"
 end_limited
 run "00 Sign in all" "18d The last day passes"
 
+echo "▸ F · admin summary, view as partner"
+VARS+=(--env-var "pkgVip=$(q "SELECT id FROM partner_package WHERE \"partnerId\" = '$PID' AND name = 'VIP'")" --env-var "xl2=$(q "SELECT id FROM partner_broker WHERE \"partnerId\" = '$PID' AND broker = 'xellion'")")
+run "00 Sign in all" "19 Admin summary and view as partner"
+
 echo "▸ Broker API keys are never stored in plain text"
 sql "SELECT COUNT(*) AS plain_api_keys FROM partner_broker WHERE \"apiKey\" IS NOT NULL AND \"apiKey\" NOT LIKE 'enc:v1:%';"

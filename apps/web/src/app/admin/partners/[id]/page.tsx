@@ -22,6 +22,10 @@ import type { PartnerApplication } from '@/lib/partner-api';
 import { useConfirm, type ConfirmOptions, type ConfirmResult } from '@/components/confirm-dialog';
 import '@/styles/v6/account.css';
 import '@/styles/v6/admin.css';
+import PartnerAdminTabs from '@/components/v6/admin/partner-tabs';
+import { setViewAs } from '@/lib/view-as';
+import { useRouter } from 'next/navigation';
+import { Eye } from '@phosphor-icons/react';
 
 const PAGE = 10;
 const msg = (e: unknown, f: string) => (e instanceof Error ? e.message : f);
@@ -45,6 +49,7 @@ export default function AdminPartnerPage({ params }: { params: Promise<{ id: str
   const [busy, setBusy] = useState<string | null>(null);
   const [toast, setToast] = useState('');
   const [dialog, ask] = useConfirm();
+  const router = useRouter();
 
   const load = useCallback(async () => {
     try { setD(await partnerApi.adminDetail(id, range)); setError(''); } catch (e) { setError(msg(e, 'Could not load this partner.')); }
@@ -83,9 +88,12 @@ export default function AdminPartnerPage({ params }: { params: Promise<{ id: str
   return (
     <AppShell legacy={false} accounts={accounts} selectedAccount={selected} onSelectAccount={select} pageTitle={p?.name ?? 'Partner'}
       pageSubtitle={<Link href="/admin/partners" className="ad-back"><IArrowLeft size={13} />All partners</Link>}
-      actions={d ? <RangeSeg value={range} onChange={setRange} /> : null}>
+      actions={d ? <><RangeSeg value={range} onChange={setRange} />{p?.status === 'ACTIVE' && <button type="button" className="x-btn" data-testid="view-as-partner" onClick={async () => {
+        try { const v = await ibApi.viewAs(id); setViewAs({ id: v.id, name: v.name }); router.push('/partner'); } catch (e) { setError(msg(e, 'Could not open their dashboard.')); }
+      }}><Eye size={15} weight="bold" aria-hidden />View as partner</button>}</> : null}>
       <div className="x-page" data-testid="admin-partner"><AdminOnly>
         <div className="x-page">
+          <PartnerAdminTabs />
           {error && <div className="x-banner x-banner--err" role="alert"><span>Couldn&rsquo;t load partner. {error}</span><button type="button" className="x-btn x-btn--sm" onClick={() => void load()}>Retry</button></div>}
           {!d && !error && <><div className="x-skel ad-sk-status" /><div className="x-skel ad-sk-card" /></>}
 

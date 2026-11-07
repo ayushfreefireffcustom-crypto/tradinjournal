@@ -10,6 +10,7 @@ import {
 } from './partners.service.js';
 import * as admin from './partners.admin.service.js';
 import { refreshReferralStats } from './stats.service.js';
+import { partnerUserId } from './view-as.js';
 
 type Handler = (req: Request, res: Response) => Promise<void>;
 /** Express 4 doesn't catch async rejections — route every error to the handler. */
@@ -45,49 +46,50 @@ export const handleCheckCode = h(async (req, res) => ok(res, await checkCode(Str
 // ── Partner portal ────────────────────────────────────────────────────────────
 
 export const handleMe = h(async (_req, res) => {
-  const p = await findPartnerByUser(userOf(res).id);
+  const p = await findPartnerByUser(partnerUserId(res));
   ok(res, p ? toProfile(p) : null);
 });
 
 export const handleApply = h(async (req, res) => created(res, await applyAsPartner(userOf(res).id, userOf(res).name, req.body)));
 
 export const handleOverview = h(async (req, res) => {
-  const p = await requireActivePartner(userOf(res).id);
+  const p = await requireActivePartner(partnerUserId(res));
   ok(res, await overview(p, req.query as unknown as PartnerRangeQuery));
 });
 
 export const handleClients = h(async (req, res) => {
-  const p = await requireActivePartner(userOf(res).id);
+  const p = await requireActivePartner(partnerUserId(res));
   const { items, counts, meta } = await listClients(p.id, req.query as unknown as PartnerClientsQuery);
   ok(res, { items, counts }, meta);
 });
 
-export const handleLinks = h(async (_req, res) => ok(res, await links(await requireActivePartner(userOf(res).id))));
+export const handleLinks = h(async (_req, res) => ok(res, await links(await requireActivePartner(partnerUserId(res)))));
 
 export const handleCreateChannel = h(async (req, res) => {
-  const p = await requireActivePartner(userOf(res).id);
+  const p = await requireActivePartner(partnerUserId(res));
   created(res, await createChannel(p, req.body.label));
 });
 
 export const handleArchiveChannel = h(async (req, res) => {
-  const p = await requireActivePartner(userOf(res).id);
+  const p = await requireActivePartner(partnerUserId(res));
   await archiveChannel(p.id, param(req, 'channelId'));
   noContent(res);
 });
 
 export const handleReserveCode = h(async (req, res) => {
-  const p = await requireActivePartner(userOf(res).id);
+  const p = await requireActivePartner(partnerUserId(res));
   created(res, await reserveCode(p, req.body.code));
 });
 
 export const handleReleaseCode = h(async (req, res) => {
-  const p = await requireActivePartner(userOf(res).id);
+  const p = await requireActivePartner(partnerUserId(res));
   await releaseCode(p.id, param(req, 'codeId'));
   noContent(res);
 });
 
 // ── Admin ─────────────────────────────────────────────────────────────────────
 
+export const handleAdminViewAs = h(async (req, res) => ok(res, await admin.startViewAs(param(req, 'id'), actor(res))));
 export const handleAdminList = h(async (req, res) => ok(res, await admin.listPartners(req.query.status as PartnerStatusDto | undefined)));
 export const handleAdminCreate = h(async (req, res) => created(res, await admin.createPartner(req.body, actor(res))));
 export const handleAdminLookup = h(async (req, res) => ok(res, await admin.lookup(String(req.query.q))));

@@ -2,7 +2,7 @@
 // review queue, event log and CSV exports.
 import { prisma, Prisma } from '@tradinjournal/db';
 import type {
-  ClientIbDto, IbFunnelDto, PartnerEventDto2, PartnerIbOverviewDto, PartnerRangeQuery, ProgramOverviewDto,
+  ClientIbDto, IbFunnelDto, PartnerEventDto2, PartnerIbOverviewDto, PartnerRangeQuery, ProgramOverviewDto, ProgramSummaryDto,
   ProgramPartnerRowDto, ReviewItemDto, TradingSummaryDto,
 } from '@tradinjournal/contracts';
 import { resolveWindow, within } from '../partner.logic.js';
@@ -117,6 +117,26 @@ export async function programRows(): Promise<ProgramPartnerRowDto[]> {
       brokerErrors: errs.find(e => e.partnerId === p.id)?._count._all ?? 0,
     };
   }).sort((a, b) => b.clients - a.clients || a.name.localeCompare(b.name));
+}
+
+/** What needs an admin's attention across the programme, plus headline totals. */
+export async function programSummary(): Promise<ProgramSummaryDto> {
+  const [statuses, tools, reviews, flags, syncErrors, clients, verified, unlocked] = await Promise.all([
+    prisma.partner.groupBy({ by: ['status'], _count: { _all: true } }),
+    prisma.partnerProduct.count({ where: { status: 'PENDING' } }),
+    prisma.clientVerification.count({ where: { status: 'MANUAL_REVIEW' } }),
+    flagItems().then(f => f.length),
+    prisma.partnerBroker.count({ where: { status: 'ERROR' } }),
+    prisma.referral.count(),
+    prisma.clientVerification.findMany({ where: { status: 'VERIFIED' }, distinct: ['userId'], select: { userId: true } }).then(r => r.length),
+    prisma.clientEntitlement.findMany({ where: { status: { in: ['ACTIVE', 'GRACE'] } }, distinct: ['userId'], select: { userId: true } }).then(r => r.length),
+  ]);
+  const s = (k: string) => statuses.find(x => x.status === k)?._count._all ?? 0;
+  const applications = s('PENDING') + s('NEEDS_INFO');
+  return {
+    todo: { applications, tools, reviews, flags, syncErrors, total: applications + tools + reviews + flags + syncErrors },
+    totals: { activePartners: s('ACTIVE'), suspendedPartners: s('SUSPENDED'), clients, verified, unlocked },
+  };
 }
 
 export async function programOverview(range: PartnerRangeQuery): Promise<ProgramOverviewDto> {

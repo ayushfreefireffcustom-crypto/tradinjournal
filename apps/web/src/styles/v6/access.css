@@ -217,3 +217,22 @@ html[data-theme=light] .v6 .axfield { background: var(--s1); }
 .v6 .axdoc .axcode li span { white-space: pre-wrap; overflow-wrap: anywhere; }
 .v6 .ax-tool-acts { margin-top: 22px; display: flex; flex-wrap: wrap; gap: 8px; }
 .v6 .ax-tool-foot { margin: 0; font-size: var(--t2); color: var(--dim); }
+
+/* ── Admin: partner summary, tabs, view-as pill ── */
+.v6 .axdot { width: 8px; height: 8px; border-radius: 50%; background: var(--line-2); flex: none; margin: 0 4px; }
+.v6 .axdot.on { background: var(--g); box-shadow: 0 0 0 4px var(--g-soft); }
+.v6 .axpath-v .x-btn b { margin-right: 3px; }
+.v6 .axsum { display: flex; flex-wrap: wrap; gap: 6px 22px; padding: 12px 16px; border-top: 1px solid var(--line); font-size: var(--t2); color: var(--mut); }
+.v6 .axsum b { color: var(--tx); font-weight: 900; }
+.v6 .ax-admtabs { display: inline-flex; margin-bottom: 4px; }
+.v6 .ax-admtabs a { display: inline-flex; align-items: center; gap: 6px; text-decoration: none; }
+.v6 .ax-admtabs em { font-style: normal; font-size: 11px; font-weight: 800; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; display: inline-grid; place-items: center; background: var(--g); color: var(--on-g); }
+.v6.ax-viewas { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 90; display: flex; align-items: center; gap: 10px; padding: 8px 8px 8px 16px; border-radius: 999px; background: var(--hi); color: var(--inv); font-size: var(--t2); box-shadow: 0 14px 40px -12px rgba(0, 0, 0, .6); white-space: nowrap; }
+.v6.ax-viewas b { font-weight: 900; }
+.v6.ax-viewas button { height: 30px; padding: 0 14px; border-radius: 999px; border: 0; background: var(--inv); color: var(--hi); font: inherit; font-weight: 800; cursor: pointer; }
+@media (max-width: 760px) { .v6.ax-viewas { bottom: 86px; max-width: calc(100vw - 24px); } .v6.ax-viewas span { overflow: hidden; text-overflow: ellipsis; } }
+
+/* To-do list (admin summary): waiting rows stand out, clear rows step back. */
+.v6 .axpath--todo li .axpath-t b { color: var(--tx); }
+.v6 .axpath--todo li.done .axpath-t b { color: var(--mut); }
+.v6 .axpath--todo li.done .axpath-t small { color: var(--dim); }

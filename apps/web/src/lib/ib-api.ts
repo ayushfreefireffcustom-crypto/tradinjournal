@@ -2,6 +2,7 @@
 // packages, the trader's Access page and the admin programme view. Types mirror
 // packages/contracts/src/schema/partner-ib.ts.
 import { PartnerApiError, rangeQuery, type RangeSel } from '@/lib/partner-api';
+import { withViewAs } from '@/lib/view-as';
 
 const USE_MOCKS = process.env.NEXT_PUBLIC_USE_MOCKS === 'true';
 const API = USE_MOCKS ? '' : process.env.NEXT_PUBLIC_API_URL || '';
@@ -120,13 +121,17 @@ export interface Reports {
   marketplace: { packageSubs: { name: string; active: number; total: number }[]; strategySubs: { name: string; active: number; total: number }[] };
   earningsByMonth: { month: string; ib: number }[];
 }
+export interface ProgramSummary {
+  todo: { applications: number; tools: number; reviews: number; flags: number; syncErrors: number; total: number };
+  totals: { activePartners: number; suspendedPartners: number; clients: number; verified: number; unlocked: number };
+}
 export interface AdminPackageRow extends PartnerPackage { partnerId: string; partner: string }
 export interface Terms { permissions: { canOfferProducts: boolean; maxPackages: number } }
 export interface AdminProduct extends PartnerProduct { partner: { id: string; name: string } }
 export interface IbEvent { id: string; at: string; kind: string; message: string; partnerId: string | null; userId: string | null; actorEmail: string | null }
 
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API}${path}`, {
+  const res = await fetch(`${API}${withViewAs(path)}`, {
     ...(USE_MOCKS ? {} : { credentials: 'include' as const }),
     headers: { 'Content-Type': 'application/json' },
     ...init,
@@ -162,6 +167,8 @@ export const ibApi = {
   review: (brokerAccountId: string, note?: string) => send<ClientAccess>('POST', `${P}/partner-access/review`, { brokerAccountId, ...(note ? { note } : {}) }),
   consent: (share: boolean) => send<ClientAccess>('POST', `${P}/partner-access/consent`, { share }),
   // Admin
+  programSummary: () => call<ProgramSummary>(`${P}/admin/partner-program/summary`),
+  viewAs: (partnerId: string) => send<{ id: string; name: string; status: string }>('POST', `${P}/admin/partners/${enc(partnerId)}/view-as`, {}),
   program: (range: RangeSel = '30D') => call<ProgramOverview>(`${P}/admin/partner-program?${rq(range)}`),
   reviews: () => call<ReviewItem[]>(`${P}/admin/partner-program/reviews`),
   decide: (id: string, action: 'approve' | 'reject', note?: string) => send<{ status: VerificationStatus }>('POST', `${P}/admin/partner-program/verifications/${enc(id)}`, { action, ...(note ? { note } : {}) }),
@@ -183,7 +190,7 @@ export const ibApi = {
   submitProduct: (id: string) => send<PartnerProduct>('POST', `${P}/partner/products/${enc(id)}/submit`, {}),
   earnings: () => call<Earnings>(`${P}/partner/earnings`),
   reports: (range: RangeSel) => call<Reports>(`${P}/partner/reports?${rq(range)}`),
-  partnerExportUrl: (range: RangeSel = 'ALL') => `${API}${P}/partner/export?${rq(range)}`,
+  partnerExportUrl: (range: RangeSel = 'ALL') => `${API}${withViewAs(`${P}/partner/export?${rq(range)}`)}`,
   // Trader
   clientProduct: (id: string) => call<ClientProduct & { content: string | null }>(`${P}/partner-access/products/${enc(id)}`),
   clientProductFileUrl: (id: string) => `${API}${P}/partner-access/products/${enc(id)}/file`,
