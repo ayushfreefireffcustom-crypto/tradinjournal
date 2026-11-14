@@ -23,6 +23,9 @@ export interface DiagnoseInput {
 
 const RECENT_RUNS = 5;
 
+/** Where the tested password came from; `undecryptable` = one is stored but this key can't read it. */
+export type PasswordSource = 'stored' | 'provided' | 'none' | 'undecryptable';
+
 /** `ref` is a broker_account id, or an MT5 login number. */
 export async function findBrokerAccount(ref: string, server?: string): Promise<BrokerAccount> {
   const byId = await prisma.brokerAccount.findUnique({ where: { id: ref } });
@@ -43,12 +46,15 @@ export async function findBrokerAccount(ref: string, server?: string): Promise<B
 export function summarise(input: {
   account: Pick<BrokerAccount, 'status' | 'lastSyncError'>;
   usable: boolean;
-  passwordSource: 'stored' | 'provided' | 'none';
+  passwordSource: PasswordSource;
   bridge: BridgeDiagnosis | null;
 }): { verdict: string; summary: string; nextStep: string } {
   const { account, usable, passwordSource, bridge } = input;
   if (!usable) {
     return { verdict: 'BLOCKED_BY_ACCESS_GATE', summary: 'The account isn’t on an Elefin server, so the access gate never lets it sync.', nextStep: 'Expected while Elefin-only access is on. Grant access or ask the user to connect an Elefin account.' };
+  }
+  if (passwordSource === 'undecryptable') {
+    return { verdict: 'PASSWORD_UNREADABLE', summary: 'A password is stored but this server can’t decrypt it (encryption key differs or was rotated), so it can’t be tested or used.', nextStep: 'Run this from the production API, or pass `password` to test one directly. If production also shows this, the user must re-enter their investor password.' };
   }
   if (passwordSource === 'none' || !bridge) {
     return { verdict: 'NO_PASSWORD', summary: 'No investor password is stored for this account, so it can’t sync.', nextStep: 'Ask the user to re-enter their investor password under Brokers.' };
@@ -90,7 +96,9 @@ export async function diagnoseBrokerAccount(ref: string, input: DiagnoseInput = 
 
   const storedPassword = account.password ? safeDecrypt(account.password) : null;
   const password = input.password ?? storedPassword;
-  const passwordSource: 'stored' | 'provided' | 'none' = input.password ? 'provided' : storedPassword ? 'stored' : 'none';
+  const passwordSource: PasswordSource = input.password ? 'provided'
+    : storedPassword ? 'stored'
+    : account.password ? 'undecryptable' : 'none';
   const server = input.server ?? account.server;
   const bridge = password ? await diagnoseLogin({ login: Number(account.mt5Login), password, server }) : null;
   const tz = tzOf(account);

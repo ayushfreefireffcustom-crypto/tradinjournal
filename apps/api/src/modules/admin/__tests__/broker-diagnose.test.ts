@@ -34,6 +34,7 @@ describe('diagnose verdicts', () => {
   it('gate and missing password come before any bridge talk', () => {
     expect(summarise({ account, usable: false, passwordSource: 'stored', bridge: null }).verdict).toBe('BLOCKED_BY_ACCESS_GATE');
     expect(summarise({ account, usable: true, passwordSource: 'none', bridge: null }).verdict).toBe('NO_PASSWORD');
+    expect(summarise({ account, usable: true, passwordSource: 'undecryptable', bridge: null }).verdict).toBe('PASSWORD_UNREADABLE');
   });
 });
 
@@ -76,6 +77,16 @@ describe.skipIf(!local)('diagnose report (integration)', () => {
     const stored = await db.brokerAccount.findUniqueOrThrow({ where: { id: accountId } });
     expect(decryptSecret(stored.password!)).toBe('inv3stor');
     expect(stored.server).toBe('Elefin-Trade');
+  });
+
+  it('a stored password this key can’t decrypt is reported as such, not as missing', async () => {
+    const u = await db.user.findFirstOrThrow({ where: { email: `${tag}@diag.test` } });
+    const { encryptSecret } = await import('../../../lib/secrets.js');
+    const otherKey = Buffer.alloc(32, 7); // encrypted elsewhere (e.g. production's key)
+    const a = await db.brokerAccount.create({ data: { userId: u.id, broker: 'Elefin', mt5Login: login + 7n, server: 'Elefin-Trade', marginMode: 'HEDGING', password: encryptSecret('elsewhere', otherKey) } });
+    const before = diag.calls.length;
+    expect((await svc.diagnoseBrokerAccount(a.id)).verdict).toBe('PASSWORD_UNREADABLE');
+    expect(diag.calls.length).toBe(before); // nothing sent to the bridge
   });
 
   it('unknown and ambiguous references are clear errors', async () => {
