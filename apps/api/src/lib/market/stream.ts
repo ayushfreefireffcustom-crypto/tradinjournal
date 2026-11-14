@@ -14,6 +14,7 @@ import { env } from '@tradinjournal/config';
 import { logger } from '@tradinjournal/logger';
 import type { MarketTimeframe } from '@tradinjournal/contracts';
 import type { BridgeCreds, NormalizedCandle } from './types.js';
+import type { ServerTz } from '../server-time.js';
 import { resolveProvider } from './providers/index.js';
 import { sharedSubscriber } from '../pubsub.js';
 
@@ -117,7 +118,7 @@ const POLL_MS = 5_000; // poll cadence for providers without a push feed (Twelve
 export async function acquireLive(
   symbol: string,
   tf: MarketTimeframe,
-  opts: { broker?: BridgeCreds; scope?: FeedScope } = {},
+  opts: { broker?: BridgeCreds; scope?: FeedScope; serverTz?: ServerTz | null } = {},
 ): Promise<void> {
   const scope = opts.scope ?? 'public';
   const key = channel(symbol, tf, scope);
@@ -138,7 +139,7 @@ export async function acquireLive(
   } else {
     const timer = setInterval(() => {
       void provider
-        .getCandles(symbol, tf, { limit: 2, broker: opts.broker })
+        .getCandles(symbol, tf, { limit: 2, broker: opts.broker, serverTz: opts.serverTz })
         .then(bars => {
           const last = bars[bars.length - 1];
           if (last) void publishCandle(symbol, tf, last, scope);

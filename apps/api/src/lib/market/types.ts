@@ -5,6 +5,7 @@
 // Candle timestamps are normalized to **epoch milliseconds** (what klinecharts
 // consumes) regardless of what the upstream returns.
 import type { MarketTimeframe, AssetClass } from '@tradinjournal/contracts';
+import type { ServerTz } from '../server-time.js';
 
 export type { MarketTimeframe, AssetClass };
 
@@ -33,6 +34,12 @@ export interface GetCandlesOpts {
   limit?: number;
   /** Required only for the MT5 provider — the account whose terminal to query. */
   broker?: BridgeCreds;
+  /**
+   * MT5 only: the account's server clock. When set, intraday bar times are
+   * converted from server wall clock to real UTC (and the query window the other
+   * way). Daily+ bars keep their server-midnight time so they stay on their date.
+   */
+  serverTz?: ServerTz | null;
 }
 
 export interface SymbolInfo {

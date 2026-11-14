@@ -186,6 +186,32 @@ def _margin_mode(mode_int: int) -> str:
     return "HEDGING" if mode_int == 2 else "NETTING"
 
 
+def _newest_quote_time() -> int | None:
+    """Newest last-quote time across Market Watch, in the trade server's wall clock."""
+    try:
+        syms = mt5.symbols_get() or ()
+    except Exception:
+        return None
+    times = [int(s.time) for s in syms if getattr(s, "visible", False) and getattr(s, "time", 0)]
+    return max(times) if times else None
+
+
+def _live_server_time(before: int | None) -> tuple[int | None, int]:
+    """
+    (server_time, utc_now). MT5 reports every time (deals, bars, quotes) in the
+    trade server's wall clock, not UTC, so the API needs the server clock to
+    convert. The newest quote only dates that clock if quotes are moving, so
+    server_time is None unless it advanced since `before` (sampled earlier in
+    the same call). That rules out weekends, holidays and a freshly connected
+    terminal, where the newest quote can be hours old.
+    """
+    after = _newest_quote_time()
+    utc_now = int(time.time())
+    if before is None or after is None or after <= before:
+        return None, utc_now
+    return after, utc_now
+
+
 # ─── Health ───────────────────────────────────────────────────────────────────
 
 @app.get("/health")
@@ -255,12 +281,14 @@ def deals(req: DealsRequest) -> DealsResponse:
     log.info(f"[deals] login={req.login} server={req.server} from={req.from_time} to={req.to_time}")
     with _lock:
         _connect(req.login, req.password, req.server)
+        quote_before = _newest_quote_time()
         mt5.history_orders_get(req.from_time, req.to_time)
         time.sleep(1)
         raw = mt5.history_deals_get(req.from_time, req.to_time)
+        server_time, utc_now = _live_server_time(quote_before)
         if raw is None:
             log.warning(f"[deals] history_deals_get returned None: {mt5.last_error()}")
-            return DealsResponse(deals=[], total=0)
+            return DealsResponse(deals=[], total=0, server_time=server_time, utc_now=utc_now)
         log.info(f"[deals] pulled {len(raw)} deals")
         result: list[RawDeal] = []
         for d in raw:
@@ -282,7 +310,9 @@ def deals(req: DealsRequest) -> DealsResponse:
                 comment=d.comment or "",
                 reason=d.reason,
             ))
-        return DealsResponse(deals=result, total=len(result))
+        if server_time is not None:
+            log.info(f"[deals] server clock offset ~{(server_time - utc_now) / 3600:+.2f}h")
+        return DealsResponse(deals=result, total=len(result), server_time=server_time, utc_now=utc_now)
 
 
 # ─── POST /positions ──────────────────────────────────────────────────────────

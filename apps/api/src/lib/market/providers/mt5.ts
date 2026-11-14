@@ -7,6 +7,10 @@ import { env } from '@tradinjournal/config';
 import type { MarketTimeframe } from '@tradinjournal/contracts';
 import { fetchJson } from '../http.js';
 import type { GetCandlesOpts, MarketProvider, NormalizedCandle } from '../types.js';
+import { serverWallToUtc, utcToServerWall } from '../../server-time.js';
+
+/** Bars at or above a day are labelled by server date; converting would move them to the previous day. */
+const DAILY_OR_LONGER = new Set<MarketTimeframe>(['1d', '1w', '1M']);
 
 interface BridgeCandle {
   time: number; // unix seconds
@@ -58,9 +62,12 @@ async function getCandles(
     symbol,
     timeframe: tf,
   };
+  // The bridge reads (and returns) times in the server's wall clock.
+  const tz = opts.serverTz && !DAILY_OR_LONGER.has(tf) ? opts.serverTz : null;
+  const toWall = (ms: number) => (opts.serverTz ? utcToServerWall(opts.serverTz, ms) : ms);
   if (opts.from) {
-    body.from_time = new Date(opts.from * 1000).toISOString();
-    body.to_time = new Date((opts.to ?? Math.floor(Date.now() / 1000)) * 1000).toISOString();
+    body.from_time = new Date(toWall(opts.from * 1000)).toISOString();
+    body.to_time = new Date(toWall((opts.to ?? Math.floor(Date.now() / 1000)) * 1000)).toISOString();
   } else {
     body.count = opts.limit ?? 500;
   }
@@ -68,7 +75,7 @@ async function getCandles(
   const data = await postCandles(body, signal);
   if (!data?.candles?.length) return [];
   return data.candles.map(c => ({
-    openTime: c.time * 1000, // seconds → ms
+    openTime: tz ? serverWallToUtc(tz, c.time * 1000) : c.time * 1000, // seconds → ms
     open: Number(c.open),
     high: Number(c.high),
     low: Number(c.low),

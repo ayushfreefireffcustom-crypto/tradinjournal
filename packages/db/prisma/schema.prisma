@@ -202,6 +202,14 @@ model BrokerAccount {
   dataVersion     Int           @default(0)
   /// Newest stored deal time; incremental syncs start a little before it.
   lastDealAt      DateTime?
+  /// The trade server's clock as IANA zone + shift (MT5 reports times in server
+  /// wall clock, not UTC): e.g. America/New_York +420 = GMT+2/+3 "New York close".
+  /// Detected from the bridge's live quote time; null until first observed.
+  serverTimeZone     String?
+  serverTimeShiftMin Int?
+  /// Last trusted observation of the server offset (minutes) and when it was taken.
+  serverOffsetMin    Int?
+  serverOffsetAt     DateTime?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
@@ -248,6 +256,9 @@ model Execution {
   swap        Decimal   @db.Decimal(18, 8)
   fee         Decimal   @default(0) @db.Decimal(18, 8)
   dealTime    DateTime
+  /// Minutes subtracted from the server wall-clock time to store dealTime as UTC.
+  /// Null = dealTime still holds the raw server wall-clock value (not yet converted).
+  serverOffsetMin Int?
   magic       Int       @default(0)
   comment     String?
   reason      Int       @default(0)

@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 vi.mock('@tradinjournal/config', () => ({ env: { MT5_BRIDGE_URL: 'http://bridge.test', MT5_BRIDGE_SHARED_SECRET: 's' } }));
 
-const { getDeals, verifyAccount } = await import('../broker-connector.js');
+const { getDeals, getDealsWithClock, verifyAccount } = await import('../broker-connector.js');
 const creds = { login: 1, password: 'p', server: 'S' };
 
 function dealsResponse() {
@@ -24,6 +24,23 @@ describe('bridge client', () => {
     expect(body.from_time).toBe('2026-10-01T05:06:07');
     expect(body.to_time).toBe('2035-01-01T00:00:00');
     expect(out[0]).toMatchObject({ dealTicket: '7', positionId: '9', type: 'BUY', entry: 'IN', volume: '0.10' });
+  });
+
+  it('returns the bridge server clock with the deals', async () => {
+    fetchMock.mockResolvedValue(new Response(JSON.stringify({ total: 0, deals: [], server_time: 1_763_130_000, utc_now: 1_763_122_800 }), { status: 200 }));
+    expect((await getDealsWithClock(creds)).clock).toEqual({ serverTime: 1_763_130_000, utcNow: 1_763_122_800 });
+  });
+
+  it('a bridge whose quotes are not moving sends no server time', async () => {
+    fetchMock.mockResolvedValue(new Response(JSON.stringify({ total: 0, deals: [], server_time: null, utc_now: 1_763_122_800 }), { status: 200 }));
+    expect((await getDealsWithClock(creds)).clock).toEqual({ serverTime: null, utcNow: 1_763_122_800 });
+  });
+
+  it('an older bridge (no clock fields) yields no clock and unchanged deal times', async () => {
+    fetchMock.mockResolvedValue(dealsResponse());
+    const r = await getDealsWithClock(creds);
+    expect(r.clock).toBeNull();
+    expect(r.deals[0]!.dealTime).toBe(new Date(1_760_000_000 * 1000).toISOString());
   });
 
   it('defaults to the whole history', async () => {

@@ -14,13 +14,15 @@ import { findAccountById } from '../accounts/accounts.repository.js';
 import { firstListSymbols, setFirstListSymbols } from './watchlists.service.js';
 import type { BridgeCreds, GetCandlesOpts, NormalizedCandle, SymbolInfo } from '../../lib/market/types.js';
 import { accountUsable } from '../../lib/broker-policy.js';
+import { formatTz, tzOf, type ServerTz } from '../../lib/server-time.js';
 
 // Timeframes the warm cron keeps hot for the configured symbol set.
 const WARM_TFS: MarketTimeframe[] = ['1h', '1d'];
 const SEARCH_TTL = 300;
 
 function candleKey(symbol: string, tf: string, opts: GetCandlesOpts, scope: string): string {
-  return `market:candles:${scope}:${symbol}:${tf}:${opts.from ?? ''}:${opts.to ?? ''}:${opts.limit ?? ''}`;
+  // The clock model is in the key so raw and UTC-converted MT5 series never share an entry.
+  return `market:candles:${scope}:${symbol}:${tf}:${opts.from ?? ''}:${opts.to ?? ''}:${opts.limit ?? ''}${opts.serverTz ? `:${formatTz(opts.serverTz)}` : ''}`;
 }
 
 /** Persist immutable bars for backfill; upsert only the latest (forming) bar. */
@@ -61,19 +63,23 @@ async function loadCandles(symbol: string, tf: MarketTimeframe, opts: GetCandles
 }
 
 /** Resolve broker credentials for a candles request, if it targets an account. */
-export async function brokerCredsFor(accountId: string | undefined, userId: string): Promise<{ creds?: BridgeCreds; scope: string }> {
+export async function brokerCredsFor(
+  accountId: string | undefined,
+  userId: string,
+): Promise<{ creds?: BridgeCreds; scope: string; serverTz?: ServerTz | null }> {
   if (!accountId) return { scope: 'public' };
   const found = await findAccountById(accountId, userId);
   // Elefin only: a locked account's credentials are never used; fall back to public data.
   const acc = found && (await accountUsable(userId, found)) ? found : null;
   const creds = acc ? credsOf(acc) : null;
   if (!acc || !creds) return { scope: 'public' };
-  return { creds, scope: `mt5:${acc.server}` };
+  // Convert MT5 bar times to UTC only alongside deal times, so charts and trades agree.
+  return { creds, scope: `mt5:${acc.server}`, serverTz: env.MT5_SERVER_TIME_TO_UTC ? tzOf(acc) : null };
 }
 
 export async function getCandles(q: CandlesQuery, userId: string): Promise<{ candles: NormalizedCandle[] }> {
-  const { creds, scope } = await brokerCredsFor(q.accountId, userId);
-  const opts: GetCandlesOpts = { from: q.from, to: q.to, limit: q.limit, broker: creds };
+  const { creds, scope, serverTz } = await brokerCredsFor(q.accountId, userId);
+  const opts: GetCandlesOpts = { from: q.from, to: q.to, limit: q.limit, broker: creds, serverTz };
   return { candles: await loadCandles(q.symbol, q.tf, opts, scope) };
 }
 
@@ -123,8 +129,8 @@ const STALE_PRICE_MS = 10 * 60_000;
  * covers the symbol or the latest bar is stale — callers skip, never crash.
  */
 export async function getLatestPrice(symbol: string, accountId?: string, userId = ''): Promise<number | null> {
-  const { creds, scope } = await brokerCredsFor(accountId, userId);
-  const bars = await loadCandles(symbol, '1m', { limit: 2, broker: creds }, scope);
+  const { creds, scope, serverTz } = await brokerCredsFor(accountId, userId);
+  const bars = await loadCandles(symbol, '1m', { limit: 2, broker: creds, serverTz }, scope);
   const last = bars[bars.length - 1];
   if (!last) return null;
   if (Date.now() - last.openTime > STALE_PRICE_MS) return null;

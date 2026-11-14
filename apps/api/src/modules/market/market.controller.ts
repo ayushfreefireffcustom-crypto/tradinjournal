@@ -50,12 +50,12 @@ export async function handleSymbolSearch(req: Request, res: Response, next: Next
 // Degrades to heartbeat-only (client re-fetches) when Redis isn't configured.
 export async function handleCandleStream(req: Request, res: Response): Promise<void> {
   const q = req.query as unknown as CandlesQuery;
-  const { creds, scope } = await brokerCredsFor(q.accountId, res.locals.user.id as string);
+  const { creds, scope, serverTz } = await brokerCredsFor(q.accountId, res.locals.user.id as string);
 
   sseHeaders(res);
   res.write(': connected\n\n');
 
-  await acquireLive(q.symbol, q.tf, { broker: creds, scope });
+  await acquireLive(q.symbol, q.tf, { broker: creds, scope, serverTz });
   const unsubscribe = subscribeCandle(q.symbol, q.tf, candle => {
     if (!res.writableEnded) sseWrite(res, { candle });
   }, scope);

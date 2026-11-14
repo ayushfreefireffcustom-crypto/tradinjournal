@@ -2,6 +2,7 @@ import { env } from '@tradinjournal/config';
 import { logger } from '@tradinjournal/logger';
 import type { Deal, MarginMode, VerifyResult } from '@tradinjournal/types';
 import { BrokerAuthError, BrokerConnectionError } from '../http/errors.js';
+import type { ServerClock } from './server-time.js';
 
 interface BridgeCreds {
   login: number;
@@ -31,6 +32,7 @@ interface BridgeDeal {
   commission: string;
   swap: string;
   fee: string;
+  /** Seconds since epoch in the trade SERVER's wall clock, not UTC. */
   deal_time: number;
   comment: string;
 }
@@ -38,6 +40,15 @@ interface BridgeDeal {
 interface BridgeDealsResponse {
   deals: BridgeDeal[];
   total: number;
+  /** Newest live quote time (server wall clock) and the bridge's UTC clock; absent on older bridges. */
+  server_time?: number | null;
+  utc_now?: number | null;
+}
+
+export interface DealsWithClock {
+  /** dealTime is the server's wall clock written as if it were UTC — convert before treating it as UTC. */
+  deals: Deal[];
+  clock: ServerClock | null;
 }
 
 const DEAL_TYPE_MAP: Record<number, Deal['type']> = { 0: 'BUY', 1: 'SELL', 2: 'BALANCE' };
@@ -130,22 +141,24 @@ export async function verifyAccount(creds: BridgeCreds): Promise<VerifyResult> {
   };
 }
 
-/** MT5 wants naive "YYYY-MM-DDTHH:MM:SS" (UTC). */
+/** MT5 wants naive "YYYY-MM-DDTHH:MM:SS", read as the trade server's wall clock. */
 const bridgeTime = (d: Date) => d.toISOString().slice(0, 19);
 export const HISTORY_START = new Date('2020-01-01T00:00:00Z');
 
 /**
- * Deals in [from, to]. Defaults to the whole history; incremental syncs pass a
- * `from` shortly before the newest stored deal.
+ * Deals in [from, to] plus the server clock. Defaults to the whole history;
+ * incremental syncs pass a `from` shortly before the newest stored deal. The
+ * range and every returned dealTime are in the server's wall clock.
  */
-export async function getDeals(creds: BridgeCreds, range: { from?: Date; to?: Date } = {}): Promise<Deal[]> {
+export async function getDealsWithClock(creds: BridgeCreds, range: { from?: Date; to?: Date } = {}): Promise<DealsWithClock> {
   const data = await bridgePost<BridgeDealsResponse>('/deals', {
     ...creds,
     from_time: bridgeTime(range.from ?? HISTORY_START),
     to_time: bridgeTime(range.to ?? new Date('2035-01-01T00:00:00Z')),
   }, BRIDGE_TIMEOUT_MS.deals);
 
-  return data.deals.map((d) => ({
+  const clock = data.utc_now != null ? { serverTime: data.server_time ?? null, utcNow: data.utc_now } : null;
+  const deals = data.deals.map((d): Deal => ({
     dealTicket: String(d.deal_ticket),
     orderTicket: String(d.order_ticket),
     positionId: String(d.position_id),
@@ -161,4 +174,10 @@ export async function getDeals(creds: BridgeCreds, range: { from?: Date; to?: Da
     dealTime: new Date(d.deal_time * 1000).toISOString(),
     comment: d.comment,
   }));
+  return { deals, clock };
+}
+
+/** Deals only (dealTime in server wall clock — see getDealsWithClock). */
+export async function getDeals(creds: BridgeCreds, range: { from?: Date; to?: Date } = {}): Promise<Deal[]> {
+  return (await getDealsWithClock(creds, range)).deals;
 }

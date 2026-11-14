@@ -13,18 +13,17 @@ const bridge = vi.hoisted(() => ({
   deals: [] as Deal[],
   calls: [] as { login: number; password: string; from: string }[],
   fail: null as Error | null,
+  clock: null as { serverTime: number | null; utcNow: number } | null,
 }));
 vi.mock('../../../lib/broker-connector.js', async orig => {
   const real = await orig<typeof import('../../../lib/broker-connector.js')>();
-  return {
-    ...real,
-    getDeals: vi.fn(async (creds: { login: number; password: string }, range: { from?: Date } = {}) => {
-      const from = range.from ?? real.HISTORY_START;
-      bridge.calls.push({ login: creds.login, password: creds.password, from: from.toISOString() });
-      if (bridge.fail) throw bridge.fail;
-      return bridge.deals.filter(d => new Date(d.dealTime) >= from);
-    }),
-  };
+  const getDealsWithClock = vi.fn(async (creds: { login: number; password: string }, range: { from?: Date } = {}) => {
+    const from = range.from ?? real.HISTORY_START;
+    bridge.calls.push({ login: creds.login, password: creds.password, from: from.toISOString() });
+    if (bridge.fail) throw bridge.fail;
+    return { deals: bridge.deals.filter(d => new Date(d.dealTime) >= from), clock: bridge.clock };
+  });
+  return { ...real, getDealsWithClock, getDeals: async (c: { login: number; password: string }, r?: { from?: Date }) => (await getDealsWithClock(c, r)).deals };
 });
 
 const DAY = 86_400_000;
@@ -65,7 +64,7 @@ describe.skipIf(!local)('trade sync (integration)', () => {
     await db?.user.deleteMany({ where: { email: { endsWith: '@sync.test' } } });
     await db?.$disconnect();
   });
-  beforeEach(() => { bridge.calls.length = 0; bridge.fail = null; data.clearAccountDataCache(); });
+  beforeEach(() => { bridge.calls.length = 0; bridge.fail = null; bridge.clock = null; data.clearAccountDataCache(); });
 
   const account = () => db.brokerAccount.findUniqueOrThrow({ where: { id: accountId } });
 
@@ -191,6 +190,88 @@ describe.skipIf(!local)('trade sync (integration)', () => {
 
   it('a different user cannot read the account', async () => {
     await expect(trades.fetchTrades('someone-else', accountId)).rejects.toMatchObject({ statusCode: 404 });
+  });
+
+  describe('server clock → UTC', () => {
+    // A GMT+2/+3 "New York close" server: wall-clock deal times as the bridge sends them.
+    const wall = (local: string) => Date.parse(`${local}Z`);
+    const nowUtc = Date.parse('2026-11-14T12:00:00Z') / 1000;
+    const liveClock = (offsetH: number) => ({ serverTime: nowUtc + offsetH * 3600 - 1, utcNow: nowUtc });
+    let tzAccount = '';
+    const acct = () => db.brokerAccount.findUniqueOrThrow({ where: { id: tzAccount } });
+    const times = async () => (await db.execution.findMany({ where: { brokerAccountId: tzAccount }, orderBy: { dealTicket: 'asc' }, select: { dealTime: true, serverOffsetMin: true } }))
+      .map(r => [r.dealTime.toISOString(), r.serverOffsetMin]);
+
+    beforeAll(async () => {
+      const a = await db.brokerAccount.create({
+        data: { userId, broker: 'Elefin', mt5Login: BigInt(Date.now() % 1e9) + 21n, server: `Tz-${tag}`, marginMode: 'HEDGING', password: secrets.encryptSecret('inv3stor') },
+      });
+      tzAccount = a.id;
+    });
+
+    it('with conversion off, stores raw times but learns the clock model', async () => {
+      bridge.deals = [
+        deal({ at: wall('2026-07-15T12:00:00'), positionId: '31' }),
+        deal({ at: wall('2026-07-15T13:00:00'), positionId: '31', type: 'SELL', entry: 'OUT', profit: '5' }),
+      ];
+      bridge.clock = liveClock(2);
+      expect(await sync.syncAccount(tzAccount, { toUtc: false })).toMatchObject({ status: 'synced', added: 2, normalized: 0 });
+      expect(await times()).toEqual([['2026-07-15T12:00:00.000Z', null], ['2026-07-15T13:00:00.000Z', null]]);
+      expect(await acct()).toMatchObject({ serverTimeZone: 'America/New_York', serverTimeShiftMin: 420, serverOffsetMin: 120 });
+    });
+
+    it('with conversion on, stores new deals as UTC and converts the stored ones (DST per date)', async () => {
+      const before = await acct();
+      bridge.deals.push(deal({ at: wall('2026-11-10T10:00:00'), positionId: '32' }));
+      const r = await sync.syncAccount(tzAccount, { toUtc: true });
+      expect(r).toMatchObject({ status: 'synced', added: 1, normalized: 2 });
+      expect(await times()).toEqual([
+        ['2026-07-15T09:00:00.000Z', 180], // summer: GMT+3
+        ['2026-07-15T10:00:00.000Z', 180],
+        ['2026-11-10T08:00:00.000Z', 120], // winter: GMT+2
+      ]);
+      const a = await acct();
+      expect(a.lastDealAt!.toISOString()).toBe('2026-11-10T08:00:00.000Z');
+      expect(a.dataVersion).toBe(before.dataVersion + 1);
+      // The incremental window was widened for the wall-clock read.
+      expect(Date.parse(bridge.calls[0]!.from)).toBe(before.lastDealAt!.getTime() - 7 * DAY - 14 * 3_600_000);
+    });
+
+    it('is idempotent: re-syncing converts nothing and never double-shifts', async () => {
+      const before = await acct();
+      expect(await sync.syncAccount(tzAccount, { toUtc: true })).toMatchObject({ added: 0, normalized: 0 });
+      expect((await times()).map(t => t[0])).toEqual(['2026-07-15T09:00:00.000Z', '2026-07-15T10:00:00.000Z', '2026-11-10T08:00:00.000Z']);
+      expect((await acct()).dataVersion).toBe(before.dataVersion);
+    });
+
+    it('trades and hour-of-day read the converted times', async () => {
+      const t = await trades.fetchTrades(userId, tzAccount);
+      expect(t.find(x => x.positionId === '31')).toMatchObject({ openTime: '2026-07-15T09:00:00.000Z', closeTime: '2026-07-15T10:00:00.000Z' });
+    });
+
+    it('a weekend sync (no live clock) keeps the model and still converts', async () => {
+      bridge.clock = { serverTime: null, utcNow: nowUtc };
+      bridge.deals.push(deal({ at: wall('2026-11-13T23:00:00'), positionId: '33' }));
+      expect(await sync.syncAccount(tzAccount, { toUtc: true })).toMatchObject({ added: 1 });
+      expect((await times()).at(-1)).toEqual(['2026-11-13T21:00:00.000Z', 120]);
+      expect(await acct()).toMatchObject({ serverTimeZone: 'America/New_York', serverOffsetMin: 120 });
+    });
+
+    it('a model correction (seen twice) re-converts every row from its recovered wall clock', async () => {
+      // The server turns out to be a fixed GMT+3: the November observations say +3.
+      bridge.clock = liveClock(3);
+      expect(await sync.syncAccount(tzAccount, { toUtc: true })).toMatchObject({ normalized: 0 }); // first sighting: wait
+      expect((await acct()).serverTimeZone).toBe('America/New_York');
+      const r = await sync.syncAccount(tzAccount, { toUtc: true });
+      expect(r).toMatchObject({ normalized: 2 }); // the two winter rows move; summer ones were already +3
+      expect(await acct()).toMatchObject({ serverTimeZone: 'UTC', serverTimeShiftMin: 180 });
+      expect(await times()).toEqual([
+        ['2026-07-15T09:00:00.000Z', 180],
+        ['2026-07-15T10:00:00.000Z', 180],
+        ['2026-11-10T07:00:00.000Z', 180],
+        ['2026-11-13T20:00:00.000Z', 180],
+      ]);
+    });
   });
 
   it('the shared queue reports idle when done', () => {

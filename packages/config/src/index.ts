@@ -246,6 +246,16 @@ const envSchema = z.object({
   SYNC_BATCH: z.coerce.number().int().min(1).max(500).default(20),
   /** How long a first-ever page load waits for the initial backfill (ms). */
   SYNC_FIRST_WAIT_MS: z.coerce.number().int().min(1000).default(90_000),
+  /**
+   * MT5 reports deal and bar times in the trade server's wall clock, not UTC.
+   * Off: the server clock is still detected and stored on each account, but times
+   * are kept as-is. On: new deals and MT5 candles are converted to UTC, and each
+   * sync converts the account's already-stored deals (see scripts/normalize-mt5-times.ts).
+   */
+  MT5_SERVER_TIME_TO_UTC: z
+    .string()
+    .default('false')
+    .transform(v => v.toLowerCase() === 'true' || v === '1'),
 
   // ── Trading platform (exchange connections, copy trading) ─────────────────
   /** Master switch for exchange connections and copy trading. Off: no routes. */

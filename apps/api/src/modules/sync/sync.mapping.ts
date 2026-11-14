@@ -3,10 +3,18 @@
 // live bridge data, so the numbers are identical.
 import { Prisma } from '@tradinjournal/db';
 import type { Deal } from '@tradinjournal/types';
+import { serverWallOffset, type ServerTz } from '../../lib/server-time.js';
 
 export type ExecutionRow = Prisma.ExecutionCreateManyInput;
 
-export function dealToExecution(brokerAccountId: string, d: Deal): ExecutionRow {
+/**
+ * A bridge deal as a row. The bridge's dealTime is the server's wall clock; with
+ * a known server clock (`tz`) it is stored as real UTC and the offset recorded,
+ * otherwise it is stored raw (serverOffsetMin null) and converted later.
+ */
+export function dealToExecution(brokerAccountId: string, d: Deal, tz: ServerTz | null = null): ExecutionRow {
+  const wall = new Date(d.dealTime).getTime();
+  const offset = tz ? serverWallOffset(tz, wall) : null;
   return {
     brokerAccountId,
     dealTicket: BigInt(d.dealTicket),
@@ -21,7 +29,8 @@ export function dealToExecution(brokerAccountId: string, d: Deal): ExecutionRow 
     commission: new Prisma.Decimal(d.commission || '0'),
     swap: new Prisma.Decimal(d.swap || '0'),
     fee: new Prisma.Decimal(d.fee || '0'),
-    dealTime: new Date(d.dealTime),
+    dealTime: new Date(offset == null ? wall : wall - offset * 60_000),
+    serverOffsetMin: offset,
     comment: d.comment || null,
   };
 }

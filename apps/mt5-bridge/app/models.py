@@ -63,7 +63,7 @@ class RawDeal(BaseModel):
     commission: str
     swap: str
     fee: str
-    deal_time: int      # Unix timestamp (seconds)
+    deal_time: int      # Seconds since epoch in the trade SERVER's wall clock (not UTC)
     magic: int
     comment: str
     reason: int
@@ -71,6 +71,10 @@ class RawDeal(BaseModel):
 class DealsResponse(BaseModel):
     deals: list[RawDeal]
     total: int
+    # Server wall clock (newest live quote) and the bridge's UTC clock, epoch
+    # seconds, read together. server_time is None when quotes weren't moving.
+    server_time: int | None = None
+    utc_now: int | None = None
 
 
 # ─── /positions ──────────────────────────────────────────────────────────────
