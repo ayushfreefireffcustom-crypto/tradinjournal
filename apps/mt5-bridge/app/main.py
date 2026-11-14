@@ -8,6 +8,8 @@ so MT5 calls never overlap.
 """
 
 import logging
+import os
+import subprocess
 import threading
 import time
 from contextlib import asynccontextmanager
@@ -21,6 +23,7 @@ from app.models import (
     AccountRequest, AccountResponse,
     Candle, CandlesRequest, CandlesResponse,
     DealsRequest, DealsResponse, RawDeal,
+    DiagnoseRequest,
     OpenPosition, PositionsRequest, PositionsResponse,
     VerifyRequest, VerifyResponse,
 )
@@ -99,24 +102,112 @@ def _is_connected(login: int) -> bool:
     )
 
 
-def _connect(login: int, password: str, server: str) -> None:
-    """
-    Ensure the terminal is initialized AND authorized on `login`, self-healing
-    from dropped/unauthorized sessions (MT5 error -6). Raises HTTPException on a
-    hard failure so the API can surface an honest status.
+# What MT5's (code, message) pairs mean, for logs and the /diagnose report.
+MT5_ERRORS = {
+    1: "success",
+    -1: "generic failure",
+    -2: "invalid arguments",
+    -3: "out of memory",
+    -4: "not found",
+    -5: "unsupported terminal version",
+    -6: "authorization failed (login, password or server rejected)",
+    -7: "unsupported",
+    -8: "auto-trading disabled",
+    -10000: "IPC internal error",
+    -10001: "IPC send failed",
+    -10002: "IPC receive failed",
+    -10003: "IPC initialization failed",
+    -10004: "no IPC connection (terminal dropped the link)",
+    -10005: "IPC timeout",
+}
+IPC_ERRORS = {-10000, -10001, -10002, -10003, -10004, -10005}
 
-    Callers already hold the global _lock, so MT5 calls never overlap and the
-    tear-down / re-initialize below is safe.
-    """
-    # Fast path: already attached, online and on the right account — no re-auth.
-    if _is_connected(login):
-        return
+# A successful account login proves the terminal itself works. If one happened
+# this recently, a login that keeps failing belongs to that account, not to us.
+TERMINAL_PROVEN_S = 15 * 60
+_last_ok_login = {"at": 0.0, "login": None}
 
-    last: tuple = (None, "no attempt")
-    for attempt in range(1, CONNECT_ATTEMPTS + 1):
+
+def _mark_login_ok(login: int) -> None:
+    _last_ok_login["at"] = time.monotonic()
+    _last_ok_login["login"] = int(login)
+
+
+def _last_ok_age_s() -> float | None:
+    return None if not _last_ok_login["at"] else time.monotonic() - _last_ok_login["at"]
+
+
+def _terminal_process_running() -> bool | None:
+    """Is a terminal process with our executable's name running? None if we can't tell."""
+    exe = os.path.basename(settings.terminal_path).lower()
+    try:
+        out = subprocess.run(
+            ["tasklist", "/FI", f"IMAGENAME eq {exe}", "/NH", "/FO", "CSV"],
+            capture_output=True, text=True, timeout=5,
+        ).stdout.lower()
+    except Exception:
+        return None
+    return exe in out
+
+
+def _mt5_error(code, msg) -> dict:
+    return {"code": code, "message": msg, "meaning": MT5_ERRORS.get(code, "unknown MT5 error")}
+
+
+def _classify_failure(login: int, server: str, attempts: list[tuple]) -> tuple[int, dict]:
+    """
+    Turn a failed connect into (http status, detail) that says exactly whose
+    problem it is. Codes the API acts on:
+      LOGIN_REJECTED (422) — this account can't sign in; the user must fix it.
+        reason AUTH_FAILED    MT5 said so outright (-6).
+        reason LOGIN_DROPPED  the terminal works (another account signed in
+                              recently) but drops the link on this login: a
+                              changed investor password, a disabled/archived
+                              account or a wrong server name.
+      TERMINAL_DOWN (503)        the terminal process isn't running.
+      TERMINAL_UNAVAILABLE (503) the terminal didn't answer and nothing proves it
+                                 works right now; don't blame the user yet.
+    """
+    code, msg = (tuple(attempts[-1] if attempts else (None, "no attempt")) + (None, None))[:2]
+    age = _last_ok_age_s()
+    proc = _terminal_process_running()
+    proven = age is not None and age < TERMINAL_PROVEN_S
+    terminal = {
+        "process_running": proc,
+        "last_ok_login_s_ago": None if age is None else int(age),
+        "path": settings.terminal_path,
+    }
+    base = {
+        "login": int(login), "server": server,
+        "mt5": _mt5_error(code, msg),
+        "attempts": [_mt5_error(*(tuple(a) + (None, None))[:2]) for a in attempts],
+        "terminal": terminal,
+    }
+    if code == -6:
+        return 422, {**base, "code": "LOGIN_REJECTED", "reason": "AUTH_FAILED",
+                     "message": f"MT5 rejected {login}@{server}: wrong login, investor password or server name."}
+    if code in IPC_ERRORS and proven:
+        return 422, {**base, "code": "LOGIN_REJECTED", "reason": "LOGIN_DROPPED",
+                     "message": (f"The terminal is working (an account signed in {int(age // 60)} min ago) but drops the "
+                                 f"connection when signing in to {login}@{server}. Usually the investor password changed, "
+                                 "the account was disabled or archived, or the server name is wrong.")}
+    if proc is False:
+        return 503, {**base, "code": "TERMINAL_DOWN", "reason": "PROCESS_NOT_RUNNING",
+                     "message": f"The MT5 terminal ({os.path.basename(settings.terminal_path)}) is not running on the bridge host."}
+    if code == -10005:
+        return 503, {**base, "code": "TERMINAL_UNAVAILABLE", "reason": "TIMEOUT",
+                     "message": "The MT5 terminal timed out; it may be busy, updating or reconnecting to the broker."}
+    return 503, {**base, "code": "TERMINAL_UNAVAILABLE", "reason": "UNPROVEN",
+                 "message": (f"MT5 failed ({code}, {msg}) and no login has succeeded in the last "
+                             f"{TERMINAL_PROVEN_S // 60} min, so it can't be pinned on this account yet.")}
+
+
+def _try_login(login: int, password: str, server: str, attempts_max: int) -> list[tuple]:
+    """Attach + authorize on `login`. Returns the (code, message) of each failed attempt; [] on success."""
+    failures: list[tuple] = []
+    for attempt in range(1, attempts_max + 1):
         # Initialize WITH credentials: attaches to the terminal *and* authorizes
-        # the account in one call. This is the key fix — it does not depend on
-        # the terminal's own session being alive, so a dropped session recovers.
+        # the account in one call, so a dropped terminal session recovers.
         ok = mt5.initialize(
             path=settings.terminal_path,
             login=int(login),
@@ -124,62 +215,47 @@ def _connect(login: int, password: str, server: str) -> None:
             server=server,
             timeout=CONNECT_TIMEOUT_MS,
         )
-
-        # If we're attached but on a different account (multi-account switching),
-        # force an explicit login onto the requested one.
+        # Attached but on a different account (multi-account switching): log in explicitly.
         if ok and not _is_connected(login):
             mt5.login(int(login), password=password, server=server, timeout=CONNECT_TIMEOUT_MS)
-
         if _is_connected(login):
+            _mark_login_ok(login)
             if attempt > 1:
                 log.info(f"[connect] recovered on attempt {attempt} — {login}@{server}")
-            return
-
-        last = _last_error()
+            return []
+        failures.append(_last_error())
+        code, msg = (failures[-1] + (None, None))[:2]
         log.warning(
-            f"[connect] attempt {attempt}/{CONNECT_ATTEMPTS} failed for {login}@{server}: {last} — resetting IPC"
+            f"[connect] attempt {attempt}/{attempts_max} failed for {login}@{server}: "
+            f"({code}, {msg}) {MT5_ERRORS.get(code, '')} — resetting IPC"
         )
-
-        # Drop the poisoned Python<->terminal connection before retrying. This
-        # only closes our IPC pipe; it does NOT close the terminal application.
+        if code == -6:
+            break  # an outright rejection won't change on retry
+        # Drop the poisoned Python<->terminal link before retrying. This only
+        # closes our IPC pipe; it does NOT close the terminal application.
         try:
             mt5.shutdown()
         except Exception:
             pass
         time.sleep(CONNECT_RETRY_DELAY_S)
-
-    code, msg = (last + (None, None))[:2]
-    # Tell "this login can't sign in" apart from "the terminal is down". The MT5
-    # library reports a rejected login in several ways: -6 (authorization failed),
-    # and for a server the terminal doesn't know, or a refused password, often
-    # -10004/-10005 "No IPC". So if the terminal still answers on its own, the
-    # failure belongs to this login (server name, login or password) -> 422.
-    # Only when the terminal itself is unreachable is it our problem -> 503.
-    if code == -6 or _terminal_up():
-        log.error(f"[connect] login rejected for {login}@{server}: ({code}, {msg})")
-        raise HTTPException(
-            status_code=422,
-            detail={"code": "LOGIN_REJECTED", "server": server, "message": f"MT5 could not log in to {login}@{server}: ({code}, {msg})"},
-        )
-    log.error(f"[connect] terminal unreachable, giving up on {login}@{server}: ({code}, {msg})")
-    raise HTTPException(
-        status_code=503,
-        detail={"code": "TERMINAL_DOWN", "message": f"MT5 terminal unreachable: ({code}, {msg})"},
-    )
+    return failures
 
 
-def _terminal_up() -> bool:
-    """True if the terminal answers when attached without any account login."""
-    try:
-        mt5.shutdown()
-    except Exception:
-        pass
-    try:
-        if not mt5.initialize(path=settings.terminal_path, timeout=CONNECT_TIMEOUT_MS):
-            return False
-        return mt5.terminal_info() is not None
-    except Exception:
-        return False
+def _connect(login: int, password: str, server: str) -> None:
+    """
+    Ensure the terminal is initialized AND authorized on `login`, self-healing
+    from dropped sessions. On failure raises HTTPException whose detail says
+    whose problem it is (see _classify_failure). Callers hold the global _lock.
+    """
+    if _is_connected(login):
+        _mark_login_ok(login)
+        return
+    failures = _try_login(login, password, server, CONNECT_ATTEMPTS)
+    if not failures:
+        return
+    status, detail = _classify_failure(login, server, failures)
+    log.error(f"[connect] {detail['code']}/{detail['reason']} for {login}@{server}: {detail['message']}")
+    raise HTTPException(status_code=status, detail=detail)
 
 
 def _margin_mode(mode_int: int) -> str:
@@ -246,6 +322,85 @@ def verify(req: VerifyRequest) -> VerifyResponse:
             balance=str(info.balance),
             margin_mode=_margin_mode(info.margin_mode),
         )
+
+
+# ─── POST /diagnose ───────────────────────────────────────────────────────────
+
+DIAGNOSE_ATTEMPTS = 2
+
+
+@app.post("/diagnose", dependencies=[Depends(verify_secret)])
+def diagnose(req: DiagnoseRequest) -> dict:
+    """
+    Support tool: try this exact login now and say precisely what happens.
+    Always forces a fresh login (no "already connected" shortcut) so the answer
+    reflects these credentials. Never echoes the password.
+    """
+    log.info(f"[diagnose] login={req.login} server={req.server}")
+    started = time.monotonic()
+    with _lock:
+        report: dict = {
+            "login": req.login,
+            "server": req.server,
+            "terminal": {
+                "path": settings.terminal_path,
+                "process_running": _terminal_process_running(),
+                "last_ok_login_s_ago": None if _last_ok_age_s() is None else int(_last_ok_age_s()),
+            },
+        }
+        try:
+            mt5.shutdown()
+        except Exception:
+            pass
+        failures = _try_login(req.login, req.password, req.server, DIAGNOSE_ATTEMPTS)
+        report["login_attempts"] = [_mt5_error(*(tuple(f) + (None, None))[:2]) for f in failures]
+
+        if failures:
+            status, detail = _classify_failure(req.login, req.server, failures)
+            report.update(ok=False, http_status=status, verdict=detail["code"], reason=detail["reason"], explanation=detail["message"])
+            report["terminal"] = detail["terminal"]
+        else:
+            info = mt5.account_info()
+            term = mt5.terminal_info()
+            report["account"] = None if info is None else {
+                "login": info.login, "server": info.server, "name": info.name, "company": info.company,
+                "currency": info.currency, "balance": str(info.balance), "equity": str(info.equity),
+                "leverage": info.leverage, "margin_mode": _margin_mode(info.margin_mode),
+                "trade_mode": info.trade_mode, "investor_login": not bool(getattr(info, "trade_allowed", False)),
+            }
+            report["terminal"].update({
+                "build": getattr(term, "build", None),
+                "connected_to_broker": bool(getattr(term, "connected", False)),
+                "ping_ms": round(getattr(term, "ping_last", 0) / 1000, 1) if term else None,
+                "company": getattr(term, "company", None),
+            })
+            now = datetime.now(timezone.utc)
+            try:
+                frm = datetime(now.year - 1, now.month, 1)
+                report["history"] = {
+                    "deals_last_12_months": mt5.history_deals_total(frm, now.replace(tzinfo=None)),
+                    "orders_last_12_months": mt5.history_orders_total(frm, now.replace(tzinfo=None)),
+                }
+            except Exception as e:  # history is informative only
+                report["history"] = {"error": str(e)}
+            before = _newest_quote_time()
+            time.sleep(1)
+            server_time, utc_now = _live_server_time(before)
+            report["server_clock"] = {
+                "newest_quote_time": _newest_quote_time(),
+                "utc_now": utc_now,
+                "offset_hours": None if server_time is None else round((server_time - utc_now) / 3600, 2),
+                "live": server_time is not None,
+            }
+            ok_server = info is not None and info.server == req.server
+            report.update(
+                ok=True, http_status=200, verdict="OK", reason="LOGGED_IN",
+                explanation=(f"Signed in to {req.login}@{req.server} fine."
+                             + ("" if ok_server or info is None else f" Note: MT5 reports the server as '{info.server}', not '{req.server}'.")),
+            )
+        report["took_ms"] = int((time.monotonic() - started) * 1000)
+        log.info(f"[diagnose] {req.login}@{req.server}: {report['verdict']}/{report['reason']} in {report['took_ms']} ms")
+        return report
 
 
 # ─── POST /account ────────────────────────────────────────────────────────────

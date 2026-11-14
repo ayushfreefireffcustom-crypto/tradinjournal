@@ -43,8 +43,27 @@ export class ConflictError extends AppError {
   }
 }
 
+/**
+ * Why the MT5 bridge refused, as it reported it — for logs, sync history and the
+ * admin diagnose tool. Users only ever see the friendly `message` of the error.
+ */
+export interface BridgeFailure {
+  /** LOGIN_REJECTED | TERMINAL_DOWN | TERMINAL_UNAVAILABLE | TIMEOUT | BRIDGE_UNREACHABLE | HTTP_<status> */
+  code: string;
+  /** e.g. AUTH_FAILED, LOGIN_DROPPED, PROCESS_NOT_RUNNING, UNPROVEN */
+  reason?: string;
+  mt5?: { code: number | null; message: string | null; meaning?: string };
+  message?: string;
+}
+
+/** One line for logs and SyncRun.error: "LOGIN_REJECTED/LOGIN_DROPPED mt5 -10004 (No IPC connection): …" */
+export function describeBridgeFailure(f: BridgeFailure): string {
+  const mt5 = f.mt5?.code != null ? ` mt5 ${f.mt5.code} (${f.mt5.message ?? f.mt5.meaning ?? '?'})` : '';
+  return `${f.code}${f.reason ? `/${f.reason}` : ''}${mt5}${f.message ? `: ${f.message}` : ''}`;
+}
+
 export class BrokerConnectionError extends AppError {
-  constructor(message = 'Failed to connect to broker') {
+  constructor(message = 'Failed to connect to broker', public readonly bridge?: BridgeFailure) {
     super(502, 'BROKER_CONNECTION_ERROR', message);
   }
 }
@@ -70,6 +89,7 @@ export class AiRateLimitError extends AppError {
 export class BrokerAuthError extends AppError {
   constructor(
     message = "We couldn't sign in to your MT5 account. Your broker password may have changed — update it under Brokers and try again.",
+    public readonly bridge?: BridgeFailure,
   ) {
     super(409, 'BROKER_AUTH_FAILED', message);
   }

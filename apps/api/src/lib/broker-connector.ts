@@ -1,7 +1,7 @@
 import { env } from '@tradinjournal/config';
 import { logger } from '@tradinjournal/logger';
 import type { Deal, MarginMode, VerifyResult } from '@tradinjournal/types';
-import { BrokerAuthError, BrokerConnectionError } from '../http/errors.js';
+import { BrokerAuthError, BrokerConnectionError, describeBridgeFailure, type BridgeFailure } from '../http/errors.js';
 import type { ServerClock } from './server-time.js';
 
 interface BridgeCreds {
@@ -56,7 +56,7 @@ const DEAL_ENTRY_MAP: Record<number, Deal['entry']> = { 0: 'IN', 1: 'OUT', 2: 'I
 
 /** Per-call ceilings. The bridge serialises on one terminal, so a hung call would
  *  otherwise hold the request (and the caller's socket) for minutes. */
-export const BRIDGE_TIMEOUT_MS = { verify: 45_000, deals: 120_000 } as const;
+export const BRIDGE_TIMEOUT_MS = { verify: 45_000, deals: 120_000, diagnose: 90_000 } as const;
 
 // Identical calls already in flight share one bridge request (e.g. two tabs opening
 // the dashboard at once). Keyed by path + full body, so different credentials or
@@ -87,9 +87,12 @@ async function bridgePostOnce<T>(path: string, body: object, timeoutMs: number):
     });
   } catch (err) {
     const timedOut = (err as Error)?.name === 'TimeoutError' || (err as Error)?.name === 'AbortError';
+    const failure: BridgeFailure = timedOut
+      ? { code: 'TIMEOUT', message: `no answer from the bridge within ${timeoutMs / 1000}s` }
+      : { code: 'BRIDGE_UNREACHABLE', message: (err as Error)?.message ?? 'fetch failed' };
     throw new BrokerConnectionError(timedOut
       ? 'The broker bridge took too long to answer. Please try again in a moment.'
-      : 'We can\'t reach MT5 right now. This is on our side; please try again in a few minutes.');
+      : 'We can\'t reach MT5 right now. This is on our side; please try again in a few minutes.', failure);
   }
 
   if (!res.ok) {
@@ -100,8 +103,9 @@ async function bridgePostOnce<T>(path: string, body: object, timeoutMs: number):
     // failed". Either way it means the stored password no longer works — turn it
     // into a clear, user-actionable error instead of a generic 500.
     // Keep the bridge's own reason in the logs (it can name the MT5 login, never the password).
-    logger.warn('[bridge] request failed', { path, status: res.status, reason: text.slice(0, 300) });
     const detail = bridgeDetail(text);
+    const failure = bridgeFailure(res.status, detail, text);
+    logger.warn('[bridge] request failed', { path, status: res.status, failure: describeBridgeFailure(failure).slice(0, 500) });
 
     // The terminal answered but this login couldn't sign in (422 LOGIN_REJECTED,
     // or 401 from an older bridge): a wrong server name, login or password.
@@ -109,24 +113,51 @@ async function bridgePostOnce<T>(path: string, body: object, timeoutMs: number):
       const server = typeof detail?.server === 'string' ? detail.server : (body as { server?: string }).server;
       throw new BrokerAuthError(path === '/verify'
         ? `MT5 couldn't log in to ${server ?? 'that server'}. Check the server name matches MT5 exactly (for example "XMGlobal-MT5 10"), the login number, and the investor password.`
-        : undefined);
+        : undefined, failure);
     }
 
     // The terminal itself is down or busy: our problem, not the user's.
-    throw new BrokerConnectionError('We can\'t reach MT5 right now. This is on our side; please try again in a few minutes.');
+    throw new BrokerConnectionError('We can\'t reach MT5 right now. This is on our side; please try again in a few minutes.', failure);
   }
 
   return res.json() as Promise<T>;
 }
 
-/** The bridge's structured `detail` ({ code, server, message }) when it sends one. */
-function bridgeDetail(text: string): { code?: string; server?: unknown } | null {
+interface BridgeDetail {
+  code?: string;
+  reason?: string;
+  server?: unknown;
+  message?: string;
+  mt5?: { code?: number | null; message?: string | null; meaning?: string };
+}
+
+/** The bridge's structured `detail` ({ code, reason, mt5, message, … }) when it sends one. */
+function bridgeDetail(text: string): BridgeDetail | null {
   try {
     const d = (JSON.parse(text) as { detail?: unknown }).detail;
-    return d && typeof d === 'object' ? (d as { code?: string; server?: unknown }) : null;
+    return d && typeof d === 'object' ? (d as BridgeDetail) : null;
   } catch {
     return null;
   }
+}
+
+/** Normalise any bridge error (new structured detail, older string detail, plain text) into a BridgeFailure. */
+export function bridgeFailure(status: number, detail: BridgeDetail | null, text: string): BridgeFailure {
+  if (detail?.code) {
+    return {
+      code: detail.code,
+      reason: detail.reason,
+      mt5: detail.mt5 ? { code: detail.mt5.code ?? null, message: detail.mt5.message ?? null, meaning: detail.mt5.meaning } : undefined,
+      message: detail.message,
+    };
+  }
+  // Older bridges: "(-10004, 'No IPC connection')" somewhere in the text.
+  const m = /\((-?\d+),\s*'?([^)']*)'?\)/.exec(text);
+  return {
+    code: status === 401 || status === 422 ? 'LOGIN_REJECTED' : `HTTP_${status}`,
+    mt5: m ? { code: Number(m[1]), message: m[2]!.trim() } : undefined,
+    message: text.slice(0, 300),
+  };
 }
 
 export async function verifyAccount(creds: BridgeCreds): Promise<VerifyResult> {
@@ -180,4 +211,53 @@ export async function getDealsWithClock(creds: BridgeCreds, range: { from?: Date
 /** Deals only (dealTime in server wall clock — see getDealsWithClock). */
 export async function getDeals(creds: BridgeCreds, range: { from?: Date; to?: Date } = {}): Promise<Deal[]> {
   return (await getDealsWithClock(creds, range)).deals;
+}
+
+/** What the bridge's /diagnose says about one login, tried live. Never contains the password. */
+export interface BridgeDiagnosis {
+  ok: boolean;
+  /** OK | LOGIN_REJECTED | TERMINAL_DOWN | TERMINAL_UNAVAILABLE | BRIDGE_UNREACHABLE | BRIDGE_OUTDATED */
+  verdict: string;
+  reason?: string;
+  explanation: string;
+  login_attempts?: { code: number | null; message: string | null; meaning: string }[];
+  terminal?: Record<string, unknown>;
+  account?: Record<string, unknown> | null;
+  history?: Record<string, unknown>;
+  server_clock?: Record<string, unknown>;
+  took_ms?: number;
+}
+
+/**
+ * Ask the bridge to sign in with these credentials right now and report exactly
+ * what happened. Bridge-side failures come back as a diagnosis, not a throw.
+ */
+export async function diagnoseLogin(creds: BridgeCreds): Promise<BridgeDiagnosis> {
+  let res: Response;
+  try {
+    res = await fetch(`${env.MT5_BRIDGE_URL}/diagnose`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Bridge-Secret': env.MT5_BRIDGE_SHARED_SECRET },
+      body: JSON.stringify(creds),
+      signal: AbortSignal.timeout(BRIDGE_TIMEOUT_MS.diagnose),
+    });
+  } catch (err) {
+    const timedOut = (err as Error)?.name === 'TimeoutError' || (err as Error)?.name === 'AbortError';
+    return {
+      ok: false,
+      verdict: 'BRIDGE_UNREACHABLE',
+      reason: timedOut ? 'TIMEOUT' : 'NETWORK',
+      explanation: timedOut
+        ? `The bridge didn't answer within ${BRIDGE_TIMEOUT_MS.diagnose / 1000}s (it serves one request at a time; it may be busy with syncs).`
+        : `Couldn't reach the bridge at all: ${(err as Error)?.message ?? 'fetch failed'}.`,
+    };
+  }
+  if (res.status === 404) {
+    return { ok: false, verdict: 'BRIDGE_OUTDATED', explanation: 'This bridge has no /diagnose endpoint yet — redeploy apps/mt5-bridge.' };
+  }
+  if (!res.ok) {
+    const text = await res.text().catch(() => res.statusText);
+    return { ok: false, verdict: `HTTP_${res.status}`, explanation: `The bridge answered ${res.status}: ${text.slice(0, 300)}` };
+  }
+  return (await res.json()) as BridgeDiagnosis;
 }

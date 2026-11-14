@@ -2,6 +2,7 @@ import { Router, type IRouter } from 'express';
 import { requireAuth } from '../../http/middleware/require-auth.js';
 import { requireAdmin } from '../../http/middleware/require-admin.js';
 import { validateBody } from '../../http/middleware/validate.js';
+import { z } from 'zod';
 import { createAccessGrantSchema, maintenanceModeSchema } from '@tradinjournal/contracts';
 import {
   handleAdminOverview,
@@ -18,6 +19,7 @@ import {
   handleAdminGeo,
   handleAdminTraderOps,
   handleSignOutEveryone,
+  handleDiagnoseBrokerAccount,
 } from './admin.controller.js';
 
 export const adminRouter: IRouter = Router();
@@ -37,3 +39,11 @@ adminRouter.post('/maintenance', validateBody(maintenanceModeSchema), handleSetM
 adminRouter.get('/audit', handleListAudit);
 adminRouter.post('/users/:id/recheck', handleRecheckUser);
 adminRouter.post('/sessions/sign-out-everyone', handleSignOutEveryone);
+
+// Support: live login check + sync history for one MT5 account (id or MT5 login).
+const diagnoseBrokerSchema = z.object({
+  password: z.string().min(1).max(128).optional(),
+  server: z.string().min(1).max(128).optional(),
+  accountServer: z.string().min(1).max(128).optional(),
+}).strict();
+adminRouter.post('/broker-accounts/:ref/diagnose', validateBody(diagnoseBrokerSchema), handleDiagnoseBrokerAccount);

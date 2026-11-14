@@ -14,7 +14,7 @@ import type { Deal } from '@tradinjournal/types';
 import { getDealsWithClock, HISTORY_START, type DealsWithClock } from '../../lib/broker-connector.js';
 import { formatTz, observeOffset, tzOf, updateServerTz } from '../../lib/server-time.js';
 import { normalizeExecutionTimes } from './server-time.sync.js';
-import { AppError, BrokerAuthError } from '../../http/errors.js';
+import { AppError, BrokerAuthError, describeBridgeFailure, type BridgeFailure } from '../../http/errors.js';
 import { credsOf, type BridgeCreds } from '../accounts/accounts.credentials.js';
 import { dealToExecution } from './sync.mapping.js';
 import { usableAccountsWhere } from '../../lib/broker-policy.js';
@@ -122,19 +122,40 @@ export async function syncAccount(
   } catch (err) {
     const error = err instanceof Error ? err : new Error(String(err));
     const message = error.message.slice(0, 300);
+    const bridge = (error as { bridge?: BridgeFailure }).bridge;
+    // Users see `message`; sync history and logs keep the exact reason.
+    const diagnostic = (bridge ? describeBridgeFailure(bridge) : error.message).slice(0, 1000);
+    const rejected = error instanceof BrokerAuthError && (await loginRejectionConfirmed(accountId, bridge, run?.id));
     await prisma.brokerAccount.updateMany({
       where: { id: accountId },
       data: {
         lastSyncError: message, syncLockedUntil: null,
-        syncRetryAt: new Date(now().getTime() + (error instanceof BrokerAuthError ? RETRY_AFTER_MS.auth : RETRY_AFTER_MS.transient)),
+        syncRetryAt: new Date(now().getTime() + (rejected ? RETRY_AFTER_MS.auth : RETRY_AFTER_MS.transient)),
         // A rejected password needs the user; anything else is transient.
-        ...(error instanceof BrokerAuthError ? { status: 'ERROR' as const } : {}),
+        ...(rejected ? { status: 'ERROR' as const } : {}),
       },
     }).catch(() => {});
-    if (run) await prisma.syncRun.update({ where: { id: run.id }, data: { status: 'FAILED', error: message, finishedAt: now() } }).catch(() => {});
-    logger.warn('[sync] failed', { accountId, err: message });
+    if (run) await prisma.syncRun.update({ where: { id: run.id }, data: { status: 'FAILED', error: diagnostic, finishedAt: now() } }).catch(() => {});
+    logger.warn('[sync] failed', { accountId, err: diagnostic, rejected });
     return { status: 'failed', error };
   }
+}
+
+/**
+ * Is this login failure the user's to fix? An outright rejection (MT5 -6, or an
+ * older bridge's 401/422) is. A dropped login on an otherwise working terminal
+ * (LOGIN_DROPPED) almost always means a changed password or a disabled account,
+ * but one IPC hiccup could look the same, so it only counts once the previous
+ * finished sync failed the same way.
+ */
+async function loginRejectionConfirmed(accountId: string, bridge: BridgeFailure | undefined, currentRunId?: string): Promise<boolean> {
+  if (bridge?.reason !== 'LOGIN_DROPPED') return true;
+  const prev = await prisma.syncRun.findFirst({
+    where: { brokerAccountId: accountId, finishedAt: { not: null }, ...(currentRunId ? { id: { not: currentRunId } } : {}) },
+    orderBy: { startedAt: 'desc' },
+    select: { status: true, error: true },
+  }).catch(() => null);
+  return prev?.status === 'FAILED' && !!prev.error?.includes('LOGIN_DROPPED');
 }
 
 /** Accounts the scheduler should refresh: never synced, or older than the background interval. */

@@ -18,6 +18,28 @@ import {
 } from './admin.service.js';
 import { getMaintenanceMode } from './settings.service.js';
 
+/**
+ * POST /api/admin/broker-accounts/:ref/diagnose — why is this MT5 account failing?
+ * `ref` is the account id or the MT5 login. Body (all optional): password to test
+ * (never stored), server to test, accountServer to pick between same-login accounts.
+ */
+export async function handleDiagnoseBrokerAccount(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const { diagnoseBrokerAccount } = await import('./broker-diagnose.service.js');
+    const { logAdminAction } = await import('./admin-audit.service.js');
+    const body = (req.body ?? {}) as { password?: string; server?: string; accountServer?: string };
+    const report = await diagnoseBrokerAccount(req.params.ref!, body);
+    const a = actor(res);
+    await logAdminAction({
+      action: 'broker.diagnose', actorId: a.id, actorEmail: a.email, targetType: 'broker_account', targetId: report.account.id,
+      details: { verdict: report.verdict, passwordProvided: !!body.password, testedServer: report.account.testedServer },
+    }).catch(() => {});
+    ok(res, report);
+  } catch (err) {
+    next(err);
+  }
+}
+
 function actor(res: Response) {
   return { id: res.locals.user.id, email: res.locals.user.email };
 }

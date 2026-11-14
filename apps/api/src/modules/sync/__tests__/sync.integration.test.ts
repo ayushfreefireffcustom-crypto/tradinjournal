@@ -160,6 +160,30 @@ describe.skipIf(!local)('trade sync (integration)', () => {
     expect(bridge.calls).toHaveLength(0);
   });
 
+  it('a dropped login on a working terminal only locks the account once it repeats', async () => {
+    const dropped = () => new errors.BrokerAuthError(undefined, {
+      code: 'LOGIN_REJECTED', reason: 'LOGIN_DROPPED', message: 'terminal works but drops this login',
+      mt5: { code: -10004, message: 'No IPC connection' },
+    });
+    await db.brokerAccount.update({ where: { id: accountId }, data: { status: 'ACTIVE', syncRetryAt: null } });
+    // A clean sync first, so the next failure is the first in a row.
+    expect(await sync.syncAccount(accountId)).toMatchObject({ status: 'synced' });
+    bridge.fail = dropped();
+    await sync.syncAccount(accountId);
+    let a = await account();
+    expect(a.status).toBe('ACTIVE'); // one drop: could be a hiccup
+    expect(a.syncRetryAt!.getTime() - Date.now()).toBeLessThan(16 * 60_000);
+    const run = await db.syncRun.findFirst({ where: { brokerAccountId: accountId }, orderBy: { startedAt: 'desc' } });
+    expect(run!.error).toBe('LOGIN_REJECTED/LOGIN_DROPPED mt5 -10004 (No IPC connection): terminal works but drops this login');
+    expect(a.lastSyncError).toMatch(/password may have changed/); // the user still gets the actionable message
+    bridge.fail = dropped();
+    await sync.syncAccount(accountId);
+    a = await account();
+    expect(a.status).toBe('ERROR'); // twice in a row: it's the account
+    expect(a.syncRetryAt!.getTime()).toBeGreaterThan(Date.now() + 23 * 3_600_000);
+    await db.brokerAccount.update({ where: { id: accountId }, data: { status: 'ACTIVE', syncRetryAt: null } });
+  });
+
   it('a transient failure backs off 15 minutes', async () => {
     bridge.fail = new errors.BrokerConnectionError('bridge down');
     await db.brokerAccount.update({ where: { id: accountId }, data: { status: 'ACTIVE', syncRetryAt: null } });

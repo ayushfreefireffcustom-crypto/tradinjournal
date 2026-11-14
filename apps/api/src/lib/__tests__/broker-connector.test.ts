@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 vi.mock('@tradinjournal/config', () => ({ env: { MT5_BRIDGE_URL: 'http://bridge.test', MT5_BRIDGE_SHARED_SECRET: 's' } }));
 
-const { getDeals, getDealsWithClock, verifyAccount } = await import('../broker-connector.js');
+const { getDeals, getDealsWithClock, verifyAccount, diagnoseLogin, bridgeFailure } = await import('../broker-connector.js');
 const creds = { login: 1, password: 'p', server: 'S' };
 
 function dealsResponse() {
@@ -75,6 +75,38 @@ describe('bridge client', () => {
       throw Object.assign(new Error('timed out'), { name: 'TimeoutError' });
     });
     await expect(getDeals(creds)).rejects.toMatchObject({ statusCode: 502, message: expect.stringMatching(/took too long/) });
+  });
+
+  it('carries the bridge’s exact reason on the error (dropped login on a working terminal)', async () => {
+    const detail = { code: 'LOGIN_REJECTED', reason: 'LOGIN_DROPPED', server: 'Elefin-Trade', message: 'terminal works but drops this login',
+      mt5: { code: -10004, message: 'No IPC connection', meaning: 'no IPC connection (terminal dropped the link)' } };
+    fetchMock.mockResolvedValue(new Response(JSON.stringify({ detail }), { status: 422 }));
+    await expect(getDeals(creds)).rejects.toMatchObject({
+      name: 'BrokerAuthError',
+      bridge: { code: 'LOGIN_REJECTED', reason: 'LOGIN_DROPPED', mt5: { code: -10004, message: 'No IPC connection' } },
+    });
+  });
+
+  it('a terminal-side failure stays our problem and says why', async () => {
+    const detail = { code: 'TERMINAL_DOWN', reason: 'PROCESS_NOT_RUNNING', message: 'terminal64.exe is not running', mt5: { code: -10004, message: 'No IPC connection' } };
+    fetchMock.mockResolvedValue(new Response(JSON.stringify({ detail }), { status: 503 }));
+    await expect(getDeals(creds)).rejects.toMatchObject({ name: 'BrokerConnectionError', message: expect.stringMatching(/on our side/), bridge: { code: 'TERMINAL_DOWN', reason: 'PROCESS_NOT_RUNNING' } });
+  });
+
+  it('reads the MT5 code out of an older bridge’s plain-text error', () => {
+    const text = JSON.stringify({ detail: "MT5 terminal unreachable: (-10004, No IPC connection)" });
+    expect(bridgeFailure(503, null, text)).toMatchObject({ code: 'HTTP_503', mt5: { code: -10004, message: 'No IPC connection' } });
+  });
+
+  it('diagnoseLogin returns the bridge report, and turns bridge trouble into a verdict instead of throwing', async () => {
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ ok: true, verdict: 'OK', explanation: 'fine' }), { status: 200 }));
+    expect(await diagnoseLogin(creds)).toMatchObject({ ok: true, verdict: 'OK' });
+    expect(JSON.parse(fetchMock.mock.calls[0]![1].body)).toEqual(creds);
+    expect(fetchMock.mock.calls[0]![0]).toBe('http://bridge.test/diagnose');
+    fetchMock.mockResolvedValueOnce(new Response('Not Found', { status: 404 }));
+    expect(await diagnoseLogin(creds)).toMatchObject({ ok: false, verdict: 'BRIDGE_OUTDATED' });
+    fetchMock.mockRejectedValueOnce(new Error('ECONNREFUSED'));
+    expect(await diagnoseLogin(creds)).toMatchObject({ ok: false, verdict: 'BRIDGE_UNREACHABLE', reason: 'NETWORK' });
   });
 
   it('maps an MT5 authorization failure to BrokerAuthError', async () => {

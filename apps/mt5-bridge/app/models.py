@@ -26,6 +26,12 @@ class VerifyResponse(BaseModel):
     margin_mode: str    # "NETTING" | "HEDGING"
 
 
+# ─── /diagnose ───────────────────────────────────────────────────────────────
+
+class DiagnoseRequest(Credentials):
+    pass
+
+
 # ─── /account ────────────────────────────────────────────────────────────────
 
 class AccountRequest(Credentials):
