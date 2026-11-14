@@ -1,6 +1,7 @@
 // The macro page's sections and views (rendered as tabs on /macro).
 
 export type MacroPanel =
+  | 'overview'
   | 'dashboard'
   | 'confluence'
   | 'scanner'
@@ -24,6 +25,7 @@ export const MACRO_NAV: {
   {
     section: 'Overview',
     items: [
+      { id: 'overview', label: 'Regime map' },
       { id: 'dashboard', label: 'Macro dashboard' },
       { id: 'confluence', label: 'Confluence engine' },
       { id: 'scanner', label: 'Bull / bear scanner' },

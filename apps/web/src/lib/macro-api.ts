@@ -28,6 +28,76 @@ export interface MacroState {
   /** FX basket (foreign units per 1 USD) for the strength matrix. */
   fx?: { code: string; rate: number; asOf: string }[];
   engineVer: string;
+  /** v2 overview (regime trail, drivers grid, surprises, policy proxy). Optional: older APIs omit it. */
+  overview?: MacroOverview;
+}
+
+// ── Overview (mirrors packages/contracts/src/schema/macro-v2.ts) ─────────────
+export type MacroFactorKey = 'inflation' | 'policy' | 'growth' | 'rates' | 'liquidity' | 'credit' | 'risk' | 'dollar';
+export type MacroRegimeName = 'Goldilocks' | 'Reflation' | 'Stagflation' | 'Deflation';
+
+export interface MacroRegimePoint { month: string; growth: number; inflation: number; label: MacroRegimeName }
+
+export interface MacroRegimeTrail {
+  label: MacroRegimeName;
+  /** YYYY-MM the current quadrant run began. */
+  since: string;
+  months: number;
+  /** ≤ 8 words, deterministic. */
+  line: string;
+  seriesCount: number;
+  near: { label: MacroRegimeName; axis: 'growth' | 'inflation' } | null;
+  points: MacroRegimePoint[];
+}
+
+export interface MacroOverviewInput {
+  key: 'core_cpi' | 'policy' | 'unemployment' | 'net_liquidity';
+  label: string;
+  sub: string;
+  value: number;
+  format: 'pct' | 'cuts' | 'usd_mn';
+  spark: number[];
+  delta: number | null;
+  deltaLabel: string;
+  tone: 'pos' | 'neg' | 'flat';
+  asOf: string;
+}
+
+export interface MacroDriver { key: MacroFactorKey; label: string; value: number | null; direction: -1 | 0 | 1; weight: number }
+
+export interface MacroGridRow {
+  asset: string;
+  score: number;
+  label: string;
+  net: number;
+  netYesterday: number | null;
+  cells: { factor: MacroFactorKey; raw: number; cell: number }[];
+  flipsIf: { factor: MacroFactorKey; direction: -1 | 1; text: string; label: string } | null;
+  trend: number[];
+}
+
+export interface MacroSurprise {
+  months: string[];
+  series: { key: string; label: string; cells: { month: string; level: number | null; actual: string | null; forecast: string | null }[] }[];
+  line: string | null;
+  releases: number;
+}
+
+export interface MacroCutsProxy {
+  basis: 'treasury-vs-effr';
+  effr: number;
+  asOf: string;
+  rows: { key: '3m' | '1y' | '2y'; label: string; yield: number; cuts: number; cutsYesterday: number | null }[];
+}
+
+export interface MacroOverview {
+  asOf: string;
+  regime: MacroRegimeTrail | null;
+  inputs: MacroOverviewInput[];
+  drivers: MacroDriver[];
+  grid: MacroGridRow[];
+  surprise: MacroSurprise | null;
+  cuts: MacroCutsProxy | null;
 }
 
 export interface MacroMember {

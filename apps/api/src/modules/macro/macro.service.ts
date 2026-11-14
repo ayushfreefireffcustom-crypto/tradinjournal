@@ -8,18 +8,21 @@ import {
   ENGINE_VER,
   scoreAll,
   classifyRegime,
+  resolveRegime,
 } from '@tradinjournal/core';
-import type { MacroState, MacroIngestInput } from '@tradinjournal/contracts';
+import type { MacroState, MacroStateV2, MacroIngestInput } from '@tradinjournal/contracts';
 import { logger } from '@tradinjournal/logger';
 import { cacheGet, cacheSet, cacheDel } from '../../lib/cache.js';
-import { fetchFredIndicators } from '../../lib/macro/providers/fred.js';
+import { fetchFredIndicators, fetchFredHistory } from '../../lib/macro/providers/fred.js';
 import { fetchCotPositioning } from '../../lib/macro/providers/cot.js';
 import { fetchMarketQuotes, fetchFxBasket } from '../../lib/macro/providers/markets.js';
 import { toEngineInput } from '../../lib/macro/engine-input.js';
 import { computeAndPersistSignals } from './macro-signals.service.js';
+import { buildMacroOverview } from './macro-overview.service.js';
 
 export { toEngineInput } from '../../lib/macro/engine-input.js';
-export const MACRO_STATE_CACHE_KEY = 'macro:state:v2';
+// v3: state carries the optional `overview` (macro-v2 contract).
+export const MACRO_STATE_CACHE_KEY = 'macro:state:v3';
 
 const EVENTS_LIMIT = 40;
 const HEADLINES_LIMIT = 20;
@@ -89,6 +92,29 @@ export async function ingestMacro(input: MacroIngestInput): Promise<{ ingested: 
     } catch (err) {
       logger.warn(`[macro] indicator upsert failed ${row.key}: ${(err as Error).message}`);
     }
+  }
+
+  // History backfill for the overview's regime trail. Insert-only: existing
+  // (key, asOf) rows are left untouched, so this is one cheap statement per tick.
+  try {
+    const history = await fetchFredHistory(env.FRED_API_KEY);
+    if (history.length > 0) {
+      const { count } = await prisma.macroIndicator.createMany({
+        data: history.map(h => ({
+          key: h.key,
+          label: h.label,
+          value: h.value,
+          prev: h.prev,
+          unit: h.unit,
+          source: h.source,
+          asOf: h.asOf,
+        })),
+        skipDuplicates: true,
+      });
+      ingested += count;
+    }
+  } catch (err) {
+    logger.warn(`[macro] history backfill failed: ${(err as Error).message}`);
   }
 
   // Bucket market asOf to the minute so a 30-min cron doesn't explode row counts.
@@ -179,8 +205,8 @@ export async function ingestMacro(input: MacroIngestInput): Promise<{ ingested: 
  * The single dashboard JSON the terminal (+ later Claude) consume.
  * Serves Redis/mem cache → Postgres snapshots + confluence over latest prints.
  */
-export async function getMacroState(): Promise<MacroState> {
-  const cached = await cacheGet<MacroState>(MACRO_STATE_CACHE_KEY);
+export async function getMacroState(): Promise<MacroStateV2> {
+  const cached = await cacheGet<MacroStateV2>(MACRO_STATE_CACHE_KEY);
   if (cached) return cached;
 
   const state = await buildMacroState();
@@ -211,7 +237,7 @@ function emptyState(asOf = new Date().toISOString()): MacroState {
 }
 
 /** Build state from DB (no provider calls). Exported for tests. */
-export async function buildMacroState(): Promise<MacroState> {
+export async function buildMacroState(): Promise<MacroStateV2> {
   const now = new Date();
   const eventFrom = new Date(now.getTime() - 2 * 24 * 3600_000);
   const eventTo = new Date(now.getTime() + 14 * 24 * 3600_000);
@@ -331,7 +357,8 @@ export async function buildMacroState(): Promise<MacroState> {
 
   const engineInput = toEngineInput(macro, markets);
   const hasMacro = macro.length > 0;
-  const regime = hasMacro ? classifyRegime(engineInput) : null;
+  // Provisional; replaced below by the overview trail's latest point when it computes.
+  let regime = hasMacro ? classifyRegime(engineInput) : null;
   const bias = scoreAll(engineInput).map(b => ({
     asset: b.asset,
     score: b.score,
@@ -372,6 +399,20 @@ export async function buildMacroState(): Promise<MacroState> {
     logger.warn(`[macro] fx basket failed: ${(err as Error).message}`);
   }
 
+  // Overview (regime trail, drivers grid, surprises, policy proxy). Optional: a
+  // failure here must never take the rest of the dashboard down.
+  let overview: MacroStateV2['overview'];
+  if (hasMacro) {
+    try {
+      overview = await buildMacroOverview(engineInput, now);
+    } catch (err) {
+      logger.warn(`[macro] overview build failed: ${(err as Error).message}`);
+    }
+  }
+  // One regime for every consumer (tabs, search, the macro assistant): the trail
+  // when it exists, classifyRegime only as the fallback.
+  regime = resolveRegime(overview?.regime ?? null, engineInput, regime);
+
   return {
     asOf,
     regime,
@@ -382,5 +423,6 @@ export async function buildMacroState(): Promise<MacroState> {
     headlines,
     fx,
     engineVer: ENGINE_VER,
+    ...(overview ? { overview } : {}),
   };
 }

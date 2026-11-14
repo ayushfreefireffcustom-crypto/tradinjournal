@@ -902,3 +902,7 @@ export * from './schema/strategy.js';
 export * from './schema/options.js';
 export * from './schema/account.js';
 export * from './schema/partner-ib.js';
+export * from './schema/liquidations.js';
+export * from './schema/news-v2.js';
+export * from './schema/macro-v2.js';
+export * from './schema/dashboard-v2.js';

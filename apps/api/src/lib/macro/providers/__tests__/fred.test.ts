@@ -71,3 +71,20 @@ describe('computeNetLiquidity', () => {
     expect(computeNetLiquidity(parts)).toBeNull();
   });
 });
+
+describe('parseFredHistory', () => {
+  it('returns every valid observation newest-first with prev = next older', async () => {
+    const { parseFredHistory } = await import('../fred.js');
+    const rows = parseFredHistory({ id: 'UNRATE', label: 'Unemployment Rate', unit: '%' }, [
+      { date: '2026-08-01', value: '4.2' },
+      { date: '2026-10-01', value: '4.1' },
+      { date: '2026-09-01', value: '.' },
+      { date: '2026-07-01', value: '4.3' },
+    ]);
+    expect(rows.map(r => [r.asOf.toISOString().slice(0, 10), r.value, r.prev])).toEqual([
+      ['2026-10-01', 4.1, 4.2],
+      ['2026-08-01', 4.2, 4.3],
+      ['2026-07-01', 4.3, null],
+    ]);
+  });
+});

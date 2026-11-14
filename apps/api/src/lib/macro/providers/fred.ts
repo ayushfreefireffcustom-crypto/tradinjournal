@@ -5,6 +5,8 @@ import { logger } from '@tradinjournal/logger';
 import { fetchJson } from '../http.js';
 import {
   FRED_SERIES,
+  HISTORY_LIMIT,
+  HISTORY_SERIES,
   NET_LIQUIDITY_DEF,
   NET_LIQUIDITY_KEY,
   NET_LIQUIDITY_PARTS,
@@ -125,4 +127,54 @@ export async function fetchFredIndicators(
   if (net) out.push(net);
 
   return out;
+}
+
+/**
+ * Every observation (newest `limit`) for one series, each stamped with the next
+ * older value as `prev`. Exported for unit tests.
+ */
+export function parseFredHistory(def: FredSeriesDef, observations: FredObservation[]): NormalizedMacroIndicator[] {
+  const valid = observations
+    .filter(o => o && o.date && o.value && o.value !== '.' && Number.isFinite(Number(o.value)))
+    .sort((a, b) => b.date.localeCompare(a.date));
+  return valid.map((o, i) => {
+    const older = valid[i + 1];
+    return {
+      key: def.id,
+      label: def.label,
+      value: Number(o.value),
+      prev: older ? Number(older.value) : null,
+      unit: def.unit,
+      source: 'fred' as const,
+      asOf: new Date(`${o.date}T00:00:00.000Z`),
+    };
+  });
+}
+
+/**
+ * History backfill for HISTORY_SERIES (core CPI, payrolls, unemployment): the
+ * overview's regime trail needs ~30 months and the cron only stores the latest
+ * print. One extra request per series; failures are logged and skipped.
+ */
+export async function fetchFredHistory(
+  apiKey: string,
+  signal?: AbortSignal,
+): Promise<NormalizedMacroIndicator[]> {
+  const defs = FRED_SERIES.filter(d => (HISTORY_SERIES as readonly string[]).includes(d.id));
+  const settled = await Promise.all(
+    defs.map(async def => {
+      const url =
+        `${FRED_BASE}?series_id=${encodeURIComponent(def.id)}` +
+        `&api_key=${encodeURIComponent(apiKey)}` +
+        `&file_type=json&sort_order=desc&limit=${HISTORY_LIMIT}`;
+      try {
+        const json = await fetchJson<FredObservationsResponse>(url, signal);
+        return parseFredHistory(def, json.observations ?? []);
+      } catch (err) {
+        logger.warn(`[macro/fred] history ${def.id} failed: ${(err as Error).message}`);
+        return [];
+      }
+    }),
+  );
+  return settled.flat();
 }

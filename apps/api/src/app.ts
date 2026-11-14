@@ -32,6 +32,8 @@ import { signalsRouter } from './modules/signals/signals.routes.js';
 import { patternsRouter } from './modules/patterns/patterns.routes.js';
 import { overviewRouter } from './modules/overview/overview.routes.js';
 import { derivativesRouter } from './modules/derivatives/derivatives.routes.js';
+import { liquidationsRouter } from './modules/liquidations/liquidations.routes.js';
+import { insightsRouter } from './modules/insights/insights.routes.js';
 import { optionsOrdersRouter, optionsRouter } from './modules/options/options.routes.js';
 import { adminFeedbackRouter, feedbackRouter } from './modules/feedback/feedback.routes.js';
 import { adminMarketplaceRouter, marketplaceRouter } from './modules/marketplace/marketplace.routes.js';
@@ -167,6 +169,8 @@ export function createApp(): Express {
   app.use('/api/patterns', patternsRouter);
   app.use('/api/overview', overviewRouter);
   app.use('/api/derivatives', derivativesRouter);
+  app.use('/api/liquidations', liquidationsRouter);
+  app.use('/api/insights', insightsRouter);
   app.use('/api/options', optionsRouter);
   app.use('/api/strategies', strategiesRouter);
   app.use('/api/deployments', deploymentsRouter);

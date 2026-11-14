@@ -52,3 +52,11 @@ export const NET_LIQUIDITY_DEF = {
 
 /** Component series used to compute NET_LIQUIDITY = WALCL − WTREGEN − RRPONTSYD. */
 export const NET_LIQUIDITY_PARTS = ['WALCL', 'WTREGEN', 'RRPONTSYD'] as const;
+
+/**
+ * Monthly series the macro overview's regime trail needs ~30 months of. Each
+ * ingest backfills this many observations (insert-only, skipDuplicates), so a
+ * missed cron month or a fresh database still yields a continuous trail.
+ */
+export const HISTORY_SERIES = ['CPILFESL', 'PAYEMS', 'UNRATE'] as const;
+export const HISTORY_LIMIT = 40;

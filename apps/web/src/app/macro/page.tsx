@@ -7,6 +7,7 @@ import { useAccounts } from '@/lib/use-accounts';
 import type { BrokerAccount } from '@/lib/api';
 import MacroTicker from '@/components/macro/macro-ticker';
 import MacroDashboard from '@/components/macro/macro-dashboard';
+import MacroOverview from '@/components/macro/overview/macro-overview';
 import BullBearScanner from '@/components/macro/bull-bear-scanner';
 import MembershipPanel from '@/components/macro/membership-panel';
 import SignalBoard from '@/components/macro/signal-board';
@@ -31,7 +32,7 @@ import { macroApi, type MacroSignal, type MacroState } from '@/lib/macro-api';
 
 export default function MacroPage() {
   const { accounts, selected, select } = useAccounts();
-  const [panel, setPanel] = useState<MacroPanel>('dashboard');
+  const [panel, setPanel] = useState<MacroPanel>('overview');
   const [state, setState] = useState<MacroState | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
@@ -108,7 +109,7 @@ export default function MacroPage() {
         </div>
       ) : (
         <div className="mc" data-testid="macro-page">
-          <MacroTicker markets={state?.markets ?? []} asOf={state?.markets?.length ? state.markets.map(m => m.asOf).sort().at(-1) : null} />
+          {panel !== 'overview' && <MacroTicker markets={state?.markets ?? []} asOf={state?.markets?.length ? state.markets.map(m => m.asOf).sort().at(-1) : null} />}
 
           {/* Sections as tabs, then the section's views (A4.10): no second sidebar, and on phones
               both rows scroll sideways instead of hiding behind a menu. */}
@@ -135,11 +136,12 @@ export default function MacroPage() {
                 </div>
               )}
 
-              {!error && state && state.macro.length === 0 && panel === 'dashboard' && (
+              {!error && state && state.macro.length === 0 && (panel === 'dashboard' || panel === 'overview') && (
                 <div className="x-card"><EmptyState icon="globe" ghost="chart" testId="macro-empty" title="No macro data yet" hints={['Rates', 'Inflation', 'Jobs', 'Liquidity']}>Rates, inflation, jobs and liquidity readings, with a score for each asset, appear after the first macro update.</EmptyState></div>
               )}
 
               {/* No data yet: just say so, rather than a page of neutral 50s that were never measured. */}
+              {panel === 'overview' && state && state.macro.length > 0 && <MacroOverview state={state} accountId={selected?.id ?? null} />}
               {panel === 'dashboard' && state && state.macro.length > 0 && <MacroDashboard state={state} />}
               {panel === 'confluence' && state && (
                 <div className="mc-stack">
