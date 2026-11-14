@@ -133,6 +133,46 @@ def _mark_login_ok(login: int) -> None:
     _last_ok_login["login"] = int(login)
 
 
+# The last account that signed in fine, kept in memory only (never logged or
+# returned) so a failing login can be checked against a known-good one on the
+# spot instead of waiting for another account to happen to sync.
+_last_good: dict = {}
+
+
+def _remember_good(login: int, password: str, server: str) -> None:
+    _last_good.update(login=int(login), password=password, server=server)
+
+
+def _terminal_proven() -> bool:
+    age = _last_ok_age_s()
+    return age is not None and age < TERMINAL_PROVEN_S
+
+
+def _reprove_terminal(failed_login: int) -> dict | None:
+    """
+    Sign back in to the last known-good account to see whether the terminal
+    works right now. Returns {"login", "ok", "mt5"?} or None when there is no
+    other good account to try. Also leaves the terminal on a working account
+    instead of stuck on a rejected one. A good account that now fails is
+    forgotten, so a later password change there can't mislead us.
+    """
+    good = dict(_last_good)
+    if not good or good["login"] == int(failed_login):
+        return None
+    try:
+        mt5.shutdown()
+    except Exception:
+        pass
+    failures = _try_login(good["login"], good["password"], good["server"], 1)
+    if not failures:
+        log.info(f"[connect] terminal re-proven by signing in to {good['login']}@{good['server']}")
+        return {"login": good["login"], "ok": True}
+    _last_good.clear()
+    code, msg = (tuple(failures[-1]) + (None, None))[:2]
+    log.warning(f"[connect] re-proof via {good['login']}@{good['server']} failed too: ({code}, {msg})")
+    return {"login": good["login"], "ok": False, "mt5": _mt5_error(code, msg)}
+
+
 def _last_ok_age_s() -> float | None:
     return None if not _last_ok_login["at"] else time.monotonic() - _last_ok_login["at"]
 
@@ -154,7 +194,7 @@ def _mt5_error(code, msg) -> dict:
     return {"code": code, "message": msg, "meaning": MT5_ERRORS.get(code, "unknown MT5 error")}
 
 
-def _classify_failure(login: int, server: str, attempts: list[tuple]) -> tuple[int, dict]:
+def _classify_failure(login: int, server: str, attempts: list[tuple], reproof: dict | None = None) -> tuple[int, dict]:
     """
     Turn a failed connect into (http status, detail) that says exactly whose
     problem it is. Codes the API acts on:
@@ -176,6 +216,7 @@ def _classify_failure(login: int, server: str, attempts: list[tuple]) -> tuple[i
         "process_running": proc,
         "last_ok_login_s_ago": None if age is None else int(age),
         "path": settings.terminal_path,
+        "reproof": None if reproof is None else {k: v for k, v in reproof.items() if k != "password"},
     }
     base = {
         "login": int(login), "server": server,
@@ -187,8 +228,10 @@ def _classify_failure(login: int, server: str, attempts: list[tuple]) -> tuple[i
         return 422, {**base, "code": "LOGIN_REJECTED", "reason": "AUTH_FAILED",
                      "message": f"MT5 rejected {login}@{server}: wrong login, investor password or server name."}
     if code in IPC_ERRORS and proven:
+        how = ("it signed in to another account fine just now" if reproof and reproof.get("ok")
+               else f"an account signed in {int(age // 60)} min ago")
         return 422, {**base, "code": "LOGIN_REJECTED", "reason": "LOGIN_DROPPED",
-                     "message": (f"The terminal is working (an account signed in {int(age // 60)} min ago) but drops the "
+                     "message": (f"The terminal is working ({how}) but drops the "
                                  f"connection when signing in to {login}@{server}. Usually the investor password changed, "
                                  "the account was disabled or archived, or the server name is wrong.")}
     if proc is False:
@@ -197,6 +240,10 @@ def _classify_failure(login: int, server: str, attempts: list[tuple]) -> tuple[i
     if code == -10005:
         return 503, {**base, "code": "TERMINAL_UNAVAILABLE", "reason": "TIMEOUT",
                      "message": "The MT5 terminal timed out; it may be busy, updating or reconnecting to the broker."}
+    if reproof and not reproof.get("ok"):
+        return 503, {**base, "code": "TERMINAL_UNAVAILABLE", "reason": "REPROOF_FAILED",
+                     "message": (f"MT5 failed ({code}, {msg}) for {login}, and signing back in to a previously working "
+                                 f"account ({reproof['login']}) failed too, so the terminal itself looks unwell.")}
     return 503, {**base, "code": "TERMINAL_UNAVAILABLE", "reason": "UNPROVEN",
                  "message": (f"MT5 failed ({code}, {msg}) and no login has succeeded in the last "
                              f"{TERMINAL_PROVEN_S // 60} min, so it can't be pinned on this account yet.")}
@@ -220,6 +267,7 @@ def _try_login(login: int, password: str, server: str, attempts_max: int) -> lis
             mt5.login(int(login), password=password, server=server, timeout=CONNECT_TIMEOUT_MS)
         if _is_connected(login):
             _mark_login_ok(login)
+            _remember_good(login, password, server)
             if attempt > 1:
                 log.info(f"[connect] recovered on attempt {attempt} — {login}@{server}")
             return []
@@ -241,6 +289,16 @@ def _try_login(login: int, password: str, server: str, attempts_max: int) -> lis
     return failures
 
 
+def _failure_detail(login: int, server: str, failures: list[tuple]) -> tuple[int, dict]:
+    """Classify a failed login, first re-proving the terminal if an IPC error has nothing recent to go on."""
+    code = (tuple(failures[-1]) + (None,))[0] if failures else None
+    # A terminal that isn't even running is reported as such; no point re-checking it.
+    reproof = (_reprove_terminal(login)
+               if code in IPC_ERRORS and not _terminal_proven() and _terminal_process_running() is not False
+               else None)
+    return _classify_failure(login, server, failures, reproof)
+
+
 def _connect(login: int, password: str, server: str) -> None:
     """
     Ensure the terminal is initialized AND authorized on `login`, self-healing
@@ -249,11 +307,12 @@ def _connect(login: int, password: str, server: str) -> None:
     """
     if _is_connected(login):
         _mark_login_ok(login)
+        _remember_good(login, password, server)
         return
     failures = _try_login(login, password, server, CONNECT_ATTEMPTS)
     if not failures:
         return
-    status, detail = _classify_failure(login, server, failures)
+    status, detail = _failure_detail(login, server, failures)
     log.error(f"[connect] {detail['code']}/{detail['reason']} for {login}@{server}: {detail['message']}")
     raise HTTPException(status_code=status, detail=detail)
 
@@ -356,7 +415,7 @@ def diagnose(req: DiagnoseRequest) -> dict:
         report["login_attempts"] = [_mt5_error(*(tuple(f) + (None, None))[:2]) for f in failures]
 
         if failures:
-            status, detail = _classify_failure(req.login, req.server, failures)
+            status, detail = _failure_detail(req.login, req.server, failures)
             report.update(ok=False, http_status=status, verdict=detail["code"], reason=detail["reason"], explanation=detail["message"])
             report["terminal"] = detail["terminal"]
         else:
