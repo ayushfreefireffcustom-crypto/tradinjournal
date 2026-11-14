@@ -5,6 +5,9 @@ import { requirePlatformAccess } from '../../http/middleware/require-platform-ac
 import { validateBody, validateQuery } from '../../http/middleware/validate.js';
 import { ok } from '../../http/response.js';
 import { askJournal, dashboardV2 } from './insights.service.js';
+import { tradeReviewRouter } from './trade-review.routes.js';
+import { tradelogRouter } from './tradelog.routes.js';
+import { analyticsRouter } from './analytics.routes.js';
 
 const wrap = (fn: (req: Request, res: Response) => Promise<void>) => (req: Request, res: Response, next: NextFunction) => fn(req, res).catch(next);
 
@@ -17,3 +20,6 @@ insightsRouter.get('/dashboard', validateQuery(dashboardV2QuerySchema), wrap(asy
 insightsRouter.post('/ask', validateBody(dashboardAskSchema), wrap(async (req, res) => {
   ok(res, await askJournal(res.locals.user.id as string, req.body as DashboardAskInput));
 }));
+insightsRouter.use(tradeReviewRouter); // GET /trade-review
+insightsRouter.use('/tradelog', tradelogRouter); // GET /tradelog, /tradelog/export, /tradelog/trade; POST /tradelog/paths, /tradelog/tag
+insightsRouter.use(analyticsRouter); // GET /analytics

@@ -906,3 +906,6 @@ export * from './schema/liquidations.js';
 export * from './schema/news-v2.js';
 export * from './schema/macro-v2.js';
 export * from './schema/dashboard-v2.js';
+export * from './schema/analytics-v2.js';
+export * from './schema/tradelog-v2.js';
+export * from './schema/trade-review.js';

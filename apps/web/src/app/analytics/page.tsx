@@ -1,250 +1,286 @@
 'use client';
 
-import { useEffect, useState, useCallback, useMemo } from 'react';
-import {
-  DndContext, closestCenter, PointerSensor, KeyboardSensor, TouchSensor,
-  useSensor, useSensors, type DragEndEvent,
-} from '@dnd-kit/core';
-import {
-  SortableContext, sortableKeyboardCoordinates, arrayMove, rectSortingStrategy,
-} from '@dnd-kit/sortable';
-import { api, type BrokerAccount, type AccountStats, type Trade, type JournalEntry } from '@/lib/api';
-import { closedInSpan, isCustom, statsForRange, RANGES, type RangeKey, type Span } from '@/lib/stats';
+// Analytics v2 ("D · AI"): a left menu of views (each with its headline
+// number), an Overview hero ("where your edge comes from, and where you
+// bleed") and six focused sections. Every number comes from one call,
+// GET /api/insights/analytics (computed server-side from the account's closed
+// trades, cached ~60s); account, date range and filters drive all of it. The
+// AI shows up as one line per section and chart plus marks on the charts;
+// "Explain" sends a chart's numbers to the AI coach, like the dashboard.
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { api, type BrokerAccount } from '@/lib/api';
+import { isCustom, spanBounds, type RangeKey, type Span } from '@/lib/stats';
 import { useAccounts } from '@/lib/use-accounts';
-import AppShell from '@/components/app-shell';
+import { authClient } from '@/lib/auth-client';
+import { rangeText } from '@/lib/date-presets';
+import { dashV2, type DashParams, type DashRange, type DashSession } from '@/lib/dashboard-v2-api';
+import { firstParagraph, SESSION_SHORT } from '@/lib/dashboard-v2-format';
+import { anaV2, viewFromSearch, type AnalyticsV2DTO, type AnalyticsView } from '@/lib/analytics-v2-api';
+import AppShell, { timeAgo } from '@/components/app-shell';
 import ConnectBrokerModal from '@/components/connect-broker-modal';
 import { useToast } from '@/components/toast';
-import { SortableCard } from '@/components/v6/analytics/kit';
-import YearHeatmap from '@/components/v6/analytics/year-heatmap';
-import {
-  KpiStrip, Strike, Dist, Equity, Sessions, Rolling, SymbolTable, Allocation, GroupBars, Hours, Scatter, DayBars, Direction, type Group,
-} from '@/components/v6/analytics/cards';
+import { IPlus } from '@/components/v6/icons';
 import DateRangePicker from '@/components/v6/ui/date-range';
-import { rangeText } from '@/lib/date-presets';
-import { packRows } from '@/lib/pack-rows';
+import { AskBox, type AskState } from '@/components/dashboard-v2/ask';
+import { FilterSel, Hero, SECTIONS, ViewNav, type ViewCtx } from '@/components/analytics-v2/views';
+import '@/components/dashboard-v2/dashboard-v2.css';
+import '@/components/analytics-v2/analytics-v2.css';
 
-// Rearrangeable analytics blocks. Order is persisted per-account in localStorage.
-// Spans tile the 12-col grid in the default order; on reorder CSS grid
-// auto-flow keeps rows filled left-to-right.
-const BLOCK_IDS = ['donut', 'pnldist', 'heatmap', 'timeofday', 'equity', 'rolling', 'scatter', 'yearheat', 'bysymbol', 'allocation', 'tag', 'emotion', 'byday', 'direction'] as const;
-type BlockId = (typeof BLOCK_IDS)[number];
-const DEFAULT_ORDER: BlockId[] = ['equity', 'donut', 'pnldist', 'rolling', 'heatmap', 'allocation', 'bysymbol', 'timeofday', 'direction', 'byday', 'emotion', 'tag', 'scatter', 'yearheat'];
-const SPANS: Record<BlockId, number> = {
-  equity: 12, donut: 5, pnldist: 7, rolling: 7, heatmap: 5,
-  allocation: 5, bysymbol: 7, timeofday: 12, direction: 6, byday: 6, emotion: 6, tag: 6, scatter: 12, yearheat: 12,
-};
-const packSpans = (order: readonly BlockId[]) => packRows(order, SPANS);
-const orderKey = (accountId: string) => `tradelogs.analytics.order.${accountId}`;
-function sameOrder(a: BlockId[], b: BlockId[]) { return a.length === b.length && a.every((x, i) => x === b[i]); }
-function normalizeOrder(saved: string[]): BlockId[] {
-  const known = saved.filter((id): id is BlockId => (BLOCK_IDS as readonly string[]).includes(id));
-  return [...known, ...DEFAULT_ORDER.filter(id => !known.includes(id))];
+const RANGES: { key: RangeKey; api: DashRange; short: string; label: string }[] = [
+  { key: '1W', api: '7D', short: '7D', label: 'Last 7 days' },
+  { key: '1M', api: '30D', short: '30D', label: 'Last 30 days' },
+  { key: '3M', api: '90D', short: '90D', label: 'Last 90 days' },
+  { key: '1Y', api: '1Y', short: '1Y', label: 'Last 12 months' },
+  { key: 'ALL', api: 'ALL', short: 'All', label: 'All time' },
+];
+interface Filters { symbol?: string; session?: DashSession; side?: 'LONG' | 'SHORT'; tag?: string }
+/** Same switch as the dashboard: one "AI notes" preference on this device. */
+const AI_KEY = 'tl-dash-ai-notes';
+
+function useMedia(q: string): boolean {
+  const [m, setM] = useState(false);
+  useEffect(() => { const mq = window.matchMedia(q); const set = () => setM(mq.matches); set(); mq.addEventListener('change', set); return () => mq.removeEventListener('change', set); }, [q]);
+  return m;
 }
-const EMOTION_ORDER = ['Disciplined', 'Confident', 'Patient', 'FOMO', 'Revenge', 'Hesitant'];
-const RANGE_LABEL: Record<RangeKey, string> = { '1W': 'Last 7 days', '1M': 'Last 30 days', '3M': 'Last 3 months', '1Y': 'Last 12 months', ALL: 'All time' };
-const RANGE_SHORT: Record<RangeKey, string> = { '1W': '7D', '1M': '30D', '3M': '90D', '1Y': '1Y', ALL: 'All' };
 
 export default function AnalyticsPage() {
   const { accounts, selected, select, setAccounts, loading: accountsLoading } = useAccounts();
-  const [stats, setStats] = useState<AccountStats | null>(null);
-  const [trades, setTrades] = useState<Trade[]>([]);
-  const [journal, setJournal] = useState<JournalEntry[]>([]);
-  const [range, setRange] = useState<Span>('ALL');
-  // Drag handles only show while arranging (A4.4), so the cards stay calm the rest of the time.
-  const [arranging, setArranging] = useState(false);
+  const { data: session } = authClient.useSession();
+  const toast = useToast();
+  const [span, setSpan] = useState<Span>('3M');
+  const [filters, setFilters] = useState<Filters>({});
+  const [view, setView] = useState<AnalyticsView>('overview');
+  const [ai, setAi] = useState(true);
+  const [data, setData] = useState<AnalyticsV2DTO | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [syncing, setSyncing] = useState(false);
+  const [syncedAt, setSyncedAt] = useState<string | null>(null);
   const [showConnect, setShowConnect] = useState(false);
-  const [order, setOrder] = useState<BlockId[]>(DEFAULT_ORDER);
-  const toast = useToast();
+  const [ask, setAsk] = useState<AskState>({ status: 'idle' });
+  const [, tick] = useState(0);
+  const wide = useMedia('(min-width: 1600px)');
+  const mid = useMedia('(min-width: 1100px)');
+  const req = useRef(0);
+  const askReq = useRef<AbortController | null>(null);
+  const mainRef = useRef<HTMLDivElement>(null);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 6 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
-  );
-
-  // Load persisted card order whenever the active account changes.
+  // The view lives in the URL (?view=time) so it can be linked and survives reloads.
   useEffect(() => {
-    if (!selected) return;
+    setView(viewFromSearch(window.location.search));
+    try { if (localStorage.getItem(AI_KEY) === '0') setAi(false); } catch { /* storage unavailable */ }
+    const onPop = () => setView(viewFromSearch(window.location.search));
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+  const pickView = useCallback((v: AnalyticsView) => {
+    setView(v);
+    const u = new URL(window.location.href);
+    if (v === 'overview') u.searchParams.delete('view'); else u.searchParams.set('view', v);
+    window.history.replaceState(window.history.state, '', u.toString());
+    const top = mainRef.current?.getBoundingClientRect().top;
+    if (top != null && top < 0) mainRef.current?.scrollIntoView({ block: 'start' });
+  }, []);
+  const toggleAi = () => setAi(v => { try { localStorage.setItem(AI_KEY, v ? '0' : '1'); } catch { /* ignore */ } return !v; });
+  useEffect(() => { const id = setInterval(() => tick(n => n + 1), 30_000); return () => clearInterval(id); }, []);
+
+  const params = useMemo<DashParams | null>(() => {
+    if (!selected) return null;
+    const base: DashParams = { accountId: selected.id, range: isCustom(span) ? 'ALL' : RANGES.find(r => r.key === span)!.api, ...filters };
+    if (isCustom(span)) { const b = spanBounds(span); if (b.start != null) base.from = b.start; if (b.end != null) base.to = b.end; }
+    return base;
+  }, [selected, span, filters]);
+
+  const load = useCallback(async (p: DashParams) => {
+    const id = ++req.current;
+    setLoading(true); setError('');
     try {
-      const raw = localStorage.getItem(orderKey(selected.id));
-      setOrder(raw ? normalizeOrder(JSON.parse(raw)) : DEFAULT_ORDER);
-    } catch { setOrder(DEFAULT_ORDER); }
-  }, [selected]);
-
-  const persistOrder = useCallback((next: BlockId[]) => {
-    setOrder(next);
-    if (selected) { try { localStorage.setItem(orderKey(selected.id), JSON.stringify(next)); } catch {} }
-  }, [selected]);
-
-  const onDragEnd = useCallback((e: DragEndEvent) => {
-    const { active, over } = e;
-    if (!over || active.id === over.id) return;
-    setOrder(prev => {
-      const oldIndex = prev.indexOf(active.id as BlockId);
-      const newIndex = prev.indexOf(over.id as BlockId);
-      if (oldIndex < 0 || newIndex < 0) return prev;
-      const next = arrayMove(prev, oldIndex, newIndex);
-      if (selected) { try { localStorage.setItem(orderKey(selected.id), JSON.stringify(next)); } catch {} }
-      return next;
-    });
-  }, [selected]);
-
-  const isDefaultOrder = sameOrder(order, DEFAULT_ORDER);
-  const spans = useMemo(() => packSpans(order), [order]);
-
-  const loadStats = useCallback(async (acc: BrokerAccount) => {
-    setLoading(true);
-    setError('');
-    try {
-      const [s, t, j] = await Promise.all([
-        api.trades.stats(acc.id),
-        api.trades.list(acc.id),
-        api.journal.list(acc.id),
-      ]);
-      setStats(s);
-      setTrades(t);
-      setJournal(j);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to load account data');
-    } finally { setLoading(false); }
+      const d = await anaV2.get(p);
+      if (id === req.current) setData(d);
+    } catch (err) {
+      if (id === req.current) setError(err instanceof Error ? err.message : 'Failed to load analytics');
+    } finally { if (id === req.current) setLoading(false); }
   }, []);
   useEffect(() => {
-    if (selected) loadStats(selected);
-    else if (!accountsLoading) setLoading(false); // zero brokers: don’t load forever
-  }, [selected, accountsLoading, loadStats]);
+    if (params) void load(params);
+    else if (!accountsLoading) setLoading(false);
+  }, [params, accountsLoading, load]);
+  // New account: forget filters that belonged to the old one, and any open answer.
+  useEffect(() => { setFilters({}); setAsk({ status: 'idle' }); setData(null); setSyncedAt(selected?.lastSyncAt ?? null); }, [selected?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Range-filtered view: recompute every widget's stats from the selected range.
-  const view = useMemo(
-    () => (stats ? statsForRange(trades, stats.startingBalance, range) : null),
-    [stats, trades, range],
-  );
-
-  // Closed trades within the selected range (for distribution / heatmap / tags).
-  const rangedTrades = useMemo(() => closedInSpan(trades, range), [trades, range]);
-
-  // Group closed-trade P&L by the tags / emotion logged for each trade's
-  // journal entry (joined by tradeId → positionId), within the selected range.
-  const { tagStats, emotionStats } = useMemo(() => {
-    const closedById = new Map<string, Trade>();
-    for (const t of rangedTrades) closedById.set(t.positionId, t);
-
-    const tagMap = new Map<string, Group>();
-    const emoMap = new Map<string, Group>();
-    const bump = (map: Map<string, Group>, key: string, netPnl: number) => {
-      const g = map.get(key) ?? { label: key, trades: 0, wins: 0, netPnl: 0 };
-      g.trades += 1;
-      if (netPnl > 0) g.wins += 1;
-      g.netPnl += netPnl;
-      map.set(key, g);
-    };
-
-    for (const e of journal) {
-      if (!e.tradeId) continue;
-      const t = closedById.get(e.tradeId);
-      if (!t) continue;
-      if (e.emotion) bump(emoMap, e.emotion, t.netPnl);
-      for (const tag of e.tags ?? []) bump(tagMap, tag, t.netPnl);
-    }
-
-    const finalize = (map: Map<string, Group>): Group[] => Array.from(map.values()).sort((a, b) => b.netPnl - a.netPnl);
-
-    return { tagStats: finalize(tagMap), emotionStats: finalize(emoMap) };
-  }, [rangedTrades, journal]);
+  const sync = useCallback(async () => {
+    if (!selected || !params) return;
+    setSyncing(true);
+    try {
+      const r = await api.accounts.sync(selected.id);
+      setSyncedAt(r.account.lastSyncAt ?? new Date().toISOString());
+      await load(params);
+      toast.success(r.result === 'running' ? 'Still importing your history — this can take a minute on large accounts' : 'Synced');
+    } catch (err) {
+      toast.error(`Sync failed · ${err instanceof Error ? err.message : 'try again'}`);
+    } finally { setSyncing(false); }
+  }, [selected, params, load, toast]);
 
   function onConnected(account: BrokerAccount) {
-    setAccounts(prev => prev.find(a => a.id === account.id) ? prev.map(a => a.id === account.id ? account : a) : [account, ...prev]);
+    setAccounts(prev => (prev.some(a => a.id === account.id) ? prev.map(a => (a.id === account.id ? account : a)) : [account, ...prev]));
     select(account);
     setShowConnect(false);
   }
 
-  // Inner content for each rearrangeable block. The outer col-span + drag handle
-  // are supplied by <SortableCard>; here we render just the card body.
-  function renderBlock(id: BlockId) {
-    if (!view) return null;
-    switch (id) {
-      case 'donut': return <Strike view={view} />;
-      case 'pnldist': return <Dist trades={rangedTrades} />;
-      case 'equity': return <Equity view={view} />;
-      case 'heatmap': return <Sessions trades={rangedTrades} />;
-      case 'rolling': return <Rolling trades={rangedTrades} />;
-      case 'bysymbol': return <SymbolTable rows={view.bySymbol} />;
-      case 'allocation': return <Allocation rows={view.bySymbol} />;
-      case 'emotion': return <GroupBars testId="perf-by-emotion" title="Psychology edge" sub="net P&L by emotion" rows={emotionStats} order={EMOTION_ORDER} empty="Log how you felt on a trade in Journal › Trade review to see which states pay." />;
-      case 'tag': return <GroupBars testId="perf-by-tag" title="Setup edge" sub="net P&L by tag" rows={tagStats.slice(0, 8)} empty="Tag your setups in the Journal to see which ones carry your edge." />;
-      case 'timeofday': return <Hours trades={rangedTrades} />;
-      case 'scatter': return <Scatter trades={rangedTrades} />;
-      case 'byday': return <DayBars data={view.byDay} />;
-      case 'yearheat': return <YearHeatmap trades={trades} accountId={selected?.id} />;
-      case 'direction': return <Direction view={view} />;
+  // ── Ask your journal + Explain (same flow as the dashboard) ──
+  const askCoach = useCallback(async (q: string, prompt: string) => {
+    if (!selected) return;
+    askReq.current?.abort();
+    const ctl = new AbortController();
+    askReq.current = ctl;
+    const used = data?.counts.trades ?? 0;
+    let text = '';
+    setAsk({ status: 'text', q, text: '', used, done: false });
+    try {
+      await api.ai.chat({ accountId: selected.id, messages: [{ role: 'user', content: prompt.slice(0, 3900) }] }, t => {
+        text += t;
+        if (!ctl.signal.aborted) setAsk({ status: 'text', q, text: firstParagraph(text), used, done: false });
+      }, { signal: ctl.signal, onError: m => { if (!text) setAsk({ status: 'error', q, error: m }); } });
+      if (!ctl.signal.aborted && text) setAsk({ status: 'text', q, text: firstParagraph(text), used, done: true });
+      else if (!ctl.signal.aborted && !text) setAsk({ status: 'error', q, error: 'The coach had no answer. Try again.' });
+    } catch (err) {
+      if (!ctl.signal.aborted) setAsk({ status: 'error', q, error: err instanceof Error ? err.message : 'The coach is unavailable right now.' });
     }
-  }
+  }, [selected, data?.counts.trades]);
 
-  const rangeName = isCustom(range) ? rangeText(range) : RANGE_LABEL[range].toLowerCase();
+  const onAsk = useCallback(async (q: string) => {
+    if (!params) return;
+    askReq.current?.abort();
+    askReq.current = null;
+    setAsk({ status: 'loading', q });
+    try {
+      const a = await dashV2.ask({ ...params, q });
+      if (a.kind === 'chart') { setAsk({ status: 'chart', q, a }); return; }
+      await askCoach(q, `${q}\n\nAnswer in one short paragraph.`);
+    } catch (err) {
+      setAsk({ status: 'error', q, error: err instanceof Error ? err.message : 'Could not answer that.' });
+    }
+  }, [params, askCoach]);
+  const closeAsk = useCallback(() => { askReq.current?.abort(); setAsk({ status: 'idle' }); }, []);
+
+  const rangeLabel = isCustom(span) ? rangeText(span) : RANGES.find(o => o.key === span)!.label;
+  const rangeShort = isCustom(span) ? 'Range' : RANGES.find(o => o.key === span)!.short;
+  const explain = useCallback((what: string, summary: string) => {
+    const scope = `${rangeLabel.toLowerCase()}${filters.symbol ? `, ${filters.symbol}` : ''}${filters.session ? `, ${SESSION_SHORT[filters.session]} session` : ''}${filters.side ? `, ${filters.side.toLowerCase()}s` : ''}${filters.tag ? `, tag ${filters.tag}` : ''}`;
+    void askCoach(`Explain: ${what}`, `Explain my ${what} chart (${scope}, ${data?.counts.trades ?? 0} trades, times in UTC): ${summary}. Answer in one short paragraph.`);
+    if (!mid) document.querySelector('[data-testid=ask-page]')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [askCoach, data?.counts.trades, filters, mid, rangeLabel]);
+
+  const first = (session?.user?.name ?? '').trim().split(/\s+/)[0] || 'trader';
   const subtitle = selected
-    ? <>{selected.broker} <span className="m">·{selected.mt5Login.slice(-4)}</span> · {rangeName}</>
-    : rangeName;
+    ? <><i className="d2-live" aria-hidden />{selected.broker} <span className="m">·{selected.mt5Login.slice(-4)}</span> · {syncedAt ? `synced ${timeAgo(syncedAt)}` : loading ? 'loading…' : 'not synced yet'}</>
+    : `Welcome, ${first}`;
+  const askBox = (placement: 'top' | 'bar' | 'page') => <AskBox state={ask} onAsk={onAsk} onClose={closeAsk} placement={placement} />;
+  const hasFilters = !!(filters.symbol || filters.session || filters.side || filters.tag);
+  const ctx: ViewCtx | null = data && data.overview ? { d: data, ai, rangeShort, explain } : null;
+  const sectionNo = (id: AnalyticsView) => `0${SECTIONS.findIndex(s => s.id === id) + 1}`;
 
   return (
     <AppShell legacy={false} accounts={accounts} selectedAccount={selected} onSelectAccount={select} onConnectClick={() => setShowConnect(true)}
-      pageTitle="Analytics" pageSubtitle={subtitle}
-      actions={(
+      pageTitle="Analytics" pageSubtitle={subtitle} onSync={selected ? sync : undefined} syncing={syncing} syncedAt={syncedAt}
+      actions={selected ? (
         <>
+          {wide && data && data.counts.allClosed > 0 && askBox('top')}
           <div className="x-seg" role="group" aria-label="Date range" data-testid="range-selector">
-            {RANGES.map(r => <button key={r} aria-pressed={range === r} onClick={() => setRange(r)} title={RANGE_LABEL[r]} data-testid={`range-${r}`}>{RANGE_SHORT[r]}</button>)}
+            {RANGES.map(r => <button key={r.key} aria-pressed={span === r.key} onClick={() => setSpan(r.key)} title={r.label} data-testid={`range-${r.key}`}>{r.short}</button>)}
           </div>
-          <DateRangePicker value={isCustom(range) ? range : null} onChange={setRange} />
+          <DateRangePicker value={isCustom(span) ? span : null} onChange={setSpan} note="Days in your time zone" />
         </>
-      )}>
-      <div className="x-page an-page" data-testid="analytics-page">
-        {error && !loading ? (
-          <div className="x-banner x-banner--err" role="alert" data-testid="analytics-error">
-            <span>{error}</span><button className="x-btn x-btn--sm" onClick={() => selected && loadStats(selected)}>Retry</button>
+      ) : null}>
+      <div className={`d2 a2${ai ? '' : ' ai-off'}`} data-testid="analytics-page">
+        {error && (
+          <div className="d2-banner" role="alert" data-testid="analytics-error">
+            <span>{error}</span>
+            <button type="button" className="x-btn x-btn--sm" onClick={() => params && load(params)}>Retry</button>
           </div>
-        ) : !selected && !accountsLoading ? (
-          <section className="x-card x-empty">
-            <span className="x-ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"><path d="M3 20h18M6 16v-5M11 16V7M16 16v-8M21 16V4" /></svg></span>
-            <b>Connect your MT5 account</b>
-            <p>Analytics fill in once your first trades sync.</p>
-            <button className="x-btn x-btn--hi" onClick={() => setShowConnect(true)}>Connect MT5</button>
+        )}
+
+        {!selected && !accountsLoading ? (
+          <section className="d2-card d2-connect" data-testid="analytics-empty">
+            <h2>Connect your MT5 account</h2>
+            <p>Use your investor (read-only) password. TRADElogs can read your trades but can never place or close one.</p>
+            <ul><li>History imports in about a minute</li><li>Every view here fills in from your real trades</li></ul>
+            <button className="x-btn x-btn--hi x-btn--lg" onClick={() => setShowConnect(true)} data-testid="analytics-connect"><IPlus size={15} />Connect MT5</button>
           </section>
-        ) : loading || !view ? (
-          <div className="x-page" aria-busy="true" aria-label="Loading analytics">
-            <div className="x-skel" style={{ height: 96 }} />
-            <div className="an-grid">{[12, 5, 7].map((n, i) => <div key={i} className="x-skel an-span" style={{ height: n === 12 ? 380 : 340, ['--span' as string]: n }} />)}</div>
-          </div>
+        ) : !data ? (error ? null : <Skeleton />) : data.counts.allClosed === 0 ? (
+          <section className="d2-card d2-connect" data-testid="analytics-waiting">
+            <h2>Waiting for your first closed trade</h2>
+            <p>{selected?.broker} is connected. As soon as a position closes it shows up here, usually within a few minutes.</p>
+          </section>
         ) : (
           <>
-            <KpiStrip view={view} />
-            <div className="an-bar" data-testid="analytics-arrange-bar">
-              {arranging ? (
-                <>
-                  <svg width="10" height="14" viewBox="0 0 10 14" fill="currentColor" aria-hidden><circle cx="2" cy="2" r="1.3" /><circle cx="8" cy="2" r="1.3" /><circle cx="2" cy="7" r="1.3" /><circle cx="8" cy="7" r="1.3" /><circle cx="2" cy="12" r="1.3" /><circle cx="8" cy="12" r="1.3" /></svg>
-                  <span>Drag a card by its handle to move it</span>
-                  {!isDefaultOrder && <button className="x-btn x-btn--sm" onClick={() => { persistOrder(DEFAULT_ORDER); toast.info('Layout reset'); }} data-testid="analytics-reset-layout">Reset layout</button>}
-                  <button className="x-btn x-btn--sm x-btn--hi" onClick={() => setArranging(false)} data-testid="analytics-arrange-done">Done</button>
-                </>
-              ) : (
-                <button className="x-btn x-btn--sm x-btn--ghost" onClick={() => setArranging(true)} data-testid="analytics-arrange">Customise layout</button>
-              )}
+            {!mid && askBox('page')}
+            <div className="d2-bar" data-testid="analytics-toolbar">
+              {mid && !wide && askBox('bar')}
+              <span className="d2-grow" />
+              <FilterSel icon label="Symbol" value={filters.symbol ?? ''} all={`All ${data.options.symbols.length}`}
+                options={data.options.symbols.map(s => ({ v: s.symbol, label: `${s.symbol} (${s.trades})` }))} onChange={v => setFilters(f => ({ ...f, symbol: v || undefined }))} />
+              <FilterSel label="Session" value={filters.session ?? ''} all="All"
+                options={(['ASIA', 'LONDON', 'NY'] as const).map(s => ({ v: s, label: SESSION_SHORT[s] }))} onChange={v => setFilters(f => ({ ...f, session: (v || undefined) as DashSession | undefined }))} />
+              <FilterSel label="Side" value={filters.side ?? ''} all="Both"
+                options={[{ v: 'LONG', label: 'Long' }, { v: 'SHORT', label: 'Short' }]} onChange={v => setFilters(f => ({ ...f, side: (v || undefined) as 'LONG' | 'SHORT' | undefined }))} />
+              <FilterSel label="Tag" value={filters.tag ?? ''} all="Any" disabled={!data.options.tags.length && !filters.tag}
+                options={data.options.tags.map(t => ({ v: t, label: t }))} onChange={v => setFilters(f => ({ ...f, tag: v || undefined }))} />
+              <button type="button" className="d2-fp" role="switch" aria-checked={ai} onClick={toggleAi} data-testid="ai-notes">AI notes <span className={`d2-sw${ai ? ' on' : ''}`} aria-hidden /></button>
             </div>
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-              <SortableContext items={order} strategy={rectSortingStrategy}>
-                <div className={`an-grid ${arranging ? 'is-arranging' : ''}`} data-testid="analytics-grid">
-                  {order.map(id => (
-                    <SortableCard key={id} id={id} span={spans[id]}>
-                      {renderBlock(id)}
-                    </SortableCard>
-                  ))}
+
+            {data.counts.trades === 0 || !ctx ? (
+              <section className="d2-card d2-connect" data-testid="analytics-no-trades">
+                <h2>No closed trades in this view</h2>
+                <p>{data.counts.inWindow ? `${data.counts.inWindow} trades in ${rangeLabel.toLowerCase()}, none match the filters.` : `Nothing closed in ${rangeLabel.toLowerCase()}. ${data.counts.allClosed} trades in total.`}</p>
+                <div className="d2-row">
+                  {hasFilters && <button type="button" className="x-btn" onClick={() => setFilters({})}>Clear filters</button>}
+                  {span !== 'ALL' && <button type="button" className="x-btn" onClick={() => setSpan('ALL')}>Show all time</button>}
                 </div>
-              </SortableContext>
-            </DndContext>
+              </section>
+            ) : (
+              <div className="a2-lay">
+                <ViewNav view={view} nav={data.nav} ai={ai} onPick={pickView} />
+                <div ref={mainRef} className={`a2-main${loading ? ' d2-stale' : ''}`} aria-busy={loading} data-testid={`analytics-view-${view}`}>
+                  {data.counts.trades < data.minTrades && (
+                    <p className="d2-few" data-testid="few-trades">{data.counts.trades} trades in this view. The rules, behaviour score and some charts need {data.minTrades}.</p>
+                  )}
+                  {view === 'overview'
+                    ? <><Hero c={ctx} />{SECTIONS.map(({ id, C }) => <C key={id} c={ctx} no={sectionNo(id)} />)}</>
+                    : SECTIONS.filter(s => s.id === view).map(({ id, C }) => <C key={id} c={ctx} no={sectionNo(id)} />)}
+                </div>
+              </div>
+            )}
+            <details className="a2-how" data-testid="analytics-how">
+              <summary>How these numbers are computed</summary>
+              <ul>
+                <li>Every figure comes from your closed trades in this account, range and filters. Times are UTC: hour, weekday and session come from when a trade opened; days, weeks (Monday to Sunday) and months from when it closed. A win is net P&amp;L above $0, fees and swap included.</li>
+                <li>Sessions: Asia 22:00–07:00, London 07:00–13:00, New York 13:00–22:00 UTC. Edge is your best session when it is net positive; Bleed is every net-negative session together.</li>
+                <li>Rules are checks we run on every trade, the same ones as the dashboard grades: opened after 2 losing trades in a row that day; opened within 15 min of a losing trade closing; more than 1.5× your usual (median) size on that symbol; opened in a UTC hour that is net negative for you in this view{data.counts.withR ? '; lost more than 1.25R' : ''}. A trade that broke several counts once, under the first. They need {data.minTrades}+ trades.</li>
+                <li>Behaviour score: the average of three pass rates. Discipline: not after 2 losses and not within 15 min of a loss. Risk: no more than 1.5× usual size{data.counts.withR ? ' and no loss past −1.25R' : ''}. Timing: opened in an hour that is net positive for you.</li>
+                <li>What-if skips the dashboard&apos;s leaks (groups of 3+ trades you could have avoided before entry, ranked by $ lost). Fixes are added in order and each trade is counted once.</li>
+                <li>R values need a stop at entry; with fewer than half the trades (or under 10) carrying one, those charts use $. MAE/MFE, exit efficiency and the break-even what-if need the price path of each trade and stay empty without it.</li>
+              </ul>
+            </details>
           </>
         )}
       </div>
-
       {showConnect && <ConnectBrokerModal onClose={() => setShowConnect(false)} onConnected={onConnected} />}
     </AppShell>
+  );
+}
+
+function Skeleton() {
+  return (
+    <div className="d2-skel" aria-busy aria-label="Loading analytics" data-testid="analytics-loading">
+      <div className="d2-card d2-sk" style={{ height: 40 }} />
+      <div className="a2-lay">
+        <div className="d2-card d2-sk a2-sk-nav" style={{ height: 300 }} />
+        <div className="d2-skel">
+          <div className="d2-card d2-sk" style={{ height: 120 }} />
+          <div className="d2-card d2-sk" style={{ height: 380 }} />
+        </div>
+      </div>
+    </div>
   );
 }
