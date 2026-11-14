@@ -27,6 +27,32 @@ const PUBLIC: Record<string, { status: number; why: string }> = {
   'GET /api/access/maintenance': { status: 200, why: 'The maintenance banner shows before sign-in.' },
   'POST /api/hooks/tv/:token': { status: 404, why: 'TradingView alerts; the secret token is the credential.' },
   'POST /api/ai/weekly-review/unsubscribe': { status: 422, why: 'One-click unsubscribe from the email; a signed token in the body is the credential.' },
+  'GET /api/ib/postback/:token': { status: 404, why: 'Broker postbacks (server to server); the secret token in the path is the credential.' },
+  'POST /api/ib/postback/:token': { status: 404, why: 'Broker postbacks (server to server); the secret token in the path is the credential.' },
+};
+
+/**
+ * Partner / client records looked up together with the caller's own partner or
+ * user id (findFirst({ where: { id, partnerId } }) or an entitlement check), so
+ * someone else's id answers 404 exactly like a missing one. Checked in code:
+ * partners/ib/{ib,integrations,packages,products}.service.ts.
+ */
+const SCOPED: Record<string, string> = {
+  'DELETE /api/partner/brokers/:id': 'ib.service: partnerBroker where { id, partnerId }',
+  'POST /api/partner/brokers/:id/accounts': 'ib.service: partnerBroker where { id, partnerId }',
+  'POST /api/partner/brokers/:id/sync': 'ib.service: partnerBroker where { id, partnerId }',
+  'GET /api/partner/brokers/:id/integration': 'integrations.service ownBroker(partnerId, id)',
+  'POST /api/partner/brokers/:id/postback/rotate': 'integrations.service ownBroker(partnerId, id)',
+  'PUT /api/partner/brokers/:id/api': 'integrations.service ownBroker(partnerId, id)',
+  'POST /api/partner/brokers/:id/earnings': 'integrations.service ownBroker(partnerId, id)',
+  'PATCH /api/partner/packages/:id': 'packages.service: partnerPackage where { id, partnerId }',
+  'POST /api/partner/templates/:id/audience': 'packages.service: strategyTemplate where { id, creatorId: partner.userId }',
+  'PATCH /api/partner/products/:id': 'products.service: partnerProduct where { id, partnerId }',
+  'POST /api/partner/products/:id/file': 'products.service: partnerProduct where { id, partnerId }',
+  'POST /api/partner/products/:id/submit': 'products.service: partnerProduct where { id, partnerId }',
+  'GET /api/partner-access/products/:id': 'products.service clientProduct: only products in a package the caller holds',
+  'GET /api/partner-access/products/:id/file': 'products.service clientProductFile: only products in a package the caller holds',
+  'DELETE /api/partner-access/accounts/:id': 'ib.service removeExternalAccount: externalAccount where { id, userId }',
 };
 
 /** Param routes that aren't anyone's records: shared reference data. */
@@ -363,12 +389,12 @@ describe.skipIf(!local)('access-control matrix', () => {
     const unclassified = routes
       .filter((r) => r.template.includes(':') && !r.template.includes('*'))
       .map((r) => `${r.method} ${r.template}`)
-      .filter((k) => !PUBLIC[k] && !SHARED[k] && !owned.has(k) && !isAdminRoute(k.split(' ')[1]!));
+      .filter((k) => !PUBLIC[k] && !SHARED[k] && !SCOPED[k] && !owned.has(k) && !isAdminRoute(k.split(' ')[1]!));
     expect(unclassified).toEqual([]);
     // And the probes name real routes (a renamed route would otherwise go unchecked).
     const real = new Set(routes.map((r) => `${r.method} ${r.template}`));
     expect([...PATH_PROBES, ...REF_PROBES, ...V1_PROBES].map((p) => p.route).filter((k) => !real.has(k))).toEqual([]);
-    expect(Object.keys({ ...PUBLIC, ...SHARED }).filter((k) => !real.has(k))).toEqual([]);
+    expect(Object.keys({ ...PUBLIC, ...SHARED, ...SCOPED }).filter((k) => !real.has(k))).toEqual([]);
   });
 
   it('answers 401 without a session, except the public routes', async () => {
