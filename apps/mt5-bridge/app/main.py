@@ -49,6 +49,11 @@ async def lifespan(app: FastAPI):
         log.info(f"MT5 connected — build={getattr(info, 'build', '?')} path={getattr(info, 'path', '?')}")
     else:
         log.warning(f"MT5 not reachable at startup: {mt5.last_error()} — will retry on first request")
+        # The terminal may still be sitting on a rejected account; start it on the check account instead.
+        check = _check_account()
+        if check:
+            with _lock:
+                _sign_in_check(check, "check_account")
     yield
     log.info("Bridge shutting down — closing MT5")
     mt5.shutdown()
@@ -148,29 +153,49 @@ def _terminal_proven() -> bool:
     return age is not None and age < TERMINAL_PROVEN_S
 
 
-def _reprove_terminal(failed_login: int) -> dict | None:
-    """
-    Sign back in to the last known-good account to see whether the terminal
-    works right now. Returns {"login", "ok", "mt5"?} or None when there is no
-    other good account to try. Also leaves the terminal on a working account
-    instead of stuck on a rejected one. A good account that now fails is
-    forgotten, so a later password change there can't mislead us.
-    """
-    good = dict(_last_good)
-    if not good or good["login"] == int(failed_login):
+def _check_account() -> dict | None:
+    """The configured check account, if any (see config.check_login)."""
+    if not settings.check_login or not settings.check_server:
         return None
+    return {"login": int(settings.check_login), "password": settings.check_password, "server": settings.check_server}
+
+
+def _sign_in_check(acct: dict, via: str) -> dict:
+    """One login attempt on a known-good account. Returns {"login", "via", "ok", "mt5"?} — never the password."""
     try:
         mt5.shutdown()
     except Exception:
         pass
-    failures = _try_login(good["login"], good["password"], good["server"], 1)
+    # The check account is not a user's: don't let it become "last good".
+    failures = _try_login(acct["login"], acct["password"], acct["server"], 1, remember=(via == "last_good"))
     if not failures:
-        log.info(f"[connect] terminal re-proven by signing in to {good['login']}@{good['server']}")
-        return {"login": good["login"], "ok": True}
-    _last_good.clear()
+        log.info(f"[connect] terminal proven by signing in to {acct['login']}@{acct['server']} ({via})")
+        return {"login": acct["login"], "via": via, "ok": True}
     code, msg = (tuple(failures[-1]) + (None, None))[:2]
-    log.warning(f"[connect] re-proof via {good['login']}@{good['server']} failed too: ({code}, {msg})")
-    return {"login": good["login"], "ok": False, "mt5": _mt5_error(code, msg)}
+    log.warning(f"[connect] proof via {acct['login']}@{acct['server']} ({via}) failed: ({code}, {msg})")
+    return {"login": acct["login"], "via": via, "ok": False, "mt5": _mt5_error(code, msg)}
+
+
+def _reprove_terminal(failed_login: int) -> dict | None:
+    """
+    Sign in to a known-good account to see whether the terminal works right now:
+    the last user account that signed in fine, else the configured check
+    account. Returns {"login", "via", "ok", "mt5"?}, or None when there is
+    nothing else to try. Also leaves the terminal on a working account instead
+    of stuck on a rejected one. A remembered account that now fails is
+    forgotten, so a later password change there can't mislead us.
+    """
+    tried = None
+    good = dict(_last_good)
+    if good and good["login"] != int(failed_login):
+        tried = _sign_in_check(good, "last_good")
+        if tried["ok"]:
+            return tried
+        _last_good.clear()
+    check = _check_account()
+    if check and check["login"] != int(failed_login):
+        return _sign_in_check(check, "check_account")
+    return tried
 
 
 def _last_ok_age_s() -> float | None:
@@ -249,25 +274,24 @@ def _classify_failure(login: int, server: str, attempts: list[tuple], reproof: d
                              f"{TERMINAL_PROVEN_S // 60} min, so it can't be pinned on this account yet.")}
 
 
-def _try_login(login: int, password: str, server: str, attempts_max: int) -> list[tuple]:
-    """Attach + authorize on `login`. Returns the (code, message) of each failed attempt; [] on success."""
+def _try_login(login: int, password: str | None, server: str, attempts_max: int, remember: bool = True) -> list[tuple]:
+    """
+    Attach + authorize on `login`. Returns the (code, message) of each failed
+    attempt; [] on success. password=None uses the password saved in the terminal.
+    """
     failures: list[tuple] = []
+    creds = {"server": server, **({"password": password} if password is not None else {})}
     for attempt in range(1, attempts_max + 1):
         # Initialize WITH credentials: attaches to the terminal *and* authorizes
         # the account in one call, so a dropped terminal session recovers.
-        ok = mt5.initialize(
-            path=settings.terminal_path,
-            login=int(login),
-            password=password,
-            server=server,
-            timeout=CONNECT_TIMEOUT_MS,
-        )
+        ok = mt5.initialize(path=settings.terminal_path, login=int(login), timeout=CONNECT_TIMEOUT_MS, **creds)
         # Attached but on a different account (multi-account switching): log in explicitly.
         if ok and not _is_connected(login):
-            mt5.login(int(login), password=password, server=server, timeout=CONNECT_TIMEOUT_MS)
+            mt5.login(int(login), timeout=CONNECT_TIMEOUT_MS, **creds)
         if _is_connected(login):
             _mark_login_ok(login)
-            _remember_good(login, password, server)
+            if remember:
+                _remember_good(login, password, server)
             if attempt > 1:
                 log.info(f"[connect] recovered on attempt {attempt} — {login}@{server}")
             return []
@@ -381,6 +405,30 @@ def verify(req: VerifyRequest) -> VerifyResponse:
             balance=str(info.balance),
             margin_mode=_margin_mode(info.margin_mode),
         )
+
+
+# ─── POST /terminal-check ─────────────────────────────────────────────────────
+
+@app.post("/terminal-check", dependencies=[Depends(verify_secret)])
+def terminal_check() -> dict:
+    """Is the terminal able to sign in at all? Uses the configured check account; no user credentials involved."""
+    check = _check_account()
+    with _lock:
+        out: dict = {
+            "configured": check is not None,
+            "terminal": {"path": settings.terminal_path, "process_running": _terminal_process_running(),
+                         "last_ok_login_s_ago": None if _last_ok_age_s() is None else int(_last_ok_age_s())},
+        }
+        if not check:
+            out["explanation"] = "No check account configured (MT5_BRIDGE_CHECK_LOGIN / MT5_BRIDGE_CHECK_SERVER in the bridge .env)."
+            return out
+        result = _sign_in_check(check, "check_account")
+        out.update(result, server=check["server"], password_source="env" if check["password"] else "saved in terminal")
+        if result["ok"]:
+            term = mt5.terminal_info()
+            out["terminal"].update(build=getattr(term, "build", None), connected_to_broker=bool(getattr(term, "connected", False)))
+        log.info(f"[terminal-check] {check['login']}@{check['server']}: {'OK' if result['ok'] else result.get('mt5')}")
+        return out
 
 
 # ─── POST /diagnose ───────────────────────────────────────────────────────────
