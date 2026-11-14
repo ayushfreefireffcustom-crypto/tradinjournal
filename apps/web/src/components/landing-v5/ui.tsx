@@ -18,15 +18,6 @@ export const ArrowDown = ({ className }: IconProps) => (
 export const CheckIcon = ({ className }: IconProps) => (
   <svg viewBox="0 0 16 16" aria-hidden className={className} {...base} strokeWidth={2.2}><path d="M3.5 8.5l3 3 6-7" /></svg>
 );
-export const GridIcon = () => (
-  <svg viewBox="0 0 24 24" aria-hidden {...base} strokeWidth={1.7}><rect x="3" y="3" width="7" height="9" rx="1.5" /><rect x="14" y="3" width="7" height="5" rx="1.5" /><rect x="14" y="12" width="7" height="9" rx="1.5" /><rect x="3" y="16" width="7" height="5" rx="1.5" /></svg>
-);
-export const ReplayIcon = () => (
-  <svg viewBox="0 0 24 24" aria-hidden {...base} strokeWidth={1.7}><path d="M4 5v14h16" /><path d="M8 14l3-4 3 2 5-6" /></svg>
-);
-export const ChatIcon = () => (
-  <svg viewBox="0 0 24 24" aria-hidden {...base} strokeWidth={1.7}><path d="M4 5h16v11H9l-5 4z" /></svg>
-);
 
 // ── Wordmark ───────────────────────────────────────────────────────────────
 export function Wordmark({ className = '' }: { className?: string }) {

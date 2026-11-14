@@ -18,8 +18,8 @@ export const I_CHECK = <svg width="16" height="16" viewBox="0 0 24 24" fill="non
 const I_ALERT = <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="12" cy="12" r="9" /><path d="M12 7.5v5.5M12 16.5h.01" /></svg>;
 
 const COPY: Record<Variant, { h: ReactNode; p: string; foot: ReactNode }> = {
-  signin: { h: <>Welcome back.<br />Your trades <em>kept syncing.</em></>, p: 'Sign in to pick up where you left off.', foot: <><span>{LOCK} Read-only MT5 access</span><span>{SHIELD} Can’t trade or withdraw</span></> },
-  signup: { h: <>Start journaling<br />in <em>90 seconds.</em></>, p: 'Free, no card needed. Connect MT5 read-only and your history fills in on its own.', foot: <><span>{LOCK} We never place trades</span><span>{SHIELD} Your data is never sold</span></> },
+  signin: { h: <>Welcome back.<br />Your trades <em>kept syncing.</em></>, p: 'Sign in to see your grades, leaks and coach.', foot: <><span>{LOCK} Read-only MT5 access</span><span>{SHIELD} Can’t trade or withdraw</span></> },
+  signup: { h: <>Start journaling<br />in <em>90 seconds.</em></>, p: 'Free, no card needed. Connect MT5 read-only: your history fills in and every trade gets a process grade.', foot: <><span>{LOCK} We never place trades</span><span>{SHIELD} Your data is never sold</span></> },
   verify: { h: <>One step <em>left.</em></>, p: 'Confirm your email, connect MT5 read-only, and your history backfills automatically.', foot: <span>{LOCK} Codes expire after 10 minutes</span> },
   forgot: { h: <>Reset your <em>password.</em></>, p: 'We’ll email you a 6-digit code. Your journal and brokers stay as they are.', foot: <span>{LOCK} Codes expire after 10 minutes</span> },
 };

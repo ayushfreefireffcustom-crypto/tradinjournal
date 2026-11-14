@@ -7,7 +7,7 @@ import { PARTNERS_ENABLED } from '@/lib/features';
 export const NAV_LINKS = [
   { href: '#product', label: 'Product' },
   { href: '#behaviour', label: 'Behaviour' },
-  { href: '#ai', label: 'AI coach' },
+  { href: '#ai', label: 'AI' },
   { href: '#markets', label: 'Markets' },
   { href: '#strategies', label: 'Strategies' },
   { href: '#security', label: 'Security' },
@@ -24,7 +24,7 @@ export function Announcement() {
   return (
     <div className="l5-ann">
       <span className="l5-ann-tag">NEW</span>
-      <span><b>SignalX</b> <span className="l5-ann-long">— AI technical analysis on any symbol, inside your journal.</span></span>
+      <span><b>Ask your journal</b> <span className="l5-ann-long">— plain questions, answered from your own trades.</span></span>
       <a href="#ai">Take a look <ArrowRight /></a>
     </div>
   );

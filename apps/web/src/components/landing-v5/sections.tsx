@@ -23,7 +23,7 @@ function Head({ eyebrow, title, lead, id }: { eyebrow: string; title: ReactNode;
 export function Facts() {
   const items: [ReactNode, string][] = [
     [<>90<span className="l5-s">s</span></>, 'From investor password to a full journal'],
-    [<>40<span className="l5-s">+</span></>, 'Metrics calculated on every trade'],
+    [<>A<span className="l5-s">–</span>F</>, 'Process grade on every closed trade'],
     ['0', 'Rows of manual entry. Ever.'],
     [<>1<span className="l5-s">×</span></>, 'Thing to fix, every Saturday'],
   ];
@@ -66,8 +66,8 @@ export function Core() {
   return (
     <section className="l5-core" id="product" aria-labelledby="core-title">
       <div className="l5-wrap">
-        <Head id="core-title" eyebrow="The journal" title={<>Built like a ledger.<br />Reads like a <span className="l5-s">coach.</span></>}
-          lead="No CSVs, no spreadsheets, no copy-paste. TRADElogs keeps itself up to date and turns raw fills into decisions." />
+        <Head id="core-title" eyebrow="The AI journal" title={<>Built like a ledger.<br />Reads like a <span className="l5-s">coach.</span></>}
+          lead="No CSVs, no spreadsheets, no copy-paste. TRADElogs keeps itself up to date, and its AI turns raw fills into the next decision." />
         <div className="l5-bento">
           <Spot className="c7">
             <div className="l5-k"><span>Import</span><b>A</b></div>
@@ -227,7 +227,7 @@ export function Behaviour() {
     <section className="l5-beh" id="behaviour" aria-labelledby="leak-title">
       <div className="l5-wrap">
         <Head id="leak-title" eyebrow="Behaviour engine" title={<>Find the leak,<br /><span className="l5-s">not just</span> the loss.</>}
-          lead={<>Most journals stop at P&amp;L. TRADElogs looks at <em>how</em> you traded — timing, sizing, streaks, tilt — and shows you the pattern behind the red days.</>} />
+          lead={<>Most journals stop at P&amp;L. TRADElogs looks at <em>how</em> you traded — timing, sizing, streaks, tilt — grades each trade A to F on process, not result, and ranks your leaks by what they cost.</>} />
         <div className="l5-bento">
           <Reveal className="l5-card c7"><h3 className="l5-ct">Replay any trade on the real candles. <span>Entry, exit and notes on one chart.</span></h3><ReplayChart /></Reveal>
           <Reveal className="l5-card c5" delay={70}><h3 className="l5-ct">Behaviour score. <span>How well you followed yourself.</span></h3><ScoreCard /></Reveal>
@@ -240,19 +240,28 @@ export function Behaviour() {
 }
 
 /* ══ AI ══════════════════════════════════════════════════════════════════ */
+const ico = (d: ReactNode) => <svg viewBox="0 0 18 18" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">{d}</svg>;
+const AI_FEATURES: { b: string; s: string; k: string; icon: ReactNode }[] = [
+  { b: 'AI coach', s: 'Knows your trades, grades and journal.', k: 'CHAT', icon: ico(<path d="M3 4.5h12v7.5H7l-4 3V4.5Z" />) },
+  { b: 'Ask your journal', s: 'Plain questions, answered with a chart from your fills.', k: 'ASK', icon: ico(<><circle cx="8" cy="8" r="4.5" /><path d="m11.5 11.5 3.5 3.5" /></>) },
+  { b: 'SignalX levels', s: 'Bias, levels and scenarios for any symbol, on your chart.', k: 'LEVELS', icon: ico(<><path d="M2.5 13.5 6.5 9l3 2.5 6-7" /><path d="M2.5 4.5h4M11.5 15h4" /></>) },
+  { b: 'AI news ranking', s: 'Headlines scored for what moves the markets you trade.', k: 'NEWS', icon: ico(<><rect x="2.5" y="3" width="13" height="12" rx="2.5" /><path d="M5.5 7h7M5.5 10h4" /></>) },
+  { b: 'Macro regime', s: 'Growth and inflation regime, with the drivers behind it.', k: 'MACRO', icon: ico(<><path d="M9 2.5v13M2.5 9h13" /><circle cx="12" cy="6" r="1.5" /></>) },
+];
+
 export function Ai() {
   return (
     <section className="l5-ai" id="ai" aria-labelledby="ai-title">
       <OrbCanvas className="l5-orb" />
       <div className="l5-wrap l5-two">
         <Reveal>
-          <p className="l5-eyebrow">AI coach · SignalX</p>
+          <p className="l5-eyebrow">TRADElogs AI</p>
           <h2 className="l5-h2" id="ai-title">Ask your own<br /><span className="l5-s">history.</span></h2>
-          <p className="l5-lead">An AI that has read every trade you’ve taken — and a technical analyst for any chart you’re about to take.</p>
+          <p className="l5-lead">An AI coach that knows every trade you’ve taken — and AI that reads the market around the next one.</p>
           <ul className="l5-ai-list">
-            <li><i aria-hidden><svg viewBox="0 0 18 18" width="18" height="18" fill="none"><path d="M3 4.5h12v7.5H7l-4 3V4.5Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" /></svg></i><div><b>AI coach</b><span>Questions answered from your real fills.</span></div><small>CHAT</small></li>
-            <li><i aria-hidden><svg viewBox="0 0 18 18" width="18" height="18" fill="none"><path d="M2.5 13.5 6.5 9l3 2.5 6-7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /><circle cx="15.5" cy="4.5" r="1.5" fill="currentColor" /></svg></i><div><b>SignalX</b><span>Bias, levels and scenarios for any symbol.</span></div><small>NEW</small></li>
-            <li><i aria-hidden><svg viewBox="0 0 18 18" width="18" height="18" fill="none"><rect x="2.5" y="3" width="13" height="12" rx="2.5" stroke="currentColor" strokeWidth="1.5" /><path d="M5.5 7h7M5.5 10h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg></i><div><b>Weekly review</b><span>A short note every Saturday, written for you.</span></div><small>EMAIL</small></li>
+            {AI_FEATURES.map(f => (
+              <li key={f.b}><i aria-hidden>{f.icon}</i><div><b>{f.b}</b><span>{f.s}</span></div><small>{f.k}</small></li>
+            ))}
           </ul>
         </Reveal>
         <Reveal delay={100}>
@@ -382,7 +391,7 @@ export function Steps() {
   const S = [
     { n: '01', big: <>90<span className="l5-s">s</span></>, h: 'Connect MT5', p: 'Add your account with the read-only investor password. We see trades, never place them.' },
     { n: '02', big: 'Auto', h: 'Every fill, journaled', p: 'History backfills instantly. New trades land as they close — fees, swaps and all.' },
-    { n: '03', big: <span className="l5-s">Sat</span>, h: 'Your review arrives', p: 'Patterns, leaks and the one habit to fix, written from your own numbers.', dk: true },
+    { n: '03', big: <span className="l5-s">AI</span>, h: 'Your AI reads it', p: 'Grades, leaks ranked in dollars and the one habit to fix, written from your own numbers.', dk: true },
   ];
   return (
     <section className="l5-steps" id="how" aria-labelledby="how-title">
@@ -429,6 +438,7 @@ const FAQS = [
   { q: 'Which brokers are supported?', a: <>Any broker that offers MetaTrader&nbsp;5 — XM, Exness, Vantage, Elefin, Xellion and hundreds more. You only need your MT5 login, investor password and your broker&rsquo;s server name.</> },
   { q: 'Is it really free?', a: <>Yes. TRADElogs is free while we&rsquo;re getting started, and you don&rsquo;t need a card to sign up.</> },
   { q: 'How is my data stored?', a: <>Your investor password is encrypted (AES-256-GCM) so we can keep syncing, and it can only read your account — never trade or withdraw. Disconnecting a broker from the Brokers page deletes its synced data. Details are in our <a href="/privacy">Privacy policy</a>.</> },
+  { q: 'What does the AI actually do?', a: <>It works from the same trades and journal you see in TRADElogs. The coach and &ldquo;Ask your journal&rdquo; answer questions about your history; grades and leaks follow fixed rules explained on each page; SignalX gives bias and levels for a chart. It can&rsquo;t place trades.</> },
   { q: 'Do I need to export CSVs?', a: <>Never. Once your account is connected, your history backfills automatically and new trades appear as they close.</> },
   { q: 'Can I test a strategy without risking money?', a: <>Yes. Describe it or build it from rules, backtest it on years of candles, then run it on paper with live prices and simulated fills for as long as you like.</> },
 ];
@@ -478,8 +488,8 @@ export function Footer() {
     <footer className="l5-footer">
       <div className="l5-wrap">
         <div className="l5-fg">
-          <div><Wordmark /><p>The trading journal that reads your MT5 history and tells you what to fix.</p></div>
-          <nav aria-label="Product"><h3>Product</h3><ul><li><a href="#product">Features</a></li><li><a href="#behaviour">Behaviour engine</a></li><li><a href="#review">Weekly review</a></li><li><a href="#markets">Markets</a></li><li><a href="#strategies">Strategies</a></li><li><a href="#options">Options</a></li><li><a href="#how">How it works</a></li></ul></nav>
+          <div><Wordmark /><p>The AI-powered trading journal that reads your MT5 history and tells you what to fix.</p></div>
+          <nav aria-label="Product"><h3>Product</h3><ul><li><a href="#product">Features</a></li><li><a href="#behaviour">Behaviour engine</a></li><li><a href="#ai">TRADElogs AI</a></li><li><a href="#review">Weekly review</a></li><li><a href="#markets">Markets</a></li><li><a href="#strategies">Strategies</a></li><li><a href="#options">Options</a></li><li><a href="#how">How it works</a></li></ul></nav>
           <nav aria-label="App"><h3>App</h3><ul><li><a href="/dashboard">Dashboard</a></li><li><a href="/trader">SignalX</a></li><li><a href="/coach">AI coach</a></li><li><a href="/markets">Markets</a></li></ul></nav>
           <nav aria-label="Account"><h3>Account</h3><ul><li><a href="/signup">Create account</a></li><li><a href="/login">Sign in</a></li>{PARTNERS_ENABLED && <li><a href="/partner">Become a partner</a></li>}<li><a href="/terms">Terms</a></li><li><a href="/privacy">Privacy</a></li></ul></nav>
         </div>

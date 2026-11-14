@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: 'TRADElogs',
     short_name: 'TRADElogs',
-    description: 'Trading journal, strategies and copy trading.',
+    description: 'The AI-powered trading journal for MetaTrader 5, with strategies and copy trading.',
     id: '/dashboard',
     start_url: '/dashboard?source=pwa',
     scope: '/',

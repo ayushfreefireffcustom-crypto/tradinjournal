@@ -35,14 +35,14 @@ export default function Hero() {
 
       <div className="l5-wrap l5-hero-c">
         <span className="l5-pill"><b>MT5</b>Read-only sync with every MetaTrader 5 broker</span>
-        <h1 id="hero-title">Your trades know.<br /><span className="l5-s l5-shine">Now</span> you will too.</h1>
-        <p className="l5-hero-sub">Connect MetaTrader&nbsp;5 with a read-only login. Every fill is journaled, every habit measured — and every Saturday, one thing to fix.</p>
+        <h1 id="hero-title">The <span className="l5-nw">AI-powered</span><br />trading <span className="l5-s l5-shine">journal.</span></h1>
+        <p className="l5-hero-sub">Connect MetaTrader&nbsp;5 with a read-only login. Every trade is journaled and graded on process, your leaks are ranked in dollars, and an AI coach that knows your trades tells you what to fix.</p>
         <div className="l5-hero-ctas">
           <StartButton testId="hero-start">Start journaling free</StartButton>
           <a href="#product" className="l5-btn l5-btn--beam">See the product</a>
         </div>
         <ul className="l5-hero-meta">
-          <li><Shield />Investor password only</li>
+          <li><Shield />Read-only investor password</li>
           <li><Clock />90-second setup</li>
           <li><Card />Free — no card</li>
         </ul>
@@ -53,7 +53,6 @@ export default function Hero() {
           <div className="l5-frame">
             <picture>
               <source media="(max-width: 640px)" srcSet="/landing/dashboard-v5-mobile.jpg" width={780} height={1688} />
-              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/landing/dashboard-v5.jpg" width={2160} height={1350} fetchPriority="high" decoding="async"
                 alt="TRADElogs dashboard: net P&L with equity curve, win rate, profit factor, expectancy, max drawdown and this week's review" />
             </picture>

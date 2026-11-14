@@ -108,7 +108,7 @@ export default function LoginPage() {
     <AuthShell variant="signin" testId="login-page" top={<>No account yet? <Link href="/signup" data-testid="login-to-signup">Create one</Link></>}>
       <form onSubmit={submit} data-testid="login-form" noValidate={false}>
         <h1 className="au-t">Sign in</h1>
-        <p className="au-lead">Welcome back to your trading journal.</p>
+        <p className="au-lead">Welcome back to your AI trading journal.</p>
         <div className="au-gbtn-wrap"><GoogleButton label="Continue with Google" /></div>
         <div className="au-sep">or with email</div>
         <div className="au-stack">

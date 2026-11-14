@@ -8,18 +8,21 @@ import { Ai, Behaviour, Core, Cta, Facts, Faq, Footer, Partners, Review, Securit
 import { Copy, Markets, Options, Strategies } from '@/components/landing-v5/features';
 
 
+import { SITE_DESCRIPTION, SITE_OG_IMAGE, SITE_TITLE, SITE_URL } from '@/lib/site-meta';
+
 export const metadata: Metadata = {
-  title: 'TRADElogs — The trading journal that tells you what to fix',
-  description:
-    'Connect MetaTrader 5 with a read-only login. TRADElogs journals every fill, measures every habit, and every Saturday tells you the one thing to fix.',
+  title: SITE_TITLE,
+  description: SITE_DESCRIPTION,
+  alternates: { canonical: SITE_URL },
   openGraph: {
-    title: 'TRADElogs — Your trades know. Now you will too.',
-    description: 'The MT5 trading journal with a behaviour engine, an AI coach and a weekly review that tells you the one thing to fix.',
-    url: 'https://www.tradelogs.com',
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    url: SITE_URL,
     siteName: 'TRADElogs',
-    images: [{ url: '/landing/dashboard-v5.jpg', width: 2160, height: 1350, alt: 'TRADElogs dashboard' }],
+    images: [SITE_OG_IMAGE],
     type: 'website',
   },
+  twitter: { card: 'summary_large_image', title: SITE_TITLE, description: SITE_DESCRIPTION, images: [SITE_OG_IMAGE.url] },
 };
 
 export const viewport = { themeColor: '#030303' };

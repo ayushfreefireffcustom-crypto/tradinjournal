@@ -142,6 +142,7 @@
 .l5-pill { display: inline-flex; align-items: center; gap: 10px; padding: 7px 14px 7px 7px; border-radius: 99px; font-size: var(--t2); color: var(--txt-2); background: rgba(255,255,255,.04); box-shadow: inset 0 0 0 1px var(--hair-2); backdrop-filter: blur(10px); max-width: 100%; }
 .l5-pill b { font: 600 var(--t1)/1 var(--sans); letter-spacing: .08em; color: var(--on-g); padding: 6px 9px; border-radius: 99px; background: linear-gradient(180deg, #3BF09A, #06A253); box-shadow: inset 0 1px 0 rgba(255,255,255,.4); flex: none; }
 .l5-hero h1 { font-weight: 800; font-size: var(--t7); line-height: .98; letter-spacing: -.055em; margin: 30px auto 0; max-width: 1100px; }
+.l5-nw { white-space: nowrap; } /* keep "AI-powered" on one line */
 
 .l5-shine { background: linear-gradient(100deg, #E8FFF2 10%, #2EE58A 45%, #C9FFE3 60%, #08C465 90%); background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: l5-shimmer 6s ease-in-out infinite; }
 @keyframes l5-shimmer { 0%, 100% { background-position: 0 0; } 50% { background-position: 100% 0; } }
