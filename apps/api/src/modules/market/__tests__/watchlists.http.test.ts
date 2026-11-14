@@ -2,6 +2,10 @@
 //   TRADING_TEST_DB=postgresql://tj@localhost:5444/tradinjournal_test pnpm --filter @tradinjournal/api test
 import type { AddressInfo } from 'node:net';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+
+// Each test boots the whole app on a fresh module graph; on a busy machine the
+// cold import alone can pass the 5s default.
+vi.setConfig({ testTimeout: 60_000, hookTimeout: 60_000 });
 import { cleanWatchlistSymbols as cleanSymbols } from '@tradinjournal/contracts';
 
 const DB = process.env.TRADING_TEST_DB;

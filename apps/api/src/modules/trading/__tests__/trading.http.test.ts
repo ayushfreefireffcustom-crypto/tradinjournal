@@ -4,6 +4,10 @@
 import type { AddressInfo } from 'node:net';
 import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
 
+// Each test boots the whole app on a fresh module graph; on a busy machine the
+// cold import alone can pass the 5s default.
+vi.setConfig({ testTimeout: 60_000, hookTimeout: 60_000 });
+
 const DB = process.env.TRADING_TEST_DB;
 const local = !!DB && /localhost|127\.0\.0\.1/.test(DB);
 const tag = `dkhttp${Date.now()}`;
