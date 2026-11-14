@@ -12,7 +12,7 @@ interface BrokerDef {
 }
 
 export const BROKERS: BrokerDef[] = [
-  { key: 'elefin', label: 'Elefin', match: /elefin/i, listHint: 'Account ID and email from your Elefin partner area' },
+  { key: 'elefin', label: 'Elefin', match: /elefin/i, listHint: 'Account ID and email from your Elefin partner area (or connect your Elefin partner API key instead)' },
   { key: 'xellion', label: 'Xellion', match: /xellion/i, listHint: 'Account ID and email from your Xellion partner list' },
   { key: 'exness', label: 'Exness', match: /exness/i, listHint: 'Client account numbers from Exness Partnership › Clients' },
   { key: 'xm', label: 'XM', match: /\bxm(global|trading)?\b|xmglobal|trading point/i, listHint: 'MT5 account IDs from the XM Partners client report' },

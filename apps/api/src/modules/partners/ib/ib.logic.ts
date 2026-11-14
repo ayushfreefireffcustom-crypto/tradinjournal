@@ -71,7 +71,7 @@ function splitLine(line: string, delim: string): string[] {
  * without one it takes the first account-like cell and the first email on each line.
  */
 export function parseIbList(text: string): { rows: IbRow[]; skipped: number } {
-  const lines = text.replace(/^﻿/, '').split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  const lines = text.replace(/^\uFEFF/, '').split(/\r?\n/).map(l => l.trim()).filter(Boolean);
   if (!lines.length) return { rows: [], skipped: 0 };
   const first = lines[0]!;
   const delim = first.includes('\t') ? '\t' : first.includes(';') && !first.includes(',') ? ';' : ',';

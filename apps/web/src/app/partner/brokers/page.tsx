@@ -18,6 +18,7 @@ import EmptyState from '@/components/v6/ui/empty-state';
 import '@/styles/v6/account.css';
 import '@/styles/v6/lux.css';
 import '@/styles/v6/ib.css';
+import { ElefinSection } from '@/components/v6/account/elefin-connect';
 
 const msg = (e: unknown, f: string) => (e instanceof Error ? e.message : f);
 const METHODS: { k: IbMethod; l: string; s: string; I: typeof Plugs }[] = [
@@ -43,7 +44,8 @@ export default function PartnerBrokersPage() {
     try {
       const r = await ibApi.brokers();
       setBrokers(r.brokers); setCatalog(r.catalog); setError('');
-      if (!r.brokers.length) setAdding(true);
+      // With Elefin in the catalog its own card leads; the generic form opens on demand.
+      if (!r.brokers.length && !r.catalog.some(c => c.key === 'elefin')) setAdding(true);
     } catch (e) {
       if (e instanceof PartnerApiError && GATE_CODES.includes(e.code)) setGate(e.code as GateReason);
       else setError(msg(e, 'Could not load your brokers.'));
@@ -75,6 +77,8 @@ export default function PartnerBrokersPage() {
           {error && <div className="x-banner x-banner--err" role="alert"><span>{error}</span><button type="button" className="x-btn x-btn--sm" onClick={() => void load()}>Retry</button></div>}
           {!brokers && !error && <div className="x-skel ac-sk-320" />}
 
+          {brokers && catalog.some(c => c.key === 'elefin') && <ElefinSection onChanged={() => void load()} />}
+
           {brokers && adding && (
             <ConnectCard catalog={catalog.filter(c => !taken.has(c.key))} onCancel={brokers.length ? () => setAdding(false) : undefined}
               onDone={async b => { setAdding(false); setToast(`${b.label} connected.`); await load(); if (b.method === 'LIST') setUploadFor(b.id); }} />
@@ -87,11 +91,11 @@ export default function PartnerBrokersPage() {
                 {brokers.map(b => (
                   <BrokerHealthRow key={b.id} b={b} right={
                     <span className="ib-br-btns">
-                      {b.method !== 'LIST'
+                      {b.broker === 'elefin' && b.method === 'API' ? null : b.method !== 'LIST'
                         ? <button type="button" className="x-btn x-btn--sm" disabled={busy === b.id} onClick={() => void sync(b)}><ArrowsClockwise size={14} weight="bold" />{busy === b.id ? 'Syncing…' : 'Sync now'}</button>
                         : <button type="button" className="x-btn x-btn--sm" onClick={() => { setIntegFor(null); setUploadFor(uploadFor === b.id ? null : b.id); }} data-testid={`ib-upload-${b.broker}`}><UploadSimple size={14} weight="bold" />Upload list</button>}
                       <button type="button" className="x-btn x-btn--sm" onClick={() => { setUploadFor(null); setIntegFor(integFor === b.id ? null : b.id); }} data-testid={`ib-integ-${b.broker}`}><Plugs size={14} weight="bold" />Postback, API & reports</button>
-                      <button type="button" className="x-btn x-btn--sm x-btn--ghost" disabled={busy === b.id} onClick={() => void remove(b)} aria-label={`Disconnect ${b.label}`}><Trash size={14} weight="bold" /></button>
+                      {!(b.broker === 'elefin' && b.method === 'API') && <button type="button" className="x-btn x-btn--sm x-btn--ghost" disabled={busy === b.id} onClick={() => void remove(b)} aria-label={`Disconnect ${b.label}`}><Trash size={14} weight="bold" /></button>}
                     </span>
                   } />
                 ))}
@@ -169,10 +173,11 @@ function ConnectCard({ catalog, onDone, onCancel }: { catalog: BrokerCatalogEntr
         <span className="ib-legend">Where the list comes from</span>
         <div className="ib-methods" role="group" aria-label="List source">
           {METHODS.map(m => {
-            const off = m.k === 'API' && !entry?.methods.includes('API');
+            // Elefin's API has its own card above (paste the partner key there).
+            const off = m.k === 'API' && (!entry?.methods.includes('API') || broker === 'elefin');
             return (
               <button key={m.k} type="button" className="ib-method" aria-pressed={method === m.k} disabled={off} onClick={() => setMethod(m.k)}>
-                <m.I size={20} weight="duotone" aria-hidden /><b>{m.l}</b><small>{off ? m.s : m.k === 'API' ? 'Live from the broker' : m.s}</small>
+                <m.I size={20} weight="duotone" aria-hidden /><b>{m.l}</b><small>{off && broker === 'elefin' ? 'Use “Connect Elefin” above' : off ? m.s : m.k === 'API' ? 'Live from the broker' : m.s}</small>
               </button>
             );
           })}
@@ -260,7 +265,7 @@ function IntegrationPanel({ b, onToast, onChanged }: { b: PartnerBroker; onToast
   return (
     <div className="x-inset ib-upload" data-testid="ib-integration">
       <div className="ib-tabs-line" role="tablist">
-        {([['postback', 'Postback (real time)'], ['api', 'Broker API'], ['earnings', 'Commission report']] as [Tab, string][]).map(([k, l]) => (
+        {([['postback', 'Postback (real time)'], ...(b.broker === 'elefin' ? [] : [['api', 'Broker API']]), ['earnings', 'Commission report']] as [Tab, string][]).map(([k, l]) => (
           <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)}>{l}</button>
         ))}
       </div>

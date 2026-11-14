@@ -4,6 +4,7 @@ import { logger } from '@tradinjournal/logger';
 import { recheckPartner, syncDueSheets } from './ib.service.js';
 import { recomputeAll, recomputePartner } from './access.service.js';
 import { syncDueApis } from './integrations.service.js';
+import { syncDueElefin } from './elefin/sync.js';
 import { prisma } from '@tradinjournal/db';
 
 let running = false;
@@ -15,6 +16,8 @@ export async function runIbCycle(): Promise<{ sheets: number; clients: number } 
     const before = new Date();
     const sheets = await syncDueSheets();
     const apiPartners = await syncDueApis();
+    // Elefin partner API (also on its own 5-minute tick in scheduler.ts; the two never overlap).
+    await syncDueElefin();
     if (sheets || apiPartners.length) {
       // List syncs re-verified their partners' clients; refresh those partners' access first.
       const touched = await prisma.partnerBroker.findMany({ where: { lastSyncAt: { gte: before } }, select: { partnerId: true }, distinct: ['partnerId'] });

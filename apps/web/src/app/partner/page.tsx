@@ -18,6 +18,7 @@ import {
 } from '@/components/v6/account/partner-parts';
 import { AttentionCard, BrokerHealthRow, IbClientRows, IbFunnelCard, TradingCard } from '@/components/v6/account/ib-parts';
 import '@/styles/v6/account.css';
+import { ElefinHomeSlot } from '@/components/v6/account/elefin-connect';
 
 
 function greeting() {
@@ -63,6 +64,8 @@ export default function PartnerOverviewPage() {
 
           {o && (
             <div className={`x-page ${loading ? 'ac-refreshing' : ''}`}>
+              {/* Step 1 of partner setup: leads the page until Elefin is connected. */}
+              <ElefinHomeSlot setup={{ clicks: o.ib?.funnel.clicks ?? o.funnel.clicks, livePackages: o.ib?.packages.live ?? 0 }} />
               {o.ib ? <IbFunnelCard f={o.ib.funnel} rule={o.partner.activeRule} sub={rangeLabel(range)} /> : <Funnel f={o.funnel} rule={o.partner.activeRule} />}
               {o.ib && (
                 <div className="ib-grid3">

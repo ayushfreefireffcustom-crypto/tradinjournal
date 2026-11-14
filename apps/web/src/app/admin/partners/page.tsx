@@ -10,7 +10,7 @@ import AdminOnly from '@/components/v6/admin/admin-only';
 import { usePlatformAccess } from '@/lib/use-platform-access';
 import { useAccounts } from '@/lib/use-accounts';
 import {
-  partnerApi, type AdminPartnerRow, type PartnerStatus, type ReferrerLookup, type ReservedCode,
+  partnerApi, type AdminPartnerRow, type ReferrerLookup, type ReservedCode,
 } from '@/lib/partner-api';
 import { IClose, IPlus, ISearch } from '@/components/v6/icons';
 import { Avatar, PartnerStatusPill, day, n, pct } from '@/components/v6/account/partner-parts';

@@ -1,0 +1,136 @@
+/* Elefin partner API: the connect prompt (with a drawn render of Elefin's key screen),
+   the paste-and-test dialog and the connected card. Builds on access.css (well, window,
+   checklist) and components.css. Tokens only; type sizes from the scale. */
+
+/* ── Prompt ── */
+.v6 .ef-prompt { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 32px; align-items: center; padding: 28px; }
+.v6 .ef-prompt-l { display: grid; gap: 14px; min-width: 0; justify-items: start; }
+.v6 .ef-prompt-l > .axwin { width: 100%; }
+.v6 .ef-prompt-r { min-width: 0; }
+.v6 .ef-kicker { font-size: var(--t1); font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--dim); }
+.v6 .ef-prompt h2 { margin: 0; font-size: var(--t5); font-weight: 900; letter-spacing: -.04em; line-height: 1; }
+.v6 .ef-prompt h2 em { font-style: normal; color: var(--g-tx); }
+.v6 .ef-prompt.is-paused h2 em { color: var(--r-tx); }
+.v6 .ef-lede { margin: 0; max-width: 46ch; color: var(--mut); font-size: var(--t3); line-height: 1.55; }
+.v6 .ef-prompt-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.v6 .ef-prompt-btns .x-btn { gap: 8px; }
+.v6 .ef-later { font-size: var(--t2); color: var(--mut); justify-self: start; }
+.v6 .ef-prompt .axpath-f .x-btn { height: 30px; }
+
+/* Drawn key screen: a flat tinted well (no gradient), cropped at the bottom. */
+.v6 .ef-well { position: relative; overflow: hidden; height: 232px; border-radius: 16px; border: 1px solid var(--line); background: color-mix(in srgb, var(--g) 7%, var(--s2)); padding: 24px 24px 0; }
+.v6 .ef-win { min-height: 240px; }
+.v6 .ef-win .axwin-h { font-size: var(--t1); }
+.v6 .ef-keys { display: grid; font-size: var(--t2); }
+.v6 .ef-keys-h, .v6 .ef-keys-r { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.1fr) minmax(0, 1.3fr); gap: 10px; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+.v6 .ef-keys-h { font-size: var(--t1); color: var(--dim); text-transform: uppercase; letter-spacing: .08em; font-weight: 700; }
+.v6 .ef-keys-r b { font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.v6 .ef-keys-r.ghost { border-bottom: 0; }
+.v6 .ef-chips { display: flex; gap: 4px; flex-wrap: wrap; min-width: 0; }
+.v6 .ef-key { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 6px; min-width: 0; color: var(--mut); }
+.v6 .ef-key .axnum { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.v6 .ef-cur { right: -12px; top: 15px; animation: ax-rest 3.4s var(--ease) infinite; }
+
+/* Calm one-line reminder after "Remind me later". */
+.v6 .ef-remind { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; margin: 0; padding: 10px 14px; border-radius: var(--r-inset); background: var(--s2); font-size: var(--t2); color: var(--mut); }
+.v6 .ef-remind svg { flex: none; color: var(--tx); }
+.v6 .ef-remind .x-link { font-size: var(--t2); font-weight: 600; }
+
+/* ── Dialog ── */
+.v6 .ef-modal { display: grid; gap: 16px; min-width: 0; }
+.v6 .ef-how { display: grid; gap: 8px; padding: 14px 16px; border-radius: var(--r-inset); background: var(--s2); }
+.v6 .ef-how-h { font-size: var(--t2); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--mut); }
+.v6 .ef-steps { font-size: var(--t3); line-height: 1.5; }
+.v6 .ef-steps b { color: var(--tx); font-weight: 600; }
+.v6 .ef-ips { color: var(--tx); overflow-wrap: anywhere; }
+.v6 .ef-keyrow { display: flex; gap: 8px; align-items: center; min-width: 0; }
+.v6 .ef-keyin { flex: 1; min-width: 0; font-variant-numeric: tabular-nums; letter-spacing: .02em; }
+.v6 .ef-res { display: grid; gap: 10px; padding: 14px 16px; border-radius: var(--r-inset); background: var(--s2); border: 1px solid var(--line); min-width: 0; }
+.v6 .ef-res-h { margin: 0; font-size: var(--t3); font-weight: 600; }
+.v6 .ef-res.is-ok .ef-res-h { color: var(--g-tx); }
+.v6 .ef-res.is-bad .ef-res-h { color: var(--r-tx); }
+.v6 .ef-res.is-busy .axline { animation: ax-pulse 1s ease-in-out infinite; }
+.v6 .ef-res-rows { list-style: none; margin: 0; padding: 0; display: grid; }
+.v6 .ef-res-rows li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line); font-size: var(--t2); }
+.v6 .ef-res-rows li b { font-weight: 800; text-align: right; }
+.v6 .ef-res-rows li.is-ok svg { color: var(--g-tx); }
+.v6 .ef-res-rows li.is-bad svg, .v6 .ef-res-rows li.is-bad b { color: var(--r-tx); }
+.v6 .ef-res-rows li.is-off svg, .v6 .ef-res-rows li.is-off b { color: var(--dim); font-weight: 600; }
+.v6 .ef-res-rows .axline { width: 64px; justify-self: end; }
+.v6 .ef-ask { display: grid; gap: 4px; font-size: var(--t2); }
+.v6 .ef-ask b { font-weight: 700; }
+.v6 .ef-ask ul, .v6 .ef-notes { margin: 0; padding-left: 18px; display: grid; gap: 2px; color: var(--mut); font-size: var(--t2); }
+
+/* The dialog scrolls as a whole; keep Test / Save in reach. */
+.v6 .x-dialog:has(.ef-modal) .cp-dlg-ft { position: sticky; bottom: -24px; margin: 16px -24px -24px; padding: 14px 24px 24px; background: var(--s1); border-top: 1px solid var(--line); z-index: 1; }
+@media (max-width: 760px) {
+  .v6 .x-dialog:has(.ef-modal) .cp-dlg-ft { bottom: calc(-22px - env(safe-area-inset-bottom)); margin: 16px -18px calc(-22px - env(safe-area-inset-bottom)); padding: 12px 18px calc(16px + env(safe-area-inset-bottom)); }
+}
+
+/* ── Connected card ── */
+.v6 .ef-card { display: grid; gap: 14px; }
+.v6 .ef-card .x-ch { flex-wrap: wrap; row-gap: 6px; }
+.v6 .ef-card .x-ch h2 { margin-right: 4px; }
+.v6 .ef-strip { --n: 4; }
+.v6 .ef-strip b { font-size: var(--t4); font-weight: 900; letter-spacing: -.03em; }
+.v6 .ef-strip b small { font-size: var(--t2); font-weight: 600; color: var(--mut); letter-spacing: 0; }
+.v6 .ef-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.v6 .ef-next { font-size: var(--t2); color: var(--mut); }
+.v6 .ef-evts { list-style: none; margin: 0; padding: 0; display: grid; border-top: 1px solid var(--line); }
+.v6 .ef-evts li { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: var(--t2); color: var(--mut); }
+.v6 .ef-evts li:last-child { border-bottom: 0; }
+.v6 .ef-evts li span:last-child { color: var(--tx); overflow-wrap: anywhere; }
+.v6 .ef-evts li.is-bad span:last-child { color: var(--r-tx); }
+.v6 .ef-err { justify-content: space-between; }
+.v6 .ef-spin { animation: x-spin 1.2s linear infinite; }
+.v6 .ef-sk { height: 232px; }
+
+@media (max-width: 980px) {
+  .v6 .ef-prompt { grid-template-columns: 1fr; gap: 22px; }
+  /* Partner home: the checklist carries it once stacked; the drawing stays on Brokers. */
+  .v6 .ef-prompt.has-setup .ef-prompt-r { display: none; }
+}
+@media (max-width: 760px) {
+  .v6 .ef-strip { --n: 2; }
+  .v6 .ef-strip > div:nth-child(3)::before { display: none; }
+  .v6 .ef-strip > div:nth-child(n+3) { border-top: 1px solid var(--line); }
+}
+@media (max-width: 560px) {
+  .v6 .ef-prompt { padding: 20px 16px; }
+  .v6 .ef-prompt h2 { font-size: var(--t4); letter-spacing: -.03em; }
+  .v6 .ef-well { height: 190px; padding: 16px 14px 0; }
+  .v6 .ef-keys-h, .v6 .ef-keys-r { grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); }
+  .v6 .ef-keys-h span:nth-child(2), .v6 .ef-keys-r .ef-chips, .v6 .ef-keys-r.ghost i:nth-child(2) { display: none; }
+  .v6 .ef-evts li { grid-template-columns: 72px minmax(0, 1fr); }
+  .v6 .ef-strip b.ef-when { font-size: var(--t3); font-weight: 800; letter-spacing: -.01em; white-space: normal; }
+  .v6 .ef-foot .ib-br-btns { justify-content: flex-start; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .v6 .ef-cur, .v6 .ef-spin, .v6 .ef-res.is-busy .axline { animation: none !important; }
+}
+
+/* ── Admin: every partner's connection ── */
+.v6 .ef-adm { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.v6 .ef-adm li { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1.2fr) 90px 90px 90px 120px; align-items: center; gap: 14px; padding: 14px 16px; border-radius: var(--r-inset); background: var(--s2); }
+.v6 .ef-adm-who { display: grid; gap: 3px; min-width: 0; }
+.v6 .ef-adm-who a { color: var(--tx); text-decoration: none; }
+.v6 .ef-adm-who b { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+.v6 .ef-adm-who small { font-size: var(--t2); color: var(--mut); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.v6 .ef-adm-st { display: grid; gap: 4px; justify-items: start; min-width: 0; }
+.v6 .ef-adm-err { font-size: var(--t2); color: var(--r-tx); overflow-wrap: anywhere; }
+@media (max-width: 1100px) {
+  .v6 .ef-adm li { grid-template-columns: minmax(0, 1fr) repeat(3, 80px); }
+  .v6 .ef-adm-st, .v6 .ef-adm .ib-br-btns { grid-column: 1 / -1; }
+  .v6 .ef-adm .ib-br-btns { justify-content: flex-start; }
+}
+@media (max-width: 560px) {
+  .v6 .ef-adm li { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .v6 .ef-adm-who { grid-column: 1 / -1; }
+}
+
+/* Five admin partner tabs (Elefin API added): scroll sideways on phones instead of clipping. */
+@media (max-width: 760px) {
+  .v6 .ax-admtabs { display: flex; max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+  .v6 .ax-admtabs::-webkit-scrollbar { display: none; }
+  .v6 .ax-admtabs a { flex: none; }
+}

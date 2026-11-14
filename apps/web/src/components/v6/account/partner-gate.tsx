@@ -54,7 +54,7 @@ export default function PartnerGate({ reason, onApplied }: { reason: GateReason;
       <section className="x-card x-empty ac-gate" data-testid="partner-gate-pending">
         <span className="x-ic"><IClock /></span>
         <b>Your application is in review</b>
-        <p>We check every partner by hand. Your link and dashboard appear here as soon as you&rsquo;re approved.</p>
+        <p>We check every partner by hand. Once you&rsquo;re approved, you start by connecting your Elefin partner key, so your clients verify on their own.</p>
       </section>
     );
   }

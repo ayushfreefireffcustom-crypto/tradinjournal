@@ -26,6 +26,7 @@ import PartnerAdminTabs from '@/components/v6/admin/partner-tabs';
 import { setViewAs } from '@/lib/view-as';
 import { useRouter } from 'next/navigation';
 import { Eye } from '@phosphor-icons/react';
+import { ElefinAdminCard } from '@/components/v6/account/elefin-connect';
 
 const PAGE = 10;
 const msg = (e: unknown, f: string) => (e instanceof Error ? e.message : f);
@@ -127,6 +128,7 @@ export default function AdminPartnerPage({ params }: { params: Promise<{ id: str
                 <AttentionCard a={d.ib.needsAttention} />
               </div>
             )}
+            {d.ib && p.status !== 'PENDING' && p.status !== 'NEEDS_INFO' && p.status !== 'REJECTED' && <ElefinAdminCard partnerId={id} onToast={setToast} />}
             {d.ib && (
               <section className="x-card" data-testid="admin-partner-brokers">
                 <div className="x-ch"><h2>Broker connections</h2><span className="x-sub"><span className="m">{d.ib.brokers.length}</span></span>

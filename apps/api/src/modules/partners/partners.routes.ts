@@ -20,6 +20,8 @@ import {
 import * as c from './partners.controller.js';
 import { viewAsPartner } from './view-as.js';
 import * as ib from './ib/ib.controller.js';
+import * as elefin from './ib/elefin/elefin.controller.js';
+import { elefinConnectSchema, elefinTestSchema } from '@tradinjournal/contracts';
 
 // Public: the referral link itself and the signup-form code check.
 export const referralPublicRouter: IRouter = Router();
@@ -39,6 +41,12 @@ partnerRouter.post('/channels', validateBody(createPartnerChannelSchema), c.hand
 partnerRouter.delete('/channels/:channelId', c.handleArchiveChannel);
 partnerRouter.post('/codes', validateBody(reservePartnerCodeSchema), c.handleReserveCode);
 partnerRouter.delete('/codes/:codeId', c.handleReleaseCode);
+// Elefin partner API (before /brokers/:id so "elefin" isn't read as an id).
+partnerRouter.get('/brokers/elefin', elefin.handleStatus);
+partnerRouter.post('/brokers/elefin/test', validateBody(elefinTestSchema), elefin.handleTest);
+partnerRouter.post('/brokers/elefin/connect', validateBody(elefinConnectSchema), elefin.handleConnect);
+partnerRouter.post('/brokers/elefin/sync', elefin.handleSyncNow);
+partnerRouter.delete('/brokers/elefin', elefin.handleDisconnect);
 partnerRouter.get('/brokers', ib.handleBrokers);
 partnerRouter.post('/brokers', validateBody(partnerBrokerUpsertSchema), ib.handleUpsertBroker);
 partnerRouter.delete('/brokers/:id', ib.handleRemoveBroker);
@@ -95,6 +103,9 @@ adminPartnersRouter.post('/partners/:id/status', validateBody(adminPartnerStatus
 adminPartnersRouter.post('/partners/:id/notes', validateBody(adminPartnerNoteSchema), c.handleAdminNote);
 adminPartnersRouter.delete('/partners/:id/codes/:codeId', c.handleAdminRevokeCode);
 adminPartnersRouter.post('/partners/:id/recheck', ib.handleAdminRecheck);
+adminPartnersRouter.get('/partners/:id/elefin', elefin.handleAdminStatus);
+adminPartnersRouter.post('/partners/:id/elefin/sync', elefin.handleAdminSync);
+adminPartnersRouter.get('/partner-program/elefin', elefin.handleAdminList);
 adminPartnersRouter.post('/partners/:id/view-as', c.handleAdminViewAs);
 adminPartnersRouter.get('/partner-program/summary', ib.handleProgramSummary);
 adminPartnersRouter.get('/partner-program', validateQuery(programRangeQuerySchema), ib.handleProgram);

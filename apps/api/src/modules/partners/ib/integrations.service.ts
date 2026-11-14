@@ -16,6 +16,7 @@ import { dig, parseEarnings, parsePostback, type IbRow } from './ib.logic.js';
 import { getProgramSettings } from './settings.js';
 import { logEvent } from './events.js';
 import { applyRows, recheckLogin } from './ib.service.js';
+import { elefinConfigOf } from './elefin/store.js';
 
 const DAY_MS = 86_400_000;
 type Actor = { id: string; email: string } | null;
@@ -48,7 +49,8 @@ export async function integration(partnerId: string, id: string): Promise<Broker
   ]);
   return {
     postbackUrl: postbackUrl(b.postbackToken!), postbackParams: POSTBACK_PARAMS,
-    api: { config: (b.apiConfig as IbApiConfig | null) ?? null, hasSecret: !!b.apiKey, allowedHosts: settings.ibApiHosts },
+    // An Elefin partner-API connection has its own screen; the generic form doesn't apply to it.
+    api: { config: elefinConfigOf(b) ? null : (b.apiConfig as IbApiConfig | null) ?? null, hasSecret: !!b.apiKey, allowedHosts: settings.ibApiHosts },
     events: events.map(e => ({ id: e.id, at: e.createdAt.toISOString(), kind: e.kind, accountId: e.accountId, status: e.status, error: e.error })),
   };
 }
@@ -175,6 +177,11 @@ async function apiFetch(url: string, init: RequestInit): Promise<unknown> {
 export async function syncApi(id: string, actor: Actor = null): Promise<{ ok: boolean; accounts: number; error?: string }> {
   const b = await prisma.partnerBroker.findUnique({ where: { id } });
   if (!b || b.method !== 'API' || !b.apiConfig || !b.apiKey) return { ok: false, accounts: 0, error: 'Not configured' };
+  if (elefinConfigOf(b)) {
+    const { syncElefin } = await import('./elefin/sync.js');
+    const r = await syncElefin(id, { actor });
+    return { ok: r.ok, accounts: r.accounts, ...(r.error ? { error: r.error } : {}) };
+  }
   const cfg = b.apiConfig as unknown as IbApiConfig;
   const { ibApiHosts } = await getProgramSettings();
   try {
@@ -232,8 +239,10 @@ export async function syncApi(id: string, actor: Actor = null): Promise<{ ok: bo
 export async function syncDueApis(now = Date.now()): Promise<string[]> {
   const due = await prisma.partnerBroker.findMany({
     where: { method: 'API', partner: { status: 'ACTIVE' }, OR: [{ lastSyncAt: null }, { lastSyncAt: { lt: new Date(now - 60 * 60_000) } }] },
-    select: { id: true, partnerId: true }, take: 20,
+    select: { id: true, partnerId: true, apiConfig: true }, take: 40,
   });
-  for (const b of due) await syncApi(b.id);
-  return [...new Set(due.map(d => d.partnerId))];
+  // Elefin connections run on their own schedule (elefin/sync.ts syncDueElefin).
+  const generic = due.filter(b => !elefinConfigOf(b)).slice(0, 20);
+  for (const b of generic) await syncApi(b.id);
+  return [...new Set(generic.map(d => d.partnerId))];
 }

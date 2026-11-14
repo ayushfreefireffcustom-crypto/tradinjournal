@@ -96,7 +96,7 @@ export function BrokerHealthRow({ b, right }: { b: PartnerBroker; right?: ReactN
       <span className="ib-br-mk" aria-hidden>{b.label.slice(0, 2).toUpperCase()}</span>
       <span className="ib-br-who">
         <b>{b.label}{b.ibId && <small className="m"> · {b.ibId}</small>}</b>
-        <small><i className={`x-dot ${tone}`} />{b.status === 'OK' ? `Synced ${timeAgo(b.lastSyncAt)}` : b.status === 'ERROR' ? b.lastError ?? 'Sync failed' : 'Waiting for the first list'} · {b.method === 'SHEET' ? 'Google Sheet' : b.method === 'API' ? 'Broker API' : 'Uploaded list'}</small>
+        <small><i className={`x-dot ${tone}`} />{b.status === 'OK' ? `Synced ${timeAgo(b.lastSyncAt)}` : b.status === 'ERROR' ? b.lastError ?? 'Sync failed' : 'Waiting for the first list'} · {b.method === 'SHEET' ? 'Google Sheet' : b.method === 'API' ? (b.broker === 'elefin' ? 'Elefin partner API' : 'Broker API') : 'Uploaded list'}</small>
       </span>
       <span className="ib-br-n"><b className="m">{n(b.accountCount)}</b><small>{b.accountCount === 1 ? 'account' : 'accounts'} listed</small></span>
       <span className="ib-br-n"><b className="m">{n(b.verified)}<span className="x-dim">/{n(b.clientAccounts)}</span></b><small>clients verified</small></span>

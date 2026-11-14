@@ -14,7 +14,7 @@ const { combine, timestamp, json, colorize, printf, errors } = winston.format;
 const MASK = '[redacted]';
 
 /** Field names whose values are never written, at any depth. */
-const SECRET_FIELD = /^(password|passwd|investorpassword|secret|apisecret|api_secret|apikey|api_key|api-key|apikeyenc|apisecretenc|passphrase|passphraseenc|secrethash|token|accesstoken|refreshtoken|idtoken|bottoken|authorization|cookie|set-cookie|signature|privatekey|private_key|credentials|creds|otp|code_verifier)$/i;
+const SECRET_FIELD = /^(password|passwd|investorpassword|secret|apisecret|api_secret|apikey|api_key|api-key|apikeyenc|apisecretenc|passphrase|passphraseenc|secrethash|token|accesstoken|refreshtoken|idtoken|bottoken|authorization|cookie|set-cookie|signature|privatekey|private_key|credentials|creds|otp|code_verifier|elefinkey|partnerapikey|x-api-secret)$/i;
 
 /** Secret-shaped text, masked wherever it appears in a string. */
 const SECRET_TEXT: Array<[RegExp, string]> = [
@@ -24,6 +24,7 @@ const SECRET_TEXT: Array<[RegExp, string]> = [
   [/\bbot\d{5,}:[A-Za-z0-9_-]{20,}/g, `bot${MASK}`], // Telegram bot token in a URL
   [/(\/hooks\/tv\/)[A-Za-z0-9_-]{10,64}/g, `$1${MASK}`], // TradingView webhook URL token
   [/\benc:v1:[A-Za-z0-9._-]+/g, `enc:v1:${MASK}`], // encrypted credential
+  [/\b(X-API-Secret|X-API-Key)(\s*[:=]\s*)[^\s,;"']{6,}/gi, `$1$2${MASK}`], // Elefin partner API header pair
   [/\b([a-z][a-z0-9+.-]*:\/\/[^:\s/@]+:)[^@\s]+@/gi, `$1${MASK}@`], // password in a connection URL
   // `password: "…"`, `"apiSecret":"…"`, `token='…'` inside messages (Prisma errors print their arguments).
   [/\b(password|apiSecret|api_secret|apiKey|api_key|secret|passphrase|token|authorization|signature|apiKeyEnc|apiSecretEnc)(["']?\s*[:=]\s*)(["'])(?:(?!\3).){1,500}\3/gi, `$1$2$3${MASK}$3`],
