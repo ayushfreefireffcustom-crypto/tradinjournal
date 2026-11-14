@@ -124,22 +124,33 @@ export const sameTz = (a: ServerTz | null | undefined, b: ServerTz | null | unde
 
 export interface TzState {
   tz: ServerTz | null;
-  /** Last trusted observation, kept to confirm a contradiction before switching models. */
+  /** The latest reading, and when the current run of identical readings began (epoch ms). */
   lastObservedMin: number | null;
+  lastObservedAt: number | null;
 }
 
 /**
- * Fold one observation into an account's model. A first observation sets the
- * model; one that contradicts the model only replaces it once seen twice in a
- * row, so a single odd quote can't rewrite an account's history.
+ * A reading only counts once repeated this long after the run began. A live
+ * clock gives the same reading minutes later; a stale quote (e.g. Friday's close
+ * coming in after a weekend login) drifts with real time, and the bridge's
+ * ±2-minute acceptance window can't hold the same value across 5 minutes.
+ */
+export const CONFIRM_AFTER_MS = 5 * 60_000;
+
+/**
+ * Fold one observation into an account's model. Setting the first model or
+ * replacing one both need a confirmed reading (same value, ≥ CONFIRM_AFTER_MS
+ * apart), so one odd quote can never rewrite an account's history.
  */
 export function updateServerTz(state: TzState, observedMin: number | null, utcMs: number): TzState & { changed: boolean } {
   if (observedMin == null) return { ...state, changed: false };
-  const { tz, lastObservedMin } = state;
-  if (tz && serverOffsetAt(tz, utcMs) === observedMin) return { tz, lastObservedMin: observedMin, changed: false };
-  if (tz && lastObservedMin !== observedMin) return { tz, lastObservedMin: observedMin, changed: false };
-  const next = candidateZones(observedMin, utcMs).find(c => !sameTz(c, tz))!;
-  return { tz: next, lastObservedMin: observedMin, changed: true };
+  const { tz, lastObservedMin, lastObservedAt } = state;
+  const sameRun = lastObservedMin === observedMin && lastObservedAt != null && lastObservedAt <= utcMs;
+  const next: TzState = { tz, lastObservedMin: observedMin, lastObservedAt: sameRun ? lastObservedAt : utcMs };
+  if (tz && serverOffsetAt(tz, utcMs) === observedMin) return { ...next, changed: false };
+  if (!sameRun || utcMs - lastObservedAt! < CONFIRM_AFTER_MS) return { ...next, changed: false };
+  const pick = candidateZones(observedMin, utcMs).find(c => !sameTz(c, tz))!;
+  return { ...next, tz: pick, changed: true };
 }
 
 /** Stored columns → model. */

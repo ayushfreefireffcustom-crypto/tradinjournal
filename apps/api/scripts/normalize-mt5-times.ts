@@ -72,7 +72,7 @@ async function main() {
   for (const a of accounts) {
     const tz = tzOverride ?? tzOf(a);
     const r = await report(a.id, tz);
-    const seen = a.serverOffsetMin != null ? `last seen ${hours(a.serverOffsetMin)} at ${a.serverOffsetAt?.toISOString()}` : 'never observed';
+    const seen = a.serverOffsetMin != null ? `reading ${hours(a.serverOffsetMin)} since ${a.serverOffsetAt?.toISOString()}` : 'never observed';
     console.log(`\n${a.server} #${a.mt5Login} (${a.id})`);
     console.log(`  model: ${tz ? formatTz(tz) : 'none'} (${seen})`);
     console.log(`  rows: ${r.rows}, raw: ${r.raw}, raw rows stored ahead of insert time: ${r.aheadNow} (max ${hours(r.maxAheadMin)})`);

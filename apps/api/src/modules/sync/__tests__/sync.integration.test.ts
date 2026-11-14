@@ -196,7 +196,8 @@ describe.skipIf(!local)('trade sync (integration)', () => {
     // A GMT+2/+3 "New York close" server: wall-clock deal times as the bridge sends them.
     const wall = (local: string) => Date.parse(`${local}Z`);
     const nowUtc = Date.parse('2026-11-14T12:00:00Z') / 1000;
-    const liveClock = (offsetH: number) => ({ serverTime: nowUtc + offsetH * 3600 - 1, utcNow: nowUtc });
+    // A live clock read `atMin` minutes after nowUtc.
+    const liveClock = (offsetH: number, atMin = 0) => ({ serverTime: nowUtc + atMin * 60 + offsetH * 3600 - 1, utcNow: nowUtc + atMin * 60 });
     let tzAccount = '';
     const acct = () => db.brokerAccount.findUniqueOrThrow({ where: { id: tzAccount } });
     const times = async () => (await db.execution.findMany({ where: { brokerAccountId: tzAccount }, orderBy: { dealTicket: 'asc' }, select: { dealTime: true, serverOffsetMin: true } }))
@@ -217,7 +218,11 @@ describe.skipIf(!local)('trade sync (integration)', () => {
       bridge.clock = liveClock(2);
       expect(await sync.syncAccount(tzAccount, { toUtc: false })).toMatchObject({ status: 'synced', added: 2, normalized: 0 });
       expect(await times()).toEqual([['2026-07-15T12:00:00.000Z', null], ['2026-07-15T13:00:00.000Z', null]]);
+      expect(await acct()).toMatchObject({ serverTimeZone: null, serverOffsetMin: 120 }); // one reading: not trusted yet
+      bridge.clock = liveClock(2, 6);
+      await sync.syncAccount(tzAccount, { toUtc: false });
       expect(await acct()).toMatchObject({ serverTimeZone: 'America/New_York', serverTimeShiftMin: 420, serverOffsetMin: 120 });
+      expect((await acct()).serverOffsetAt!.getTime()).toBe(nowUtc * 1000); // when the run of readings began
     });
 
     it('with conversion on, stores new deals as UTC and converts the stored ones (DST per date)', async () => {
@@ -259,9 +264,12 @@ describe.skipIf(!local)('trade sync (integration)', () => {
 
     it('a model correction (seen twice) re-converts every row from its recovered wall clock', async () => {
       // The server turns out to be a fixed GMT+3: the November observations say +3.
-      bridge.clock = liveClock(3);
+      bridge.clock = liveClock(3, 30);
       expect(await sync.syncAccount(tzAccount, { toUtc: true })).toMatchObject({ normalized: 0 }); // first sighting: wait
       expect((await acct()).serverTimeZone).toBe('America/New_York');
+      bridge.clock = liveClock(3, 32);
+      expect(await sync.syncAccount(tzAccount, { toUtc: true })).toMatchObject({ normalized: 0 }); // too soon to confirm
+      bridge.clock = liveClock(3, 36);
       const r = await sync.syncAccount(tzAccount, { toUtc: true });
       expect(r).toMatchObject({ normalized: 2 }); // the two winter rows move; summer ones were already +3
       expect(await acct()).toMatchObject({ serverTimeZone: 'UTC', serverTimeShiftMin: 180 });

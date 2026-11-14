@@ -81,7 +81,10 @@ export async function syncAccount(
     // Keep the server clock model current (detected even while conversion is off).
     const observed = observeOffset(clock);
     const clockAt = clock ? clock.utcNow * 1000 : now().getTime();
-    const model = updateServerTz({ tz: tzOf(account), lastObservedMin: account.serverOffsetMin }, observed, clockAt);
+    const model = updateServerTz(
+      { tz: tzOf(account), lastObservedMin: account.serverOffsetMin, lastObservedAt: account.serverOffsetAt?.getTime() ?? null },
+      observed, clockAt,
+    );
     if (model.changed) logger.info('[sync] server clock model', { accountId, server: account.server, tz: formatTz(model.tz!), observedMin: observed, was: account.serverTimeZone });
     const tz = toUtc ? model.tz : null;
 
@@ -108,7 +111,7 @@ export async function syncAccount(
       data: {
         lastSyncAt: now(), lastSyncError: null, status: 'ACTIVE', syncLockedUntil: null, syncRetryAt: null, lastDealAt: newest,
         ...(model.tz ? { serverTimeZone: model.tz.zone, serverTimeShiftMin: model.tz.shiftMin } : {}),
-        ...(observed != null ? { serverOffsetMin: observed, serverOffsetAt: new Date(clockAt) } : {}),
+        ...(observed != null ? { serverOffsetMin: observed, serverOffsetAt: new Date(model.lastObservedAt!) } : {}),
         ...(added > 0 || normalized > 0 ? { dataVersion: { increment: 1 } } : {}),
       },
     });

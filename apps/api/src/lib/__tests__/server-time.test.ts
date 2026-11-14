@@ -10,6 +10,7 @@ const ms = (iso: string) => Date.parse(iso);
 const s = (iso: string) => ms(iso) / 1000;
 /** A server wall-clock reading written the way the bridge sends it (as if it were UTC). */
 const wall = (local: string) => ms(`${local}Z`);
+const DAY = 86_400_000;
 
 describe('server clock model', () => {
   it('reads zone offsets including DST', () => {
@@ -78,24 +79,42 @@ describe('observeOffset (bridge clock reading)', () => {
 describe('updateServerTz', () => {
   const nov = ms('2026-11-14T12:00:00Z');
   const lateOct = ms('2026-10-28T12:00:00Z');
+  const MIN = 60_000;
+  const none = { tz: null, lastObservedMin: null, lastObservedAt: null };
 
-  it('a first observation picks the most likely model', () => {
-    expect(updateServerTz({ tz: null, lastObservedMin: null }, 120, nov)).toEqual({ tz: NY_CLOSE, lastObservedMin: 120, changed: true });
+  it('a first reading is only adopted once repeated at least 5 minutes later', () => {
+    const first = updateServerTz(none, 120, nov);
+    expect(first).toEqual({ tz: null, lastObservedMin: 120, lastObservedAt: nov, changed: false });
+    expect(updateServerTz(first, 120, nov + 2 * MIN)).toMatchObject({ tz: null, lastObservedAt: nov, changed: false }); // too soon
+    expect(updateServerTz(first, 120, nov + 5 * MIN)).toEqual({ tz: NY_CLOSE, lastObservedMin: 120, lastObservedAt: nov, changed: true });
     expect(candidateZones(180, nov)).toEqual([{ zone: 'UTC', shiftMin: 180 }]); // +3 in November: fixed GMT+3
-    expect(updateServerTz({ tz: null, lastObservedMin: null }, 0, nov).tz).toEqual({ zone: 'UTC', shiftMin: 0 });
+    expect(updateServerTz({ tz: null, lastObservedMin: 0, lastObservedAt: nov }, 0, nov + 6 * MIN).tz).toEqual({ zone: 'UTC', shiftMin: 0 });
+  });
+
+  it('a stale quote cannot confirm itself: its reading drifts as real time passes', () => {
+    // Friday's close arriving after a weekend login, as seen live on the Elefin bridge (~−11.68h).
+    const fridayClose = s('2026-11-14T00:00:00Z') + 2 * 3600; // server wall clock, GMT+2
+    const read = (atMs: number) => observeOffset({ serverTime: fridayClose - 60, utcNow: atMs / 1000 });
+    let state = { ...none } as Parameters<typeof updateServerTz>[0];
+    for (let m = 0; m <= 60; m += 5) {
+      const at = ms('2026-11-14T11:47:00Z') + m * MIN;
+      state = updateServerTz(state, read(at), at);
+      expect(state.tz).toBeNull();
+    }
   });
 
   it('keeps the model when the observation agrees, or when there is none', () => {
-    expect(updateServerTz({ tz: NY_CLOSE, lastObservedMin: 120 }, 120, nov)).toMatchObject({ tz: NY_CLOSE, changed: false });
-    expect(updateServerTz({ tz: NY_CLOSE, lastObservedMin: 120 }, null, nov)).toEqual({ tz: NY_CLOSE, lastObservedMin: 120, changed: false });
+    const st = { tz: NY_CLOSE, lastObservedMin: 120, lastObservedAt: nov - 60 * MIN };
+    expect(updateServerTz(st, 120, nov)).toMatchObject({ tz: NY_CLOSE, changed: false });
+    expect(updateServerTz(st, null, nov)).toEqual({ ...st, changed: false });
   });
 
-  it('switches only after the same contradiction is seen twice', () => {
+  it('switches only after the same contradiction is seen 5+ minutes apart', () => {
     // Between the EU and US switch-back an EET server shows +2 while New York close predicts +3.
-    const once = updateServerTz({ tz: NY_CLOSE, lastObservedMin: 180 }, 120, lateOct);
-    expect(once).toEqual({ tz: NY_CLOSE, lastObservedMin: 120, changed: false });
-    const twice = updateServerTz(once, 120, lateOct);
-    expect(twice).toEqual({ tz: EET, lastObservedMin: 120, changed: true });
+    const once = updateServerTz({ tz: NY_CLOSE, lastObservedMin: 180, lastObservedAt: lateOct - DAY }, 120, lateOct);
+    expect(once).toEqual({ tz: NY_CLOSE, lastObservedMin: 120, lastObservedAt: lateOct, changed: false });
+    expect(updateServerTz(once, 120, lateOct + MIN).changed).toBe(false);
+    expect(updateServerTz(once, 120, lateOct + 5 * MIN)).toEqual({ tz: EET, lastObservedMin: 120, lastObservedAt: lateOct, changed: true });
   });
 
   it('parses and formats CLI specs', () => {

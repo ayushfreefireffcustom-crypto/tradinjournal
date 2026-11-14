@@ -207,7 +207,8 @@ model BrokerAccount {
   /// Detected from the bridge's live quote time; null until first observed.
   serverTimeZone     String?
   serverTimeShiftMin Int?
-  /// Last trusted observation of the server offset (minutes) and when it was taken.
+  /// Latest observed server offset (minutes) and when that run of identical readings
+  /// began; a model is only set or changed once a reading repeats ≥ 5 min apart.
   serverOffsetMin    Int?
   serverOffsetAt     DateTime?
   createdAt       DateTime      @default(now())
