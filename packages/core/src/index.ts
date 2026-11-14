@@ -51,6 +51,7 @@ export type {
   OhlcBar,
 } from './macro/index.js';
 export * from './macro/overview.js';
+export * from './macro/fedwatch.js';
 
 // Trader Master engine (on-demand technical analysis).
 export {

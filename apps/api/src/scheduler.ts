@@ -15,6 +15,7 @@ import { importDue as importExchangeHistory } from './modules/trading/history.se
 import { sendDailyDigests } from './modules/notifications/digest.service.js';
 import { ingestNews, enrichPendingNews } from './modules/news/news.service.js';
 import { ingestWindow } from './modules/calendar/calendar.service.js';
+import { backfillCalendar } from './modules/calendar/calendar.backfill.js';
 import { warmSymbols } from './modules/market/market.service.js';
 import { dispatchPriceAlerts } from './modules/alerts/alerts.service.js';
 import { dispatchIndicatorAlerts } from './modules/alerts/indicator-alerts.service.js';
@@ -25,7 +26,9 @@ import { trainLgbmChallenger } from './modules/trader/trader.lgbm.service.js';
 import { tickPaperBook } from './modules/trader/trader.paper.service.js';
 import { refreshReferralStats } from './modules/partners/stats.service.js';
 import { runIbCycle } from './modules/partners/ib/cycle.js';
+import { syncDueElefin } from './modules/partners/ib/elefin/sync.js';
 import { queueDueSyncs } from './modules/sync/sync.jobs.js';
+import { computeDueExcursions } from './modules/trade-data/excursion.job.js';
 import { ingestMacro } from './modules/macro/macro.service.js';
 import { createElector } from './lib/leader.js';
 
@@ -83,6 +86,9 @@ export function startInProcessScheduler(): void {
   }
   if (env.CALENDAR_ENABLED) {
     every(15 * MIN, 'calendar-ingest', () => { const w = calWindow(); return ingestWindow(w.from, w.to); });
+    // 13 months of release history for the macro surprise map: once per boot on the
+    // leader, at most once a day (guarded in system_setting), one request at a time.
+    onceLeader('calendar-backfill', () => backfillCalendar());
   }
   // Keep the configured warm symbol set a cache hit for everyone (no-op when unset).
   if (env.MARKET_ENABLED && env.MARKET_WARM_SYMBOLS_LIST.length > 0) {
@@ -111,6 +117,8 @@ export function startInProcessScheduler(): void {
   onceLeader('macro-ingest:boot', () => ingestMacro({ reason: 'in-process:boot' }));
   // Trade sync: keep every account's stored deals at most SYNC_BACKGROUND_MIN old.
   every(5 * MIN, 'trade-sync', () => queueDueSyncs());
+  // MAE / MFE from candles for closed trades without one (≤ 60 per run, no-ops before the migration).
+  if (env.MARKET_ENABLED) every(5 * MIN, 'trade-excursions', () => computeDueExcursions());
   // Copy-trading events to push and email (the in-app notification is written by the engine).
   if (env.TRADING_ENABLED) every(MIN / 2, 'copy-notify', () => dispatchCopyNotifications());
   // Exchange trade history for the journal: each active account at most 15 minutes behind.
@@ -121,6 +129,8 @@ export function startInProcessScheduler(): void {
   if (env.PARTNER_PROGRAM_ENABLED) every(15 * MIN, 'partner-stats', () => refreshReferralStats({ limit: 25 }));
   // IB lists (Google Sheets, hourly), re-verification and package access (grace, expiry).
   if (env.PARTNER_PROGRAM_ENABLED) every(15 * MIN, 'partner-access', runIbCycle);
+  // Elefin partner API: each connected partner's clients every ELEFIN_SYNC_MINUTES, a few per tick.
+  if (env.PARTNER_PROGRAM_ENABLED) every(5 * MIN, 'elefin-sync', () => syncDueElefin());
 
   // Warm the data shortly after boot so it's fresh without waiting a full interval.
   soon(4_000, dispatchReminders);

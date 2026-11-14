@@ -53,6 +53,9 @@ export const aiChatSchema = z.object({
   // Retry of the last turn: the superseded user→assistant pair is replaced rather
   // than appended, so a retried thread doesn't accumulate duplicate questions.
   regenerate: z.boolean().optional(),
+  // One-off calls from page buttons (Explain, Ask fallback, Draft note) are kept
+  // out of the coach's conversation list.
+  kind: z.enum(['explain', 'ask', 'draft']).optional(),
 });
 
 export type AiChatInput = z.infer<typeof aiChatSchema>;
@@ -902,6 +905,7 @@ export * from './schema/strategy.js';
 export * from './schema/options.js';
 export * from './schema/account.js';
 export * from './schema/partner-ib.js';
+export * from './schema/partner-elefin.js';
 export * from './schema/liquidations.js';
 export * from './schema/news-v2.js';
 export * from './schema/macro-v2.js';
@@ -909,3 +913,5 @@ export * from './schema/dashboard-v2.js';
 export * from './schema/analytics-v2.js';
 export * from './schema/tradelog-v2.js';
 export * from './schema/trade-review.js';
+export * from './schema/prefs.js';
+export * from './schema/trade-data.js';
