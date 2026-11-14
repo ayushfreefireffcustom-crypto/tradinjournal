@@ -1,79 +1,139 @@
 'use client';
 
-import { useEffect, useState, useCallback, useMemo } from 'react';
-import { api, type BrokerAccount, type AccountStats, type Trade, type JournalEntry } from '@/lib/api';
-import { closedInSpan, isCustom, statsForRange, type RangeKey, type Span } from '@/lib/stats';
+// Dashboard v2 ("D · AI" pro grid): KPI ribbon and a widget grid where the AI
+// shows up as marks on the charts plus one short line per widget. Every number
+// comes from GET /api/insights/dashboard (computed server-side from the
+// account's closed trades, cached ~60s); account, date range and filters drive
+// all of it. "Ask your journal" answers chart-first and falls back to the coach.
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { CaretDown, Funnel } from '@phosphor-icons/react';
+import { api, type BrokerAccount } from '@/lib/api';
+import { isCustom, spanBounds, type RangeKey, type Span } from '@/lib/stats';
 import { useAccounts } from '@/lib/use-accounts';
 import { authClient } from '@/lib/auth-client';
+import { rangeText } from '@/lib/date-presets';
+import { dashV2, type DashboardV2DTO, type DashParams, type DashRange, type DashSession } from '@/lib/dashboard-v2-api';
+import { firstParagraph, money, nextSession, pct, SESSION_SHORT } from '@/lib/dashboard-v2-format';
 import AppShell, { timeAgo } from '@/components/app-shell';
 import ConnectBrokerModal from '@/components/connect-broker-modal';
 import { useToast } from '@/components/toast';
 import { IPlus } from '@/components/v6/icons';
 import StrategiesCard from '@/components/v6/strategy/strategies-card';
-import {
-  BreakdownCard, CoachReview, DailyCard, DeskSkeleton, EquityCard, KpiColumn, RecentTrades,
-} from '@/components/v6/desk';
 import DateRangePicker from '@/components/v6/ui/date-range';
-import { rangeText } from '@/lib/date-presets';
+import { AiFoot, Empty, Toggle, Widget } from '@/components/dashboard-v2/ui';
+import { DistChart, EquityChart, HourBars, MaeScatter, RollingChart } from '@/components/dashboard-v2/charts';
+import { BeforeYouTrade, BehaviourBars, Heatmap, KpiRibbon, LeaksList, PlanList, RecentTable, SymbolsTable } from '@/components/dashboard-v2/widgets';
+import { AskBox, type AskState } from '@/components/dashboard-v2/ask';
+import '@/components/dashboard-v2/dashboard-v2.css';
 
-const RANGES: { key: RangeKey; short: string; label: string }[] = [
-  { key: '1W', short: '7D', label: 'Last 7 days' },
-  { key: '1M', short: '30D', label: 'Last 30 days' },
-  { key: '3M', short: '90D', label: 'Last 90 days' },
-  { key: '1Y', short: '1Y', label: 'Last 12 months' },
-  { key: 'ALL', short: 'All', label: 'All time' },
+const RANGES: { key: RangeKey; api: DashRange; short: string; label: string }[] = [
+  { key: '1W', api: '7D', short: '7D', label: 'Last 7 days' },
+  { key: '1M', api: '30D', short: '30D', label: 'Last 30 days' },
+  { key: '3M', api: '90D', short: '90D', label: 'Last 90 days' },
+  { key: '1Y', api: '1Y', short: '1Y', label: 'Last 12 months' },
+  { key: 'ALL', api: 'ALL', short: 'All', label: 'All time' },
 ];
+type Layout = 'overview' | 'risk' | 'execution';
+type WId = 'equity' | 'leaks' | 'heatmap' | 'mae' | 'dist' | 'rolling' | 'behaviour' | 'before' | 'plan' | 'symbols' | 'recent';
+const LAYOUTS: Record<Layout, Array<[WId, 3 | 4 | 6 | 8 | 12]>> = {
+  overview: [['equity', 8], ['leaks', 4], ['heatmap', 4], ['mae', 4], ['dist', 4], ['rolling', 3], ['behaviour', 3], ['before', 3], ['plan', 3], ['symbols', 8], ['recent', 4]],
+  risk: [['equity', 8], ['leaks', 4], ['dist', 4], ['rolling', 4], ['behaviour', 4], ['symbols', 12]],
+  execution: [['heatmap', 6], ['mae', 6], ['before', 4], ['plan', 4], ['recent', 4], ['symbols', 12]],
+};
+/** On mid-width screens 3/4-column widgets go half width; one left alone on its row goes full width. */
+function fillAlone(list: Array<[WId, number]>): Set<WId> {
+  const out = new Set<WId>();
+  let col = 0;
+  list.forEach(([id, s], i) => {
+    if (s > 4) { col = 0; return; }
+    const next = list[i + 1];
+    if (col === 0 && (!next || next[1] > 4)) { out.add(id); return; }
+    col = (col + 6) % 12;
+  });
+  return out;
+}
+interface Filters { symbol?: string; session?: DashSession; side?: 'LONG' | 'SHORT'; tag?: string }
+const AI_KEY = 'tl-dash-ai-notes', LAYOUT_KEY = 'tl-dash-layout';
+
+function useMedia(q: string): boolean {
+  const [m, setM] = useState(false);
+  useEffect(() => { const mq = window.matchMedia(q); const set = () => setM(mq.matches); set(); mq.addEventListener('change', set); return () => mq.removeEventListener('change', set); }, [q]);
+  return m;
+}
 
 export default function DashboardPage() {
   const { accounts, selected, select, setAccounts, loading: accountsLoading } = useAccounts();
   const { data: session } = authClient.useSession();
-  const [stats, setStats] = useState<AccountStats | null>(null);
-  const [trades, setTrades] = useState<Trade[]>([]);
-  const [journal, setJournal] = useState<JournalEntry[]>([]);
-  const [range, setRange] = useState<Span>('3M');
-  const [loading, setLoading] = useState(true);
-  const [syncedAt, setSyncedAt] = useState<string | null>(null);
-  const [, tick] = useState(0);
-  const [syncing, setSyncing] = useState(false);
-  const [error, setError] = useState('');
-  const [showConnect, setShowConnect] = useState(false);
   const toast = useToast();
+  const [span, setSpan] = useState<Span>('3M');
+  const [filters, setFilters] = useState<Filters>({});
+  const [layout, setLayout] = useState<Layout>('overview');
+  const [ai, setAi] = useState(true);
+  const [data, setData] = useState<DashboardV2DTO | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [syncing, setSyncing] = useState(false);
+  const [syncedAt, setSyncedAt] = useState<string | null>(null);
+  const [showConnect, setShowConnect] = useState(false);
+  const [eqMode, setEqMode] = useState<'trades' | 'days'>('trades');
+  const [eqUnit, setEqUnit] = useState<'$' | '%'>('$');
+  const [heatMetric, setHeatMetric] = useState<'$' | 'win'>('$');
+  const [ask, setAsk] = useState<AskState>({ status: 'idle' });
+  const [, tick] = useState(0);
+  // Where the ask box lives: top bar on very wide screens, the toolbar on laptops, the top of the page on phones and tablets.
+  const wide = useMedia('(min-width: 1600px)');
+  const mid = useMedia('(min-width: 1100px)');
+  const req = useRef(0);
+  const askReq = useRef<AbortController | null>(null);
 
-  const view = useMemo(() => (stats ? statsForRange(trades, stats.startingBalance, range) : null), [stats, trades, range]);
-  const rangedTrades = useMemo(() => closedInSpan(trades, range), [trades, range]);
-
-  const loadStats = useCallback(async (acc: BrokerAccount, notify = false) => {
-    setLoading(true);
-    if (notify) setSyncing(true);
-    setError('');
-    try {
-      // Manual "Sync" pulls new deals from MT5 first; normal loads read stored data
-      // (the server refreshes it in the background when it's a few minutes old).
-      let syncedAccount = acc;
-      let still = false;
-      if (notify) {
-        const r = await api.accounts.sync(acc.id);
-        syncedAccount = r.account;
-        still = r.result === 'running';
-      }
-      const { stats: s, trades: t, journal: j, syncedAt: at } = await api.trades.dashboard(acc.id);
-      setStats(s); setTrades(t); setJournal(j);
-      setSyncedAt(at ?? syncedAccount.lastSyncAt ?? new Date().toISOString());
-      if (notify && still) toast.success('Still importing your history — this can take a minute on large accounts');
-      else if (notify) toast.success(`Synced · ${t.filter(x => x.status === 'CLOSED').length} positions loaded`);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to load account data';
-      setError(msg);
-      if (notify) toast.error(`Sync failed · ${msg}`);
-    } finally { setLoading(false); setSyncing(false); }
-  }, [toast]);
-  // No account (brand-new user): stop loading once accounts settle.
+  // Remembered on this device: AI notes on/off and the layout tab.
   useEffect(() => {
-    if (selected) loadStats(selected);
-    else if (!accountsLoading) setLoading(false);
-  }, [selected, accountsLoading, loadStats]);
-  // Keep "Synced X ago" fresh.
+    try {
+      if (localStorage.getItem(AI_KEY) === '0') setAi(false);
+      const l = localStorage.getItem(LAYOUT_KEY);
+      if (l === 'overview' || l === 'risk' || l === 'execution') setLayout(l);
+    } catch { /* storage unavailable */ }
+  }, []);
+  const toggleAi = () => setAi(v => { try { localStorage.setItem(AI_KEY, v ? '0' : '1'); } catch { /* ignore */ } return !v; });
+  const pickLayout = (l: Layout) => { setLayout(l); try { localStorage.setItem(LAYOUT_KEY, l); } catch { /* ignore */ } };
   useEffect(() => { const id = setInterval(() => tick(n => n + 1), 30_000); return () => clearInterval(id); }, []);
+
+  const params = useMemo<DashParams | null>(() => {
+    if (!selected) return null;
+    const base: DashParams = { accountId: selected.id, range: isCustom(span) ? 'ALL' : RANGES.find(r => r.key === span)!.api, ...filters };
+    if (isCustom(span)) { const b = spanBounds(span); if (b.start != null) base.from = b.start; if (b.end != null) base.to = b.end; }
+    return base;
+  }, [selected, span, filters]);
+
+  const load = useCallback(async (p: DashParams) => {
+    const id = ++req.current;
+    setLoading(true); setError('');
+    try {
+      const d = await dashV2.get(p);
+      if (id === req.current) setData(d);
+    } catch (err) {
+      if (id === req.current) setError(err instanceof Error ? err.message : 'Failed to load the dashboard');
+    } finally { if (id === req.current) setLoading(false); }
+  }, []);
+  useEffect(() => {
+    if (params) void load(params);
+    else if (!accountsLoading) setLoading(false);
+  }, [params, accountsLoading, load]);
+  // New account: forget filters that belonged to the old one, and any open answer.
+  useEffect(() => { setFilters({}); setAsk({ status: 'idle' }); setData(null); setSyncedAt(selected?.lastSyncAt ?? null); }, [selected?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const sync = useCallback(async () => {
+    if (!selected || !params) return;
+    setSyncing(true);
+    try {
+      const r = await api.accounts.sync(selected.id);
+      setSyncedAt(r.account.lastSyncAt ?? new Date().toISOString());
+      await load(params);
+      toast.success(r.result === 'running' ? 'Still importing your history — this can take a minute on large accounts' : 'Synced');
+    } catch (err) {
+      toast.error(`Sync failed · ${err instanceof Error ? err.message : 'try again'}`);
+    } finally { setSyncing(false); }
+  }, [selected, params, load, toast]);
 
   function onConnected(account: BrokerAccount) {
     setAccounts(prev => (prev.some(a => a.id === account.id) ? prev.map(a => (a.id === account.id ? account : a)) : [account, ...prev]));
@@ -81,79 +141,298 @@ export default function DashboardPage() {
     setShowConnect(false);
   }
 
-  const rangeLabel = isCustom(range) ? rangeText(range) : RANGES.find(o => o.key === range)!.label;
+  // ── Ask your journal ──
+  const askCoach = useCallback(async (q: string, prompt: string) => {
+    if (!selected) return;
+    askReq.current?.abort();
+    const ctl = new AbortController();
+    askReq.current = ctl;
+    const used = data?.counts.allClosed ?? 0;
+    let text = '';
+    setAsk({ status: 'text', q, text: '', used, done: false });
+    try {
+      await api.ai.chat({ accountId: selected.id, messages: [{ role: 'user', content: prompt.slice(0, 3900) }] }, t => {
+        text += t;
+        if (!ctl.signal.aborted) setAsk({ status: 'text', q, text: firstParagraph(text), used, done: false });
+      }, { signal: ctl.signal, onError: m => { if (!text) setAsk({ status: 'error', q, error: m }); } });
+      if (!ctl.signal.aborted && text) setAsk({ status: 'text', q, text: firstParagraph(text), used, done: true });
+      else if (!ctl.signal.aborted && !text) setAsk({ status: 'error', q, error: 'The coach had no answer. Try again.' });
+    } catch (err) {
+      if (!ctl.signal.aborted) setAsk({ status: 'error', q, error: err instanceof Error ? err.message : 'The coach is unavailable right now.' });
+    }
+  }, [selected, data?.counts.allClosed]);
+
+  const onAsk = useCallback(async (q: string) => {
+    if (!params) return;
+    askReq.current?.abort();
+    askReq.current = null;
+    setAsk({ status: 'loading', q });
+    try {
+      const a = await dashV2.ask({ ...params, q });
+      if (a.kind === 'chart') { setAsk({ status: 'chart', q, a }); return; }
+      await askCoach(q, `${q}\n\nAnswer in one short paragraph.`);
+    } catch (err) {
+      setAsk({ status: 'error', q, error: err instanceof Error ? err.message : 'Could not answer that.' });
+    }
+  }, [params, askCoach]);
+  const closeAsk = useCallback(() => { askReq.current?.abort(); setAsk({ status: 'idle' }); }, []);
+  const explain = (what: string, summary: string) => {
+    const scope = `${rangeLabel.toLowerCase()}${filters.symbol ? `, ${filters.symbol}` : ''}${filters.session ? `, ${SESSION_SHORT[filters.session]} session` : ''}${filters.side ? `, ${filters.side.toLowerCase()}s` : ''}${filters.tag ? `, tag ${filters.tag}` : ''}`;
+    void askCoach(`Explain: ${what}`, `Explain my ${what} chart (${scope}, ${data?.counts.trades ?? 0} trades): ${summary}. Answer in one short paragraph.`);
+    if (!mid) document.querySelector('[data-testid=ask-page]')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const rangeLabel = isCustom(span) ? rangeText(span) : RANGES.find(o => o.key === span)!.label;
+  const rangeShort = isCustom(span) ? 'Range' : RANGES.find(o => o.key === span)!.short;
   const first = (session?.user?.name ?? '').trim().split(/\s+/)[0] || 'trader';
-  const everTraded = trades.some(t => t.status === 'CLOSED');
   const subtitle = selected
-    ? <>{selected.broker} <span className="m">·{selected.mt5Login.slice(-4)}</span> · {syncedAt ? `synced ${timeAgo(syncedAt)}` : loading ? 'loading…' : 'not synced yet'}</>
+    ? <><i className="d2-live" aria-hidden />{selected.broker} <span className="m">·{selected.mt5Login.slice(-4)}</span> · {syncedAt ? `synced ${timeAgo(syncedAt)}` : loading ? 'loading…' : 'not synced yet'}</>
     : `Welcome, ${first}`;
+  const askBox = (placement: 'top' | 'bar' | 'page') => <AskBox state={ask} onAsk={onAsk} onClose={closeAsk} placement={placement} />;
+  const hasFilters = !!(filters.symbol || filters.session || filters.side || filters.tag);
 
   return (
     <AppShell legacy={false} accounts={accounts} selectedAccount={selected} onSelectAccount={select} onConnectClick={() => setShowConnect(true)}
-      pageTitle="Dashboard" pageSubtitle={subtitle} onSync={() => selected && loadStats(selected, true)} syncing={syncing} syncedAt={syncedAt}
+      pageTitle="Dashboard" pageSubtitle={subtitle} onSync={selected ? sync : undefined} syncing={syncing} syncedAt={syncedAt}
       actions={selected ? (
         <>
+          {wide && data && data.counts.allClosed > 0 && askBox('top')}
           <div className="x-seg" role="group" aria-label="Date range" data-testid="range-selector">
-            {RANGES.map(r => <button key={r.key} aria-pressed={range === r.key} onClick={() => setRange(r.key)} title={r.label} data-testid={`range-${r.key}`}>{r.short}</button>)}
+            {RANGES.map(r => <button key={r.key} aria-pressed={span === r.key} onClick={() => setSpan(r.key)} title={r.label} data-testid={`range-${r.key}`}>{r.short}</button>)}
           </div>
-          <DateRangePicker value={isCustom(range) ? range : null} onChange={setRange} />
+          <DateRangePicker value={isCustom(span) ? span : null} onChange={setSpan} note="Days in your time zone" />
         </>
       ) : null}>
-      <div className="dk-grid" data-testid="dashboard-page">
+      <div className={`d2${ai ? '' : ' ai-off'}`} data-testid="dashboard-page">
         {error && (
-          <div className="x-banner x-banner--err" role="alert" data-testid="dashboard-error">
+          <div className="d2-banner" role="alert" data-testid="dashboard-error">
             <span>{error}</span>
-            <button className="x-btn x-btn--sm" onClick={() => selected && loadStats(selected)}>Retry</button>
+            <button type="button" className="x-btn x-btn--sm" onClick={() => params && load(params)}>Retry</button>
           </div>
         )}
 
         {!selected && !accountsLoading ? (
-          <section className="x-card dk-connect" data-testid="dashboard-empty">
-            <div>
-              <h2>Connect your MT5 account</h2>
-              <p>Use your investor (read-only) password. TRADElogs can read your trades but can never place or close one.</p>
-              <ul><li>History imports in about a minute</li><li>New trades sync on their own</li><li>Your dashboard, journal and coach fill in from real trades</li></ul>
-              <button className="x-btn x-btn--hi x-btn--lg" onClick={() => setShowConnect(true)} data-testid="dashboard-connect"><IPlus size={15} />Connect MT5</button>
-            </div>
-            <div className="dk-connect-art" aria-hidden />
+          <section className="d2-card d2-connect" data-testid="dashboard-empty">
+            <h2>Connect your MT5 account</h2>
+            <p>Use your investor (read-only) password. TRADElogs can read your trades but can never place or close one.</p>
+            <ul><li>History imports in about a minute</li><li>New trades sync on their own</li><li>Every chart here fills in from your real trades</li></ul>
+            <button className="x-btn x-btn--hi x-btn--lg" onClick={() => setShowConnect(true)} data-testid="dashboard-connect"><IPlus size={15} />Connect MT5</button>
           </section>
-        ) : !view ? (error ? null : <DeskSkeleton />) : !everTraded ? (
-          <section className="x-card x-empty" data-testid="dashboard-waiting">
-            <span className="x-ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"><path d="M3 20h18M6 16v-5M11 16V7M16 16v-8M21 16V4" /></svg></span>
-            <b>Waiting for your first closed trade</b>
+        ) : !data ? (error ? null : <Skeleton />) : data.counts.allClosed === 0 ? (
+          <section className="d2-card d2-connect" data-testid="dashboard-waiting">
+            <h2>Waiting for your first closed trade</h2>
             <p>{selected?.broker} is connected. As soon as a position closes it shows up here, usually within a few minutes.</p>
           </section>
         ) : (
           <>
-            <Hello name={session?.user?.name ?? null} trades={view.totalTrades} rangeLabel={rangeLabel} />
-            <KpiColumn view={view} trades={rangedTrades} />
-            <EquityCard view={view} trades={rangedTrades} rangeLabel={rangeLabel} />
-            <div className="dk-row2">
-              <DailyCard trades={rangedTrades} />
-              <BreakdownCard trades={rangedTrades} />
+            {!mid && askBox('page')}
+            <div className="d2-bar" data-testid="dash-toolbar">
+              <div className="d2-lay" role="tablist" aria-label="Layout">
+                {(['overview', 'risk', 'execution'] as const).map(l => (
+                  <button key={l} type="button" role="tab" aria-selected={layout === l} className={layout === l ? 'on' : ''} onClick={() => pickLayout(l)} data-testid={`layout-${l}`}>{l[0]!.toUpperCase() + l.slice(1)}</button>
+                ))}
+              </div>
+              {mid && !wide && askBox('bar')}
+              <span className="d2-grow" />
+              <FilterSel icon label="Symbol" value={filters.symbol ?? ''} all={`All ${data.options.symbols.length}`}
+                options={data.options.symbols.map(s => ({ v: s.symbol, label: `${s.symbol} (${s.trades})` }))} onChange={v => setFilters(f => ({ ...f, symbol: v || undefined }))} />
+              <FilterSel label="Session" value={filters.session ?? ''} all="All"
+                options={(['ASIA', 'LONDON', 'NY'] as const).map(s => ({ v: s, label: SESSION_SHORT[s] }))} onChange={v => setFilters(f => ({ ...f, session: (v || undefined) as DashSession | undefined }))} />
+              <FilterSel label="Side" value={filters.side ?? ''} all="Both"
+                options={[{ v: 'LONG', label: 'Long' }, { v: 'SHORT', label: 'Short' }]} onChange={v => setFilters(f => ({ ...f, side: (v || undefined) as 'LONG' | 'SHORT' | undefined }))} />
+              <FilterSel label="Tag" value={filters.tag ?? ''} all="Any" disabled={!data.options.tags.length && !filters.tag}
+                options={data.options.tags.map(t => ({ v: t, label: t }))} onChange={v => setFilters(f => ({ ...f, tag: v || undefined }))} />
+              <button type="button" className="d2-fp" role="switch" aria-checked={ai} onClick={toggleAi} data-testid="ai-notes">AI notes <span className={`d2-sw${ai ? ' on' : ''}`} aria-hidden /></button>
             </div>
-            <RecentTrades trades={rangedTrades} journal={journal} balance={view.currentEquity} />
-            <CoachReview accountId={selected?.id ?? null} />
+
+            {data.counts.trades === 0 || !data.kpis ? (
+              <section className="d2-card d2-connect" data-testid="dashboard-no-trades">
+                <h2>No closed trades in this view</h2>
+                <p>{data.counts.inWindow ? `${data.counts.inWindow} trades in ${rangeLabel.toLowerCase()}, none match the filters.` : `Nothing closed in ${rangeLabel.toLowerCase()}. ${data.counts.allClosed} trades in total.`}</p>
+                <div className="d2-row">
+                  {hasFilters && <button type="button" className="x-btn" onClick={() => setFilters({})}>Clear filters</button>}
+                  {span !== 'ALL' && <button type="button" className="x-btn" onClick={() => setSpan('ALL')}>Show all time</button>}
+                </div>
+              </section>
+            ) : (
+              <div className={`d2-body${loading ? ' d2-stale' : ''}`} aria-busy={loading}>
+                <KpiRibbon k={data.kpis} trades={data.counts.trades} behaviour={data.behaviour} minTrades={data.minTrades} ai={ai} />
+                {data.counts.trades < data.minTrades && (
+                  <p className="d2-few" data-testid="few-trades">{data.counts.trades} trades in this view. Behaviour score, grades and the plan need {data.minTrades}.</p>
+                )}
+                <div className="d2-grid">
+                  {(() => { const full = fillAlone(LAYOUTS[layout]); return LAYOUTS[layout].map(([id, s]) => <div key={id} className={`d2-slot d2-s${s}${full.has(id) ? ' d2-m12' : ''}`}>{block(id, s)}</div>); })()}
+                </div>
+              </div>
+            )}
+            <details className="d2-how">
+              <summary>How these numbers are computed</summary>
+              <ul>
+                <li>Every figure comes from your closed trades in this account, range and filters. Times are UTC; a trade belongs to the hour, weekday and session it opened in.</li>
+                <li>Sessions: Asia 22:00–07:00, London 07:00–13:00, New York 13:00–22:00 UTC.</li>
+                <li>Leaks: groups of trades you could have skipped before entry (late hours, after 2 losses in a row that day, within 15 min of a loss, more than 1.5× your usual size on that symbol, worst symbol, session and weekday), ranked by net loss. Skipping two leaks counts each trade once.</li>
+                <li>Behaviour score ({data.minTrades}+ trades): the average of three pass rates. Discipline: not after 2 losses that day and not within 15 min of a loss. Risk: no more than 1.5× usual size{data.counts.withR ? ' and no loss past −1.25R' : ''}. Timing: opened in an hour that is net positive for you.</li>
+                <li>Grades count the same flags (plus losing hour{data.counts.withR ? ' and past −1.25R' : ''}): none A, one B, two C, three D, four or more F. They grade process, not the result.</li>
+                <li>R-multiples need a stop at entry, and MAE/MFE need the price path of each trade. Without them those widgets show $ or stay empty.</li>
+              </ul>
+            </details>
           </>
         )}
         <StrategiesCard />
       </div>
-
       {showConnect && <ConnectBrokerModal onClose={() => setShowConnect(false)} onConnected={onConnected} />}
     </AppShell>
   );
+
+  // Plain render function (not a component) so widgets keep their state across renders.
+  function block(id: WId, s: 3 | 4 | 6 | 8 | 12) {
+    const d = data!;
+    const T = d.counts.trades;
+    switch (id) {
+      case 'equity': {
+        const leak = d.leaks.rows[0] ?? null;
+        return (
+          <Widget id="equity" span={s} title="Equity & drawdown" sub={ai && d.equity?.dotLabel ? <span data-ai>· red dot = {d.equity.dotLabel.toLowerCase()}</span> : null}
+            tools={<>
+              <Toggle label="Points" value={eqMode} onChange={setEqMode} options={[{ v: 'trades', label: 'Trades' }, { v: 'days', label: 'Days' }]} />
+              <span className="d2-unit"><Toggle label="Unit" value={eqUnit} onChange={setEqUnit} options={[{ v: '$', label: '$' }, { v: '%', label: '%', disabled: !(d.equity && d.equity.start > 0) }]} /></span>
+            </>}
+            onExplain={d.equity ? () => explain('equity curve', `start ${money(d.equity!.start, { plus: false })}, now ${money(d.kpis!.balance, { plus: false })}, net ${money(d.kpis!.netPnl)}, deepest dip ${d.equity!.drawdown ? `${pct(d.equity!.drawdown.pct, 1)} over ${d.equity!.drawdown.trades} trades` : 'none'}${leak ? `, worst leak ${leak.label} ${money(leak.net)} on ${leak.trades} trades` : ''}`) : undefined}
+            foot={ai ? <AiFoot line={d.ai.equity} /> : null}>
+            {d.equity ? <EquityChart eq={d.equity} mode={eqMode} unit={eqUnit} ai={ai} leakNet={leak?.net ?? null} /> : <Empty title="No equity yet" />}
+          </Widget>
+        );
+      }
+      case 'leaks':
+        return (
+          <Widget id="leaks" span={s} title="Leaks" sub="· ranked by $ lost"
+            onExplain={d.leaks.rows.length ? () => explain('leaks', d.leaks.rows.map(r => `${r.label} ${money(r.net)} on ${r.trades} trades (${r.wins} won)`).join('; ')) : undefined}
+            foot={ai ? <AiFoot line={d.leaks.ai} /> : null}>
+            <LeaksList rows={d.leaks.rows} trades={T} />
+          </Widget>
+        );
+      case 'heatmap':
+        return (
+          <Widget id="heatmap" span={s} title="Session × weekday" sub={`· ${heatMetric === '$' ? 'net P&L' : 'win rate'}, UTC`}
+            tools={<Toggle label="Metric" value={heatMetric} onChange={setHeatMetric} options={[{ v: '$', label: '$' }, { v: 'win', label: 'Win%' }]} />}
+            onExplain={d.heatmap ? () => explain('session by weekday heatmap', d.heatmap!.cells.filter(c => c.n).map(c => `${SESSION_SHORT[c.session]} ${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][c.day]} ${money(c.net)} ${c.wins}/${c.n}`).join('; ')) : undefined}
+            foot={ai ? <AiFoot line={d.ai.heatmap} /> : null}>
+            {d.heatmap ? <Heatmap hm={d.heatmap} metric={heatMetric} ai={ai} /> : <Empty title="No trades" />}
+          </Widget>
+        );
+      case 'mae':
+        return (
+          <Widget id="mae" span={s} title="MAE / MFE" sub="· worst vs best point"
+            onExplain={d.maeMfe ? () => explain('MAE/MFE scatter', `${d.maeMfe!.points.length} trades${d.maeMfe!.gaveBack ? `, ${d.maeMfe!.gaveBack.trades} losers were in profit first (${money(d.maeMfe!.gaveBack.net)})` : ''}`) : undefined}
+            foot={ai ? <AiFoot line={d.ai.maeMfe} /> : null}>
+            {d.maeMfe ? <MaeScatter mm={d.maeMfe} ai={ai} /> : <Empty title="No MAE / MFE data yet" note={`Needs the price path of each trade. ${d.counts.withMae} of ${T} trades have it.`} />}
+          </Widget>
+        );
+      case 'dist': {
+        const dist = d.distribution;
+        return (
+          <Widget id="dist" span={s} title={dist?.unit === 'R' ? 'R-multiple distribution' : 'P&L distribution'} sub={`· ${T} trades`}
+            onExplain={dist ? () => explain('trade result distribution', `unit ${dist.unit}, mean ${dist.unit === 'R' ? `${dist.mean}R` : money(dist.mean)}${dist.tail ? `, ${dist.tail.trades} trades past ${dist.unit === 'R' ? '−1.25R' : money(dist.tail.threshold)} lost ${money(dist.tail.net)}` : ''}`) : undefined}
+            foot={<>
+              {dist && dist.unit === '$' && <div className="d2-note" data-testid="r-note">In $: R needs a stop at entry ({d.counts.withR} of {T} have one).</div>}
+              {ai ? <AiFoot line={d.ai.distribution} /> : null}
+            </>}>
+            {dist ? <DistChart dist={dist} ai={ai} /> : <Empty title="Needs 5 trades" note={`${T} so far.`} />}
+          </Widget>
+        );
+      }
+      case 'rolling':
+        return (
+          <Widget id="rolling" span={s} title="Rolling expectancy" sub={d.rolling ? `· ${d.rolling.window} trades` : ''}
+            onExplain={d.rolling ? () => explain('rolling expectancy', `${d.rolling!.window}-trade average now ${d.rolling!.now} ${d.rolling!.unit}, low ${d.rolling!.low.v} ${d.rolling!.unit}`) : undefined}
+            foot={ai ? <AiFoot line={d.ai.rolling} /> : null}>
+            {d.rolling ? <RollingChart roll={d.rolling} ai={ai} /> : <Empty title="Needs 30 trades" note={`${T} so far.`} />}
+          </Widget>
+        );
+      case 'behaviour':
+        return (
+          <Widget id="behaviour" span={s} title="Behaviour" sub="· score /100"
+            onExplain={d.behaviour ? () => explain('behaviour score', `score ${d.behaviour!.score}, last 30 ${d.behaviour!.last30}; ${d.behaviour!.parts.map(p => `${p.label} ${p.score} (last 30: ${p.last30})`).join(', ')}`) : undefined}
+            foot={ai ? <AiFoot line={d.ai.behaviour} /> : null}>
+            {d.behaviour ? <BehaviourBars b={d.behaviour} /> : <Empty title={`Needs ${d.minTrades} trades`} note={`${T} so far. The score uses your own history as the baseline.`} />}
+          </Widget>
+        );
+      case 'before':
+        return (
+          <BeforeYouTrade hours={d.hours} symbols={d.options.symbols.map(x => x.symbol).filter(x => !filters.symbol || x === filters.symbol)}>
+            {({ cells, symbol, now, picker }) => {
+              const c = cells.find(x => x.hour === now.h);
+              const all = cells.reduce((a, x) => ({ n: a.n + x.n, wins: a.wins + x.wins }), { n: 0, wins: 0 });
+              const wr = c && c.n ? c.wins / c.n : null;
+              const line = !c ? { text: 'No trades at this hour', value: null, fmt: 'text' as const, tone: 'flat' as const, trades: 0 }
+                : c.n < 3 ? { text: 'Few trades this hour:', value: c.n, fmt: 'int' as const, tone: 'flat' as const, trades: c.n }
+                  : { text: wr! < 0.4 ? 'Wait ·' : wr! >= 0.55 ? 'Your hour ·' : 'Mixed ·', value: wr!, fmt: 'pct' as const, tone: (wr! < 0.4 ? 'dn' : wr! >= 0.55 ? 'up' : 'flat') as 'dn' | 'up' | 'flat', suffix: 'won now', trades: c.n };
+              return (
+                <Widget id="before" span={s} title="Before you trade" sub={symbol ? `· ${symbol} by hour` : ''} foot={ai ? <AiFoot line={line} /> : null}>
+                  {symbol ? <>
+                    {picker}
+                    {cells.length ? <>
+                      <div className="d2-hsum">All hours: <b>{pct(all.wins / all.n)} won</b> · {all.n} trades</div>
+                      <HourBars cells={cells} nowH={now.h} nowFrac={now.m / 60} ai={ai} />
+                    </> : <Empty title="No trades on this side" />}
+                  </> : <Empty title="No symbols" />}
+                </Widget>
+              );
+            }}
+          </BeforeYouTrade>
+        );
+      case 'plan':
+        return (
+          <Widget id="plan" span={s} title={`Plan · ${nextSession(Date.now())}`} foot={ai ? <AiFoot line={d.ai.plan} /> : null}
+            onExplain={d.plan.length ? () => explain('next-session plan', d.plan.map(r => `${r.text}: ${r.fmt === 'money' ? money(r.value) : `${pct(r.value)} won`}`).join('; ')) : undefined}>
+            {d.plan.length ? <PlanList rules={d.plan} /> : <Empty title={T < d.minTrades ? `Needs ${d.minTrades} trades` : 'No rules stand out yet'} note={T < d.minTrades ? `${T} so far.` : 'Nothing in your history is clearly worth a rule.'} />}
+          </Widget>
+        );
+      case 'symbols':
+        return (
+          <Widget id="symbols" span={s} title="Symbols" sub="· sorted by net" flush
+            onExplain={() => explain('symbols table', d.symbols.slice(0, 10).map(r => `${r.symbol} ${r.trades} trades ${pct(r.winRate)} won net ${money(r.net)}`).join('; '))}
+            foot={ai ? <AiFoot line={d.ai.symbols} /> : null}>
+            <SymbolsTable rows={d.symbols} rangeLabel={rangeShort} />
+          </Widget>
+        );
+      case 'recent':
+        return (
+          <Widget id="recent" span={s} title="Recent trades" sub={ai ? <span data-ai>· AI grade</span> : null} flush tools={<a href="/trades" className="d2-wl">Trade log</a>}
+            foot={ai ? <AiFoot line={d.recent.some(r => r.grade) ? { text: 'Graded on process, not result', value: null, fmt: 'text', tone: 'flat', trades: d.recent.length } : null} /> : null}>
+            <RecentTable rows={d.recent} />
+          </Widget>
+        );
+    }
+  }
 }
 
-/** The greeting at the top of the dashboard (E2): who, and how many trades in the range. */
-function Hello({ name, trades, rangeLabel }: { name: string | null; trades: number; rangeLabel: string }) {
-  const [part, setPart] = useState<string | null>(null);
-  // Time of day is the viewer's, so it is set after mount (the server doesn't know it).
-  useEffect(() => { const h = new Date().getHours(); setPart(h < 12 ? 'morning' : h < 18 ? 'afternoon' : 'evening'); }, []);
-  const first = name?.trim().split(/\s+/)[0];
+function FilterSel({ label, value, all, options, onChange, icon, disabled }: { label: string; value: string; all: string; options: Array<{ v: string; label: string }>; onChange: (v: string) => void; icon?: boolean; disabled?: boolean }) {
+  const cur = options.find(o => o.v === value);
   return (
-    <header className="dk-hello" data-testid="dash-hello">
-      <h2>{part ? `Good ${part}${first ? `, ${first}` : ''}.` : first ? `Hi, ${first}.` : 'Welcome back.'} <span>Here’s how your trading is <em>really</em> going.</span></h2>
-      <p><b className="m">{trades}</b> closed {trades === 1 ? 'trade' : 'trades'} · {rangeLabel.toLowerCase()}</p>
-    </header>
+    <label className={`d2-fp d2-fsel${value ? ' set' : ''}${disabled ? ' off' : ''}`} data-testid={`filter-${label.toLowerCase()}`}>
+      {icon && <Funnel size={14} aria-hidden />}
+      <span>{label}</span> <b>{cur ? cur.label.replace(/ \(\d+\)$/, '') : all}</b><CaretDown size={11} aria-hidden />
+      <select value={value} onChange={e => onChange(e.target.value)} aria-label={`${label} filter`} disabled={disabled}>
+        <option value="">{label}: {all}</option>
+        {options.map(o => <option key={o.v} value={o.v}>{o.label}</option>)}
+      </select>
+    </label>
+  );
+}
+
+function Skeleton() {
+  return (
+    <div className="d2-skel" aria-busy aria-label="Loading dashboard" data-testid="dashboard-loading">
+      <div className="d2-card d2-sk" style={{ height: 40 }} />
+      <div className="d2-card d2-sk" style={{ height: 88 }} />
+      <div className="d2-grid">
+        <div className="d2-card d2-sk d2-s8" style={{ height: 320 }} />
+        <div className="d2-card d2-sk d2-s4" style={{ height: 320 }} />
+        <div className="d2-card d2-sk d2-s4" style={{ height: 300 }} />
+        <div className="d2-card d2-sk d2-s4" style={{ height: 300 }} />
+        <div className="d2-card d2-sk d2-s4" style={{ height: 300 }} />
+      </div>
+    </div>
   );
 }
