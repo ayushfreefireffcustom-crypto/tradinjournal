@@ -19,6 +19,7 @@ import MetaTrader5 as mt5
 from fastapi import Depends, FastAPI, Header, HTTPException
 
 from app.config import settings
+from app.levels import level_or_none, order_levels
 from app.models import (
     AccountRequest, AccountResponse,
     Candle, CandlesRequest, CandlesResponse,
@@ -544,16 +545,21 @@ def deals(req: DealsRequest) -> DealsResponse:
     with _lock:
         _connect(req.login, req.password, req.server)
         quote_before = _newest_quote_time()
-        mt5.history_orders_get(req.from_time, req.to_time)
+        # Also warms the terminal's history cache before the deals call. The
+        # orders carry the stop / target set when each position was opened.
+        orders = mt5.history_orders_get(req.from_time, req.to_time)
+        levels = order_levels(orders)
         time.sleep(1)
         raw = mt5.history_deals_get(req.from_time, req.to_time)
         server_time, utc_now = _live_server_time(quote_before)
         if raw is None:
             log.warning(f"[deals] history_deals_get returned None: {mt5.last_error()}")
             return DealsResponse(deals=[], total=0, server_time=server_time, utc_now=utc_now)
-        log.info(f"[deals] pulled {len(raw)} deals")
+        log.info(f"[deals] pulled {len(raw)} deals, {len(levels)} orders with sl/tp")
         result: list[RawDeal] = []
         for d in raw:
+            # Opening deals (entry IN) get the opening order's sl/tp.
+            sl, tp = levels.get(int(d.order), (None, None)) if d.entry == 0 else (None, None)
             result.append(RawDeal(
                 deal_ticket=d.ticket,
                 order_ticket=d.order,
@@ -571,6 +577,8 @@ def deals(req: DealsRequest) -> DealsResponse:
                 magic=d.magic,
                 comment=d.comment or "",
                 reason=d.reason,
+                sl=sl,
+                tp=tp,
             ))
         if server_time is not None:
             log.info(f"[deals] server clock offset ~{(server_time - utc_now) / 3600:+.2f}h")
@@ -602,6 +610,9 @@ def positions(req: PositionsRequest) -> PositionsResponse:
                 commission=str(p.commission),
                 swap=str(p.swap),
                 open_time=p.time,
+                sl=level_or_none(getattr(p, "sl", None)),
+                tp=level_or_none(getattr(p, "tp", None)),
+                update_time=int(getattr(p, "time_update", 0) or 0) or None,
             ))
         return PositionsResponse(positions=result, total=len(result))
 

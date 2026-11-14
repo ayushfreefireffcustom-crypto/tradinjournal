@@ -10,14 +10,14 @@
 import { prisma } from '@tradinjournal/db';
 import { env } from '@tradinjournal/config';
 import { logger } from '@tradinjournal/logger';
-import type { Deal } from '@tradinjournal/types';
-import { getDealsWithClock, HISTORY_START, type DealsWithClock } from '../../lib/broker-connector.js';
+import { getDealsWithClock, getPositionLevels, HISTORY_START, type DealsWithClock, type DealWithLevels } from '../../lib/broker-connector.js';
 import { formatTz, observeOffset, tzOf, updateServerTz } from '../../lib/server-time.js';
 import { normalizeExecutionTimes } from './server-time.sync.js';
 import { AppError, BrokerAuthError, describeBridgeFailure, type BridgeFailure } from '../../http/errors.js';
 import { credsOf, type BridgeCreds } from '../accounts/accounts.credentials.js';
 import { dealToExecution } from './sync.mapping.js';
 import { usableAccountsWhere } from '../../lib/broker-policy.js';
+import { recordBridgeLevels, type PositionSnapshot } from '../trade-data/bridge-levels.js';
 
 const DAY_MS = 86_400_000;
 /** Longer than the slowest bridge call, so a crashed sync frees the account. */
@@ -26,10 +26,31 @@ const INSERT_CHUNK = 1000;
 /** Back-off after a failure: a rejected password needs the user, so wait longer. */
 export const RETRY_AFTER_MS = { transient: 15 * 60_000, auth: DAY_MS } as const;
 
-export type FetchDeals = (creds: BridgeCreds, range: { from: Date }) => Promise<Deal[] | DealsWithClock>;
+export type FetchDeals = (creds: BridgeCreds, range: { from: Date }) => Promise<DealWithLevels[] | DealsWithClock>;
 
 /** Covers any server offset (−12h…+14h) when a UTC bound is read as server wall clock. */
 const WALL_CLOCK_MARGIN_MS = 14 * 3_600_000;
+/** Stop / target on the open positions; null when the bridge doesn't send them. */
+export type FetchPositionLevels = (creds: BridgeCreds) => Promise<PositionSnapshot[] | null>;
+
+// Set once any /deals answer carries sl/tp keys: only then is /positions asked
+// for levels, so an older bridge gets no extra calls.
+let bridgeSendsLevels = false;
+
+/**
+ * Stop / target levels from the bridge → trade_level rows (see
+ * trade-data/bridge-levels.ts). Never throws; returns the rows written.
+ */
+async function syncLevels(accountId: string, creds: BridgeCreds, deals: DealWithLevels[], fetchPositions: FetchPositionLevels, now: Date): Promise<number> {
+  try {
+    if (deals.some(d => 'sl' in d || 'tp' in d)) bridgeSendsLevels = true;
+    const snapshot = bridgeSendsLevels ? await fetchPositions(creds).catch(() => null) : null;
+    return await recordBridgeLevels(accountId, deals, snapshot, now);
+  } catch (err) {
+    logger.debug('[sync] levels skipped', { accountId, err: (err as Error).message });
+    return 0;
+  }
+}
 
 export type SyncResult =
   | { status: 'synced'; added: number; pulled: number; full: boolean; normalized?: number }
@@ -57,10 +78,11 @@ async function acquireLease(accountId: string, now: Date): Promise<boolean> {
  */
 export async function syncAccount(
   accountId: string,
-  opts: { fetch?: FetchDeals; now?: () => Date; toUtc?: boolean } = {},
+  opts: { fetch?: FetchDeals; positions?: FetchPositionLevels; now?: () => Date; toUtc?: boolean } = {},
 ): Promise<SyncResult> {
   const now = opts.now ?? (() => new Date());
   const fetch: FetchDeals = opts.fetch ?? ((creds, range) => getDealsWithClock(creds, range));
+  const positions: FetchPositionLevels = opts.positions ?? (creds => getPositionLevels(creds));
   const toUtc = opts.toUtc ?? env.MT5_SERVER_TIME_TO_UTC;
   if (!(await acquireLease(accountId, now()))) return { status: 'locked' };
 
@@ -105,6 +127,7 @@ export async function syncAccount(
         return !m || t > m ? t : m;
       }, account.lastDealAt);
     }
+    const levels = await syncLevels(accountId, creds, deals, positions, now());
 
     await prisma.brokerAccount.update({
       where: { id: accountId },
@@ -112,7 +135,7 @@ export async function syncAccount(
         lastSyncAt: now(), lastSyncError: null, status: 'ACTIVE', syncLockedUntil: null, syncRetryAt: null, lastDealAt: newest,
         ...(model.tz ? { serverTimeZone: model.tz.zone, serverTimeShiftMin: model.tz.shiftMin } : {}),
         ...(observed != null ? { serverOffsetMin: observed, serverOffsetAt: new Date(model.lastObservedAt!) } : {}),
-        ...(added > 0 || normalized > 0 ? { dataVersion: { increment: 1 } } : {}),
+        ...(added > 0 || normalized > 0 || levels > 0 ? { dataVersion: { increment: 1 } } : {}),
       },
     });
     if (run) await prisma.syncRun.update({ where: { id: run.id }, data: { status: 'DONE', dealsPulled: deals.length, tradesBuilt: added, finishedAt: now() } }).catch(() => {});

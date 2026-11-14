@@ -73,6 +73,11 @@ class RawDeal(BaseModel):
     magic: int
     comment: str
     reason: int
+    # Stop loss / take profit of the order that opened the position (entry IN
+    # deals only), from history_orders_get. Optional and absent on older bridges;
+    # None when the order had none.
+    sl: str | None = None
+    tp: str | None = None
 
 class DealsResponse(BaseModel):
     deals: list[RawDeal]
@@ -99,6 +104,12 @@ class OpenPosition(BaseModel):
     commission: str
     swap: str
     open_time: int      # Unix timestamp
+    # Current stop loss / take profit on the position (None = not set), and when
+    # the position was last modified (Unix seconds). Optional: older bridges
+    # don't send them and the API works without.
+    sl: str | None = None
+    tp: str | None = None
+    update_time: int | None = None
 
 class PositionsResponse(BaseModel):
     positions: list[OpenPosition]

@@ -1,0 +1,34 @@
+/* Stop & target block (trade review card + trade log panel section).
+   Inter, sizes 11/13/14/22 only; numbers 900; #08C465 / #FE3A31 via the .d2 vars. */
+.v6 .sl { min-width: 0; }
+.v6 .sl--card { padding: 12px 14px; }
+.v6 .sl--panel { padding: 12px 0 0; border-top: 1px solid var(--line); }
+.v6 .sl-row { display: flex; align-items: flex-end; gap: 10px 22px; flex-wrap: wrap; min-width: 0; }
+.v6 .sl-cell { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.v6 .sl-cell b { font-size: 22px; font-weight: 900; letter-spacing: -.02em; line-height: 1.2; color: var(--tx); white-space: nowrap; }
+.v6 .sl--panel .sl-cell b { font-size: 14px; }
+.v6 .sl-cell small { font-size: 11px; color: var(--mut); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.v6 .sl-cell .sl-dash { font-size: 14px; font-weight: 700; color: var(--mut); letter-spacing: 0; }
+.v6 .sl-move.dn b { color: var(--d2-rt); }
+.v6 .sl-move.up b { color: var(--d2-gt); }
+.v6 .sl-edit { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; flex: none; }
+.v6 .sl-form { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; margin-top: 12px; min-width: 0; }
+.v6 .sl-form label { display: flex; flex-direction: column; gap: 4px; flex: 1 1 140px; min-width: 0; max-width: 220px; }
+.v6 .sl-form .x-input { width: 100%; min-width: 0; font-size: 14px; }
+.v6 .sl-actions { display: flex; gap: 8px; flex: none; }
+.v6 .sl-err { margin: 8px 0 0; font-size: 13px; color: var(--d2-rt); }
+.v6 .sl-hist { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.v6 .sl-hist li { display: flex; align-items: center; gap: 10px; min-width: 0; font-size: 13px; color: var(--tx); padding: 4px 0; border-top: 1px solid var(--line); }
+.v6 .sl-hist li:first-child { border-top: 0; }
+.v6 .sl-hist .m { font-weight: 700; white-space: nowrap; }
+.v6 .sl-hist small { font-size: 11px; color: var(--mut); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.v6 .sl-del { flex: none; display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 6px; border: 0; background: transparent; color: var(--mut); cursor: pointer; }
+.v6 .sl-del:hover { color: var(--d2-rt); background: var(--d2-chip, var(--s3)); }
+.v6 .sl-del:disabled { opacity: .4; cursor: default; }
+@media (max-width: 480px) {
+  .v6 .sl-row { gap: 10px 16px; }
+  .v6 .sl-cell b { font-size: 14px; }
+  .v6 .sl-edit { margin-left: 0; }
+  .v6 .sl-form label { flex-basis: 120px; max-width: none; }
+  .v6 .sl-actions { width: 100%; }
+}

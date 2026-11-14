@@ -35,6 +35,9 @@ interface BridgeDeal {
   /** Seconds since epoch in the trade SERVER's wall clock, not UTC. */
   deal_time: number;
   comment: string;
+  /** Opening order's stop / target (entry IN deals). Newer bridges only. */
+  sl?: string | null;
+  tp?: string | null;
 }
 
 interface BridgeDealsResponse {
@@ -47,7 +50,7 @@ interface BridgeDealsResponse {
 
 export interface DealsWithClock {
   /** dealTime is the server's wall clock written as if it were UTC — convert before treating it as UTC. */
-  deals: Deal[];
+  deals: DealWithLevels[];
   clock: ServerClock | null;
 }
 
@@ -56,7 +59,7 @@ const DEAL_ENTRY_MAP: Record<number, Deal['entry']> = { 0: 'IN', 1: 'OUT', 2: 'I
 
 /** Per-call ceilings. The bridge serialises on one terminal, so a hung call would
  *  otherwise hold the request (and the caller's socket) for minutes. */
-export const BRIDGE_TIMEOUT_MS = { verify: 45_000, deals: 120_000, diagnose: 90_000 } as const;
+export const BRIDGE_TIMEOUT_MS = { verify: 45_000, deals: 120_000, diagnose: 90_000, positions: 30_000 } as const;
 
 // Identical calls already in flight share one bridge request (e.g. two tabs opening
 // the dashboard at once). Keyed by path + full body, so different credentials or
@@ -176,6 +179,14 @@ export async function verifyAccount(creds: BridgeCreds): Promise<VerifyResult> {
 const bridgeTime = (d: Date) => d.toISOString().slice(0, 19);
 export const HISTORY_START = new Date('2020-01-01T00:00:00Z');
 
+/** A deal plus, from newer bridges, the stop / target of the order that opened the position. */
+export type DealWithLevels = Deal & { sl?: number | null; tp?: number | null };
+
+const level = (v: string | null | undefined): number | null => {
+  const n = v == null ? NaN : parseFloat(v);
+  return Number.isFinite(n) && n > 0 ? n : null;
+};
+
 /**
  * Deals in [from, to] plus the server clock. Defaults to the whole history;
  * incremental syncs pass a `from` shortly before the newest stored deal. The
@@ -189,7 +200,7 @@ export async function getDealsWithClock(creds: BridgeCreds, range: { from?: Date
   }, BRIDGE_TIMEOUT_MS.deals);
 
   const clock = data.utc_now != null ? { serverTime: data.server_time ?? null, utcNow: data.utc_now } : null;
-  const deals = data.deals.map((d): Deal => ({
+  const deals = data.deals.map((d): DealWithLevels => ({
     dealTicket: String(d.deal_ticket),
     orderTicket: String(d.order_ticket),
     positionId: String(d.position_id),
@@ -204,12 +215,26 @@ export async function getDealsWithClock(creds: BridgeCreds, range: { from?: Date
     fee: d.fee,
     dealTime: new Date(d.deal_time * 1000).toISOString(),
     comment: d.comment,
+    ...('sl' in d || 'tp' in d ? { sl: level(d.sl), tp: level(d.tp) } : {}),
   }));
   return { deals, clock };
 }
 
+interface BridgePosition { position_id: number; symbol: string; type: number; open_time: number; sl?: string | null; tp?: string | null; update_time?: number | null }
+
+/** Stop / target on each open position; null when the bridge is older and doesn't send them. */
+export async function getPositionLevels(creds: BridgeCreds): Promise<Array<{ positionId: string; sl: number | null; tp: number | null; updatedAt: Date | null }> | null> {
+  const data = await bridgePost<{ positions: BridgePosition[] }>('/positions', creds, BRIDGE_TIMEOUT_MS.positions);
+  const ps = data.positions ?? [];
+  if (ps.length && !ps.some(p => 'sl' in p || 'tp' in p)) return null;
+  return ps.map(p => ({
+    positionId: String(p.position_id), sl: level(p.sl), tp: level(p.tp),
+    updatedAt: p.update_time ? new Date(p.update_time * 1000) : null,
+  }));
+}
+
 /** Deals only (dealTime in server wall clock — see getDealsWithClock). */
-export async function getDeals(creds: BridgeCreds, range: { from?: Date; to?: Date } = {}): Promise<Deal[]> {
+export async function getDeals(creds: BridgeCreds, range: { from?: Date; to?: Date } = {}): Promise<DealWithLevels[]> {
   return (await getDealsWithClock(creds, range)).deals;
 }
 

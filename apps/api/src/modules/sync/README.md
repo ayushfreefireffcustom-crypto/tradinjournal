@@ -10,6 +10,12 @@ to *pull new deals* into the `execution` table.
   with `skipDuplicates`, bumps `dataVersion` only when something new arrived.
   Failures set `lastSyncError` + `syncRetryAt` (15 min, or 24 h for a rejected
   password → `status = ERROR`) and never touch stored data.
+- **Stop / target levels** — when the bridge sends `sl` / `tp` (on opening
+  deals, and on `/positions`, which is only called once a `/deals` answer has
+  carried the fields), new levels go to `trade_level` via
+  `trade-data/bridge-levels.ts` (a row only when the stop or target changed).
+  Older bridges: nothing changes. Writing levels also bumps `dataVersion`, as
+  does the stop editor and the MAE/MFE job (`trade-data/excursion.job.ts`).
 - **Queue** (`sync.queue.ts`) — in-process, one entry per account, user-facing
   (`high`) ahead of background (`low`), `SYNC_CONCURRENCY` at a time.
 - **Reads** (`account-data.ts`) — `interactive` (pages: first load waits for the
