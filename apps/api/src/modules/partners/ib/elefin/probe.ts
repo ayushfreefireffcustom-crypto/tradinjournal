@@ -1,114 +1,88 @@
-// "Test connection": reads the first page of the profile, clients and accounts endpoints
-// and reports what the key can see — abilities, field names and totals. Never values.
-import type { ElefinAbilityState, ElefinProbeDto, ElefinResource } from '@tradinjournal/contracts';
-import { ELEFIN_LIMITS, ELEFIN_PATHS, ELEFIN_PROFILE_FIELDS, type ElefinPaths } from './config.js';
+// "Test connection": /me (who the key belongs to, its abilities, expiry, client total,
+// how far back trades go), then one /clients row to confirm reading works. Reports counts
+// and field names only — never the key, never a client's name or any other value.
+import type { ElefinKeyInfoDto, ElefinProbeDto } from '@tradinjournal/contracts';
+import { CLIENTS_READ, ELEFIN_LIMITS, ELEFIN_PATHS } from './config.js';
 import { ElefinClient, ElefinError } from './client.js';
-import { detect, fieldNames, pick, readPage, readRecord } from './fields.js';
+import { DOCUMENTED_FIELDS, fieldNames, meData, type ElefinMe } from './schema.js';
 
-export interface ProbeResult extends ElefinProbeDto {
-  /** The path that answered for each resource (stored on the connection). */
-  paths: Partial<Record<ElefinResource, string>>;
-  /** The partner's id at Elefin, when the profile endpoint shares it. */
-  partnerRef: string | null;
+const DAY_MS = 86_400_000;
+
+export function keyInfo(me: ElefinMe): ElefinKeyInfoDto {
+  const abilities = [...new Set(me.key.abilities)].sort();
+  return {
+    partnerId: me.scope.partner?.id ?? null,
+    partnerName: me.scope.partner?.name?.trim().slice(0, 120) || null,
+    keyName: me.key.name?.trim().slice(0, 80) || null,
+    abilities, canReadClients: abilities.includes(CLIENTS_READ),
+    rateLimitPerMinute: me.key.rate_limit_per_minute ?? null,
+    expiresAt: me.key.expires_at ? new Date(me.key.expires_at).toISOString() : null,
+    tradesFrom: me.data_availability?.trades_from ? new Date(me.data_availability.trades_from).toISOString() : null,
+  };
 }
 
-interface Attempt { state: ElefinAbilityState; path: string | null; body: unknown; error: ElefinError | null }
-
-/** Tries each candidate path; the first one that isn't a 404 decides. */
-async function tryPaths(client: ElefinClient, paths: string[], list: boolean): Promise<Attempt> {
-  let last: ElefinError | null = null;
-  for (const p of paths) {
-    try {
-      const body = await client.get(p, list ? { per_page: ELEFIN_LIMITS.probePerPage } : {});
-      return { state: 'ok', path: p, body, error: null };
-    } catch (err) {
-      if (!(err instanceof ElefinError)) throw err;
-      if (err.kind === 'not_found') { last = err; continue; }
-      if (err.kind === 'forbidden') return { state: 'forbidden', path: p, body: null, error: err };
-      return { state: 'error', path: p, body: null, error: err };
-    }
+/** GET /me, parsed. Throws ElefinError. */
+export async function readMe(client: ElefinClient): Promise<{ key: ElefinKeyInfoDto; clients: number | null }> {
+  const data = await client.get(ELEFIN_PATHS.me);
+  const me = meData.safeParse(data);
+  if (!me.success) throw new ElefinError('bad_response', 'Elefin’s /me answer came back in a shape we don’t recognise.', 200, null, ELEFIN_PATHS.me);
+  if (me.data.scope.type !== 'partner' || !me.data.scope.partner) {
+    throw new ElefinError('forbidden', 'This key isn’t a partner key. Ask Elefin for a key bound to your partner account.', 200, null, ELEFIN_PATHS.me);
   }
-  return { state: 'missing', path: null, body: null, error: last };
+  return { key: keyInfo(me.data), clients: me.data.totals?.clients ?? null };
 }
 
-const uniq = (a: string[]) => [...new Set(a)].sort();
+export function failureOf(e: ElefinError): Pick<ElefinProbeDto, 'outcome' | 'message' | 'retryAfter'> {
+  if (e.kind === 'auth') return { outcome: 'invalid_key', retryAfter: null, message: 'Elefin didn’t accept this key. Check it was pasted whole (key.secret); if it worked before, it was switched off, expired or regenerated.' };
+  if (e.kind === 'rate_limited') return { outcome: 'rate_limited', retryAfter: e.retryAfter, message: `Elefin asked us to slow down. Try again in ${e.retryAfter ?? 60} seconds.` };
+  if (e.kind === 'network' || e.kind === 'server') return { outcome: 'unreachable', retryAfter: null, message: `${e.message} Try again in a few minutes.` };
+  if (e.kind === 'forbidden') return { outcome: 'missing_permission', retryAfter: null, message: e.message };
+  return { outcome: 'bad_response', retryAfter: null, message: e.message };
+}
 
-export async function probe(client: ElefinClient, paths: ElefinPaths = ELEFIN_PATHS): Promise<ProbeResult> {
-  const out: ProbeResult = {
-    ok: false, outcome: 'ok', message: '', abilities: { profile: 'skipped', clients: 'skipped', accounts: 'skipped' },
-    fields: { clients: [], accounts: [] }, counts: { clients: null, accounts: null }, hasLogin: false, hasEmail: false,
-    missing: [], notes: [], retryAfter: null, paths: {}, partnerRef: null,
+export async function probe(client: ElefinClient, now = new Date()): Promise<ElefinProbeDto> {
+  const out: ElefinProbeDto = {
+    ok: false, outcome: 'ok', message: '', key: null, clients: null, clientsRead: 'skipped', fields: [], missing: [], notes: [], retryAfter: null,
   };
-  const fail = (e: ElefinError): ProbeResult => {
-    if (e.kind === 'auth') return { ...out, outcome: 'invalid_key', message: 'Elefin didn’t accept this key. It may be mistyped, switched off or expired.' };
-    if (e.kind === 'rate_limited') return { ...out, outcome: 'rate_limited', retryAfter: e.retryAfter, message: `Elefin asked us to slow down. Try again in ${e.retryAfter ?? 60} seconds.` };
-    if (e.kind === 'network' || e.kind === 'server') return { ...out, outcome: 'unreachable', message: `${e.message} Try again in a few minutes.` };
-    return { ...out, outcome: 'bad_response', message: e.message };
-  };
+  let me: Awaited<ReturnType<typeof readMe>>;
+  try { me = await readMe(client); } catch (e) {
+    if (!(e instanceof ElefinError)) throw e;
+    return { ...out, ...failureOf(e) };
+  }
+  out.key = me.key;
+  out.clients = me.clients;
 
-  // Clients first: a wrong key fails here and we stop.
-  const clients = await tryPaths(client, paths.clients, true);
-  if (clients.error && clients.state === 'error') return fail(clients.error);
-  out.abilities.clients = clients.state;
-  if (clients.state === 'ok') {
-    out.paths.clients = clients.path!;
-    try {
-      const page = readPage(clients.body);
-      out.counts.clients = page.total ?? (page.next ? null : page.items.length);
-      out.fields.clients = uniq(page.items.slice(0, 25).flatMap(fieldNames));
-      const d = detect(page.items, 'clients');
-      out.hasLogin ||= d.hasLogin; out.hasEmail ||= d.hasEmail;
-      if (out.counts.clients == null) out.notes.push(`At least ${page.items.length} clients; the full count comes with the first sync.`);
-    } catch { return { ...out, outcome: 'bad_response', message: 'Elefin’s client list came back in a shape we don’t recognise.' }; }
+  const exp = me.key.expiresAt ? new Date(me.key.expiresAt).getTime() : null;
+  if (exp != null && exp <= now.getTime()) {
+    return { ...out, outcome: 'invalid_key', message: 'This key has expired. Ask Elefin for a new one.' };
+  }
+  if (!me.key.canReadClients) {
+    out.missing.push(`the “${CLIENTS_READ}” permission on this key`);
+    return { ...out, outcome: 'missing_permission', clientsRead: 'forbidden', message: 'The key works but can’t read your clients. Ask Elefin to add the clients.read permission.' };
   }
 
-  const accounts = await tryPaths(client, paths.accounts, true);
-  if (accounts.error && accounts.state === 'error') return fail(accounts.error);
-  out.abilities.accounts = accounts.state;
-  if (accounts.state === 'ok') {
-    out.paths.accounts = accounts.path!;
-    try {
-      const page = readPage(accounts.body);
-      out.counts.accounts = page.total ?? (page.next ? null : page.items.length);
-      out.fields.accounts = uniq(page.items.slice(0, 25).flatMap(fieldNames));
-      const d = detect(page.items, 'accounts');
-      out.hasLogin ||= d.hasLogin; out.hasEmail ||= d.hasEmail;
-    } catch { return { ...out, outcome: 'bad_response', message: 'Elefin’s account list came back in a shape we don’t recognise.' }; }
-  }
-
-  // Profile last and optional: it only labels the connection.
-  const profile = await tryPaths(client, paths.profile, false);
-  out.abilities.profile = profile.state;
-  if (profile.state === 'ok') {
-    out.paths.profile = profile.path!;
-    const rec = readRecord(profile.body);
-    const ref = rec ? pick(rec, ELEFIN_PROFILE_FIELDS.id)?.value : null;
-    out.partnerRef = typeof ref === 'string' || typeof ref === 'number' ? String(ref).slice(0, 60) : null;
-  } else if (profile.error?.kind === 'auth') return fail(profile.error);
-
-  // What's missing, in plain words.
-  const canClients = out.abilities.clients === 'ok', canAccounts = out.abilities.accounts === 'ok';
-  if (!canClients && !canAccounts) {
-    out.missing.push('read access to clients', 'read access to client trading accounts');
-    return { ...out, outcome: 'missing_permission', message: 'The key works but can’t read your clients or their trading accounts.' };
-  }
-  if (!canAccounts && out.abilities.accounts === 'forbidden') out.missing.push('read access to client trading accounts');
-  if (!canClients && out.abilities.clients === 'forbidden') out.notes.push('The key can’t read client profiles, so emails won’t be matched. Accounts are enough to verify.');
-  const emptyLists = (out.counts.clients ?? 1) === 0 && (out.counts.accounts ?? 0) === 0;
-  if (!out.hasLogin && !emptyLists) {
-    if (!canAccounts) {
-      return { ...out, outcome: 'missing_permission', message: 'The key can read clients but not their trading accounts, so we can’t see MT5 logins.' };
+  try {
+    const page = await client.page(ELEFIN_PATHS.clients, { per_page: ELEFIN_LIMITS.probePerPage, page: 1 });
+    out.clientsRead = 'ok';
+    out.clients = page.meta.total;
+    out.fields = fieldNames(page.rows[0]);
+    const absent = page.rows.length ? DOCUMENTED_FIELDS.filter(f => !out.fields.includes(f)) : [];
+    if (absent.length) out.notes.push(`Elefin left out ${absent.length} documented field${absent.length === 1 ? '' : 's'}: ${absent.join(', ')}.`);
+  } catch (e) {
+    if (!(e instanceof ElefinError)) throw e;
+    if (e.kind === 'forbidden') {
+      out.missing.push(`the “${CLIENTS_READ}” permission on this key`);
+      return { ...out, clientsRead: 'forbidden', outcome: 'missing_permission', message: 'The key works but can’t read your clients. Ask Elefin to add the clients.read permission.' };
     }
-    out.missing.push('the “login” (MT5 account number) field on trading accounts');
-    return { ...out, outcome: 'no_logins', message: 'The key can read accounts, but the MT5 login field isn’t shared with it.' };
+    return { ...out, clientsRead: 'error', ...failureOf(e) };
   }
-  if (!out.hasEmail && !emptyLists) out.notes.push('Emails aren’t shared with this key. That’s fine: we verify by MT5 login.');
-  if (emptyLists) out.notes.push('No clients under you yet. New ones appear on the next sync.');
+
+  if (exp != null && exp - now.getTime() < 14 * DAY_MS) {
+    const d = Math.max(1, Math.ceil((exp - now.getTime()) / DAY_MS));
+    out.notes.push(`This key expires in ${d} day${d === 1 ? '' : 's'}. Ask Elefin for a longer one.`);
+  }
+  if (out.clients === 0) out.notes.push('No clients in your book yet. New ones appear on the next sync.');
   out.ok = true;
-  out.outcome = 'ok';
-  const c = out.counts;
-  out.message = c.accounts != null
-    ? `Key works. ${c.clients != null ? `${c.clients} client${c.clients === 1 ? '' : 's'}, ` : ''}${c.accounts} trading account${c.accounts === 1 ? '' : 's'} found.`
-    : `Key works. ${c.clients ?? 'Your'} client${c.clients === 1 ? '' : 's'} found.`;
+  out.message = `Key works${me.key.partnerName ? ` for ${me.key.partnerName}` : ''}. ${out.clients?.toLocaleString('en-US') ?? 'Your'} client${out.clients === 1 ? '' : 's'} in your book.`;
   return out;
 }

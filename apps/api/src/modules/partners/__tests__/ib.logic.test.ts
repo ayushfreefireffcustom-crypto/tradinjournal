@@ -53,6 +53,24 @@ describe('decideVerification', () => {
     expect(decideVerification({ ...base, brokerKey: 'exness', brokerLabel: 'Exness' }).status).toBe('UNSUPPORTED_BROKER');
     expect(decideVerification({ ...base, brokerKey: null }).reason).toMatch(/couldn’t tell which broker/);
   });
+  it('verifies Elefin accounts of a trader Elefin confirmed by email', () => {
+    const ef: VerifyInput = { ...base, brokerKey: 'elefin', brokerLabel: 'Elefin', partnerBrokers: ['elefin'] };
+    expect(decideVerification({ ...ef, elefin: { verified: true, held: null } })).toMatchObject({ status: 'VERIFIED', method: 'elefin_email', ibAccountId: null });
+    // Only at Elefin; and a check-only account still counts (the trader is what Elefin confirmed).
+    expect(decideVerification({ ...base, elefin: { verified: true, held: null } }).status).toBe('NOT_FOUND');
+    expect(decideVerification({ ...ef, ownershipProven: false, elefin: { verified: true, held: null } }).status).toBe('VERIFIED');
+    // The list still wins (keeps its IbAccount link); admin decisions still stick.
+    expect(decideVerification({ ...ef, listedHere: { id: 'ib9' }, elefin: { verified: true, held: null } })).toMatchObject({ method: 'account', ibAccountId: 'ib9' });
+    expect(decideVerification({ ...ef, elefin: { verified: true, held: null }, prev: { status: 'REJECTED', method: 'manual', reviewRequestedAt: null } }).status).toBe('REJECTED');
+  });
+  it('explains a suspended or inactive Elefin account, unless a list proves the account', () => {
+    const ef: VerifyInput = { ...base, brokerKey: 'elefin', brokerLabel: 'Elefin', partnerBrokers: ['elefin'] };
+    const o = decideVerification({ ...ef, elefin: { verified: false, held: 'suspended' } });
+    expect(o).toMatchObject({ status: 'NOT_FOUND', signal: 'elefin-suspended' });
+    expect(o.reason).toMatch(/suspended/);
+    expect(decideVerification({ ...ef, listedHere: { id: 'ib1' }, elefin: { verified: false, held: 'inactive' } }).status).toBe('VERIFIED');
+    expect(decideVerification({ ...ef, elefin: { verified: false, held: null } }).status).toBe('NOT_FOUND');
+  });
   it('keeps admin decisions and requested reviews', () => {
     expect(decideVerification({ ...base, listedHere: { id: 'x' }, prev: { status: 'REJECTED', method: 'manual', reviewRequestedAt: null } }).status).toBe('REJECTED');
     expect(decideVerification({ ...base, prev: { status: 'VERIFIED', method: 'manual', reviewRequestedAt: null } }).status).toBe('VERIFIED');

@@ -32,7 +32,8 @@ function toDto(b: BrokerRow, counts?: { clientAccounts: number; verified: number
 export async function listBrokers(partnerId: string): Promise<PartnerBrokerDto[]> {
   const [rows, counts] = await Promise.all([
     prisma.partnerBroker.findMany({ where: { partnerId }, orderBy: { createdAt: 'asc' } }),
-    prisma.clientVerification.groupBy({ by: ['broker', 'status'], where: { partnerId }, _count: { _all: true } }),
+    // Accounts only: a trader-level Elefin lookup row isn't an account.
+    prisma.clientVerification.groupBy({ by: ['broker', 'status'], where: { partnerId, OR: [{ brokerAccountId: { not: null } }, { externalAccountId: { not: null } }] }, _count: { _all: true } }),
   ]);
   return rows.map(b => {
     const mine = counts.filter(c => c.broker === b.broker);
@@ -191,6 +192,10 @@ export async function verifyAccount(
   const prev = await prisma.clientVerification.findUnique({ where: key as { brokerAccountId: string } });
   const brokerEmail = opts.brokerEmail ?? prev?.brokerEmail ?? null;
   const emailToCheck = (brokerEmail ?? opts.userEmail ?? '').toLowerCase() || null;
+  // Elefin's email lookup for this trader (elefin/verify.ts): one row with no account attached.
+  const elefinRow = brokerKey === 'elefin'
+    ? await prisma.clientVerification.findFirst({ where: { userId: account.userId, partnerId: ref.partnerId, broker: 'elefin', brokerAccountId: null, externalAccountId: null }, select: { status: true, signal: true }, orderBy: { createdAt: 'asc' } })
+    : null;
   const [here, elsewhere, emailHit] = brokerKey ? await Promise.all([
     prisma.ibAccount.findFirst({ where: { partnerId: ref.partnerId, broker: brokerKey, accountId: login, removedAt: null }, select: { id: true } }),
     prisma.ibAccount.count({ where: { broker: brokerKey, accountId: login, removedAt: null, partnerId: { not: ref.partnerId } } }),
@@ -202,6 +207,10 @@ export async function verifyAccount(
     partnerBrokers: brokers.map(b => b.broker), listedHere: here, listedElsewhere: elsewhere > 0, emailListed: emailHit > 0,
     prev: prev ? { status: prev.status, method: prev.method, reviewRequestedAt } : reviewRequestedAt ? { status: 'PENDING', method: null, reviewRequestedAt } : null,
     ownershipProven: account.kind === 'mt5',
+    elefin: elefinRow ? {
+      verified: elefinRow.status === 'VERIFIED',
+      held: elefinRow.signal === 'elefin-suspended' ? 'suspended' : elefinRow.signal === 'elefin-inactive' ? 'inactive' : null,
+    } : null,
   });
   const data = {
     partnerId: ref.partnerId, broker: brokerKey, status: out.status, method: out.method, ibAccountId: out.ibAccountId,
@@ -243,6 +252,11 @@ export async function verifyOne(userId: string, accountId: string, input: { brok
   if (!account) throw new NotFoundError('Broker account not found');
   const prev = await prisma.clientVerification.findUnique({ where: keyOf(account) as { brokerAccountId: string } });
   if (prev && prev.attempts >= 30 && !input.requestReview) throw new AppError(429, 'VERIFY_LIMIT', 'Too many checks on this account. Ask for a review instead.');
+  // Ask Elefin again too (at most every 10 minutes per trader); it re-checks the accounts itself.
+  if (!input.requestReview) {
+    const { lookupTrader } = await import('./elefin/verify.js');
+    await lookupTrader(userId);
+  }
   return verifyAccount(account, ref, { brokerEmail: input.brokerEmail, requestReview: input.requestReview, userEmail: input.userEmail, counted: true });
 }
 

@@ -235,6 +235,8 @@ export async function joinPartner(user: { id: string; email: string }, code: str
   await logEvent({ kind: 'referral.late_code', partnerId: hit.partner.id, userId: user.id, message: `Joined with code ${hit.code} after signup` });
   await verifyUser(user.id, { userEmail: user.email });
   await recomputeUser(user.id);
+  // The partner may have connected Elefin: ask it about this trader (in the background).
+  void import('./elefin/verify.js').then(m => m.queueElefinLookup(user.id)).catch(() => {});
   return clientAccess(user.id, user.email);
 }
 

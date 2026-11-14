@@ -9,7 +9,7 @@ import AppShell, { timeAgo } from '@/components/app-shell';
 import AdminOnly from '@/components/v6/admin/admin-only';
 import PartnerAdminTabs from '@/components/v6/admin/partner-tabs';
 import { useAccounts } from '@/lib/use-accounts';
-import { elefinApi, type AdminElefinRow } from '@/lib/elefin-api';
+import { daysUntil, elefinApi, type AdminElefinRow } from '@/lib/elefin-api';
 import { StatePill } from '@/components/v6/account/elefin-connect';
 import { IArrowLeft } from '@/components/v6/icons';
 import EmptyState from '@/components/v6/ui/empty-state';
@@ -19,7 +19,9 @@ import '@/styles/v6/ib.css';
 import '@/styles/v6/elefin.css';
 
 const msg = (e: unknown, f: string) => (e instanceof Error ? e.message : f);
-const n = (v: number) => v.toLocaleString('en-US');
+const n = (v: number | null) => (v == null ? '—' : v.toLocaleString('en-US'));
+/** "Never", "12 d", "Expired". */
+const expiry = (iso: string | null) => { const d = daysUntil(iso); return d == null ? 'Never' : d <= 0 ? 'Expired' : `${d} d`; };
 
 export default function AdminElefinPage() {
   const { accounts, selected, select } = useAccounts();
@@ -37,7 +39,7 @@ export default function AdminElefinPage() {
     setBusy(r.partnerId);
     try {
       const out = await elefinApi.adminSync(r.partnerId);
-      setToast(out.result?.ok ? `${r.partnerName}: ${out.result.accounts} accounts synced.` : out.result?.error ?? 'Sync started.');
+      setToast(out.result?.ok ? `${r.partnerName}: ${n(out.result.clients)} clients synced${out.result.lookups ? `, ${out.result.lookups} traders checked` : ''}.` : out.result?.error ?? 'Sync started.');
       await load();
     } catch (e) { setToast(msg(e, 'Sync failed.')); } finally { setBusy(null); }
   }
@@ -63,10 +65,11 @@ export default function AdminElefinPage() {
                 <ul className="ef-adm">
                   {rows.map(r => (
                     <li key={r.partnerId} data-testid={`admin-elefin-row-${r.partnerId}`}>
-                      <span className="ef-adm-who"><Link href={`/admin/partners/${r.partnerId}`}><b>{r.partnerName}</b></Link><small>{r.partnerEmail}{r.keyHint ? <> · key <span className="axnum">{r.keyHint}</span></> : ''}</small></span>
+                      <span className="ef-adm-who"><Link href={`/admin/partners/${r.partnerId}`}><b>{r.partnerName}</b></Link><small>{r.elefinPartner ? <>Elefin: {r.elefinPartner} · </> : null}{r.partnerEmail}{r.keyHint ? <> · key <span className="axnum">{r.keyHint}</span></> : ''}</small></span>
                       <span className="ef-adm-st"><StatePill s={r.state} />{r.lastError && <small className="ef-adm-err">{r.lastError}</small>}</span>
-                      <span className="ib-br-n"><b className="m">{n(r.accounts)}</b><small>accounts</small></span>
-                      <span className="ib-br-n"><b className="m">{n(r.verified)}<span className="x-dim">/{n(r.clientAccounts)}</span></b><small>verified</small></span>
+                      <span className="ib-br-n"><b className="m">{n(r.clients)}{r.funded != null && <span className="x-dim"> · {n(r.funded)}</span>}</b><small>clients · funded</small></span>
+                      <span className="ib-br-n"><b className="m">{n(r.verified)}<span className="x-dim">/{n(r.referred)}</span></b><small>verified</small></span>
+                      <span className="ib-br-n"><b className={`m ${r.state !== 'NOT_CONNECTED' && (daysUntil(r.keyExpiresAt) ?? 99) < 14 ? 'neg' : ''}`}>{r.state === 'NOT_CONNECTED' ? '—' : expiry(r.keyExpiresAt)}</b><small>key expires</small></span>
                       <span className="ib-br-n"><b>{r.state === 'NOT_CONNECTED' ? '—' : timeAgo(r.lastSyncAt)}</b><small>last sync</small></span>
                       <span className="ib-br-btns">{r.state !== 'NOT_CONNECTED' && (
                         <button type="button" className="x-btn x-btn--sm" disabled={busy === r.partnerId || r.state === 'SYNCING'} onClick={() => void sync(r)}>

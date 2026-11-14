@@ -76,7 +76,8 @@ export async function clientIb(referrals: { id: string; userId: string; partnerI
     const held = ents.filter(e => e.userId === r.userId && e.partnerId === r.partnerId && e.status !== 'EXPIRED');
     const show = admin || !!r.statsConsentAt;
     return [r.id, {
-      referralId: r.id, verification: hasAccount ? best ?? 'PENDING' : 'NO_ACCOUNT',
+      // Verified by Elefin's email lookup counts even before an account is connected.
+      referralId: r.id, verification: best === 'VERIFIED' ? 'VERIFIED' : hasAccount ? best ?? 'PENDING' : 'NO_ACCOUNT',
       verifiedBrokers: [...new Set(mine.filter(v => v.status === 'VERIFIED').map(v => v.broker).filter((b): b is string => !!b))],
       eligible: held.some(e => e.status === 'ACTIVE' || e.status === 'GRACE'),
       packages: held.map(e => ({ name: e.package.name, status: e.status })),

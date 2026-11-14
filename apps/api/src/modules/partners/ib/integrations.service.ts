@@ -180,7 +180,7 @@ export async function syncApi(id: string, actor: Actor = null): Promise<{ ok: bo
   if (elefinConfigOf(b)) {
     const { syncElefin } = await import('./elefin/sync.js');
     const r = await syncElefin(id, { actor });
-    return { ok: r.ok, accounts: r.accounts, ...(r.error ? { error: r.error } : {}) };
+    return { ok: r.ok, accounts: r.clients ?? 0, ...(r.error ? { error: r.error } : {}) };
   }
   const cfg = b.apiConfig as unknown as IbApiConfig;
   const { ibApiHosts } = await getProgramSettings();

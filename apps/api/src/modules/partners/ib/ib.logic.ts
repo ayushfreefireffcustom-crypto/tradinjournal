@@ -113,6 +113,12 @@ export interface VerifyInput {
   prev: { status: VerificationStatusDto; method: string | null; reviewRequestedAt: Date | null } | null;
   /** False for accounts added for checking only (MT4…): we never logged in, so a match needs a human. */
   ownershipProven?: boolean;
+  /**
+   * Elefin's answer about the trader (by email, through the partner's Elefin key), for
+   * accounts at Elefin only. `verified`: the partner's client, account active. `held`:
+   * the partner's client but suspended / inactive at Elefin.
+   */
+  elefin?: { verified: boolean; held: 'suspended' | 'inactive' | null } | null;
 }
 
 export interface VerifyOutcome {
@@ -124,26 +130,36 @@ export interface VerifyOutcome {
 }
 
 /**
- * Decides one account's verification. Only the account number proves IB attribution:
- * an email match is a signal for a human, and admin decisions stick.
+ * Decides one account's verification. The account number on the partner's list proves IB
+ * attribution, and so does Elefin itself confirming (through the partner's key, by the
+ * trader's confirmed email) that the trader is the partner's client. An email on an
+ * uploaded list is only a signal for a human, and admin decisions stick.
  */
 export function decideVerification(i: VerifyInput): VerifyOutcome {
   if (i.prev?.method === 'manual' && (i.prev.status === 'VERIFIED' || i.prev.status === 'REJECTED')) {
     return { status: i.prev.status, method: 'manual', ibAccountId: null, reason: i.prev.status === 'REJECTED' ? 'An admin reviewed this account and could not confirm it.' : null, signal: null };
   }
+  if (i.listedHere && i.ownershipProven !== false) return { status: 'VERIFIED', method: 'account', ibAccountId: i.listedHere.id, reason: null, signal: null };
+  // The trader is the partner's Elefin client (email lookup): their Elefin accounts count.
+  if (i.elefin?.verified && i.brokerKey === 'elefin') return { status: 'VERIFIED', method: 'elefin_email', ibAccountId: null, reason: null, signal: null };
   if (i.listedHere && i.ownershipProven === false) {
     return {
       status: 'MANUAL_REVIEW', method: null, ibAccountId: i.listedHere.id, signal: 'listed-unproven',
       reason: `This account is on ${i.partnerName}’s list. Because it isn’t connected to TRADElogs, our team confirms it’s yours before it counts.`,
     };
   }
-  if (i.listedHere) return { status: 'VERIFIED', method: 'account', ibAccountId: i.listedHere.id, reason: null, signal: null };
   if (!i.brokerKey || !i.partnerBrokers.includes(i.brokerKey)) {
     return {
       status: 'UNSUPPORTED_BROKER', method: null, ibAccountId: null, signal: null,
       reason: i.brokerKey
         ? `${i.partnerName} hasn’t connected ${i.brokerLabel} yet, so this account can’t be checked.`
         : `We couldn’t tell which broker this account is with, so it can’t be checked against ${i.partnerName}’s IB.`,
+    };
+  }
+  if (i.elefin?.held && i.brokerKey === 'elefin') {
+    return {
+      status: 'NOT_FOUND', method: null, ibAccountId: null, signal: `elefin-${i.elefin.held}`,
+      reason: `You’re ${i.partnerName}’s Elefin client, but Elefin shows your account as ${i.elefin.held}. Perks return once it’s active again.`,
     };
   }
   const signal = i.listedElsewhere ? 'other-partner' : i.emailListed ? 'email-match' : null;

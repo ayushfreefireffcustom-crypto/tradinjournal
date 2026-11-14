@@ -225,14 +225,14 @@ const envSchema = z.object({
   ELEFIN_API_URL: z.string().url().optional(),
   ELEFIN_API_KEY: z.string().optional(),
   // Elefin Partner API (read-only, one key per partner, pasted by the partner in the
-  // portal). Base URL of "Partner API · Version 1"; a connection may override it.
-  ELEFIN_PARTNER_API_URL: z.string().url().default('https://my.elefin.com/api/v1'),
+  // portal). Base URL of "Partner API · Version 1"; only approved hosts may override it.
+  ELEFIN_PARTNER_API_URL: z.string().url().default('https://partnersapi.elefin.com/api/v1'),
   /** Our outbound IPs, comma-separated, for the key's IP allow-list. Unset: tell partners "Any". */
   ELEFIN_OUTBOUND_IPS: z.string().optional(),
   /** Minutes between automatic syncs of one partner's Elefin clients. */
   ELEFIN_SYNC_MINUTES: z.coerce.number().int().min(5).max(1440).default(20),
-  /** Requests per minute we allow ourselves per key (Elefin's default limit is 60). */
-  ELEFIN_REQ_PER_MIN: z.coerce.number().int().min(1).max(600).default(30),
+  /** Requests per minute we allow ourselves per key (Elefin allows 60). */
+  ELEFIN_REQ_PER_MIN: z.coerce.number().int().min(1).max(600).default(50),
   ACCESS_MIN_TRADES_7D: z.coerce.number().int().positive().default(2),
   ACCESS_ACTIVITY_WINDOW_DAYS: z.coerce.number().int().positive().default(7),
   // When true, Elefin users also need ACCESS_MIN_TRADES_7D closed trades in the window

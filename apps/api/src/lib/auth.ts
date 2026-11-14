@@ -75,10 +75,14 @@ export const auth = betterAuth({
         after: async (user, ctx) => {
           // Lock the referral now — a typed code beats an earlier link click
           // (tl_ref cookie, sent along on both email signup and the OAuth callback).
-          if (env.PARTNER_PROGRAM_ENABLED) await attributeNewUser(
-            { id: user.id, referralCode: (user as { referralCode?: string | null }).referralCode ?? null },
-            ctx?.headers?.get('cookie') ?? ctx?.request?.headers.get('cookie') ?? null,
-          );
+          if (env.PARTNER_PROGRAM_ENABLED) {
+            const ref = await attributeNewUser(
+              { id: user.id, referralCode: (user as { referralCode?: string | null }).referralCode ?? null },
+              ctx?.headers?.get('cookie') ?? ctx?.request?.headers.get('cookie') ?? null,
+            );
+            // Google signups arrive with a confirmed email: ask the partner's Elefin now.
+            if (ref && user.emailVerified) void import('../modules/partners/ib/elefin/verify.js').then(m => m.queueElefinLookup(user.id)).catch(() => {});
+          }
           // Best-effort geocode when signup included location fields.
           void geocodeUserIfNeeded(user.id).catch(err => {
             logger.warn('[auth] post-signup geocode failed', { userId: user.id, err });
@@ -97,6 +101,8 @@ export const auth = betterAuth({
   emailVerification: {
     autoSignInAfterVerification: true,
     afterEmailVerification: async (user) => {
+      // A referred trader's email is now confirmed: check them with the partner's Elefin key.
+      if (env.PARTNER_PROGRAM_ENABLED) void import('../modules/partners/ib/elefin/verify.js').then(m => m.queueElefinLookup(user.id)).catch(() => {});
       try {
         const { subject, html } = welcomeEmail(user.name ?? '');
         await sendEmail({ to: user.email, subject, html });

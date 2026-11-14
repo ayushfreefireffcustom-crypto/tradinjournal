@@ -1,12 +1,14 @@
-// The Elefin client and probe against a local fake of the Partner API.
+// The Elefin client and probe against a local fake of the published Partner API.
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { redactText } from '@tradinjournal/logger';
-import { ElefinClient, ElefinError, resetElefinBudgets } from '../client.js';
+import { ElefinClient, ElefinError, parseRetryAfter, resetElefinBudgets } from '../client.js';
+import { baseUrlAllowed } from '../config.js';
 import { probe } from '../probe.js';
+import { DOCUMENTED_FIELDS } from '../schema.js';
 import { FakeElefin } from './fake-elefin.js';
 
-const noSleep: number[] = [];
-const sleep = async (ms: number) => { noSleep.push(ms); };
+const slept: number[] = [];
+const sleep = async (ms: number) => { slept.push(ms); };
 
 describe('Elefin client', () => {
   const fake = new FakeElefin();
@@ -14,96 +16,134 @@ describe('Elefin client', () => {
   let full = '';
   beforeAll(async () => {
     base = await fake.start();
-    fake.seed(230);
-    full = fake.addKey({ abilities: ['profile', 'clients', 'accounts'], pii: true });
+    fake.seed(450);
+    full = fake.addKey();
   });
   afterAll(() => fake.stop());
-  beforeEach(() => { resetElefinBudgets(); noSleep.length = 0; fake.log.length = 0; fake.throttleNext = 0; fake.failNext = 0; });
+  beforeEach(() => { resetElefinBudgets(); slept.length = 0; fake.log.length = 0; fake.throttleNext = 0; fake.failNext = 0; });
 
-  it('sends Bearer key.secret and walks every Laravel page', async () => {
+  it('sends Bearer key.secret, unwraps the envelope and walks pages of 200', async () => {
     const c = new ElefinClient({ baseUrl: base, token: full, sleep });
+    const me = await c.get('/me') as { scope: { partner: { id: number } } };
+    expect(me.scope.partner.id).toBe(1);
     const rows: unknown[] = [];
-    for await (const p of c.pages('/accounts')) rows.push(...p.items);
-    expect(rows).toHaveLength(230);
-    expect(fake.log.map(l => l.query)).toEqual(['?per_page=100', '?per_page=100&page=2', '?per_page=100&page=3']);
+    for await (const p of c.pages('/clients')) rows.push(...p.rows);
+    expect(rows).toHaveLength(450);
+    expect(fake.log.slice(1).map(l => l.query)).toEqual(['?per_page=200&page=1', '?per_page=200&page=2', '?per_page=200&page=3']);
     expect(fake.log.every(l => l.auth === 'bearer' && l.status === 200)).toBe(true);
+    expect(c.rate).toMatchObject({ limit: 60 });
+    expect(c.rate.remaining).toBeLessThan(60);
   });
 
-  it('maps 401, 403 and 404 to kinds', async () => {
-    const bad = new ElefinClient({ baseUrl: base, token: 'elk_nope.wrongsecret', sleep });
-    await expect(bad.get('/clients')).rejects.toMatchObject({ kind: 'auth', status: 401 });
-    const noAcc = new ElefinClient({ baseUrl: base, token: fake.addKey({ abilities: ['clients'] }), sleep });
-    await expect(noAcc.get('/accounts')).rejects.toMatchObject({ kind: 'forbidden', status: 403 });
+  it('401, 403 and 404 are terminal: one request each, mapped to kinds', async () => {
+    const cases: [string, string, string][] = [
+      ['fxcrm_pk_nope.fxcrm_sk_wrongsecret', '/me', 'auth'],
+      [fake.addKey({ active: false }), '/me', 'auth'],
+      [fake.addKey({ expiresAt: '2026-01-01T00:00:00Z' }), '/me', 'auth'],
+      [fake.addKey({ abilities: [] }), '/clients', 'forbidden'],
+      [fake.addKey({ partnerId: null }), '/me', 'forbidden'],
+      [full, '/clients/999999', 'not_found'],
+    ];
+    for (const [tok, path, kind] of cases) {
+      fake.log.length = 0;
+      const e = await new ElefinClient({ baseUrl: base, token: tok, sleep }).get(path).catch(x => x) as ElefinError;
+      expect(e).toBeInstanceOf(ElefinError);
+      expect(e.kind).toBe(kind);
+      expect(fake.log).toHaveLength(1);
+    }
+    expect(slept).toEqual([]);
+  });
+
+  it('a client in another partner’s book is 404, like one that doesn’t exist', async () => {
+    const other = fake.add({ partnerId: 2 });
+    fake.partners.set(2, 'Other Partner');
     const c = new ElefinClient({ baseUrl: base, token: full, sleep });
-    await expect(c.get('/accounts/999999999')).rejects.toMatchObject({ kind: 'not_found', status: 404 });
-    const expired = new ElefinClient({ baseUrl: base, token: fake.addKey({ abilities: ['clients'], expired: true }), sleep });
-    await expect(expired.get('/clients')).rejects.toMatchObject({ kind: 'auth' });
+    await expect(c.get(`/clients/${other.client_id}`)).rejects.toMatchObject({ kind: 'not_found' });
+    const mine = fake.clients.find(x => x.partnerId === 1)!;
+    expect(await c.get(`/clients/${mine.client_id}`)).toMatchObject({ client_id: mine.client_id });
+  });
+
+  it('either half of the key alone is refused', async () => {
+    const [key, secret] = full.split('.');
+    for (const tok of [`${key}.`, `.${secret}`]) {
+      const e = await new ElefinClient({ baseUrl: base, token: tok!, sleep }).get('/me').catch(x => x) as ElefinError;
+      expect(e.kind).toBe('auth');
+    }
   });
 
   it('waits Retry-After on 429 and then succeeds', async () => {
     fake.throttleNext = 2; fake.retryAfter = 7;
     const c = new ElefinClient({ baseUrl: base, token: full, sleep });
-    await c.get('/clients');
-    expect(noSleep).toEqual([7000, 7000]);
+    await c.get('/me');
+    expect(slept).toEqual([7000, 7000]);
     expect(fake.log.map(l => l.status)).toEqual([429, 429, 200]);
   });
 
   it('gives up when Retry-After is too long, and reports the wait', async () => {
     fake.throttleNext = 1; fake.retryAfter = 600;
-    const c = new ElefinClient({ baseUrl: base, token: full, sleep });
-    const e = await c.get('/clients').catch(x => x) as ElefinError;
-    expect(e).toBeInstanceOf(ElefinError);
+    const e = await new ElefinClient({ baseUrl: base, token: full, sleep }).get('/me').catch(x => x) as ElefinError;
     expect(e).toMatchObject({ kind: 'rate_limited', retryAfter: 600 });
-    expect(noSleep).toEqual([]);
+    expect(slept).toEqual([]);
   });
 
-  it('retries a 500 then succeeds', async () => {
-    fake.failNext = 1;
-    const c = new ElefinClient({ baseUrl: base, token: full, sleep });
-    await c.get('/clients');
-    expect(fake.log.map(l => l.status)).toEqual([500, 200]);
+  it('backs off exponentially on 5xx, then gives up', async () => {
+    fake.failNext = 3;
+    await new ElefinClient({ baseUrl: base, token: full, sleep }).get('/me');
+    expect(slept).toEqual([1000, 2000, 4000]);
+    slept.length = 0; fake.failNext = 10;
+    await expect(new ElefinClient({ baseUrl: base, token: full, sleep }).get('/me')).rejects.toMatchObject({ kind: 'server', status: 500 });
+    expect(slept).toEqual([1000, 2000, 4000]);
+    fake.failNext = 0;
   });
 
-  it('keeps under its own per-key budget', async () => {
+  it('success:false or a broken envelope in a 200 is a bad response', async () => {
+    const answer = (body: unknown): typeof fetch => async () => new Response(JSON.stringify(body), { status: 200 });
+    const mk = (body: unknown) => new ElefinClient({ baseUrl: base, token: full, sleep, fetchImpl: answer(body) });
+    await expect(mk({ success: false, message: 'nope' }).get('/me')).rejects.toMatchObject({ kind: 'bad_response' });
+    await expect(mk({ data: [] }).get('/me')).rejects.toMatchObject({ kind: 'bad_response' });
+    await expect(mk({ success: true, data: { data: [], meta: {} } }).page('/clients')).rejects.toMatchObject({ kind: 'bad_response' });
+    // Extra keys are fine.
+    expect(await mk({ success: true, message: 'Success', data: { x: 1 }, trace_id: 'abc' }).get('/me')).toEqual({ x: 1 });
+  });
+
+  it('keeps under its own per-key budget, shared by every client on the key', async () => {
     let t = 1_000_000;
     const waits: number[] = [];
-    const c = new ElefinClient({ baseUrl: base, token: full, perMinute: 3, now: () => t, sleep: async ms => { waits.push(ms); t += ms; } });
-    for (let i = 0; i < 4; i++) { await c.get('/clients'); t += 1000; }
+    const opts = { baseUrl: base, token: full, perMinute: 3, now: () => t, sleep: async (ms: number) => { waits.push(ms); t += ms; } };
+    const c = new ElefinClient(opts);
+    for (let i = 0; i < 4; i++) { await c.get('/me'); t += 1000; }
     expect(waits).toEqual([57_000]);
-    // A second client with the same key shares the budget.
-    const c2 = new ElefinClient({ baseUrl: base, token: full, perMinute: 3, now: () => t, sleep: async ms => { waits.push(ms); t += ms; } });
-    await c2.get('/clients');
+    const c2 = new ElefinClient(opts);
+    await c2.get('/me');
     expect(waits.length).toBe(1);
-    await c2.get('/clients');
+    await c2.get('/me');
     expect(waits.length).toBe(2);
   });
 
-  it('refuses next links to another server', async () => {
+  it('refuses URLs outside the configured base', () => {
     const c = new ElefinClient({ baseUrl: base, token: full, sleep });
     expect(() => c.url('https://evil.example.com/steal')).toThrow(ElefinError);
+    expect(() => c.url('//evil.example.com/steal')).toThrow(ElefinError);
   });
 
-  it('never puts the key in an error, and the logger masks it', async () => {
+  it('never puts the key or a looked-up email in an error, and the logger masks the key', async () => {
     const tok = fake.addKey({ abilities: [] });
-    const c = new ElefinClient({ baseUrl: base, token: tok, sleep });
-    const e = await c.get('/clients').catch(x => x) as Error;
+    const e = await new ElefinClient({ baseUrl: base, token: tok, sleep }).get('/clients/lookup', { email: 'secret.person@mail.test' }).catch(x => x) as ElefinError;
     expect(e.message).not.toContain(tok.split('.')[1]);
+    expect(`${e.message} ${e.path}`).not.toContain('secret.person');
     expect(redactText(`failed with ${tok}`)).not.toContain(tok.split('.')[1]);
     expect(redactText(`Authorization: Bearer ${tok}`)).not.toContain(tok);
-    expect(redactText('X-API-Key: elk_abcdef12 X-API-Secret: s3cr3tValue99')).not.toMatch(/s3cr3tValue99|elk_abcdef12/);
   });
 
-  it('accepts cursor and links pagination', async () => {
-    for (const pagination of ['cursor', 'links'] as const) {
-      const f = new FakeElefin({ pagination });
-      const b = await f.start();
-      f.seed(120);
-      const c = new ElefinClient({ baseUrl: b, token: f.addKey({ abilities: ['accounts'] }), sleep });
-      let n = 0;
-      for await (const p of c.pages('/accounts')) n += p.items.length;
-      expect(n).toBe(120);
-      await f.stop();
-    }
+  it('parses Retry-After and approves only Elefin’s API host', () => {
+    expect(parseRetryAfter('12')).toBe(12);
+    expect(parseRetryAfter(null)).toBeNull();
+    expect(baseUrlAllowed('https://partnersapi.elefin.com/api/v1')).toBe(true);
+    expect(baseUrlAllowed('http://partnersapi.elefin.com/api/v1')).toBe(false);
+    expect(baseUrlAllowed('https://my.elefin.com/api/v1')).toBe(false);
+    expect(baseUrlAllowed('https://evil.com/api')).toBe(false);
+    expect(baseUrlAllowed('https://user:pw@partnersapi.elefin.com/api/v1')).toBe(false);
+    expect(baseUrlAllowed('https://api.broker.test/v1', ['broker.test'])).toBe(true);
   });
 });
 
@@ -112,78 +152,65 @@ describe('probe', () => {
   let base = '';
   beforeAll(async () => { base = await fake.start(); fake.seed(42); });
   afterAll(() => fake.stop());
-  beforeEach(() => { resetElefinBudgets(); fake.throttleNext = 0; });
-  const run = (tok: string) => probe(new ElefinClient({ baseUrl: base, token: tok, sleep }));
+  beforeEach(() => { resetElefinBudgets(); fake.throttleNext = 0; fake.log.length = 0; });
+  const run = (tok: string, b = base) => probe(new ElefinClient({ baseUrl: b, token: tok, sleep }));
 
-  it('reports counts, abilities and field names for a full key', async () => {
-    const r = await run(fake.addKey({ abilities: ['profile', 'clients', 'accounts'], pii: true, partnerId: 31 }));
+  it('reports who the key belongs to, its abilities and the book size — never a value', async () => {
+    const r = await run(fake.addKey({ name: 'TRADElogs', expiresAt: '2027-06-01T00:00:00Z' }));
     expect(r).toMatchObject({
-      ok: true, outcome: 'ok', counts: { clients: 42, accounts: 42 }, hasLogin: true, hasEmail: true, missing: [],
-      abilities: { profile: 'ok', clients: 'ok', accounts: 'ok' }, partnerRef: '31', paths: { clients: '/clients', accounts: '/accounts', profile: '/me' },
+      ok: true, outcome: 'ok', clients: 42, clientsRead: 'ok', missing: [],
+      key: { partnerId: 1, partnerName: 'Test Partner', keyName: 'TRADElogs', abilities: ['clients.read'], canReadClients: true, rateLimitPerMinute: 60, expiresAt: '2027-06-01T00:00:00.000Z', tradesFrom: '2026-01-01T00:00:00.000Z' },
     });
-    expect(r.fields.accounts).toContain('login');
-    expect(r.message).toBe('Key works. 42 clients, 42 trading accounts found.');
-    // Field names only: no values anywhere in the result.
-    expect(JSON.stringify(r)).not.toContain('@mail.test');
-    expect(JSON.stringify(r)).not.toContain('100001');
+    expect(r.fields).toEqual([...DOCUMENTED_FIELDS]);
+    expect(r.notes).toEqual([]);
+    expect(r.message).toBe('Key works for Test Partner. 42 clients in your book.');
+    // /me, then a single row of /clients.
+    expect(fake.log.map(l => `${l.path}${l.query}`)).toEqual(['/me', '/clients?per_page=1&page=1']);
+    const out = JSON.stringify(r);
+    for (const c of fake.clients) { expect(out).not.toContain(c.name); expect(out).not.toContain(c.email); }
   });
 
-  it('notes missing emails without failing (PII not ticked)', async () => {
-    const r = await run(fake.addKey({ abilities: ['clients', 'accounts'] }));
+  it('no clients.read → missing_permission, after /me only', async () => {
+    const r = await run(fake.addKey({ abilities: [] }));
+    expect(r).toMatchObject({ ok: false, outcome: 'missing_permission', clientsRead: 'forbidden', key: { canReadClients: false } });
+    expect(r.missing[0]).toMatch(/clients\.read/);
+    expect(fake.log.map(l => l.path)).toEqual(['/me']);
+  });
+
+  it('wrong, switched-off or expired key → invalid_key', async () => {
+    for (const tok of ['fxcrm_pk_x.fxcrm_sk_nope', fake.addKey({ active: false }), fake.addKey({ expiresAt: '2026-01-01T00:00:00Z' })]) {
+      expect(await run(tok)).toMatchObject({ ok: false, outcome: 'invalid_key', key: null });
+    }
+  });
+
+  it('partner gone → refused in plain words', async () => {
+    const r = await run(fake.addKey({ partnerId: null }));
+    expect(r).toMatchObject({ ok: false, outcome: 'missing_permission' });
+    expect(r.message).toMatch(/no longer exists/);
+  });
+
+  it('warns about a key that expires soon', async () => {
+    const r = await run(fake.addKey({ expiresAt: new Date(Date.now() + 3 * 86_400_000).toISOString() }));
     expect(r.ok).toBe(true);
-    expect(r.hasEmail).toBe(false);
-    expect(r.notes.join(' ')).toMatch(/Emails aren’t shared/);
-    expect(r.abilities.profile).toBe('forbidden');
-  });
-
-  it('wrong key → invalid_key', async () => {
-    const r = await run('elk_x.nope-nope-nope');
-    expect(r).toMatchObject({ ok: false, outcome: 'invalid_key' });
-  });
-
-  it('no accounts ability → missing_permission, in plain words', async () => {
-    const r = await run(fake.addKey({ abilities: ['clients'], pii: true }));
-    expect(r).toMatchObject({ ok: false, outcome: 'missing_permission', abilities: { clients: 'ok', accounts: 'forbidden' } });
-    expect(r.missing).toContain('read access to client trading accounts');
-  });
-
-  it('nothing readable → missing_permission for both', async () => {
-    const r = await run(fake.addKey({ abilities: ['profile'] }));
-    expect(r.outcome).toBe('missing_permission');
-    expect(r.missing).toEqual(['read access to clients', 'read access to client trading accounts']);
-  });
-
-  it('login field withheld → no_logins', async () => {
-    const r = await run(fake.addKey({ abilities: ['clients', 'accounts'], fields: { accounts: ['client_id', 'platform', 'volume_lots'] } }));
-    expect(r).toMatchObject({ ok: false, outcome: 'no_logins' });
-    expect(r.missing[0]).toMatch(/login/);
-  });
-
-  it('accounts only is enough', async () => {
-    const r = await run(fake.addKey({ abilities: ['accounts'] }));
-    expect(r).toMatchObject({ ok: true, counts: { clients: null, accounts: 42 } });
+    expect(r.notes.join(' ')).toMatch(/expires in 3 days/);
   });
 
   it('rate limited → tells the partner how long to wait', async () => {
     fake.throttleNext = 10; fake.retryAfter = 300;
-    const r = await run(fake.addKey({ abilities: ['clients', 'accounts'] }));
-    expect(r).toMatchObject({ ok: false, outcome: 'rate_limited', retryAfter: 300 });
-  });
-
-  it('finds an alternative accounts path', async () => {
-    const f = new FakeElefin({ paths: { accounts: '/trading-accounts' } });
-    const b = await f.start(); f.seed(3);
-    const r = await probe(new ElefinClient({ baseUrl: b, token: f.addKey({ abilities: ['clients', 'accounts'] }), sleep }));
-    expect(r).toMatchObject({ ok: true, paths: { accounts: '/trading-accounts' }, counts: { accounts: 3 } });
-    await f.stop();
+    expect(await run(fake.addKey())).toMatchObject({ ok: false, outcome: 'rate_limited', retryAfter: 300 });
   });
 
   it('a partner with no clients yet still connects', async () => {
     const f = new FakeElefin();
     const b = await f.start();
-    const r = await probe(new ElefinClient({ baseUrl: b, token: f.addKey({ abilities: ['clients', 'accounts'] }), sleep }));
-    expect(r).toMatchObject({ ok: true, counts: { clients: 0, accounts: 0 } });
-    expect(r.notes.join(' ')).toMatch(/No clients under you yet/);
+    const r = await run(f.addKey(), b);
+    expect(r).toMatchObject({ ok: true, clients: 0, fields: [] });
+    expect(r.notes.join(' ')).toMatch(/No clients in your book yet/);
     await f.stop();
+  });
+
+  it('a malformed /me is a bad response, not a crash', async () => {
+    const c = new ElefinClient({ baseUrl: base, token: fake.addKey(), sleep, fetchImpl: async () => new Response(JSON.stringify({ success: true, data: { key: {} } }), { status: 200 }) });
+    expect(await probe(c)).toMatchObject({ ok: false, outcome: 'bad_response' });
   });
 });

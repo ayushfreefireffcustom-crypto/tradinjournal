@@ -8,32 +8,39 @@ const USE_MOCKS = process.env.NEXT_PUBLIC_USE_MOCKS === 'true';
 const API = USE_MOCKS ? '' : process.env.NEXT_PUBLIC_API_URL || '';
 const P = USE_MOCKS ? '/data' : '/api';
 
-export type ElefinResource = 'profile' | 'clients' | 'accounts';
-export type ElefinAbilityState = 'ok' | 'forbidden' | 'missing' | 'error' | 'skipped';
-export type ElefinProbeOutcome = 'ok' | 'invalid_key' | 'missing_permission' | 'no_logins' | 'rate_limited' | 'unreachable' | 'bad_response' | 'host_not_allowed';
+export type ElefinProbeOutcome = 'ok' | 'invalid_key' | 'missing_permission' | 'rate_limited' | 'unreachable' | 'bad_response' | 'host_not_allowed';
 export type ElefinState = 'NOT_CONNECTED' | 'SYNCING' | 'OK' | 'ERROR' | 'PAUSED';
 
-export interface ElefinProbe {
-  ok: boolean; outcome: ElefinProbeOutcome; message: string;
-  abilities: Record<ElefinResource, ElefinAbilityState>;
-  fields: { clients: string[]; accounts: string[] };
-  counts: { clients: number | null; accounts: number | null };
-  hasLogin: boolean; hasEmail: boolean; missing: string[]; notes: string[]; retryAfter: number | null;
+export interface ElefinKeyInfo {
+  partnerId: number | null; partnerName: string | null; keyName: string | null; abilities: string[]; canReadClients: boolean;
+  rateLimitPerMinute: number | null; expiresAt: string | null; tradesFrom: string | null;
 }
+export interface ElefinProbe {
+  ok: boolean; outcome: ElefinProbeOutcome; message: string; key: ElefinKeyInfo | null; clients: number | null;
+  clientsRead: 'ok' | 'forbidden' | 'error' | 'skipped'; fields: string[]; missing: string[]; notes: string[]; retryAfter: number | null;
+}
+export interface ElefinRoster {
+  at: string; fullAt: string | null; total: number; active: number; suspended: number; inactive: number; funded: number;
+  depositsUsd: number; lots: number; quiet: number; quietDays: number; neverTraded: number; new7d: number; new30d: number;
+  newestAt: string | null; weekly: number[];
+}
+export interface ElefinVerification { referred: number; verified: number; held: number; notFound: number; waiting: number; verifiedFunded: number; lastCheckAt: string | null }
 export interface ElefinConnection {
   state: ElefinState; brokerId: string | null; keyHint: string | null; baseUrl: string; defaultBaseUrl: string;
   connectedAt: string | null; lastSyncAt: string | null; lastSuccessAt: string | null; nextSyncAt: string | null;
-  lastError: string | null; pausedAt: string | null;
-  abilities: Record<ElefinResource, ElefinAbilityState> | null; fields: { clients: string[]; accounts: string[] } | null;
-  counts: { clients: number | null; accounts: number; verified: number; clientAccounts: number };
+  lastError: string | null; pausedAt: string | null; key: ElefinKeyInfo | null; roster: ElefinRoster | null; verification: ElefinVerification;
   canSyncAt: string | null; syncEveryMinutes: number; outboundIps: string[];
   events: { at: string; status: string; message: string }[];
 }
-export interface ElefinSyncResult { ok: boolean; skipped?: 'paused' | 'busy' | 'not_connected'; accounts: number; added: number; removed: number; changed: number; rechecked: number; error: string | null }
+export interface ElefinSyncResult {
+  ok: boolean; skipped?: 'paused' | 'busy' | 'not_connected'; full: boolean; clients: number | null; changed: number;
+  lookups: number; verified: number; unverified: number; error: string | null;
+}
 export interface ElefinConnectResult { probe: ElefinProbe; connection: ElefinConnection; sync: ElefinSyncResult | null }
 export interface AdminElefinRow {
   partnerId: string; partnerName: string; partnerEmail: string; partnerStatus: string; state: ElefinState; keyHint: string | null;
-  connectedAt: string | null; lastSyncAt: string | null; lastError: string | null; accounts: number; verified: number; clientAccounts: number;
+  elefinPartner: string | null; keyExpiresAt: string | null; connectedAt: string | null; lastSyncAt: string | null; lastError: string | null;
+  clients: number | null; funded: number | null; referred: number; verified: number;
 }
 
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
@@ -72,3 +79,31 @@ export const looksLikeKey = (s: string): boolean => /^[A-Za-z0-9_\-|~]+\.[A-Za-z
 export const STATE_LABEL: Record<ElefinState, string> = {
   NOT_CONNECTED: 'Not connected', SYNCING: 'Syncing', OK: 'Synced', ERROR: 'Needs attention', PAUSED: 'Paused',
 };
+
+/** "$4.8M", "$12.4K", "$950": compact USD for tiles. */
+export function usdShort(v: number): string {
+  const a = Math.abs(v);
+  const trim = (s: string) => s.replace(/\.0$/, '');
+  if (a >= 1e6) return `$${trim((v / 1e6).toFixed(a >= 1e8 ? 0 : 1))}M`;
+  if (a >= 1e4) return `$${trim((v / 1e3).toFixed(a >= 1e5 ? 0 : 1))}K`;
+  return `$${Math.round(v).toLocaleString('en-US')}`;
+}
+
+/** "17.7K", "932", "4.2": compact lots. */
+export function lotsShort(v: number): string {
+  if (v >= 1e4) return `${(v / 1e3).toFixed(v >= 1e5 ? 0 : 1).replace(/\.0$/, '')}K`;
+  return v >= 100 ? Math.round(v).toLocaleString('en-US') : String(Math.round(v * 10) / 10);
+}
+
+/** Whole days until an ISO date (≤ 0 once past); null for no date. */
+export function daysUntil(iso: string | null, now = Date.now()): number | null {
+  if (!iso) return null;
+  return Math.ceil((new Date(iso).getTime() - now) / 86_400_000);
+}
+
+/** Each verification state's share of referred traders, in percent, for the stacked bar. */
+export function verificationShares(v: ElefinVerification): { verified: number; held: number; notFound: number; waiting: number } {
+  const total = v.verified + v.held + v.notFound + v.waiting;
+  const pct = (n: number) => (total ? Math.round((n / total) * 1000) / 10 : 0);
+  return { verified: pct(v.verified), held: pct(v.held), notFound: pct(v.notFound), waiting: pct(v.waiting) };
+}

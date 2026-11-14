@@ -1,6 +1,7 @@
 // Elefin Partner API connection: a partner pastes the read-only key Elefin issued them
-// ("{key}.{secret}"); TRADElogs reads their clients and MT5 accounts with it and verifies
-// referred traders automatically. The key itself is never sent back.
+// ("{key}.{secret}"). TRADElogs reads their client book with it (counts, funding, volume)
+// and verifies referred traders by asking Elefin whether their email is one of the
+// partner's clients (/clients/lookup). The key itself is never sent back.
 import { z } from 'zod';
 
 /** "{key}.{secret}" as Elefin shows it once, when the key is created. */
@@ -23,27 +24,40 @@ export const elefinTestSchema = z.object({
 });
 export type ElefinTestInput = z.infer<typeof elefinTestSchema>;
 
-export type ElefinResource = 'profile' | 'clients' | 'accounts';
-/** ok: readable · forbidden: the key lacks that ability · missing: no such endpoint · error: failed. */
-export type ElefinAbilityState = 'ok' | 'forbidden' | 'missing' | 'error' | 'skipped';
-export type ElefinProbeOutcome = 'ok' | 'invalid_key' | 'missing_permission' | 'no_logins' | 'rate_limited' | 'unreachable' | 'bad_response' | 'host_not_allowed';
+export type ElefinProbeOutcome = 'ok' | 'invalid_key' | 'missing_permission' | 'rate_limited' | 'unreachable' | 'bad_response' | 'host_not_allowed';
+/** ok: the client list answered · forbidden: the key lacks clients.read · error / skipped. */
+export type ElefinReadState = 'ok' | 'forbidden' | 'error' | 'skipped';
+
+/** What /me says about the key. Never the key itself. */
+export interface ElefinKeyInfoDto {
+  /** The partner the key is bound to at Elefin. */
+  partnerId: number | null;
+  partnerName: string | null;
+  /** The key's label at Elefin, e.g. "TRADElogs". */
+  keyName: string | null;
+  abilities: string[];
+  /** Has `clients.read` (needed for everything except /me). */
+  canReadClients: boolean;
+  rateLimitPerMinute: number | null;
+  expiresAt: string | null;
+  /** Trade history before this date isn't in Elefin's CRM (lots / last trade count from here). */
+  tradesFrom: string | null;
+}
 
 export interface ElefinProbeDto {
   ok: boolean;
   outcome: ElefinProbeOutcome;
   /** One plain sentence for the partner. */
   message: string;
-  abilities: Record<ElefinResource, ElefinAbilityState>;
-  /** Field names (never values) the key returned, per resource. */
-  fields: { clients: string[]; accounts: string[] };
-  /** Totals Elefin reports; null when the resource can't be read. */
-  counts: { clients: number | null; accounts: number | null };
-  /** Can we read MT5 logins (needed) and emails (optional)? */
-  hasLogin: boolean;
-  hasEmail: boolean;
+  key: ElefinKeyInfoDto | null;
+  /** Clients in the partner's book (from /me, confirmed by one /clients page). */
+  clients: number | null;
+  clientsRead: ElefinReadState;
+  /** Field names (never values) of the first client row. */
+  fields: string[];
   /** What to ask Elefin for, in plain words. Empty when nothing is missing. */
   missing: string[];
-  /** Non-blocking notes, e.g. "Emails aren't shared". */
+  /** Non-blocking notes, e.g. "Key expires in 9 days". */
   notes: string[];
   /** Seconds to wait when Elefin rate-limited the test. */
   retryAfter: number | null;
@@ -52,6 +66,50 @@ export interface ElefinProbeDto {
 export type ElefinState = 'NOT_CONNECTED' | 'SYNCING' | 'OK' | 'ERROR' | 'PAUSED';
 
 export interface ElefinSyncEventDto { at: string; status: string; message: string }
+
+/** The partner's book at Elefin, aggregated at the last sync. No client names. */
+export interface ElefinRosterDto {
+  at: string;
+  /** Last time the whole book was re-read (otherwise only changes since the last run). */
+  fullAt: string | null;
+  total: number;
+  active: number;
+  suspended: number;
+  inactive: number;
+  funded: number;
+  /** Lifetime successful deposits, USD (gross). */
+  depositsUsd: number;
+  /** Lifetime closed volume, lots. */
+  lots: number;
+  /** Funded clients with no closed trade in `quietDays` (or never, after funding). */
+  quiet: number;
+  quietDays: number;
+  /** Clients who have never closed a trade (since Elefin's trade history starts). */
+  neverTraded: number;
+  new7d: number;
+  new30d: number;
+  /** Newest attribution to this partner (referred_at, or registered_at). */
+  newestAt: string | null;
+  /** Referrals per week, oldest first, the last 8 weeks (this week last). */
+  weekly: number[];
+}
+
+/** Referred TRADElogs traders checked against the partner's Elefin book by email. */
+export interface ElefinVerificationDto {
+  /** Traders referred to this partner on TRADElogs. */
+  referred: number;
+  /** Confirmed as this partner's Elefin client, account active. */
+  verified: number;
+  /** Elefin knows them, but the account is suspended or inactive (no perks). */
+  held: number;
+  /** Elefin says they aren't this partner's client (yet). */
+  notFound: number;
+  /** Not asked yet (new, or their email isn't confirmed). */
+  waiting: number;
+  /** Of the verified: funded at Elefin. */
+  verifiedFunded: number;
+  lastCheckAt: string | null;
+}
 
 export interface ElefinConnectionDto {
   state: ElefinState;
@@ -67,9 +125,9 @@ export interface ElefinConnectionDto {
   nextSyncAt: string | null;
   lastError: string | null;
   pausedAt: string | null;
-  abilities: Record<ElefinResource, ElefinAbilityState> | null;
-  fields: { clients: string[]; accounts: string[] } | null;
-  counts: { clients: number | null; accounts: number; verified: number; clientAccounts: number };
+  key: ElefinKeyInfoDto | null;
+  roster: ElefinRosterDto | null;
+  verification: ElefinVerificationDto;
   /** Earliest time "Sync now" works again (manual syncs are spaced out). */
   canSyncAt: string | null;
   syncEveryMinutes: number;
@@ -81,11 +139,17 @@ export interface ElefinConnectionDto {
 export interface ElefinSyncResultDto {
   ok: boolean;
   skipped?: 'paused' | 'busy' | 'not_connected';
-  accounts: number;
-  added: number;
-  removed: number;
+  /** The whole book was re-read (vs. changes since the last run). */
+  full: boolean;
+  /** Clients in the book after this sync. */
+  clients: number | null;
+  /** Client rows Elefin returned this run. */
   changed: number;
-  rechecked: number;
+  /** Email lookups made this run. */
+  lookups: number;
+  /** Traders whose verification changed this run. */
+  verified: number;
+  unverified: number;
   error: string | null;
 }
 
@@ -102,10 +166,14 @@ export interface AdminElefinRowDto {
   partnerStatus: string;
   state: ElefinState;
   keyHint: string | null;
+  /** The partner name the key is bound to at Elefin. */
+  elefinPartner: string | null;
+  keyExpiresAt: string | null;
   connectedAt: string | null;
   lastSyncAt: string | null;
   lastError: string | null;
-  accounts: number;
+  clients: number | null;
+  funded: number | null;
+  referred: number;
   verified: number;
-  clientAccounts: number;
 }

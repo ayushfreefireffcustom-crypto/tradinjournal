@@ -1,57 +1,88 @@
 # Elefin Partner API — runbook
 
-Partners (IBs at Elefin) paste their Elefin **Partner API key** into TRADElogs. We then read
-their clients and MT5 accounts every 20 minutes, keep the partner's Elefin list (`IbAccount`)
-in step, and the existing verification turns referred traders whose connected Elefin MT5
-login is on that list into **VERIFIED** — which unlocks the partner's packages through the
-normal access rules. No new tables: the connection lives on `PartnerBroker` (broker
-`elefin`, method `API`, key encrypted in `apiKey`, everything else in `apiConfig` with
-`provider: "elefin"`).
+Partners (IBs at Elefin) paste their Elefin **Partner API key** into TRADElogs. With it we:
 
-Code: `apps/api/src/modules/partners/ib/elefin/` (config, client, fields, probe, sync,
-service, controller), web: `apps/web/src/components/v6/account/elefin-connect.tsx`,
-admin page `/admin/partners/elefin`.
+1. read their **book** (`/clients`) every 20 minutes for the partner overview — clients,
+   funded, deposits, lots, clients gone quiet, new referrals per week; and
+2. **verify referred traders**: Elefin's API has no email and no MT5 login field, so the only
+   way to tie a TRADElogs trader to a partner's Elefin client is Elefin's lookup —
+   `GET /clients/lookup?email=` with the trader's own (confirmed) TRADElogs email.
+   `affiliated: true` and status `active` → the trader is **VERIFIED** for that partner,
+   which unlocks the partner's packages through the normal access rules.
 
-## 1. How a partner gets a key
+No new tables and no migration. Code: `apps/api/src/modules/partners/ib/elefin/` (config,
+client, schema, probe, store, sync, verify, service, controller); web:
+`apps/web/src/components/v6/account/elefin-connect.tsx`, admin page `/admin/partners/elefin`.
 
-1. Elefin partner area → **API keys**. If there is no such page, the partner asks their
-   Elefin account manager for a *Partner API key for TRADElogs* (Elefin admins create keys
-   under Developer → API keys).
-2. Key settings at Elefin:
-   - **Type**: a partner key (scoped to that partner — "reads any account" must stay off).
-   - **Abilities** (minimum): read **clients** and read **client trading accounts**.
-     Profile/"me" is optional (labels the connection with the partner id).
-   - **Field permissions**: the MT5 **login** field on trading accounts is required.
-     Email is optional (PII, off by default at Elefin) — we verify by login; email only
-     adds a review signal. Deposits / volume / last trade are optional activity.
-   - **Rate limit**: default 60/min is fine — we stay under 30/min per key.
-   - **IP access**: "Any", or allow-list our outbound IPs (set `ELEFIN_OUTBOUND_IPS` on the
-     API service so the connect dialog shows them).
-   - **Expiry**: anything; an expired key pauses syncing after 3 refusals and the partner
-     is asked to add a new one.
-3. Copy the token (shown once) as `key.secret` and paste it in TRADElogs → Partner → home or
-   Brokers → **Connect Elefin** → *Test connection* → *Save and sync*.
+## 1. The API (Elefin integration guide, document v2)
 
-## 2. What happens
+| | |
+|---|---|
+| Base URL | `https://partnersapi.elefin.com/api/v1` (env `ELEFIN_PARTNER_API_URL`) |
+| Auth | `Authorization: Bearer {key}.{secret}` — one key per partner, bound server-side |
+| Envelope | `{ success, message, data }`; lists: `data.data` rows + `data.meta {current_page, per_page, last_page, total}` |
+| Endpoints | `GET /me` (no ability) · `GET /clients` · `GET /clients/lookup?email=` · `GET /clients/{id}` (all `clients.read`) |
+| Client object | 13 fields: `client_id, name, country, status (active/suspended/inactive), registered_at, referred_at, referral_code, funding{currency, deposits, first_deposit_at, is_funded}, trading{lots, last_trade_at}` |
+| Paging | `per_page` 1–200 (we use 200), `page` from 1, past `last_page` → empty list |
+| Incremental | `/clients?updated_from=<ISO>`: clients whose record or activity changed since then |
+| Limits | 60 requests/min per key, `X-RateLimit-Limit/Remaining`; 429 + `Retry-After` (s) |
+| Errors | 401 bad/expired/deactivated key · 403 no ability or partner gone · 404 not in your book. Only 429 and 5xx are retried. |
+
+## 2. How a partner gets a key
+
+Keys are **not self-service**: the partner asks their Elefin contact for a *Partner API key
+for TRADElogs* with the **`clients.read`** permission. Elefin shows it once as
+`key.secret`. IP access: "Any", or our outbound IPs (`ELEFIN_OUTBOUND_IPS` on the API so the
+dialog lists them). The partner pastes it in TRADElogs → Partner → home or Brokers →
+**Connect Elefin** → *Test connection* → *Save and sync*.
+
+## 3. What happens
 
 | Step | Where |
 |---|---|
-| Probe: first page of clients + accounts (+ profile), abilities, field names, totals. Nothing is saved unless MT5 logins are readable. | `probe.ts` |
-| Save: key encrypted (`enc:v1:`), config + paths that answered stored, first sync started (waits ≤ 8 s, then runs on). | `service.ts connect` |
-| Sync: page clients + accounts (page/per_page, cursor, `links.next`; Laravel `{success,data:{data,meta}}`), merge by login, join emails by client id, `applyRows(replace)`, activity columns, `BrokerEvent kind=elefin_sync`. | `sync.ts` |
-| Verify: first sync → `recheckPartner(partner,'elefin')` + `recomputePartner`; later syncs → `recheckLogin` per added/removed/changed login + `recomputeUser`. | existing `ib.service` / `access.service` |
-| Schedule: `scheduler.ts` every 5 min (leader only) and `runIbCycle`; each partner is due every `ELEFIN_SYNC_MINUTES` (20); ≤ 25 partners per tick, one at a time. | `syncDueElefin` |
+| Probe: `/me` (partner id + name, abilities, expiry, client total, `trades_from`), then `/clients?per_page=1`. Counts and field names only. Nothing is saved unless `clients.read` works. | `probe.ts` |
+| Save: key encrypted (`enc:v1:`) in `PartnerBroker.apiKey`; `apiConfig` (`provider: "elefin"`, `v: 2`) holds the `/me` facts, sync state, the cached book and the snapshot. First sync starts (waits ≤ 8 s, then runs on). | `service.ts connect` |
+| Sync 1: `/me` — key still works and still has `clients.read`. | `sync.ts` |
+| Sync 2: the book — full read once a day (or on connect / admin sync), otherwise `updated_from` = previous run's start − 1 min. Per client we keep only `[deposits, lots, last trade, funded, status, attributed]` keyed by `client_id` — **no names, countries, codes or emails**. Above 20,000 clients only aggregates are kept. Rows not in the documented shape are skipped and counted; mostly-unreadable pages fail the sync and keep the last numbers. | `sync.ts readBook`, `store.ts` |
+| Sync 3: traders already matched to a client follow the book — suspended / inactive → held, active again → verified — without another lookup. A matched client missing from a full read is looked up again. | `verify.ts applyRoster` |
+| Sync 4: lookups for referred traders, most useful first: never asked → email changed → gone from the book → not found (again after 12 h for traders referred in the last 14 days, weekly after) → verified (weekly re-check). Max 40 per run, 1.1 s apart; a 429 ends the lookups, not the sync. | `verify.ts lookupCandidates` |
+| Snapshot: totals, active/suspended/inactive, funded, deposits (summed in cents), lots, quiet (funded + active + no trade in 30 d), never traded, new 7 d / 30 d, referrals per week (8 weeks). | `store.ts snapshotOf` |
+| Schedule: `scheduler.ts` every 5 min and `runIbCycle`; each partner due every `ELEFIN_SYNC_MINUTES` (20); ≤ 25 partners per tick, one at a time. | `syncDueElefin` |
+
+Lookups also run outside the sync (`lookupTrader`, at most once per trader per 10 min):
+when a referred trader's email is confirmed (`afterEmailVerification`), at signup when the
+email is already confirmed (Google), when a trader joins a partner with a code later, and
+when they press *retry* on an account.
+
+### Verification model
+
+One **trader-level** `ClientVerification` row per referred trader (no account attached):
+`broker "elefin"`, `method "elefin_api"`, status `VERIFIED` / `NOT_FOUND`, `signal`
+`elefin-active | elefin-suspended | elefin-inactive | elefin-none`, `ibAccountId
+"elefin-client:<client_id>"`, `brokerEmail` = the email asked about, `checkedAt`.
+
+- Package access already counts any `VERIFIED` row of the partner, so a trader verified by
+  Elefin qualifies even before connecting an account.
+- `verifyAccount` marks the trader's Elefin accounts `VERIFIED` (`method "elefin_email"`)
+  from that row, and explains a suspension on them.
+- Other sources are never revoked by "Elefin says no": IbAccount list / postback matches
+  are recomputed from the list on every check (and win), admin decisions (`method
+  "manual"`) always stick, and the lookup never edits a row an admin decided.
+- Suspended / inactive at Elefin → not verified (no perks; current perks go into the normal
+  grace period), the trader and partner see why.
 
 Safety rails: 401/403 three times in a row → connection **paused** (partner sees "Add your
-key again", list kept, clients keep their status). A sync that would remove more than half
-of ≥ 5 accounts is held until a second sync agrees. 429 waits Retry-After (≤ 65 s, 3 tries)
-and is not counted as an auth failure. "Sync now" once per 2 min per partner; test/connect
-6 per 5 min. Base URL must be the configured default, `*.elefin.com` over https, or an
-admin-approved host (Programme settings → API hosts). Redirects and off-origin next links
-are refused. Disconnect deletes the key; the last list stays as a plain list.
+key again"; numbers and verifications stay). 429 waits Retry-After (≤ 65 s, 3 tries) and is
+not an auth failure; 5xx back off 1/2/4 s. Our own budget is `ELEFIN_REQ_PER_MIN` (50) per
+key, shared by sync, lookups and tests. "Sync now" once per 2 min per partner; test/connect
+6 per 5 min. Base URL must be the configured default, `https://partnersapi.elefin.com`, or
+an admin-approved host. Redirects are refused. Disconnect deletes the key and the cached
+book; traders verified through Elefin stay verified until a key is connected again.
 
-Secrets: the key is never returned (only `••••` + last 4), never in errors or events, and
-is registered with the logger's redaction (also `Bearer …`, `X-API-Key/X-API-Secret`).
+Secrets and PII: the key is never returned (only `••••` + last 4), never in errors, events
+or logs (registered with the logger's redaction). Looked-up emails go only in the query
+string to Elefin and are never logged or put in an error; client names never leave the
+HTTP response.
 
 Endpoints (all under `/api`):
 
@@ -59,52 +90,47 @@ Endpoints (all under `/api`):
   `POST /partner/brokers/elefin/connect {key, baseUrl?}`, `POST /partner/brokers/elefin/sync`,
   `DELETE /partner/brokers/elefin`.
 - Admin: `GET /admin/partner-program/elefin`, `GET /admin/partners/:id/elefin`,
-  `POST /admin/partners/:id/elefin/sync` (also tries a paused connection once).
+  `POST /admin/partners/:id/elefin/sync` (full read; also tries a paused connection once).
 
-Env (API): `ELEFIN_PARTNER_API_URL` (default `https://my.elefin.com/api/v1`),
-`ELEFIN_OUTBOUND_IPS`, `ELEFIN_SYNC_MINUTES` (20), `ELEFIN_REQ_PER_MIN` (30). The partner
+Env (API): `ELEFIN_PARTNER_API_URL` (default `https://partnersapi.elefin.com/api/v1`),
+`ELEFIN_OUTBOUND_IPS`, `ELEFIN_SYNC_MINUTES` (20), `ELEFIN_REQ_PER_MIN` (50). The partner
 programme must be on (`PARTNER_PROGRAM_ENABLED`, web `NEXT_PUBLIC_PARTNER_PROGRAM`).
 
-## 3. Live test once a key is provided
+## 4. Live test once a key is provided
 
-Never paste the key in chat, a ticket or a command line argument. From a shell on a
+Never paste the key in chat, a ticket or a command-line argument. From a shell on a
 machine allowed by the key's IP setting:
 
 ```sh
-read -rs ELEFIN_PROBE_KEY && export ELEFIN_PROBE_KEY      # paste, Enter
-pnpm --filter api exec tsx scripts/elefin-probe.ts        # what "Test connection" sees
-pnpm --filter api exec tsx scripts/elefin-probe.ts --full # also reads every page
+read -rs ELEFIN_PROBE_KEY && export ELEFIN_PROBE_KEY            # paste, Enter
+pnpm --filter api exec tsx scripts/elefin-probe.ts               # /me + one /clients row
+pnpm --filter api exec tsx scripts/elefin-probe.ts --full        # also pages the whole book
+pnpm --filter api exec tsx scripts/elefin-probe.ts --lookup you@example.com   # affiliated: true/false only
 unset ELEFIN_PROBE_KEY
 ```
 
-Optional: `ELEFIN_PROBE_URL=https://…/api/v1` for another base URL, `--paths
-accounts=/trading-accounts,clients=/clients` to try other paths, `--fake` for a dry run
-against the bundled fake server. Output is counts, abilities, which paths answered and
-field **names** only — never the key, names, emails or logins.
+`ELEFIN_PROBE_URL=https://…/api/v1` tries another base URL; `--fake` runs against the
+bundled fake server. Output: partner id, abilities, rate limit, expiry, `trades_from`,
+client counts and field **names** — never the key, names, emails or other values.
 
 Read the result:
 
-- `OK` with `Login seen: yes` → connect it in the partner portal (or let the partner do it).
-  Then check on `/admin/partners/elefin` that accounts > 0 and that a referred trader with
-  an Elefin MT5 login on that list shows **Verified** on the partner's client list.
-- `invalid_key` → wrong/expired key or IP not allowed (Elefin answers 401 for all three).
-- `missing_permission` / `no_logins` → ask Elefin to tick the missing ability or the
-  `login` field (the output says which).
-- `Paths: (none answered)` with 404s → the paths differ; see below.
+- `OK` → connect it in the partner portal; on `/admin/partners/elefin` check clients > 0,
+  then that a referred trader who signed up with the email they use at Elefin shows
+  **Verified**.
+- `invalid_key` → wrong / expired / deactivated key or IP not allowed (all 401).
+- `missing_permission` → ask Elefin for `clients.read` (or the key's partner is gone).
+- `Note: Elefin left out … documented fields` → the response differs from the guide; the
+  sync skips rows it can't read, so check `schema.ts` against a real row.
 
-## 4. If Elefin's paths or fields differ
+## 5. Not settled until a real key is tried
 
-Everything we assume is in `apps/api/src/modules/partners/ib/elefin/config.ts`:
+- Whether `/clients/lookup` matches email case-insensitively ("matched exactly"). We send
+  the trader's email trimmed and lower-cased.
+- How fast `updated_from` reflects new deposits / trades (we also re-read in full daily).
+- Field types on real data (numbers as strings, timestamps without `Z`): parsing coerces
+  numbers and accepts any `Date.parse`-able timestamp; unreadable rows are counted in the
+  sync event (`skippedRows`).
 
-- `ELEFIN_PATHS` — candidate paths per resource, tried in order (first non-404 wins and is
-  stored per connection). Add the real path at the front.
-- `ELEFIN_FIELDS` — field names per meaning (login, email, client id, nested accounts,
-  deposits, lots, last trade, platform). Add the real name at the front.
-- Envelope and pagination are detected in `fields.ts readPage` (Elefin's documented
-  `{success, data:{data, meta}}` plus `links.next`, cursors and plain arrays).
-
-Existing connections keep the paths found at connect time: after changing paths, ask the
-partner to *Replace key* (or re-connect) so the probe runs again. Re-run
-`pnpm --filter api test src/modules/partners` (and with `PARTNERS_TEST_DB=…` for the DB
-integration test) after any change; the fake server in `elefin/__tests__/fake-elefin.ts`
-can be pointed at the new paths with `new FakeElefin({ paths: { accounts: '/…' } })`.
+Tests: `pnpm --filter api test src/modules/partners` (fake server: `elefin/__tests__/fake-elefin.ts`
+implements the guide), plus `PARTNERS_TEST_DB=…` for the DB integration test.
