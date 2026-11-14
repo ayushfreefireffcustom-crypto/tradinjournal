@@ -76,6 +76,20 @@ describe('anchorPositions', () => {
     ], [{ symbol: 'ETHUSD', size: 4 }]);
     expect(r.map((f) => f.positionAfter)).toEqual([4, 7, 6]);
   });
+
+  it('keeps the walked sign when the venue reports only the size of a short', async () => {
+    const { anchorPositions } = await import('../trading.service.js');
+    // Newest first: cover 2 of a short 5 (→ −3), then the sell that opened it (0 → −5).
+    const r = anchorPositions([
+      { symbol: 'BTCUSD', side: 'BUY' as const, qty: 2, positionAfter: 3 }, // unsigned |−3|
+      { symbol: 'BTCUSD', side: 'SELL' as const, qty: 5, positionAfter: -5 }, // signed: taken as is
+    ], [{ symbol: 'BTCUSD', size: -3 }]);
+    expect(r.map((f) => f.positionAfter)).toEqual([-3, -5]);
+    // A long reported as is still wins over a walk that disagrees in size.
+    expect(anchorPositions([{ symbol: 'BTCUSD', side: 'BUY' as const, qty: 1, positionAfter: 4 }], [{ symbol: 'BTCUSD', size: 2 }]).map((f) => f.positionAfter)).toEqual([4]);
+    // Missing everywhere: the walk.
+    expect(anchorPositions([{ symbol: 'BTCUSD', side: 'SELL' as const, qty: 1 }], []).map((f) => f.positionAfter)).toEqual([0]);
+  });
 });
 
 describe.skipIf(!local)('trading desk', () => {

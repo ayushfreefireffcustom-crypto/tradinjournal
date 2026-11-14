@@ -1,6 +1,7 @@
 // Trading desk (Part D): the user's own positions and orders across their
 // exchange connections, and manual closes. Copy trading has its own schemas.
 import { z } from 'zod';
+import type { LevelSource, StopMove } from './trade-data.js';
 
 export const closePositionSchema = z.object({
   connectionId: z.string().min(1).max(64),
@@ -382,6 +383,18 @@ export interface JournalTradeDto {
   openedAt: string;
   closedAt: string;
   note: { id: string; body: string; emotion: string | null; tags: string[] } | null;
+  // Stop loss / take profit (exchange_trade_level). Optional: older APIs don't send them.
+  /** Stop at entry: the earliest stop seen for this trip. */
+  stop?: number | null;
+  stopSource?: LevelSource | null;
+  /** First take-profit seen. */
+  target?: number | null;
+  /** The stop moved after entry: further from the entry (or removed) = widened. */
+  move?: StopMove | null;
+  /** USD at risk to the stop at entry (peak contracts × contract value). */
+  risk?: number | null;
+  /** pnlUsd ÷ risk; like pnlUsd, before fees and funding. */
+  r?: number | null;
 }
 
 export interface ExchangeJournalDto {

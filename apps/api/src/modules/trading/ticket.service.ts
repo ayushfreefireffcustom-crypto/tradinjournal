@@ -3,9 +3,11 @@
 import type { OrderTicketInput, PlaceTicketResultDto, TicketOutcome, TicketPreviewDto, TicketQuoteDto } from '@tradinjournal/contracts';
 import { prisma, type ExchangeConnection } from '@tradinjournal/db';
 import { ExchangeError, type Exchange, type OrderInfo, type OrderType } from '@tradinjournal/exchange';
+import { logger } from '@tradinjournal/logger';
 import { ConflictError, NotFoundError, ValidationError } from '../../http/errors.js';
 import { credsOf } from '../exchanges/exchanges.service.js';
 import { ExchangeRejectedError } from '../exchanges/exchanges.service.js';
+import { insertExchangeLevels } from './exchange-levels.store.js';
 import { planTicket } from './ticket.plan.js';
 import { defaultTradingDeps, orderDtoById, type TradingDeps } from './trading.service.js';
 
@@ -74,6 +76,7 @@ const STATUS_OF: Record<TicketOutcome, 'FILLED' | 'PARTIAL' | 'OPEN' | 'SUBMITTE
 
 /** Send a ticket. Re-checks everything first; a repeat of the same requestId returns the first send. */
 export async function placeTicket(userId: string, t: OrderTicketInput, now = new Date(), deps: TradingDeps = defaultTradingDeps): Promise<PlaceTicketResultDto> {
+  const started = Date.now();
   const clientOrderId = clientIdFor(userId, t.requestId);
   const repeat = await alreadySent(userId, clientOrderId);
   if (repeat) return repeat;
@@ -159,6 +162,7 @@ export async function placeTicket(userId: string, t: OrderTicketInput, now = new
       if (!price) continue;
       protective.push(await placeProtective(userId, c, ex, creds, kind, plan.side === 'BUY' ? 'SELL' : 'BUY', plan.symbol, result.filledQty, price, `${clientOrderId}:${kind}`, now));
     }
+    await recordLevels(c.id, plan.symbol, protective, { SL: plan.stopLoss ?? null, TP: plan.takeProfit ?? null }, new Date(now.getTime() + (Date.now() - started)));
   }
 
   const at = result.avgFillPrice != null ? ` at ${result.avgFillPrice}` : '';
@@ -195,6 +199,22 @@ async function placeProtective(
     const e = err instanceof ExchangeError ? err : null;
     await prisma.exchangeOrder.update({ where: { id: row.id }, data: { status: 'REJECTED', errorCode: e?.code ?? 'UNKNOWN', error: (e?.message ?? String(err)).slice(0, 500) } });
     return { kind, ok: false, message: `${label} wasn't placed: ${e?.message ?? 'unknown error'}. The position is open without it.`, order: await orderDtoById(row.id) };
+  }
+}
+
+/** The stop and target that went on with the entry, as one 'order' row for the journal. Never fails the ticket. */
+async function recordLevels(connectionId: string, symbol: string, protective: PlaceTicketResultDto['protective'], price: Record<'SL' | 'TP', number | null>, observedAt: Date): Promise<void> {
+  const ok = (kind: 'TP' | 'SL') => (price[kind] != null ? protective.find((p) => p.kind === kind && p.ok) : undefined);
+  const sl = ok('SL');
+  const tp = ok('TP');
+  if (!sl && !tp) return;
+  try {
+    await insertExchangeLevels(connectionId, [{
+      symbol, sl: sl ? price.SL : null, tp: tp ? price.TP : null, trail: null, source: 'order',
+      exchangeOrderId: sl?.order?.exchangeOrderId ?? tp?.order?.exchangeOrderId ?? null, observedAt,
+    }]);
+  } catch (err) {
+    logger.warn('[ticket] could not record stop levels', { connectionId, err: String(err) });
   }
 }
 

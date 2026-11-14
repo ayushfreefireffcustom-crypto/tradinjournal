@@ -130,12 +130,15 @@ function pendingDto(c: ExchangeConnection, o: OrderInfo): DeskPendingOrderDto {
  * Signed position after each fill, walked back from the position held now. The
  * fill history alone can't say what was already open when the window starts;
  * the current size can. Fills are newest first. A fill that already carries the
- * venue's own figure resets the walk to it.
+ * venue's own figure resets the walk to it, except when that figure is only the
+ * walked short's size without its sign (a venue reporting |size|): the walk wins.
  */
 export function anchorPositions<T extends { symbol: string; side: 'BUY' | 'SELL'; qty: number; positionAfter?: number }>(newestFirst: T[], current: Array<{ symbol: string; size: number }>): Array<T & { positionAfter: number }> {
   const running = new Map(current.map((p) => [p.symbol, p.size]));
   return newestFirst.map((f) => {
-    const after = f.positionAfter ?? running.get(f.symbol) ?? 0;
+    const walked = running.get(f.symbol) ?? 0;
+    const unsignedShort = f.positionAfter != null && walked < 0 && Math.abs(f.positionAfter + walked) < 1e-9;
+    const after = unsignedShort ? walked : (f.positionAfter ?? walked);
     running.set(f.symbol, after - (f.side === 'BUY' ? f.qty : -f.qty));
     return { ...f, positionAfter: after };
   });

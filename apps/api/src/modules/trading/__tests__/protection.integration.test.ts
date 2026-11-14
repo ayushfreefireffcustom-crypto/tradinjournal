@@ -162,6 +162,21 @@ describe.skipIf(!local)('position protection (TP/SL edit)', () => {
     expect(back.protection.stopLoss).toEqual([expect.objectContaining({ trail: null, price: 69_500 })]);
   });
 
+  it('records what is live after each change as a stop-level snapshot for the journal', async () => {
+    await prisma.exchangeTradeLevel.deleteMany({ where: { connectionId: conn } });
+    const levels = async () => (await prisma.exchangeTradeLevel.findMany({ where: { connectionId: conn }, orderBy: [{ observedAt: 'asc' }, { createdAt: 'asc' }] })).map((l) => [l.sl == null ? null : Number(l.sl), l.tp == null ? null : Number(l.tp), l.trail == null ? null : Number(l.trail), l.source]);
+    await svc.setProtection(me, { connectionId: conn, symbol: 'BTCUSD', takeProfit: 72_000, stopLoss: 69_000 }, new Date(), deps);
+    // Nothing changed: no row.
+    await svc.setProtection(me, { connectionId: conn, symbol: 'BTCUSD', stopLoss: 69_000 }, new Date(), deps);
+    await svc.setProtection(me, { connectionId: conn, symbol: 'BTCUSD', stopLossTrail: 300 }, new Date(), deps);
+    await svc.setProtection(me, { connectionId: conn, symbol: 'BTCUSD', stopLoss: null }, new Date(), deps);
+    expect(await levels()).toEqual([
+      [69_000, 72_000, null, 'exchange'],
+      [69_700, 72_000, 300, 'exchange'], // the trail's current trigger
+      [null, 72_000, null, 'exchange'], // removed: reads as widened in the journal
+    ]);
+  });
+
   it('refuses a silly trail before touching anything', async () => {
     book.add('STOP_MARKET', 69_000, 2, 'fixed');
     await expect(svc.setProtection(me, { connectionId: conn, symbol: 'BTCUSD', stopLossTrail: 40_000 }, new Date(), deps)).rejects.toThrow(/more than half the price/);

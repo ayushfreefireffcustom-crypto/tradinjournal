@@ -160,6 +160,25 @@ export interface FillQuery {
   since?: Date;
 }
 
+/** A closed or cancelled order from the venue's order history, with any SL/TP attached to it. */
+export interface HistoricalOrder extends OrderInfo {
+  /** Stop loss / take profit attached to the order (Delta bracket fields); null when none. */
+  bracketStopLoss: number | null;
+  bracketTakeProfit: number | null;
+  bracketTrailAmount: number | null;
+  /** The venue created this order as part of a bracket (an SL/TP on a position or order). */
+  bracketOrder: boolean;
+}
+
+export interface OrderHistoryQuery {
+  /** Only orders created at or after this time. */
+  since?: Date;
+  until?: Date;
+  /** Only stop and take-profit orders (the venue's stop filter). */
+  stopsOnly?: boolean;
+  limit?: number;
+}
+
 /** Contract every venue adapter fulfils. */
 export interface Exchange {
   readonly id: ExchangeId;
@@ -183,6 +202,8 @@ export interface Exchange {
   cancelOrder(creds: ApiCredentials, ref: { symbol: string; exchangeOrderId: string }): Promise<OrderInfo>;
   getOrder(creds: ApiCredentials, ref: { exchangeOrderId?: string; clientOrderId?: string }): Promise<OrderInfo | null>;
   getOpenOrders(creds: ApiCredentials, symbol?: string): Promise<OrderInfo[]>;
+  /** Closed and cancelled orders, newest first. Optional: venues without it simply have no order history. */
+  getOrderHistory?(creds: ApiCredentials, query?: OrderHistoryQuery): Promise<HistoricalOrder[]>;
   setLeverage(creds: ApiCredentials, symbol: string, leverage: number): Promise<number>;
   /** The leverage the account uses for a symbol now, where the venue reports it. */
   getLeverage?(creds: ApiCredentials, symbol: string): Promise<number | null>;

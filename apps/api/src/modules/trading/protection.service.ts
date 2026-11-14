@@ -6,8 +6,11 @@ import { randomBytes } from 'node:crypto';
 import type { ProtectionDto, ProtectionOrderDto, SetProtectionInput, SetProtectionResultDto } from '@tradinjournal/contracts';
 import { prisma, type ExchangeConnection } from '@tradinjournal/db';
 import { ExchangeError, type Exchange, type OrderInfo } from '@tradinjournal/exchange';
+import { logger } from '@tradinjournal/logger';
 import { ConflictError, NotFoundError, ValidationError } from '../../http/errors.js';
 import { credsOf, ExchangeRejectedError } from '../exchanges/exchanges.service.js';
+import { snapshotOf } from './exchange-levels.js';
+import { insertExchangeLevels } from './exchange-levels.store.js';
 import { toTick } from './ticket.plan.js';
 import { defaultTradingDeps, type TradingDeps } from './trading.service.js';
 
@@ -56,6 +59,7 @@ export async function getProtection(userId: string, connectionId: string, symbol
 const fmt = (n: number) => (Math.abs(n) >= 100 ? n.toFixed(1) : n.toFixed(4));
 
 export async function setProtection(userId: string, input: SetProtectionInput, now = new Date(), deps: TradingDeps = defaultTradingDeps): Promise<SetProtectionResultDto> {
+  const started = Date.now();
   const c = await ownConnection(userId, input.connectionId, true);
   const ex = deps.adapterFor(c.exchange, c.environment);
   const creds = credsOf(c, deps.key());
@@ -126,7 +130,25 @@ export async function setProtection(userId: string, input: SetProtectionInput, n
       message: `${label} set at ${w.price} for ${qty} ${qty === 1 ? 'contract' : 'contracts'}.${r.failed ? ` The old one couldn't be removed; check the Pending tab.` : ''}`,
     });
   }
-  return { protection: await read(userId, c, ex, creds, input.symbol), changes };
+  const protection = await read(userId, c, ex, creds, input.symbol);
+  if (changes.some((x) => x.ok && x.action !== 'kept')) await recordLevels(c.id, protection, new Date(now.getTime() + (Date.now() - started)));
+  return { protection, changes };
+}
+
+/**
+ * The journal's stop and target for this position: what is live after the
+ * change, read back from the exchange, as one snapshot row (a removed stop
+ * reads as removed). Never fails the change itself.
+ */
+async function recordLevels(connectionId: string, p: ProtectionDto, observedAt: Date): Promise<void> {
+  if (p.position === 0) return;
+  const kind = (k: 'SL' | 'TP') => (o: ProtectionOrderDto) => ({ exchangeOrderId: o.exchangeOrderId, kind: k, price: o.price, trail: o.trail, qty: o.qty });
+  const snap = snapshotOf([...p.stopLoss.map(kind('SL')), ...p.takeProfit.map(kind('TP'))], p.position > 0 ? 'LONG' : 'SHORT', p.markPrice);
+  try {
+    await insertExchangeLevels(connectionId, [{ symbol: p.symbol, ...snap, source: 'exchange', observedAt }]);
+  } catch (err) {
+    logger.warn('[protection] could not record stop levels', { connectionId, err: String(err) });
+  }
 }
 
 async function placeOne(userId: string, c: ExchangeConnection, ex: Exchange, creds: Creds, symbol: string, kind: 'TP' | 'SL', side: 'BUY' | 'SELL', qty: number, price: number | null, now: Date, trail?: number): Promise<{ ok: boolean; error?: string }> {

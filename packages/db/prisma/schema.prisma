@@ -1725,6 +1725,7 @@ model ExchangeConnection {
   positions ExchangePosition[]
   fills     ExchangeFill[]
   webhooks  TradingWebhook[]
+  levels    ExchangeTradeLevel[]
 
   @@index([userId, status])
   @@index([exchange, environment, keyFingerprint])
@@ -1971,6 +1972,29 @@ model ExchangeFill {
   @@index([connectionId, exchTs])
   @@index([orderId])
   @@map("exchange_fill")
+}
+
+/// Stop loss / take profit seen on an exchange account, per symbol and time (the
+/// exchange journal's stop at entry, R and stop moves). Rows match a round trip
+/// by time: Delta nets one position per product.
+model ExchangeTradeLevel {
+  id              String             @id @default(cuid())
+  connectionId    String
+  connection      ExchangeConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  symbol          String
+  sl              Decimal?           @db.Decimal(30, 10)
+  tp              Decimal?           @db.Decimal(30, 10)
+  /// Trailing distance of a trailing stop (price units, positive).
+  trail           Decimal?           @db.Decimal(30, 10)
+  /// 'exchange' (snapshot of the open protective orders) | 'order' (one order: ours, or from order history) | 'user'
+  source          String
+  exchangeOrderId String?
+  observedAt      DateTime
+  createdAt       DateTime           @default(now())
+
+  @@unique([connectionId, exchangeOrderId, observedAt])
+  @@index([connectionId, symbol, observedAt])
+  @@map("exchange_trade_level")
 }
 
 /// TradingView alerts → orders (D14). One per user; the token is public (in the URL), the secret isn't stored.

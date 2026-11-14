@@ -93,6 +93,12 @@
 .v6 .xj-note { max-width: 320px; }
 .v6 .xj-note .x-tag { margin-right: 4px; }
 .v6 .xj-note small { display: block; color: var(--mut); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 3px; }
+.v6 .xj-r { white-space: nowrap; }
+.v6 .xj-r small { display: block; font-size: var(--t1); margin-top: 2px; }
+.v6 .xj-levels { display: flex; flex-wrap: wrap; gap: 8px 22px; margin: 0 0 14px; }
+.v6 .xj-levels div { min-width: 0; }
+.v6 .xj-levels dt { font-size: var(--t1); color: var(--mut); }
+.v6 .xj-levels dd { margin: 2px 0 0; font-size: var(--t3); font-weight: 500; }
 .v6 .xj-text { min-height: 110px; resize: vertical; padding: 10px 12px; line-height: 1.5; height: auto; }
 
 /* API keys page. Prefix ak-. */

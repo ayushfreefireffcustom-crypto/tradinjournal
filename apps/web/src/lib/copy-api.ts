@@ -422,6 +422,10 @@ export const webhookApi = {
 export interface JournalTrade {
   key: string; symbol: string; side: 'LONG' | 'SHORT'; qty: number; avgEntry: number; avgExit: number; pnlUsd: number; openedAt: string; closedAt: string;
   note: { id: string; body: string; emotion: string | null; tags: string[] } | null;
+  /** Stop at entry / first target / stop move, from the stops seen on the exchange (optional: older APIs omit them). */
+  stop?: number | null; stopSource?: string | null; target?: number | null; move?: 'widened' | 'tightened' | null;
+  /** USD at risk to the stop at entry, and P&L in R (both before fees and funding). */
+  risk?: number | null; r?: number | null;
 }
 export interface ExchangeJournal {
   connection: { id: string; label: string; environment: ExchangeEnvironment };

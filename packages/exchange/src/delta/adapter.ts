@@ -13,7 +13,9 @@ import type {
   Exchange,
   FillEvent,
   FillQuery,
+  HistoricalOrder,
   InstrumentInfo,
+  OrderHistoryQuery,
   OrderInfo,
   OrderStatus,
   OrderType,
@@ -81,6 +83,10 @@ export interface DeltaOrder {
   reduce_only?: boolean | string;
   state?: string;
   created_at?: string;
+  bracket_order?: boolean | string | null;
+  bracket_stop_loss_price?: string | null;
+  bracket_take_profit_price?: string | null;
+  bracket_trail_amount?: string | null;
 }
 
 interface DeltaFill {
@@ -205,6 +211,40 @@ export function mapDeltaOrder(o: DeltaOrder): OrderInfo {
     createdAt: deltaTime(o.created_at),
     raw: o,
   };
+}
+
+const priceOrNull = (v: unknown): number | null => {
+  const n = num(v, NaN);
+  return Number.isFinite(n) && n > 0 ? n : null;
+};
+
+/** An order from `GET /v2/orders/history`, with the bracket SL/TP it carried. */
+export function mapDeltaHistoricalOrder(o: DeltaOrder): HistoricalOrder {
+  const trail = num(o.bracket_trail_amount, NaN);
+  return {
+    ...mapDeltaOrder(o),
+    bracketStopLoss: priceOrNull(o.bracket_stop_loss_price),
+    bracketTakeProfit: priceOrNull(o.bracket_take_profit_price),
+    bracketTrailAmount: Number.isFinite(trail) && trail !== 0 ? Math.abs(trail) : null,
+    bracketOrder: o.bracket_order === true || o.bracket_order === 'true',
+  };
+}
+
+/**
+ * Signed position after a REST fill. Delta sends `meta_data.new_position` as
+ * an object (`{size, entry_price, realized_pnl, …}`), where `size` follows the
+ * position convention (positive long, negative short). A bare number is read
+ * as the size too. Anything else is unknown.
+ */
+export function newPositionSize(np: unknown): number | undefined {
+  let v: unknown = np;
+  if (typeof v === 'string' && v.trim().startsWith('{')) {
+    try { v = JSON.parse(v); } catch { return undefined; }
+  }
+  if (v != null && typeof v === 'object') v = (v as { size?: unknown }).size;
+  if (v == null || v === '' || typeof v === 'boolean') return undefined;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : undefined;
 }
 
 function productMeta(p?: DeltaProduct): Pick<FillEvent, 'baseAsset' | 'quoteAsset' | 'contractMultiplier'> {
@@ -435,8 +475,7 @@ export class DeltaIndiaExchange implements Exchange {
         if (!f.id || !f.product_symbol || (side !== 'BUY' && side !== 'SELL') || qty <= 0) continue;
         // Signed position after the fill, when Delta includes it; it lets a history rebuild spot
         // positions that were already open before the window it read.
-        const np = f.meta_data?.new_position;
-        const positionAfter = np != null && np !== '' && Number.isFinite(Number(np)) ? Number(np) : undefined;
+        const positionAfter = newPositionSize(f.meta_data?.new_position);
         out.push({
           externalId: String(f.id),
           symbol: f.product_symbol,
@@ -491,6 +530,33 @@ export class DeltaIndiaExchange implements Exchange {
       query: { product_ids: productId, states: 'open,pending', page_size: 50 },
     });
     return (env.result ?? []).map(mapDeltaOrder);
+  }
+
+  async getOrderHistory(creds: ApiCredentials, query: OrderHistoryQuery = {}): Promise<HistoricalOrder[]> {
+    const limit = Math.max(1, Math.min(query.limit ?? 500, 2000));
+    const out: HistoricalOrder[] = [];
+    let after: string | undefined;
+    // Delta takes times in microseconds and pages with an opaque `after` cursor (page_size ≤ 50).
+    for (let page = 0; page < 40 && out.length < limit; page++) {
+      const env = await this.rest.signed<DeltaOrder[]>(creds, 'GET', '/v2/orders/history', {
+        query: {
+          page_size: 50,
+          after,
+          order_types: query.stopsOnly ? 'all_stop' : undefined,
+          start_time: query.since ? query.since.getTime() * 1000 : undefined,
+          end_time: query.until ? query.until.getTime() * 1000 : undefined,
+        },
+      });
+      for (const o of env.result ?? []) {
+        const h = mapDeltaHistoricalOrder(o);
+        if (!h.exchangeOrderId || !h.symbol) continue;
+        out.push(h);
+        if (out.length >= limit) break;
+      }
+      after = (env.meta?.after as string | null | undefined) ?? undefined;
+      if (!after) break;
+    }
+    return out;
   }
 
   async getLeverage(creds: ApiCredentials, symbol: string): Promise<number | null> {

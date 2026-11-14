@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ExchangeError } from '../errors.js';
 import { deltaConfigFromEnv, type DeltaConfig } from '../delta/config.js';
 import { deltaSignature, encodeQuery, mapDeltaError } from '../delta/rest.js';
-import { deltaClientOrderId, deltaOrderBody, deltaTime, DeltaIndiaExchange, mapDeltaOrder, parseAccountMessage, parseUserTrade } from '../delta/adapter.js';
+import { deltaClientOrderId, deltaOrderBody, deltaTime, DeltaIndiaExchange, mapDeltaHistoricalOrder, mapDeltaOrder, newPositionSize, parseAccountMessage, parseUserTrade } from '../delta/adapter.js';
 import type { WsLike } from '../delta/ws.js';
 
 const CFG: DeltaConfig = { env: 'testnet', restUrl: 'https://delta.test', wsUrl: 'wss://delta.test', userAgent: 'tradelogs/1.0' };
@@ -108,6 +108,18 @@ describe('order mapping', () => {
     expect(mapDeltaOrder({ id: 3, state: 'open', size: 5, unfilled_size: 4 })).toMatchObject({ status: 'PARTIAL', filledQty: 1 });
     expect(mapDeltaOrder({ id: 4, state: 'open', size: 5, unfilled_size: 5 }).status).toBe('OPEN');
     expect(mapDeltaOrder({ id: 5, state: 'pending', size: 5, order_type: 'market_order', stop_order_type: 'stop_loss_order' })).toMatchObject({ status: 'PENDING', type: 'STOP_MARKET' });
+  });
+});
+
+describe('order history mapping', () => {
+  // Shapes from Delta's docs (GET /v2/orders/history) and a trailing stop as the python client places it.
+  const DOC = { id: 123, user_id: 1, size: 10, unfilled_size: 2, side: 'buy', order_type: 'limit_order', limit_price: '59000', stop_order_type: 'stop_loss_order', stop_price: '55000', trail_amount: '50', reduce_only: false, state: 'open', bracket_stop_loss_price: '56000', bracket_take_profit_price: '61000', product_symbol: 'BTCUSD', created_at: '1725865012000000' };
+  it('keeps the bracket stop / target and the trail of each order', () => {
+    const o = mapDeltaHistoricalOrder(DOC);
+    expect(o).toMatchObject({ exchangeOrderId: '123', symbol: 'BTCUSD', type: 'STOP_LIMIT', stopPrice: 55000, trailAmount: 50, bracketStopLoss: 56000, bracketTakeProfit: 61000, bracketTrailAmount: null, bracketOrder: false, reduceOnly: false });
+    expect(o.createdAt?.toISOString()).toBe('2024-09-09T06:56:52.000Z');
+    const trailing = mapDeltaHistoricalOrder({ id: 7, product_symbol: 'ETHUSD', side: 'sell', order_type: 'market_order', stop_order_type: 'stop_loss_order', trail_amount: '-25.5', stop_price: null, reduce_only: 'true', bracket_order: true, bracket_trail_amount: '-10', bracket_stop_loss_price: '0', state: 'closed', created_at: '2026-11-01T10:00:00Z' });
+    expect(trailing).toMatchObject({ type: 'STOP_MARKET', trailAmount: 25.5, stopPrice: null, bracketTrailAmount: 10, bracketStopLoss: null, bracketOrder: true, reduceOnly: true, status: 'FILLED' });
   });
 });
 
@@ -260,6 +272,52 @@ describe('DeltaIndiaExchange (fake REST)', () => {
     });
     const fills = await ex.getFills(CREDS, { limit: 10 });
     expect(fills.map((f) => f.positionAfter)).toEqual([5, 0, undefined, undefined]);
+  });
+
+  it("reads the documented new_position object's signed size", async () => {
+    // Delta's /v2/fills: meta_data.new_position is {size, entry_price, realized_pnl, …}.
+    const np = (size: unknown) => ({ size, entry_price: '70000', margin: '12.5', realized_pnl: '0', last_fill_uuid: 'u' });
+    const mk = (id: string, side: string, size: number, meta?: unknown) => ({ id, side, size: String(size), price: '70000', product_symbol: 'BTCUSD', created_at: '1725865012000000', ...(meta !== undefined ? { meta_data: meta } : {}) });
+    const { ex } = fakeDelta({
+      'GET /v2/fills': () => ({ body: { success: true, result: [
+        mk('f1', 'sell', 3, { order_size: '3', new_position: np(-3) }),
+        mk('f2', 'buy', 2, { new_position: np('2') }),
+        mk('f3', 'buy', 2, { new_position: np(0) }),
+        mk('f4', 'buy', 1, { new_position: {} }),
+        mk('f5', 'buy', 1, { mark: '1' }),
+        mk('f6', 'buy', 1),
+      ], meta: { after: null } } }),
+    });
+    const fills = await ex.getFills(CREDS, { limit: 10 });
+    expect(fills.map((f) => f.positionAfter)).toEqual([-3, 2, 0, undefined, undefined, undefined]);
+    expect(newPositionSize(JSON.stringify(np('-5')))).toBe(-5);
+    expect(newPositionSize(null)).toBeUndefined();
+    expect(newPositionSize(true)).toBeUndefined();
+  });
+
+  it('pages stop-order history with a cursor and µs times', async () => {
+    let page = 0;
+    const order = (id: number, over: Record<string, unknown> = {}) => ({ id, product_symbol: 'BTCUSD', side: 'sell', order_type: 'market_order', stop_order_type: 'stop_loss_order', size: 2, unfilled_size: 2, stop_price: '69000', reduce_only: true, state: 'cancelled', created_at: '1725865012000000', ...over });
+    const { ex, calls } = fakeDelta({
+      'GET /v2/orders/history': () => {
+        page++;
+        return { body: { success: true, result: page === 1 ? [order(1), order(2)] : [order(3), { id: null }], meta: { after: page === 1 ? 'cur1' : null } } };
+      },
+    });
+    const since = new Date('2026-11-01T00:00:00Z');
+    const until = new Date('2026-11-02T00:00:00Z');
+    const rows = await ex.getOrderHistory(CREDS, { since, until, stopsOnly: true });
+    expect(rows.map((o) => o.exchangeOrderId)).toEqual(['1', '2', '3']);
+    const hist = calls.filter((c) => c.url.includes('/v2/orders/history'));
+    expect(hist).toHaveLength(2);
+    expect(hist[0]!.url).toContain('order_types=all_stop');
+    expect(hist[0]!.url).toContain(`start_time=${since.getTime() * 1000}`);
+    expect(hist[0]!.url).toContain(`end_time=${until.getTime() * 1000}`);
+    expect(hist[1]!.url).toContain('after=cur1');
+    expect(rows[0]!.createdAt?.getTime()).toBe(1725865012000);
+    // A limit stops the paging early.
+    page = 0;
+    expect(await ex.getOrderHistory(CREDS, { limit: 1 })).toHaveLength(1);
   });
 
   it('resolves cross-venue fills to live perpetuals only', async () => {

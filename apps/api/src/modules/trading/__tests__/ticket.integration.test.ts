@@ -110,6 +110,9 @@ describe.skipIf(!local)('order ticket', () => {
     ]);
     expect(r.protective.map((p) => [p.kind, p.ok])).toEqual([['TP', true], ['SL', true]]);
     expect(fake.leverageSet).toEqual([]); // leverage untouched when not asked
+    // The journal's stop and target: one 'order' row with both, keyed to the stop order.
+    const levels = await prisma.exchangeTradeLevel.findMany({ where: { connectionId: conns.main! } });
+    expect(levels.map((l) => [l.symbol, Number(l.sl), Number(l.tp), l.source, l.exchangeOrderId])).toEqual([['BTCUSD', 69_000, 72_000, 'order', r.protective[1]!.order!.exchangeOrderId]]);
   });
 
   it('protects only what filled, and says so when a protective order fails', async () => {

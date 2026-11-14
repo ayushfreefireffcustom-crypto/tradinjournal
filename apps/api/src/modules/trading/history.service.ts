@@ -7,10 +7,12 @@
 import { createHash } from 'node:crypto';
 import type { ExchangeJournalDto, HistoryImportResultDto, JournalTradeDto } from '@tradinjournal/contracts';
 import { prisma, type ExchangeConnection } from '@tradinjournal/db';
-import { closedTrades, ExchangeError } from '@tradinjournal/exchange';
+import { closedTrades, ExchangeError, type Exchange, type PositionInfo } from '@tradinjournal/exchange';
 import { logger } from '@tradinjournal/logger';
 import { ConflictError, NotFoundError } from '../../http/errors.js';
 import { credsOf, ExchangeRejectedError } from '../exchanges/exchanges.service.js';
+import { GRACE_MS, historyRows, levelsForTrips, protectiveOf, snapshotOf, tripLevels, type ProtectiveOrder } from './exchange-levels.js';
+import { exchangeLevelRows, insertExchangeLevels, recordSnapshotIfChanged } from './exchange-levels.store.js';
 import { anchorPositions, defaultTradingDeps, type TradingDeps } from './trading.service.js';
 
 const DAY = 24 * 3600_000;
@@ -19,6 +21,8 @@ const OVERLAP_MS = 10 * 60_000;
 /** Delta's position can lag a fresh fill by ~10 s; anchoring waits until the newest fill is this old. */
 const SETTLE_MS = 30_000;
 const MAX_FILLS = 5000;
+/** Stop orders are listed by creation time but only reach the history once cancelled or triggered: look back this far each time. */
+const STOP_HISTORY_DAYS = 7;
 
 /** A stable id for a round trip; journal notes attach to it (fits the journal's 64-char tradeId). */
 export function tripKey(connectionId: string, symbol: string, openedAt: Date): string {
@@ -33,6 +37,7 @@ async function ownConnection(userId: string, connectionId: string): Promise<Exch
 
 /** Import new fills for one connection. Safe to repeat and to run from two places at once. */
 export async function importConnection(c: ExchangeConnection, days: number | undefined, now = new Date(), deps: TradingDeps = defaultTradingDeps): Promise<HistoryImportResultDto> {
+  const started = Date.now();
   if (c.status !== 'ACTIVE') throw new ConflictError('This exchange key stopped working. Reconnect it to import history.');
   const ex = deps.adapterFor(c.exchange, c.environment);
   const creds = credsOf(c, deps.key());
@@ -67,6 +72,8 @@ export async function importConnection(c: ExchangeConnection, days: number | und
     for (const r of rows) {
       await prisma.exchangeFill.updateMany({ where: { connectionId: c.id, externalId: r.externalId, positionAfter: null }, data: { positionAfter: r.positionAfter, contractMultiplier: r.contractMultiplier } });
     }
+    // Stops and targets: best effort, never fails the import.
+    await captureLevels(c, ex, creds, positions, since, now, () => new Date(now.getTime() + (Date.now() - started)));
     await prisma.exchangeConnection.update({ where: { id: c.id }, data: { historySyncedAt: now } });
     const truncated = fills.length >= MAX_FILLS;
     return {
@@ -78,6 +85,33 @@ export async function importConnection(c: ExchangeConnection, days: number | und
     };
   } catch (err) {
     throw err instanceof ExchangeError ? new ExchangeRejectedError(err) : err;
+  }
+}
+
+/**
+ * Stop loss / take profit for the journal: a snapshot of the protective orders
+ * on every open position (written only when it changed, so stops set in the
+ * exchange's own app are seen), and every stop / take-profit order in the
+ * recent order history at its creation time. Only open positions are
+ * snapshotted: once a position closed, its stop being gone means nothing.
+ */
+async function captureLevels(c: ExchangeConnection, ex: Exchange, creds: ReturnType<typeof credsOf>, positions: PositionInfo[], since: Date, now: Date, clock: () => Date): Promise<void> {
+  try {
+    for (const p of positions.filter((x) => x.size !== 0)) {
+      // Per symbol, as the protection editor reads them: a page of every open order could miss the stop.
+      const orders = await ex.getOpenOrders(creds, p.symbol);
+      const at = clock();
+      const prot = orders.filter((o) => o.symbol === p.symbol).map(protectiveOf).filter((o): o is ProtectiveOrder => o != null);
+      const mark = p.markPrice ?? (prot.some((o) => o.trail) ? await ex.getMarkPrice(p.symbol).catch(() => null) : null);
+      const snap = snapshotOf(prot, p.size > 0 ? 'LONG' : 'SHORT', mark);
+      await recordSnapshotIfChanged(c.id, { symbol: p.symbol, ...snap, source: 'exchange', observedAt: at });
+    }
+    if (ex.getOrderHistory) {
+      const from = new Date(Math.min(since.getTime(), now.getTime() - STOP_HISTORY_DAYS * DAY));
+      await insertExchangeLevels(c.id, historyRows(await ex.getOrderHistory(creds, { since: from, stopsOnly: true, limit: 1000 })));
+    }
+  } catch (err) {
+    logger.debug('[history] stop levels skipped', { connectionId: c.id, err: String(err) });
   }
 }
 
@@ -121,6 +155,9 @@ export async function exchangeJournal(userId: string, connectionId: string): Pro
     (s) => mults.get(s) ?? null,
   );
   const keyed = trips.map((t) => ({ t, key: tripKey(c.id, t.symbol, t.openedAt) }));
+  const firstOpen = keyed.reduce<number | null>((m, k) => (m == null || k.t.openedAt.getTime() < m ? k.t.openedAt.getTime() : m), null);
+  const levelRows = firstOpen != null ? await exchangeLevelRows(c.id, new Date(firstOpen - GRACE_MS)) : [];
+  const levels = levelsForTrips(keyed.map(({ t, key }) => ({ key, symbol: t.symbol, openedAt: t.openedAt, closedAt: t.closedAt })), levelRows);
   const notes = keyed.length
     ? await prisma.journalEntry.findMany({ where: { userId, tradeId: { in: keyed.map((k) => k.key) } }, orderBy: { updatedAt: 'desc' } })
     : [];
@@ -128,10 +165,13 @@ export async function exchangeJournal(userId: string, connectionId: string): Pro
   for (const n of notes) if (n.tradeId && !noteFor.has(n.tradeId)) noteFor.set(n.tradeId, n);
   const trades: JournalTradeDto[] = keyed.map(({ t, key }) => {
     const n = noteFor.get(key);
+    const pnlUsd = Math.round(t.pnlUsd * 100) / 100;
     return {
       key, symbol: t.symbol, side: t.side, qty: t.qty, avgEntry: t.avgEntry, avgExit: t.avgExit,
-      pnlUsd: Math.round(t.pnlUsd * 100) / 100, openedAt: t.openedAt.toISOString(), closedAt: t.closedAt.toISOString(),
+      pnlUsd, openedAt: t.openedAt.toISOString(), closedAt: t.closedAt.toISOString(),
       note: n ? { id: n.id, body: n.body, emotion: n.emotion, tags: n.tags } : null,
+      // pnlUsd is realized price P&L before fees and funding, so R is too.
+      ...tripLevels(levels.get(key) ?? [], { ...t, pnlUsd }, mults.get(t.symbol) ?? null),
     };
   });
   return {

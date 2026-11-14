@@ -2,7 +2,7 @@
 //   TRADING_TEST_DB=postgresql://tj@localhost:5444/tradinjournal_test pnpm --filter @tradinjournal/api test
 import { randomBytes } from 'node:crypto';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { type Exchange, type FillEvent, type FillQuery } from '@tradinjournal/exchange';
+import { type Exchange, type FillEvent, type FillQuery, type HistoricalOrder, type OrderInfo } from '@tradinjournal/exchange';
 
 const DB = process.env.TRADING_TEST_DB;
 const local = !!DB && /localhost|127\.0\.0\.1/.test(DB);
@@ -129,5 +129,85 @@ describe.skipIf(!local)('exchange history and journal', () => {
     expect(synced[conn]).toBe(new Date(now.getTime() + 120 * MIN).toISOString()); // fresh: skipped
     expect(synced[theirs]).toBe(new Date(now.getTime() + 125 * MIN).toISOString()); // never synced: done
     expect(r.done).toBeGreaterThanOrEqual(1);
+  });
+});
+
+describe.skipIf(!local)('exchange journal stops, targets and R', () => {
+  let prisma: typeof import('@tradinjournal/db').prisma;
+  let svc: typeof import('../history.service.js');
+  const tag = `hlev${Date.now()}`;
+  const v = new Venue();
+  let open: OrderInfo[] = [];
+  let history: HistoricalOrder[] = [];
+  let historyQueries: Array<{ since?: Date; stopsOnly?: boolean }> = [];
+  const ex = (): Exchange => ({
+    ...v.ex(),
+    getOpenOrders: async () => open,
+    getMarkPrice: async () => 70_500,
+    getOrderHistory: async (_c: unknown, q: { since?: Date; stopsOnly?: boolean }) => { historyQueries.push(q); return history; },
+  }) as unknown as Exchange;
+  const deps = { adapterFor: ex, key: () => KEY, sleep: async () => undefined };
+  let me = '';
+  let conn = '';
+  const now = new Date('2026-11-01T12:00:00Z');
+  const at = (mins: number) => new Date(now.getTime() + mins * MIN);
+  const fill = (id: string, side: 'BUY' | 'SELL', qty: number, price: number, mins: number): FillEvent => ({ externalId: `${tag}-${id}`, symbol: 'BTCUSD', side, qty, price, reduceOnly: false, timestamp: at(mins), contractMultiplier: 0.001 });
+  const order = (id: string, over: Partial<OrderInfo> = {}): OrderInfo => ({ exchangeOrderId: id, clientOrderId: null, symbol: 'BTCUSD', side: 'SELL', type: 'STOP_MARKET', status: 'PENDING', qty: 3, filledQty: 0, avgFillPrice: null, limitPrice: null, stopPrice: 69_000, trailAmount: null, reduceOnly: true, createdAt: null, ...over });
+  const hist = (id: string, mins: number, over: Partial<HistoricalOrder> = {}): HistoricalOrder => ({ ...order(id, { status: 'CANCELLED', createdAt: at(mins) }), bracketStopLoss: null, bracketTakeProfit: null, bracketTrailAmount: null, bracketOrder: false, ...over });
+  const rows = async () => (await prisma.exchangeTradeLevel.findMany({ where: { connectionId: conn }, orderBy: [{ observedAt: 'asc' }, { createdAt: 'asc' }] }))
+    .map((l) => [l.source, l.sl == null ? null : Number(l.sl), l.tp == null ? null : Number(l.tp)]);
+
+  beforeAll(async () => {
+    ({ prisma } = await import('@tradinjournal/db'));
+    svc = await import('../history.service.js');
+    const { encryptWithKey } = await import('@tradinjournal/secrets');
+    me = (await prisma.user.create({ data: { name: 'me', email: `${tag}-me@trading.test` } })).id;
+    conn = (await prisma.exchangeConnection.create({ data: { userId: me, exchange: 'DELTA_INDIA', environment: 'TESTNET', label: 'Levels', apiKeyEnc: encryptWithKey('k', KEY), apiSecretEnc: encryptWithKey('s', KEY), keyLast4: 'abcd', keyFingerprint: `${tag}-L`, canTrade: true } })).id;
+  });
+  beforeEach(() => { historyQueries = []; });
+  afterAll(async () => {
+    await prisma?.user.deleteMany({ where: { email: { startsWith: tag } } });
+    await prisma?.$disconnect();
+  });
+
+  it('snapshots the open position’s protection and reads stop orders from the order history', async () => {
+    // Long 3 opened 100 min ago; a first stop (69 500) was replaced; now SL 69 000 and TP 72 000 are live.
+    v.fills = [fill('a', 'BUY', 3, 70_000, -100)];
+    v.position = 3;
+    open = [order('sl-2'), order('tp-1', { type: 'TAKE_PROFIT_MARKET', stopPrice: 72_000 }), order('not-mine', { symbol: 'ETHUSD' })];
+    history = [hist('sl-1', -99, { stopPrice: 69_500 })];
+    await svc.importHistory(me, conn, 30, now, deps);
+    expect(await rows()).toEqual([['order', 69_500, null], ['exchange', 69_000, 72_000]]);
+    // The history is read for stop orders, at least a week back.
+    expect(historyQueries[0]).toMatchObject({ stopsOnly: true });
+    expect(historyQueries[0]!.since!.getTime()).toBeLessThanOrEqual(now.getTime() - 7 * DAY);
+    // Again, nothing changed: no new snapshot, no duplicate history row.
+    await svc.importHistory(me, conn, undefined, at(1), deps);
+    expect(await rows()).toHaveLength(2);
+    // Open trips show nothing yet.
+    expect((await svc.exchangeJournal(me, conn)).trades).toEqual([]);
+  });
+
+  it('after the stop is gone and the position closed, the trip gets its stop at entry, target, move and R', async () => {
+    // Closed 30 min after `now` for +$6 (2000 points × 3 × 0.001). No open position: no snapshot,
+    // even though the stop is gone. A stop order created after the close belongs to no trip.
+    v.fills.push(fill('b', 'SELL', 3, 72_000, 30));
+    v.position = 0;
+    open = [];
+    history = [hist('sl-1', -99, { stopPrice: 69_500 }), hist('late', 45, { stopPrice: 60_000 })];
+    await svc.importHistory(me, conn, undefined, at(60), deps);
+    expect(await rows()).toEqual([['order', 69_500, null], ['exchange', 69_000, 72_000], ['order', 60_000, null]]);
+    const [t] = (await svc.exchangeJournal(me, conn)).trades;
+    // Stop at entry 69 500 → $1.50 at risk (500 × 3 × 0.001); moved to 69 000 = widened.
+    expect(t).toMatchObject({ side: 'LONG', qty: 3, pnlUsd: 6, stop: 69_500, stopSource: 'order', target: 72_000, move: 'widened', risk: 1.5, r: 4 });
+  });
+
+  it('trips without any stop seen keep null levels', async () => {
+    v.fills.push(fill('c', 'SELL', 1, 72_000, 90), fill('d', 'BUY', 1, 71_000, 95));
+    history = [];
+    await svc.importHistory(me, conn, undefined, at(120), deps);
+    const trades = (await svc.exchangeJournal(me, conn)).trades;
+    expect(trades).toHaveLength(2);
+    expect(trades[1]).toMatchObject({ side: 'SHORT', pnlUsd: 1, stop: null, target: null, move: null, risk: null, r: null });
   });
 });

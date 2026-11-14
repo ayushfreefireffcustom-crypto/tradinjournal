@@ -19,6 +19,8 @@ import '@/styles/v6/trading.css';
 
 const EMOTIONS = ['Disciplined', 'Confident', 'Patient', 'FOMO', 'Revenge', 'Hesitant'];
 const when = (iso: string) => new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+const fmtR = (r: number) => `${r > 0 ? '+' : r < 0 ? '−' : ''}${Math.abs(r).toFixed(2)}R`;
+const levelsTitle = (t: JournalTrade) => [t.stop != null && `Stop at entry ${price(t.stop)}`, t.target != null && `Target ${price(t.target)}`, t.move && `Stop ${t.move} after entry`].filter(Boolean).join(' · ') || undefined;
 const hold = (a: string, b: string) => {
   const s = Math.max(0, (new Date(b).getTime() - new Date(a).getTime()) / 1000);
   return s < 3600 ? `${Math.max(1, Math.round(s / 60))}m` : s < 86400 ? `${(s / 3600).toFixed(1)}h` : `${(s / 86400).toFixed(1)}d`;
@@ -90,7 +92,7 @@ export default function ExchangeJournalPage() {
                 <div className="x-ch"><h2>Trades</h2><span className="x-sub">price P&amp;L before fees and funding · add a note to any trade</span></div>
                 <div className="x-tblwrap">
                   <table className="x-tbl trd-tbl" data-testid="xj-trades">
-                    <thead><tr><th>Closed</th><th>Contract</th><th>Side</th><th className="n">Size</th><th className="n">Entry</th><th className="n">Exit</th><th className="n">Held</th><th className="n">P&amp;L</th><th>Journal</th><th /></tr></thead>
+                    <thead><tr><th>Closed</th><th>Contract</th><th>Side</th><th className="n">Size</th><th className="n">Entry</th><th className="n">Exit</th><th className="n">Held</th><th className="n">P&amp;L</th><th className="n" title="P&amp;L in multiples of the risk to the stop at entry">R</th><th>Journal</th><th /></tr></thead>
                     <tbody>
                       {newestFirst.map(t => (
                         <tr key={t.key} data-testid={`xj-trade-${t.key}`}>
@@ -102,6 +104,10 @@ export default function ExchangeJournalPage() {
                           <td className="n m">{price(t.avgExit)}</td>
                           <td className="n m">{hold(t.openedAt, t.closedAt)}</td>
                           <td className={`n m ${toneOf(t.pnlUsd)}`}>{signedUsd(t.pnlUsd)}</td>
+                          <td className="n m xj-r" title={levelsTitle(t)} data-testid={`xj-r-${t.key}`}>
+                            {t.r != null ? <span className={toneOf(t.r)}>{fmtR(t.r)}</span> : <span className="x-dim">—</span>}
+                            {t.move === 'widened' && <small className="neg">SL widened</small>}
+                          </td>
                           <td className="xj-note">
                             {t.note ? <>
                               {t.note.emotion && <span className="x-tag">{t.note.emotion}</span>}
@@ -153,6 +159,15 @@ function NoteDialog({ t, onClose, onSaved }: { t: JournalTrade; onClose: () => v
   return (
     <Modal title={`${t.side === 'LONG' ? 'Long' : 'Short'} ${t.qty} ${t.symbol}`} sub={`${when(t.openedAt)} → ${when(t.closedAt)} · ${signedUsd(t.pnlUsd)}`} onClose={onClose} busy={busy} testId="xj-note-dialog"
       footer={<><button className="x-btn x-btn--ghost" onClick={onClose} disabled={busy}>Cancel</button><button className="x-btn x-btn--hi" onClick={() => void save()} disabled={busy || (!body.trim() && !emotion && !tags.length)} data-testid="xj-note-save">{busy ? 'Saving…' : 'Save'}</button></>}>
+      {(t.stop != null || t.target != null) && (
+        <dl className="xj-levels" data-testid="xj-levels">
+          {t.stop != null && <div><dt>Stop at entry</dt><dd className="m">{price(t.stop)}</dd></div>}
+          {t.target != null && <div><dt>Target</dt><dd className="m">{price(t.target)}</dd></div>}
+          {t.risk != null && <div><dt>Risk</dt><dd className="m">${t.risk.toFixed(2)}</dd></div>}
+          {t.r != null && <div><dt>Result</dt><dd className={`m ${toneOf(t.r)}`}>{fmtR(t.r)}</dd></div>}
+          {t.move && <div><dt>Stop moved</dt><dd className={t.move === 'widened' ? 'neg' : ''}>{t.move === 'widened' ? 'Widened' : 'Tightened'}</dd></div>}
+        </dl>
+      )}
       <div className="x-field">
         <label htmlFor="xj-body">What happened, and what you&rsquo;d do again</label>
         <textarea id="xj-body" className="x-input xj-text" rows={5} value={body} onChange={e => setBody(e.target.value.slice(0, 50_000))} data-testid="xj-note-body" />
