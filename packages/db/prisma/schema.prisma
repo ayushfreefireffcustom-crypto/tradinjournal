@@ -425,6 +425,9 @@ model AiConversation {
   userId          String
   brokerAccountId String?
   title           String?
+  /// null = a normal coach chat. 'explain' | 'ask' | 'draft' = one-off calls from
+  /// page buttons; hidden from the coach's conversation list.
+  kind            String?
 
   messages AiMessage[]
 
@@ -2323,4 +2326,59 @@ model TemplateSubscription {
   @@index([userId, createdAt(sort: Desc)])
   @@index([templateId, status])
   @@map("template_subscription")
+}
+
+// ─── Trade levels, excursions, trading prefs (14 Nov 2026) ───────────────────
+// Keyed by (brokerAccountId, positionId) like Execution, with no relation edits.
+
+/// Stop-loss / take-profit observations for a position. The earliest row is the
+/// stop at entry; later rows with a different SL are stop moves.
+model TradeLevel {
+  id              String   @id @default(cuid())
+  brokerAccountId String
+  positionId      BigInt
+  sl              Decimal? @db.Decimal(18, 8)
+  tp              Decimal? @db.Decimal(18, 8)
+  /// 'bridge' (MT5 position snapshot) | 'order' (MT5 order history) | 'exchange' | 'user' | 'plan'
+  source          String
+  observedAt      DateTime
+  createdAt       DateTime @default(now())
+
+  @@index([brokerAccountId, positionId, observedAt])
+  @@map("trade_level")
+}
+
+/// Max adverse / favourable excursion of a closed position, from candles.
+model TradeExcursion {
+  id              String   @id @default(cuid())
+  brokerAccountId String
+  positionId      BigInt
+  /// Money-free price distances from the entry (>= 0).
+  maePrice        Decimal  @db.Decimal(18, 8)
+  mfePrice        Decimal  @db.Decimal(18, 8)
+  /// Same in account currency, when a value per point is known.
+  maeMoney        Decimal? @db.Decimal(18, 8)
+  mfeMoney        Decimal? @db.Decimal(18, 8)
+  timeframe       String
+  bars            Int
+  source          String
+  computedAt      DateTime @default(now())
+
+  @@unique([brokerAccountId, positionId])
+  @@map("trade_excursion")
+}
+
+/// Per-user trading rules, risk cap and saved layouts.
+model TradingPrefs {
+  id         String   @id @default(cuid())
+  userId     String   @unique
+  /// { maxTradesPerDay?, hoursFrom?, hoursTo?, maxRiskPct?, stopAfterLosses?, dailyLossCapPct?, maxSizeX? }
+  rules      Json     @default("{}")
+  riskCapPct Decimal  @default(2) @db.Decimal(6, 3)
+  /// { dashboard?: { [layoutName]: { widgets: string[] } }, active?: string }
+  layouts    Json     @default("{}")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("trading_prefs")
 }
