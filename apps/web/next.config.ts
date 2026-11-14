@@ -4,7 +4,19 @@ import path from 'path';
 const config: NextConfig = {
   reactStrictMode: true,
   // Phosphor's entry re-exports ~1,500 icons; import only the ones we use.
-  experimental: { optimizePackageImports: ['@phosphor-icons/react'] },
+  // externalDir: mock-mode /data routes (NEXT_PUBLIC_USE_MOCKS) run the API's
+  // pure compute (apps/api/src/modules/insights, packages/contracts) over seeded
+  // trades, so the build must compile those TypeScript files from outside apps/web.
+  experimental: { optimizePackageImports: ['@phosphor-icons/react'], externalDir: true },
+  // Those files import siblings NodeNext-style ('./compute.js' → compute.ts).
+  // Scoped to them only; the web app's own imports resolve as before.
+  webpack(cfg) {
+    cfg.module.rules.push({
+      include: [path.join(__dirname, '../api/src'), path.join(__dirname, '../../packages')],
+      resolve: { extensionAlias: { '.js': ['.ts', '.tsx', '.js'] } },
+    });
+    return cfg;
+  },
   // Lets a second dev server (e.g. mock mode) build into its own folder — two
   // `next dev` processes sharing .next serve each other's compiled pages.
   distDir: process.env.NEXT_DIST_DIR || '.next',

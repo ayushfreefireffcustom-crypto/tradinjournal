@@ -195,6 +195,35 @@ function buildTrades(seed: number, count: number, opts: { winBias?: number; star
     // Each position carries its own deals, as the real API's trades do.
     trades[trades.length - 1]!.deals = [dealOpen, dealClose];
   }
+  // Habits the insights rules look for (revenge, oversizing): after some losses,
+  // a bigger re-entry on the same symbol within minutes that also loses.
+  const base = [...trades];
+  base.forEach((t, k) => {
+    if (t.netPnl >= 0 || r() > 0.5) return;
+    const openTime = new Date(new Date(t.closeTime!).getTime() + (3 + Math.floor(r() * 10)) * 60_000);
+    const durationSecs = Math.floor(60 * (4 + r() * 50));
+    const closeTime = new Date(openTime.getTime() + durationSecs * 1000);
+    const volume = parseFloat((t.volume * (1.8 + r() * 0.7)).toFixed(2));
+    const grossPnl = parseFloat((t.grossPnl * (0.7 + r() * 0.8)).toFixed(2));
+    const commission = parseFloat((-volume * 7).toFixed(2));
+    const netPnl = parseFloat((grossPnl + commission).toFixed(2));
+    const direction = t.direction;
+    const exitPrice = parseFloat((t.exitPrice! + (t.exitPrice! - t.entryPrice) * 0.6).toFixed(5));
+    const positionId = String(8100000 + k);
+    const mk = (n: number, entry: Deal['entry'], type: Deal['type'], price: number, time: Date, profit: number, comm: number): Deal => ({
+      dealTicket: String(21000000 + k * 2 + n), orderTicket: String(31000000 + k * 2 + n), positionId, symbol: t.symbol, type, entry,
+      volume: volume.toFixed(2), price: price.toFixed(5), profit: profit.toFixed(2), commission: comm.toFixed(2), swap: '0.00', fee: '0.00',
+      dealTime: time.toISOString(), comment: n && k % 2 ? `[sl ${price.toFixed(5)}]` : '',
+    });
+    const dIn = mk(0, 'IN', direction === 'LONG' ? 'BUY' : 'SELL', t.exitPrice!, openTime, 0, commission);
+    const dOut = mk(1, 'OUT', direction === 'LONG' ? 'SELL' : 'BUY', exitPrice, closeTime, grossPnl, 0);
+    trades.push({
+      positionId, symbol: t.symbol, direction, status: 'CLOSED', openTime: openTime.toISOString(), closeTime: closeTime.toISOString(),
+      entryPrice: t.exitPrice!, exitPrice, volume, grossPnl, commission, swap: 0, netPnl, durationSecs, deals: [dIn, dOut],
+      tags: ['Re-entry'], emotion: 'Revenge',
+    });
+    deals.push(dIn, dOut);
+  });
   return { trades, deals };
 }
 
