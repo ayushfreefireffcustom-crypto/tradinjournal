@@ -318,13 +318,13 @@ export function rolling(T: InsightTrade[], window = 20): DashRolling | null {
   return { unit: R ? 'R' : '$', window, points: pts, now: all.at(-1)!.v, low };
 }
 
-interface Baseline { hourNet: Map<number, Agg> }
-const baseline = (T: InsightTrade[]): Baseline => {
+export interface Baseline { hourNet: Map<number, Agg> }
+export const baseline = (T: InsightTrade[]): Baseline => {
   const m = new Map<number, InsightTrade[]>();
   for (const t of T) (m.get(hourOf(t.open)) ?? m.set(hourOf(t.open), []).get(hourOf(t.open))!).push(t);
   return { hourNet: new Map([...m].map(([h, ts]) => [h, agg(ts)])) };
 };
-const badHour = (b: Baseline, t: InsightTrade) => { const a = b.hourNet.get(hourOf(t.open)); return !!a && a.n >= 3 && a.net < 0; };
+export const badHour = (b: Baseline, t: InsightTrade) => { const a = b.hourNet.get(hourOf(t.open)); return !!a && a.n >= 3 && a.net < 0; };
 
 export function checks(t: InsightTrade, c: TradeContext | undefined, b: Baseline) {
   return {
@@ -360,8 +360,12 @@ export function grade(t: InsightTrade, c: TradeContext | undefined, b: Baseline)
   return { grade: GRADES[Math.min(4, reasons.length)]!, reasons };
 }
 
-export function recent(T: InsightTrade[], ctx: Map<string, TradeContext>, n = 6): DashRecentTrade[] {
-  const b = T.length >= MIN_TRADES ? baseline(T) : null;
+/**
+ * Grades use the account's whole closed history as the baseline (same as the
+ * trade log and trade review), so a trade's grade never changes with the filter.
+ */
+export function recent(T: InsightTrade[], ctx: Map<string, TradeContext>, n = 6, history: InsightTrade[] = T): DashRecentTrade[] {
+  const b = history.length >= MIN_TRADES ? baseline(history) : null;
   return [...T].sort((a, z) => z.close - a.close).slice(0, n).map(t => {
     const g = b ? grade(t, ctx.get(t.id), b) : null;
     return {
@@ -510,7 +514,13 @@ export function computeDashboard(allTrades: InsightTrade[], o: ComputeOptions): 
   const rules = plan(T, ctx, leakRows);
   const syms = symbols(T);
 
-  const fix = leakRows.length ? skipGain(T, leakRows.slice(0, 2)) : null;
+  // Top leak plus whichever other leak adds the most on top of it (same rule as Analytics' what-if).
+  let fix = leakRows.length ? skipGain(T, [leakRows[0]!]) : null;
+  let fixPartner = 0;
+  for (let i = 1; i < leakRows.length; i++) {
+    const both = skipGain(T, [leakRows[0]!, leakRows[i]!]);
+    if (fix && both.gain > fix.gain + 1e-9) { fix = both; fixPartner = i; }
+  }
   const worstCell = hm.worst ? hm.cells.find(x => x.session === hm.worst!.session && x.day === hm.worst!.day)! : null;
   const worstSym = [...syms].filter(s => s.net < 0 && s.trades >= 3).sort((a, b) => a.net - b.net)[0];
 
@@ -520,10 +530,10 @@ export function computeDashboard(allTrades: InsightTrade[], o: ComputeOptions): 
     equity: { start: round(startBal), trades: sample(c.pts, 2000), days, drawdown: c.dd, dotLabel: top?.label ?? null },
     leaks: {
       rows: leakRows.map(({ ids: _ids, ...l }) => l),
-      ai: fix && fix.gain > 0 ? line(leakRows.length > 1 ? 'Skip #1 + #2:' : 'Skip #1:', fix.gain, 'money', fix.trades, 'up') : null,
+      ai: fix && fix.gain > 0 ? line(fixPartner ? `Skip #1 + #${fixPartner + 1}:` : 'Skip #1:', fix.gain, 'money', fix.trades, 'up') : null,
     },
     heatmap: hm, maeMfe: mm, distribution: dist, rolling: roll, behaviour: beh, plan: rules, symbols: syms,
-    recent: recent(T, ctx), hours: hours(T),
+    recent: recent(T, ctx, 6, all), hours: hours(T),
     ai: {
       equity: top ? line(`${top.label}:`, top.net, 'money', top.trades, 'dn', `on ${top.trades} trades`) : null,
       heatmap: worstCell ? line(`${SESSION_LABEL[worstCell.session]} ${DAY_SHORT[worstCell.day]}: ${worstCell.wins}/${worstCell.n} won ·`, worstCell.net, 'money', worstCell.n) : null,

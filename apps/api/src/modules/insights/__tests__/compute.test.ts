@@ -186,7 +186,17 @@ describe('computeDashboard', () => {
     expect(o.kpis!.startBalance).toBe(10_000 + T.filter(t => t.close < w.from!).reduce((a, t) => a + t.net, 0));
     expect(o.symbols.reduce((a, s) => a + s.trades, 0)).toBe(longs.length);
     expect(o.behaviour).toBeNull(); // < 20 trades
-    expect(o.recent.every(r => r.grade === null)).toBe(true);
+    // Grades use the whole closed history as the baseline (like the trade log
+    // and trade review), so a small filtered view still gets graded.
+    expect(T.length >= 20).toBe(true);
+    expect(o.recent.every(r => r.grade !== null)).toBe(true);
+  });
+
+  it('recent grades match the whole-history baseline, whatever the filter', () => {
+    const full = computeDashboard(T, { now: MON, window: windowFor('ALL', undefined, undefined, MON), filters: {}, startingBalance: 10_000 });
+    const narrow = computeDashboard(T, { now: MON, window: windowFor('7D', undefined, undefined, MON), filters: {}, startingBalance: 10_000 });
+    const byId = new Map(full.recent.map(r => [r.id, r.grade]));
+    for (const r of narrow.recent) if (byId.has(r.id)) expect(r.grade).toBe(byId.get(r.id));
   });
 
   it('tag and session filters', () => {
