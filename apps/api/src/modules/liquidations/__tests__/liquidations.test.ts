@@ -24,9 +24,15 @@ function binanceFixture(base: number, bars: number, barMs: number) {
 
 const BASE: Record<string, number> = { BTC: 67_000, ETH: 3_100, SOL: 160, XRP: 0.55, BNB: 600, DOGE: 0.2 };
 
-interface FakeOpts { binanceDown?: string[]; bybitDown?: string[] }
+interface FakeOpts { binanceDown?: string[]; bybitDown?: string[]; relay?: (path: string) => unknown }
 function fake(opts: FakeOpts = {}) {
   const calls: string[] = [];
+  const relayCalls: string[] = [];
+  const relay = async <T>(path: string): Promise<T> => {
+    relayCalls.push(path);
+    if (!opts.relay) throw new Error('no market relay configured');
+    return opts.relay(path) as T;
+  };
   const get = async <T>(url: string): Promise<T> => {
     calls.push(url);
     const u = new URL(url);
@@ -52,12 +58,12 @@ function fake(opts: FakeOpts = {}) {
     }
     throw new Error(`unexpected ${url}`);
   };
-  const deps: LiquidationsDeps = { get, now: () => NOW, cache: false };
-  return { deps, calls };
+  const deps: LiquidationsDeps = { get, relay, now: () => NOW, cache: false };
+  return { deps, calls, relayCalls };
 }
 
 describe('liquidationMap', () => {
-  it('builds a contract-valid estimated ladder from Binance', async () => {
+  it('builds a contract-valid estimated ladder from Binance + Bybit, weighted by open interest', async () => {
     const { deps, calls } = fake();
     const d = await liquidationMap({ coin: 'BTC', window: '48h' }, deps);
     expect(() => liquidationMapDtoSchema.parse(d)).not.toThrow();
@@ -72,9 +78,18 @@ describe('liquidationMap', () => {
     expect(d.maxPain.longPrice).toBeLessThan(d.price);
     expect(d.maxPain.shortPrice).toBeGreaterThan(d.price);
     expect(d.maxPain.touchDownPct).not.toBeNull();
-    expect(d.sources).toEqual(expect.arrayContaining(['Binance USDⓈ-M klines', 'Binance open interest history', 'Binance global long/short account ratio']));
-    expect(calls.every((c) => c.startsWith('https://fapi.binance.com/'))).toBe(true);
+    expect(d.sources).toEqual(expect.arrayContaining([
+      'Binance USDⓈ-M klines', 'Binance open interest history', 'Binance global long/short account ratio',
+      'Bybit linear klines', 'Bybit open interest history', 'Bybit long/short account ratio',
+    ]));
+    // Fixture OI: Binance live 50,060 vs Bybit's latest 57,680 (same price) → 46 / 54.
+    expect(d.sources).toContain('Weighted by open interest: Binance 46%, Bybit 54%');
+    expect(d.sources.at(-1)).toBe('TRADElogs estimate (leverage-tier model)');
+    expect(calls.some((c) => c.startsWith('https://fapi.binance.com/'))).toBe(true);
+    expect(calls.some((c) => c.startsWith('https://api.bybit.com/'))).toBe(true);
     expect(calls.find((c) => c.includes('/klines'))).toContain('interval=15m&limit=192');
+    // Path and price come from Binance.
+    expect(d.price).toBe(d.path.at(-1)!.p);
   });
 
   it('uses hourly bars for the 7 day window', async () => {
@@ -85,11 +100,28 @@ describe('liquidationMap', () => {
     expect(calls.find((c) => c.includes('openInterestHist'))).toContain('period=1h&limit=169');
   });
 
+  it('uses Binance alone when Bybit does not answer', async () => {
+    const { deps } = fake({ bybitDown: ['ETH'] });
+    const d = await liquidationMap({ coin: 'ETH', window: '48h' }, deps);
+    expect(d.sources.some((x) => x.startsWith('Bybit'))).toBe(false);
+    expect(d.sources.some((x) => x.startsWith('Weighted'))).toBe(false);
+    expect(d.bands.some((b) => b.longUsd > 0)).toBe(true);
+  });
+
+  it('a two-venue ladder holds more than either venue alone', async () => {
+    const both = await liquidationMap({ coin: 'BTC', window: '48h' }, fake().deps);
+    const bnOnly = await liquidationMap({ coin: 'BTC', window: '48h' }, fake({ bybitDown: ['BTC'] }).deps);
+    const sum = (d: typeof both) => d.bands.reduce((s, b) => s + b.longUsd + b.shortUsd, 0);
+    expect(sum(both)).toBeGreaterThan(sum(bnOnly) * 1.5);
+    expect(both.step).toBe(bnOnly.step);
+  });
+
   it('falls back to Bybit when Binance does not answer', async () => {
     const { deps, calls } = fake({ binanceDown: ['SOL'] });
     const d = await liquidationMap({ coin: 'SOL', window: '48h' }, deps);
     expect(() => liquidationMapDtoSchema.parse(d)).not.toThrow();
     expect(d.sources).toEqual(expect.arrayContaining(['Bybit linear klines', 'Bybit open interest history', 'Bybit long/short account ratio']));
+    expect(d.sources.some((x) => x.startsWith('Binance'))).toBe(false);
     expect(d.path).toHaveLength(192);
     expect(d.path[0]!.t < d.path[1]!.t).toBe(true); // re-sorted oldest first
     expect(calls.some((c) => c.startsWith('https://api.bybit.com/v5/market/kline?category=linear&symbol=SOLUSDT&interval=15'))).toBe(true);
@@ -107,6 +139,38 @@ describe('liquidationMap', () => {
     const d = await liquidationMap({ coin: 'DOGE', window: '24h' }, deps);
     expect(d.step).toBeLessThan(0.001);
     expect(d.bands[0]!.price).toBeGreaterThan(0.15);
+  });
+});
+
+describe('lastHour (relay liquidation feed)', () => {
+  const recent = (over: Record<string, unknown> = {}) => () => ({ coin: 'BTC', windowMin: 60, totalUsd: 41_234_567.4, longUsd: 30e6, shortUsd: 11e6, longShare: 0.733, complete: true, ...over });
+
+  it('fills lastHour from a fully covered hour', async () => {
+    const { deps, relayCalls } = fake({ relay: recent() });
+    const d = await liquidationMap({ coin: 'BTC', window: '48h' }, deps);
+    expect(d.lastHour).toEqual({ totalUsd: 41_234_567, longShare: 0.733 });
+    expect(relayCalls).toEqual(['/liquidations/recent?coin=BTC&window=60']);
+    expect(() => liquidationMapDtoSchema.parse(d)).not.toThrow();
+  });
+  it('is null while the relay has not watched the whole hour', async () => {
+    const d = await liquidationMap({ coin: 'BTC', window: '48h' }, fake({ relay: recent({ complete: false }) }).deps);
+    expect(d.lastHour).toBeNull();
+  });
+  it('is null when the relay is missing or fails, and the ladder still answers', async () => {
+    const d = await liquidationMap({ coin: 'BTC', window: '48h' }, fake().deps);
+    expect(d.lastHour).toBeNull();
+    const d2 = await liquidationMap({ coin: 'ETH', window: '24h' }, fake({ relay: () => { throw new Error('relay HTTP 502'); } }).deps);
+    expect(d2.lastHour).toBeNull();
+    expect(d2.bands.length).toBeGreaterThan(0);
+  });
+  it('a quiet hour is zero with no long share', async () => {
+    const d = await liquidationMap({ coin: 'DOGE', window: '24h' }, fake({ relay: recent({ totalUsd: 0, longUsd: 0, shortUsd: 0, longShare: null }) }).deps);
+    expect(d.lastHour).toEqual({ totalUsd: 0, longShare: null });
+  });
+  it('the max-pain board does not ask the relay', async () => {
+    const { deps, relayCalls } = fake({ relay: recent() });
+    await maxPainBoard(deps);
+    expect(relayCalls).toEqual([]);
   });
 });
 
@@ -131,7 +195,10 @@ describe('maxPainBoard', () => {
 
 // Routes: query validation and the 503 shape, with auth stubbed out and every upstream down
 // (the service tests above inject their own fetcher, so this only reaches the default one).
-vi.mock('../../../lib/market/http.js', () => ({ fetchJson: async () => { throw new Error('HTTP 451'); } }));
+vi.mock('../../../lib/market/http.js', () => ({
+  fetchJson: async () => { throw new Error('HTTP 451'); },
+  fetchRelayJson: async () => { throw new Error('no market relay configured'); },
+}));
 vi.mock('../../../http/middleware/require-auth.js', () => ({ requireAuth: (_q: unknown, _s: unknown, n: () => void) => n() }));
 vi.mock('../../../http/middleware/require-platform-access.js', () => ({ requirePlatformAccess: (_q: unknown, _s: unknown, n: () => void) => n() }));
 

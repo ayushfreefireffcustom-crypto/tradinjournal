@@ -8,7 +8,7 @@ describe('tickersFor', () => {
 
   it('maps the Fed and yields', () => {
     expect(tickersFor('Fed funds futures: December cut odds fall to 38%')).toEqual(expect.arrayContaining(['US10Y', 'DXY']));
-    expect(tickersFor('US two-year yield jumps 9bp to 3.64%')).toEqual(['US10Y', 'DXY']);
+    expect(tickersFor('US two-year yield jumps 9bp to 3.64%')).toEqual(['US2Y', 'US10Y', 'DXY']);
   });
 
   it('maps crypto', () => {

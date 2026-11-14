@@ -90,5 +90,6 @@ describe('liqSourceLabel', () => {
     expect(liqSourceLabel(['Binance USDⓈ-M klines', 'Binance open interest history', 'Binance global long/short account ratio', 'TRADElogs estimate (leverage-tier model)'])).toBe('Binance · est.');
     expect(liqSourceLabel(['Bybit linear klines', 'Volume stand-in (no open-interest history)', 'TRADElogs estimate (leverage-tier model)'])).toBe('Bybit · volume stand-in · est.');
     expect(liqSourceLabel([])).toBe('est.');
+    expect(liqSourceLabel(['Binance USDⓈ-M klines', 'Bybit linear klines', 'Weighted by open interest: Binance 61%, Bybit 39%', 'TRADElogs estimate (leverage-tier model)'])).toBe('Binance · Bybit · est.');
   });
 });

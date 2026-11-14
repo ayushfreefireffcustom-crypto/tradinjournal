@@ -33,6 +33,9 @@
 //  8. Touch chance in 24 h = barrier-hit probability for a driftless random
 //     walk in log price: P = 2 × (1 − Φ(|ln(target/price)| / (σ√T))), σ the
 //     realised volatility of the window's bar closes scaled to a day.
+//  9. Several venues (Binance + Bybit) are combined with combineLiquidationMaps:
+//     each venue's ladder is built on the same price, then weighted by that
+//     venue's share of live open interest (see the function for the rules).
 import { normCdf } from '../options/bs.js';
 
 const DAY_MS = 86_400_000;
@@ -185,6 +188,30 @@ function biggestCluster(bands: LiquidationModelBand[], idx: number[], key: 'long
   return best;
 }
 
+/** Max pain (rule 7) and touch chances (rule 8) for a ladder around price. */
+export function maxPainOf(bands: readonly LiquidationModelBand[], price: number, sigma24h: number | null, mpRange = 0.1): LiquidationMaxPain {
+  const list = bands as LiquidationModelBand[];
+  const below: number[] = [];
+  const above: number[] = [];
+  list.forEach((band, i) => {
+    if (band.price < price && band.price >= price * (1 - mpRange)) below.push(i);
+    if (band.price > price && band.price <= price * (1 + mpRange)) above.push(i);
+  });
+  const lc = biggestCluster(list, below, 'longUsd', price);
+  const sc = biggestCluster(list, above, 'shortUsd', price);
+  const pct = (p: number) => (price > 0 ? roundTo((p / price - 1) * 100, 2) : 0);
+  return {
+    longPrice: lc?.price ?? price,
+    longUsd: lc?.usd ?? 0,
+    longPct: lc ? pct(lc.price) : 0,
+    shortPrice: sc?.price ?? price,
+    shortUsd: sc?.usd ?? 0,
+    shortPct: sc ? pct(sc.price) : 0,
+    touchDownPct: lc ? touchProbability(price, lc.price, sigma24h) : null,
+    touchUpPct: sc ? touchProbability(price, sc.price, sigma24h) : null,
+  };
+}
+
 export function buildLiquidationMap(
   input: { bars: readonly LiqBar[]; oi?: readonly LiqOiPoint[]; ratio?: readonly LiqRatioPoint[] },
   opts: LiquidationModelOptions,
@@ -284,25 +311,76 @@ export function buildLiquidationMap(
   }));
 
   const sigma24h = realisedVol24h(bars.map((b) => b.c), opts.barMs);
-  const below: number[] = [];
-  const above: number[] = [];
-  bands.forEach((band, i) => {
-    if (band.price < price && band.price >= price * (1 - mpRange)) below.push(i);
-    if (band.price > price && band.price <= price * (1 + mpRange)) above.push(i);
-  });
-  const lc = biggestCluster(bands, below, 'longUsd', price);
-  const sc = biggestCluster(bands, above, 'shortUsd', price);
-  const pct = (p: number) => (price > 0 ? roundTo((p / price - 1) * 100, 2) : 0);
-  const maxPain: LiquidationMaxPain = {
-    longPrice: lc?.price ?? price,
-    longUsd: lc?.usd ?? 0,
-    longPct: lc ? pct(lc.price) : 0,
-    shortPrice: sc?.price ?? price,
-    shortUsd: sc?.usd ?? 0,
-    shortPct: sc ? pct(sc.price) : 0,
-    touchDownPct: lc ? touchProbability(price, lc.price, sigma24h) : null,
-    touchUpPct: sc ? touchProbability(price, sc.price, sigma24h) : null,
-  };
+  const maxPain = maxPainOf(bands, price, sigma24h, mpRange);
 
   return { price, step, bands, maxPain, sigma24h, openedUsd: Math.round(openedUsd), restingUsd: Math.round(restingUsd) };
+}
+
+/** One venue's ladder going into a multi-venue estimate. */
+export interface LiquidationVenuePart {
+  venue: string;
+  result: LiquidationModelResult;
+  /** Live open interest in USD, or null when the venue didn't give it. */
+  oiUsd: number | null;
+  /** True when the ladder was rebuilt from open-interest history (not the volume stand-in). */
+  fromOi: boolean;
+}
+export interface CombinedLiquidationResult extends LiquidationModelResult {
+  /** Share of the combined ladder per venue (0..1), in input order. */
+  weights: { venue: string; weight: number }[];
+}
+
+/**
+ * Several venues' ladders → one (rule 9). Every part must be built on the same
+ * price (so the bands line up); bands are matched by price.
+ *  - With every venue's live open interest known, each ladder's shape (its
+ *    bands ÷ its resting total) is weighted by that venue's share of the
+ *    combined open interest, and the total resting notional is the sum of the
+ *    venues rebuilt from open-interest history (all venues when none were).
+ *    So a venue on the volume stand-in keeps its shape but takes its size
+ *    from its open interest.
+ *  - Without open interest for every venue, the ladders are simply added.
+ * Max pain and touch chances are worked out again on the combined ladder.
+ */
+export function combineLiquidationMaps(
+  parts: readonly LiquidationVenuePart[],
+  opts: { price: number; sigma24h: number | null; maxPainRangePct?: number },
+): CombinedLiquidationResult {
+  const live = parts.filter((p) => p.result.restingUsd > 0 && p.result.bands.length > 0);
+  const byOi = live.length > 0 && live.every((p) => p.oiUsd != null && p.oiUsd > 0);
+  const oiTotal = byOi ? live.reduce((s, p) => s + p.oiUsd!, 0) : 0;
+  const modelled = live.filter((p) => p.fromOi);
+  const total = (modelled.length ? modelled : live).reduce((s, p) => s + p.result.restingUsd, 0);
+  const scale = new Map<LiquidationVenuePart, number>();
+  const weights: { venue: string; weight: number }[] = [];
+  for (const p of parts) {
+    if (!live.includes(p)) { weights.push({ venue: p.venue, weight: 0 }); continue; }
+    const w = byOi ? p.oiUsd! / oiTotal : p.result.restingUsd / (live.reduce((s, q) => s + q.result.restingUsd, 0) || 1);
+    scale.set(p, byOi ? (w * total) / p.result.restingUsd : 1);
+    weights.push({ venue: p.venue, weight: roundTo(w, 4) });
+  }
+  const merged = new Map<number, { long: number; short: number }>();
+  for (const p of parts) {
+    const k = scale.get(p) ?? 0;
+    for (const b of p.result.bands) {
+      const m = merged.get(b.price) ?? { long: 0, short: 0 };
+      m.long += b.longUsd * k;
+      m.short += b.shortUsd * k;
+      merged.set(b.price, m);
+    }
+  }
+  const bands: LiquidationModelBand[] = [...merged.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([price, m]) => ({ price, longUsd: Math.round(m.long), shortUsd: Math.round(m.short) }));
+  const step = parts[0]?.result.step ?? 1;
+  return {
+    price: opts.price,
+    step,
+    bands,
+    maxPain: maxPainOf(bands, opts.price, opts.sigma24h, opts.maxPainRangePct ?? 0.1),
+    sigma24h: opts.sigma24h,
+    openedUsd: parts.reduce((s, p) => s + p.result.openedUsd, 0),
+    restingUsd: bands.reduce((s, b) => s + b.longUsd + b.shortUsd, 0),
+    weights,
+  };
 }

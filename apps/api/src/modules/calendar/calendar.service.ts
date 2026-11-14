@@ -11,7 +11,7 @@ import type { CalendarQuery, EventImpact } from '@tradinjournal/contracts';
 import type { Prisma } from '@tradinjournal/db';
 import { getCalendarProviders } from '../../lib/calendar/providers/index.js';
 import { reconcileEvents } from '../../lib/calendar/reconcile.js';
-import type { NormalizedEvent } from '../../lib/calendar/types.js';
+import type { CalendarProvider, NormalizedEvent } from '../../lib/calendar/types.js';
 import { cacheGet, cacheSet } from '../../lib/cache.js';
 
 const READ_TTL_SECONDS = 120;
@@ -21,9 +21,14 @@ const READ_TTL_SECONDS = 120;
  * events were written. Never throws for a single provider failure — that
  * provider simply contributes nothing and the others still merge.
  */
-export async function ingestWindow(from: Date, to: Date): Promise<{ upserted: number; providers: number }> {
-  const providers = getCalendarProviders();
-  if (providers.length === 0) return { upserted: 0, providers: 0 };
+export async function ingestWindow(
+  from: Date,
+  to: Date,
+  opts: { providers?: CalendarProvider[] } = {},
+): Promise<{ upserted: number; providers: number; fetched: number }> {
+  // `providers` narrows the set (the history backfill uses only providers with history).
+  const providers = opts.providers ?? getCalendarProviders();
+  if (providers.length === 0) return { upserted: 0, providers: 0, fetched: 0 };
 
   const settled = await Promise.allSettled(providers.map(p => p.fetchWindow(from, to)));
   const rows: NormalizedEvent[] = [];
@@ -31,7 +36,7 @@ export async function ingestWindow(from: Date, to: Date): Promise<{ upserted: nu
     if (r.status === 'fulfilled') rows.push(...r.value);
     else logger.warn(`Calendar provider ${providers[i]!.name} failed: ${(r.reason as Error).message}`);
   });
-  if (rows.length === 0) return { upserted: 0, providers: providers.length };
+  if (rows.length === 0) return { upserted: 0, providers: providers.length, fetched: 0 };
 
   const reconciled = reconcileEvents(rows, env.CALENDAR_PROVIDER_PRIORITY_LIST);
 
@@ -94,7 +99,7 @@ export async function ingestWindow(from: Date, to: Date): Promise<{ upserted: nu
       logger.warn(`Calendar update failed for ${u.dedupKey}: ${(err as Error).message}`);
     }
   }
-  return { upserted, providers: providers.length };
+  return { upserted, providers: providers.length, fetched: rows.length };
 }
 
 function cacheKey(q: CalendarQuery): string {

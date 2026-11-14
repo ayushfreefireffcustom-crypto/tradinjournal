@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { yahooPoints, trimSince, WATCH, BARS } from '../reactions.js';
+import { yahooPoints, cnbcPoints, trimSince, WATCH, BARS } from '../reactions.js';
 
 describe('reactions', () => {
   it('serves the scoreboard watch set first', () => {
@@ -12,6 +12,22 @@ describe('reactions', () => {
     const pts = yahooPoints({ chart: { result: [{ timestamp: [1, 2, 3], indicators: { quote: [{ close: [10, null, 12] }] } }] } });
     expect(pts).toEqual([[1000, 10], [3000, 12]]);
     expect(yahooPoints({})).toEqual([]);
+  });
+
+  it('serves the US 2-year yield in basis points from CNBC', () => {
+    expect(WATCH.find(w => w.key === 'US2Y')).toMatchObject({ src: 'cnbc', sym: 'US2Y', unit: 'bp' });
+  });
+
+  it('parses a CNBC chart body: string closes, junk dropped, oldest first', () => {
+    const pts = cnbcPoints({ barData: { priceBars: [
+      { close: '4.8520', tradeTimeinMills: 3000 },
+      { close: '4.7630', tradeTimeinMills: 1000 },
+      { close: null, tradeTimeinMills: 2000 },
+      { close: '99', tradeTimeinMills: 2500 },
+      { close: '4.80', tradeTimeinMills: 'x' },
+    ] } });
+    expect(pts).toEqual([[1000, 4.763], [3000, 4.852]]);
+    expect(cnbcPoints({})).toEqual([]);
   });
 
   it('keeps only the last BARS points', () => {

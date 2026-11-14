@@ -1,6 +1,8 @@
 export {
   LIQ_LEVERAGE_TIERS,
   buildLiquidationMap,
+  combineLiquidationMaps,
+  maxPainOf,
   liquidationPrice,
   liquidationStep,
   realisedVol24h,
@@ -15,4 +17,6 @@ export type {
   LiquidationModelBand,
   LiquidationMaxPain,
   LiquidationModelResult,
+  LiquidationVenuePart,
+  CombinedLiquidationResult,
 } from './model.js';

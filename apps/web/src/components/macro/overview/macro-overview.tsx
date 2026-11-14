@@ -1,7 +1,8 @@
 'use client';
 
 // Macro overview (design E "map"): regime map + the inputs behind it, the
-// assets × drivers grid, the surprise map, a Treasury-based cuts proxy, and the
+// assets × drivers grid, the surprise map, cut odds per FOMC meeting from Fed
+// funds futures (Treasury-based proxy when those don't answer), and the
 // estimated BTC liquidation ladder + max-pain board.
 // Data: GET /api/macro/state → `overview` (engine, deterministic) and the
 // liquidations API (estimates). Every block degrades on its own.
@@ -12,6 +13,7 @@ import Inputs from './inputs';
 import DriversGrid from './drivers-grid';
 import SurpriseMap from './surprise-map';
 import CutsProxy from './cuts-proxy';
+import CutsByMeeting from './cuts-meetings';
 import { LiqLadder, MaxPainBlock, useLiquidations } from './liquidations';
 import { AiLine, Quiet } from './parts';
 import { monthLong, ordinal } from './format';
@@ -54,7 +56,7 @@ export default function MacroOverview({ state, accountId }: { state: MacroState;
 
       <section className="mo-sec mo-m3c">
         <SurpriseMap surprise={o?.surprise ?? null} />
-        <CutsProxy cuts={o?.cuts ?? null} />
+        {o?.fedwatch?.rows.length ? <CutsByMeeting fw={o.fedwatch} /> : <CutsProxy cuts={o?.cuts ?? null} />}
       </section>
 
       <section className="mo-sec mo-m4">
@@ -62,7 +64,7 @@ export default function MacroOverview({ state, accountId }: { state: MacroState;
         <MaxPainBlock board={liq.board} map={liq.map} onRetry={liq.reload} />
       </section>
 
-      <p className="mo-foot">FRED · US economic calendar · Treasury yields vs Fed funds (no FedWatch feed) · liquidation values are estimates · not investment advice</p>
+      <p className="mo-foot">FRED · US economic calendar · {o?.fedwatch?.rows.length ? 'CBOT Fed funds futures' : 'Treasury yields vs Fed funds'} · liquidation values are estimates · not investment advice</p>
     </div>
   );
 }

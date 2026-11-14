@@ -5,9 +5,13 @@
 //   GET /health                   → ok
 //   GET /check                    → status of one public call per host (token)
 //   GET /whoami                   → outbound IP and its country (token)
+//   GET /liquidations/recent?coin=BTC&window=60
+//                                 → realised liquidations from the live
+//                                   Binance + Bybit sockets (token; see liquidations.mjs)
 import { createServer } from 'node:http';
 import { timingSafeEqual } from 'node:crypto';
 import { get as httpsGet } from 'node:https';
+import { createLiquidationStore, parseRecentQuery, startLiquidationFeeds } from './liquidations.mjs';
 
 export const HOSTS = new Set(['api.bybit.com', 'fapi.binance.com', 'api.binance.com', 'api.india.delta.exchange']);
 const PROBES = {
@@ -49,7 +53,7 @@ function upstream(url) {
   });
 }
 
-export function handler(token) {
+export function handler(token, { liquidations = null } = {}) {
   return async (req, res) => {
     const send = (status, body, type = 'application/json') => { res.writeHead(status, { 'content-type': type, 'cache-control': 'no-store' }); res.end(body); };
     if (req.url === '/health') return send(200, '{"ok":true}');
@@ -60,6 +64,13 @@ export function handler(token) {
         // Which outbound IPs (and where they geolocate) fresh connections use.
         const seen = await Promise.all(Array.from({ length: 6 }, () => upstream('https://ipinfo.io/json').then((r) => { const j = JSON.parse(r.body.toString()); return `${j.ip} ${j.country} ${j.org}`; }).catch((e) => String(e?.message ?? e))));
         return send(200, JSON.stringify(seen));
+      }
+      const u = new URL(req.url ?? '/', 'http://relay');
+      if (u.pathname === '/liquidations/recent') {
+        if (!liquidations) return send(503, '{"error":"liquidation feed off"}');
+        const q = parseRecentQuery(u.search);
+        if (q.error) return send(400, JSON.stringify({ error: q.error }));
+        return send(200, JSON.stringify(liquidations.recent(q.coin, q.windowMin, q.buckets)));
       }
       if (req.url === '/check') {
         const out = {};
@@ -86,5 +97,11 @@ if (process.argv[1] && import.meta.url.endsWith(process.argv[1].split('/').pop()
   const token = process.env.RELAY_TOKEN;
   if (!token || token.length < 24) { console.error('RELAY_TOKEN (24+ characters) is required'); process.exit(1); }
   const port = Number(process.env.PORT) || 8080;
-  createServer(handler(token)).listen(port, () => console.log(`relay listening on ${port}`));
+  // Live liquidation sockets (Node 22+ has a global WebSocket). LIQ_FEEDS=off disables them.
+  let liquidations = null;
+  if (process.env.LIQ_FEEDS !== 'off' && typeof globalThis.WebSocket === 'function') {
+    liquidations = createLiquidationStore();
+    startLiquidationFeeds(liquidations);
+  }
+  createServer(handler(token, { liquidations })).listen(port, () => console.log(`relay listening on ${port}`));
 }

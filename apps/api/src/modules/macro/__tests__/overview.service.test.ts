@@ -15,6 +15,9 @@ vi.mock('@tradinjournal/db', () => ({
   Prisma: { join: (xs: unknown[]) => xs },
 }));
 
+// No network: Fed funds futures answer nothing unless a test passes its own.
+vi.mock('../../../lib/macro/providers/fedfunds.js', () => ({ getFedWatch: async () => null }));
+
 const {
   asOfJoin,
   biasHistory,
@@ -100,6 +103,7 @@ describe('buildMacroOverview', () => {
     expect(o.regime).toBeNull();
     expect(o.surprise).toBeNull();
     expect(o.cuts).toBeNull();
+    expect(o.fedwatch).toBeNull();
     expect(o.inputs).toEqual([]);
     expect(o.grid.map(g => g.asset)).toEqual([...OVERVIEW_ASSETS]);
     expect(o.grid[0]!.cells.map(c => c.factor)).toEqual([...OVERVIEW_DRIVERS]);
@@ -129,5 +133,23 @@ describe('buildMacroOverview', () => {
     expect(o.cuts!.rows.map(r => [r.key, r.cuts, r.cutsYesterday])).toEqual([['3m', 0.3, null], ['2y', 1.9, 1.5]]);
     expect(o.surprise!.series.find(s => s.key === 'cpi')!.cells.at(-1)!.level).toBe(1);
     expect(o.grid.find(g => g.asset === 'BTC')!.netYesterday).toBe(-20);
+  });
+
+  it('attaches Fed funds futures odds, anchored on the latest EFFR, and survives their failure', async () => {
+    indicatorFindMany.mockImplementation(async (args: { where: { key: { in: string[] } } }) =>
+      args.where.key.in.includes('DFF') ? [{ key: 'DFF', value: 3.88, asOf: new Date('2026-11-10') }] : []);
+    queryRaw.mockResolvedValue([]);
+    eventFindMany.mockResolvedValue([]);
+    const seen: (number | null)[] = [];
+    const fw = {
+      basis: 'fed-funds-futures' as const, asOf: '2026-11-13T21:59:00.000Z', impliedNow: 3.8775,
+      rows: [{ meeting: '2026-12-09', label: 'Dec 9', cutPct: 60, holdPct: 40, hikePct: 0, bigMovePct: 0, expectedBp: -15, rateAfter: 3.7275, cumulativeCuts: 0.6, cumulativeCutsYesterday: 0.5 }],
+    };
+    const o = await buildMacroOverview(toEngineInput([], []), new Date('2026-11-14T12:00:00Z'), { fedWatch: async (e) => { seen.push(e); return fw; } });
+    expect(macroOverviewSchema.safeParse(o).success).toBe(true);
+    expect(o.fedwatch).toEqual(fw);
+    expect(seen).toEqual([3.88]);
+    const o2 = await buildMacroOverview(toEngineInput([], []), new Date('2026-11-14T12:00:00Z'), { fedWatch: async () => { throw new Error('boom'); } });
+    expect(o2.fedwatch).toBeNull();
   });
 });

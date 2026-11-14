@@ -165,7 +165,7 @@ export function magnetLine(longPct: number, shortPct: number, longUsd: number, s
  * ['Binance USDⓈ-M klines', 'Binance open interest history', 'TRADElogs estimate …'] → "Binance · est."
  */
 export function liqSourceLabel(sources: string[]): string {
-  const skip = new Set(['tradelogs', 'volume']);
+  const skip = new Set(['tradelogs', 'volume', 'weighted', 'venues']);
   const ex: string[] = [];
   for (const s of sources) {
     const w = s.trim().split(/\s+/)[0] ?? '';

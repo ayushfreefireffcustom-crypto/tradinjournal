@@ -1,0 +1,34 @@
+/* Cuts priced by meeting (macro overview). Fed funds futures odds per FOMC meeting. */
+.v6 .mo-fw { width: 100%; container: fw / inline-size; }
+.v6 .mo-fw-t { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.v6 .mo-fw-c-m { width: 64px; }
+.v6 .mo-fw-c-o { width: 92px; }
+.v6 .mo-fw-c-p { width: 92px; }
+.v6 .mo-fw-t th { font-size: var(--t1); color: var(--dim); font-weight: 400; text-align: left; padding: 0 0 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.v6 .mo-fw-t tbody th { font-size: var(--t2); color: var(--tx); font-weight: 700; padding: 8px 0; border-top: 1px solid var(--line); vertical-align: middle; }
+.v6 .mo-fw-t td { padding: 8px 0; border-top: 1px solid var(--line); vertical-align: middle; }
+.v6 .mo-fw-r { text-align: right; }
+.v6 .mo-fw-t th.mo-fw-r { text-align: right; }
+.v6 .mo-fw-k.pos { color: var(--g-tx); }
+.v6 .mo-fw-k.neg { color: var(--r-tx); }
+.v6 .mo-fw-bar { display: flex; height: 14px; margin-right: 12px; border-radius: 2px; overflow: hidden; background: var(--line-2); }
+.v6 .mo-fw-bar > span { display: block; height: 100%; }
+.v6 .mo-fw-cut { background: var(--g); }
+.v6 .mo-fw-hold { background: var(--line-2); }
+.v6 .mo-fw-hike { background: var(--r); }
+.v6 .mo-fw-o { font-size: var(--t3); font-weight: 900; color: var(--tx); white-space: nowrap; }
+.v6 .mo-fw-o.pos { color: var(--g-tx); }
+.v6 .mo-fw-o.neg { color: var(--r-tx); }
+.v6 .mo-fw-cum { font-size: var(--t2); font-weight: 900; color: var(--tx); white-space: nowrap; }
+.v6 .mo-fw-s { font-size: var(--t1); color: var(--dim); white-space: nowrap; }
+.v6 .mo-fw-s.pos { color: var(--g-tx); }
+.v6 .mo-fw-s.neg { color: var(--r-tx); }
+.v6 .mo-fw-p2 { display: none; }
+
+/* Narrow: "priced by then" folds under the odds. */
+@container fw (max-width: 400px) {
+  .v6 .mo-fw-p, .v6 .mo-fw-c-p { display: none; }
+  .v6 .mo-fw-p2 { display: block; }
+  .v6 .mo-fw-c-m { width: 52px; }
+  .v6 .mo-fw-c-o { width: 84px; }
+}

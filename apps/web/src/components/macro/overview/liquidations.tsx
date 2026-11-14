@@ -216,9 +216,9 @@ export function MaxPainBlock({ board, map, onRetry }: { board: Load<MaxPainBoard
           <div><div className="mo-cap">Short pain · BTC</div><div className="mo-mp-v m pos">{head.shortUsd > 0 ? num(head.shortPrice) : '–'}</div><div className="mo-mp-s m">{head.shortUsd > 0 ? `≈${usdShort(head.shortUsd)} · ${signed(head.shortPct, 2)}%` : 'nothing resting above'}</div></div>
           <div><div className="mo-cap">Touch, 24h</div><div className="mo-mp-v m">{t ? `${t.pct}%` : '–'}</div><div className="mo-mp-s">{t ? `${t.down ? 'down' : 'up'} side first` : 'no volatility read'}</div></div>
           {m?.lastHour ? (
-            <div><div className="mo-cap">Liq. last hour</div><div className="mo-mp-v m">{usdShort(m.lastHour.totalUsd)}</div><div className="mo-mp-s m">{Math.round(m.lastHour.longShare * 100)}% longs</div></div>
+            <div data-testid="macro-liq-last-hour"><div className="mo-cap">Liq. last hour · BTC</div><div className="mo-mp-v m">{usdShort(m.lastHour.totalUsd)}</div><div className="mo-mp-s m">{m.lastHour.longShare != null ? `${Math.round(m.lastHour.longShare * 100)}% longs` : 'none in the hour'}</div></div>
           ) : (
-            <div><div className="mo-cap">BTC price</div><div className="mo-mp-v m">{num(head.price)}</div><div className="mo-mp-s">no live liquidation feed</div></div>
+            <div><div className="mo-cap">BTC price</div><div className="mo-mp-v m">{num(head.price)}</div><div className="mo-mp-s">live liquidation feed offline</div></div>
           )}
         </div>
       )}

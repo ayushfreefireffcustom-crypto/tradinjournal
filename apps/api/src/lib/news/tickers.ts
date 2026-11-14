@@ -34,7 +34,8 @@ const RULES: Rule[] = [
   { re: /\b(cpi|inflation|consumer prices|pce|ppi|core prices)\b/i, tickers: ['US10Y', 'DXY', 'XAUUSD', 'US500'], weight: 34, region: 'US' },
   { re: /\b(nonfarm|non-farm|payrolls?|nfp|jobs report|jobless claims|unemployment rate)\b/i, tickers: ['US10Y', 'DXY', 'XAUUSD', 'US500'], weight: 30, region: 'US' },
   { re: /\b(fomc|fed|federal reserve|powell|fed funds|rate decision)\b/i, tickers: ['US10Y', 'DXY', 'XAUUSD', 'US500'], weight: 28, region: 'US', rates: true },
-  { re: /\b(rate cuts?|rate hikes?|cut odds|basis points?|\d+ ?bps?)\b/i, tickers: ['US10Y', 'DXY'], weight: 18, region: 'US', rates: true },
+  { re: /\b(two-year|2-year|2y|twos)\b/i, tickers: ['US2Y'], weight: 16, region: 'US', rates: true },
+  { re: /\b(rate cuts?|rate hikes?|cut odds|basis points?|\d+ ?bps?)\b/i, tickers: ['US10Y', 'DXY', 'US2Y'], weight: 18, region: 'US', rates: true },
   { re: /\b(treasur(?:y|ies)|yields?|bond market|bonds?|t-notes?|10-year|two-year|2-year)\b/i, tickers: ['US10Y', 'DXY'], weight: 16, region: 'US', rates: true },
   { re: /\b(gdp|retail sales|ism|pmi)\b/i, tickers: ['US10Y', 'DXY', 'US500'], weight: 20, region: 'US' },
   // Other central banks / regions.

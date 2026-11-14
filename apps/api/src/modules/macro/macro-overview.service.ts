@@ -1,7 +1,9 @@
 // Macro overview (v2) builder: the regime map + trail, the four inputs behind
-// it, the assets × drivers grid, the data-surprise grid and a Treasury-based
-// policy proxy. Reads Postgres only (FRED history, BiasScore history, the
-// economic calendar); the maths lives in @tradinjournal/core (pure, tested).
+// it, the assets × drivers grid, the data-surprise grid, cut odds per FOMC
+// meeting from Fed funds futures (Yahoo, cached; lib/macro/providers/fedfunds)
+// and the Treasury-based policy proxy as their fallback. Everything else reads
+// Postgres only (FRED history, BiasScore history, the economic calendar); the
+// maths lives in @tradinjournal/core (pure, tested).
 // Attached to the cached macro state as the optional `overview` field.
 import { prisma, Prisma } from '@tradinjournal/db';
 import {
@@ -17,7 +19,8 @@ import {
   yoy,
 } from '@tradinjournal/core';
 import type { EngineInput, FactorKey, MacroAsset, MonthlyObs } from '@tradinjournal/core';
-import type { MacroOverview, MacroOverviewInput } from '@tradinjournal/contracts';
+import type { MacroFedWatch, MacroOverview, MacroOverviewInput } from '@tradinjournal/contracts';
+import { getFedWatch } from '../../lib/macro/providers/fedfunds.js';
 
 /** Grid rows (engine assets only; nothing here is scored without the engine). */
 export const OVERVIEW_ASSETS: readonly MacroAsset[] = ['XAU', 'BTC', 'NDX', 'SPX', 'DXY', 'UST', 'OIL', 'ETH'];
@@ -228,7 +231,11 @@ export function buildGrid(
  * Build the overview. Every block degrades on its own: missing history makes
  * that block null/empty instead of failing the whole state.
  */
-export async function buildMacroOverview(input: EngineInput, now = new Date()): Promise<MacroOverview> {
+export async function buildMacroOverview(
+  input: EngineInput,
+  now = new Date(),
+  deps: { fedWatch: (effr: number | null) => Promise<MacroFedWatch | null> } = { fedWatch: (effr) => getFedWatch(effr) },
+): Promise<MacroOverview> {
   const today = isoDay(now);
   const endMonth = today.slice(0, 7);
   const surpriseFrom = new Date(`${shiftMonth(endMonth, -11)}-01T00:00:00.000Z`);
@@ -330,6 +337,14 @@ export async function buildMacroOverview(input: EngineInput, now = new Date()): 
     if (rows.length > 0) cuts = { basis: 'treasury-vs-effr', effr: lastEffr.value, asOf: `${lastEffr.date}T00:00:00.000Z`, rows };
   }
 
+  // Per-meeting odds from Fed funds futures; null (proxy shown instead) when they don't answer.
+  let fedwatch: MacroFedWatch | null = null;
+  try {
+    fedwatch = await deps.fedWatch(lastEffr?.value ?? null);
+  } catch {
+    fedwatch = null;
+  }
+
   return {
     asOf: now.toISOString(),
     regime: trail
@@ -348,5 +363,6 @@ export async function buildMacroOverview(input: EngineInput, now = new Date()): 
     grid: buildGrid(input, dailyByAsset, today),
     surprise: surprise.releases > 0 ? surprise : null,
     cuts,
+    fedwatch,
   };
 }

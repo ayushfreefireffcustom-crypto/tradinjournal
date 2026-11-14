@@ -18,7 +18,7 @@ import { yahooSymbol } from '../market/providers/yahoo.js';
 
 interface WatchItem {
   key: ReactionKey;
-  src: 'binance' | 'yahoo';
+  src: 'binance' | 'yahoo' | 'cnbc';
   /** Provider symbol. */
   sym: string;
   unit: 'bp' | 'pct';
@@ -40,11 +40,12 @@ export const WATCH: WatchItem[] = [
   { key: 'USDJPY', src: 'yahoo', sym: yahooSymbol('USDJPY'), unit: 'pct', dp: 2 },
   { key: 'GBPUSD', src: 'yahoo', sym: yahooSymbol('GBPUSD'), unit: 'pct', dp: 4 },
   { key: 'SOLUSD', src: 'binance', sym: 'SOLUSDT', unit: 'pct', dp: 2 },
+  { key: 'US2Y', src: 'cnbc', sym: 'US2Y', unit: 'bp', dp: 3 },
 ];
 
 /** Bars kept per series: ~25h of 5-minute bars. */
 export const BARS = 300;
-const CACHE_KEY = 'news:reactions:v1';
+const CACHE_KEY = 'news:reactions:v2';
 const CACHE_TTL_SECONDS = 60;
 
 interface YahooChart {
@@ -76,6 +77,35 @@ async function fetchYahoo(sym: string): Promise<[number, number][]> {
   return yahooPoints(body);
 }
 
+interface CnbcChart {
+  barData?: { priceBars?: { close?: string | number | null; tradeTimeinMills?: number | string | null }[] };
+}
+
+/** CNBC chart body → [ms, close] pairs, junk dropped, oldest first, last `BARS` kept. */
+export function cnbcPoints(body: CnbcChart): [number, number][] {
+  const bars = body.barData?.priceBars;
+  if (!Array.isArray(bars)) return [];
+  const out: [number, number][] = [];
+  for (const b of bars) {
+    const t = Number(b?.tradeTimeinMills);
+    const c = typeof b?.close === 'number' ? b.close : typeof b?.close === 'string' && b.close !== '' ? Number(b.close) : NaN;
+    // A yield in percent: anything outside (−5, 30) is not a 2-year yield.
+    if (!Number.isFinite(t) || !Number.isFinite(c) || c <= -5 || c >= 30) continue;
+    out.push([t, c]);
+  }
+  out.sort((a, b) => a[0] - b[0]);
+  return out.slice(-BARS);
+}
+
+async function fetchCnbc(sym: string): Promise<[number, number][]> {
+  const body = await fetchJson<CnbcChart>(
+    `https://ts-api.cnbc.com/harmony/app/charts/5D.json?symbol=${encodeURIComponent(sym)}`,
+    undefined,
+    { 'user-agent': 'Mozilla/5.0 (compatible; TradinJournal/1.0)' },
+  );
+  return cnbcPoints(body);
+}
+
 const binance = createBinanceProvider();
 async function fetchBinance(sym: string): Promise<[number, number][]> {
   const candles = await binance.getCandles(sym, '5m', { limit: BARS });
@@ -85,7 +115,7 @@ async function fetchBinance(sym: string): Promise<[number, number][]> {
 let inFlight: Promise<NewsReactionsDTO> | null = null;
 
 async function load(): Promise<NewsReactionsDTO> {
-  const settled = await Promise.allSettled(WATCH.map(w => (w.src === 'binance' ? fetchBinance(w.sym) : fetchYahoo(w.sym))));
+  const settled = await Promise.allSettled(WATCH.map(w => (w.src === 'binance' ? fetchBinance(w.sym) : w.src === 'cnbc' ? fetchCnbc(w.sym) : fetchYahoo(w.sym))));
   const series: ReactionSeriesDTO[] = [];
   settled.forEach((r, i) => {
     const w = WATCH[i]!;

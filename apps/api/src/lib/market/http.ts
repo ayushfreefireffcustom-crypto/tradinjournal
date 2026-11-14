@@ -37,3 +37,26 @@ export async function fetchJson<T>(
     signal?.removeEventListener('abort', onAbort);
   }
 }
+
+/**
+ * GET JSON from one of the relay's own routes (e.g. `/liquidations/recent?coin=BTC`).
+ * Throws when no relay is configured, so callers can report "no feed".
+ */
+export async function fetchRelayJson<T>(path: string, signal?: AbortSignal, relay = env.MARKET_RELAY_URL, token = env.MARKET_RELAY_TOKEN): Promise<T> {
+  if (!relay || !token) throw new Error('no market relay configured');
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 5_000);
+  const onAbort = () => controller.abort();
+  signal?.addEventListener('abort', onAbort);
+  try {
+    const res = await fetch(`${relay.replace(/\/$/, '')}${path}`, {
+      signal: controller.signal,
+      headers: { accept: 'application/json', 'x-relay-token': token },
+    });
+    if (!res.ok) throw new Error(`relay HTTP ${res.status}`);
+    return (await res.json()) as T;
+  } finally {
+    clearTimeout(timer);
+    signal?.removeEventListener('abort', onAbort);
+  }
+}

@@ -1,8 +1,9 @@
 // Macro overview (v2): the regime map, the inputs behind it, the assets × drivers
 // grid, the data-surprise grid and a Treasury-based policy proxy. Served as the
 // OPTIONAL `overview` field on GET /api/macro/state, so older clients keep working.
-// No FedWatch feed exists: `cuts` is a proxy from Treasury yields vs Fed funds and
-// says so in `basis`; there are no per-meeting odds anywhere in this payload.
+// Policy pricing: `fedwatch` holds per-FOMC-meeting odds from 30-day Fed funds
+// futures (CME FedWatch method) when those prices answer; `cuts` is the older
+// Treasury-vs-Fed-funds proxy, kept as the fallback and labelled by `basis`.
 import { z } from 'zod';
 import type { MacroState } from '../index.js';
 
@@ -111,6 +112,36 @@ export const macroCutsProxySchema = z.object({
   })),
 });
 
+/** Cut / hold / hike odds per FOMC meeting from Fed funds futures (CME FedWatch method). */
+export const macroFedWatchSchema = z.object({
+  basis: z.literal('fed-funds-futures'),
+  /** Latest futures trade time. */
+  asOf: z.string(),
+  /** Market-implied effective Fed funds rate now, %. */
+  impliedNow: z.number(),
+  rows: z.array(z.object({
+    /** Decision day, YYYY-MM-DD. */
+    meeting: z.string(),
+    /** e.g. "Dec 9". */
+    label: z.string(),
+    /** Odds (0..100) of a cut / no change / hike at this meeting. */
+    cutPct: z.number(),
+    holdPct: z.number(),
+    hikePct: z.number(),
+    /** Part of the cut (or hike) odds priced as 50 bp or more, 0..100. */
+    bigMovePct: z.number(),
+    /** Expected change at this meeting, bp (negative = cuts). */
+    expectedBp: z.number(),
+    /** Implied effective rate after the meeting, %. */
+    rateAfter: z.number(),
+    /** 25 bp cuts priced from now through this meeting (negative = hikes). */
+    cumulativeCuts: z.number(),
+    /** Same, from the prior session's settlement prices. */
+    cumulativeCutsYesterday: z.number().nullable(),
+  })),
+});
+export type MacroFedWatch = z.infer<typeof macroFedWatchSchema>;
+
 export const macroOverviewSchema = z.object({
   asOf: z.string(),
   regime: macroRegimeTrailSchema.nullable(),
@@ -119,6 +150,8 @@ export const macroOverviewSchema = z.object({
   grid: z.array(macroGridRowSchema),
   surprise: macroSurpriseSchema.nullable(),
   cuts: macroCutsProxySchema.nullable(),
+  /** Optional so states cached before it existed still parse. */
+  fedwatch: macroFedWatchSchema.nullable().optional(),
 });
 export type MacroOverview = z.infer<typeof macroOverviewSchema>;
 

@@ -90,6 +90,28 @@ export interface MacroCutsProxy {
   rows: { key: '3m' | '1y' | '2y'; label: string; yield: number; cuts: number; cutsYesterday: number | null }[];
 }
 
+/** Cut / hold / hike odds per FOMC meeting from 30-day Fed funds futures (CME FedWatch method). */
+export interface MacroFedWatch {
+  basis: 'fed-funds-futures';
+  asOf: string;
+  /** Market-implied effective Fed funds rate now, %. */
+  impliedNow: number;
+  rows: {
+    meeting: string;
+    label: string;
+    cutPct: number;
+    holdPct: number;
+    hikePct: number;
+    /** Part of the cut (or hike) odds priced as 50 bp or more. */
+    bigMovePct: number;
+    expectedBp: number;
+    rateAfter: number;
+    /** 25 bp cuts priced through this meeting (negative = hikes). */
+    cumulativeCuts: number;
+    cumulativeCutsYesterday: number | null;
+  }[];
+}
+
 export interface MacroOverview {
   asOf: string;
   regime: MacroRegimeTrail | null;
@@ -98,6 +120,8 @@ export interface MacroOverview {
   grid: MacroGridRow[];
   surprise: MacroSurprise | null;
   cuts: MacroCutsProxy | null;
+  /** Absent on states cached before it existed; null when futures didn't answer. */
+  fedwatch?: MacroFedWatch | null;
 }
 
 export interface MacroMember {

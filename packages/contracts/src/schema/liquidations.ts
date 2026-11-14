@@ -52,8 +52,12 @@ export const liquidationMapDtoSchema = z.object({
   maxPain: maxPainSchema,
   /** Price path for the same window (hourly or finer), for drawing on the same axis. */
   path: z.array(z.object({ t: z.string(), p: z.number() })),
-  /** Realised liquidations in the last hour, if a feed answered. */
-  lastHour: z.object({ totalUsd: z.number(), longShare: z.number() }).nullable(),
+  /**
+   * Realised liquidations in the last hour (Binance + Bybit live sockets via the
+   * relay), or null when the feed is down or hasn't covered the whole hour.
+   * longShare (0..1) is null when nothing was liquidated.
+   */
+  lastHour: z.object({ totalUsd: z.number(), longShare: z.number().nullable() }).nullable(),
   sources: z.array(z.string()),
 });
 export type LiquidationMapDto = z.infer<typeof liquidationMapDtoSchema>;

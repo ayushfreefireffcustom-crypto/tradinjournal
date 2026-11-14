@@ -92,14 +92,14 @@ export default function CalendarRail() {
   const toggleImpact = (i: EventImpact) =>
     setImpacts(prev => {
       const next = new Set(prev);
-      next.has(i) ? next.delete(i) : next.add(i);
+      if (next.has(i)) next.delete(i); else next.add(i);
       return next.size === 0 ? new Set(IMPACTS) : next;
     });
 
   const onWatch = useCallback(async (ev: CalendarEvent) => {
     setEvents(prev => prev.map(e => (e.id === ev.id ? { ...e, watched: !e.watched } : e)));
     try {
-      ev.watched ? await api.calendar.unwatch(ev.id) : await api.calendar.watch(ev.id);
+      if (ev.watched) await api.calendar.unwatch(ev.id); else await api.calendar.watch(ev.id);
     } catch {
       setEvents(prev => prev.map(e => (e.id === ev.id ? { ...e, watched: ev.watched } : e)));
     }

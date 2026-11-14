@@ -4,7 +4,9 @@
 // "Estimated" wherever it's shown.
 import { ApiError } from '@/lib/copy-api';
 
-const API = process.env.NEXT_PUBLIC_API_URL || '';
+const USE_MOCKS = process.env.NEXT_PUBLIC_USE_MOCKS === 'true';
+const API = USE_MOCKS ? '' : (process.env.NEXT_PUBLIC_API_URL || '');
+const PREFIX = USE_MOCKS ? '/data' : '/api';
 
 export const LIQUIDATION_COINS = ['BTC', 'ETH', 'SOL', 'XRP', 'BNB', 'DOGE'] as const;
 export type LiquidationCoin = (typeof LIQUIDATION_COINS)[number];
@@ -44,8 +46,12 @@ export interface LiquidationMap {
   maxPain: MaxPain;
   /** Close per bar over the window (15m bars for 24h/48h, 1h for 7d). */
   path: { t: string; p: number }[];
-  /** Realised liquidations in the last hour; null (no free REST feed). */
-  lastHour: { totalUsd: number; longShare: number } | null;
+  /**
+   * Realised liquidations in the last hour from the relay's live Binance + Bybit
+   * sockets; null when the feed is down or hasn't covered the whole hour.
+   * longShare (0..1) is null when nothing was liquidated.
+   */
+  lastHour: { totalUsd: number; longShare: number | null } | null;
   sources: string[];
 }
 
@@ -56,7 +62,7 @@ export interface MaxPainBoard { asOf: string; estimated: true; rows: MaxPainRow[
 export const LIQUIDATIONS_UNAVAILABLE = 'LIQUIDATIONS_UNAVAILABLE';
 
 async function call<T>(path: string): Promise<T> {
-  const res = await fetch(`${API}/api${path}`, { credentials: 'include', headers: { accept: 'application/json' } });
+  const res = await fetch(`${API}${PREFIX}${path}`, { ...(USE_MOCKS ? {} : { credentials: 'include' as const }), headers: { accept: 'application/json' } });
   const json = (await res.json().catch(() => ({}))) as { data?: T; error?: { message?: string; code?: string; details?: Record<string, string[]> } };
   if (!res.ok) throw new ApiError(json.error?.message ?? `Request failed: ${res.status}`, res.status, json.error?.code, json.error?.details);
   return json.data as T;

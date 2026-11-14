@@ -15,7 +15,7 @@ export type NewsScoreSource = 'ai' | 'rules';
 /** Watch-set keys served by GET /api/news/reactions. */
 export const REACTION_KEYS = [
   'US10Y', 'DXY', 'EURUSD', 'XAUUSD', 'US500', 'US100', 'BTCUSD', 'ETHUSD', 'WTI',
-  'BRENT', 'USDJPY', 'GBPUSD', 'SOLUSD',
+  'BRENT', 'USDJPY', 'GBPUSD', 'SOLUSD', 'US2Y',
 ] as const;
 export type ReactionKey = (typeof REACTION_KEYS)[number];
 
