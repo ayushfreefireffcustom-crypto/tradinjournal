@@ -40,7 +40,7 @@ export const NAV: { title: string; items: FrameNavItem[] }[] = [
   { title: 'Markets', items: [
     { href: '/charts', label: 'Charts', icon: ICharts },
     { href: '/overview', label: 'Overview', icon: IAnalytics },
-    { href: '/markets', label: 'News & calendar', icon: IMarkets },
+    { href: '/news', label: 'News & calendar', icon: IMarkets },
     { href: '/screener', label: 'Screener', icon: ISearch },
     { href: '/signals', label: 'Signals', icon: ITrendUp },
     { href: '/derivatives', label: 'Derivatives', icon: ISync },

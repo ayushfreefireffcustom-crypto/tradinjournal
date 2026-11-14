@@ -3,7 +3,7 @@ import { requireAuth } from '../../http/middleware/require-auth.js';
 import { requirePlatformAccess } from '../../http/middleware/require-platform-access.js';
 import { requireInternalToken } from '../../http/middleware/require-internal-token.js';
 import { validateBody, validateQuery } from '../../http/middleware/validate.js';
-import { newsQuerySchema, newsIngestSchema, newsEnrichSchema, newsPreferencesSchema } from '@tradinjournal/contracts';
+import { newsQuerySchema, newsIngestSchema, newsEnrichSchema, newsPreferencesSchema, newsReactionsQuerySchema } from '@tradinjournal/contracts';
 import {
   handleListNews,
   handleListSources,
@@ -13,12 +13,16 @@ import {
   handleEnrichNews,
   handleNewsStream,
   handleNewsBrief,
+  handleNewsToday,
+  handleNewsReactions,
 } from './news.controller.js';
 
 // Public (signed-in) news routes.
 export const newsRouter: IRouter = Router();
 newsRouter.use(requireAuth, requirePlatformAccess);
 newsRouter.get('/', validateQuery(newsQuerySchema), handleListNews);
+newsRouter.get('/today', handleNewsToday);
+newsRouter.get('/reactions', validateQuery(newsReactionsQuerySchema), handleNewsReactions);
 newsRouter.get('/sources', handleListSources);
 newsRouter.get('/preferences', handleGetNewsPrefs);
 newsRouter.put('/preferences', validateBody(newsPreferencesSchema), handleSetNewsPrefs);

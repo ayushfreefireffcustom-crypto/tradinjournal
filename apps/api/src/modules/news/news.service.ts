@@ -17,6 +17,9 @@ import type { NormalizedNews } from '../../lib/news/types.js';
 import { enrichNews } from '../../lib/news/enrich.js';
 import { publishNews } from '../../lib/news/stream.js';
 import { cacheGet, cacheSet } from '../../lib/cache.js';
+import { tickersFor, deskFor, storyScore, isKept } from '../../lib/news/tickers.js';
+import { getReactionSeries, trimSince } from '../../lib/news/reactions.js';
+import type { NewsDesk, NewsScoreSource, NewsTodayDTO, NewsReactionsDTO } from '@tradinjournal/contracts';
 
 const FIRST_PAGE_TTL_SECONDS = 30;
 const DEFAULT_LIMIT = 40;
@@ -97,7 +100,7 @@ export async function enrichPendingNews(limit: number): Promise<{ enriched: numb
     where: { enrichedAt: null },
     orderBy: { publishedAt: 'desc' },
     take: limit,
-    select: { id: true, title: true, summary: true },
+    select: { id: true, title: true, summary: true, sources: true },
   });
   if (pending.length === 0) return { enriched: 0 };
 
@@ -117,6 +120,11 @@ export async function enrichPendingNews(limit: number): Promise<{ enriched: numb
               marketMoving: e.marketMoving,
               category: e.category ?? undefined,
               country: e.country ?? undefined,
+              // The short tile title and the one-line takeaway ride in the
+              // `sources` JSON next to the outlet cluster (no schema change).
+              ...(e.short || e.line
+                ? { sources: { ...sourcesMeta(item.sources), ...(e.short ? { short: e.short } : {}), ...(e.line ? { line: e.line } : {}) } as Prisma.InputJsonValue }
+                : {}),
               enrichedAt: now,
             }
           : { enrichedAt: now }, // model omitted it — mark done, don't retry forever
@@ -146,15 +154,40 @@ export interface NewsItemDTO {
   relevance: number | null;
   impact: EventImpact | null;
   marketMoving: boolean;
+  /** Derived at read time (lib/news/tickers.ts). */
+  tickers: string[];
+  desk: NewsDesk | null;
+  /** 0..100: the LLM relevance, or the rules fallback when not enriched yet. */
+  score: number;
+  scoreSource: NewsScoreSource;
+  /** Outlets that carried it (1 = only the canonical one). */
+  sourceCount: number;
+  /** LLM tile title (≤ 6 words) and takeaway (≤ 8 words), when enriched with them. */
+  short: string | null;
+  line: string | null;
+}
+
+/** The `sources` JSON: `{ outlets?, short?, line? }` (older rows: outlets only or null). */
+function sourcesMeta(raw: unknown): { outlets?: string[]; short?: string; line?: string } {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
+  const o = raw as Record<string, unknown>;
+  return {
+    ...(Array.isArray(o.outlets) ? { outlets: o.outlets.filter((x): x is string => typeof x === 'string') } : {}),
+    ...(typeof o.short === 'string' && o.short.trim() ? { short: o.short.trim() } : {}),
+    ...(typeof o.line === 'string' && o.line.trim() ? { line: o.line.trim() } : {}),
+  };
 }
 
 type NewsRow = Prisma.NewsItemGetPayload<{ /* all scalar fields */ }>;
 
 export function toNewsDTO(row: NewsRow): NewsItemDTO {
-  const outlets =
-    row.sources && typeof row.sources === 'object' && 'outlets' in row.sources && Array.isArray((row.sources as { outlets: unknown }).outlets)
-      ? ((row.sources as { outlets: string[] }).outlets)
-      : [row.source];
+  const meta = sourcesMeta(row.sources);
+  const outlets = meta.outlets?.length ? meta.outlets : [row.source];
+  const sourceCount = Math.max(1, outlets.length);
+  const { score, source: scoreSource } = storyScore({
+    title: row.title, summary: row.summary, relevance: row.relevance, impact: row.impact,
+    marketMoving: row.marketMoving, category: row.category, sourceCount,
+  });
   return {
     id: row.id,
     url: row.url,
@@ -170,6 +203,13 @@ export function toNewsDTO(row: NewsRow): NewsItemDTO {
     relevance: row.relevance,
     impact: row.impact,
     marketMoving: row.marketMoving,
+    tickers: tickersFor(row.title, row.summary),
+    desk: deskFor(row.category, row.title, row.summary),
+    score,
+    scoreSource,
+    sourceCount,
+    short: meta.short ?? null,
+    line: meta.line ?? null,
   };
 }
 
@@ -221,6 +261,57 @@ export async function listNews(q: NewsQuery): Promise<NewsPage> {
   };
   if (cacheable) await cacheSet(key, result, FIRST_PAGE_TTL_SECONDS);
   return result;
+}
+
+// ── News map (v2) ───────────────────────────────────────────────────────────
+
+const TODAY_TTL_SECONDS = 30;
+const TODAY_MAX_STORIES = 400;
+const TODAY_MAX_ROWS = 5000;
+
+/**
+ * The last 24h for the story map: kept stories (score 40+ or HIGH impact),
+ * newest first, plus the noise counts. merged = the extra outlets folded into
+ * a story; hidden = stories under the bar; headlines = kept + merged + hidden.
+ */
+export async function getNewsToday(): Promise<NewsTodayDTO<NewsItemDTO>> {
+  const key = 'news:today:v1';
+  const cached = await cacheGet<NewsTodayDTO<NewsItemDTO>>(key);
+  if (cached) return cached;
+
+  const now = Date.now();
+  const from = new Date(now - 24 * 3600_000);
+  const rows = await prisma.newsItem.findMany({
+    where: { publishedAt: { gte: from, lte: new Date(now + 60 * 60_000) } },
+    orderBy: [{ publishedAt: 'desc' }, { id: 'desc' }],
+    take: TODAY_MAX_ROWS,
+  });
+  const dtos = rows.map(toNewsDTO);
+  const kept = dtos.filter(d => isKept(d.score, d.impact));
+  const merged = dtos.reduce((a, d) => a + (d.sourceCount - 1), 0);
+  const outlets = new Set<string>();
+  for (const d of dtos) for (const o of d.outlets) outlets.add(o);
+
+  const result: NewsTodayDTO<NewsItemDTO> = {
+    asOf: new Date(now).toISOString(),
+    from: from.toISOString(),
+    counts: {
+      headlines: dtos.length + merged,
+      stories: dtos.length,
+      kept: kept.length,
+      merged,
+      hidden: dtos.length - kept.length,
+      sources: outlets.size,
+    },
+    stories: kept.slice(0, TODAY_MAX_STORIES),
+  };
+  await cacheSet(key, result, TODAY_TTL_SECONDS);
+  return result;
+}
+
+/** 5-minute series for the watch set (cached 60s), trimmed to `since` when given. */
+export async function getNewsReactions(since?: string): Promise<NewsReactionsDTO> {
+  return trimSince(await getReactionSeries(), since);
 }
 
 /** The outlets a user can choose to prioritize (the curated feed catalog). */

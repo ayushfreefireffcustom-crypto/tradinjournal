@@ -6,7 +6,7 @@ describe('parseBatch', () => {
     const raw = '[{"i":0,"sentiment":"BULLISH","relevance":80,"impact":"HIGH","category":"CRYPTO","marketMoving":true,"country":"US"}]';
     const m = parseBatch(raw);
     expect(m.get(0)).toEqual({
-      sentiment: 'BULLISH', relevance: 80, impact: 'HIGH', category: 'CRYPTO', marketMoving: true, country: 'US',
+      sentiment: 'BULLISH', relevance: 80, impact: 'HIGH', category: 'CRYPTO', marketMoving: true, country: 'US', short: null, line: null,
     });
   });
 
@@ -32,6 +32,18 @@ describe('parseBatch', () => {
     const e = parseBatch('[{"i":2,"sentiment":"NEUTRAL","impact":"LOW","country":"USA"}]').get(2)!;
     expect(e.country).toBeNull();
     expect(e.relevance).toBe(0);
+  });
+
+  it('keeps a short title and takeaway only within their word limits', () => {
+    const raw = JSON.stringify([
+      { i: 0, sentiment: 'BEARISH', relevance: 96, impact: 'HIGH', short: 'Hot US CPI, second month running', line: 'Dec cut odds 61% → 38% in 11 min' },
+      { i: 1, sentiment: 'BEARISH', relevance: 50, impact: 'LOW', short: 'This short title is far too long to use', line: 'one two three four five six seven eight nine' },
+    ]);
+    const m = parseBatch(raw);
+    expect(m.get(0)!.short).toBe('Hot US CPI, second month running');
+    expect(m.get(0)!.line).toBe('Dec cut odds 61% → 38% in 11 min');
+    expect(m.get(1)!.short).toBeNull();
+    expect(m.get(1)!.line).toBeNull();
   });
 
   it('returns empty for non-JSON', () => {

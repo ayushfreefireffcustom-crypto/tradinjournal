@@ -15,7 +15,10 @@ import {
   getNewsPreferences,
   setNewsPreferences,
   getBriefHeadlines,
+  getNewsToday,
+  getNewsReactions,
 } from './news.service.js';
+import type { NewsReactionsQuery } from '@tradinjournal/contracts';
 
 function sseWrite(res: Response, obj: unknown): void {
   res.write(`data: ${JSON.stringify(obj)}\n\n`);
@@ -34,6 +37,25 @@ export async function handleListNews(req: Request, res: Response, next: NextFunc
   try {
     const q = req.query as unknown as NewsQuery;
     ok(res, await listNews(q));
+  } catch (err) {
+    next(err);
+  }
+}
+
+// GET /api/news/today — the story map: last 24h kept stories + kept/merged/hidden counts.
+export async function handleNewsToday(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    ok(res, await getNewsToday());
+  } catch (err) {
+    next(err);
+  }
+}
+
+// GET /api/news/reactions?since=<iso> — 5m series for the watch set (cached 60s).
+export async function handleNewsReactions(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const q = req.query as unknown as NewsReactionsQuery;
+    ok(res, await getNewsReactions(q.since));
   } catch (err) {
     next(err);
   }

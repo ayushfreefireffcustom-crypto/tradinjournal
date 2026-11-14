@@ -33,8 +33,10 @@ const ENRICH_SCHEMA = {
           category: { anyOf: [{ type: 'string', enum: [...NEWS_CATEGORIES] }, { type: 'null' }] },
           marketMoving: { type: 'boolean' },
           country: { anyOf: [{ type: 'string', description: 'ISO-3166 alpha-2' }, { type: 'null' }] },
+          short: { anyOf: [{ type: 'string', description: 'tile title, at most 6 words' }, { type: 'null' }] },
+          line: { anyOf: [{ type: 'string', description: 'the market takeaway, at most 8 words' }, { type: 'null' }] },
         },
-        required: ['i', 'sentiment', 'relevance', 'impact', 'category', 'marketMoving', 'country'],
+        required: ['i', 'sentiment', 'relevance', 'impact', 'category', 'marketMoving', 'country', 'short', 'line'],
         additionalProperties: false,
       },
     },
@@ -50,6 +52,19 @@ export interface Enrichment {
   category: NewsCategory | null;
   marketMoving: boolean;
   country: string | null;
+  /** ≤ 6-word tile title (null when missing or too long). */
+  short?: string | null;
+  /** ≤ 8-word takeaway (null when missing or too long). */
+  line?: string | null;
+}
+
+/** A short model string kept only when it is within `maxWords` words; never cut mid-phrase. */
+export function cleanShort(v: unknown, maxWords: number, maxChars = 64): string | null {
+  if (typeof v !== 'string') return null;
+  const t = v.replace(/\s+/g, ' ').trim().replace(/[.]+$/, '');
+  if (!t || t.length > maxChars) return null;
+  const words = t.replace(/→/g, ' ').trim().split(/\s+/).filter(Boolean).length;
+  return words <= maxWords ? t : null;
 }
 
 export interface EnrichableItem {
@@ -91,6 +106,8 @@ function parseBatch(raw: string): Map<number, Enrichment> {
       category: (CATEGORY_SET.has(category) ? category : null) as NewsCategory | null,
       marketMoving: o.marketMoving === true,
       country: typeof o.country === 'string' && /^[A-Za-z]{2}$/.test(o.country) ? o.country.toUpperCase() : null,
+      short: cleanShort(o.short, 6, 48),
+      line: cleanShort(o.line, 8, 64),
     });
   }
   return out;
