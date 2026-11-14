@@ -5,7 +5,7 @@ import KlineChart, { type KlineChartHandle } from './kline-chart';
 import PriceChart from './price-chart';
 import type { ChartType, SizeSetting } from '@/lib/chart-types';
 import { DEFAULT_SIZE } from '@/lib/chart-types';
-import type { MarketTimeframe } from '@/lib/market-api';
+import type { Candle, MarketTimeframe } from '@/lib/market-api';
 import { IClose } from '@/components/v6/icons';
 import { fmtQuote, fmtChg } from './quote';
 
@@ -21,12 +21,17 @@ export interface Pane {
 
 // Renders 1 / 2 / 4 independent klinecharts instances in a responsive grid.
 // The active pane is what the shared toolbar (indicators/drawings) targets.
-export default function LayoutGrid({ panes, activeId, onActivate, onClose, registerRef }: {
+export default function LayoutGrid({ panes, activeId, onActivate, onClose, registerRef, onBars, onLive, onQuote, pro }: {
   panes: Pane[];
   activeId: string;
   onActivate: (id: string) => void;
   onClose: (id: string) => void;
   registerRef: (id: string, handle: KlineChartHandle | null) => void;
+  onBars?: (id: string, bars: Candle[]) => void;
+  onLive?: (id: string, bar: Candle) => void;
+  onQuote?: (id: string, q: { last: number; ref: number | null }) => void;
+  /** Legend, countdown and event-lane room on candle panes. */
+  pro?: boolean;
 }) {
   const multi = panes.length > 1;
   const [quotes, setQuotes] = useState<Record<string, { last: number; ref: number | null }>>({});
@@ -57,10 +62,11 @@ export default function LayoutGrid({ panes, activeId, onActivate, onClose, regis
             <div className="mk-pane-bd">
               {p.chartType === 'renko' || p.chartType === 'kagi' || p.chartType === 'pnf' ? (
                 <PriceChart symbol={p.symbol} tf={p.tf} type={p.chartType} size={p.size ?? DEFAULT_SIZE[p.chartType]} reversal={p.reversal}
-                  onQuote={v => setQuotes(s => ({ ...s, [`${p.id}:${p.symbol}:${p.tf}`]: v }))} />
+                  onQuote={v => { setQuotes(s => ({ ...s, [`${p.id}:${p.symbol}:${p.tf}`]: v })); onQuote?.(p.id, v); }} />
               ) : (
-                <KlineChart ref={handle => registerRef(p.id, handle)} symbol={p.symbol} tf={p.tf} heikin={p.chartType === 'heikin'}
-                  onQuote={v => setQuotes(s => ({ ...s, [`${p.id}:${p.symbol}:${p.tf}`]: v }))} />
+                <KlineChart ref={handle => registerRef(p.id, handle)} symbol={p.symbol} tf={p.tf} heikin={p.chartType === 'heikin'} pro={pro}
+                  onBars={onBars ? bars => onBars(p.id, bars) : undefined} onLive={onLive ? bar => onLive(p.id, bar) : undefined}
+                  onQuote={v => { setQuotes(s => ({ ...s, [`${p.id}:${p.symbol}:${p.tf}`]: v })); onQuote?.(p.id, v); }} />
               )}
             </div>
           </div>

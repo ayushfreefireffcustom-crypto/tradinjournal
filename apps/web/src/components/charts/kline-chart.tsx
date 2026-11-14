@@ -7,11 +7,25 @@
 // dynamically inside useEffect (SSR-safe). The parent drives indicators/drawings
 // through the imperative handle.
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import type { Chart, KLineData, DataLoader, Period } from 'klinecharts';
+import type { Chart, KLineData, DataLoader, Period, OverlayCreate } from 'klinecharts';
 import { marketApi, streamCandles, type Candle, type MarketTimeframe } from '@/lib/market-api';
 import { chartDate, chartStyles, chartXTicks, onThemeChange } from '@/components/v6/markets/chart-theme';
 import { heikinAshi, heikinBar } from '@/lib/chart-types';
 import type { ChartPattern } from '@/lib/patterns-api';
+import { LANE, readPal, registerTlOverlays, SINKS, type LabelSpec, type LabelsExt, type Pal, type TagSpec } from './chart-overlays';
+import { hitTest } from './label-layout';
+
+/** Builds the "your trades" overlays (group `tl`) from the chart's bars and colours. */
+export interface Layers {
+  overlays: OverlayCreate[];
+  /** All text, laid out together on top (collision-free, by priority). */
+  labels: LabelSpec[];
+  tags: TagSpec[];
+  obstacles: LabelsExt['obstacles'];
+  /** Prices the price axis must show (stops, targets, ruler, nearest levels). */
+  extent: number[];
+}
+export type LayerBuilder = (ctx: { pal: Pal; bars: KLineData[]; width: number; barSpace: number }) => Layers;
 
 export interface KlineChartHandle {
   createIndicator: (name: string) => void;
@@ -20,6 +34,17 @@ export interface KlineChartHandle {
   removeOverlays: () => void;
   /** Draw detected patterns (E8); redrawn after every reload. `selected` is drawn heavier. */
   setPatterns: (patterns: ChartPattern[], selected?: string | null) => void;
+  /** Your-trades layers; rebuilt after reloads, theme flips and new bars. Null clears them. */
+  setLayers: (build: LayerBuilder | null) => void;
+  setVolume: (on: boolean) => void;
+  /** Empty space right of the last bar, in px (room for the risk ruler and upcoming events). */
+  setRightSpace: (px: number) => void;
+  setMagnet: (on: boolean) => void;
+  setDrawingsLocked: (on: boolean) => void;
+  setDrawingsVisible: (on: boolean) => void;
+  /** PNG data URL of the chart with its overlays, or null. */
+  snapshot: () => string | null;
+  getBars: () => KLineData[];
 }
 
 interface Props {
@@ -30,6 +55,12 @@ interface Props {
   onQuote?: (q: { last: number; ref: number | null }) => void;
   /** Draw Heikin-Ashi bars instead of candles. */
   heikin?: boolean;
+  /** Every time the loaded history changes (first load, older pages). */
+  onBars?: (bars: Candle[]) => void;
+  /** Each live bar update from the stream. */
+  onLive?: (bar: Candle) => void;
+  /** OHLC legend always on, bar-close countdown on the price axis, room for the event lane. */
+  pro?: boolean;
 }
 
 const TF_PERIOD: Record<MarketTimeframe, Period> = {
@@ -73,7 +104,19 @@ const BAR_LIMIT = 500;
 // long window and doesn't page further back (a seam would show at each page).
 const HEIKIN_LIMIT = 1000;
 
-const KlineChart = forwardRef<KlineChartHandle, Props>(function KlineChart({ symbol, tf, accountId, onQuote, heikin = false }, ref) {
+const TF_MS: Partial<Record<MarketTimeframe, number>> = { '1m': 60e3, '5m': 300e3, '15m': 900e3, '30m': 1800e3, '1h': 3600e3, '4h': 14400e3, '1d': 86400e3, '1w': 604800e3 };
+const toCandle = (k: KLineData): Candle => ({ openTime: k.timestamp, open: k.open, high: k.high, low: k.low, close: k.close, volume: k.volume ?? 0 });
+
+const KlineChart = forwardRef<KlineChartHandle, Props>(function KlineChart({ symbol, tf, accountId, onQuote, heikin = false, onBars, onLive, pro = false }, ref) {
+  const onBarsRef = useRef(onBars);
+  onBarsRef.current = onBars;
+  const onLiveRef = useRef(onLive);
+  onLiveRef.current = onLive;
+  const proRef = useRef(pro);
+  proRef.current = pro;
+  const layersRef = useRef<LayerBuilder | null>(null);
+  const drawState = useRef({ magnet: false, locked: false, visible: true, volume: false, right: 24 });
+  const countdownRef = useRef<HTMLSpanElement>(null);
   const heikinRef = useRef(heikin);
   heikinRef.current = heikin;
   // Heikin-Ashi live updates: the raw bars and their Heikin-Ashi bars so far.
@@ -130,12 +173,157 @@ const KlineChart = forwardRef<KlineChartHandle, Props>(function KlineChart({ sym
     }
   };
 
+  const drawLayers = () => {
+    const chart = chartRef.current;
+    const el = containerRef.current;
+    if (!chart || !el) return;
+    chart.removeOverlay({ groupId: 'tl' });
+    const build = layersRef.current;
+    const bars = chart.getDataList();
+    if (!build || !bars.length) {
+      if (extentRef.current.length) { extentRef.current = []; applyRange(chart); }
+      SINKS.delete(sinkId);
+      return;
+    }
+    const pal = readPal(el);
+    let built: Layers | null = null;
+    try { built = build({ pal, bars, width: el.clientWidth, barSpace: chart.getBarSpace().bar }); } catch { built = null; }
+    if (!built) return;
+    for (const o of built.overlays) chart.createOverlay({ ...o, groupId: 'tl' });
+    const last = bars[bars.length - 1]!;
+    const span = TF_MS[tfRef.current];
+    const labels: LabelsExt = {
+      pal, labels: built.labels, tags: built.tags, obstacles: built.obstacles, compact: el.clientWidth < 600, sinkId,
+      lastClose: last.close, countdown: !!span && span <= 86400e3,
+    };
+    chart.createOverlay({ name: 'tlLabels', groupId: 'tl', points: [{ timestamp: last.timestamp, value: last.close }], extendData: labels, zLevel: 20 });
+    const next = built.extent.filter(Number.isFinite);
+    if (next.join() !== extentRef.current.join()) { extentRef.current = next; applyRange(chart); }
+  };
+  // The price axis also covers the extent (stops, targets, the ruler), within reason.
+  const extentRef = useRef<number[]>([]);
+  const sinkId = useRef(`k${Math.random().toString(36).slice(2)}`).current;
+  useEffect(() => () => { SINKS.delete(sinkId); }, [sinkId]);
+  const createRange = ({ defaultRange: d }: { defaultRange: import('klinecharts').AxisRange }) => {
+    const span = d.realTo - d.realFrom;
+    const xs = extentRef.current.filter(v => v > d.realFrom - span * 2 && v < d.realTo + span * 2);
+    if (!xs.length || !(span > 0)) return d;
+    let lo = Math.min(d.realFrom, ...xs), hi = Math.max(d.realTo, ...xs);
+    const pad = (hi - lo) * 0.03;
+    if (lo < d.realFrom) lo -= pad;
+    if (hi > d.realTo) hi += pad;
+    if (lo === d.realFrom && hi === d.realTo) return d;
+    return { from: lo, to: hi, range: hi - lo, realFrom: lo, realTo: hi, realRange: hi - lo, displayFrom: lo, displayTo: hi, displayRange: hi - lo };
+  };
+  const applyRange = (chart: Chart) => {
+    if (!proRef.current) return;
+    chart.overrideYAxis({ paneId: 'candle_pane', gap: { top: 44, bottom: LANE.gap }, createRange });
+  };
+  // Tap (or hover) a marker to read its text: on phones markers carry no text.
+  const [tip, setTip] = useState<{ x: number; y: number; text: string } | null>(null);
+  const downAt = useRef<{ x: number; y: number } | null>(null);
+  const tipAt = (clientX: number, clientY: number) => {
+    const chart = chartRef.current;
+    const el = containerRef.current;
+    const main = chart?.getSize('candle_pane', 'main');
+    if (!chart || !el || !main) return null;
+    const r = el.getBoundingClientRect();
+    const h = hitTest(SINKS.get(sinkId) ?? [], clientX - r.left - main.left, clientY - r.top - main.top, 16);
+    return h ? { x: h.x + main.left, y: h.y + main.top, text: h.text } : null;
+  };
+  const emitBars = () => {
+    const chart = chartRef.current;
+    if (chart) onBarsRef.current?.(chart.getDataList().map(toCandle));
+  };
+  const placeCountdown = () => {
+    const chart = chartRef.current;
+    const el = countdownRef.current;
+    if (!el) return;
+    const bars = chart?.getDataList() ?? [];
+    const last = bars[bars.length - 1];
+    const span = TF_MS[tfRef.current];
+    if (!chart || !proRef.current || !last || !span || span > 86400e3) { el.hidden = true; return; }
+    const left = last.timestamp + span - Date.now();
+    const y = (chart.convertToPixel({ value: last.close }, { paneId: 'candle_pane' }) as { y?: number }).y;
+    const axis = chart.getSize('candle_pane', 'yAxis');
+    const main = chart.getSize('candle_pane', 'main');
+    if (left <= 0 || left > span || y == null || !axis || !main || y < 8 || y > main.height - 8) { el.hidden = true; return; }
+    const s = Math.floor(left / 1000);
+    const h = Math.floor(s / 3600);
+    el.textContent = h ? `${h}:${String(Math.floor((s % 3600) / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}` : `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+    el.style.left = `${axis.left}px`;
+    el.style.width = `${axis.width}px`;
+    el.style.top = `${main.top + y + 11}px`;
+    el.hidden = false;
+  };
+  // Pro chrome: an always-on "XAUUSD · 15m  O H L C ±chg" legend, no high/low
+  // marks (the legend has them), and room above/below the bars for labels and the event lane.
+  const applyPro = (chart: Chart) => {
+    if (!proRef.current || !containerRef.current) return;
+    const pal = readPal(containerRef.current);
+    const fmt = (v: number) => {
+      const d = chart.getSymbol()?.pricePrecision ?? 2;
+      return v.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+    };
+    chart.setStyles({
+      candle: {
+        priceMark: { high: { show: false }, low: { show: false } },
+        tooltip: {
+          showRule: 'always', showType: 'standard',
+          legend: {
+            size: 11, family: pal.font, weight: 500, marginLeft: 8, marginRight: 0,
+            template: ({ current, prev }: { current: KLineData | null; prev: KLineData | null }) => {
+              if (!current) return [];
+              const col = current.close >= current.open ? pal.gTx : pal.rTx;
+              const ref = prev?.close ?? current.open;
+              const chg = current.close - ref;
+              const pct = ref ? (chg / ref) * 100 : 0;
+              const v = (n: number) => ({ text: fmt(n), color: col });
+              // Phones: just O H L C, so the legend stays on one line.
+              if ((containerRef.current?.clientWidth ?? 999) < 520) {
+                return (['O', 'H', 'L', 'C'] as const).map(k => ({ title: { text: `${k} `, color: pal.dim }, value: v(k === 'O' ? current.open : k === 'H' ? current.high : k === 'L' ? current.low : current.close) }));
+              }
+              return [
+                { title: '', value: { text: `${symbolRef.current} · ${tfRef.current}`, color: pal.mut } },
+                { title: { text: 'O ', color: pal.dim }, value: v(current.open) },
+                { title: { text: 'H ', color: pal.dim }, value: v(current.high) },
+                { title: { text: 'L ', color: pal.dim }, value: v(current.low) },
+                { title: { text: 'C ', color: pal.dim }, value: v(current.close) },
+                { title: '', value: { text: `${chg < 0 ? '−' : '+'}${fmt(Math.abs(chg))} (${chg < 0 ? '−' : '+'}${Math.abs(pct).toFixed(2)}%)`, color: col } },
+              ];
+            },
+          },
+        },
+      },
+    });
+    applyRange(chart);
+  };
+
   useImperativeHandle(ref, () => ({
     createIndicator: name => { chartRef.current?.createIndicator(name); },
-    createOverlay: name => { chartRef.current?.createOverlay(name); },
-    removeIndicators: () => { chartRef.current?.removeIndicator(); },
-    // Clearing drawings leaves the detected patterns in place.
-    removeOverlays: () => { chartRef.current?.removeOverlay(); drawPatterns(); },
+    createOverlay: name => { chartRef.current?.createOverlay({ name, groupId: 'drawings', mode: drawState.current.magnet ? 'weak_magnet' : 'normal', lock: drawState.current.locked, visible: true }); },
+    removeIndicators: () => { chartRef.current?.removeIndicator(); if (drawState.current.volume) chartRef.current?.createIndicator('VOL'); },
+    // Clearing drawings leaves the detected patterns and your-trades layers in place.
+    removeOverlays: () => { chartRef.current?.removeOverlay({ groupId: 'drawings' }); },
+    setLayers: build => { layersRef.current = build; drawLayers(); },
+    setVolume: on => {
+      const chart = chartRef.current;
+      drawState.current.volume = on;
+      if (!chart) return;
+      const has = chart.getIndicators({ name: 'VOL' }).length > 0;
+      if (on && !has) chart.createIndicator('VOL');
+      if (!on && has) chart.removeIndicator({ name: 'VOL' });
+    },
+    setRightSpace: px => { drawState.current.right = px; chartRef.current?.setOffsetRightDistance(px); },
+    setMagnet: on => { drawState.current.magnet = on; },
+    setDrawingsLocked: on => { drawState.current.locked = on; chartRef.current?.overrideOverlay({ groupId: 'drawings', lock: on }); },
+    setDrawingsVisible: on => { drawState.current.visible = on; chartRef.current?.overrideOverlay({ groupId: 'drawings', visible: on }); },
+    snapshot: () => {
+      const chart = chartRef.current;
+      if (!chart || !containerRef.current) return null;
+      try { return chart.getConvertPictureUrl(true, 'png', readPal(containerRef.current).s1); } catch { return null; }
+    },
+    getBars: () => chartRef.current?.getDataList() ?? [],
     setPatterns: (list, selected = null) => {
       const changed = selected !== patternsRef.current.selected;
       patternsRef.current = { list, selected };
@@ -159,9 +347,12 @@ const KlineChart = forwardRef<KlineChartHandle, Props>(function KlineChart({ sym
     let disposed = false;
     let localChart: Chart | null = null;
     let stopTheme = () => {};
+    let clock: ReturnType<typeof setInterval> | null = null;
 
     void (async () => {
-      const { init } = await import('klinecharts');
+      const kc = await import('klinecharts');
+      const { init } = kc;
+      registerTlOverlays(kc);
       if (disposed || !containerRef.current) return;
       const chart = init(containerRef.current);
       if (!chart) return;
@@ -169,8 +360,15 @@ const KlineChart = forwardRef<KlineChartHandle, Props>(function KlineChart({ sym
       chartRef.current = chart;
       // Colours come from the v6 tokens and follow the light/dark toggle.
       chart.setStyles(chartStyles(containerRef.current));
-      stopTheme = onThemeChange(() => { if (containerRef.current) chart.setStyles(chartStyles(containerRef.current)); });
-      chart.setOffsetRightDistance(24);
+      applyPro(chart);
+      stopTheme = onThemeChange(() => {
+        if (!containerRef.current) return;
+        chart.setStyles(chartStyles(containerRef.current));
+        applyPro(chart);
+        // Token values flip a frame after the attribute; redraw the layers then.
+        requestAnimationFrame(() => drawLayers());
+      });
+      chart.setOffsetRightDistance(drawState.current.right);
       chart.setBarSpace(8);
       chart.setFormatter({ formatDate: chartDate });
       chart.overrideXAxis({ createTicks: chartXTicks(chart) });
@@ -206,9 +404,11 @@ const KlineChart = forwardRef<KlineChartHandle, Props>(function KlineChart({ sym
               haRef.current = { raw: candles.slice(-2), ha: bars.slice(-2) };
               callback(bars.map(toKLine), more);
             } else callback(candles.map(toKLine), more);
+            setTimeout(() => { emitBars(); drawLayers(); }, 0);
             if (type === 'init') {
               setReady(true);
               setTimeout(drawPatterns, 0); // a reload clears overlays
+              if (drawState.current.volume && !chart.getIndicators({ name: 'VOL' }).length) chart.createIndicator('VOL');
               if (last) {
                 const dayAgo = last.openTime - 86_400_000;
                 const refBar = [...candles].reverse().find(c => c.openTime <= dayAgo) ?? (candles.length > 1 ? candles[candles.length - 2] : undefined);
@@ -217,7 +417,7 @@ const KlineChart = forwardRef<KlineChartHandle, Props>(function KlineChart({ sym
             }
           } catch {
             callback([], false);
-            if (type === 'init') setReady(true);
+            if (type === 'init') { setReady(true); onBarsRef.current?.([]); }
           }
         },
         subscribeBar: ({ symbol: sym, period, callback }) => {
@@ -228,6 +428,7 @@ const KlineChart = forwardRef<KlineChartHandle, Props>(function KlineChart({ sym
           liveUnsubRef.current = null;
           if (disposed) return; // the pane closed while its first load was in flight
           liveUnsubRef.current = streamCandles(sym.ticker, barTf, bar => {
+            onLiveRef.current?.(bar);
             if (!heikinRef.current) { callback(toKLine(bar)); return; }
             // Same bar updating, or a new bar: either way it builds on the
             // Heikin-Ashi bar before it, which is final once its bar closed.
@@ -254,15 +455,26 @@ const KlineChart = forwardRef<KlineChartHandle, Props>(function KlineChart({ sym
 
       const el = containerRef.current;
       if (el && typeof ResizeObserver !== 'undefined') {
-        resizeObsRef.current = new ResizeObserver(() => chart.resize());
+        // Resize, then rebuild the layers: labels shorten on narrow charts.
+        let raf = 0;
+        resizeObsRef.current = new ResizeObserver(() => {
+          chart.resize();
+          cancelAnimationFrame(raf);
+          raf = requestAnimationFrame(() => { drawLayers(); placeCountdown(); });
+        });
         resizeObsRef.current.observe(el);
       }
+      chart.subscribeAction('onScroll', () => { placeCountdown(); setTip(null); });
+      let zoomRaf = 0;
+      chart.subscribeAction('onZoom', () => { placeCountdown(); cancelAnimationFrame(zoomRaf); zoomRaf = requestAnimationFrame(drawLayers); });
+      clock = setInterval(placeCountdown, 1000);
     })();
 
     const mountEl = containerRef.current;
     return () => {
       disposed = true;
       stopTheme();
+      if (clock) clearInterval(clock);
       liveUnsubRef.current?.();
       resizeObsRef.current?.disconnect();
       resizeObsRef.current = null;
@@ -296,7 +508,20 @@ const KlineChart = forwardRef<KlineChartHandle, Props>(function KlineChart({ sym
   }, [symbol, tf, accountId]);
 
   return (
-    <div className="mk-kc" data-testid="kline-chart-wrap">
+    <div className="mk-kc" data-testid="kline-chart-wrap"
+      onPointerDown={e => { downAt.current = { x: e.clientX, y: e.clientY }; }}
+      onPointerUp={e => {
+        const d = downAt.current;
+        downAt.current = null;
+        if (!pro || !d || Math.hypot(e.clientX - d.x, e.clientY - d.y) > 6) return;
+        setTip(tipAt(e.clientX, e.clientY));
+      }}
+      onPointerMove={e => {
+        if (!pro || e.pointerType !== 'mouse' || e.buttons) return;
+        const t = tipAt(e.clientX, e.clientY);
+        setTip(prev => (t?.text === prev?.text && t?.x === prev?.x ? prev : t));
+      }}
+      onPointerLeave={e => { if (e.pointerType === 'mouse') setTip(null); }}>
       {!ready && (
         <div className="mk-kc-load" role="status" aria-live="polite">
           <svg width="22" height="22" viewBox="0 0 24 24" className="x-spin" aria-hidden><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeOpacity=".16" strokeWidth="2.5" /><circle cx="12" cy="12" r="9" fill="none" stroke="var(--g)" strokeWidth="2.5" strokeLinecap="round" strokeDasharray="14 44" /></svg>
@@ -304,6 +529,11 @@ const KlineChart = forwardRef<KlineChartHandle, Props>(function KlineChart({ sym
         </div>
       )}
       <div ref={containerRef} className="mk-kc-canvas" data-testid="kline-chart" />
+      {pro && <span ref={countdownRef} className="tl-countdown m" hidden aria-label="Time left in this bar" />}
+      {tip && (
+        <div className={`tl-tip ${tip.x > (containerRef.current?.clientWidth ?? 0) / 2 ? 'l' : ''}`} role="tooltip" data-testid="chart-tip"
+          style={{ left: tip.x, top: tip.y }}>{tip.text}</div>
+      )}
     </div>
   );
 });
