@@ -134,7 +134,6 @@ export function usePlatformAccess() {
     return () => { cancelled = true; };
     // Intentionally exclude pathname — cache TTL handles refresh timing.
     // Re-running on every nav was the root cause of the flash bug.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router, skip]);
 
   return { status, loading, blocked };

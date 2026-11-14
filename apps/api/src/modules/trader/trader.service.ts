@@ -447,7 +447,7 @@ export async function analyze(input: TraderAnalyzeInput, userId?: string): Promi
     lanes: baseLanes,
   });
 
-  let engineResult: AnalysisResult = {
+  const engineResult: AnalysisResult = {
     ...laneResult,
     confidence: meta.confidence,
   };

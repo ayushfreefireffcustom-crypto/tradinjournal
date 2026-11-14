@@ -5,7 +5,7 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import type { ApiKeyCreatedDto, ApiKeyDto, CreateApiKeyInput } from '@tradinjournal/contracts';
 import { prisma, type ApiKey } from '@tradinjournal/db';
-import { ConflictError, NotFoundError } from '../../http/errors.js';
+import { NotFoundError } from '../../http/errors.js';
 import { assertWithinLimit } from '../../lib/plans.js';
 
 const sha256 = (s: string) => createHash('sha256').update(s).digest('hex');

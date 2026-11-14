@@ -178,6 +178,7 @@ function sourcesMeta(raw: unknown): { outlets?: string[]; short?: string; line?:
   };
 }
 
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type -- `{}` = Prisma's "all scalar fields" payload
 type NewsRow = Prisma.NewsItemGetPayload<{ /* all scalar fields */ }>;
 
 export function toNewsDTO(row: NewsRow): NewsItemDTO {

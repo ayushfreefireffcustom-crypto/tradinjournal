@@ -9,7 +9,7 @@ import AppShell from '@/components/app-shell';
 import { useLoad } from '@/components/v6/ui/data';
 import ErrorCard from '@/components/v6/ui/error-card';
 import EquityChart from '@/components/v6/strategy/equity-chart';
-import { num, pct, strategiesApi, tone, usd, type Metrics, type Trade } from '@/lib/strategies-api';
+import { num, pct, strategiesApi, tone, usd, type Trade } from '@/lib/strategies-api';
 import '@/styles/v6/kit.css';
 import '@/styles/v6/tools.css';
 import '@/styles/v6/strategy.css';

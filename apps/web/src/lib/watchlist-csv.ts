@@ -37,7 +37,7 @@ export function parseWatchlistCsv(text: string, existing: readonly string[] = []
   const have = new Set(existing);
   const symbols: string[] = [];
   const skipped: SkippedRow[] = [];
-  const lines = text.replace(/^﻿/, '').split(/\r?\n/);
+  const lines = text.replace(/^\uFEFF/, '').split(/\r?\n/);
   // A one-line file with several cells is a TradingView-style list; otherwise the first column.
   const oneLine = lines.filter((l) => l.trim()).length === 1;
   lines.forEach((raw, i) => {

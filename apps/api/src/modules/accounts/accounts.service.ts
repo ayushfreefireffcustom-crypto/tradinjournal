@@ -8,7 +8,7 @@ import {
   deleteAccountById,
   updateAccountCredentials as updateCredentialsRepo,
 } from './accounts.repository.js';
-import { ConflictError, NotFoundError } from '../../http/errors.js';
+import { NotFoundError } from '../../http/errors.js';
 import { syncQueue, requestSyncWithin } from '../sync/sync.queue.js';
 import { prisma } from '@tradinjournal/db';
 import { assertWithinLimit } from '../../lib/plans.js';

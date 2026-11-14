@@ -18,7 +18,7 @@ import {
 } from '@tradinjournal/core';
 import type { SaveScreenInput, ScreenDefinition, ScreenerFilter, UpdateScreenInput } from '@tradinjournal/contracts';
 import { cacheGet, cacheSet } from '../../lib/cache.js';
-import { ConflictError, NotFoundError, ValidationError } from '../../http/errors.js';
+import { NotFoundError, ValidationError } from '../../http/errors.js';
 import { loadPublicCandles } from '../market/market.service.js';
 import { loadFunding, loadUniverse, type FundingMap, type UniverseRow } from './universe.js';
 import { assertWithinLimit } from '../../lib/plans.js';

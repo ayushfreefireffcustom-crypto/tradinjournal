@@ -24,7 +24,7 @@ function writeStored(id: string | null) {
   try {
     if (id) window.localStorage.setItem(STORAGE_KEY, id);
     else window.localStorage.removeItem(STORAGE_KEY);
-  } catch {}
+  } catch { /* storage blocked (private mode) — selection just isn't remembered */ }
 }
 
 // Persist a selection made outside the hook (e.g. a `?account=` deep-link on the

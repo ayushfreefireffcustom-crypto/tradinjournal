@@ -17,6 +17,8 @@ export default function GlobalError({ reset }: { error: Error & { digest?: strin
           body="Your data is safe. Reload to try again.">
           <div className="au-stacts">
             <button type="button" onClick={reset} className="x-btn x-btn--hi x-btn--lg x-btn--full">Try again</button>
+            {/* Full page load on purpose: the root layout crashed, so the client router may be broken too. */}
+            {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
             <a href="/" className="x-btn x-btn--lg x-btn--full x-btn--ghost">Back to home</a>
           </div>
         </StatusCard>

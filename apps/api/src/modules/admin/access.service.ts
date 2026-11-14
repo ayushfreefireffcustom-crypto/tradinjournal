@@ -299,7 +299,7 @@ export async function checkActivity(userId: string, email: string, force = false
     row.activityCheckedAt &&
     now - row.activityCheckedAt.getTime() < ACTIVITY_CACHE_MS;
 
-  let tradeCount = cached ? row.tradeCount7d : await countElefinTrades7d(userId);
+  const tradeCount = cached ? row.tradeCount7d : await countElefinTrades7d(userId);
   const active = tradeCount >= env.ACCESS_MIN_TRADES_7D;
   const activityStatus = active ? 'ACTIVE' : 'INACTIVE';
 

@@ -10,7 +10,7 @@ import { useToast } from '@/components/toast';
 import { useLoad } from '@/components/v6/ui/data';
 import ErrorCard from '@/components/v6/ui/error-card';
 import Modal from '@/components/v6/ui/modal';
-import { ApiError, exchangesApi, webhookApi, type TradingWebhook, type WebhookEvent } from '@/lib/copy-api';
+import { ApiError, exchangesApi, webhookApi, type WebhookEvent } from '@/lib/copy-api';
 import '@/styles/v6/kit.css';
 import '@/styles/v6/trading.css';
 

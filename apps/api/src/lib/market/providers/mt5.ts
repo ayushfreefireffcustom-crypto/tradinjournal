@@ -5,7 +5,6 @@
 // are polled by the LiveHub (the bridge has no push), and only when creds flow.
 import { env } from '@tradinjournal/config';
 import type { MarketTimeframe } from '@tradinjournal/contracts';
-import { fetchJson } from '../http.js';
 import type { GetCandlesOpts, MarketProvider, NormalizedCandle } from '../types.js';
 import { serverWallToUtc, utcToServerWall } from '../../server-time.js';
 

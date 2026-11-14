@@ -372,7 +372,7 @@ function filterQuery(f: DeskOrderFilters): Record<string, string | undefined> {
     if (!d) return undefined;
     const t = new Date(`${d}T00:00:00`);
     if (Number.isNaN(t.getTime())) return undefined;
-    if (end) t.setDate(t.getDate() + 1), t.setMilliseconds(-1);
+    if (end) { t.setDate(t.getDate() + 1); t.setMilliseconds(-1); }
     return t.toISOString();
   };
   return { status: f.status, source: f.source, side: f.side, symbol: f.symbol?.trim() || undefined, connectionId: f.connectionId, from: day(f.from, false), to: day(f.to, true), q: f.q?.trim() || undefined };

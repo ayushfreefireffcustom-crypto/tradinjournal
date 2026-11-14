@@ -23,7 +23,7 @@ import { deliveryAllowed, type CreateIndicatorAlertInput, type UpdateIndicatorAl
 import { loadPublicCandles } from '../market/market.service.js';
 import { claimDelivery } from '../../lib/notifications/claim.js';
 import { sendPush } from '../../lib/push.js';
-import { ConflictError, NotFoundError, ValidationError } from '../../http/errors.js';
+import { NotFoundError, ValidationError } from '../../http/errors.js';
 import { assertWithinLimit } from '../../lib/plans.js';
 
 const TF_MS: Record<string, number> = { '5m': 300_000, '15m': 900_000, '1h': 3_600_000, '4h': 14_400_000, '1d': 86_400_000 };

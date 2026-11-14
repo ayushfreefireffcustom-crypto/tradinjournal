@@ -139,6 +139,8 @@ export default function AppShell({
           <h1>We couldn&rsquo;t verify your access.</h1>
           <p className="x-lead">Check your connection and try again.</p>
           <button type="button" onClick={() => window.location.reload()} className="x-btn x-btn--hi x-btn--lg x-btn--full">Retry</button>
+          {/* Full page load on purpose: the access check failed, so start clean. */}
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
           <a href="/" className="x-link">Go home</a>
         </div>
       </div>
