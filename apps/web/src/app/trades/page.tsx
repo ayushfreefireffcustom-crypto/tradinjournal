@@ -1,25 +1,54 @@
 'use client';
 
-import { Suspense, useEffect, useState, useCallback, useMemo, useRef } from 'react';
+// Trade log v2 ("D · AI"): saved views, search and filters, a summary of the
+// current filter, the daily P&L strip, and a day-grouped table with price-path
+// mini charts, R, P&L, rule chips and the AI process grade. Filtering, sorting
+// and paging happen on the server (GET /api/insights/tradelog), so thousands of
+// trades stay fast; mini charts load only for rows on screen. Clicking a row
+// opens the side panel (chart, grade + reasons, similar trades, note).
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { createPortal } from 'react-dom';
+import { ArrowsLeftRight, DownloadSimple, Plus, Rows, X } from '@phosphor-icons/react';
 import AppShell, { timeAgo } from '@/components/app-shell';
 import ConnectBrokerModal from '@/components/connect-broker-modal';
 import DealsTable from '@/components/deals-table';
-import { api, type BrokerAccount, type Deal, type JournalEntry, type Trade } from '@/lib/api';
-import { useAccounts } from '@/lib/use-accounts';
-import { toCsv, downloadCsv, dateStamp } from '@/lib/csv';
 import { useToast } from '@/components/toast';
-import { IDownload, ISearch, IClose } from '@/components/v6/icons';
-import { fmtUsd } from '@/lib/format';
+import DateRangePicker from '@/components/v6/ui/date-range';
+import { IPlus } from '@/components/v6/icons';
+import { api, type BrokerAccount, type Deal } from '@/lib/api';
+import { authClient } from '@/lib/auth-client';
+import { dateStamp, downloadCsv, toCsv } from '@/lib/csv';
+import { rangeText } from '@/lib/date-presets';
+import { isCustom, spanBounds, type RangeKey, type Span } from '@/lib/stats';
+import { useAccounts } from '@/lib/use-accounts';
+import type { DashRange } from '@/lib/dashboard-v2-api';
+import {
+  BUILTIN_FILTERS, cleanFilters, CSV_HEADERS, csvRow, loadViews, localDayKey, sameFilters, storeViews, tradelogApi, viewerTz,
+  type BuiltinView, type SavedView, type TlDay, type TlFilters, type TlParams, type TlRow, type TlRuleKey, type TlSort, type TradelogDTO,
+} from '@/lib/tradelog-v2-api';
+import { FilterChips, SearchBox, ViewTabs, type ViewTab } from '@/components/tradelog-v2/toolbar';
+import { DailyStrip, SummaryRibbon } from '@/components/tradelog-v2/summary';
+import { LogCards, LogTable } from '@/components/tradelog-v2/table';
+import { TradePanel } from '@/components/tradelog-v2/panel';
+import { ComparePanel } from '@/components/tradelog-v2/compare';
+import '@/components/dashboard-v2/dashboard-v2.css';
+import '@/components/tradelog-v2/tradelog-v2.css';
 
-const money = (v: number) => fmtUsd(v, { signed: true });
-import { notesByTrade } from '@/lib/desk';
-import { TradeLog, type SortKey } from '@/components/v6/trades/trade-log';
-import { EXIT_LABEL, exitReasonOf, type ExitReason } from '@/lib/exit-reason';
-
-type Filter = 'ALL' | 'LONG' | 'SHORT' | 'WIN' | 'LOSS';
-const FILTERS: [Filter, string][] = [['ALL', 'All'], ['LONG', 'Long'], ['SHORT', 'Short'], ['WIN', 'Win'], ['LOSS', 'Loss']];
+const RANGES: { key: RangeKey; api: DashRange; short: string; label: string }[] = [
+  { key: '1W', api: '7D', short: '7D', label: 'Last 7 days' },
+  { key: '1M', api: '30D', short: '30D', label: 'Last 30 days' },
+  { key: '3M', api: '90D', short: '90D', label: 'Last 90 days' },
+  { key: '1Y', api: '1Y', short: '1Y', label: 'Last 12 months' },
+  { key: 'ALL', api: 'ALL', short: 'All', label: 'All time' },
+];
 const PAGE = 50;
+
+function useMedia(q: string): boolean {
+  const [m, setM] = useState(() => typeof window !== 'undefined' && window.matchMedia(q).matches);
+  useEffect(() => { const mq = window.matchMedia(q); const set = () => setM(mq.matches); set(); mq.addEventListener('change', set); return () => mq.removeEventListener('change', set); }, [q]);
+  return m;
+}
 
 export default function TradesPage() {
   return <Suspense fallback={null}><TradeLogPage /></Suspense>;
@@ -31,227 +60,359 @@ function TradeLogPage() {
   const symbolParam = useSearchParams().get('symbol');
   const toast = useToast();
   const { accounts, selected, select, setAccounts, loading: accountsLoading } = useAccounts();
-  const [trades, setTrades] = useState<Trade[]>([]);
-  const [deals, setDeals] = useState<Deal[]>([]);
-  const [journal, setJournal] = useState<JournalEntry[]>([]);
-  const [balance, setBalance] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [syncedAt, setSyncedAt] = useState<string | null>(null);
-  const [error, setError] = useState('');
-  const [showConnect, setShowConnect] = useState(false);
-  const [tab, setTab] = useState<'trades' | 'deals'>('trades');
-  const [filter, setFilter] = useState<Filter>('ALL');
-  const [symbolFilter, setSymbolFilter] = useState(symbolParam || 'ALL');
-  useEffect(() => { if (symbolParam) setSymbolFilter(symbolParam); }, [symbolParam]);
-  // How the trade ended (QW.10), from the closing deal's MT5 comment.
-  const [exitFilter, setExitFilter] = useState<'ALL' | ExitReason>('ALL');
-  const [search, setSearch] = useState('');
-  const [sortKey, setSortKey] = useState<SortKey>('open');
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
-  const [shown, setShown] = useState(PAGE);
-  const searchRef = useRef<HTMLInputElement>(null);
+  const { data: session } = authClient.useSession();
+  const userId = session?.user?.id ?? null;
+  const tz = useMemo(() => viewerTz(), []);
+  const wide = useMedia('(min-width: 1360px)');
+  const phone = useMedia('(max-width: 639px)');
 
-  const loadTrades = useCallback(async (acc: BrokerAccount) => {
-    setLoading(true);
-    setError('');
+  const [span, setSpan] = useState<Span>('ALL');
+  const [filters, setFilters] = useState<TlFilters>(() => (symbolParam ? { symbol: symbolParam } : {}));
+  useEffect(() => { if (symbolParam) setFilters(f => ({ ...f, symbol: symbolParam })); }, [symbolParam]);
+  const [sort, setSort] = useState<TlSort>('time');
+  const [dir, setDir] = useState<'asc' | 'desc'>('desc');
+  const [data, setData] = useState<TradelogDTO | null>(null);
+  const [rows, setRows] = useState<TlRow[]>([]);
+  const [days, setDays] = useState<Map<string, TlDay>>(new Map());
+  const [hasMore, setHasMore] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [error, setError] = useState('');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [panel, setPanel] = useState<{ kind: 'trade'; row: TlRow } | { kind: 'compare'; rows: TlRow[] } | null>(null);
+  const [tab, setTab] = useState<'positions' | 'deals'>('positions');
+  const [deals, setDeals] = useState<{ acc: string; list: Deal[] | null; error: string }>({ acc: '', list: null, error: '' });
+  const [views, setViews] = useState<SavedView[]>([]);
+  const [tagging, setTagging] = useState(false);
+  const [tagText, setTagText] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [showConnect, setShowConnect] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncedAt, setSyncedAt] = useState<string | null>(null);
+  const [, tick] = useState(0);
+  const req = useRef<AbortController | null>(null);
+  const moreReq = useRef(0);
+  const sentinel = useRef<HTMLDivElement>(null);
+
+  useEffect(() => { setViews(loadViews(userId)); }, [userId]);
+  useEffect(() => { const id = setInterval(() => tick(n => n + 1), 30_000); return () => clearInterval(id); }, []);
+
+  const params = useMemo<TlParams | null>(() => {
+    if (!selected) return null;
+    const p: TlParams = { accountId: selected.id, range: isCustom(span) ? 'ALL' : RANGES.find(r => r.key === span)!.api, tz, sort, dir, ...cleanFilters(filters) };
+    if (isCustom(span)) { const b = spanBounds(span); if (b.start != null) p.from = b.start; if (b.end != null) p.to = b.end; }
+    return p;
+  }, [selected, span, filters, sort, dir, tz]);
+
+  const load = useCallback(async (p: TlParams) => {
+    req.current?.abort();
+    const ctl = new AbortController();
+    req.current = ctl;
+    moreReq.current++;
+    setLoading(true); setError('');
     try {
-      // Stats only supply the balance for "% of balance"; the log works without them.
-      const [t, d, j, s] = await Promise.all([api.trades.list(acc.id), api.trades.deals(acc.id), api.journal.list(acc.id), api.trades.stats(acc.id).catch(() => null)]);
-      const tagsByTrade = new Map(j.filter(e => e.tradeId).map(e => [e.tradeId as string, e.tags]));
-      setTrades(t.map(trade => ({ ...trade, tags: tagsByTrade.get(trade.positionId) ?? trade.tags })));
-      setDeals(d);
-      setJournal(j);
-      setBalance(s?.currentEquity ?? null);
-      setSyncedAt(new Date().toISOString());
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to load trades');
-    } finally {
-      setLoading(false);
-    }
+      const d = await tradelogApi.list({ ...p, offset: 0, limit: PAGE }, ctl.signal);
+      if (ctl.signal.aborted) return;
+      setData(d); setRows(d.rows); setDays(new Map(d.days.map(x => [x.day, x]))); setHasMore(d.hasMore);
+    } catch (err) {
+      if (!ctl.signal.aborted) setError(err instanceof Error ? err.message : 'Failed to load trades');
+    } finally { if (!ctl.signal.aborted) setLoading(false); }
   }, []);
   useEffect(() => {
-    if (selected) loadTrades(selected);
-    else if (!accountsLoading) setLoading(false); // zero brokers: don’t load forever
-  }, [selected, accountsLoading, loadTrades]);
-  useEffect(() => setShown(PAGE), [filter, symbolFilter, exitFilter, search, sortKey, sortDir, tab]);
+    if (params) void load(params);
+    else if (!accountsLoading) setLoading(false);
+  }, [params, accountsLoading, load]);
+  // New filters: forget the selection. New account: forget everything that belonged to the old one.
+  useEffect(() => { setSelectedIds(new Set()); setTagging(false); }, [params]);
+  useEffect(() => { setPanel(null); setData(null); setRows([]); setSyncedAt(selected?.lastSyncAt ?? null); }, [selected?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const symbols = useMemo(() => Array.from(new Set(trades.map(t => t.symbol))).sort(), [trades]);
-  const counts = useMemo(() => ({
-    ALL: trades.length,
-    LONG: trades.filter(t => t.direction === 'LONG').length,
-    SHORT: trades.filter(t => t.direction === 'SHORT').length,
-    WIN: trades.filter(t => t.netPnl > 0).length,
-    LOSS: trades.filter(t => t.netPnl <= 0).length,
-  }), [trades]);
+  const loadMore = useCallback(async () => {
+    if (!params || !hasMore || loadingMore || loading) return;
+    const id = ++moreReq.current;
+    setLoadingMore(true);
+    try {
+      const d = await tradelogApi.list({ ...params, offset: rows.length, limit: PAGE });
+      if (id !== moreReq.current) return;
+      setRows(prev => { const seen = new Set(prev.map(r => r.id)); return [...prev, ...d.rows.filter(r => !seen.has(r.id))]; });
+      setDays(prev => { const m = new Map(prev); for (const x of d.days) m.set(x.day, x); return m; });
+      setHasMore(d.hasMore);
+    } catch (err) {
+      if (id === moreReq.current) toast.error(err instanceof Error ? err.message : 'Could not load more trades');
+    } finally { if (id === moreReq.current) setLoadingMore(false); }
+  }, [params, hasMore, loadingMore, loading, rows.length, toast]);
+  // Infinite scroll: load the next page when the end of the list comes near.
+  useEffect(() => {
+    const el = sentinel.current;
+    if (!el || !hasMore || typeof IntersectionObserver === 'undefined') return;
+    const io = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) void loadMore(); }, { rootMargin: '600px 0px' });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [hasMore, loadMore]);
 
-  const sorted = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    const f = trades.filter(t => {
-      if (filter === 'LONG' && t.direction !== 'LONG') return false;
-      if (filter === 'SHORT' && t.direction !== 'SHORT') return false;
-      if (filter === 'WIN' && t.netPnl <= 0) return false;
-      if (filter === 'LOSS' && t.netPnl > 0) return false;
-      if (symbolFilter !== 'ALL' && t.symbol !== symbolFilter) return false;
-      if (exitFilter !== 'ALL' && exitReasonOf(t) !== exitFilter) return false;
-      if (q && !t.symbol.toLowerCase().includes(q) && !(t.tags ?? []).some(g => g.toLowerCase().includes(q))) return false;
-      return true;
-    });
-    const val = (t: Trade): number | string =>
-      sortKey === 'symbol' ? t.symbol : sortKey === 'net' ? t.netPnl : sortKey === 'held' ? t.durationSecs ?? -1
-        // Time order follows the close (open positions first), like the day groups and daily P&L.
-        : t.closeTime ? new Date(t.closeTime).getTime() : 8e15 + new Date(t.openTime).getTime();
-    return f.sort((a, b) => {
-      const va = val(a), vb = val(b);
-      const c = typeof va === 'string' ? va.localeCompare(vb as string) : (va as number) - (vb as number);
-      return sortDir === 'asc' ? c : -c;
-    });
-  }, [trades, filter, symbolFilter, exitFilter, search, sortKey, sortDir]);
-  const filteredPnl = useMemo(() => sorted.reduce((s, t) => s + t.netPnl, 0), [sorted]);
-  // Live summary of whatever is currently filtered — answers "how did this slice do?"
-  const slice = useMemo(() => {
-    const closed = sorted.filter(t => t.status === 'CLOSED');
-    const wins = closed.filter(t => t.netPnl > 0).length;
-    return { n: closed.length, win: closed.length ? wins / closed.length : 0, avg: closed.length ? filteredPnl / closed.length : 0 };
-  }, [sorted, filteredPnl]);
+  // Raw deals (loaded on first use).
+  useEffect(() => {
+    if (tab !== 'deals' || !selected || deals.acc === selected.id) return;
+    setDeals({ acc: selected.id, list: null, error: '' });
+    api.trades.deals(selected.id).then(list => setDeals({ acc: selected.id, list, error: '' })).catch(e => setDeals({ acc: selected.id, list: [], error: e instanceof Error ? e.message : 'Couldn’t load deals' }));
+  }, [tab, selected, deals.acc]);
 
-  function toggleSort(key: SortKey) {
-    if (sortKey === key) setSortDir(d => (d === 'asc' ? 'desc' : 'asc'));
-    else { setSortKey(key); setSortDir(key === 'symbol' ? 'asc' : 'desc'); }
-  }
+  const sync = useCallback(async () => {
+    if (!selected || !params) return;
+    setSyncing(true);
+    try {
+      const r = await api.accounts.sync(selected.id);
+      setSyncedAt(r.account.lastSyncAt ?? new Date().toISOString());
+      await load(params);
+      toast.success(r.result === 'running' ? 'Still importing your history — this can take a minute on large accounts' : 'Synced');
+    } catch (err) {
+      toast.error(`Sync failed · ${err instanceof Error ? err.message : 'try again'}`);
+    } finally { setSyncing(false); }
+  }, [selected, params, load, toast]);
 
   function onConnected(a: BrokerAccount) {
     setAccounts(prev => (prev.find(x => x.id === a.id) ? prev.map(x => (x.id === a.id ? a : x)) : [a, ...prev]));
     select(a); setShowConnect(false);
   }
 
-  function exportCsv() {
-    const acc = selected?.broker.replace(/\s+/g, '-').toLowerCase() ?? 'account';
+  // ── filters + views ──
+  const setF = useCallback((patch: Partial<TlFilters>) => {
+    setFilters(f => cleanFilters({ ...f, ...patch }));
+    if (symbolParam && 'symbol' in patch) router.replace('/trades', { scroll: false });
+  }, [symbolParam, router]);
+  const clearAll = () => { setFilters({}); if (symbolParam) router.replace('/trades', { scroll: false }); };
+  const onSort = (k: TlSort) => {
+    if (sort === k) setDir(d => (d === 'asc' ? 'desc' : 'asc'));
+    else { setSort(k); setDir(k === 'symbol' ? 'asc' : 'desc'); }
+  };
+  const filtersOn = Object.keys(cleanFilters(filters)).length > 0;
+  const viewTabs: ViewTab[] = useMemo(() => {
+    if (!data) return [];
+    const v = data.views;
+    const b: Array<[BuiltinView, string, number | null, boolean, string?]> = [
+      ['all', 'All trades', v.all, true],
+      ['rule', 'Rule broken', v.ruleBroken, data.graded],
+      ['grade', 'Grade D–F', v.gradeDF, data.graded],
+      ['bigloss', data.bigLoss?.unit === 'R' ? 'Losers past −1R' : 'Big losers', v.bigLosers, !!data.bigLoss,
+        data.bigLoss?.unit === '$' ? `Lost more than 1.5× your average loss ($${Math.round(Math.abs(data.bigLoss.threshold)).toLocaleString('en-US')}) — R needs a stop at entry` : undefined],
+    ];
+    return [
+      ...b.filter(x => x[3]).map(([id, name, count, , title]) => ({ id, name, count, active: sameFilters(filters, BUILTIN_FILTERS[id]), title })),
+      ...views.map(sv => ({ id: sv.id, name: sv.name, count: null, active: sameFilters(filters, sv.filters), custom: true })),
+    ];
+  }, [data, views, filters]);
+  const pickView = (id: string) => {
+    const f = id in BUILTIN_FILTERS ? BUILTIN_FILTERS[id as BuiltinView] : views.find(v => v.id === id)?.filters;
+    if (f) { setFilters({ ...f }); if (symbolParam) router.replace('/trades', { scroll: false }); }
+  };
+  const saveView = (name: string) => {
+    const next = [...views.filter(v => v.name !== name), { id: `v${Date.now().toString(36)}`, name, filters: cleanFilters(filters) }];
+    setViews(next);
+    if (storeViews(userId, next)) toast.success(`Saved “${name}” on this device`);
+    else toast.error('Couldn’t save the view: this browser blocks storage');
+  };
+  const deleteView = (id: string) => { const next = views.filter(v => v.id !== id); setViews(next); storeViews(userId, next); };
+
+  const dateCtl = useMemo(() => {
+    const options: Array<{ v: string; label: string }> = RANGES.filter(r => r.key !== 'ALL').map(r => ({ v: r.key, label: r.label }));
+    if (isCustom(span)) options.push({ v: 'custom', label: rangeText(span) });
+    return {
+      value: isCustom(span) ? 'custom' : span === 'ALL' ? '' : span,
+      label: 'All time', options,
+      onChange: (v: string) => { if (v === 'custom') return; setSpan((v || 'ALL') as RangeKey); },
+    };
+  }, [span]);
+
+  // ── selection + bulk ──
+  const toggle = useCallback((id: string) => setSelectedIds(s => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; }), []);
+  const toggleAll = useCallback(() => setSelectedIds(s => (rows.every(r => s.has(r.id)) ? new Set() : new Set(rows.map(r => r.id)))), [rows]);
+  const selRows = useMemo(() => rows.filter(r => selectedIds.has(r.id)), [rows, selectedIds]);
+  const openRow = useCallback((r: TlRow) => setPanel(p => (p?.kind === 'trade' && p.row.id === r.id ? null : { kind: 'trade', row: r })), []);
+  const closePanel = useCallback(() => setPanel(null), []);
+
+  const accSlug = selected?.broker.replace(/\s+/g, '-').toLowerCase() ?? 'account';
+  const exportRows = (list: TlRow[], label: string) => {
+    downloadCsv(`tradelogs-trades-${accSlug}-${dateStamp()}.csv`, toCsv(CSV_HEADERS, list.map(csvRow)));
+    toast.success(`Exported ${list.length} ${label} to CSV`);
+  };
+  const exportAll = async () => {
+    if (!params || !selected) return;
     if (tab === 'deals') {
+      const list = deals.list ?? [];
       const headers = ['Deal Ticket', 'Position ID', 'Symbol', 'Type', 'Entry', 'Volume', 'Price', 'Profit', 'Commission', 'Swap', 'Deal Time'];
-      const rows = deals.map(d => [d.dealTicket, d.positionId, d.symbol, d.type, d.entry, d.volume, d.price, d.profit, d.commission, d.swap, d.dealTime]);
-      downloadCsv(`tradelogs-deals-${acc}-${dateStamp()}.csv`, toCsv(headers, rows));
-      toast.success(`Exported ${deals.length} deals to CSV`);
+      downloadCsv(`tradelogs-deals-${accSlug}-${dateStamp()}.csv`, toCsv(headers, list.map(d => [d.dealTicket, d.positionId, d.symbol, d.type, d.entry, d.volume, d.price, d.profit, d.commission, d.swap, d.dealTime])));
+      toast.success(`Exported ${list.length} deals to CSV`);
       return;
     }
-    const headers = ['Position ID', 'Symbol', 'Direction', 'Status', 'Open Time', 'Close Time', 'Volume', 'Entry Price', 'Exit Price', 'Gross P&L', 'Commission', 'Swap', 'Net P&L', 'Duration (s)', 'Tags'];
-    const rows = sorted.map(t => [
-      t.positionId, t.symbol, t.direction, t.status, t.openTime, t.closeTime ?? '', t.volume,
-      t.entryPrice, t.exitPrice ?? '', t.grossPnl, t.commission, t.swap, t.netPnl, t.durationSecs ?? '',
-      (t.tags ?? []).join('; '),
-    ]);
-    downloadCsv(`tradelogs-trades-${acc}-${dateStamp()}.csv`, toCsv(headers, rows));
-    toast.success(`Exported ${sorted.length} trades to CSV`);
-  }
+    setBusy(true);
+    try {
+      const { sort: s, dir: d, tz: z, accountId, range, from, to, ...f } = params;
+      const r = await tradelogApi.export({ accountId, range, from, to, tz: z, sort: s, dir: d, ...f });
+      exportRows(r.rows, 'trades');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Export failed');
+    } finally { setBusy(false); }
+  };
+  const addTag = async () => {
+    const tag = tagText.trim();
+    if (!tag || !selected || !selRows.length) return;
+    setBusy(true);
+    try {
+      const ids = selRows.map(r => r.id);
+      await tradelogApi.tag(selected.id, ids, tag);
+      const set = new Set(ids);
+      setRows(prev => prev.map(r => (set.has(r.id) && !r.tags.includes(tag) ? { ...r, tags: [...r.tags, tag] } : r)));
+      setData(d => (d && !d.options.tags.includes(tag) ? { ...d, options: { ...d.options, tags: [...d.options.tags, tag].sort((a, b) => a.localeCompare(b)) } } : d));
+      toast.success(`Tagged ${ids.length} trade${ids.length === 1 ? '' : 's'} “${tag}”`);
+      setTagging(false); setTagText('');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not add the tag');
+    } finally { setBusy(false); }
+  };
 
-  const open = (t: Trade) => selected && router.push(`/trades/${t.positionId}?account=${encodeURIComponent(selected.id)}`);
-  const exportDisabled = (tab === 'deals' ? deals.length : sorted.length) === 0;
-  const filtersOn = filter !== 'ALL' || symbolFilter !== 'ALL' || exitFilter !== 'ALL' || search.trim() !== '';
-  const clearFilters = () => { setFilter('ALL'); setSymbolFilter('ALL'); setExitFilter('ALL'); setSearch(''); if (symbolParam) router.replace('/trades', { scroll: false }); };
-  const notes = useMemo(() => notesByTrade(journal), [journal]);
-  const pnlTone = (v: number) => (v > 0 ? 'pos' : v < 0 ? 'neg' : '');
-  const noData = (loading || !!error) && !trades.length;
+  // ── render ──
+  const today = localDayKey();
+  const subtitle = selected
+    ? <><i className="d2-live" aria-hidden />{selected.broker} <span className="m">·{selected.mt5Login.slice(-4)}</span> · {syncedAt ? `synced ${timeAgo(syncedAt)}` : loading ? 'loading…' : 'not synced yet'}</>
+    : 'Every position from your broker';
+  const grouped = sort === 'time';
+  const panelMode: 'inline' | 'drawer' = wide ? 'inline' : 'drawer';
+  const rangeLabel = isCustom(span) ? rangeText(span) : RANGES.find(r => r.key === span)!.label;
 
-  const subtitle = selected ? (
-    <>
-      {noData ? '—' : trades.length} position{trades.length === 1 ? '' : 's'} · {error && !deals.length ? 'couldn’t load deals' : <>from {deals.length} deal{deals.length === 1 ? '' : 's'}</>}
-      {syncedAt && <> · synced {timeAgo(syncedAt)}</>}
-    </>
-  ) : 'Every closed position from your broker';
-
-  const actions = (
-    <button className="x-btn" onClick={exportCsv} disabled={exportDisabled} data-testid="export-csv">
-      <IDownload size={15} /><span>Export CSV</span>
-    </button>
-  );
-
-  const empty = trades.length === 0 ? (
-    <div className="x-empty">
-      {error ? <><b>Positions couldn’t load</b><p>They’ll appear here once the broker connection is back.</p></>
-        : !selected ? <><b>No broker connected</b><p>Connect your MT5 account and your closed trades show up here.</p><button className="x-btn x-btn--hi" onClick={() => setShowConnect(true)}>Connect MT5</button></>
-          : <><b>No positions yet</b><p>Closed trades appear here after your next MT5 sync.</p></>}
+  const bulkBar = selRows.length > 0 && (
+    <div className="tl-bulk" role="toolbar" aria-label="Selected trades" data-testid="bulk-bar">
+      <b>{selRows.length} selected</b>
+      {tagging ? (
+        <form className="tl-tagf" onSubmit={e => { e.preventDefault(); void addTag(); }}>
+          <input autoFocus value={tagText} onChange={e => setTagText(e.target.value)} placeholder="Tag name" maxLength={40} list="tl-tags" aria-label="Tag to add"
+            onKeyDown={e => { if (e.key === 'Escape') setTagging(false); }} data-testid="tag-input" />
+          <datalist id="tl-tags">{data?.options.tags.map(t => <option key={t} value={t} />)}</datalist>
+          <button type="submit" disabled={!tagText.trim() || busy}>Add</button>
+        </form>
+      ) : <button type="button" onClick={() => setTagging(true)} data-testid="bulk-tag"><Plus size={13} />Add tag</button>}
+      <button type="button" disabled={selRows.length < 2 || selRows.length > 4} title={selRows.length < 2 || selRows.length > 4 ? 'Select 2 to 4 trades' : undefined}
+        onClick={() => setPanel({ kind: 'compare', rows: selRows })} data-testid="bulk-compare"><ArrowsLeftRight size={13} />Compare</button>
+      <button type="button" onClick={() => exportRows(selRows, selRows.length === 1 ? 'trade' : 'trades')} data-testid="bulk-export"><DownloadSimple size={13} />Export</button>
+      <button type="button" className="tl-bulk-x" aria-label="Clear selection" onClick={() => setSelectedIds(new Set())}><X size={14} /></button>
     </div>
-  ) : (
-    <div className="x-empty"><b>No trades match these filters</b><button className="x-btn x-btn--sm" onClick={clearFilters}>Clear filters</button></div>
   );
+
+  const panelEl = selected && panel && (panel.kind === 'trade'
+    ? <TradePanel key={panel.row.id} accountId={selected.id} row={panel.row} tz={tz} minTrades={data?.minTrades ?? 20} onClose={closePanel} mode={panelMode} />
+    : <ComparePanel accountId={selected.id} rows={panel.rows} onClose={closePanel} onOpen={r => setPanel({ kind: 'trade', row: r })} mode={panelMode} />);
 
   return (
     <AppShell legacy={false} accounts={accounts} selectedAccount={selected} onSelectAccount={select} onConnectClick={() => setShowConnect(true)}
-      pageTitle="Trade log" pageSubtitle={subtitle} actions={actions}>
-      <div className="tr-page" data-testid="trades-page">
+      pageTitle="Trade log" pageSubtitle={subtitle} onSync={selected ? sync : undefined} syncing={syncing} syncedAt={syncedAt}
+      actions={selected ? (
+        <>
+          <div className="x-seg" role="group" aria-label="Date range" data-testid="range-selector">
+            {RANGES.map(r => <button key={r.key} aria-pressed={span === r.key} onClick={() => setSpan(r.key)} title={r.label} data-testid={`range-${r.key}`}>{r.short}</button>)}
+          </div>
+          <DateRangePicker value={isCustom(span) ? span : null} onChange={setSpan} note="Days in your time zone" />
+        </>
+      ) : null}>
+      <div className="d2 tl2" data-testid="trades-page">
         {error && (
-          <div className="x-banner x-banner--err" role="alert" data-testid="trades-error">
+          <div className="d2-banner" role="alert" data-testid="trades-error">
             <span>{error}</span>
-            <button className="x-btn x-btn--sm" onClick={() => selected && loadTrades(selected)}>Retry</button>
+            <button type="button" className="x-btn x-btn--sm" onClick={() => params && load(params)}>Retry</button>
           </div>
         )}
 
-
-        <section className="x-card">
-          <div className="tr-bar">
-            <div className="x-seg x-seg--in" role="tablist" aria-label="View">
-              <button role="tab" aria-selected={tab === 'trades'} onClick={() => setTab('trades')} data-testid="tab-trades">Positions</button>
-              <button role="tab" aria-selected={tab === 'deals'} onClick={() => setTab('deals')} data-testid="tab-deals">Raw deals</button>
+        {!selected && !accountsLoading ? (
+          <section className="d2-card d2-connect" data-testid="trades-empty">
+            <h2>Connect your MT5 account</h2>
+            <p>Use your investor (read-only) password. Every closed position shows up here, graded and searchable.</p>
+            <button className="x-btn x-btn--hi x-btn--lg" onClick={() => setShowConnect(true)}><IPlus size={15} />Connect MT5</button>
+          </section>
+        ) : !data ? (error ? null : <Skeleton />) : data.counts.all === 0 ? (
+          <section className="d2-card d2-connect" data-testid="trades-none">
+            <h2>No positions yet</h2>
+            <p>{selected?.broker} is connected. Closed trades appear here after your next MT5 sync.</p>
+          </section>
+        ) : (
+          <>
+            <div className="tl-top">
+              {tab === 'positions' ? <ViewTabs tabs={viewTabs} onPick={pickView} onDelete={deleteView} onSave={saveView} canSave={filtersOn} /> : <h2 className="tl-dealsh">Raw deals</h2>}
+              <div className="tl-top-r">
+                {tab === 'positions' && <SearchBox value={filters.q ?? ''} onChange={q => setF({ q: q || undefined })} />}
+                <button type="button" className="d2-fp tl-btn" aria-pressed={tab === 'deals'} onClick={() => setTab(t => (t === 'deals' ? 'positions' : 'deals'))} data-testid="tab-deals" aria-label={tab === 'deals' ? 'Show positions' : 'Show raw deals'}>
+                  <Rows size={15} /><span>{tab === 'deals' ? 'Positions' : 'Raw deals'}</span>
+                </button>
+                <button type="button" className="d2-fp tl-btn" onClick={() => void exportAll()} disabled={busy || (tab === 'positions' ? !data.counts.matching : !deals.list?.length)} data-testid="export-csv" aria-label="Export CSV">
+                  <DownloadSimple size={15} /><span>Export</span>
+                </button>
+              </div>
             </div>
-            {tab === 'trades' && (
+
+            {tab === 'deals' ? (
+              <section className="d2-card tl-deals">
+                <DealsTable deals={deals.list ?? []} loading={!deals.list} error={deals.error || undefined} limit={2000} />
+              </section>
+            ) : (
               <>
-                <div className="x-seg x-seg--in" role="group" aria-label="Filter positions">
-                  {FILTERS.map(([f, l]) => (
-                    <button key={f} aria-pressed={filter === f} onClick={() => setFilter(f)} data-testid={`filter-${f.toLowerCase()}`}>
-                      {l}<small>{counts[f]}</small>
-                    </button>
-                  ))}
-                </div>
-                <select className="x-select tr-sel" value={symbolFilter} onChange={e => { setSymbolFilter(e.target.value); if (symbolParam) router.replace('/trades', { scroll: false }); }} data-testid="symbol-filter" aria-label="Symbol">
-                  <option value="ALL">All symbols</option>
-                  {symbols.map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
-                <select className="x-select tr-sel" value={exitFilter} onChange={e => setExitFilter(e.target.value as 'ALL' | ExitReason)} data-testid="exit-filter" aria-label="How it closed">
-                  <option value="ALL">Any exit</option>
-                  {(Object.keys(EXIT_LABEL) as ExitReason[]).map(r => <option key={r} value={r}>{EXIT_LABEL[r]}</option>)}
-                </select>
-                <label className="x-search tr-search">
-                  <ISearch size={15} />
-                  <input ref={searchRef} className="x-input" type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search symbol or tag" aria-label="Search symbol or tag" data-testid="symbol-search"
-                    onKeyDown={e => { if (e.key === 'Escape') setSearch(''); }} />
-                  {search && <button type="button" className="tr-x" aria-label="Clear search" onClick={() => { setSearch(''); searchRef.current?.focus(); }}><IClose size={13} /></button>}
-                </label>
+                <FilterChips data={data} f={filters} set={setF} date={dateCtl} onClear={filtersOn || span !== 'ALL' ? () => { clearAll(); setSpan('ALL'); } : null} />
+
+                {data.counts.matching === 0 ? (
+                  <section className="d2-card d2-connect" data-testid="no-match">
+                    <h2>No trades match</h2>
+                    <p>{data.counts.inWindow ? `${data.counts.inWindow} trades in ${rangeLabel.toLowerCase()}, none match these filters.` : `Nothing closed in ${rangeLabel.toLowerCase()}. ${data.counts.all} positions in total.`}</p>
+                    <div className="d2-row">
+                      {filtersOn && <button type="button" className="x-btn" onClick={clearAll}>Clear filters</button>}
+                      {span !== 'ALL' && <button type="button" className="x-btn" onClick={() => setSpan('ALL')}>Show all time</button>}
+                    </div>
+                  </section>
+                ) : (
+                  <div className={`tl-body${loading ? ' d2-stale' : ''}`} aria-busy={loading}>
+                    {data.summary && <SummaryRibbon s={data.summary} useR={data.useR} graded={data.graded} />}
+                    {data.strip.days.length > 1 && (
+                      <DailyStrip days={data.strip.days} ai={data.strip.ai} filtered={filtersOn}
+                        onDay={d => setSpan({ from: d, to: d })} onRule={(r: TlRuleKey) => setF({ rule: r })} />
+                    )}
+                    {data.counts.allClosed > 0 && !data.graded && (
+                      <p className="d2-few" data-testid="few-trades">{data.counts.allClosed} closed trade{data.counts.allClosed === 1 ? '' : 's'}. AI grades and rule checks start at {data.minTrades}.</p>
+                    )}
+                    <div className={`tl-main${panel && panelMode === 'inline' ? ' with-panel' : ''}`}>
+                      <section className={`tl-list${phone ? ' bare' : ' d2-card'}`} aria-label="Trades">
+                        {bulkBar}
+                        {phone
+                          ? <LogCards rows={rows} days={days} grouped={grouped} accountId={selected!.id} activeId={panel?.kind === 'trade' ? panel.row.id : null} today={today} onOpen={openRow} />
+                          : <LogTable rows={rows} days={days} grouped={grouped} useR={data.useR} graded={data.graded} accountId={selected!.id} selected={selectedIds}
+                            activeId={panel?.kind === 'trade' ? panel.row.id : null} sort={sort} dir={dir} today={today} onSort={onSort} onToggle={toggle} onToggleAll={toggleAll} onOpen={openRow} />}
+                        <div ref={sentinel} className="tl-foot" data-testid="showing-count">
+                          <span>Showing <b className="d2-n">{rows.length.toLocaleString('en-US')}</b> of {data.counts.matching.toLocaleString('en-US')}</span>
+                          {hasMore && <button type="button" className="tl-link" onClick={() => void loadMore()} disabled={loadingMore} data-testid="load-more">{loadingMore ? 'Loading…' : 'Load more'}</button>}
+                        </div>
+                      </section>
+                      {panelMode === 'inline' && panelEl}
+                    </div>
+                  </div>
+                )}
               </>
             )}
-          </div>
-
-          {tab === 'trades' && slice.n > 0 && (
-            // One line, not a KPI strip: the deep numbers live on Analytics (A0.D4).
-            <p className="tr-sum" data-testid="trades-summary" aria-label="Summary of the trades shown">
-              <span>{filtersOn ? 'Filtered' : 'All positions'}</span>
-              <span>Net <b className={`m mny ${pnlTone(filteredPnl)}`}>{money(filteredPnl)}</b></span>
-              <span>Win rate <b className="m">{(slice.win * 100).toFixed(1)}%</b></span>
-              <span>Avg trade <b className={`m mny ${pnlTone(slice.avg)}`}>{money(slice.avg)}</b></span>
-              {filtersOn && <button type="button" className="x-link tr-sum-reset" onClick={clearFilters} data-testid="reset-filters">Reset filters</button>}
-            </p>
-          )}
-          {tab === 'trades' ? (
-            <>
-              <TradeLog rows={sorted} shown={shown} sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} notes={notes} balance={balance}
-                onOpen={open} loading={loading && !trades.length} empty={empty} />
-              {trades.length > 0 && (
-                <div className="tr-foot">
-                  <span className="tr-count" data-testid="showing-count">
-                    Showing <b className="m">{Math.min(shown, sorted.length)}</b> of <span className="m">{sorted.length}</span>{filtersOn && <> · <button className="x-link" onClick={clearFilters} data-testid="clear-filters">Clear filters</button></>}
-                  </span>
-                  {sorted.length > shown && <button className="x-btn" onClick={() => setShown(n => n + PAGE)} data-testid="load-more">Show {Math.min(PAGE, sorted.length - shown)} more</button>}
-                </div>
-              )}
-            </>
-          ) : (
-            <>
-              <DealsTable deals={deals} loading={loading && !deals.length} />
-              <div className="tr-foot"><span className="tr-count" data-testid="showing-count"><b className="m">{deals.length}</b> deals</span></div>
-            </>
-          )}
-        </section>
+          </>
+        )}
       </div>
-
+      {panelMode === 'drawer' && panelEl && typeof document !== 'undefined' && createPortal(
+        <div className="v6 tl-drawer" data-testid="panel-drawer">
+          <button type="button" className="tl-drawer-bg" aria-label="Close panel" onClick={closePanel} tabIndex={-1} />
+          <div className="d2 tl2 tl-drawer-in">{panelEl}</div>
+        </div>,
+        document.body,
+      )}
       {showConnect && <ConnectBrokerModal onClose={() => setShowConnect(false)} onConnected={onConnected} />}
     </AppShell>
   );
 }
+
+function Skeleton() {
+  return (
+    <div className="d2-skel" aria-busy aria-label="Loading trades" data-testid="trades-loading">
+      <div className="d2-card d2-sk" style={{ height: 40 }} />
+      <div className="d2-card d2-sk" style={{ height: 88 }} />
+      <div className="d2-card d2-sk" style={{ height: 100 }} />
+      <div className="d2-card d2-sk" style={{ height: 420 }} />
+    </div>
+  );
+}
+
