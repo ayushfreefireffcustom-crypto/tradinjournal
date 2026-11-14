@@ -25,7 +25,7 @@ export default function SurpriseMap({ surprise }: { surprise: MacroSurprise | nu
   const compact = w > 0 && w < 560;
   const months = surprise?.months ?? lastMonths();
   const rows = surprise?.series ?? SERIES.map((label, i) => ({ key: String(i), label, cells: months.map(m => ({ month: m, level: null, actual: null, forecast: null })) }));
-  const lw = compact ? 96 : 132;
+  const lw = compact ? 106 : 132; // fits "ISM manufacturing" at 11px
   const cw = Math.max(10, (w - lw) / months.length);
   const ch = compact ? 24 : 30;
   const h = rows.length * ch + 24;
@@ -40,8 +40,10 @@ export default function SurpriseMap({ surprise }: { surprise: MacroSurprise | nu
             {months.map((m, i) => {
               const last = i === months.length - 1;
               if (compact && i % 2 === 0 && !last) return null;
+              // A month name is wider than a narrow column: the last one ends flush with the edge instead of being cut off.
+              const flush = last && cw < 28;
               return (
-                <text key={m} x={lw + i * cw + cw / 2} y={12} textAnchor="middle" className={`mo-t11 ${last ? 'mo-tx1' : 'mo-tx3'}`} fontWeight={last ? 700 : 400}>{monthShort(m)}</text>
+                <text key={m} x={flush ? lw + months.length * cw : lw + i * cw + cw / 2} y={12} textAnchor={flush ? 'end' : 'middle'} className={`mo-t11 ${last ? 'mo-tx1' : 'mo-tx3'}`} fontWeight={last ? 700 : 400}>{monthShort(m)}</text>
               );
             })}
             {rows.map((r, ri) => {

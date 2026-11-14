@@ -568,6 +568,13 @@
   .l5-nav-r .l5-btn--sm span:first-child { font-size: var(--t2); }
   .l5-srow { grid-template-columns: 64px 1fr 70px; gap: 6px; }
 }
+/* 320px phones: logo, Dashboard and the menu button fit on one row (the arrow chip goes). */
+@media (max-width: 340px) {
+  .l5-nav .l5-wrap { gap: 12px; }
+  .l5-nav-r { gap: 8px; }
+  .l5-nav-r .l5-btn--sm { padding: 0 14px; }
+  .l5-nav-r .l5-btn--sm .l5-ar { display: none; }
+}
 
 /* ── reduced motion: everything visible, nothing moving ─────────────────── */
 @media (prefers-reduced-motion: reduce) {

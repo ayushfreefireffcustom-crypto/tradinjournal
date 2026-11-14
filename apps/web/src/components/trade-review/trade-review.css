@@ -33,7 +33,7 @@ html[data-theme=light] .v6 .trv {
 .v6 .trv-kr > div:first-child { border-left: 0; }
 .v6 .trv-kr b { display: block; font-size: 22px; font-weight: 900; letter-spacing: -.02em; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.25; }
 .v6 .trv-kr b small { font-size: 13px; font-weight: 700; color: var(--dim); letter-spacing: 0; margin-left: 1px; }
-.v6 .trv-kr > div > small { display: block; font-size: 11px; color: var(--mut); margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.v6 .trv-kr > div > small { display: block; font-size: 11px; color: var(--mut); margin-top: 4px; overflow-wrap: anywhere; }
 
 /* chart */
 .v6 .trv-chart { position: relative; width: 100%; min-width: 0; touch-action: pan-y; }

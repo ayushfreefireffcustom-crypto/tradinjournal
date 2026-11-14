@@ -66,8 +66,10 @@ export function Heatmap({ hm, metric, ai }: { hm: DashHeatmap; metric: '$' | 'wi
   const mxNet = Math.max(1, ...hm.cells.map(c => Math.abs(c.net)));
   const cell = (s: string, d: number) => hm.cells.find(c => c.session === s && c.day === d)!;
   const cols = hm.days.length;
-  // Cells drop $ and the + sign (colour already says it) so they fit narrow grids.
+  // Cells drop $ and the + sign (colour already says it) so they fit narrow grids;
+  // 7-day grids drop the minus too (the cell is red, its tooltip and the totals keep the sign).
   const cellMoney = (v: number) => kmoney(v).replace('$', '').replace('+', '');
+  const cellNet = (v: number) => (cols > 5 ? cellMoney(v).replace('−', '').replace('-', '') : cellMoney(v));
   return (
     <div className={`d2-hm${cols > 5 ? ' dense' : ''}`} style={{ gridTemplateColumns: `var(--hm-l) repeat(${cols}, minmax(0, 1fr)) var(--hm-r)` }} role="table" aria-label="Net P&L by session and weekday (UTC)">
       <span />
@@ -90,7 +92,7 @@ export function Heatmap({ hm, metric, ai }: { hm: DashHeatmap; metric: '$' | 'wi
             return (
               <div key={`${s}${d}`} className={`d2-hc${isW ? ' worst' : isB ? ' best' : ''}${strong ? ' strong' : ''}${solid ? ' solid' : ''}`} style={{ background: bg }}
                 title={c.n ? `${SESSION_SHORT[s]} ${DAY_SHORT[d]}: ${money(c.net)} · ${c.wins} of ${c.n} won` : 'No trades'}>
-                <b className="d2-n">{c.n ? (metric === '$' ? cellMoney(c.net) : pct(wr)) : '–'}</b>
+                <b className="d2-n">{c.n ? (metric === '$' ? cellNet(c.net) : pct(wr)) : '–'}</b>
                 <small>{isW ? <em className="d2-flag" data-ai>Skip</em> : isB ? <em className="d2-flag g" data-ai>Best</em> : c.n ? `${c.n} tr` : ''}</small>
               </div>
             );

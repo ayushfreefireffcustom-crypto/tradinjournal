@@ -142,7 +142,7 @@
 .v6 .ac-funnel .l { font-size: var(--t2); color: var(--mut); display: flex; align-items: center; gap: 6px; }
 .v6 .ac-funnel abbr { text-decoration: none; cursor: help; width: 15px; height: 15px; border-radius: 50%; background: var(--s3); display: inline-grid; place-items: center; font-size: var(--t1); color: var(--mut); }
 .v6 .ac-funnel b { font-weight: 800; font-size: var(--t4); letter-spacing: -.035em; line-height: 1.2; }
-.v6 .ac-funnel .s { font-size: var(--t2); color: var(--mut); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.v6 .ac-funnel .s { font-size: var(--t2); color: var(--mut); overflow-wrap: anywhere; }
 .v6 .ac-funnel .x-bar { margin-top: 6px; }
 
 /* trend */
@@ -163,7 +163,7 @@
 .v6 .ac-sharecard { display: flex; flex-direction: column; gap: 14px; }
 .v6 .ac-sharecard .x-ch { margin-bottom: 0; }
 .v6 .ac-linkbox { display: flex; align-items: center; gap: 10px; background: var(--s2); border-radius: var(--r-inset); padding: 6px 6px 6px 14px; min-width: 0; }
-.v6 .ac-linkbox > span { flex: 1; min-width: 0; font-size: var(--t2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.v6 .ac-linkbox > span { flex: 1; min-width: 0; font-size: var(--t2); overflow-wrap: anywhere; }
 .v6 .ac-codeline { margin: 0; font-size: var(--t2); color: var(--mut); }
 .v6 .ac-codeline b { color: var(--tx); font-weight: 500; }
 .v6 .ac-share { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -343,6 +343,9 @@
   .v6 .ac-clients th:nth-child(3), .v6 .ac-clients td:nth-child(3),
   .v6 .ac-clients th:nth-child(5), .v6 .ac-clients td:nth-child(5),
   .v6 .ac-clients th:nth-child(6), .v6 .ac-clients td:nth-child(6) { display: none; }
+  /* Three columns left: names wrap rather than shrinking to "Pri…". */
+  .v6 .ac-clients td { padding: 10px 8px; }
+  .v6 .x-tbl .ac-who b, .v6 .x-tbl .ac-who small { white-space: normal; overflow-wrap: anywhere; }
 }
 /* Channel table: phones keep the channel, signups and active traders. */
 @media (max-width: 760px) {
@@ -363,6 +366,9 @@
 .v6 .ac-st-grid td b { display: block; font-weight: 500; font-size: var(--t2); }
 .v6 .ac-st-grid td span { display: block; font-size: var(--t2); color: var(--mut); margin-top: 2px; }
 .v6 .ac-st-grid .c { text-align: center; width: 80px; }
+/* The type's description wraps, so the switch columns stay on screen on phones. */
+.v6 .ac-st-grid td:first-child { white-space: normal; }
+@media (max-width: 520px) { .v6 .ac-st-grid .c { width: 56px; padding-left: 4px; padding-right: 4px; } .v6 .ac-st-grid td:first-child, .v6 .ac-st-grid th:first-child { padding-left: 0; } }
 .v6 .ac-st-grid .x-switch:disabled { opacity: .4; cursor: not-allowed; }
 
 /* ── Settings sections (Part H) ── */

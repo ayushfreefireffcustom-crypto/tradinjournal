@@ -69,7 +69,8 @@ html[data-theme=light] .v6 .d2-card { box-shadow: 0 0 0 1px var(--line), 0 1px 2
 .v6 .d2-slot > .d2-w { flex: 1; }
 .v6 .d2-wh { display: flex; align-items: center; gap: 6px; min-height: 44px; padding: 6px 12px 6px 8px; border-bottom: 1px solid var(--line); min-width: 0; }
 .v6 .d2-grip { color: var(--dim); display: grid; place-items: center; width: 18px; flex: none; }
-.v6 .d2-wh h3 { margin: 0; font-size: 13px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 1 1 auto; }
+/* Titles wrap (subtitle drops to a second line) rather than cutting off. */
+.v6 .d2-wh h3 { margin: 0; font-size: 13px; font-weight: 800; line-height: 1.3; overflow-wrap: anywhere; min-width: 0; flex: 1 1 auto; }
 .v6 .d2-wh h3 > span { color: var(--dim); font-weight: 500; }
 .v6 .d2-wt { margin-left: auto; display: flex; gap: 6px; align-items: center; font-size: 11px; color: var(--mut); white-space: nowrap; flex: none; }
 .v6 .d2-wl { font-size: 11px; font-weight: 600; color: var(--mut); text-decoration: none; }
@@ -94,7 +95,7 @@ html[data-theme=light] .v6 .d2-card { box-shadow: 0 0 0 1px var(--line), 0 1px 2
 .v6 .d2-ai i { width: 5px; height: 5px; border-radius: 1px; background: var(--d2-g); }
 .v6 .d2-ail { display: flex; align-items: center; gap: 10px; padding: 9px 16px; border-top: 1px solid var(--line); font-size: 13px; min-width: 0; margin-top: auto; }
 .v6 .d2-note + .d2-ail { margin-top: 8px; }
-.v6 .d2-ail-t { font-weight: 800; color: var(--tx); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.v6 .d2-ail-t { font-weight: 800; color: var(--tx); min-width: 0; overflow-wrap: anywhere; }
 .v6 .d2-ail-t .d2-n { font-weight: 900; }
 .v6 .d2-ail-a { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; font: 600 11px var(--sans); color: var(--mut); white-space: nowrap; border: 0; background: none; cursor: pointer; text-decoration: none; }
 
@@ -102,8 +103,8 @@ html[data-theme=light] .v6 .d2-card { box-shadow: 0 0 0 1px var(--line), 0 1px 2
 .v6 .d2-leaks { display: flex; flex-direction: column; gap: 14px; padding-top: 2px; }
 .v6 .d2-leak { display: grid; grid-template-columns: minmax(0, 124px) minmax(0, 1fr) auto; align-items: center; gap: 10px; }
 .v6 .d2-leak-l { min-width: 0; }
-.v6 .d2-leak-l b { display: block; font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.v6 .d2-leak-l small { display: block; font-size: 11px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.v6 .d2-leak-l b { display: block; font-size: 13px; font-weight: 700; overflow-wrap: anywhere; }
+.v6 .d2-leak-l small { display: block; font-size: 11px; color: var(--dim); overflow-wrap: anywhere; }
 .v6 .d2-leak-b { height: 12px; }
 .v6 .d2-leak-b i { display: block; height: 12px; border-radius: 2px; background: var(--d2-r); }
 .v6 .d2-leak > b { font-size: 13px; font-weight: 900; min-width: 52px; text-align: right; }
@@ -131,7 +132,8 @@ html[data-theme=light] .v6 .d2-hc.strong:not(.solid) small { color: var(--mut); 
 .v6 .d2-hm.dense .d2-hc { padding: 6px 4px 5px; }
 .v6 .d2-hm.dense .d2-hc b { font-size: 11px; }
 .v6 .d2-hm.dense .d2-ht.c { padding-left: 3px; }
-.v6 .d2-hm.dense .d2-flag { padding: 1px 3px; }
+/* Dense grids: the Best / Skip flag becomes a full-width strip at the cell's foot so it never clips. */
+.v6 .d2-hm.dense .d2-hc .d2-flag { position: absolute; left: 0; right: 0; bottom: 0; padding: 3px 0; border-radius: 0 0 4px 4px; text-align: center; }
 
 /* behaviour */
 .v6 .d2-big { font-size: 40px; font-weight: 900; letter-spacing: -.04em; line-height: 1; }
@@ -276,7 +278,7 @@ html[data-theme=light] .v6 .d2-hc.strong:not(.solid) small { color: var(--mut); 
   .v6 .d2-hc .d2-flag { padding: 1px 3px; }
   .v6 .d2-ht.c { padding-left: 2px; }
   .v6 .d2-fp { padding: 0 8px; }
-  .v6 .d2-leak { grid-template-columns: minmax(0, 96px) minmax(0, 1fr) auto; }
+  .v6 .d2-leak { grid-template-columns: minmax(0, 118px) minmax(0, 1fr) auto; }
   .v6 .d2-wh .d2-tg button { padding: 2px 6px; }
 }
 @container (max-width: 360px) {
@@ -293,7 +295,7 @@ html[data-theme=light] .v6 .d2-hc.strong:not(.solid) small { color: var(--mut); 
 @container (max-width: 340px) {
   .v6 .d2-hl-l { display: none; }
   .v6 .d2-hl-s { display: inline; }
-  .v6 .d2-hm, .v6 .d2-hm.dense { --hm-l: 30px; --hm-r: 36px; gap: 2px; }
+  .v6 .d2-hm, .v6 .d2-hm.dense { --hm-l: 30px; --hm-r: 40px; gap: 2px; }
   .v6 .d2-hc, .v6 .d2-hm.dense .d2-hc { padding: 5px 2px 4px; }
   .v6 .d2-wb { padding: 12px 10px 10px; }
 }

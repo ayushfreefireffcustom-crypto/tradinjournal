@@ -61,6 +61,12 @@ export function EquityChart({ eq, mode, unit, ai, leakNet }: { eq: DashEquity; m
       boxes.push(b);
       callouts.push(<Callout key="leak" x={b.x} y={b.y} text={text} maxX={w - padR} />);
     }
+    // End value: above its point unless a callout is there, then under it.
+    const ew = endLabel.length * 7.6, ex = x(end) - 8, eyUp = Math.max(14, y(series[end]!) - 9);
+    const endBox = (ey: number): Box => ({ x: ex - ew, y: ey - 12, w: ew, h: 15 });
+    const eyDown = Math.min(h - padB - 4, y(series[end]!) + 20);
+    const endY = boxes.some(o => hit(o, endBox(eyUp))) && !boxes.some(o => hit(o, endBox(eyDown))) ? eyDown : eyUp;
+    boxes.push(endBox(endY));
     if (ai && eq.drawdown) {
       const ti = Math.max(1, pts.findIndex(p => p.t >= eq.drawdown!.troughT) + 1);
       const tx = x(ti), ty = y(series[ti] ?? series[end]!);
@@ -87,7 +93,7 @@ export function EquityChart({ eq, mode, unit, ai, leakNet }: { eq: DashEquity; m
         {/* Trades whose stop was widened: a red ring (only with recorded stop levels). */}
         {ai && pts.map((p, i) => (p.moved && !p.leak ? <circle key={`m${i}`} cx={x(i + 1)} cy={y(series[i + 1]!)} r={3.5} fill="var(--d2-card)" stroke="var(--d2-r)" strokeWidth={1.5} data-ai data-testid="moved-dot"><title>Stop widened</title></circle> : null))}
         <circle cx={x(end)} cy={y(series[end]!)} r={3.5} fill="var(--d2-g)" />
-        <text x={x(end) - 8} y={Math.max(14, y(series[end]!) - 9)} fontSize={13} fontWeight={900} fill="var(--tx)" textAnchor="end">{endLabel}</text>
+        <text x={ex} y={endY} fontSize={13} fontWeight={900} fill="var(--tx)" textAnchor="end">{endLabel}</text>
         {labels.map((l, i) => <text key={i} x={Math.max(0, l.x)} y={h - 5} fontSize={11} fill="var(--dim)" textAnchor={i ? 'middle' : 'start'}>{l.label}</text>)}
         {callouts}
       </svg>
@@ -159,7 +165,13 @@ export function RollingChart({ roll, ai }: { roll: DashRolling; ai: boolean }) {
     const lowText = `${fmtDate(roll.low.t)} low · ${R ? rfmt(roll.low.v) : kmoney(roll.low.v)}`;
     const lx = x(roll.low.i), ly = y(roll.low.v);
     const cw = calloutW(lowText);
-    const cy = ly + 12 + 34 <= h - padB ? ly + 12 : Math.max(padT, ly - 46);
+    const cx = Math.max(0, Math.min(w - padR - cw, lx - cw / 2));
+    // The callout must not cover the end-value label: flip it above the low, else drop the label (the foot repeats it).
+    const endTxt = fmt(last.v), ey = Math.max(13, y(last.v) - 8), ex1 = x(last.i) - 6, ex0 = ex1 - endTxt.length * 7.6;
+    const hits = (top: number) => cx < ex1 && cx + cw > ex0 && top < ey + 3 && top + 34 > ey - 12;
+    let cy = ly + 12 + 34 <= h - padB ? ly + 12 : Math.max(padT, ly - 46);
+    if (ai && hits(cy) && !hits(Math.max(padT, ly - 46))) cy = Math.max(padT, ly - 46);
+    const showEnd = !(ai && hits(cy));
     body = (
       <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="d2-chart" role="img" aria-label="Rolling expectancy">
         <defs>
@@ -175,9 +187,9 @@ export function RollingChart({ roll, ai }: { roll: DashRolling; ai: boolean }) {
         <path d={ln} fill="none" stroke="var(--d2-g)" strokeWidth={1.5} clipPath={`url(#${id}a)`} />
         <path d={ln} fill="none" stroke="var(--d2-r)" strokeWidth={1.5} clipPath={`url(#${id}b)`} />
         <circle cx={x(last.i)} cy={y(last.v)} r={3.5} fill={last.v >= 0 ? 'var(--d2-g)' : 'var(--d2-r)'} />
-        <text x={x(last.i) - 6} y={Math.max(13, y(last.v) - 8)} fontSize={13} fontWeight={900} fill="var(--tx)" textAnchor="end">{fmt(last.v)}</text>
+        {showEnd && <text x={ex1} y={ey} fontSize={13} fontWeight={900} fill="var(--tx)" textAnchor="end">{endTxt}</text>}
         {ai && <circle cx={lx} cy={ly} r={3} fill="var(--d2-r)" data-ai />}
-        {ai && <Callout x={Math.max(0, Math.min(w - padR - cw, lx - cw / 2))} y={cy} text={lowText} maxX={w - padR} />}
+        {ai && <Callout x={cx} y={cy} text={lowText} maxX={w - padR} />}
       </svg>
     );
   }

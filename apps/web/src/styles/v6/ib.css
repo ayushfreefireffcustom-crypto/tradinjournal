@@ -44,9 +44,9 @@
 .v6 .ib-br { display: grid; grid-template-columns: auto minmax(0, 1fr) 120px 120px auto; align-items: center; gap: 14px; padding: 14px 16px; border-radius: var(--r-inset); background: var(--s2); }
 .v6 .ib-br-mk { width: 40px; height: 40px; border-radius: var(--r-field); background: var(--s1); box-shadow: var(--shadow); display: grid; place-items: center; font-weight: 800; font-size: var(--t2); letter-spacing: .02em; }
 .v6 .ib-br-who { display: grid; gap: 3px; min-width: 0; }
-.v6 .ib-br-who b { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.v6 .ib-br-who b { font-weight: 600; overflow-wrap: anywhere; }
 .v6 .ib-br-who b small { font-weight: 500; color: var(--mut); font-size: var(--t2); }
-.v6 .ib-br-who > small { display: flex; align-items: center; gap: 6px; font-size: var(--t2); color: var(--mut); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.v6 .ib-br-who > small { display: flex; flex-wrap: wrap; align-items: center; gap: 0 6px; font-size: var(--t2); color: var(--mut); overflow-wrap: anywhere; }
 .v6 .ib-br-n { display: grid; gap: 2px; }
 .v6 .ib-br-n b { font-weight: 800; font-size: var(--t3); }
 .v6 .ib-br-n small { font-size: var(--t2); color: var(--mut); }

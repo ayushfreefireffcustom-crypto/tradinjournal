@@ -67,7 +67,7 @@ button.tl-chip:disabled { cursor: default; opacity: .6; }
 .v6 .tl-mtf-tile:first-child { border-left: 0; border-radius: 12px 0 0 12px; }
 .v6 .tl-mtf-tile:hover { background: var(--s2); }
 .v6 .tl-mtf-tile.on { background: var(--s2); }
-.v6 .tl-mtf-h { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.v6 .tl-mtf-h { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; min-width: 0; } /* the reason drops to its own line rather than cutting off */
 .v6 .tl-mtf-d { display: inline-flex; align-items: center; gap: 3px; font-size: var(--t2); font-weight: 800; color: var(--tx); white-space: nowrap; }
 .v6 .tl-mtf-n { margin-left: auto; font-size: var(--t1); color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .v6 .tl-mini { display: block; width: 100%; height: 34px; border-radius: 4px; }
@@ -334,7 +334,9 @@ button.tl-float-chip:hover { border-color: var(--dim); }
 @media (max-width: 760px) {
   .v6 .tl-page { --ch: max(360px, min(70vh, 520px)); gap: 10px; }
   .v6 .tl-search { width: auto; flex: 1 1 auto; }
-  .v6 .tl-wh { padding: 10px 12px; }
+  .v6 .tl-wh { padding: 10px 12px; flex-wrap: wrap; }
+  /* Subtitles wrap in the space left; the right-hand controls keep their size (or take the next line). */
+  .v6 .tl-wh > .tl-st { flex: 1 1 0; min-width: 96px; white-space: normal; }
   .v6 .tl-wb { padding: 12px; }
   .v6 .tl-chart-hd .tl-st { display: none; }
   .v6 .tl-ctb { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding: 6px 8px; }

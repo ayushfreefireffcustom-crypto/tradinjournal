@@ -86,6 +86,14 @@ export default function TradeChart({ trade, bars, tfMs, stop, exitReason, excurs
     ? `Was ${money(excursion.bestMoney)} up first`
     : null;
 
+  // "best" sits under/over its point; when that lands on the "after exit" caption at the plot's foot, the caption goes.
+  const bestText = excursion ? `best ${excursion.bestMoney != null ? money(excursion.bestMoney) : `+${price(excursion.bestMove)}`}` : '';
+  const showBest = !!(g && excursion && bestI >= 0 && excursion.bestMove > 0 && !narrow && !callout);
+  const afterCapX = g ? g.X(g.xi) + g.bw / 2 + 6 : 0;
+  const capClash = !!(g && excursion && showBest
+    && Math.abs(g.Y(excursion.best) + (trade.side === 'LONG' ? -9 : 18) - (H - g.PB - 6)) < 14
+    && g.X(bestI) + bestText.length * 3.4 > afterCapX && g.X(bestI) - bestText.length * 3.4 < afterCapX + 60);
+
   return (
     <div ref={ref} className="trv-chart" style={{ height: H }} data-testid="trade-chart"
       onPointerMove={e => {
@@ -100,7 +108,7 @@ export default function TradeChart({ trade, bars, tfMs, stop, exitReason, excurs
         <svg width={w} height={H} role="img" aria-label={`${trade.symbol} ${trade.side === 'LONG' ? 'long' : 'short'}: entry ${price(trade.entry)}${closed ? `, exit ${price(trade.exit!)}` : ', still open'}`}>
           {g.tk.map(v => <g key={v}><line x1={g.PL} x2={g.plotR} y1={g.Y(v)} y2={g.Y(v)} className="trv-grid" /><text x={g.plotR + 6} y={g.Y(v) + 4} className="trv-ax">{g.tfmt(v)}</text></g>)}
           <rect x={g.X(g.ei) - g.bw / 2} y={g.PT} width={Math.max(1, g.X(g.xi) - g.X(g.ei) + g.bw)} height={H - g.PT - g.PB} className="trv-band" data-testid="trade-band" />
-          {closed && g.xi < bars.length - 2 && !narrow && <text x={g.X(g.xi) + g.bw / 2 + 6} y={H - g.PB - 6} className="trv-ax">after exit</text>}
+          {closed && g.xi < bars.length - 2 && !narrow && !capClash && <text x={g.X(g.xi) + g.bw / 2 + 6} y={H - g.PB - 6} className="trv-ax">after exit</text>}
           {bars.map((b, i) => {
             const up = b.close >= b.open;
             const top = g.Y(Math.max(b.open, b.close));
@@ -123,7 +131,7 @@ export default function TradeChart({ trade, bars, tfMs, stop, exitReason, excurs
           {excursion && bestI >= 0 && excursion.bestMove > 0 && (
             <g data-testid="best-point">
               <circle cx={g.X(bestI)} cy={g.Y(excursion.best)} r={3.5} className="trv-best" />
-              {!narrow && !callout && <text x={g.X(bestI)} y={g.Y(excursion.best) + (trade.side === 'LONG' ? -9 : 18)} textAnchor="middle" className="trv-lbl g">best {excursion.bestMoney != null ? money(excursion.bestMoney) : `+${price(excursion.bestMove)}`}</text>}
+              {showBest && <text x={g.X(bestI)} y={g.Y(excursion.best) + (trade.side === 'LONG' ? -9 : 18)} textAnchor="middle" className="trv-lbl g">{bestText}</text>}
             </g>
           )}
           <circle cx={g.X(g.ei)} cy={g.Y(trade.entry)} r={5} className="trv-in" data-testid="entry-marker" />

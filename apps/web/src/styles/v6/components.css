@@ -99,7 +99,7 @@
 .v6 .x-strip { display: grid; grid-template-columns: repeat(var(--n, 4), minmax(0, 1fr)); background: var(--s2); border-radius: var(--r-inset); }
 .v6 .x-strip > div { padding: 14px 16px; position: relative; min-width: 0; }
 .v6 .x-strip > div + div::before { content: ""; position: absolute; left: 0; top: 14px; bottom: 14px; width: 1px; background: var(--line); }
-.v6 .x-strip span { font-size: var(--t2); color: var(--mut); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.v6 .x-strip span { font-size: var(--t2); color: var(--mut); display: block; overflow-wrap: anywhere; } /* labels wrap in narrow cells */
 .v6 .x-strip b { font: 500 var(--t3)/1.3 var(--sans); letter-spacing: -.01em; font-feature-settings: "tnum"; white-space: nowrap; }
 .v6 .x-card > .x-strip--card, .v6 .x-strip--card { background: var(--s1); box-shadow: var(--shadow); border-radius: var(--r-card); }
 .v6 .x-strip--card > div { padding: 18px 20px; }
@@ -277,3 +277,20 @@ html[data-hide-money] .v6 :is(.mny, [data-testid=net-pnl], .dk-wl span, .dk-gl-l
   .v6 .x-dr-custom { padding-left: 0; border-left: 0; padding-top: 10px; border-top: 1px solid var(--line); }
 }
 
+
+/* Horizontal scrollers (tabs, chip rows, wide tables on phones): fade the edge that
+   still has content past it, so a cut-off item reads as "scroll for more". Scroll-driven,
+   so nothing fades when everything fits and the far edge clears once you reach the end. */
+@property --xf-l { syntax: '<length>'; inherits: false; initial-value: 0px; }
+@property --xf-r { syntax: '<length>'; inherits: false; initial-value: 0px; }
+@keyframes x-edge-fade { 0% { --xf-l: 0px; --xf-r: 28px; } 8% { --xf-l: 28px; } 92% { --xf-r: 28px; } 100% { --xf-l: 28px; --xf-r: 0px; } }
+@supports (animation-timeline: scroll()) {
+  .v6 :is(.x-tabs, .x-tblwrap, .ac-st-nav, .mc-views, .ax-admtabs, .tl-views, .d2-lay, .ac-st-grp, .x-fade-x) {
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 var(--xf-l), #000 calc(100% - var(--xf-r)), transparent);
+    mask-image: linear-gradient(90deg, transparent, #000 var(--xf-l), #000 calc(100% - var(--xf-r)), transparent);
+    animation: x-edge-fade linear both;
+    animation-timeline: scroll(self inline);
+  }
+  /* The mask would clip their outer hairline in light mode; draw it inside instead. */
+  html[data-theme=light] .v6 :is(.mc-views, .ax-admtabs) { box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .045); }
+}

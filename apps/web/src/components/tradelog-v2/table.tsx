@@ -3,7 +3,7 @@
 // The trade-log rows: a dense table grouped by day (desktop/tablet) or
 // day-grouped cards (phones). Each row: time, symbol, price-path mini chart,
 // lots, R (when the view has it), P&L, hold, rule/journal chips, AI grade.
-import { memo } from 'react';
+import { memo, useLayoutEffect, useRef, useState } from 'react';
 import { ArrowDown, ArrowUp } from '@phosphor-icons/react';
 import { tagTone } from '@/lib/desk';
 import { money } from '@/lib/dashboard-v2-format';
@@ -32,12 +32,43 @@ function Chips({ r, max = 2 }: { r: TlRow; max?: number }) {
     ...(r.moved ? [{ k: 'moved', label: 'Moved SL', title: r.moved === 'widened' ? 'Stop widened after entry' : 'Stop tightened after entry', cls: r.moved === 'widened' ? 'rule' : '' }] : []),
     ...[...new Set([...(r.emotion ? [r.emotion] : []), ...r.tags])].map(t => ({ k: `t-${t}`, label: t, title: t, cls: tagTone(t) === 'r' ? 'neg' : tagTone(t) === 'g' ? 'pos' : '' })),
   ];
+  const n = Math.min(max, items.length);
+  const box = useRef<HTMLSpanElement>(null);
+  // How many whole chips fit the cell; the rest fold into "+N" instead of every
+  // chip shrinking to "Mov…". Chips past `fit` stay mounted (hidden) so they can be measured.
+  const [fit, setFit] = useState(n);
+  const [moreFits, setMoreFits] = useState(true);
+  const sig = items.map(i => i.label).join('\u0000');
+  useLayoutEffect(() => {
+    const el = box.current;
+    if (!el) return;
+    const measure = () => {
+      const avail = el.clientWidth;
+      if (!avail) return;
+      // Natural widths (scrollWidth: in-flow chips may already be shrunk), capped at the chip's max-width.
+      const ws = [...el.querySelectorAll<HTMLElement>('.tl-chip:not(.more)')].map(c => Math.min(c.scrollWidth, parseFloat(getComputedStyle(c).maxWidth) || Infinity));
+      const moreW = el.querySelector<HTMLElement>('.tl-chip.more')?.offsetWidth ?? 26;
+      let k = ws.length;
+      for (; k > 1; k--) {
+        const need = ws.slice(0, k).reduce((a, b) => a + b, 0) + 4 * (k - 1) + (items.length > k ? 4 + moreW : 0);
+        if (need + k <= avail) break; // +1px a chip: scrollWidth rounds
+      }
+      // Very narrow cell: one whole chip beats a cut chip plus "+N" (the panel lists them all).
+      const mf = k > 1 || items.length <= 1 || (ws[0] ?? 0) + 4 + moreW + 2 <= avail;
+      setFit(f => (f === k ? f : k));
+      setMoreFits(m => (m === mf ? m : mf));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [sig, n, items.length]);
   if (!items.length) return r.noted ? <span className="tl-noted">Noted</span> : null;
-  const shown = items.slice(0, max);
+  const shown = Math.min(fit, n);
   return (
-    <span className="tl-chips">
-      {shown.map(i => <span key={i.k} className={`tl-chip ${i.cls}`} title={i.title}>{i.label}</span>)}
-      {items.length > max && <span className="tl-chip more" title={items.slice(max).map(i => i.title).join(', ')}>+{items.length - max}</span>}
+    <span className="tl-chips" ref={box}>
+      {items.slice(0, n).map((i, k) => <span key={i.k} className={`tl-chip ${i.cls}${k >= shown ? ' tl-chip-x' : ''}`} title={i.title} aria-hidden={k >= shown || undefined}>{i.label}</span>)}
+      {items.length > shown && moreFits && <span className="tl-chip more" title={items.slice(shown).map(i => i.title).join(', ')}>+{items.length - shown}</span>}
     </span>
   );
 }

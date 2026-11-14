@@ -145,13 +145,14 @@ export function SimilarBars({ s, me, href }: { s: SimilarDTO; me: { net: number;
             const y0 = Y(0), y1 = Y(t.net);
             const top = Math.min(y0, y1), h = Math.max(1, Math.abs(y1 - y0));
             const bar = <rect x={cx - bw / 2} y={top} width={bw} height={h} rx={2} className={`${t.net < 0 ? 'dn' : 'up'}${t.me ? ' me' : ''}`} />;
-            const showX = gap >= 40 || i % 2 === items.length % 2 || t.me;
+            // Date labels are ~40px wide: every step-th one, counted back from "This" so its neighbour never collides.
+            const showX = (items.length - 1 - i) % Math.max(1, Math.ceil(44 / gap)) === 0;
             return (
               <g key={t.me ? 'me' : t.positionId}>
                 {t.me ? bar : <Link href={href(t.positionId)} aria-label={`${t.symbol} ${fd(t.openTime)}: ${money(t.net)}`}>{bar}</Link>}
                 {(showVals || t.me) && <text x={cx} y={t.net < 0 ? y1 + 13 : y1 - 5} textAnchor="middle" className={`trv-bv ${t.me ? 'me' : t.net < 0 ? 'dn' : 'up'}`}>{axisMoney(t.net)}</text>}
                 {showX && <text x={cx} y={H - 20} textAnchor="middle" className={`trv-ax${t.me ? ' me' : ''}`}>{t.me ? 'This' : fd(t.openTime)}</text>}
-                {showX && anySym && !t.me && gap >= 40 && <text x={cx} y={H - 6} textAnchor="middle" className="trv-ax">{t.symbol.slice(0, 7)}</text>}
+                {showX && anySym && !t.me && gap >= 52 && <text x={cx} y={H - 6} textAnchor="middle" className="trv-ax">{t.symbol.slice(0, 7)}</text>}
               </g>
             );
           })}

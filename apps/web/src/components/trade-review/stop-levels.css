@@ -21,7 +21,7 @@
 .v6 .sl-hist li { display: flex; align-items: center; gap: 10px; min-width: 0; font-size: 13px; color: var(--tx); padding: 4px 0; border-top: 1px solid var(--line); }
 .v6 .sl-hist li:first-child { border-top: 0; }
 .v6 .sl-hist .m { font-weight: 700; white-space: nowrap; }
-.v6 .sl-hist small { font-size: 11px; color: var(--mut); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.v6 .sl-hist small { font-size: 11px; color: var(--mut); min-width: 0; overflow-wrap: anywhere; flex: 1; }
 .v6 .sl-del { flex: none; display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 6px; border: 0; background: transparent; color: var(--mut); cursor: pointer; }
 .v6 .sl-del:hover { color: var(--d2-rt); background: var(--d2-chip, var(--s3)); }
 .v6 .sl-del:disabled { opacity: .4; cursor: default; }
