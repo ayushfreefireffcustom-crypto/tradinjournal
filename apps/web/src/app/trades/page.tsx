@@ -28,6 +28,7 @@ import {
   type BuiltinView, type SavedView, type TlDay, type TlFilters, type TlParams, type TlRow, type TlRuleKey, type TlSort, type TradelogDTO,
 } from '@/lib/tradelog-v2-api';
 import { FilterChips, SearchBox, ViewTabs, type ViewTab } from '@/components/tradelog-v2/toolbar';
+import { useTradingPrefs } from '@/lib/trading-prefs';
 import { DailyStrip, SummaryRibbon } from '@/components/tradelog-v2/summary';
 import { LogCards, LogTable } from '@/components/tradelog-v2/table';
 import { TradePanel } from '@/components/tradelog-v2/panel';
@@ -65,6 +66,9 @@ function TradeLogPage() {
   const tz = useMemo(() => viewerTz(), []);
   const wide = useMedia('(min-width: 1360px)');
   const phone = useMedia('(max-width: 639px)');
+  // The trader's own rules add a "Your rules" option to the Rule broken filter.
+  const tp = useTradingPrefs().prefs;
+  const ownRules = !!tp && Object.values(tp.rules).some(v => v != null);
 
   const [span, setSpan] = useState<Span>('ALL');
   const [filters, setFilters] = useState<TlFilters>(() => (symbolParam ? { symbol: symbolParam } : {}));
@@ -351,7 +355,7 @@ function TradeLogPage() {
               </section>
             ) : (
               <>
-                <FilterChips data={data} f={filters} set={setF} date={dateCtl} onClear={filtersOn || span !== 'ALL' ? () => { clearAll(); setSpan('ALL'); } : null} />
+                <FilterChips data={data} f={filters} set={setF} date={dateCtl} ownRules={ownRules} onClear={filtersOn || span !== 'ALL' ? () => { clearAll(); setSpan('ALL'); } : null} />
 
                 {data.counts.matching === 0 ? (
                   <section className="d2-card d2-connect" data-testid="no-match">

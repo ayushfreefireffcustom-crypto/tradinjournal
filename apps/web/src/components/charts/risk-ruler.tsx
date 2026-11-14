@@ -2,8 +2,9 @@
 
 // Risk ruler (E): entry / stop / target (typed here or dragged on the chart),
 // risk as % of your real balance or a fixed amount, and the size that risks
-// exactly that, rounded down to the lot step. Day risk vs a 2% cap, the next
-// red event, "Save as plan" (journal), "Copy levels" (clipboard), "Alert at".
+// exactly that, rounded down to the lot step. Day risk vs your cap (Settings, default 2%), the next
+// red event, "Save as plan" (journal, plus the stop / target of the open trade
+// on this symbol and side), "Copy levels" (clipboard), "Alert at".
 import { useEffect, useState } from 'react';
 import { Bell, Check, Clock, Copy } from '@phosphor-icons/react';
 import { fmtGap, money, px, type RiskInput, type Sizing } from './trade-math';

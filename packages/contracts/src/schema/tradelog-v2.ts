@@ -13,10 +13,12 @@
 //   • Days are the viewer's calendar days (`tz`), by close time.
 import { z } from 'zod';
 import { DASH_RANGES, DASH_SESSIONS, type AiLine, type DashSession, type ProcessGrade } from './dashboard-v2.js';
+import type { PositionLevelsDTO, StopMove } from './trade-data.js';
 
 export const TL_RESULTS = ['win', 'loss', 'tp', 'sl', 'stopout', 'manual', 'bigloss', 'open'] as const;
 export type TlResult = (typeof TL_RESULTS)[number];
-export const TL_RULES = ['after-losses', 'revenge', 'oversized', 'losing-hour', 'r-tail'] as const;
+/** 'user-rule' = one of the trader's own rules (Settings › Trading rules). */
+export const TL_RULES = ['after-losses', 'revenge', 'oversized', 'losing-hour', 'r-tail', 'user-rule'] as const;
 export type TlRuleKey = (typeof TL_RULES)[number];
 export const TL_RULE_FILTERS = ['any', 'none', ...TL_RULES] as const;
 export type TlRuleFilter = (typeof TL_RULE_FILTERS)[number];
@@ -112,6 +114,8 @@ export interface TlRow {
   emotion: string | null;
   /** Has a journal note with text. */
   noted: boolean;
+  /** The stop was moved after entry (only with recorded stop levels). */
+  moved?: StopMove;
 }
 
 export interface TlDay {
@@ -216,6 +220,8 @@ export interface TradelogTradeDTO {
   note: { id: string; body: string; emotion: string | null; tags: string[] } | null;
   /** Account balance before this trade closed (for % figures); null when unknown. */
   balanceBefore: number | null;
+  /** Stop / target levels and the editor's state (trade-data). */
+  levels?: PositionLevelsDTO;
 }
 
 /** Compact price path for a row's mini chart: closes between entry and exit. */

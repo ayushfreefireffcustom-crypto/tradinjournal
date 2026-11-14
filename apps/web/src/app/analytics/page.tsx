@@ -128,7 +128,7 @@ export default function AnalyticsPage() {
   }
 
   // ── Ask your journal + Explain (same flow as the dashboard) ──
-  const askCoach = useCallback(async (q: string, prompt: string) => {
+  const askCoach = useCallback(async (q: string, prompt: string, kind: 'explain' | 'ask') => {
     if (!selected) return;
     askReq.current?.abort();
     const ctl = new AbortController();
@@ -137,7 +137,7 @@ export default function AnalyticsPage() {
     let text = '';
     setAsk({ status: 'text', q, text: '', used, done: false });
     try {
-      await api.ai.chat({ accountId: selected.id, messages: [{ role: 'user', content: prompt.slice(0, 3900) }] }, t => {
+      await api.ai.chat({ accountId: selected.id, kind, messages: [{ role: 'user', content: prompt.slice(0, 3900) }] }, t => {
         text += t;
         if (!ctl.signal.aborted) setAsk({ status: 'text', q, text: firstParagraph(text), used, done: false });
       }, { signal: ctl.signal, onError: m => { if (!text) setAsk({ status: 'error', q, error: m }); } });
@@ -156,7 +156,7 @@ export default function AnalyticsPage() {
     try {
       const a = await dashV2.ask({ ...params, q });
       if (a.kind === 'chart') { setAsk({ status: 'chart', q, a }); return; }
-      await askCoach(q, `${q}\n\nAnswer in one short paragraph.`);
+      await askCoach(q, `${q}\n\nAnswer in one short paragraph.`, 'ask');
     } catch (err) {
       setAsk({ status: 'error', q, error: err instanceof Error ? err.message : 'Could not answer that.' });
     }
@@ -167,7 +167,7 @@ export default function AnalyticsPage() {
   const rangeShort = isCustom(span) ? 'Range' : RANGES.find(o => o.key === span)!.short;
   const explain = useCallback((what: string, summary: string) => {
     const scope = `${rangeLabel.toLowerCase()}${filters.symbol ? `, ${filters.symbol}` : ''}${filters.session ? `, ${SESSION_SHORT[filters.session]} session` : ''}${filters.side ? `, ${filters.side.toLowerCase()}s` : ''}${filters.tag ? `, tag ${filters.tag}` : ''}`;
-    void askCoach(`Explain: ${what}`, `Explain my ${what} chart (${scope}, ${data?.counts.trades ?? 0} trades, times in UTC): ${summary}. Answer in one short paragraph.`);
+    void askCoach(`Explain: ${what}`, `Explain my ${what} chart (${scope}, ${data?.counts.trades ?? 0} trades, times in UTC): ${summary}. Answer in one short paragraph.`, 'explain');
     if (!mid) document.querySelector('[data-testid=ask-page]')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, [askCoach, data?.counts.trades, filters, mid, rangeLabel]);
 

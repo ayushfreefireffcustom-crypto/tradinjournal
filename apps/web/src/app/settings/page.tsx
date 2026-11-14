@@ -1,12 +1,13 @@
 'use client';
 
-// Settings: profile, location and notifications (event/news alerts plus the
+// Settings: profile, trading rules, location and notifications (event/news alerts plus the
 // opt-in weekly review email — nothing is sent until the trader turns it on).
 import AppShell from '@/components/app-shell';
 import { LocationSection, NotificationsSection, ProfileSection, SettingsAside } from '@/components/v6/account/settings';
 import { InstallCard, PlanCard, ProfileEditCard, TourCard } from '@/components/v6/account/account-cards';
 import { useProfile } from '@/components/v6/account/security';
 import SettingsNav from '@/components/v6/account/settings-nav';
+import TradingRulesSection from '@/components/settings/trading-rules';
 import { useAccounts } from '@/lib/use-accounts';
 import type { BrokerAccount } from '@/lib/api';
 import '@/styles/v6/account.css';
@@ -23,6 +24,7 @@ export default function SettingsPage() {
           <ProfileSection accountCount={accounts.length} />
           <ProfileEditCard profile={profile} onSaved={setProfile} />
           <PlanCard />
+          <TradingRulesSection accountId={selected?.id ?? null} />
           <TourCard />
           <InstallCard />
           <LocationSection />

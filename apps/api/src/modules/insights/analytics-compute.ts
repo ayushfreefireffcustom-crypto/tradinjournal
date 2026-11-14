@@ -26,6 +26,7 @@ import {
   symbols as dashSymbols, tradeContext, useR, weekdayOf, dayKey, type Baseline, type ComputeOptions, type InsightTrade,
   type TradeContext,
 } from './compute.js';
+import { isUserRuleReason } from './rules.js';
 
 export interface AnalyticsTrade extends InsightTrade {
   /** Emotion logged in the journal for this trade, if any. */
@@ -87,14 +88,14 @@ const REASON_KEY: Record<string, AnaRuleKey> = {
   'After 2 losses': 'after-losses', 'Within 15 min of a loss': 'revenge', Oversized: 'oversized', 'Losing hour': 'hour', 'Past −1.25R': 'tail',
 };
 export const RULE_LABEL: Record<AnaRuleKey, string> = {
-  'after-losses': 'After 2 losses', revenge: '≤15m after loss', oversized: 'Over 1.5× size', hour: 'Losing hour', tail: 'Past −1.25R',
+  'user-rule': 'Your rules', 'after-losses': 'After 2 losses', revenge: '≤15m after loss', oversized: 'Over 1.5× size', hour: 'Losing hour', tail: 'Past −1.25R',
 };
-const RULE_ORDER: AnaRuleKey[] = ['after-losses', 'revenge', 'oversized', 'hour', 'tail'];
+const RULE_ORDER: AnaRuleKey[] = ['user-rule', 'after-losses', 'revenge', 'oversized', 'hour', 'tail'];
 
 /** First rule each trade broke (null = kept every rule). Needs MIN_TRADES trades, else null. */
 export function firstRuleBroken(T: InsightTrade[], ctx: Map<string, TradeContext>, b: Baseline = baseline(T)): Map<string, AnaRuleKey | null> | null {
   if (T.length < MIN_TRADES) return null;
-  return new Map(T.map(t => { const r = grade(t, ctx.get(t.id), b).reasons[0]; return [t.id, r ? REASON_KEY[r] ?? null : null]; }));
+  return new Map(T.map(t => { const r = grade(t, ctx.get(t.id), b).reasons[0]; return [t.id, r ? (isUserRuleReason(r) ? 'user-rule' : REASON_KEY[r] ?? null) : null]; }));
 }
 
 export function ruleWaterfall(T: InsightTrade[], first: Map<string, AnaRuleKey | null>): NonNullable<AnaBehaviour['waterfall']> {
@@ -397,6 +398,7 @@ export function fixLabel(key: string, label: string): string {
   if (key === 'after-losses') return 'Day ends after 2 losses';
   if (key === 'revenge') return 'Wait 15 min after a loss';
   if (key === 'oversized') return `Max ${OVERSIZE}× usual size`;
+  if (key === 'moved-stop') return 'Never widen the stop';
   if (key.startsWith('sym:')) return `No ${label}`;
   if (key.startsWith('ses:')) return `Skip the ${label}`;
   if (key.startsWith('day:')) return `No trades on ${label}`;
@@ -456,7 +458,7 @@ const nav = (view: AnaNavItem['view'], value: number | null, fmt: AnaNavItem['fm
 
 export function computeAnalytics(allTrades: AnalyticsTrade[], o: ComputeOptions): AnalyticsV2DTO {
   const all = [...allTrades].sort((a, b) => a.close - b.close);
-  const ctx = tradeContext(all);
+  const ctx = tradeContext(all, o.rules ? { rules: o.rules, startingBalance: o.startingBalance } : null);
   const usual = usualSize(all);
   const win = inWindow(all, o.window);
   const T = applyFilters(win, o.filters) as AnalyticsTrade[];

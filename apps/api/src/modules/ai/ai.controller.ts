@@ -92,6 +92,7 @@ export async function handleChat(req: Request, res: Response, next: NextFunction
         sources,
         lane,
         regenerate: input.regenerate,
+        kind: input.kind,
       });
     } catch (err) {
       logger.error(`Failed to persist AI turn: ${(err as Error).message}`);

@@ -304,3 +304,50 @@ html[data-theme=light] .v6 .d2-hc.strong:not(.solid) small { color: var(--mut); 
 @container (max-width: 400px) {
   .v6 .d2-unit { display: none; }
 }
+
+/* ── layouts: tabs, Edit layout, + New (layout-editor.tsx) ── */
+.v6 .d2-s5 { grid-column: span 5; } .v6 .d2-s7 { grid-column: span 7; } .v6 .d2-s9 { grid-column: span 9; }
+.v6 .d2-s10 { grid-column: span 10; } .v6 .d2-s11 { grid-column: span 11; }
+.v6 .d2-lay-w { display: flex; align-items: center; gap: 8px; min-width: 0; max-width: 100%; }
+.v6 .d2-lay { min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.v6 .d2-lay::-webkit-scrollbar { display: none; }
+.v6 .d2-lay button { white-space: nowrap; flex: none; }
+.v6 .d2-lay button:disabled { opacity: .45; cursor: default; }
+.v6 .d2-lay-b { flex: none; }
+.v6 .d2-edit { padding: 0 0 4px; }
+.v6 .d2-edit-h { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; padding: 12px 14px 8px; }
+.v6 .d2-edit-h h3 { margin: 0; font-size: 14px; font-weight: 800; }
+.v6 .d2-edit-sub { font-size: 13px; color: var(--mut); }
+.v6 .d2-edit-name { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 0 14px 10px; font-size: 13px; color: var(--mut); }
+.v6 .d2-edit-name .x-input { width: min(240px, 100%); height: 34px; font-size: 14px; padding: 0 10px; }
+.v6 .d2-edit-name small { font-size: 13px; }
+.v6 .d2-edit-list { list-style: none; margin: 0; padding: 0 8px; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr)); gap: 4px 12px; }
+.v6 .d2-edit-row { display: flex; align-items: center; gap: 6px; min-height: 40px; padding: 2px 6px; border-radius: 8px; background: var(--d2-card2); min-width: 0; position: relative; }
+.v6 .d2-edit-row[draggable=true] { cursor: grab; }
+.v6 .d2-edit-row.dragging { opacity: .5; }
+.v6 .d2-edit-row.over.above { box-shadow: inset 0 2px 0 var(--tx); }
+.v6 .d2-edit-row.over.below { box-shadow: inset 0 -2px 0 var(--tx); }
+.v6 .d2-edit-row.off .d2-edit-chk span { color: var(--dim); }
+.v6 .d2-edit-grip { color: var(--dim); display: inline-flex; flex: none; }
+.v6 .d2-edit-chk { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; font-size: 14px; cursor: pointer; }
+.v6 .d2-edit-chk input { width: 16px; height: 16px; accent-color: var(--d2-g); flex: none; margin: 0; }
+.v6 .d2-edit-chk span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.v6 .d2-edit-mv { display: inline-flex; gap: 2px; flex: none; }
+.v6 .d2-edit-mv button { width: 30px; height: 30px; border: 0; border-radius: 7px; background: none; color: var(--mut); display: grid; place-items: center; cursor: pointer; }
+.v6 .d2-edit-mv button:hover:not(:disabled) { background: var(--d2-chip); color: var(--tx); }
+.v6 .d2-edit-mv button:disabled { opacity: .3; cursor: default; }
+.v6 .d2-edit-mv button:focus-visible, .v6 .d2-edit-chk input:focus-visible { outline: 2px solid var(--g); outline-offset: 1px; }
+.v6 .d2-edit-f { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 10px 14px 8px; }
+.v6 .d2-edit-note { flex: 1; min-width: 0; font-size: 13px; color: var(--mut); }
+.v6 .d2-edit-del { color: var(--d2-rt); }
+@container (max-width: 1099.98px) {
+  .v6 .d2-s5, .v6 .d2-s7, .v6 .d2-s9, .v6 .d2-s10, .v6 .d2-s11 { grid-column: span 12; }
+}
+@container (max-width: 699.98px) {
+  .v6 .d2-lay-w { width: 100%; }
+  .v6 .d2-lay { flex: 1; }
+  .v6 .d2-lay button { flex: 1 0 auto; }
+  .v6 .d2-lay-b span { display: none; }
+  .v6 .d2-lay-b { width: 32px; padding: 0; justify-content: center; }
+  .v6 .d2-edit-f .d2-edit-note { flex-basis: 100%; order: -1; }
+}

@@ -1,8 +1,7 @@
 // Client for Analytics v2 (GET /api/insights/analytics) plus the pure helpers
 // the page uses to lay out its charts. Types mirror
 // packages/contracts/src/schema/analytics-v2.ts — keep them in step.
-// Mock mode (NEXT_PUBLIC_USE_MOCKS) has no /data route for this: previews and
-// Playwright answer with route mocks, so no sample data ships here.
+// Mock mode (NEXT_PUBLIC_USE_MOCKS) is served by app/data/insights/** (lib/mock-insights.ts).
 import type { AiLine, DashBehaviour, DashDistribution, DashMaeMfe, DashParams, DashRolling, DashSession } from './dashboard-v2-api';
 import { kmoney, money, rfmt } from './dashboard-v2-format';
 
@@ -95,7 +94,7 @@ export interface AnaRisk {
   rolling20: DashRolling | null; rolling50: DashRolling | null; exit: AnaExit | null; avgWin: number; avgLoss: number;
   ai: { header: AiLine | null; distribution: AiLine | null; hold: AiLine | null; maeMfe: AiLine | null; rolling: AiLine | null; exit: AiLine | null };
 }
-export type AnaRuleKey = 'after-losses' | 'revenge' | 'oversized' | 'hour' | 'tail';
+export type AnaRuleKey = 'user-rule' | 'after-losses' | 'revenge' | 'oversized' | 'hour' | 'tail';
 export interface AnaBehaviour {
   waterfall: { kept: AnaAgg; rules: Array<AnaAgg & { key: AnaRuleKey; label: string }>; total: AnaAgg } | null;
   score: DashBehaviour | null;

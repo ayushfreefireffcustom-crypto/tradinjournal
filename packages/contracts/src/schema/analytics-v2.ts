@@ -141,7 +141,8 @@ export interface AnaRisk {
   ai: { header: AiLine | null; distribution: AiLine | null; hold: AiLine | null; maeMfe: AiLine | null; rolling: AiLine | null; exit: AiLine | null };
 }
 
-export type AnaRuleKey = 'after-losses' | 'revenge' | 'oversized' | 'hour' | 'tail';
+/** 'user-rule' = the trader's own rules (Settings › Trading rules), bucketed first. */
+export type AnaRuleKey = 'user-rule' | 'after-losses' | 'revenge' | 'oversized' | 'hour' | 'tail';
 export interface AnaRuleBucket extends AnaAgg { key: AnaRuleKey; label: string }
 export interface AnaBehaviour {
   /** Waterfall: rules kept, then each trade once under the first rule it broke, then net. */

@@ -78,6 +78,8 @@ export interface EquityPointDTO {
   pnl: number;
   /** In the top leak (red dot). */
   leak?: 1;
+  /** The stop was widened after entry (only with recorded stop levels). */
+  moved?: 1;
 }
 
 export interface DashEquity {

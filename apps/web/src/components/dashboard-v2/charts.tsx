@@ -84,6 +84,8 @@ export function EquityChart({ eq, mode, unit, ai, leakNet }: { eq: DashEquity; m
         <path d={dd} fill="var(--d2-rfill)" />
         <path d={path(line)} fill="none" stroke="var(--d2-g)" strokeWidth={1.75} strokeLinejoin="round" />
         {ai && pts.map((p, i) => (p.leak ? <circle key={i} cx={x(i + 1)} cy={y(series[i + 1]!)} r={3} fill="var(--d2-r)" stroke="var(--d2-card)" strokeWidth={1} data-ai /> : null))}
+        {/* Trades whose stop was widened: a red ring (only with recorded stop levels). */}
+        {ai && pts.map((p, i) => (p.moved && !p.leak ? <circle key={`m${i}`} cx={x(i + 1)} cy={y(series[i + 1]!)} r={3.5} fill="var(--d2-card)" stroke="var(--d2-r)" strokeWidth={1.5} data-ai data-testid="moved-dot"><title>Stop widened</title></circle> : null))}
         <circle cx={x(end)} cy={y(series[end]!)} r={3.5} fill="var(--d2-g)" />
         <text x={x(end) - 8} y={Math.max(14, y(series[end]!) - 9)} fontSize={13} fontWeight={900} fill="var(--tx)" textAnchor="end">{endLabel}</text>
         {labels.map((l, i) => <text key={i} x={Math.max(0, l.x)} y={h - 5} fontSize={11} fill="var(--dim)" textAnchor={i ? 'middle' : 'start'}>{l.label}</text>)}

@@ -1,0 +1,26 @@
+/* Settings › Trading rules. Inter sizes 11/13/14 only; numbers 900. */
+.v6 .tr .tr-row { flex-wrap: wrap; }
+.v6 .tr .tr-row.off .ac-st-row-t b { color: var(--mut); }
+.v6 .tr .tr-ctl { gap: 10px; flex-wrap: nowrap; }
+.v6 .tr .tr-val, .v6 .tr .tr-hrs { display: inline-flex; align-items: center; gap: 6px; }
+.v6 .tr .tr-val small, .v6 .tr .tr-hrs small { font-size: 11px; color: var(--dim); white-space: nowrap; }
+.v6 .tr .tr-hrs > span { color: var(--dim); font-size: 13px; }
+.v6 .tr .tr-in { width: 64px; height: 34px; padding: 0 8px; font-size: 14px; font-variant-numeric: tabular-nums; text-align: right; }
+.v6 .tr .tr-time { width: 68px; text-align: center; }
+.v6 .tr .tr-in:disabled { opacity: .45; cursor: default; }
+.v6 .tr .tr-pv { font-size: 13px; color: var(--mut); }
+.v6 .tr .tr-stale { opacity: .55; transition: opacity .15s; }
+.v6 .tr .tr-sum { margin: 0 0 4px; }
+.v6 .tr .tr-n { font-weight: 900; font-variant-numeric: tabular-nums; }
+.v6 .tr .tr-n.dn { color: var(--r-tx); }
+.v6 .tr .tr-n.up { color: var(--g-tx); }
+.v6 .tr .tr-bad { flex-basis: 100%; font-size: 13px; color: var(--r-tx); margin-top: -4px; }
+.v6 .tr .tr-calm { margin: 14px 0 0; font-size: 13px; color: var(--mut); background: var(--s2); border-radius: 8px; padding: 10px 12px; line-height: 1.5; }
+@media (max-width: 520px) {
+  .v6 .tr .tr-row .ac-st-row-t { flex-basis: 100%; }
+  .v6 .tr .tr-ctl { width: 100%; justify-content: space-between; }
+}
+@media (max-width: 360px) {
+  .v6 .tr .tr-time { width: 62px; padding: 0 4px; }
+  .v6 .tr .tr-ctl { gap: 6px; }
+}

@@ -84,14 +84,16 @@ export function Chip({ label, value, all, options, onChange, disabled, testid }:
 
 const GRADE_OPTS = [{ v: 'A', label: 'A' }, { v: 'B', label: 'B' }, { v: 'C', label: 'C' }, { v: 'D', label: 'D' }, { v: 'F', label: 'F' }, { v: 'A,B', label: 'A–B' }, { v: 'D,F', label: 'D–F' }];
 
-export function FilterChips({ data, f, set, date, onClear }: {
+export function FilterChips({ data, f, set, date, onClear, ownRules = false }: {
   data: TradelogDTO; f: TlFilters; set: (patch: Partial<TlFilters>) => void;
+  /** The trader has rules of their own (adds a "Your rules" option). */
+  ownRules?: boolean;
   date: { value: string; label: string; options: Array<{ v: string; label: string }>; onChange: (v: string) => void };
   onClear: (() => void) | null;
 }) {
   const results: TlResult[] = ['win', 'loss', 'tp', 'sl', 'stopout', 'manual', ...(data.bigLoss ? ['bigloss' as const] : []), 'open'];
   const bigLabel = data.bigLoss?.unit === 'R' ? 'Losers past −1R' : data.bigLoss ? `Losers past −$${Math.round(Math.abs(data.bigLoss.threshold)).toLocaleString('en-US')}` : '';
-  const rules: TlRuleFilter[] = ['any', 'none', 'after-losses', 'revenge', 'oversized', 'losing-hour', ...(data.counts.withR ? ['r-tail' as const] : [])];
+  const rules: TlRuleFilter[] = ['any', 'none', ...(ownRules || f.rule === 'user-rule' ? ['user-rule' as const] : []), 'after-losses', 'revenge', 'oversized', 'losing-hour', ...(data.counts.withR ? ['r-tail' as const] : [])];
   return (
     <div className="tl-filters" data-testid="filters">
       <Funnel size={15} aria-hidden className="tl-fi" />

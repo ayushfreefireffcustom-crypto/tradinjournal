@@ -28,7 +28,9 @@ const tone = (v: number | null) => (v == null || v === 0 ? '' : v > 0 ? 'up' : '
 function Chips({ r, max = 2 }: { r: TlRow; max?: number }) {
   const items = [
     ...r.flags.map(f => ({ k: `f-${f.key}`, label: f.short, title: f.label, cls: 'rule' })),
-    ...[...(r.emotion ? [r.emotion] : []), ...r.tags].map(t => ({ k: `t-${t}`, label: t, title: t, cls: tagTone(t) === 'r' ? 'neg' : tagTone(t) === 'g' ? 'pos' : '' })),
+    // From recorded stop levels only: widened reads as a broken rule, tightened as neutral.
+    ...(r.moved ? [{ k: 'moved', label: 'Moved SL', title: r.moved === 'widened' ? 'Stop widened after entry' : 'Stop tightened after entry', cls: r.moved === 'widened' ? 'rule' : '' }] : []),
+    ...[...new Set([...(r.emotion ? [r.emotion] : []), ...r.tags])].map(t => ({ k: `t-${t}`, label: t, title: t, cls: tagTone(t) === 'r' ? 'neg' : tagTone(t) === 'g' ? 'pos' : '' })),
   ];
   if (!items.length) return r.noted ? <span className="tl-noted">Noted</span> : null;
   const shown = items.slice(0, max);

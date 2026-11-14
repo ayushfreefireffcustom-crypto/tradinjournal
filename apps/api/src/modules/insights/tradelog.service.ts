@@ -1,5 +1,5 @@
 // Trade log v2: loads an account's positions (rebuilt from stored MT5 deals),
-// any stored R-multiples, and the journal, then runs the pure functions in
+// the trade data (R, stop moves), and the journal, then runs the pure functions in
 // tradelog.ts. The graded rows are memoised per (account, dataVersion) in
 // process; the journal is joined on every request so a new tag or note shows
 // at once. Price paths are fetched through the market candles service and
@@ -17,30 +17,27 @@ import { getCandles } from '../market/market.service.js';
 import {
   buildBase, buildPath, exportRows, gradeAll, journalByTrade, pathInput, pathTf, queryLog, tradeDetail, type Graded, type TlBase, type TlTrade,
 } from './tradelog.js';
+import { rulesKey, type UserRules } from './rules.js';
+import { rulesFor } from '../prefs/prefs.service.js';
+import { loadTradeExtras, positionLevels } from '../trade-data/trade-data.service.js';
 
-const num = (v: unknown): number | null => (v == null ? null : Number.isFinite(Number(v)) ? Number(v) : null);
-const tradeKey = (symbol: string, ms: number) => `${symbol}|${Math.floor(ms / 1000)}`;
 const CLOSING = new Set(['OUT', 'OUT_BY', 'INOUT']);
 
-interface Core { trades: TlTrade[]; grades: Map<string, Graded> | null; startingBalance: number; at: number }
+interface Core { trades: TlTrade[]; grades: Map<string, Graded> | null; startingBalance: number; user: UserRules | null; at: number }
 const MAX_CORES = 100;
 const CORE_TTL_MS = 5 * 60_000;
 const cores = new Map<string, Core>();
 
-/** Stored R-multiples (Trade rows), keyed by symbol + open second. */
-async function loadR(accountId: string): Promise<Map<string, number | null>> {
-  const rows = await prisma.trade.findMany({ where: { brokerAccountId: accountId }, select: { symbol: true, openTime: true, rMultiple: true } });
-  return new Map(rows.map(r => [tradeKey(r.symbol, r.openTime.getTime()), num(r.rMultiple)]));
-}
-
 async function loadCore(userId: string, accountId: string): Promise<{ core: Core; accountId: string }> {
   // Ownership is checked inside loadAccountData; the memo key is only used after it.
-  const data = await loadAccountData(userId, accountId);
-  const key = `${data.account.id}:${data.account.dataVersion}`;
+  const [data, rules] = await Promise.all([loadAccountData(userId, accountId), rulesFor(userId)]);
+  const key = `${data.account.id}:${data.account.dataVersion}:${rulesKey(rules)}`;
   const hit = cores.get(key);
   if (hit && Date.now() - hit.at < CORE_TTL_MS) return { core: hit, accountId: data.account.id };
-  const rs = await loadR(data.account.id);
-  const trades: TlTrade[] = data.trades().map(t => {
+  const positions = data.trades();
+  // R from the stop at entry (or a stored R) and stop moves (trade-data).
+  const { extras } = await loadTradeExtras(data.account, positions);
+  const trades: TlTrade[] = positions.map(t => {
     const open = new Date(t.openTime).getTime();
     const closed = t.status === 'CLOSED' && !!t.closeTime;
     const last = closed ? [...(t.deals ?? [])].filter(d => CLOSING.has(d.entry)).sort((a, b) => (a.dealTime < b.dealTime ? -1 : a.dealTime > b.dealTime ? 1 : 0)).at(-1) : undefined;
@@ -49,10 +46,13 @@ async function loadCore(userId: string, accountId: string): Promise<{ core: Core
       open, close: closed ? new Date(t.closeTime!).getTime() : null,
       volume: t.volume, entry: t.entryPrice, exit: closed ? t.exitPrice : null,
       net: t.netPnl, gross: t.grossPnl, commission: t.commission, swap: t.swap,
-      r: rs.get(tradeKey(t.symbol, open)) ?? null, holdSecs: t.durationSecs, closeComment: last?.comment ?? null,
+      r: extras.get(t.positionId)?.r ?? null, holdSecs: t.durationSecs, closeComment: last?.comment ?? null,
+      stopMove: extras.get(t.positionId)?.move ?? null,
     };
   });
-  const core: Core = { trades, grades: gradeAll(trades.filter(t => t.status === 'CLOSED')), startingBalance: data.stats().startingBalance, at: Date.now() };
+  const startingBalance = data.stats().startingBalance;
+  const user = rules ? { rules, startingBalance } : null;
+  const core: Core = { trades, grades: gradeAll(trades.filter(t => t.status === 'CLOSED'), user), startingBalance, user, at: Date.now() };
   cores.delete(key);
   cores.set(key, core);
   if (cores.size > MAX_CORES) cores.delete(cores.keys().next().value!);
@@ -62,7 +62,7 @@ async function loadCore(userId: string, accountId: string): Promise<{ core: Core
 async function loadBase(userId: string, accountId: string, tz: string | undefined): Promise<TlBase> {
   const { core, accountId: acc } = await loadCore(userId, accountId);
   const journal = journalByTrade(await listJournalEntries(userId, acc));
-  return buildBase(core.trades, journal, { tz, startingBalance: core.startingBalance, grades: core.grades });
+  return buildBase(core.trades, journal, { tz, startingBalance: core.startingBalance, grades: core.grades, user: core.user });
 }
 
 export async function tradelog(userId: string, q: TradelogQuery, now = Date.now()): Promise<TradelogDTO> {
@@ -76,7 +76,8 @@ export async function tradelogExport(userId: string, q: TradelogExportQuery, now
 export async function tradelogTrade(userId: string, accountId: string, id: string, tz?: string): Promise<TradelogTradeDTO> {
   const d = tradeDetail(await loadBase(userId, accountId, tz), id);
   if (!d) throw new NotFoundError('Trade not found');
-  return d;
+  // Ownership was checked by loadBase; the stop / target editor in the panel.
+  return { ...d, levels: await positionLevels(accountId, { positionId: id, direction: d.row.side }) };
 }
 
 // ─── price paths ─────────────────────────────────────────────────────────────

@@ -6,7 +6,8 @@
 // account's closed trades, cached ~60s); account, date range and filters drive
 // all of it. "Ask your journal" answers chart-first and falls back to the coach.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { CaretDown, Funnel } from '@phosphor-icons/react';
+import Link from 'next/link';
+import { CaretDown, Funnel, PencilSimple, Plus } from '@phosphor-icons/react';
 import { api, type BrokerAccount } from '@/lib/api';
 import { isCustom, spanBounds, type RangeKey, type Span } from '@/lib/stats';
 import { useAccounts } from '@/lib/use-accounts';
@@ -24,6 +25,8 @@ import { AiFoot, Empty, Toggle, Widget } from '@/components/dashboard-v2/ui';
 import { DistChart, EquityChart, HourBars, MaeScatter, RollingChart } from '@/components/dashboard-v2/charts';
 import { BeforeYouTrade, BehaviourBars, Heatmap, KpiRibbon, LeaksList, PlanList, RecentTable, SymbolsTable } from '@/components/dashboard-v2/widgets';
 import { AskBox, type AskState } from '@/components/dashboard-v2/ask';
+import { LayoutEditor, useDashLayouts, type EditTarget } from '@/components/dashboard-v2/layout-editor';
+import { BUILTIN_TABS, fillAlone, MAX_TABS, newLayoutId, newLayoutName, packRows, type LayoutTab, type Slot, type WId } from '@/lib/dash-layouts';
 import '@/components/dashboard-v2/dashboard-v2.css';
 
 const RANGES: { key: RangeKey; api: DashRange; short: string; label: string }[] = [
@@ -33,27 +36,8 @@ const RANGES: { key: RangeKey; api: DashRange; short: string; label: string }[] 
   { key: '1Y', api: '1Y', short: '1Y', label: 'Last 12 months' },
   { key: 'ALL', api: 'ALL', short: 'All', label: 'All time' },
 ];
-type Layout = 'overview' | 'risk' | 'execution';
-type WId = 'equity' | 'leaks' | 'heatmap' | 'mae' | 'dist' | 'rolling' | 'behaviour' | 'before' | 'plan' | 'symbols' | 'recent';
-const LAYOUTS: Record<Layout, Array<[WId, 3 | 4 | 6 | 8 | 12]>> = {
-  overview: [['equity', 8], ['leaks', 4], ['heatmap', 4], ['mae', 4], ['dist', 4], ['rolling', 3], ['behaviour', 3], ['before', 3], ['plan', 3], ['symbols', 8], ['recent', 4]],
-  risk: [['equity', 8], ['leaks', 4], ['dist', 4], ['rolling', 4], ['behaviour', 4], ['symbols', 12]],
-  execution: [['heatmap', 6], ['mae', 6], ['before', 4], ['plan', 4], ['recent', 4], ['symbols', 12]],
-};
-/** On mid-width screens 3/4-column widgets go half width; one left alone on its row goes full width. */
-function fillAlone(list: Array<[WId, number]>): Set<WId> {
-  const out = new Set<WId>();
-  let col = 0;
-  list.forEach(([id, s], i) => {
-    if (s > 4) { col = 0; return; }
-    const next = list[i + 1];
-    if (col === 0 && (!next || next[1] > 4)) { out.add(id); return; }
-    col = (col + 6) % 12;
-  });
-  return out;
-}
 interface Filters { symbol?: string; session?: DashSession; side?: 'LONG' | 'SHORT'; tag?: string }
-const AI_KEY = 'tl-dash-ai-notes', LAYOUT_KEY = 'tl-dash-layout';
+const AI_KEY = 'tl-dash-ai-notes';
 
 function useMedia(q: string): boolean {
   const [m, setM] = useState(false);
@@ -67,7 +51,6 @@ export default function DashboardPage() {
   const toast = useToast();
   const [span, setSpan] = useState<Span>('3M');
   const [filters, setFilters] = useState<Filters>({});
-  const [layout, setLayout] = useState<Layout>('overview');
   const [ai, setAi] = useState(true);
   const [data, setData] = useState<DashboardV2DTO | null>(null);
   const [loading, setLoading] = useState(true);
@@ -86,16 +69,40 @@ export default function DashboardPage() {
   const req = useRef(0);
   const askReq = useRef<AbortController | null>(null);
 
-  // Remembered on this device: AI notes on/off and the layout tab.
+  // Remembered on this device: AI notes on/off (the layout tab lives in useDashLayouts).
   useEffect(() => {
-    try {
-      if (localStorage.getItem(AI_KEY) === '0') setAi(false);
-      const l = localStorage.getItem(LAYOUT_KEY);
-      if (l === 'overview' || l === 'risk' || l === 'execution') setLayout(l);
-    } catch { /* storage unavailable */ }
+    try { if (localStorage.getItem(AI_KEY) === '0') setAi(false); } catch { /* storage unavailable */ }
   }, []);
   const toggleAi = () => setAi(v => { try { localStorage.setItem(AI_KEY, v ? '0' : '1'); } catch { /* ignore */ } return !v; });
-  const pickLayout = (l: Layout) => { setLayout(l); try { localStorage.setItem(LAYOUT_KEY, l); } catch { /* ignore */ } };
+
+  // ── layouts: tabs, Edit layout, + New layout ──
+  const lay = useDashLayouts();
+  const [editing, setEditing] = useState<EditTarget | null>(null);
+  const [draftSlots, setDraftSlots] = useState<Slot[] | null>(null);
+  const [draftName, setDraftName] = useState('');
+  const [layBusy, setLayBusy] = useState(false);
+  const [layNote, setLayNote] = useState('');
+  const shownTab: LayoutTab = editing?.isNew ? editing.tab : lay.active;
+  const startEdit = () => { setLayNote(''); setEditing({ tab: lay.active, isNew: false }); };
+  const startNew = () => {
+    setLayNote('');
+    setEditing({ tab: { id: newLayoutId(lay.tabs), name: newLayoutName(lay.tabs), slots: [...lay.active.slots], builtin: false }, isNew: true });
+  };
+  const stopEdit = () => { setEditing(null); setDraftSlots(null); };
+  const storeTabs = async (next: LayoutTab[], activeId: string) => {
+    setLayBusy(true);
+    const r = await lay.saveTabs(next);
+    setLayBusy(false);
+    if (!r.ok) { setLayNote(r.error ?? 'Couldn’t save the layout'); return; }
+    lay.setActive(activeId);
+    stopEdit();
+    toast.success(r.where === 'device' ? 'Layout saved on this device' : 'Layout saved');
+  };
+  const saveLayout = (t: LayoutTab) => {
+    const next = editing?.isNew ? [...lay.tabs, t] : lay.tabs.map(x => (x.id === t.id ? t : x));
+    void storeTabs(next, t.id);
+  };
+  const deleteLayout = (id: string) => { void storeTabs(lay.tabs.filter(x => x.id !== id), BUILTIN_TABS[0]!.id); };
   useEffect(() => { const id = setInterval(() => tick(n => n + 1), 30_000); return () => clearInterval(id); }, []);
 
   const params = useMemo<DashParams | null>(() => {
@@ -142,7 +149,7 @@ export default function DashboardPage() {
   }
 
   // ── Ask your journal ──
-  const askCoach = useCallback(async (q: string, prompt: string) => {
+  const askCoach = useCallback(async (q: string, prompt: string, kind: 'explain' | 'ask') => {
     if (!selected) return;
     askReq.current?.abort();
     const ctl = new AbortController();
@@ -151,7 +158,7 @@ export default function DashboardPage() {
     let text = '';
     setAsk({ status: 'text', q, text: '', used, done: false });
     try {
-      await api.ai.chat({ accountId: selected.id, messages: [{ role: 'user', content: prompt.slice(0, 3900) }] }, t => {
+      await api.ai.chat({ accountId: selected.id, kind, messages: [{ role: 'user', content: prompt.slice(0, 3900) }] }, t => {
         text += t;
         if (!ctl.signal.aborted) setAsk({ status: 'text', q, text: firstParagraph(text), used, done: false });
       }, { signal: ctl.signal, onError: m => { if (!text) setAsk({ status: 'error', q, error: m }); } });
@@ -170,7 +177,7 @@ export default function DashboardPage() {
     try {
       const a = await dashV2.ask({ ...params, q });
       if (a.kind === 'chart') { setAsk({ status: 'chart', q, a }); return; }
-      await askCoach(q, `${q}\n\nAnswer in one short paragraph.`);
+      await askCoach(q, `${q}\n\nAnswer in one short paragraph.`, 'ask');
     } catch (err) {
       setAsk({ status: 'error', q, error: err instanceof Error ? err.message : 'Could not answer that.' });
     }
@@ -178,7 +185,7 @@ export default function DashboardPage() {
   const closeAsk = useCallback(() => { askReq.current?.abort(); setAsk({ status: 'idle' }); }, []);
   const explain = (what: string, summary: string) => {
     const scope = `${rangeLabel.toLowerCase()}${filters.symbol ? `, ${filters.symbol}` : ''}${filters.session ? `, ${SESSION_SHORT[filters.session]} session` : ''}${filters.side ? `, ${filters.side.toLowerCase()}s` : ''}${filters.tag ? `, tag ${filters.tag}` : ''}`;
-    void askCoach(`Explain: ${what}`, `Explain my ${what} chart (${scope}, ${data?.counts.trades ?? 0} trades): ${summary}. Answer in one short paragraph.`);
+    void askCoach(`Explain: ${what}`, `Explain my ${what} chart (${scope}, ${data?.counts.trades ?? 0} trades): ${summary}. Answer in one short paragraph.`, 'explain');
     if (!mid) document.querySelector('[data-testid=ask-page]')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
@@ -227,10 +234,20 @@ export default function DashboardPage() {
           <>
             {!mid && askBox('page')}
             <div className="d2-bar" data-testid="dash-toolbar">
-              <div className="d2-lay" role="tablist" aria-label="Layout">
-                {(['overview', 'risk', 'execution'] as const).map(l => (
-                  <button key={l} type="button" role="tab" aria-selected={layout === l} className={layout === l ? 'on' : ''} onClick={() => pickLayout(l)} data-testid={`layout-${l}`}>{l[0]!.toUpperCase() + l.slice(1)}</button>
-                ))}
+              <div className="d2-lay-w">
+                <div className="d2-lay" role="tablist" aria-label="Layout">
+                  {lay.tabs.map(l => (
+                    <button key={l.id} type="button" role="tab" aria-selected={shownTab.id === l.id} className={shownTab.id === l.id ? 'on' : ''} disabled={!!editing && editing.tab.id !== l.id}
+                      onClick={() => lay.setActive(l.id)} data-testid={`layout-${l.id}`}>{l.name}</button>
+                  ))}
+                  {editing?.isNew && <button type="button" role="tab" aria-selected className="on" data-testid="layout-new-tab">{draftName.trim() || 'New layout'}</button>}
+                </div>
+                {!editing && (
+                  <>
+                    <button type="button" className="d2-fp d2-lay-b" onClick={startEdit} aria-label="Edit layout" title="Edit layout" data-testid="edit-layout"><PencilSimple size={14} /><span>Edit layout</span></button>
+                    {lay.tabs.length < MAX_TABS && <button type="button" className="d2-fp d2-lay-b" onClick={startNew} aria-label="New layout" title="New layout" data-testid="new-layout"><Plus size={14} /><span>New</span></button>}
+                  </>
+                )}
               </div>
               {mid && !wide && askBox('bar')}
               <span className="d2-grow" />
@@ -245,6 +262,10 @@ export default function DashboardPage() {
               <button type="button" className="d2-fp" role="switch" aria-checked={ai} onClick={toggleAi} data-testid="ai-notes">AI notes <span className={`d2-sw${ai ? ' on' : ''}`} aria-hidden /></button>
             </div>
 
+            {editing && (
+              <LayoutEditor target={editing} tabs={lay.tabs} onPreview={setDraftSlots} onName={setDraftName} onSave={saveLayout} onCancel={stopEdit} onDelete={deleteLayout} busy={layBusy}
+                note={layNote || (lay.where === 'device' ? 'Saved on this device until settings storage is ready' : '')} />
+            )}
             {data.counts.trades === 0 || !data.kpis ? (
               <section className="d2-card d2-connect" data-testid="dashboard-no-trades">
                 <h2>No closed trades in this view</h2>
@@ -261,7 +282,12 @@ export default function DashboardPage() {
                   <p className="d2-few" data-testid="few-trades">{data.counts.trades} trades in this view. Behaviour score, grades and the plan need {data.minTrades}.</p>
                 )}
                 <div className="d2-grid">
-                  {(() => { const full = fillAlone(LAYOUTS[layout]); return LAYOUTS[layout].map(([id, s]) => <div key={id} className={`d2-slot d2-s${s}${full.has(id) ? ' d2-m12' : ''}`}>{block(id, s)}</div>); })()}
+                  {(() => {
+                    const slots = (editing && draftSlots) || shownTab.slots;
+                    const cells = packRows(slots);
+                    const full = fillAlone(cells);
+                    return cells.map((c, i) => <div key={c.id} className={`d2-slot d2-s${c.span}${full.has(c.id) ? ' d2-m12' : ''}`}>{block(c.id, slots[i]!.span)}</div>);
+                  })()}
                 </div>
               </div>
             )}
@@ -273,6 +299,7 @@ export default function DashboardPage() {
                 <li>Leaks: groups of trades you could have skipped before entry (late hours, after 2 losses in a row that day, within 15 min of a loss, more than 1.5× your usual size on that symbol, worst symbol, session and weekday), ranked by net loss. Skipping two leaks counts each trade once.</li>
                 <li>Behaviour score ({data.minTrades}+ trades): the average of three pass rates. Discipline: not after 2 losses that day and not within 15 min of a loss. Risk: no more than 1.5× usual size{data.counts.withR ? ' and no loss past −1.25R' : ''}. Timing: opened in an hour that is net positive for you.</li>
                 <li>Grades count the same flags (plus losing hour{data.counts.withR ? ' and past −1.25R' : ''}): none A, one B, two C, three D, four or more F. They grade process, not the result.</li>
+                <li>Your own rules (Settings › Trading rules) count as flags too, labelled “Your rule”: in grades, the behaviour score and the plan.</li>
                 <li>R-multiples need a stop at entry, and MAE/MFE need the price path of each trade. Without them those widgets show $ or stay empty.</li>
               </ul>
             </details>
@@ -398,7 +425,7 @@ export default function DashboardPage() {
         );
       case 'recent':
         return (
-          <Widget id="recent" span={s} title="Recent trades" sub={ai ? <span data-ai>· AI grade</span> : null} flush tools={<a href="/trades" className="d2-wl">Trade log</a>}
+          <Widget id="recent" span={s} title="Recent trades" sub={ai ? <span data-ai>· AI grade</span> : null} flush tools={<Link href="/trades" className="d2-wl">Trade log</Link>}
             foot={ai ? <AiFoot line={d.recent.some(r => r.grade) ? { text: 'Graded on process, not result', value: null, fmt: 'text', tone: 'flat', trades: d.recent.length } : null} /> : null}>
             <RecentTable rows={d.recent} />
           </Widget>

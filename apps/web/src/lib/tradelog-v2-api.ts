@@ -1,8 +1,8 @@
 // Client + pure helpers for the Trade log v2 page (GET /api/insights/tradelog…).
 // Types mirror packages/contracts/src/schema/tradelog-v2.ts — keep them in step.
-// Mock mode (NEXT_PUBLIC_USE_MOCKS) has no /data route for this: previews and
-// Playwright supply responses with route mocks, so no sample data ships here.
+// Mock mode (NEXT_PUBLIC_USE_MOCKS) is served by app/data/insights/** (lib/mock-insights.ts).
 import type { AiLine, DashRange, DashSession } from './dashboard-v2-api';
+import type { PositionLevelsDTO, StopMove } from './trade-data-api';
 
 const USE_MOCKS = process.env.NEXT_PUBLIC_USE_MOCKS === 'true';
 const PREFIX = USE_MOCKS ? '/data' : '/api';
@@ -28,7 +28,8 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
 export type Grade = 'A' | 'B' | 'C' | 'D' | 'F';
 export const GRADES: Grade[] = ['A', 'B', 'C', 'D', 'F'];
 export type TlResult = 'win' | 'loss' | 'tp' | 'sl' | 'stopout' | 'manual' | 'bigloss' | 'open';
-export type TlRuleKey = 'after-losses' | 'revenge' | 'oversized' | 'losing-hour' | 'r-tail';
+/** 'user-rule' = one of the trader's own rules (Settings › Trading rules). */
+export type TlRuleKey = 'after-losses' | 'revenge' | 'oversized' | 'losing-hour' | 'r-tail' | 'user-rule';
 export type TlRuleFilter = 'any' | 'none' | TlRuleKey;
 export type TlSort = 'time' | 'net' | 'hold' | 'symbol' | 'r';
 export type TlExitReason = 'tp' | 'sl' | 'stopout' | 'other';
@@ -40,6 +41,8 @@ export interface TlRow {
   volume: number; entry: number; exit: number | null; net: number; gross: number; commission: number; swap: number;
   r: number | null; holdSecs: number | null; exitReason: TlExitReason | null; sl: number | null; tp: number | null;
   grade: Grade | null; flags: TlFlag[]; tags: string[]; emotion: string | null; noted: boolean;
+  /** The stop was moved after entry (only with recorded stop levels). */
+  moved?: StopMove;
 }
 export interface TlDay { day: string; n: number; wins: number; net: number; ruleBroken: number; results: Array<'w' | 'l'> }
 export interface TlSummary {
@@ -78,6 +81,8 @@ export interface TradelogTradeDTO {
   similar: TlSimilar | null;
   note: { id: string; body: string; emotion: string | null; tags: string[] } | null;
   balanceBefore: number | null;
+  /** Stop / target levels and the editor's state (trade-data). */
+  levels?: PositionLevelsDTO;
 }
 export interface TlPath { id: string; tf: string; points: number[]; lo: number; hi: number; entry: number; exit: number; sl: number | null; tp: number | null }
 
@@ -198,7 +203,7 @@ export const RESULT_LABEL: Record<TlResult, string> = {
   win: 'Winners', loss: 'Losers', tp: 'Hit take-profit', sl: 'Hit stop-loss', stopout: 'Stop-out', manual: 'Closed by hand / EA', bigloss: 'Big losers', open: 'Open positions',
 };
 export const RULE_LABEL: Record<TlRuleFilter, string> = {
-  any: 'Any rule', none: 'All rules kept', 'after-losses': 'After 2 losses', revenge: 'Within 15 min of a loss', oversized: 'Oversized', 'losing-hour': 'Losing hour', 'r-tail': 'Past −1.25R',
+  any: 'Any rule', none: 'All rules kept', 'after-losses': 'After 2 losses', revenge: 'Within 15 min of a loss', oversized: 'Oversized', 'losing-hour': 'Losing hour', 'r-tail': 'Past −1.25R', 'user-rule': 'Your rules',
 };
 
 // ─── CSV ─────────────────────────────────────────────────────────────────────

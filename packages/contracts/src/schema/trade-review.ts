@@ -6,15 +6,17 @@
 // after-exit, usual-hold exit) are computed on the client from market candles.
 //
 // Honesty rules: nothing here is sample data. A block that can't be computed
-// is null (or empty) and the page hides it. MT5 history does not keep the stop
-// or target you set, nor stop changes. The only levels we know: the stop from a
-// stored R-multiple, and the level a position closed at when the broker's
-// closing deal says so ("[sl 1.0812]" / "[tp 1.0900]"; that stop may have been
-// moved, so it's labelled "stop at exit", never "stop set").
+// is null (or empty) and the page hides it. MT5 deal history does not keep the
+// stop or target you set. Levels come from trade_level rows (the trader's own
+// entry, the MT5 bridge's position snapshots and opening order, a Charts plan),
+// from a stored R-multiple, and the level a position closed at when the
+// broker's closing deal says so ("[sl 1.0812]" / "[tp 1.0900]"; that stop may
+// have been moved, so it's labelled "stop at exit", never "stop set").
 // Sessions and hours are by the UTC hour of the trade's open (same cut-offs as
 // Dashboard v2): Asia 22:00–07:00, London 07:00–13:00, New York 13:00–22:00.
 import { z } from 'zod';
 import type { DashSession, ProcessGrade } from './dashboard-v2.js';
+import type { PositionLevelsDTO } from './trade-data.js';
 
 export const tradeReviewQuerySchema = z.object({
   accountId: z.string().min(1).max(64),
@@ -61,7 +63,8 @@ export interface ReviewNavDTO {
   net: number;
 }
 
-export type ReviewFlagKey = 'after-losses' | 'revenge' | 'oversized' | 'losing-hour' | 'past-r';
+/** 'user-rule' = one of the trader's own rules (Settings › Trading rules). */
+export type ReviewFlagKey = 'after-losses' | 'revenge' | 'oversized' | 'losing-hour' | 'past-r' | 'user-rule';
 
 /** One deterministic rule flag (the same flags Dashboard v2 grades with). */
 export interface ReviewFlagDTO {
@@ -127,16 +130,19 @@ export interface TradeReviewDTO {
   balanceAtOpen: number | null;
   /** Volume vs your median volume on this symbol (needs ≥ 3 closed trades on it). */
   size: { median: number | null; ratio: number | null; trades: number };
-  /** Only from a stored R-multiple (needs the stop at entry). */
-  risk: { r: number; amount: number } | null;
-  /** Initial stop price, derived from the stored risk and the point value; null otherwise. */
+  /** Money at risk to the stop at entry (a recorded stop, else a stored R-multiple); r is null while open. */
+  risk: { r: number | null; amount: number } | null;
+  /** Stop at entry: a recorded level (stop / target editor, MT5 bridge, plan), else derived from a stored R. */
   stop: number | null;
+  stopFrom?: 'level' | 'r' | null;
+  /** Stop / target levels and the editor's state (trade-data). Absent on older APIs. */
+  levels?: PositionLevelsDTO;
   /** How the position closed, from the closing deal's comment (null = manual or unknown). */
   exitReason: 'sl' | 'tp' | 'stopout' | null;
   /** The stop or target level the broker closed at ("[sl …]" / "[tp …]"); null otherwise. */
   exitLevel: number | null;
   /** Money per 1.0 price move per 1 lot: from this trade's own fills, else learned from your trades on the symbol. */
-  pointValue: { value: number; source: 'trade' | 'symbol' } | null;
+  pointValue: { value: number; source: 'trade' | 'symbol' | 'spec' } | null;
   /** Median hold of your closed trades on this symbol (≥ 5 trades). */
   holdMedianSec: number | null;
   grade: ReviewGradeDTO | null;

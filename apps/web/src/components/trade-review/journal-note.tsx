@@ -43,7 +43,7 @@ export default function JournalNote({ accountId, positionId, entry, onSaved, fac
     setDrafting(true);
     let out = '';
     try {
-      await api.ai.chat({ accountId, messages: [{ role: 'user', content: draftPrompt(facts).slice(0, 3900) }] }, tok => { out += tok; }, {
+      await api.ai.chat({ accountId, kind: 'draft', messages: [{ role: 'user', content: draftPrompt(facts).slice(0, 3900) }] }, tok => { out += tok; }, {
         signal: c.signal, onError: m => { if (!out) toast.error(m); },
       });
       if (c.signal.aborted) return;

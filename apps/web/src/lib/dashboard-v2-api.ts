@@ -1,7 +1,6 @@
 // Client for Dashboard v2 (GET /api/insights/dashboard, POST /api/insights/ask).
 // Types mirror packages/contracts/src/schema/dashboard-v2.ts — keep them in step.
-// Mock mode (NEXT_PUBLIC_USE_MOCKS) has no /data route for this: previews and
-// Playwright supply responses with route mocks, so no sample data ships here.
+// Mock mode (NEXT_PUBLIC_USE_MOCKS) is served by app/data/insights/** (lib/mock-insights.ts).
 const USE_MOCKS = process.env.NEXT_PUBLIC_USE_MOCKS === 'true';
 const PREFIX = USE_MOCKS ? '/data' : '/api';
 const API = USE_MOCKS ? '' : (process.env.NEXT_PUBLIC_API_URL || '');
@@ -90,6 +89,8 @@ export interface EquityPointDTO {
   pnl: number;
   /** In the top leak (red dot). */
   leak?: 1;
+  /** The stop was widened after entry (only with recorded stop levels). */
+  moved?: 1;
 }
 
 export interface DashEquity {

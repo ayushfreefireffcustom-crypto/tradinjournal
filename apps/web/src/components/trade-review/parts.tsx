@@ -39,7 +39,8 @@ export function ReviewKpis({ r, price, ex }: { r: TradeReviewDTO; price: (v: num
       id: 'exit', k: 'Exit', v: t.exit != null ? price(t.exit) : '—',
       s: close != null ? `${hm(close)}${r.exitReason === 'sl' ? ' · at stop' : r.exitReason === 'tp' ? ' · at target' : r.exitReason === 'stopout' ? ' · stop-out' : ''}` : 'open',
     },
-    ...(r.stop != null ? [{ id: 'stop', k: 'Stop set', v: price(r.stop), s: 'from your R' }] : []),
+    // A recorded stop shows in the Stop & target block below; this cell is only for one implied by a stored R.
+    ...(r.stop != null && !(r.stopFrom === 'level' && r.levels?.available) ? [{ id: 'stop', k: 'Stop set', v: price(r.stop), s: r.stopFrom === 'level' ? 'recorded' : 'from your R' }] : []),
     { id: 'held', k: 'Held', v: t.durationSecs != null ? heldFor(t.durationSecs * 1000) : heldFor(Date.now() - open), s: ex?.bestMoney != null && closed ? <>best <span className="up">{money(ex.bestMoney)}</span></> : r.holdMedianSec ? `usual ${heldFor(r.holdMedianSec * 1000)}` : (closed ? '' : 'so far') },
     { id: 'fees', k: 'Fees', v: money(t.commission + t.swap, { dec: 2 }), s: `comm ${money(t.commission, { dec: 2, plus: false })} · swap ${money(t.swap, { dec: 2 })}` },
   ];

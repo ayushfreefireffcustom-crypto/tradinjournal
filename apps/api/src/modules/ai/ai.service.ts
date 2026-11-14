@@ -9,6 +9,24 @@ import { SYSTEM_PROMPT, contextMessageContent, webResultsMessageContent } from '
 import type { ChatMessage } from '../../lib/ai/provider.js';
 import type { SearchResult } from '../../lib/ai/search.js';
 import type { Lane } from '../../lib/ai/router.js';
+import { logger } from '@tradinjournal/logger';
+
+/** One-off calls from page buttons; hidden from the coach's conversation list. */
+export type ConversationKind = 'explain' | 'ask' | 'draft';
+
+/** Prisma "column/table does not exist": ai_conversation.kind isn't migrated yet. */
+const kindMissing = (err: unknown) => {
+  const code = (err as { code?: string } | null)?.code;
+  return code === 'P2022' || code === 'P2021' || (err instanceof Error && /Unknown (argument|field) `kind`/.test(err.message));
+};
+let kindWarned = false;
+function warnKind(err: unknown) {
+  if (kindWarned) return;
+  kindWarned = true;
+  logger.warn(`ai_conversation.kind unavailable (migration not applied?): ${(err as Error).message?.split('\n')[0] ?? err}`);
+}
+/** Test hook. */
+export function resetKindWarning(): void { kindWarned = false; }
 
 export { loadTraderContext };
 
@@ -59,8 +77,10 @@ export async function persistTurn(params: {
   lane?: Lane;
   /** Retry of the previous turn — drops the superseded pair before writing. */
   regenerate?: boolean;
+  /** Set on a new conversation from a page button (explain/ask/draft). */
+  kind?: ConversationKind;
 }): Promise<string> {
-  const { userId, brokerAccountId, conversationId, userContent, assistantContent, sources, lane, regenerate } = params;
+  const { userId, brokerAccountId, conversationId, userContent, assistantContent, sources, lane, regenerate, kind } = params;
 
   let convId = conversationId;
   if (convId) {
@@ -70,14 +90,17 @@ export async function persistTurn(params: {
   }
 
   if (!convId) {
-    const created = await prisma.aiConversation.create({
-      data: {
-        userId,
-        brokerAccountId,
-        // First user message becomes the conversation title (trimmed).
-        title: userContent.slice(0, 80),
-      },
-    });
+    // First user message becomes the conversation title (trimmed).
+    const data = { userId, brokerAccountId, title: userContent.slice(0, 80) };
+    let created;
+    try {
+      created = await prisma.aiConversation.create({ data: kind ? { ...data, kind } : data });
+    } catch (err) {
+      // Column not migrated yet: store it as a normal conversation (today's behaviour).
+      if (!kind || !kindMissing(err)) throw err;
+      warnKind(err);
+      created = await prisma.aiConversation.create({ data });
+    }
     convId = created.id;
   } else {
     await prisma.aiConversation.update({ where: { id: convId }, data: { updatedAt: new Date() } });
@@ -120,12 +143,16 @@ export async function persistTurn(params: {
   return convId;
 }
 
+/** The coach's own chats: one-off page calls (kind set) are left out. */
 export async function listConversations(userId: string) {
-  return prisma.aiConversation.findMany({
-    where: { userId },
-    orderBy: { updatedAt: 'desc' },
-    select: { id: true, title: true, brokerAccountId: true, createdAt: true, updatedAt: true },
-  });
+  const select = { id: true, title: true, brokerAccountId: true, createdAt: true, updatedAt: true } as const;
+  try {
+    return await prisma.aiConversation.findMany({ where: { userId, kind: null }, orderBy: { updatedAt: 'desc' }, select });
+  } catch (err) {
+    if (!kindMissing(err)) throw err;
+    warnKind(err);
+    return prisma.aiConversation.findMany({ where: { userId }, orderBy: { updatedAt: 'desc' }, select });
+  }
 }
 
 export async function getConversation(userId: string, id: string) {

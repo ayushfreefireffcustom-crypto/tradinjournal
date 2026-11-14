@@ -26,7 +26,9 @@ import type {
   AiLine, DashboardV2DTO, DashBehaviour, DashDistribution, DashEquity, DashHeatmap, DashKpis,
   DashMaeMfe, DashPlanRule, DashRecentTrade, DashRolling, DashSession, DashSymbolRow, EquityPointDTO,
   HourCellDTO, LeakDTO, ProcessGrade,
+  TradingRules,
 } from '@tradinjournal/contracts';
+import { hasRules, USER_RULE_PREFIX, userRuleHits, type UserRuleHit, type UserRules } from './rules.js';
 
 export interface InsightTrade {
   id: string;
@@ -40,6 +42,8 @@ export interface InsightTrade {
   mae: number | null;
   mfe: number | null;
   tags: string[];
+  /** From recorded stop levels (trade-data): the stop was moved after entry. Absent = unknown. */
+  stopMove?: 'widened' | 'tightened' | null;
 }
 
 export interface DashFilters { symbol?: string; session?: DashSession; side?: 'LONG' | 'SHORT'; tag?: string }
@@ -49,6 +53,8 @@ export interface ComputeOptions {
   filters: DashFilters;
   /** Account starting balance (deposits before the first trade). */
   startingBalance: number;
+  /** The trader's own rules (rules.ts); null/absent = none, nothing changes. */
+  rules?: TradingRules | null;
 }
 
 export const MIN_TRADES = 20;
@@ -122,9 +128,11 @@ export interface TradeContext {
   revenge: boolean;
   /** Volume > 1.5× the median volume on this symbol (symbols with ≥ 3 trades). */
   oversized: boolean;
+  /** The trader's own rules this trade broke (rules.ts), when any are set. */
+  userRules?: UserRuleHit[];
 }
 
-export function tradeContext(all: InsightTrade[]): Map<string, TradeContext> {
+export function tradeContext(all: InsightTrade[], user?: UserRules | null): Map<string, TradeContext> {
   const byClose = [...all].sort((a, b) => a.close - b.close);
   const vols = new Map<string, number[]>();
   for (const t of all) (vols.get(t.symbol) ?? vols.set(t.symbol, []).get(t.symbol)!).push(t.volume);
@@ -149,6 +157,7 @@ export function tradeContext(all: InsightTrade[]): Map<string, TradeContext> {
       oversized: m != null && m > 0 && t.volume > OVERSIZE * m,
     });
   }
+  if (user && hasRules(user.rules)) for (const [id, hits] of userRuleHits(all, user.rules, user.startingBalance)) { const c = out.get(id); if (c) c.userRules = hits; }
   return out;
 }
 
@@ -217,6 +226,9 @@ export function findLeaks(T: InsightTrade[], ctx: Map<string, TradeContext>): Ar
   add('revenge', 'Revenge trades', `${revenge.length} · ≤15 min after a loss`, revenge);
   const big = T.filter(t => ctx.get(t.id)?.oversized);
   add('oversized', 'Oversized', `${big.length} trades · >1.5× size`, big);
+  // Only when stop moves were recorded (trade_level rows): trades whose stop was widened.
+  const widened = T.filter(t => t.stopMove === 'widened');
+  add('moved-stop', 'Moved stop', `${widened.length} trades · stop widened`, widened);
   const worstOf = <K extends string | number>(keyOf: (t: InsightTrade) => K) => {
     const m = new Map<K, InsightTrade[]>();
     for (const t of T) (m.get(keyOf(t)) ?? m.set(keyOf(t), []).get(keyOf(t))!).push(t);
@@ -327,10 +339,11 @@ export const baseline = (T: InsightTrade[]): Baseline => {
 export const badHour = (b: Baseline, t: InsightTrade) => { const a = b.hourNet.get(hourOf(t.open)); return !!a && a.n >= 3 && a.net < 0; };
 
 export function checks(t: InsightTrade, c: TradeContext | undefined, b: Baseline) {
+  const own = (p: UserRuleHit['part']) => !!c?.userRules?.some(h => h.part === p);
   return {
-    discipline: !(c && (c.priorLosses >= 2 || c.revenge)),
-    risk: !(c?.oversized) && !(t.r != null && t.r < R_TAIL),
-    timing: !badHour(b, t),
+    discipline: !(c && (c.priorLosses >= 2 || c.revenge)) && !own('discipline'),
+    risk: !(c?.oversized) && !(t.r != null && t.r < R_TAIL) && !own('risk'),
+    timing: !badHour(b, t) && !own('timing'),
   };
 }
 
@@ -351,7 +364,8 @@ export function behaviour(T: InsightTrade[], ctx: Map<string, TradeContext>): Da
 
 const GRADES: ProcessGrade[] = ['A', 'B', 'C', 'D', 'F'];
 export function grade(t: InsightTrade, c: TradeContext | undefined, b: Baseline): { grade: ProcessGrade; reasons: string[] } {
-  const reasons: string[] = [];
+  // The trader's own rules come first ("Your rule: …"), then the built-in flags.
+  const reasons: string[] = (c?.userRules ?? []).map(h => USER_RULE_PREFIX + h.rule);
   if (c && c.priorLosses >= 2) reasons.push('After 2 losses');
   if (c?.revenge) reasons.push('Within 15 min of a loss');
   if (c?.oversized) reasons.push('Oversized');
@@ -394,6 +408,12 @@ export function plan(T: InsightTrade[], ctx: Map<string, TradeContext>, leaks: L
   if (T.length < MIN_TRADES) return [];
   const rules: DashPlanRule[] = [];
   const hh = (h: number) => `${String(h % 24).padStart(2, '0')}:00`;
+  // The trader's own rules broken in this view first: what those trades cost.
+  const own = new Map<string, { part: UserRuleHit['part']; key: string; ts: InsightTrade[] }>();
+  for (const t of T) for (const h of ctx.get(t.id)?.userRules ?? []) (own.get(h.rule) ?? own.set(h.rule, { part: h.part, key: h.key, ts: [] }).get(h.rule)!).ts.push(t);
+  for (const [rule, o] of [...own].sort((a, b) => agg(a[1].ts).net - agg(b[1].ts).net).slice(0, 2)) {
+    rules.push({ icon: o.key === 'tradingHours' ? 'clock' : o.part === 'risk' ? 'scales' : o.key === 'dailyLossCapPct' ? 'lock' : 'hourglass', text: `Your rule · ${rule}`, value: agg(o.ts).net, fmt: 'money', tone: 'dn' });
+  }
   const win = bestHours(T);
   if (win) rules.push({ icon: 'clock', text: `${hh(win.from)}–${hh(win.to)} UTC only`, value: win.inside.net, fmt: 'money', tone: 'up' });
   const bySym = symbolsAgg(T);
@@ -479,7 +499,7 @@ function kpis(T: InsightTrade[], all: InsightTrade[], start: number, startingBal
 
 export function computeDashboard(allTrades: InsightTrade[], o: ComputeOptions): DashboardV2DTO {
   const all = [...allTrades].sort((a, b) => a.close - b.close);
-  const ctx = tradeContext(all);
+  const ctx = tradeContext(all, o.rules ? { rules: o.rules, startingBalance: o.startingBalance } : null);
   const win = inWindow(all, o.window);
   const T = applyFilters(win, o.filters);
   const startBal = o.startingBalance + sum(all.filter(t => o.window.from != null && t.close < o.window.from), t => t.net);
@@ -504,6 +524,7 @@ export function computeDashboard(allTrades: InsightTrade[], o: ComputeOptions): 
   const leakRows = findLeaks(T, ctx);
   const top = leakRows[0];
   if (top) { const ids = new Set(top.ids); c.pts.forEach((p, i) => { if (ids.has(T[i]!.id)) p.leak = 1; }); }
+  c.pts.forEach((p, i) => { if (T[i]!.stopMove === 'widened') p.moved = 1; });
   const leakDays = new Set(top ? T.filter(t => top.ids.includes(t.id)).map(t => dayKey(t.close)) : []);
   const days = dailyPoints(T, startBal).map(p => (leakDays.has(dayKey(p.t)) ? { ...p, leak: 1 as const } : p));
   const hm = heatmap(T);

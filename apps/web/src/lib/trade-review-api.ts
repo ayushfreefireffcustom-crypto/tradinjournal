@@ -3,11 +3,11 @@
 // what price did after the exit, the candle-based "what I would have done"
 // rows, and the facts handed to the coach for a draft note.
 // Types mirror packages/contracts/src/schema/trade-review.ts — keep them in step.
-// Mock mode has no /data route for this: previews and Playwright supply
-// responses with route mocks, so no sample data ships here.
+// Mock mode is served by app/data/insights/trade-review (lib/mock-insights.ts).
 import { useEffect, useState } from 'react';
 import { marketApi, type Candle, type MarketTimeframe } from '@/lib/market-api';
 import { afterExit, heldFor, type AfterExit, type ChartTrade } from '@/components/charts/trade-math';
+import type { PositionLevelsDTO } from '@/lib/trade-data-api';
 
 const USE_MOCKS = process.env.NEXT_PUBLIC_USE_MOCKS === 'true';
 const PREFIX = USE_MOCKS ? '/data' : '/api';
@@ -46,7 +46,7 @@ export interface ReviewTradeDTO {
   gross: number; commission: number; swap: number; net: number; durationSecs: number | null; deals: ReviewDealDTO[];
 }
 export interface ReviewNavDTO { positionId: string; symbol: string; side: 'LONG' | 'SHORT'; status: 'OPEN' | 'CLOSED'; net: number }
-export type ReviewFlagKey = 'after-losses' | 'revenge' | 'oversized' | 'losing-hour' | 'past-r';
+export type ReviewFlagKey = 'after-losses' | 'revenge' | 'oversized' | 'losing-hour' | 'past-r' | 'user-rule';
 export interface ReviewFlagDTO { key: ReviewFlagKey; label: string; detail: string }
 export interface ReviewGradeDTO { grade: ProcessGrade; flags: ReviewFlagDTO[]; checks: { discipline: boolean; risk: boolean; timing: boolean }; basis: number }
 export interface WhatIfDTO { key: 'actual' | 'normal-size' | 'skip'; label: string; net: number; delta: number; note: string }
@@ -67,11 +67,16 @@ export interface TradeReviewDTO {
   session: ReviewSession;
   balanceAtOpen: number | null;
   size: { median: number | null; ratio: number | null; trades: number };
-  risk: { r: number; amount: number } | null;
+  /** r is null while the position is open. */
+  risk: { r: number | null; amount: number } | null;
+  /** Stop at entry: a recorded level, else derived from a stored R. */
   stop: number | null;
+  stopFrom?: 'level' | 'r' | null;
+  /** Stop / target levels and the editor's state (trade-data). */
+  levels?: PositionLevelsDTO;
   exitReason: 'sl' | 'tp' | 'stopout' | null;
   exitLevel: number | null;
-  pointValue: { value: number; source: 'trade' | 'symbol' } | null;
+  pointValue: { value: number; source: 'trade' | 'symbol' | 'spec' } | null;
   holdMedianSec: number | null;
   grade: ReviewGradeDTO | null;
   minTrades: number;

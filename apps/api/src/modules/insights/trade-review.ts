@@ -13,14 +13,16 @@
 //   • Levels: the stop from a stored R-multiple only; the closing deal comment
 //     ("[sl …]", "[tp …]", "so: …") tells how it closed and at what level.
 import type { Deal, Trade } from '@tradinjournal/types';
+import type { TradeExtra } from '../trade-data/enrich.js';
 import type {
   ReviewDealDTO, ReviewFlagDTO, ReviewFlagKey, ReviewGradeDTO, ReviewNavDTO, ReviewTradeDTO, SameSetupDTO,
-  SimilarDTO, TradeReviewDTO, WhatIfDTO,
+  SimilarDTO, TradeReviewDTO, WhatIfDTO, PositionLevelsDTO,
 } from '@tradinjournal/contracts';
 import {
   agg, badHour, baseline, checks, DAY, dayKey, fmtMoney, grade, hourOf, median, MIN_TRADES, OVERSIZE, R_TAIL,
   SESSION_LABEL, sessionOf, tradeContext, type Baseline, type InsightTrade, type TradeContext,
 } from './compute.js';
+import type { UserRules } from './rules.js';
 
 const round = (v: number, d = 2) => Math.round(v * 10 ** d) / 10 ** d;
 const ms = (s: string) => new Date(s).getTime();
@@ -35,6 +37,14 @@ export interface ReviewInput {
   storedR: number | null;
   /** Deposits and withdrawals (BALANCE deals): time (ms) and amount. */
   cash: Array<{ t: number; amount: number }>;
+  /** The trader's own rules (rules.ts); absent = none. */
+  user?: UserRules | null;
+  /** Trade data per position (trade-data): R from the stop at entry, stop moves. */
+  extras?: Map<string, Pick<TradeExtra, 'r' | 'risk' | 'stop' | 'move'>>;
+  /** This position's stop / target levels for the editor. */
+  levels?: PositionLevelsDTO;
+  /** Value per point from trade-data (falls back to the contract spec). */
+  pointValue?: TradeReviewDTO['pointValue'];
 }
 
 /** Closed positions as the dashboard sees them (R only for the one we know). */
@@ -119,15 +129,15 @@ export function riskFromR(target: Trade, r: number | null, pv: number | null): {
 
 // ─── grade and flags ─────────────────────────────────────────────────────────
 
-const PRE_ENTRY: ReviewFlagKey[] = ['after-losses', 'revenge', 'oversized', 'losing-hour'];
+const PRE_ENTRY: ReviewFlagKey[] = ['user-rule', 'after-losses', 'revenge', 'oversized', 'losing-hour'];
 const FLAG_LABEL: Record<ReviewFlagKey, string> = {
-  'after-losses': 'After 2 losses', revenge: 'Within 15 min of a loss', oversized: 'Oversized', 'losing-hour': 'Losing hour', 'past-r': 'Past −1.25R',
+  'user-rule': 'Your rule', 'after-losses': 'After 2 losses', revenge: 'Within 15 min of a loss', oversized: 'Oversized', 'losing-hour': 'Losing hour', 'past-r': 'Past −1.25R',
 };
 const hh = (h: number) => `${String(h).padStart(2, '0')}:00`;
 
 /** Pre-entry flags of a trade (the dashboard's checks minus the result-based one). */
 export function preEntryFlags(t: InsightTrade, c: TradeContext | undefined, b: Baseline): ReviewFlagKey[] {
-  const out: ReviewFlagKey[] = [];
+  const out: ReviewFlagKey[] = c?.userRules?.length ? ['user-rule'] : [];
   if (c && c.priorLosses >= 2) out.push('after-losses');
   if (c?.revenge) out.push('revenge');
   if (c?.oversized) out.push('oversized');
@@ -137,7 +147,7 @@ export function preEntryFlags(t: InsightTrade, c: TradeContext | undefined, b: B
 
 /** Chips with the trade's own numbers, in the dashboard's reason order. */
 export function flagsFor(t: InsightTrade, c: TradeContext | undefined, b: Baseline, closed: InsightTrade[], sizeMedian: number | null): ReviewFlagDTO[] {
-  const out: ReviewFlagDTO[] = [];
+  const out: ReviewFlagDTO[] = (c?.userRules ?? []).map(h => ({ key: 'user-rule' as const, label: `Your rule · ${h.label}`, detail: `${h.rule}: ${h.detail}` }));
   if (c && c.priorLosses >= 2) out.push({ key: 'after-losses', label: `After ${c.priorLosses} losses`, detail: `${c.priorLosses} losing trades in a row closed earlier that UTC day` });
   if (c?.revenge) {
     const prev = closed.filter(p => p.id !== t.id && p.close < t.open).sort((a, z) => z.close - a.close)[0];
@@ -246,12 +256,13 @@ export function computeTradeReview(i: ReviewInput): TradeReviewDTO | null {
   if (!target) return null;
   const closedT = i.positions.filter(t => t.status === 'CLOSED' && t.closeTime);
   const isClosed = target.status === 'CLOSED' && !!target.closeTime;
-  const closed = closedT.map(t => toInsight(t, t.positionId === target.positionId ? i.storedR : null)).sort((a, b) => a.close - b.close);
+  const rOf = (t: Trade) => i.extras?.get(t.positionId)?.r ?? (t.positionId === target.positionId ? i.storedR : null);
+  const closed = closedT.map(t => ({ ...toInsight(t, rOf(t)), stopMove: i.extras?.get(t.positionId)?.move ?? null })).sort((a, b) => a.close - b.close);
   // An open position joins the context with a close in the future, so it never
   // counts as "closed before" anything and the usual-size median includes it
   // just as it would once closed.
   const me: InsightTrade = isClosed ? closed.find(t => t.id === target.positionId)! : { ...toInsight(target), close: Math.max(i.now, ms(target.openTime)) + DAY, r: null };
-  const ctxAll = tradeContext(isClosed ? closed : [...closed, me]);
+  const ctxAll = tradeContext(isClosed ? closed : [...closed, me], i.user);
   const ctx = ctxAll.get(me.id);
 
   const symVols = (isClosed ? closed : [...closed, me]).filter(t => t.symbol === target.symbol).map(t => t.volume);
@@ -267,12 +278,19 @@ export function computeTradeReview(i: ReviewInput): TradeReviewDTO | null {
     const c = checks(me, ctx, b);
     gradeDto = { grade: g.grade, flags, checks: c, basis: closed.length };
   }
-  const pv = pointValueFor(target, i.positions);
-  const { risk, stop } = riskFromR(target, isClosed ? i.storedR : null, pv?.value ?? null);
+  const pv = pointValueFor(target, i.positions) ?? i.pointValue ?? null;
+  const x = i.extras?.get(target.positionId);
+  let { risk, stop } = riskFromR(target, isClosed ? rOf(target) : null, pv?.value ?? null);
+  let stopFrom: TradeReviewDTO['stopFrom'] = stop != null ? 'r' : null;
+  // A recorded stop at entry beats the one implied by a stored R.
+  if (x?.stop != null) {
+    stop = x.stop; stopFrom = 'level';
+    if (x.risk != null) risk = { r: isClosed && x.r != null ? round(x.r) : null, amount: x.risk };
+  }
   const exit = isClosed ? exitFromDeals(target.deals ?? []) : { reason: null, level: null };
   const holds = closedT.filter(t => t.symbol === target.symbol && t.positionId !== target.positionId && t.durationSecs != null && t.durationSecs > 0).map(t => t.durationSecs!);
   // Similar trades use the dashboard's context over closed trades only (an open one isn't a match).
-  const ctxClosed = isClosed ? ctxAll : tradeContext(closed);
+  const ctxClosed = isClosed ? ctxAll : tradeContext(closed, i.user);
 
   return {
     asOf: new Date(i.now).toISOString(),
@@ -282,7 +300,7 @@ export function computeTradeReview(i: ReviewInput): TradeReviewDTO | null {
     session: sessionOf(me.open),
     balanceAtOpen: balanceAt(i.cash, closed.filter(t => t.id !== me.id), me.open),
     size: { median: sizeMedian == null ? null : round(sizeMedian, 4), ratio: sizeMedian ? round(target.volume / sizeMedian, 3) : null, trades: symVols.length },
-    risk, stop,
+    risk, stop, stopFrom, levels: i.levels,
     exitReason: exit.reason, exitLevel: exit.level,
     pointValue: pv,
     holdMedianSec: holds.length >= 5 ? Math.round(median(holds)) : null,

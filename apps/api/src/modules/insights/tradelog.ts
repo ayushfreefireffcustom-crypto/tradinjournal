@@ -18,6 +18,7 @@ import {
   tradeContext, windowFor, type Agg, type InsightTrade, type TradeContext,
 } from './compute.js';
 import { flagsFor, preEntryFlags, similarTrades as reviewSimilar } from './trade-review.js';
+import { isUserRuleReason, USER_RULE_PREFIX, type UserRules } from './rules.js';
 
 /** One position as the service hands it over (closed or still open). */
 export interface TlTrade {
@@ -38,6 +39,8 @@ export interface TlTrade {
   holdSecs: number | null;
   /** Comment on the deal that closed it (exit reason, hit SL/TP price). */
   closeComment: string | null;
+  /** From recorded stop levels (trade-data); absent = unknown. */
+  stopMove?: 'widened' | 'tightened' | null;
 }
 
 export interface TlJournal { id: string; body: string; emotion: string | null; tags: string[] }
@@ -89,14 +92,14 @@ const REASON_KEY: Record<string, TlRuleKey> = {
   'Past −1.25R': 'r-tail',
 };
 export const RULE_SHORT: Record<TlRuleKey, string> = {
-  'after-losses': 'After 2L', revenge: '≤15m after loss', oversized: 'Oversized', 'losing-hour': 'Losing hour', 'r-tail': 'Past −1.25R',
+  'after-losses': 'After 2L', revenge: '≤15m after loss', oversized: 'Oversized', 'losing-hour': 'Losing hour', 'r-tail': 'Past −1.25R', 'user-rule': 'Your rule',
 };
 /** How each rule reads after "a trade …" (strip AI line). */
 export const RULE_PHRASE: Record<TlRuleKey, string> = {
-  'after-losses': 'after 2 losses', revenge: 'within 15 min of a loss', oversized: 'over 1.5× your usual size', 'losing-hour': 'in a losing hour', 'r-tail': 'past −1.25R',
+  'after-losses': 'after 2 losses', revenge: 'within 15 min of a loss', oversized: 'over 1.5× your usual size', 'losing-hour': 'in a losing hour', 'r-tail': 'past −1.25R', 'user-rule': 'breaking one of your rules',
 };
 export const RULE_NAME: Record<TlRuleKey, string> = {
-  'after-losses': 'After 2 losses', revenge: 'Within 15 min of a loss', oversized: 'Oversized', 'losing-hour': 'Losing hour', 'r-tail': 'Past −1.25R',
+  'after-losses': 'After 2 losses', revenge: 'Within 15 min of a loss', oversized: 'Oversized', 'losing-hour': 'Losing hour', 'r-tail': 'Past −1.25R', 'user-rule': 'Your rules',
 };
 
 export interface Graded { grade: ProcessGrade; flags: TlFlag[] }
@@ -104,10 +107,10 @@ export interface Graded { grade: ProcessGrade; flags: TlFlag[] }
 const hh = (h: number) => `${String(h).padStart(2, '0')}:00`;
 
 /** Process grade and rule flags per closed trade; null when there are too few trades. */
-export function gradeAll(closed: TlTrade[]): Map<string, Graded> | null {
+export function gradeAll(closed: TlTrade[], user?: UserRules | null): Map<string, Graded> | null {
   const T: InsightTrade[] = closed.filter(t => t.close != null).map(toInsight);
   if (T.length < MIN_TRADES) return null;
-  const ctx = tradeContext(T);
+  const ctx = tradeContext(T, user);
   const hourNet = new Map<number, Agg>();
   const byHour = new Map<number, InsightTrade[]>();
   for (const t of T) (byHour.get(hourOf(t.open)) ?? byHour.set(hourOf(t.open), []).get(hourOf(t.open))!).push(t);
@@ -122,7 +125,9 @@ export function gradeAll(closed: TlTrade[]): Map<string, Graded> | null {
   for (const t of T) {
     const c: TradeContext | undefined = ctx.get(t.id);
     const g = processGrade(t, c, base);
+    const own = [...(c?.userRules ?? [])];
     const flags: TlFlag[] = g.reasons.map(r => {
+      if (isUserRuleReason(r)) { const h = own.shift(); return { key: 'user-rule', short: RULE_SHORT['user-rule'], label: h ? h.label : r.slice(USER_RULE_PREFIX.length) }; }
       const key = REASON_KEY[r] ?? 'losing-hour';
       return { key, short: RULE_SHORT[key], label: flagLabel(key, t, c, hourNet.get(hourOf(t.open)), med.get(t.symbol), lastLossClose) };
     });
@@ -149,11 +154,12 @@ function flagLabel(key: TlRuleKey, t: InsightTrade, c: TradeContext | undefined,
     case 'oversized': return med && med > 0 ? `${(t.volume / med).toFixed(1)}× size` : `Over ${OVERSIZE}× size`;
     case 'losing-hour': return hour ? `${hh(hourOf(t.open))} UTC hour · ${fmtMoney(hour.net)}` : 'Losing hour';
     case 'r-tail': return t.r != null ? `${t.r.toFixed(1).replace('-', '−')}R loss` : `Past ${String(R_TAIL).replace('-', '−')}R`;
+    case 'user-rule': return RULE_SHORT['user-rule'];
   }
 }
 
 export function toInsight(t: TlTrade): InsightTrade {
-  return { id: t.id, symbol: t.symbol, side: t.side, open: t.open, close: t.close ?? t.open, volume: t.volume, net: t.net, r: t.r, mae: null, mfe: null, tags: [] };
+  return { id: t.id, symbol: t.symbol, side: t.side, open: t.open, close: t.close ?? t.open, volume: t.volume, net: t.net, r: t.r, mae: null, mfe: null, tags: [], stopMove: t.stopMove ?? null };
 }
 
 // ─── base (rows decorated once per account data version) ─────────────────────
@@ -167,6 +173,8 @@ export interface TlBase {
   allClosed: number;
   startingBalance: number;
   tz: string;
+  /** The trader's own rules (rules.ts), for the side panel's reasons. */
+  user?: UserRules | null;
 }
 
 /** Merge journal entries per trade: newest entry first, tags/emotion unioned. */
@@ -183,10 +191,10 @@ export function journalByTrade(entries: Array<{ id: string; tradeId: string | nu
   return out;
 }
 
-export function buildBase(trades: TlTrade[], journal: Map<string, TlJournal>, opts: { tz?: string | null; startingBalance: number; grades?: Map<string, Graded> | null }): TlBase {
+export function buildBase(trades: TlTrade[], journal: Map<string, TlJournal>, opts: { tz?: string | null; startingBalance: number; grades?: Map<string, Graded> | null; user?: UserRules | null }): TlBase {
   const tz = safeTz(opts.tz);
   const closed = trades.filter(t => t.status === 'CLOSED' && t.close != null);
-  const grades = opts.grades !== undefined ? opts.grades : gradeAll(closed);
+  const grades = opts.grades !== undefined ? opts.grades : gradeAll(closed, opts.user);
   const rows: TlRow[] = [];
   const hay: string[] = [];
   for (const t of trades) {
@@ -202,10 +210,11 @@ export function buildBase(trades: TlTrade[], journal: Map<string, TlJournal>, op
       r: t.r == null ? null : round(t.r), holdSecs: t.holdSecs, exitReason: isClosed ? x.reason : null, sl: x.sl, tp: x.tp,
       grade: g?.grade ?? null, flags: g?.flags ?? [],
       tags: j?.tags ?? [], emotion: j?.emotion ?? null, noted: !!j?.body.trim(),
+      ...(t.stopMove ? { moved: t.stopMove } : {}),
     });
     hay.push([t.symbol, t.id, ...(j?.tags ?? []), j?.emotion ?? '', j?.body ?? ''].join('\n').toLowerCase());
   }
-  return { rows, hay, journal, graded: !!grades, allClosed: closed.length, startingBalance: opts.startingBalance, tz };
+  return { rows, hay, journal, graded: !!grades, allClosed: closed.length, startingBalance: opts.startingBalance, tz, user: opts.user ?? null };
 }
 
 // ─── filters ─────────────────────────────────────────────────────────────────
@@ -425,7 +434,7 @@ export function tradeDetail(base: TlBase, id: string): TradelogTradeDTO | null {
     balanceBefore = round(base.startingBalance + sum(closedRows.filter(r => r.closeTime! < row.closeTime!), r => r.net));
     const closed = closedRows.map(rowInsight);
     const me = closed.find(t => t.id === id)!;
-    const ctx = tradeContext(closed);
+    const ctx = tradeContext(closed, base.user);
     const b = base.graded ? baseline(closed) : null;
     const vols = closed.filter(t => t.symbol === me.symbol).map(t => t.volume);
     const sizeMedian = vols.length >= 3 ? median(vols) : null;

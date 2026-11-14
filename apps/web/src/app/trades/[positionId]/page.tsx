@@ -4,8 +4,8 @@
 // data: GET /api/insights/trade-review (trade, fills, neighbours, process grade
 // and flags, size vs usual, similar trades, same setup by hour) and market
 // candles for the chart (best/worst while open, after the exit, the usual-hold
-// exit). Anything that can't be computed is hidden — MT5 history has no stop
-// moves and usually no stop, so there are no stop steps and no R unless stored.
+// exit). Anything that can't be computed is hidden. Stops come from recorded
+// levels (the editor here, the MT5 bridge, a Charts plan) or a stored R.
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, ArrowRight, CaretRight } from '@phosphor-icons/react';
@@ -21,6 +21,8 @@ import {
 import { AiFoot, Empty, Widget } from '@/components/dashboard-v2/ui';
 import TradeChart from '@/components/trade-review/trade-chart';
 import JournalNote from '@/components/trade-review/journal-note';
+import StopLevels from '@/components/trade-review/stop-levels';
+import AskTrade from '@/components/trade-review/ask-trade';
 import { Executions, GradeBlock, ReviewKpis, SameSetupChart, SameSetupHead, SimilarBars, WhatIfLadder, type LadderRow } from '@/components/trade-review/parts';
 import '@/components/dashboard-v2/dashboard-v2.css';
 import '@/components/trade-review/trade-review.css';
@@ -76,6 +78,12 @@ function TradeReview() {
     }
   }, [accountId, positionId]);
   useEffect(() => { void load(); }, [load]);
+  // After a stop / target edit: show the new levels now, then refetch quietly (risk, R and the grade follow the stop).
+  const onLevels = useCallback((levels: NonNullable<TradeReviewDTO['levels']>) => {
+    setState(s => (s.status === 'ready' ? { status: 'ready', data: { ...s.data, levels } } : s));
+    if (!selected) return;
+    tradeReviewApi.get(selected.id, positionId).then(data => setState(s => (s.status === 'ready' ? { status: 'ready', data } : s))).catch(() => {});
+  }, [selected, positionId]);
 
   const r = state.status === 'ready' ? state.data : null;
   const t = r?.trade ?? null;
@@ -112,6 +120,7 @@ function TradeReview() {
     return [me!, ...candle, ...rest];
   }, [r, bars]);
   const facts = useMemo(() => (r ? noteFacts(r, { excursion: ex, after, price }) : null), [r, ex, after, price]);
+  const askExtra = useMemo(() => ({ after, candle: r && bars.status === 'ready' ? candleWhatIf(r, bars.bars, bars.win.tfMs) : [], barsLoading: bars.status === 'loading' }), [r, bars, after]);
 
   // ── header ──
   const subtitle = selected
@@ -159,6 +168,7 @@ function TradeReview() {
             </div>
 
             <ReviewKpis r={r} price={price} ex={ex} />
+            <StopLevels accountId={selected.id} positionId={t.positionId} side={t.side} entry={t.entry} levels={r.levels} price={price} onChange={onLevels} />
 
             <div className="d2-grid">
               <div className="d2-slot d2-s8 trv-s8">
@@ -197,6 +207,9 @@ function TradeReview() {
                 </Widget>
               </div>
               <div className="d2-slot d2-s12">
+                <AskTrade accountId={selected.id} r={r} facts={facts} extra={askExtra} />
+              </div>
+              <div className="d2-slot d2-s12">
                 <JournalNote accountId={selected.id} positionId={t.positionId} entry={entry} onSaved={setEntry} facts={facts} entryDate={t.closeTime ?? t.openTime} />
               </div>
               <div className="d2-slot d2-s12">
@@ -211,8 +224,8 @@ function TradeReview() {
               <ul>
                 <li>Everything comes from your broker&rsquo;s fills for this account. Hours and sessions are UTC by the trade&rsquo;s open (Asia 22–07, London 07–13, New York 13–22).</li>
                 <li>Process grade ({r.minTrades}+ closed trades, your whole history as the baseline): one step down per flag — after 2 losses in a row that day, within 15 min of a loss, more than 1.5× your usual size on this symbol, a UTC hour that is net negative for you, a loss past −1.25R (needs R). None A, one B, two C, three D, four or more F. It grades process, not the result.</li>
-                <li>What I would have done: your usual size scales the P&amp;L by volume; skipped is $0 and only shows when a rule was broken before entry; the usual-hold exit uses the close of the bar where your median hold on this symbol ended. Exits at +1R and break-even need the stop at entry, which MT5 history doesn&rsquo;t keep, so they show only when an R-multiple is stored.</li>
-                <li>Chart: market candles from our data provider around your fills. Best point while open and &ldquo;ran further&rdquo; are read from those bars (bar precision). Stop changes aren&rsquo;t recorded, so stop moves aren&rsquo;t shown.</li>
+                <li>What I would have done: your usual size scales the P&amp;L by volume; skipped is $0 and only shows when a rule was broken before entry; the usual-hold exit uses the close of the bar where your median hold on this symbol ended. Exits at +1R and break-even need the stop at entry: add it above, or it comes from MT5 when the bridge reports it.</li>
+                <li>Chart: market candles from our data provider around your fills. Best point while open and &ldquo;ran further&rdquo; are read from those bars (bar precision). Stop and target: the earliest recorded stop is the stop at entry and R is measured against it; a later stop further from the entry reads as widened.</li>
                 <li>Similar trades: closed trades with the same symbol, side, session and the same pre-entry flags, relaxed step by step until there are at least 3.</li>
               </ul>
             </details>
@@ -246,7 +259,7 @@ function gradeFoot(r: TradeReviewDTO, ladder: LadderRow[]) {
 function similarFoot(r: TradeReviewDTO) {
   const s = r.similar;
   if (!s || s.n < 3) return null;
-  const flagged = r.grade?.flags.some(f => f.key !== 'past-r') && s.criteria.some(c => /After|Within|Oversized|Losing/.test(c));
+  const flagged = r.grade?.flags.some(f => f.key !== 'past-r') && s.criteria.some(c => /After|Within|Oversized|Losing|Your rule/.test(c));
   if (flagged && s.net < 0) return <AiFoot line={{ text: `Skipping all ${s.n} would have kept`, value: -s.net, fmt: 'money', tone: 'up', trades: s.n }} />;
   return <AiFoot line={{ text: `${s.n} trades · ${pct(s.wins / s.n)} won · net`, value: s.net, fmt: 'money', tone: s.net > 0 ? 'up' : s.net < 0 ? 'dn' : 'flat', trades: s.n }} />;
 }

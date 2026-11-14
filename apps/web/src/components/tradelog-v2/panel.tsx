@@ -1,8 +1,9 @@
 'use client';
 
 // Side panel for one trade (inline on wide screens, a drawer on tablets, a
-// full-screen sheet on phones): compact chart, fills, process grade with its
-// reasons, similar trades, the journal note, and a link to the full review.
+// full-screen sheet on phones): compact chart, fills, stop and target (with the
+// inline editor), process grade with its reasons, similar trades, the journal
+// note, and a link to the full review.
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, NotePencil, X } from '@phosphor-icons/react';
@@ -10,6 +11,7 @@ import { fmtPrice } from '@/lib/desk';
 import { clock, dayTitle, fmtHold, money2, rStr, tradelogApi, type TlRow, type TradelogTradeDTO } from '@/lib/tradelog-v2-api';
 import { TradeChart } from './trade-chart';
 import { GradeVerdict, SimilarStat } from './verdict';
+import StopLevels from '@/components/trade-review/stop-levels';
 
 const EXIT_WORD = { tp: 'take-profit', sl: 'stop-loss', stopout: 'stop-out', other: '' } as const;
 
@@ -60,7 +62,7 @@ export function TradePanel({ accountId, row, tz, minTrades, onClose, mode }: {
         <dl className="tl-fills">
           <div><dt>Entry</dt><dd>{fmtPrice(r.entry, r.exit)}</dd></div>
           <div><dt>Exit</dt><dd>{r.exit != null ? fmtPrice(r.exit, r.entry) : '—'}{exitWord && <small>{exitWord}</small>}</dd></div>
-          <div><dt>{r.tp != null ? 'Target' : 'Stop'}</dt><dd>{r.sl != null ? fmtPrice(r.sl, r.entry) : r.tp != null ? fmtPrice(r.tp, r.entry) : <span className="tl-muted" title="MT5 history only keeps the stop when it was hit">not stored</span>}</dd></div>
+          <div><dt>{r.tp != null ? 'Target' : 'Stop'}</dt><dd>{r.sl != null ? fmtPrice(r.sl, r.entry) : r.tp != null ? fmtPrice(r.tp, r.entry) : data?.levels?.stop != null ? fmtPrice(data.levels.stop, r.entry) : <span className="tl-muted" title="MT5 history only keeps the stop when it was hit">not stored</span>}</dd></div>
           <div><dt>Lots</dt><dd>{r.volume}</dd></div>
         </dl>
 
@@ -70,6 +72,8 @@ export function TradePanel({ accountId, row, tz, minTrades, onClose, mode }: {
           <div className="tl-pload" aria-busy><i className="x-skel x-skel--in" style={{ height: 64 }} /><i className="x-skel x-skel--in" style={{ height: 40 }} /></div>
         ) : (
           <>
+            <StopLevels variant="panel" accountId={accountId} positionId={r.id} side={r.side} entry={r.entry} levels={data.levels}
+              price={v => fmtPrice(v, r.entry)} onChange={levels => setD(p => (p.id === row.id && p.data ? { ...p, data: { ...p.data, levels } } : p))} />
             <GradeVerdict grade={r.grade} reasons={data.reasons} graded={data.graded} minTrades={minTrades} />
             <SimilarStat similar={data.similar} />
             <section className="tl-note" data-testid="panel-note">

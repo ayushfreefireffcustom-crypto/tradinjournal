@@ -36,6 +36,8 @@ import MtfStrip from '@/components/charts/mtf-strip';
 import DrawingRail from '@/components/charts/drawing-rail';
 import OpenTradeCard from '@/components/charts/open-trade-card';
 import RiskRuler from '@/components/charts/risk-ruler';
+import { DEFAULT_RISK_CAP_PCT, useTradingPrefs } from '@/lib/trading-prefs';
+import { tradeDataApi } from '@/lib/trade-data-api';
 import ReplayPanel from '@/components/charts/replay-panel';
 import EventDays from '@/components/charts/event-days';
 import { fmtChg, fmtQuote } from '@/components/charts/quote';
@@ -246,6 +248,8 @@ export default function ChartsPage() {
   const unit = usesExchange ? 'contracts' : 'lot';
   const lotDecimals = stepDecimals(lotStep);
 
+  // Day risk cap: Settings › Trading rules (default 2% of the balance).
+  const riskCapPct = useTradingPrefs().prefs?.riskCapPct ?? DEFAULT_RISK_CAP_PCT;
   const dayRisk = useMemo(() => {
     if (!balance || !now) return null;
     const start = new Date(now); start.setHours(0, 0, 0, 0);
@@ -259,9 +263,9 @@ export default function ChartsPage() {
       const pv = tradePv(t);
       if (s != null && pv) open += Math.abs(t.entry - s) * t.volume * pv; else openKnown = false;
     }
-    return { realised, open, openKnown, cap: balance.value * 0.02 };
+    return { realised, open, openKnown, cap: balance.value * (riskCapPct / 100) };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [balance?.value, now, tr.trades, usesExchange, openTrade?.id, openStop, mt5Pv]);
+  }, [balance?.value, now, tr.trades, usesExchange, openTrade?.id, openStop, mt5Pv, riskCapPct]);
   const nextEvent = useMemo(() => {
     if (!now) return null;
     const e = ev.window.find(x => x.impact === 'HIGH' && x.time > now && x.time - now < 24 * 3_600_000);
@@ -289,7 +293,18 @@ export default function ChartsPage() {
     const body = `${plan.side === 'LONG' ? 'Long' : 'Short'} ${symbol} · entry ${plan.entry} · stop ${plan.stop}${plan.target != null ? ` · target ${plan.target}` : ''} · ${sizing.lots.toFixed(lotDecimals)} ${unit} · risk ${money(sizing.riskMoney, ccy)}${riskTxt}${sizing.r != null ? ` · ${sizing.r.toFixed(1)}R` : ''}`;
     try {
       await api.journal.create({ title: `Plan · ${symbol}`, body, tags: ['plan', symbol], ...(selected ? { brokerAccountId: selected.id } : {}) });
-      setSaveState({ key: planKey, state: 'done', message: 'Saved to your journal. It shows as a note on the chart.' });
+      // The open MT5 position on this symbol and side gets the plan's stop / target as its levels (R, stop moves).
+      const pos = selected && openTrade?.source === 'mt5' && openTrade.side === plan.side ? openTrade : null;
+      let level: 'saved' | 'skipped' | null = null;
+      if (pos && selected) {
+        level = await tradeDataApi.add(selected.id, pos.id, { sl: plan.stop, tp: plan.target }, 'plan').then(() => 'saved' as const, () => 'skipped' as const);
+      }
+      setSaveState({
+        key: planKey, state: 'done',
+        message: level === 'saved' ? 'Saved to your journal and as the stop of your open trade.'
+          : level === 'skipped' ? 'Saved to your journal. The stop didn’t fit your open trade, so it wasn’t attached.'
+            : 'Saved to your journal. It shows as a note on the chart.',
+      });
       tr.reload();
     } catch (e) { setSaveState({ key: planKey, state: 'error', message: e instanceof Error ? e.message : 'Could not save the plan' }); }
   };
