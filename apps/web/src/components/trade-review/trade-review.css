@@ -1,0 +1,223 @@
+/* Trade review ("D · AI"). Approved design:
+   design/redesign-2026-11-14/dashboard-analytics/d-ai/trade-1440.png
+   Builds on the Dashboard v2 layer (.d2 vars, cards, widget header, AI line).
+   Inter, sizes 11/13/14/22/34/40/64 only; numbers 900, headings 800.
+   Marks #08C465 / #FE3A31; small text uses the darker tints in light. */
+.v6 .trv {
+  --trv-band: rgba(255, 255, 255, .035);
+  --trv-grid: rgba(255, 255, 255, .06);
+  --trv-g: #08C465; --trv-r: #FE3A31;
+  --trv-gt: #08C465; --trv-rt: #FE3A31;
+}
+html[data-theme=light] .v6 .trv {
+  --trv-band: rgba(0, 0, 0, .03);
+  --trv-grid: rgba(0, 0, 0, .06);
+  --trv-gt: #06894A; --trv-rt: #D42A21;
+}
+
+/* header */
+.v6 .trv-hd { display: flex; align-items: baseline; gap: 6px 14px; flex-wrap: wrap; min-width: 0; padding: 2px 2px 0; }
+.v6 .trv-crumb { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 13px; color: var(--mut); flex-wrap: nowrap; max-width: 100%; }
+.v6 .trv-crumb a { color: var(--mut); text-decoration: none; white-space: nowrap; flex: none; }
+.v6 .trv-crumb a:hover { color: var(--tx); }
+.v6 .trv-crumb svg { flex: none; color: var(--dim); }
+.v6 .trv-crumb h2 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -.02em; color: var(--tx); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.v6 .trv-meta { font-size: 13px; color: var(--dim); min-width: 0; overflow-wrap: anywhere; }
+.v6 .trv-nav button { display: inline-flex; align-items: center; gap: 6px; }
+.v6 .trv-nav button:disabled { opacity: .4; cursor: default; }
+.v6 .trv-muted { color: var(--mut); }
+
+/* KPI ribbon: one row on wide cards, wrapping into a grid below */
+.v6 .trv-kr { display: grid; grid-template-columns: repeat(var(--n, 8), minmax(0, 1fr)); overflow: hidden; }
+.v6 .trv-kr > div { padding: 14px 12px 12px; border-left: 1px solid var(--line); min-width: 0; }
+.v6 .trv-kr > div:first-child { border-left: 0; }
+.v6 .trv-kr b { display: block; font-size: 22px; font-weight: 900; letter-spacing: -.02em; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.25; }
+.v6 .trv-kr b small { font-size: 13px; font-weight: 700; color: var(--dim); letter-spacing: 0; margin-left: 1px; }
+.v6 .trv-kr > div > small { display: block; font-size: 11px; color: var(--mut); margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* chart */
+.v6 .trv-chart { position: relative; width: 100%; min-width: 0; touch-action: pan-y; }
+.v6 .trv-chart svg, .v6 .trv-sim svg { display: block; overflow: visible; font-family: var(--sans); font-variant-numeric: tabular-nums; }
+.v6 .trv-grid { stroke: var(--trv-grid); }
+.v6 .trv-ax { font-size: 11px; fill: var(--dim); }
+.v6 .trv-ax.me { fill: var(--tx); font-weight: 700; }
+.v6 .trv-band { fill: var(--trv-band); }
+.v6 .trv-chart .u .trv-wick { stroke: var(--trv-g); }
+.v6 .trv-chart .u .trv-body { fill: var(--trv-g); }
+.v6 .trv-chart .d .trv-wick { stroke: var(--trv-r); }
+.v6 .trv-chart .d .trv-body { fill: var(--trv-r); }
+.v6 .trv-chart .out { opacity: .4; }
+.v6 .trv-entry { stroke: var(--mut); stroke-dasharray: 4 4; }
+.v6 .trv-stop { stroke: var(--trv-r); stroke-width: 1.5; }
+.v6 .trv-afterln { stroke: var(--mut); stroke-dasharray: 2 4; }
+.v6 .trv-in { fill: var(--d2-card, var(--s1)); stroke: var(--tx); stroke-width: 2; }
+.v6 .trv-out { stroke: var(--d2-card, var(--s1)); stroke-width: 2; }
+.v6 .trv-out.w { fill: var(--trv-g); }
+.v6 .trv-out.l { fill: var(--trv-r); }
+.v6 .trv-best { fill: var(--trv-g); }
+.v6 .trv-lbl { font-size: 11px; font-weight: 600; fill: var(--mut); }
+.v6 .trv-lbl.g { fill: var(--trv-gt); }
+.v6 .trv-lvl .t1 { font-size: 11px; font-weight: 700; }
+.v6 .trv-lvl .t2 { font-size: 11px; fill: var(--dim); }
+.v6 .trv-lvl.tx .t1 { fill: var(--tx); }
+.v6 .trv-lvl.g .t1 { fill: var(--trv-gt); }
+.v6 .trv-lvl.r .t1 { fill: var(--trv-rt); }
+.v6 .trv-tag rect { fill: var(--d2-card, var(--s1)); stroke-width: 1; }
+.v6 .trv-tag text { font-size: 11px; font-weight: 700; }
+.v6 .trv-tag.tx rect { stroke: var(--tx); } .v6 .trv-tag.tx text { fill: var(--tx); }
+.v6 .trv-tag.g rect { stroke: var(--trv-gt); } .v6 .trv-tag.g text { fill: var(--trv-gt); }
+.v6 .trv-tag.r rect { stroke: var(--trv-rt); } .v6 .trv-tag.r text { fill: var(--trv-rt); }
+.v6 .trv-cross line { stroke: var(--line-2); }
+.v6 .trv-tip {
+  position: absolute; top: 8px; transform: translateX(10px); z-index: 3; pointer-events: none;
+  display: flex; flex-direction: column; gap: 1px; padding: 6px 8px; border-radius: 6px;
+  background: var(--d2-card, var(--s1)); box-shadow: 0 0 0 1px var(--line-2), 0 4px 14px rgba(0, 0, 0, .12);
+  font-size: 11px; color: var(--mut); font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.v6 .trv-tip b { color: var(--tx); font-weight: 700; }
+.v6 .trv-tip.l { transform: translateX(calc(-100% - 10px)); }
+.v6 .trv-sk { background: var(--d2-card2, var(--s2)); border-radius: 8px; animation: d2-pulse 1.4s ease-in-out infinite; }
+
+
+/* grade */
+.v6 .trv-gw { display: flex; gap: 18px; align-items: center; min-width: 0; }
+.v6 .trv-gl { font-size: 64px; font-weight: 900; line-height: .85; letter-spacing: -.04em; flex: none; min-width: 44px; }
+.v6 .trv-gl.up { color: var(--trv-gt); } .v6 .trv-gl.mid { color: var(--mut); } .v6 .trv-gl.dn { color: var(--trv-rt); }
+.v6 .trv-chips { display: flex; gap: 6px; flex-direction: column; align-items: flex-start; min-width: 0; }
+.v6 .trv-chip { display: inline-flex; align-items: center; height: 26px; padding: 0 9px; border-radius: 6px; font-size: 13px; font-weight: 700; white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.v6 .trv-chip.dn { background: var(--d2-rfill); color: var(--trv-rt); }
+.v6 .trv-chip.up { background: var(--d2-gfill); color: var(--trv-gt); }
+.v6 .trv-more { font-size: 11px; font-weight: 600; color: var(--mut); }
+.v6 .trv-subg { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; margin-top: 16px; }
+.v6 .trv-subg > div { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 0 6px; border-radius: 6px; background: var(--d2-card2); box-shadow: inset 0 0 0 1px var(--line); min-width: 0; }
+.v6 .trv-subg > div.up svg { color: var(--trv-gt); }
+.v6 .trv-subg > div.dn svg { color: var(--trv-rt); }
+.v6 .trv-subg small { font-size: 11px; color: var(--mut); }
+.v6 .trv-nograde { min-height: 0; padding: 0 0 4px; }
+
+/* what I would have done */
+.v6 .trv-ladder { margin-top: 18px; display: flex; flex-direction: column; gap: 12px; }
+.v6 .trv-ladder > .d2-cap { margin-bottom: -2px; }
+.v6 .trv-lr { display: grid; grid-template-columns: minmax(0, 96px) minmax(0, 1fr) auto; align-items: start; gap: 10px; }
+.v6 .trv-lk { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-top: 1px; }
+.v6 .trv-lr.me .trv-lk { font-weight: 800; }
+.v6 .trv-lb { height: 13px; margin-top: 3px; display: block; position: relative; }
+.v6 .trv-lb i { display: block; height: 13px; border-radius: 2px; }
+.v6 .trv-lb i.dn { background: var(--trv-r); } .v6 .trv-lb i.up { background: var(--trv-g); }
+.v6 .trv-lr:not(.me) .trv-lb i { opacity: .55; }
+.v6 .trv-lb em.z { position: absolute; left: 0; top: -4px; bottom: -4px; width: 2px; background: var(--trv-g); }
+.v6 .trv-lv { display: flex; flex-direction: column; align-items: flex-end; min-width: 64px; }
+.v6 .trv-lv b { font-size: 13px; font-weight: 900; white-space: nowrap; }
+.v6 .trv-lv small { font-size: 11px; font-weight: 700; white-space: nowrap; margin-top: 2px; }
+.v6 .trv :is(.up) { color: var(--trv-gt); }
+.v6 .trv :is(.dn) { color: var(--trv-rt); }
+
+/* similar + same setup */
+.v6 .trv-sim { width: 100%; min-width: 0; }
+.v6 .trv-sh1 { margin: 0 0 4px; font-size: 13px; font-weight: 800; }
+.v6 .trv-zero { stroke: var(--line-2); }
+.v6 .trv-sim rect.dn { fill: var(--trv-r); opacity: .55; }
+.v6 .trv-sim rect.up { fill: var(--trv-g); opacity: .55; }
+.v6 .trv-sim rect.me { opacity: 1; stroke: var(--tx); stroke-width: 1.5; }
+.v6 .trv-sim a rect { cursor: pointer; }
+.v6 .trv-sim a:hover rect, .v6 .trv-sim a:focus rect { opacity: .85; }
+.v6 .trv-bv { font-size: 11px; font-weight: 600; }
+.v6 .trv-bv.dn { fill: var(--trv-rt); } .v6 .trv-bv.up { fill: var(--trv-gt); } .v6 .trv-bv.me { fill: var(--tx); font-weight: 800; }
+.v6 .trv-hourband { fill: var(--d2-chip); opacity: .6; }
+.v6 .trv-sim .up .trv-stem { stroke: var(--trv-g); } .v6 .trv-sim .dn .trv-stem { stroke: var(--trv-r); }
+.v6 .trv-sim .trv-stem { stroke-width: 2; }
+.v6 .trv-sim .up .trv-dot { fill: var(--trv-g); } .v6 .trv-sim .dn .trv-dot { fill: var(--trv-r); }
+.v6 .trv-sim .me .trv-dot { stroke: var(--tx); stroke-width: 2; }
+.v6 .trv-sim .me .trv-lbl { fill: var(--tx); font-weight: 800; }
+.v6 .trv-sh { display: flex; justify-content: space-between; gap: 4px 12px; flex-wrap: wrap; margin: 0 0 4px; font-size: 11px; font-weight: 700; color: var(--mut); }
+
+/* journal */
+.v6 .trv-jr { min-width: 0; }
+.v6 .trv-jrow { display: flex; align-items: center; gap: 12px; padding: 10px 12px 10px 16px; min-width: 0; }
+.v6 .trv-jt { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 13px; color: var(--mut); }
+.v6 .trv-jt b { color: var(--tx); font-weight: 700; }
+.v6 .trv-jb { display: flex; gap: 6px; align-items: center; flex: none; }
+.v6 .trv-jb .d2-fp { height: 34px; gap: 6px; color: var(--tx); font-weight: 600; }
+.v6 .trv-jb .d2-fp:disabled { opacity: .5; cursor: default; }
+.v6 .trv-save { height: 34px; white-space: nowrap; }
+.v6 .trv-save:disabled { opacity: .45; cursor: default; }
+.v6 .trv-jed { padding: 0 16px 14px; display: flex; flex-direction: column; gap: 10px; }
+.v6 .trv-jed textarea {
+  width: 100%; min-height: 104px; resize: vertical; padding: 10px 12px; border: 0; border-radius: 8px; background: var(--d2-card2);
+  box-shadow: inset 0 0 0 1px var(--line-2); font: 400 14px/1.5 var(--sans); color: var(--tx);
+}
+.v6 .trv-jed textarea:focus { outline: 0; box-shadow: inset 0 0 0 1.5px var(--tx); }
+.v6 .trv-jf { display: flex; align-items: center; gap: 8px 14px; flex-wrap: wrap; font-size: 13px; }
+.v6 .trv-jf .trv-muted { flex: 1 1 220px; min-width: 0; font-size: 13px; }
+.v6 .trv-jtags { display: flex; gap: 6px; flex-wrap: wrap; }
+.v6 .trv-jtag { display: inline-block; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 5px; background: var(--d2-chip); color: var(--mut); }
+.v6 .trv-jtag.dn { background: var(--d2-rfill); color: var(--trv-rt); }
+.v6 .trv-jtag.up { background: var(--d2-gfill); color: var(--trv-gt); }
+
+/* executions + P&L */
+.v6 .trv-ex { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.v6 .trv-pl { margin: 0; display: flex; flex-wrap: wrap; gap: 8px 28px; }
+.v6 .trv-pl > div { min-width: 0; }
+.v6 .trv-pl dt { font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--dim); }
+.v6 .trv-pl dd { margin: 2px 0 0; font-size: 14px; font-weight: 900; white-space: nowrap; }
+.v6 .trv-pl .net dd { font-size: 22px; line-height: 1.1; }
+.v6 .trv-dtw { width: 100%; overflow-x: auto; margin: 0 -16px -12px; width: calc(100% + 32px); border-top: 1px solid var(--line); }
+.v6 .trv-dtw .d2-dt td:first-child { color: var(--dim); }
+.v6 .trv-dcards { display: none; flex-direction: column; gap: 0; margin: 0; border-top: 1px solid var(--line); }
+.v6 .trv-dcard { display: flex; justify-content: space-between; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); min-width: 0; }
+.v6 .trv-dcard:last-child { border-bottom: 0; }
+.v6 .trv-dcard > div { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.v6 .trv-dcard b { font-size: 13px; font-weight: 700; }
+.v6 .trv-dcard small { font-size: 11px; color: var(--mut); overflow-wrap: anywhere; }
+.v6 .trv-dcard .r { align-items: flex-end; flex: none; }
+.v6 .trv-dcard .r b { font-weight: 900; }
+
+/* ── responsive (the .d2 container) ── */
+@container (max-width: 1099.98px) {
+  .v6 .trv-kr { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .v6 .trv-kr > div { border-top: 1px solid var(--line); border-left: 1px solid var(--line); }
+  .v6 .trv-kr > div:nth-child(-n+4) { border-top: 0; }
+  .v6 .trv-kr > div:nth-child(4n+1) { border-left: 0; }
+  .v6 .trv .trv-s8, .v6 .trv .trv-s4 { grid-column: span 12; }
+}
+@container (max-width: 699.98px) {
+  .v6 .trv-kr { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .v6 .trv-kr > div:nth-child(n) { border-top: 1px solid var(--line); border-left: 1px solid var(--line); }
+  .v6 .trv-kr > div:nth-child(-n+3) { border-top: 0; }
+  .v6 .trv-kr > div:nth-child(3n+1) { border-left: 0; }
+  .v6 .trv-jrow { flex-wrap: wrap; padding: 10px 12px; }
+  .v6 .trv-jt { flex: 1 1 100%; white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .v6 .trv-jb { flex: 1 1 100%; }
+  .v6 .trv-jb .trv-save { margin-left: auto; }
+  .v6 .trv-jed { padding: 0 12px 12px; }
+  .v6 .trv-dtw { display: none; }
+  .v6 .trv-dcards { display: flex; }
+  .v6 .trv-crumb h2 { font-size: 22px; }
+}
+@container (max-width: 460px) {
+  .v6 .trv-kr { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .v6 .trv-kr > div:nth-child(n) { border-top: 1px solid var(--line); border-left: 1px solid var(--line); }
+  .v6 .trv-kr > div:nth-child(-n+2) { border-top: 0; }
+  .v6 .trv-kr > div:nth-child(odd) { border-left: 0; }
+  .v6 .trv-gl { font-size: 40px; min-width: 30px; }
+  .v6 .trv-gw { gap: 14px; }
+  .v6 .trv-lr { grid-template-columns: minmax(0, 84px) minmax(0, 1fr) auto; gap: 8px; }
+  .v6 .trv-crumb > a, .v6 .trv-crumb > svg { display: none; }
+  .v6 .trv-pl { gap: 8px 18px; }
+  .v6 .trv-jb .d2-fp { padding: 0 9px; }
+}
+@container (max-width: 340px) {
+  .v6 .trv-kr > div { padding: 12px 10px 10px; }
+  .v6 .trv-kr b { font-size: 14px; }
+  .v6 .trv-jb { flex-wrap: wrap; }
+}
+@media (max-width: 520px) {
+  .v6 .trv-nav button span { display: none; }
+}
+@container (min-width: 700px) and (max-width: 1099.98px) {
+  .v6 .trv .trv-s4 .d2-wb { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 28px; align-items: start; }
+  .v6 .trv .trv-s4 .trv-ladder { margin-top: 0; }
+}
+@media (max-width: 480px) {
+  .v6 .trv-hide-s { display: none; }
+}

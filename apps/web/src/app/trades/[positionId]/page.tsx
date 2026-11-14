@@ -1,47 +1,51 @@
 'use client';
 
-import { Suspense, useEffect, useMemo, useState, useCallback } from 'react';
+// Trade review ("D · AI"): one position, reviewed. Everything comes from real
+// data: GET /api/insights/trade-review (trade, fills, neighbours, process grade
+// and flags, size vs usual, similar trades, same setup by hour) and market
+// candles for the chart (best/worst while open, after the exit, the usual-hold
+// exit). Anything that can't be computed is hidden — MT5 history has no stop
+// moves and usually no stop, so there are no stop steps and no R unless stored.
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { ArrowLeft, ArrowRight, CaretRight } from '@phosphor-icons/react';
 import Link from '@/components/v6/ui/link';
-import AppShell from '@/components/app-shell';
+import AppShell, { timeAgo } from '@/components/app-shell';
 import { LoadingScreen } from '@/components/loader';
-import { api, type BrokerAccount, type Deal, type Trade, type JournalEntry } from '@/lib/api';
+import { api, type BrokerAccount, type JournalEntry } from '@/lib/api';
 import { persistSelectedAccountId } from '@/lib/use-accounts';
-import { IArrowLeft, IArrowRight } from '@/components/v6/icons';
-import IconButton from '@/components/v6/ui/icon-button';
-import { useTradeCandles } from '@/lib/use-trade-candles';
-import { TradeCandles } from '@/components/v6/trades/trade-candles';
-import { pctOfBalance } from '@/components/v6/trades/trade-log';
-import { SideChip } from '@/components/v6/desk';
-import { fmtHold, fmtUsd } from '@/lib/dashboard-v6';
-import { fmtPrice, marketKind, tagTone, tickerMark } from '@/lib/desk';
-import '@/styles/v6/trades.css';
+import { kmoney, money, pct } from '@/lib/dashboard-v2-format';
+import {
+  afterTheExit, candleWhatIf, excursion, noteFacts, ReviewError, tradeReviewApi, useReviewBars, type TradeReviewDTO,
+} from '@/lib/trade-review-api';
+import { AiFoot, Empty, Widget } from '@/components/dashboard-v2/ui';
+import TradeChart from '@/components/trade-review/trade-chart';
+import JournalNote from '@/components/trade-review/journal-note';
+import { Executions, GradeBlock, ReviewKpis, SameSetupChart, SameSetupHead, SimilarBars, WhatIfLadder, type LadderRow } from '@/components/trade-review/parts';
+import '@/components/dashboard-v2/dashboard-v2.css';
+import '@/components/trade-review/trade-review.css';
 
-const NEGATIVE_EMOTIONS = ['FOMO', 'Revenge', 'Hesitant'];
-const ENTRY: Record<Deal['entry'], string> = { IN: 'In', OUT: 'Out', INOUT: 'In/out', OUT_BY: 'Out by' };
-const tone = (v: number) => (v > 0 ? 'pos' : v < 0 ? 'neg' : '');
+const SESSION = { ASIA: 'Asia', LONDON: 'London', NY: 'New York' } as const;
+type State = { status: 'loading' } | { status: 'ready'; data: TradeReviewDTO } | { status: 'notfound' } | { status: 'error'; error: string } | { status: 'noaccount' };
 
-const pad = (n: number) => String(n).padStart(2, '0');
-const hm = (d: Date) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
-const day = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', ...(d.getFullYear() !== new Date().getFullYear() ? { year: 'numeric' } : {}) });
-
-/** "Oct 19 09:59 → 11:40", with the close day added when it differs. 24h, like the trade log. */
-function when(t: Trade) {
-  const o = new Date(t.openTime);
-  if (!t.closeTime) return `${day(o)} ${hm(o)} → open`;
-  const c = new Date(t.closeTime);
-  return `${day(o)} ${hm(o)} → ${o.toDateString() === c.toDateString() ? '' : `${day(c)} `}${hm(c)}`;
+/** Decimals the instrument trades in, from the fills themselves, kept within what its price size needs. */
+function priceDecimals(r: TradeReviewDTO): number {
+  const xs = [r.trade.entry, r.trade.exit, ...r.trade.deals.map(d => d.price)].filter((v): v is number => v != null && Number.isFinite(v) && v > 0);
+  const dec = Math.max(0, ...xs.map(v => { const s = String(v); const i = s.indexOf('.'); return i < 0 ? 0 : s.length - i - 1; }));
+  const a = Math.abs(r.trade.entry);
+  const [lo, hi] = a >= 1000 ? [1, 2] : a >= 100 ? [2, 3] : a >= 10 ? [2, 4] : [4, 5];
+  return Math.min(hi, Math.max(lo, dec));
 }
 
-export default function TradeDetailPage() {
+export default function TradeReviewPage() {
   return (
     <Suspense fallback={<div className="h-dvh"><LoadingScreen label="Loading trade" /></div>}>
-      <TradeDetail />
+      <TradeReview />
     </Suspense>
   );
 }
 
-function TradeDetail() {
+function TradeReview() {
   const params = useParams<{ positionId: string }>();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -50,216 +54,223 @@ function TradeDetail() {
 
   const [accounts, setAccounts] = useState<BrokerAccount[]>([]);
   const [selected, setSelected] = useState<BrokerAccount | null>(null);
-  const [trades, setTrades] = useState<Trade[]>([]);
-  const [deals, setDeals] = useState<Deal[]>([]);
+  const [state, setState] = useState<State>({ status: 'loading' });
   const [entry, setEntry] = useState<JournalEntry | null>(null);
-  const [balance, setBalance] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
 
   const load = useCallback(async () => {
-    setLoading(true);
-    setError('');
+    setState({ status: 'loading' });
     try {
       const accs = await api.accounts.list();
       setAccounts(accs);
       const acc = accs.find(a => a.id === accountId) ?? accs[0] ?? null;
       setSelected(acc);
-      // Remember this account so navigating back to the main sections keeps it.
       persistSelectedAccountId(acc?.id ?? null);
-      if (!acc) { setLoading(false); return; }
-      // Stats only supply the balance for "% of balance"; the page works without them.
-      const [t, allDeals, journal, stats] = await Promise.all([api.trades.list(acc.id), api.trades.deals(acc.id), api.journal.list(acc.id), api.trades.stats(acc.id).catch(() => null)]);
-      setBalance(stats?.currentEquity ?? null);
-      setTrades(t);
-      setDeals(allDeals.filter(d => d.positionId === positionId).sort((a, b) => +new Date(a.dealTime) - +new Date(b.dealTime)));
-      setEntry(journal.find(e => e.tradeId === positionId) ?? null);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to load trade');
-    } finally {
-      setLoading(false);
+      if (!acc) { setState({ status: 'noaccount' }); return; }
+      // The note is optional: the review still shows when the journal can't load.
+      const [data, journal] = await Promise.all([tradeReviewApi.get(acc.id, positionId), api.journal.list(acc.id).catch(() => [] as JournalEntry[])]);
+      setEntry(journal.filter(e => e.tradeId === positionId).sort((a, b) => +new Date(b.updatedAt) - +new Date(a.updatedAt))[0] ?? null);
+      setState({ status: 'ready', data });
+    } catch (err) {
+      if (err instanceof ReviewError && (err.code === 'TRADE_NOT_FOUND' || err.status === 404)) { setState({ status: 'notfound' }); return; }
+      setState({ status: 'error', error: err instanceof Error ? err.message : 'Failed to load the trade' });
     }
   }, [accountId, positionId]);
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { void load(); }, [load]);
 
-  const trade = useMemo(() => trades.find(t => t.positionId === positionId) ?? null, [trades, positionId]);
-  // Neighbours in trade-log order (newest first): ← newer, → older.
-  const { newer, older } = useMemo(() => {
-    const at = (t: Trade) => (t.closeTime ? +new Date(t.closeTime) : 8e15 + +new Date(t.openTime));
-    const list = [...trades].sort((a, b) => at(b) - at(a));
-    const i = list.findIndex(t => t.positionId === positionId);
-    return { newer: i > 0 ? list[i - 1] : undefined, older: i >= 0 ? list[i + 1] : undefined };
-  }, [trades, positionId]);
-  const href = (t: Trade) => `/trades/${t.positionId}${selected ? `?account=${encodeURIComponent(selected.id)}` : ''}`;
-
+  const r = state.status === 'ready' ? state.data : null;
+  const t = r?.trade ?? null;
+  const href = useCallback((id: string) => `/trades/${encodeURIComponent(id)}${selected ? `?account=${encodeURIComponent(selected.id)}` : ''}`, [selected]);
+  const newer = r?.nav.newer ?? null, older = r?.nav.older ?? null;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement | null;
-      if (el?.closest?.('input,textarea,select,[contenteditable=true]') || e.metaKey || e.ctrlKey) return;
-      if (e.key === 'ArrowLeft' && newer) router.push(href(newer));
-      if (e.key === 'ArrowRight' && older) router.push(href(older));
+      if (el?.closest?.('input,textarea,select,[contenteditable=true]') || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.key === 'ArrowLeft' && newer) router.push(href(newer.positionId));
+      if (e.key === 'ArrowRight' && older) router.push(href(older.positionId));
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [newer, older, href, router]);
 
-  const candles = useTradeCandles(trade, selected?.id);
+  // ── candle maths ──
+  const bars = useReviewBars(t, selected?.id);
+  const dec = r ? priceDecimals(r) : 2;
+  const price = useCallback((v: number) => v.toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec }), [dec]);
+  const pv = r?.pointValue?.value ?? null;
+  const ex = useMemo(() => {
+    if (!t || bars.status !== 'ready') return null;
+    const open = new Date(t.openTime).getTime();
+    const end = t.closeTime ? new Date(t.closeTime).getTime() : bars.bars.at(-1)!.openTime + bars.win.tfMs;
+    return excursion({ side: t.side, entry: t.entry, volume: t.volume }, open, end, bars.bars, bars.win.tfMs, pv);
+  }, [t, bars, pv]);
+  const after = useMemo(() => (t && bars.status === 'ready' ? afterTheExit(t, bars.bars, bars.win.to, pv) : null), [t, bars, pv]);
+  const ladder = useMemo<LadderRow[]>(() => {
+    if (!r || r.trade.status !== 'CLOSED') return [];
+    const base: LadderRow[] = r.whatIf.length ? [...r.whatIf] : [{ key: 'actual', label: 'You', net: r.trade.net, delta: 0, note: 'What you took' }];
+    const candle = bars.status === 'ready' ? candleWhatIf(r, bars.bars, bars.win.tfMs).map(c => ({ ...c, candle: true })) : [];
+    const [me, ...rest] = base;
+    return [me!, ...candle, ...rest];
+  }, [r, bars]);
+  const facts = useMemo(() => (r ? noteFacts(r, { excursion: ex, after, price }) : null), [r, ex, after, price]);
 
+  // ── header ──
+  const subtitle = selected
+    ? <><i className="d2-live" aria-hidden />{selected.broker} <span className="m">·{selected.mt5Login.slice(-4)}</span>{selected.lastSyncAt ? <span className="trv-hide-s"> · synced {timeAgo(selected.lastSyncAt)}</span> : null}</>
+    : undefined;
   const actions = (
-    <>
-      <Link href="/trades" className="x-btn tr-back" data-testid="back-to-trades" aria-label="Back to trade log"><IArrowLeft size={15} /><span>Trade log</span></Link>
-      {trade && (
-        <div className="x-seg tr-nav" role="group" aria-label="Browse trades">
-          <IconButton className="" disabled={!newer} onClick={() => newer && router.push(href(newer))} label="Newer trade (←)"><IArrowLeft size={14} /></IconButton>
-          <IconButton className="" disabled={!older} onClick={() => older && router.push(href(older))} label="Older trade (→)"><IArrowRight size={14} /></IconButton>
-        </div>
-      )}
-    </>
+    <div className="x-seg trv-nav" role="group" aria-label="Browse trades">
+      <button type="button" disabled={!newer} onClick={() => newer && router.push(href(newer.positionId))} title="Newer trade (←)" aria-label="Newer trade" data-testid="nav-newer"><ArrowLeft size={14} /><span>Prev</span></button>
+      <button type="button" disabled={!older} onClick={() => older && router.push(href(older.positionId))} title="Older trade (→)" aria-label="Older trade" data-testid="nav-older"><span>Next</span><ArrowRight size={14} /></button>
+    </div>
   );
-  const subtitle = trade
-    ? <>{trade.symbol} · {trade.direction === 'LONG' ? 'Long' : 'Short'}{selected ? ` · ${selected.broker}` : ''}</>
-    : selected?.broker;
-  const pct = trade ? pctOfBalance(trade.netPnl, balance) : '';
-  const kind = trade ? marketKind(trade.symbol) : '';
-  const journalHref = trade ? `/journal?trade=${encodeURIComponent(trade.positionId)}` : '/journal';
-  const dealRow = (d: Deal) => {
-    const p = parseFloat(d.profit), c = parseFloat(d.commission);
-    const noPnl = d.entry === 'IN' && !p;
-    return { p, c, noPnl, type: d.type === 'BUY' ? 'Buy' : d.type === 'SELL' ? 'Sell' : 'Balance' };
-  };
 
   return (
-    <AppShell legacy={false} accounts={accounts} selectedAccount={selected} pageTitle={`Position #${positionId}`} pageSubtitle={subtitle} actions={actions}>
-      <div className="tr-page" data-testid="trade-detail-page">
-        {error && (
-          <div className="x-banner x-banner--err" role="alert" data-testid="trade-detail-error">
-            <span>{error}</span><button className="x-btn x-btn--sm" onClick={load}>Retry</button>
+    <AppShell legacy={false} accounts={accounts} selectedAccount={selected} pageTitle="Trade review" pageSubtitle={subtitle} actions={r ? actions : null}>
+      <div className="d2 trv" data-testid="trade-detail-page">
+        {state.status === 'error' && (
+          <div className="d2-banner" role="alert" data-testid="trade-detail-error">
+            <span>{state.error}</span>
+            <button type="button" className="x-btn x-btn--sm" onClick={() => void load()}>Retry</button>
           </div>
         )}
-
-        {loading ? (
+        {state.status === 'loading' && <Skeleton />}
+        {state.status === 'notfound' && (
+          <section className="d2-card d2-connect" data-testid="trade-not-found">
+            <h2>Position #{positionId} isn&rsquo;t on this account</h2>
+            <p>It may belong to another broker account, or it hasn&rsquo;t synced yet.</p>
+            <Link href="/trades" className="x-btn x-btn--hi">Back to trade log</Link>
+          </section>
+        )}
+        {state.status === 'noaccount' && (
+          <section className="d2-card d2-connect" data-testid="trade-no-account">
+            <h2>No broker account connected</h2>
+            <p>Connect your MT5 account to review your trades.</p>
+            <Link href="/dashboard" className="x-btn x-btn--hi">Go to dashboard</Link>
+          </section>
+        )}
+        {r && t && selected && (
           <>
-            <div className="x-skel" style={{ height: 210 }} />
-            <div className="x-skel" style={{ height: 480 }} />
-            <div className="x-skel" style={{ height: 230 }} />
-          </>
-        ) : !trade ? (
-          error ? null : (
-            <section className="x-card x-empty" data-testid="trade-not-found">
-              <b>Position #{positionId} isn’t on this account</b>
-              <p>It may belong to another broker account, or it hasn’t synced yet.</p>
-              <Link href="/trades" className="x-btn x-btn--hi">Back to trade log</Link>
-            </section>
-          )
-        ) : (
-          <>
-            <section className="x-card tr-hero">
-              <div className="tr-id">
-                <span className="x-mk">{tickerMark(trade.symbol)}</span>
-                <div className="x-min0">
-                  <h2>{trade.symbol}<SideChip dir={trade.direction} /><span className={`x-tag ${trade.status === 'OPEN' ? 'x-tag--g' : ''}`}>{trade.status === 'OPEN' ? 'Open' : 'Closed'}</span></h2>
-                  <p>{kind ? `${kind} · ` : ''}<span className="tr-nw">{when(trade)}</span> · <span className="tr-nw">held <span className="m">{fmtHold(trade.durationSecs)}</span></span></p>
-                </div>
-              </div>
-              <div className="tr-net">
-                <span>Net P&amp;L</span>
-                <b className={`m ${tone(trade.netPnl)}`}>{fmtUsd(trade.netPnl)}</b>
-                <small>{pct ? <><span className="m">{pct}</span> of balance</> : <>Gross <span className="m">{fmtUsd(trade.grossPnl)}</span></>}</small>
-              </div>
-              <dl className="x-strip tr-metrics" data-testid="trade-metrics">
-                {[
-                  { l: 'Gross P&L', v: fmtUsd(trade.grossPnl), c: '' },
-                  { l: 'Size', v: `${trade.volume.toFixed(2)} lots`, c: '' },
-                  { l: 'Entry', v: fmtPrice(trade.entryPrice, trade.exitPrice), c: '' },
-                  { l: 'Exit', v: trade.exitPrice == null ? '—' : fmtPrice(trade.exitPrice, trade.entryPrice), c: '' },
-                  { l: 'Held', v: fmtHold(trade.durationSecs), c: '' },
-                  { l: 'Commission', v: trade.commission ? fmtUsd(trade.commission) : '$0.00', c: '' }, // fees, not losses: neutral (A4.3)
-                  { l: 'Swap', v: trade.swap ? fmtUsd(trade.swap) : '$0.00', c: '' },
-                ].map(m => (
-                  <div key={m.l}><dt><span>{m.l}</span></dt><dd><b className={`m ${m.c}`}>{m.v}</b></dd></div>
-                ))}
-              </dl>
-            </section>
-
-            <section className="x-card" aria-labelledby="tr-chart-h">
-              <div className="x-ch">
-                <h2 id="tr-chart-h">Price</h2>
-                <span className="x-sub">{candles.loading ? 'Loading candles…' : candles.candles ? 'Market data' : 'Illustrative path, not tick data'}</span>
-                <div className="x-r">
-                  <span className="tr-legend"><span><i />Entry</span>{trade.status !== 'OPEN' && <span><i className={trade.netPnl >= 0 ? 'g' : 'r'} />Exit</span>}</span>
-                </div>
-              </div>
-              <TradeCandles trade={trade} real={candles.candles} />
-            </section>
-
-            <div className="tr-row">
-              <section className="x-card" data-testid="trade-journal" aria-labelledby="tr-j">
-                <div className="x-ch">
-                  <h2 id="tr-j">Journal</h2>
-                  <span className="x-sub">Notes for this trade</span>
-                  {entry && <div className="x-r"><Link href={journalHref} className="x-btn x-btn--sm">Edit note</Link></div>}
-                </div>
-                {entry ? (
-                  <>
-                    {(entry.emotion || entry.tags?.length) ? (
-                      <div className="tr-jtags">
-                        {entry.emotion && <span className={`x-tag ${NEGATIVE_EMOTIONS.includes(entry.emotion) || tagTone(entry.emotion) === 'r' ? 'x-tag--r' : tagTone(entry.emotion) === 'g' ? 'x-tag--g' : ''}`}>{entry.emotion}</span>}
-                        {(entry.tags ?? []).map(t => <span key={t} className={`x-tag ${tagTone(t) === 'g' ? 'x-tag--g' : tagTone(t) === 'r' ? 'x-tag--r' : ''}`}>{t}</span>)}
-                      </div>
-                    ) : null}
-                    {entry.body ? <p className="tr-note">{entry.body}</p> : <p className="tr-note x-muted">No written notes.</p>}
-                  </>
-                ) : (
-                  <div className="tr-jnone">
-                    <p>No notes yet. A line on why you took it, and whether you followed the plan, is what makes this trade useful later.</p>
-                    <Link href={journalHref} className="x-btn x-btn--hi x-btn--sm">Write a note</Link>
-                  </div>
-                )}
-              </section>
-
-              <section className="x-card" aria-labelledby="tr-x" data-testid="trade-deals">
-                <div className="x-ch"><h2 id="tr-x">Executions</h2><span className="x-sub">{deals.length} deal{deals.length === 1 ? '' : 's'}</span></div>
-                {deals.length === 0 ? <div className="x-empty"><p>No fills on file for this position.</p></div> : (
-                  <>
-                    <div className="x-tblwrap tr-xtbl">
-                      <table className="x-tbl">
-                        <thead><tr><th>Deal</th><th>Type</th><th>Entry</th><th className="n">Volume</th><th className="n">Price</th><th className="n">Profit</th><th className="n">Comm.</th></tr></thead>
-                        <tbody>
-                          {deals.map(d => {
-                            const r = dealRow(d);
-                            return (
-                              <tr key={d.dealTicket}>
-                                <td className="m x-muted">#{d.dealTicket}</td>
-                                <td>{r.type}</td>
-                                <td className="x-muted">{ENTRY[d.entry]}</td>
-                                <td className="n m">{parseFloat(d.volume).toFixed(2)}</td>
-                                <td className="n m">{fmtPrice(parseFloat(d.price))}</td>
-                                <td className={`n m ${r.noPnl ? 'x-muted' : tone(r.p)}`}>{r.noPnl ? '—' : fmtUsd(r.p)}</td>
-                                <td className="n m x-muted">{r.c ? fmtUsd(r.c) : '—'}</td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                    <div className="tr-xcards x-list">
-                      {deals.map(d => {
-                        const r = dealRow(d);
-                        return (
-                          <div key={d.dealTicket} className="tr-xcard">
-                            <div><b>{r.type} · {ENTRY[d.entry].toLowerCase()}</b><small className="m">#{d.dealTicket} · {parseFloat(d.volume).toFixed(2)} @ {fmtPrice(parseFloat(d.price))}</small></div>
-                            <div className="tr-pl"><b className={`m ${r.noPnl ? 'x-muted' : tone(r.p)}`}>{r.noPnl ? '—' : fmtUsd(r.p)}</b>{r.c ? <small className="m">comm. {fmtUsd(r.c)}</small> : null}</div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </>
-                )}
-              </section>
+            <div className="trv-hd">
+              <nav className="trv-crumb" aria-label="Breadcrumb">
+                <Link href="/trades" data-testid="back-to-trades">Trade log</Link><CaretRight size={12} aria-hidden />
+                <h2 data-testid="trade-title"><span className="trv-sym">{t.symbol}</span> {t.side === 'LONG' ? 'long' : 'short'} · {new Date(t.openTime).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}</h2>
+              </nav>
+              <span className="trv-meta">#{t.positionId} · trade {r.day.index} of {r.day.count} that day · {SESSION[r.session]} session{t.status === 'OPEN' ? ' · open' : ''}</span>
             </div>
+
+            <ReviewKpis r={r} price={price} ex={ex} />
+
+            <div className="d2-grid">
+              <div className="d2-slot d2-s8 trv-s8">
+                <Widget id="trade-chart" span={8} title={`${t.symbol} · ${bars.status === 'ready' ? tfName(bars.win.tf) : 'price'}`}
+                  sub={bars.status === 'ready' ? `· entry${r.stop != null ? ', stop' : ''}${t.status === 'CLOSED' ? ', exit, after exit' : ', now'}` : undefined}
+                  foot={chartFoot(r, after, ex)}>
+                  {bars.status === 'loading' ? <div className="trv-sk" style={{ height: 340 }} aria-busy="true" />
+                    : bars.status === 'none' ? <Empty title={`No ${t.symbol} candles for this trade`} note="The market data we use doesn't cover this symbol at that time, so there's no chart. Entry, exit and the numbers above are from your broker." />
+                      : <TradeChart trade={t} bars={bars.bars} tfMs={bars.win.tfMs} stop={r.stop} exitReason={r.exitReason} excursion={ex} after={after} price={price} />}
+                </Widget>
+              </div>
+              <div className="d2-slot d2-s4 trv-s4">
+                <Widget id="grade" span={4} title="Process grade" sub="· against your rules" foot={gradeFoot(r, ladder)}>
+                  <GradeBlock r={r} />
+                  <WhatIfLadder rows={ladder} />
+                </Widget>
+              </div>
+              <div className="d2-slot d2-s6">
+                <Widget id="similar" span={6} title="Similar trades" sub={r.similar ? `· ${r.similar.criteria.join(', ')}` : undefined} foot={similarFoot(r)}>
+                  {r.similar ? (
+                    <>
+                      <p className={`trv-sh1 ${r.similar.net < 0 ? 'dn' : r.similar.net > 0 ? 'up' : ''}`} data-testid="similar-head">{r.similar.wins} of {r.similar.n} won · {money(r.similar.net)}</p>
+                      <SimilarBars s={r.similar} me={{ net: t.net, closed: t.status === 'CLOSED' }} href={href} />
+                    </>
+                  ) : <Empty title="No similar trades yet" note={`Nothing else on ${t.symbol} ${t.side === 'LONG' ? 'longs' : 'shorts'} to compare with. This fills in as you trade it.`} />}
+                </Widget>
+              </div>
+              <div className="d2-slot d2-s6">
+                <Widget id="same-setup" span={6} title="Same setup, your history" sub={`· ${t.symbol} ${t.side === 'LONG' ? 'longs' : 'shorts'} by UTC hour`} foot={setupFoot(r)}>
+                  {r.sameSetup ? (
+                    <>
+                      <SameSetupHead s={r.sameSetup} />
+                      <SameSetupChart s={r.sameSetup} me={{ net: t.net, closed: t.status === 'CLOSED' }} />
+                    </>
+                  ) : <Empty title="Not enough history" note={`Needs 3 or more closed ${t.symbol} ${t.side === 'LONG' ? 'longs' : 'shorts'}.`} />}
+                </Widget>
+              </div>
+              <div className="d2-slot d2-s12">
+                <JournalNote accountId={selected.id} positionId={t.positionId} entry={entry} onSaved={setEntry} facts={facts} entryDate={t.closeTime ?? t.openTime} />
+              </div>
+              <div className="d2-slot d2-s12">
+                <Widget id="executions" span={12} title="Executions & P&L" sub={`· ${t.deals.length} deal${t.deals.length === 1 ? '' : 's'}`}>
+                  <Executions r={r} price={price} />
+                </Widget>
+              </div>
+            </div>
+
+            <details className="d2-how" id="trv-how">
+              <summary>How this review is computed</summary>
+              <ul>
+                <li>Everything comes from your broker&rsquo;s fills for this account. Hours and sessions are UTC by the trade&rsquo;s open (Asia 22–07, London 07–13, New York 13–22).</li>
+                <li>Process grade ({r.minTrades}+ closed trades, your whole history as the baseline): one step down per flag — after 2 losses in a row that day, within 15 min of a loss, more than 1.5× your usual size on this symbol, a UTC hour that is net negative for you, a loss past −1.25R (needs R). None A, one B, two C, three D, four or more F. It grades process, not the result.</li>
+                <li>What I would have done: your usual size scales the P&amp;L by volume; skipped is $0 and only shows when a rule was broken before entry; the usual-hold exit uses the close of the bar where your median hold on this symbol ended. Exits at +1R and break-even need the stop at entry, which MT5 history doesn&rsquo;t keep, so they show only when an R-multiple is stored.</li>
+                <li>Chart: market candles from our data provider around your fills. Best point while open and &ldquo;ran further&rdquo; are read from those bars (bar precision). Stop changes aren&rsquo;t recorded, so stop moves aren&rsquo;t shown.</li>
+                <li>Similar trades: closed trades with the same symbol, side, session and the same pre-entry flags, relaxed step by step until there are at least 3.</li>
+              </ul>
+            </details>
           </>
         )}
       </div>
     </AppShell>
+  );
+}
+
+const tfName = (tf: string) => ({ '5m': '5 min', '15m': '15 min', '30m': '30 min', '1h': '1 hour', '4h': '4 hour', '1d': 'daily' } as Record<string, string>)[tf] ?? tf;
+
+function chartFoot(r: TradeReviewDTO, after: ReturnType<typeof afterTheExit>, ex: ReturnType<typeof excursion>) {
+  const t = r.trade;
+  if (t.status === 'CLOSED' && after) {
+    if (after.leftMoney != null && after.leftMoney >= Math.max(1, Math.abs(t.net) * 0.1) && after.extra > 0) return <AiFoot line={{ text: 'After your exit it ran further:', value: after.leftMoney, fmt: 'money', tone: 'flat', trades: 1 }} />;
+    if (after.savedMoney != null && after.savedMoney >= Math.max(1, Math.abs(t.net) * 0.1)) return <AiFoot line={{ text: 'Your exit saved', value: after.savedMoney, fmt: 'money', tone: 'up', trades: 1 }} />;
+    return <AiFoot line={{ text: 'Clean exit: price didn’t run much either way after it', value: null, fmt: 'text', tone: 'flat', trades: 1 }} />;
+  }
+  if (t.status === 'OPEN' && ex?.worstMoney != null) return <AiFoot line={{ text: 'Worst point so far:', value: ex.worstMoney, fmt: 'money', tone: 'dn', trades: 1 }} />;
+  return null;
+}
+
+function gradeFoot(r: TradeReviewDTO, ladder: LadderRow[]) {
+  const best = ladder.slice(1).filter(x => x.delta > 0.5).sort((a, b) => b.delta - a.delta)[0];
+  if (best) return <AiFoot line={{ text: `${best.key === 'skip' ? 'Skip it' : best.label}: saves`, value: best.delta, fmt: 'money', tone: 'up', trades: 1 }} link="How graded" href="#trv-how" />;
+  if (r.grade) return <AiFoot line={{ text: r.grade.flags.length ? `${r.grade.flags.length} flag${r.grade.flags.length === 1 ? '' : 's'} · ${r.grade.basis} trades` : `Rules kept · ${r.grade.basis} trades`, value: null, fmt: 'text', tone: 'flat', trades: r.grade.basis }} link="How graded" href="#trv-how" />;
+  return null;
+}
+
+function similarFoot(r: TradeReviewDTO) {
+  const s = r.similar;
+  if (!s || s.n < 3) return null;
+  const flagged = r.grade?.flags.some(f => f.key !== 'past-r') && s.criteria.some(c => /After|Within|Oversized|Losing/.test(c));
+  if (flagged && s.net < 0) return <AiFoot line={{ text: `Skipping all ${s.n} would have kept`, value: -s.net, fmt: 'money', tone: 'up', trades: s.n }} />;
+  return <AiFoot line={{ text: `${s.n} trades · ${pct(s.wins / s.n)} won · net`, value: s.net, fmt: 'money', tone: s.net > 0 ? 'up' : s.net < 0 ? 'dn' : 'flat', trades: s.n }} />;
+}
+
+function setupFoot(r: TradeReviewDTO) {
+  const s = r.sameSetup;
+  if (!s) return null;
+  const n = s.inHour.n + s.other.n;
+  const h = String(Math.floor(s.hour)).padStart(2, '0');
+  const what = `${s.symbol} ${s.side === 'LONG' ? 'longs' : 'shorts'}`;
+  const tn = (v: number) => (v > 0 ? 'up' : v < 0 ? 'dn' : 'flat') as 'up' | 'dn' | 'flat';
+  if (!s.inHour.n) return <AiFoot line={{ text: `First of your ${what} at ${h}:00 UTC · other hours:`, value: s.other.net, fmt: 'money', tone: tn(s.other.net), trades: n }} />;
+  return <AiFoot line={{ text: `${what} at ${h}:00 UTC: ${s.inHour.wins}/${s.inHour.n} won ·`, value: s.inHour.net, fmt: 'money', tone: tn(s.inHour.net), trades: n, suffix: `· ${kmoney(s.inHour.net + s.other.net)} all hours` }} />;
+}
+
+function Skeleton() {
+  return (
+    <div className="d2-skel" aria-busy="true" data-testid="trade-review-loading">
+      <div className="d2-sk" style={{ height: 44, borderRadius: 10, width: '50%' }} />
+      <div className="d2-sk" style={{ height: 92, borderRadius: 10 }} />
+      <div className="d2-grid">
+        <div className="d2-slot d2-s8"><div className="d2-sk" style={{ height: 420, borderRadius: 10 }} /></div>
+        <div className="d2-slot d2-s4"><div className="d2-sk" style={{ height: 420, borderRadius: 10 }} /></div>
+      </div>
+    </div>
   );
 }
