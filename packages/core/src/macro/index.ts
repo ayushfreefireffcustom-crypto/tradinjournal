@@ -58,6 +58,7 @@ export {
   cutsImplied,
   SURPRISE_SERIES,
   parseReleaseNumber,
+  releaseValue,
   surpriseLevel,
   buildSurpriseGrid,
   surpriseLine,

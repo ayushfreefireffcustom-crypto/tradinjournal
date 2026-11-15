@@ -1,7 +1,8 @@
 'use client';
 
 // "You on CPI days" (E): your closed trades on days with that release, from
-// your own history and the calendar. Win %, average R, net, one bar per trade,
+// your own history and the calendar. Win %, average and net in money (no R:
+// these trades carry no stop at entry), one bar per trade,
 // opened before the print vs 30+ min after, and one line of advice when the
 // split is clear. Deterministic; no AI.
 import { Hourglass } from '@phosphor-icons/react';
@@ -65,7 +66,9 @@ export default function EventDays({ kind, stats, scope, ccy, loading, unitKnown,
                 <>
                   <div className="tl-k3 tl-k3-big">
                     <div><b className={`tl-n22 ${stats.winPct < 50 ? 'neg' : 'pos'}`}>{Math.round(stats.winPct)}%</b><span>win</span></div>
-                    {stats.avgR != null && <div><b className={`tl-n22 ${stats.avgR < 0 ? 'neg' : 'pos'}`}>{signedR(stats.avgR)}</b><span>avg</span></div>}
+                    {stats.avgR != null
+                      ? <div><b className={`tl-n22 ${stats.avgR < 0 ? 'neg' : 'pos'}`}>{signedR(stats.avgR)}</b><span>avg</span></div>
+                      : <div><b className={`tl-n22 mny ${stats.net < 0 ? 'neg' : 'pos'}`}>{money(stats.net / stats.n, ccy, true)}</b><span>avg</span></div>}
                     <div><b className={`tl-n22 mny ${stats.net < 0 ? 'neg' : 'pos'}`}>{money(stats.net, ccy, true)}</b><span>net</span></div>
                   </div>
                   <Bars s={stats} unitKnown={unitKnown} />

@@ -4,12 +4,14 @@
 import Link from '@/components/v6/ui/link';
 import { useMemo, useState } from 'react';
 import AppShell from '@/components/app-shell';
-import { DOCS, SECTIONS, searchDocs } from '@/content/docs';
+import { SECTIONS, searchDocs, visibleDocs } from '@/content/docs';
 import '@/styles/v6/docs.css';
 
 export default function DocsPage() {
   const [q, setQ] = useState('');
   const hits = useMemo(() => (q.trim() ? searchDocs(q) : null), [q]);
+  // Guides for switched-off features (trading) are left out, and so is a section they leave empty.
+  const docs = visibleDocs();
   return (
     <AppShell legacy={false} pageTitle="Docs" pageSubtitle="How each part of TRADElogs works" actions={<Link className="x-btn" href="/help">Help</Link>}>
       <div className="dc-page" data-testid="docs-page">
@@ -20,10 +22,10 @@ export default function DocsPage() {
               <ul className="dc-list">{hits.map((d) => <li key={d.slug}><Link href={`/docs/${d.slug}`} data-testid={`docs-hit-${d.slug}`}><b>{d.title}</b><span>{d.summary}</span><small className="x-muted">{d.section}</small></Link></li>)}</ul>
             )}
           </section>
-        ) : SECTIONS.map((s) => (
+        ) : SECTIONS.filter((s) => docs.some((d) => d.section === s)).map((s) => (
           <section key={s} aria-label={s} className="dc-sec">
             <h2>{s}</h2>
-            <ul className="dc-list">{DOCS.filter((d) => d.section === s).map((d) => <li key={d.slug}><Link href={`/docs/${d.slug}`} data-testid={`docs-link-${d.slug}`}><b>{d.title}</b><span>{d.summary}</span></Link></li>)}</ul>
+            <ul className="dc-list">{docs.filter((d) => d.section === s).map((d) => <li key={d.slug}><Link href={`/docs/${d.slug}`} data-testid={`docs-link-${d.slug}`}><b>{d.title}</b><span>{d.summary}</span></Link></li>)}</ul>
           </section>
         ))}
       </div>

@@ -6,15 +6,19 @@ import { useParams } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import AppShell from '@/components/app-shell';
-import { DOCS, docBySlug } from '@/content/docs';
+import { docBySlug, isSwitchedOff, visibleDocs } from '@/content/docs';
+import ComingSoon from '@/components/v6/ui/coming-soon';
 import '@/styles/v6/docs.css';
 
 export default function DocArticlePage() {
   const { slug } = useParams<{ slug: string }>();
+  const docs = visibleDocs();
   const d = docBySlug(slug);
-  const i = d ? DOCS.indexOf(d) : -1;
-  const prev = i > 0 ? DOCS[i - 1] : null;
-  const next = i >= 0 && i < DOCS.length - 1 ? DOCS[i + 1] : null;
+  const i = d ? docs.indexOf(d) : -1;
+  const prev = i > 0 ? docs[i - 1] : null;
+  const next = i >= 0 && i < docs.length - 1 ? docs[i + 1] : null;
+  // A guide to a switched-off feature reads like the feature's own page does.
+  if (isSwitchedOff(slug)) return <ComingSoon title="Docs" what="This part of TRADElogs" />;
   return (
     <AppShell legacy={false} pageTitle={d?.title ?? 'Not found'} pageSubtitle={d?.section ?? 'Docs'} actions={<Link className="x-btn" href="/docs">All docs</Link>}>
       <div className="dc-page" data-testid="doc-page">

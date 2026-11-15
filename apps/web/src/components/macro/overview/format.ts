@@ -61,9 +61,17 @@ export function inputValue(i: MacroOverviewInput): { value: string; unit: string
   return { value: a.toFixed(1), unit: i.value < 0 ? (a === 1 ? 'hike' : 'hikes') : a === 1 ? 'cut' : 'cuts' };
 }
 
+/** Row label; a cuts row reads "Hikes priced" when the value is hikes (older payloads say "Cuts" either way). */
+export function inputLabel(i: Pick<MacroOverviewInput, 'format' | 'label' | 'value'>): string {
+  if (i.format !== 'cuts') return i.label;
+  return i.value < 0 ? i.label.replace(/^Cuts priced/, 'Hikes priced') : i.label.replace(/^Hikes priced/, 'Cuts priced');
+}
+
 export function inputDelta(i: MacroOverviewInput): string {
   if (i.delta == null) return '';
   if (i.format === 'usd_mn') return Math.abs(i.delta) < 500 ? '0' : `${i.delta > 0 ? '+' : MINUS}${usdMn(Math.abs(i.delta))}`;
+  // Hikes are shown as a positive count, so their change is too: 3.8 → 3.9 hikes reads +0.1.
+  if (i.format === 'cuts' && i.value < 0) return signed(-i.delta, 1);
   return signed(i.delta, 1);
 }
 

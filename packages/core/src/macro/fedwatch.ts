@@ -20,6 +20,11 @@
 // the two nearest 25 bp outcomes: −0.6 → 60 % a 25 bp cut, 40 % hold;
 // −1.3 → 100 % a cut (30 % of it 50 bp). Cumulative cuts priced by a meeting
 // = (start of the first meeting − end of this one) / 25 bp.
+// A forward solve divides by the share of the month left after the meeting;
+// late in the month (under MIN_FORWARD_WEIGHT) that blows a 0.5 bp quote
+// wobble up into tens of bp, so such a meeting (and the chain after it) is
+// dropped unless the back solve is available. Price one meeting past the last
+// one shown so the last one can solve back from it.
 //
 // FOMC dates: Board of Governors of the Federal Reserve System, "Meeting
 // calendars and information",
@@ -107,6 +112,9 @@ export interface FedWatchResult {
   meetings: FedWatchMeeting[];
 }
 
+/** Below this share of the month after the meeting a forward solve is noise. */
+export const MIN_FORWARD_WEIGHT = 0.25;
+
 const r2 = (x: number, dp = 2) => Math.round(x * 10 ** dp) / 10 ** dp + 0; // + 0 turns −0 into 0
 
 /** Split an expected move (in 25 bp steps) into cut / hold / hike odds. */
@@ -162,7 +170,7 @@ export function fedWatch(
     if (end == null) {
       const back = backStart(i + 1);
       if (back && (forward == null || back.w > fwdW)) end = back.v;
-      else end = forward;
+      else end = fwdW >= MIN_FORWARD_WEIGHT ? forward : null;
     }
     if (end == null) break;
     if (start == null) {

@@ -4,6 +4,11 @@
 // month from the front through Nov 2027 answered with daily bars). One daily
 // call per contract gives the latest price and the prior session's close, so
 // "yesterday" needs no stored history.
+// Thin far contracts can skip a session, so only quotes from the newest
+// session are used ("fresh"); a month without one drops its meeting and every
+// later one (the chain needs each month). One meeting past the eight shown is
+// priced so the last shown one can solve back from it instead of a noisy
+// forward solve.
 // Cached 30 minutes and shared; null whenever the first meeting can't be priced
 // (Yahoo down, renamed or stale contracts) so the caller falls back to the
 // Treasury proxy. Never throws.
@@ -25,15 +30,48 @@ interface YahooDaily {
   chart?: { result?: { meta?: { regularMarketTime?: number }; timestamp?: number[]; indicators?: { quote?: { close?: (number | null)[] }[] } }[] };
 }
 
-export interface ContractQuote { last: number; prev: number | null; time: number }
+export interface ContractQuote {
+  last: number; prev: number | null; time: number;
+  /** Session (UTC day) of the last and previous closes. */
+  day: string; prevDay: string | null;
+}
 
-/** Daily chart body → last and previous close, or null. */
+const ok = (c: number | null | undefined): c is number => c != null && Number.isFinite(c) && c > 50 && c <= 100;
+const isoDay = (sec: number) => new Date(sec * 1000).toISOString().slice(0, 10);
+
+/** Daily chart body → last and previous close with their sessions, or null. */
 export function parseZq(body: YahooDaily, now: number): ContractQuote | null {
   const r = body.chart?.result?.[0];
-  const closes = (r?.indicators?.quote?.[0]?.close ?? []).filter((c): c is number => c != null && Number.isFinite(c) && c > 50 && c <= 100);
-  const time = (r?.meta?.regularMarketTime ?? r?.timestamp?.at(-1) ?? 0) * 1000;
-  if (!closes.length || !(time > 0) || now - time > STALE_MS) return null;
-  return { last: closes.at(-1)!, prev: closes.length > 1 ? closes.at(-2)! : null, time };
+  const ts = r?.timestamp ?? [];
+  const raw = r?.indicators?.quote?.[0]?.close ?? [];
+  // Bars with a real close, oldest first. Without timestamps fall back to the meta time.
+  const bars = raw.map((c, i) => ({ c, t: ts[i] })).filter((b): b is { c: number; t: number | undefined } => ok(b.c));
+  if (!bars.length) return null;
+  const lastBar = bars.at(-1)!;
+  const time = (lastBar.t ?? r?.meta?.regularMarketTime ?? 0) * 1000;
+  if (!(time > 0) || now - time > STALE_MS) return null;
+  const prevBar = bars.length > 1 ? bars.at(-2)! : null;
+  return {
+    last: lastBar.c, prev: prevBar?.c ?? null, time,
+    day: isoDay(time / 1000), prevDay: prevBar?.t != null ? isoDay(prevBar.t) : null,
+  };
+}
+
+/** Quotes from the newest session only (by month), and the prior session's closes where they line up. */
+export function freshQuotes(months: string[], quotes: Array<ContractQuote | null>): { last: Map<string, number>; prev: Map<string, number> } {
+  const got = quotes.filter((q): q is ContractQuote => q != null);
+  const newest = got.reduce((a, q) => (q.day > a ? q.day : a), '');
+  const prevDays = got.filter((q) => q.day === newest && q.prevDay).map((q) => q.prevDay!);
+  const prevDay = prevDays.reduce((a, d) => (d > a ? d : a), '');
+  const last = new Map<string, number>();
+  const prev = new Map<string, number>();
+  months.forEach((m, i) => {
+    const q = quotes[i];
+    if (!q || q.day !== newest) return;
+    last.set(m, q.last);
+    if (q.prev != null && (q.prevDay == null || q.prevDay === prevDay)) prev.set(m, q.prev);
+  });
+  return { last, prev };
 }
 
 export interface FedFundsDeps {
@@ -101,7 +139,7 @@ export async function getFedWatch(effr: number | null, deps: FedFundsDeps = defa
   const run = (async () => {
     const now = deps.now();
     const today = new Date(now).toISOString().slice(0, 10);
-    const meetings = upcomingMeetings(today, MEETINGS);
+    const meetings = upcomingMeetings(today, MEETINGS + 1);
     const months = contractMonths(meetings);
     const quotes = await pool(months, CONCURRENCY, async (m) => {
       try {
@@ -111,21 +149,16 @@ export async function getFedWatch(effr: number | null, deps: FedFundsDeps = defa
         return null;
       }
     });
-    const last = new Map<string, number>();
-    const prev = new Map<string, number>();
-    months.forEach((m, i) => {
-      const q = quotes[i];
-      if (!q) return;
-      last.set(m, q.last);
-      if (q.prev != null) prev.set(m, q.prev);
-    });
+    const { last, prev } = freshQuotes(months, quotes);
     const now0 = fedWatch(meetings, last, { effr });
     if (!now0) {
       logger.warn(`[macro] Fed funds futures unavailable (${last.size}/${months.length} contracts priced); using the Treasury proxy`);
       return null;
     }
     const asOf = new Date(Math.max(...quotes.filter((q): q is ContractQuote => q != null).map((q) => q.time))).toISOString();
-    return toFedWatchDto(now0, fedWatch(meetings, prev, { effr }), asOf);
+    const shown = (r: FedWatchResult): FedWatchResult => ({ ...r, meetings: r.meetings.slice(0, MEETINGS) });
+    const before = fedWatch(meetings, prev, { effr });
+    return toFedWatchDto(shown(now0), before && shown(before), asOf);
   })();
   if (!deps.cache) return run;
   inflight = run.then(async (v) => {

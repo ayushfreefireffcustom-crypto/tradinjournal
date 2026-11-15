@@ -30,3 +30,18 @@ export function segments(r: Pick<Row, 'cutPct' | 'holdPct' | 'hikePct'>): { cut:
   const hike = Math.max(0, Math.min(100 - cut, r.hikePct));
   return { cut, hold: 100 - cut - hike, hike };
 }
+
+/**
+ * The day's change as shown next to the word: hikes are shown as a positive
+ * count, so for a hikes row the change is in hikes (3.6 → 4.6 hikes = +1.0).
+ * `more` says which way it moved: toward cuts or toward hikes (for colour).
+ */
+export function deltaShown(cum: number, d: number): { value: number; more: 'cuts' | 'hikes' } {
+  return { value: cum < 0 ? -d : d, more: d > 0 ? 'cuts' : 'hikes' };
+}
+
+/** Section title matching what the furthest meeting shows. */
+export function pathTitle(rows: Array<Pick<Row, 'cumulativeCuts'>>): string {
+  const last = rows.at(-1);
+  return last && last.cumulativeCuts <= -0.05 ? 'Hikes priced by meeting' : 'Cuts priced by meeting';
+}

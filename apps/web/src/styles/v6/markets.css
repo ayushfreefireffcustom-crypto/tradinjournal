@@ -17,6 +17,11 @@
 .v6 .mk-hscroll::-webkit-scrollbar { display: none; }
 .v6 .mk-hscroll > * { flex: none; }
 .v6 .mk-hscroll .x-seg { max-width: none; overflow: visible; }
+/* Wider than a phone the headline filters wrap onto a second line instead of running off the card edge. */
+@media (min-width: 761px) {
+  .v6 .mk-filters.mk-hscroll { flex-wrap: wrap; overflow: visible; row-gap: 8px; }
+  .v6 .mk-filters.mk-hscroll .x-seg { max-width: 100%; overflow-x: auto; }
+}
 .v6 .mk-cc {
   display: inline-grid; place-items: center; flex: none; height: 17px; padding: 0 5px; border-radius: 5px;
   background: var(--s2); color: var(--mut); font-size: var(--t1); letter-spacing: .02em; line-height: 1;

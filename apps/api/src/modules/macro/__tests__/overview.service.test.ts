@@ -27,10 +27,28 @@ const {
   netLiquiditySeries,
   OVERVIEW_ASSETS,
   OVERVIEW_DRIVERS,
+  surpriseReleases,
 } = await import('../macro-overview.service.js');
 const { toEngineInput } = await import('../../../lib/macro/engine-input.js');
 
+const U6_ROW = {
+  title: 'U6 Unemployment Rate', eventTime: new Date('2026-11-06T13:30:00Z'), actual: '7.9', forecast: '4.2',
+  sources: { raw: [
+    { title: 'U6 Unemployment Rate', actual: '7.9', previous: '7.6', source: 'tradingview' },
+    { title: 'Unemployment Rate', actual: '4.1', forecast: '4.2', previous: '4.2', source: 'tradingview' },
+  ] },
+};
+
 describe('overview helpers', () => {
+  it('recovers releases folded into another row by calendar title aliases', () => {
+    const r = surpriseReleases([U6_ROW, { title: 'Inflation Rate MoM', eventTime: new Date('2026-11-13T13:30:00Z'), actual: '0.4%', forecast: '0.3%', sources: null }]);
+    expect(r.map(x => [x.title, x.actual, x.forecast])).toEqual([
+      ['U6 Unemployment Rate', '7.9', '4.2'],
+      ['Unemployment Rate', '4.1', '4.2'],
+      ['Inflation Rate MoM', '0.4%', '0.3%'],
+    ]);
+  });
+
   it('as-of joins the latest value at or before each date', () => {
     const on = [{ date: '2026-01-05', value: 0 }, { date: '2026-01-12', value: 0 }];
     const s = [{ date: '2026-01-03', value: 1 }, { date: '2026-01-10', value: 2 }];
@@ -78,6 +96,10 @@ describe('overview helpers', () => {
     const pol = inputs.find(i => i.key === 'policy')!;
     expect(pol.value).toBe(1.9);
     expect(pol.tone).toBe('pos'); // more cuts priced
+    expect(pol.label).toBe('Cuts priced, 2Y');
+    // 2Y above Fed funds = hikes priced: the label says so instead of "Cuts priced … 3.9 hikes".
+    const hikes = buildInputs({ coreCpi: [], unemployment: [], netLiq: [], effr: [{ date: '2026-11-01', value: 3.88 }], twoYear: [{ date: '2026-11-13', value: 4.855 }] });
+    expect(hikes.find(i => i.key === 'policy')).toMatchObject({ label: 'Hikes priced, 2Y', value: -3.9 });
     expect(inputs.find(i => i.key === 'unemployment')!.tone).toBe('neg');
     const nl = inputs.find(i => i.key === 'net_liquidity')!;
     expect(nl.delta).toBe(-80_000);
@@ -127,11 +149,17 @@ describe('buildMacroOverview', () => {
     queryRaw.mockResolvedValue([{ asset: 'BTC', score: 40, day: new Date('2026-11-13T00:00:00Z') }]);
     eventFindMany.mockResolvedValue([
       { title: 'Inflation Rate MoM', eventTime: new Date('2026-11-13T13:30:00Z'), actual: '0.4%', forecast: '0.3%' },
+      // Real rows from 6 Nov 2026: payrolls in bare thousands, and the headline jobless rate folded
+      // into "U6 Unemployment Rate" by the calendar's title aliases (its values only in sources.raw).
+      { title: 'Non Farm Payrolls', eventTime: new Date('2026-11-06T13:30:00Z'), actual: '165', forecast: '65' },
+      U6_ROW,
     ]);
     const o = await buildMacroOverview(toEngineInput([], []), new Date('2026-11-14T12:00:00Z'));
     expect(macroOverviewSchema.safeParse(o).success).toBe(true);
     expect(o.cuts!.rows.map(r => [r.key, r.cuts, r.cutsYesterday])).toEqual([['3m', 0.3, null], ['2y', 1.9, 1.5]]);
     expect(o.surprise!.series.find(s => s.key === 'cpi')!.cells.at(-1)!.level).toBe(1);
+    expect(o.surprise!.series.find(s => s.key === 'payrolls')!.cells.at(-1)!.level).toBe(2); // 165K vs 65K
+    expect(o.surprise!.series.find(s => s.key === 'unemployment')!.cells.at(-1)).toMatchObject({ level: 1, actual: '4.1', forecast: '4.2' });
     expect(o.grid.find(g => g.asset === 'BTC')!.netYesterday).toBe(-20);
   });
 

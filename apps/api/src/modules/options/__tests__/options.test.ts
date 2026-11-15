@@ -107,7 +107,7 @@ describe('options service', () => {
     expect(a.payoff.at(-1)!.s).toBeGreaterThan(86_000);
     expect(a.analysis.legs.map((l) => l.fill)).toEqual(['easy', 'easy']);
     expect(a.sigma!.lo).toBeLessThan(SPOT);
-    await expect(analyzeLegs('live', 'BTC', { legs: [{ kind: 'call', side: 1, qty: 1, strike: 81_000, expiry: '131126' }] }, deps)).rejects.toThrow(/Leg 1: no BTC call at 81000/);
+    await expect(analyzeLegs('live', 'BTC', { legs: [{ kind: 'call', side: 1, qty: 1, strike: 81_000, expiry: '131126' }] }, deps)).rejects.toThrow(/Leg 1: no BTC call at 81000 for 13 Nov\./);
     const ic = await templateFor('live', 'BTC', 'iron_condor', '131126', 2, deps);
     expect(ic.map((l) => `${l.side > 0 ? '+' : '-'}${l.kind}${l.strike}`)).toEqual(['+put70000', '-put74000', '-call82000', '+call86000']);
     const cal = await templateFor('live', 'BTC', 'calendar_call', '131126', 1, deps);

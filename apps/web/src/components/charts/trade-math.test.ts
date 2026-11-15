@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   afterExit, atr, classifyTrend, coachFor, eventDayStats, eventKind, eventReaction, eventShort, learnedPointValue, marketKey,
-  money, pickReviewKind, planError, rUnit, sameMarket, sizePosition, specPointValueUsd, symbolSpec, verdict,
+  minSizeHint, money, pickReviewKind, planError, rUnit, sameMarket, sizePosition, specPointValueUsd, symbolSpec, verdict,
   type Bar, type CalEvent, type ChartTrade,
 } from './trade-math';
 
@@ -73,6 +73,17 @@ describe('risk ruler', () => {
     const tiny = sizePosition({ balance: 100, risk: { mode: 'pct', pct: 0.25 }, entry: 96000, stop: 94000, target: null, pointValue: 1, lotStep: 0.001, minLot: 0.001 })!;
     expect(tiny.belowMin).toBe(true);
   });
+  it('says what the smallest size would risk, as a plain note', () => {
+    // $55.64 at 0.25%, BTC 65,730 → 65,000: 0.01 lot risks $7.30, 13% of the balance.
+    const s = sizePosition({ balance: 55.64, risk: { mode: 'pct', pct: 0.25 }, entry: 65730, stop: 65000, target: null, pointValue: 1, lotStep: 0.01, minLot: 0.01 })!;
+    expect(s.belowMin).toBe(true);
+    expect(s.minRiskMoney).toBeCloseTo(7.3, 6);
+    expect(minSizeHint(s, { unit: 'lot', lotDecimals: 2, balance: 55.64 })).toBe('Smallest size 0.01 lot risks $7.30 (13%).');
+    expect(minSizeHint(s, { unit: 'lot', lotDecimals: 2, balance: 1000 })).toBe('Smallest size 0.01 lot risks $7.30 (0.7%).');
+    expect(minSizeHint(s, { unit: 'lot', lotDecimals: 2, balance: null })).toBe('Smallest size 0.01 lot risks $7.30.');
+    const ok = sizePosition({ balance: 5000, risk: { mode: 'pct', pct: 1 }, entry: 65730, stop: 65000, target: null, pointValue: 1, lotStep: 0.01, minLot: 0.01 })!;
+    expect(minSizeHint(ok, { unit: 'lot', lotDecimals: 2, balance: 5000 })).toBeNull();
+  });
   it('never sizes a plan with the stop on the wrong side', () => {
     expect(planError('LONG', 4170, 4180, null)).toMatch(/below/);
     expect(planError('SHORT', 4170, 4160, null)).toMatch(/above/);
@@ -129,6 +140,10 @@ describe('R, events and coaching', () => {
     expect(s.net).toBe(40 - 300 + 360 - 100);
     expect(s.avgR).toBeCloseTo(0, 5);
     expect(s.advice).toBe('Wait 30 min after the print');
+    // Without a unit (the charts page: no stops at entry) there's no R, and bars are in money.
+    const m = eventDayStats(ts, events, 'CPI', null)!;
+    expect(m.avgR).toBeNull();
+    expect(m.bars.map(b => b.v)).toContain(-100);
   });
   it('reviews the event that just printed, else the next one', () => {
     const now = T0 + 10 * 60_000;

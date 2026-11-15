@@ -1,7 +1,12 @@
 // In-app docs (H13). Articles are Markdown keyed by language; English is
 // written, Hindi slots in later as `hi` without changing the pages.
+import { TRADING_ENABLED } from '@/lib/features';
 export type Lang = 'en';
-export interface DocArticle { slug: string; section: string; title: string; summary: string; body: Record<Lang, string>; related?: string[] }
+export interface DocArticle {
+  slug: string; section: string; title: string; summary: string; body: Record<Lang, string>; related?: string[];
+  /** Guide to a trading-platform feature: hidden while NEXT_PUBLIC_TRADING is off, like its sidebar items. */
+  trading?: boolean;
+}
 
 export const SECTIONS = ['Getting started', 'Journal', 'AI coach', 'Markets and alerts', 'Strategies', 'Copy trading and the desk', 'Options', 'Marketplace', 'Account and security'] as const;
 
@@ -24,7 +29,7 @@ export const DOCS: DocArticle[] = [
 - Removing an account deletes its imported trades from TRADElogs. Your broker account is untouched.` },
   },
   {
-    slug: 'connect-exchange', section: 'Getting started', title: 'Connect a crypto exchange', summary: 'Add Delta Exchange India keys to trade, copy and run strategies.',
+    slug: 'connect-exchange', trading: true, section: 'Getting started', title: 'Connect a crypto exchange', summary: 'Add Delta Exchange India keys to trade, copy and run strategies.',
     related: ['copy-trading', 'trading-desk', 'deployments'],
     body: { en: `Exchange connections let TRADElogs read your positions and, if you allow it, place orders: copy trading, the trading desk, live strategies and option orders all use them.
 
@@ -142,7 +147,7 @@ A deployment acts once per closed bar. Its page shows its status, P&L, open posi
 Editing the strategy later doesn't change a running deployment; start a new one to use the new rules.` },
   },
   {
-    slug: 'copy-trading', section: 'Copy trading and the desk', title: 'Copy trading', summary: 'Follow a verified leader; their trades are copied to your exchange account.',
+    slug: 'copy-trading', trading: true, section: 'Copy trading and the desk', title: 'Copy trading', summary: 'Follow a verified leader; their trades are copied to your exchange account.',
     related: ['connect-exchange', 'trading-desk'],
     body: { en: `**Leaders** are traders whose exchange accounts TRADElogs watches. Their stats come from their real fills.
 
@@ -155,7 +160,7 @@ Editing the strategy later doesn't change a running deployment; start a new one 
 Copying uses real money on a live account. Try it on testnet first.` },
   },
   {
-    slug: 'trading-desk', section: 'Copy trading and the desk', title: 'The trading desk, webhooks and API keys', summary: 'Positions, orders, TP/SL and automation across your exchange accounts.',
+    slug: 'trading-desk', trading: true, section: 'Copy trading and the desk', title: 'The trading desk, webhooks and API keys', summary: 'Positions, orders, TP/SL and automation across your exchange accounts.',
     related: ['copy-trading', 'connect-exchange'],
     body: { en: `**Positions** shows every open position and pending order across your exchange accounts, with closed trades rebuilt from fills. Place orders with the ticket, set or move take-profit and stop-loss, add a trailing stop, or close one or many positions.
 
@@ -231,13 +236,19 @@ If you sign in with Google, use two-step verification in your Google account ins
   },
 ];
 
-export const docBySlug = (slug: string) => DOCS.find((d) => d.slug === slug);
+/** Docs for what's switched on: trading guides only when trading is. */
+export const visibleDocs = (tradingOn: boolean = TRADING_ENABLED) => DOCS.filter((d) => tradingOn || !d.trading);
+/** A doc by slug among the visible ones (a hidden one reads as missing). */
+export const docBySlug = (slug: string, tradingOn: boolean = TRADING_ENABLED) => visibleDocs(tradingOn).find((d) => d.slug === slug);
+/** True when the slug is a real doc that's only hidden by the trading switch. */
+export const isSwitchedOff = (slug: string, tradingOn: boolean = TRADING_ENABLED) => !tradingOn && DOCS.some((d) => d.slug === slug && d.trading);
 
 /** Simple search over titles, summaries and text: every word must appear. */
-export function searchDocs(q: string, lang: Lang = 'en'): DocArticle[] {
+export function searchDocs(q: string, lang: Lang = 'en', tradingOn: boolean = TRADING_ENABLED): DocArticle[] {
+  const docs = visibleDocs(tradingOn);
   const words = q.toLowerCase().split(/\s+/).filter((w) => w.length > 1);
-  if (!words.length) return DOCS;
-  return DOCS
+  if (!words.length) return docs;
+  return docs
     .map((d) => {
       const hay = `${d.title} ${d.summary} ${d.body[lang]}`.toLowerCase();
       const title = `${d.title} ${d.summary}`.toLowerCase();

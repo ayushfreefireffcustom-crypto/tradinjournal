@@ -14,6 +14,8 @@ import { LineChart } from '@/components/v6/options/charts';
 import OptionsHead, { useOptionsCtx } from '@/components/v6/options/head';
 import { ApiError } from '@/lib/copy-api';
 import { daysLabel, expiryLabel, fmtNum, fmtUsd, loadLegs, optionsApi, saveLegs, type LegInput, type ReplayData } from '@/lib/options-api';
+import { badLegIndex, checkLegs } from '@/lib/options-legs';
+import { IClose } from '@/components/v6/icons';
 import '@/styles/v6/tools.css';
 import '@/styles/v6/markets.css';
 import '@/styles/v6/options.css';
@@ -26,7 +28,10 @@ const tFmt = (t: number) => new Date(t).toLocaleString(undefined, { month: 'shor
 export default function OptionsReplayPage() {
   const toast = useToast();
   const [ctx, setCtx] = useOptionsCtx();
+  // Saved legs as stored, then checked against what's listed now.
+  const [saved, setSaved] = useState<LegInput[] | null>(null);
   const [legs, setLegs] = useState<LegInput[] | null>(null);
+  const [notes, setNotes] = useState<string[]>([]);
   const [path, setPath] = useState<'flat' | 'recorded'>('flat');
   const [r, setR] = useState<ReplayData | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -39,15 +44,43 @@ export default function OptionsReplayPage() {
   useEffect(() => {
     if (!ctx) return;
     const s = loadLegs();
-    setLegs(s && s.underlying === ctx.underlying && s.env === ctx.env ? s.legs : []);
+    setSaved(s && s.underlying === ctx.underlying && s.env === ctx.env ? s.legs : []);
+    setLegs(null); setNotes([]); setErr(null);
   }, [ctx?.underlying, ctx?.env]); // eslint-disable-line react-hooks/exhaustive-deps
+  // An expiry may have passed since the legs were saved: move them to listed contracts first.
+  useEffect(() => {
+    if (!ctx || saved == null) return;
+    if (!saved.length) { setLegs([]); return; }
+    const d = base.data;
+    if (!d || d.underlying !== ctx.underlying || d.env !== ctx.env) { if (base.error) setLegs(saved); return; }
+    let live = true;
+    void checkLegs(saved, d, (code) => optionsApi.chain(ctx.env, ctx.underlying, code)).then((c) => {
+      if (!live) return;
+      if (c.changed) { saveLegs({ underlying: ctx.underlying, env: ctx.env, legs: c.legs }); setNotes(c.notes); }
+      setLegs(c.legs);
+    });
+    return () => { live = false; };
+  }, [saved, base.data, base.error]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!ctx || !legs?.length) { setR(null); return; }
     let live = true;
     setErr(null); setPlaying(false);
     optionsApi.replay({ env: ctx.env, underlying: ctx.underlying, legs, path }).then(
       (d) => { if (live) { setR(d); setI(0); } },
-      (e) => { if (live) { setR(null); setErr(e instanceof ApiError ? e.message : 'Could not replay these legs.'); } },
+      (e) => {
+        if (!live) return;
+        const msg = e instanceof ApiError ? e.message : 'Could not replay these legs.';
+        // One leg the server can't price shouldn't sink the replay: drop it and go on with the rest.
+        const bad = badLegIndex(msg);
+        if (bad != null && bad < legs.length) {
+          const next = legs.filter((_, k) => k !== bad);
+          setNotes((n) => [...n, `Leg ${bad + 1} removed: ${msg.replace(/^Leg \d+:\s*/, '')}`].slice(-4));
+          saveLegs({ underlying: ctx.underlying, env: ctx.env, legs: next });
+          setLegs(next);
+          return;
+        }
+        setR(null); setErr(msg);
+      },
     );
     return () => { live = false; };
   }, [ctx, legs, path]);
@@ -62,7 +95,7 @@ export default function OptionsReplayPage() {
   async function quick(id: string) {
     if (!ctx || !base.data) return;
     const exp = base.data.expiries.find((e) => e.days >= 2)?.code ?? base.data.expiry;
-    try { const l = await optionsApi.template({ env: ctx.env, underlying: ctx.underlying, template: id, expiry: exp, qty: 1 }); saveLegs({ underlying: ctx.underlying, env: ctx.env, legs: l }); setLegs(l); }
+    try { const l = await optionsApi.template({ env: ctx.env, underlying: ctx.underlying, template: id, expiry: exp, qty: 1 }); saveLegs({ underlying: ctx.underlying, env: ctx.env, legs: l }); setNotes([]); setLegs(l); }
     catch (e) { toast.error(e instanceof ApiError ? e.message : 'Could not build that'); }
   }
 
@@ -73,12 +106,18 @@ export default function OptionsReplayPage() {
     <AppShell legacy={false} pageTitle="Expiry replay" pageSubtitle="Paper legs walked to expiry">
       <div className="x-page op-page" data-testid="op-replay-page">
         {ctx && <OptionsHead ctx={ctx} setCtx={setCtx} spot={r?.spot ?? base.data?.spot} />}
+        {notes.length > 0 && (
+          <div className="op-note" role="status" data-testid="op-rp-notes">
+            <ul>{notes.map((t, k) => <li key={k}>{t}</li>)}</ul>
+            <button type="button" className="x-btn x-btn--sm x-btn--ghost" onClick={() => setNotes([])} aria-label="Dismiss"><IClose size={12} /></button>
+          </div>
+        )}
         {legs && !legs.length ? (
           <div className="x-card"><EmptyState icon="play" ghost="chart" testId="op-replay-empty" title="Nothing to replay yet"
             actions={<>{QUICK.map(([id, l]) => <button key={id} type="button" className="x-btn x-btn--sm" onClick={() => void quick(id)} disabled={!base.data} data-testid={`op-rq-${id}`}>{l}</button>)}<Link className="x-btn x-btn--sm" href="/options/builder">Open the builder</Link></>}>
             Walk a paper position to expiry and watch its P&amp;L move with the price. Start from a ready-made one or build your own.
           </EmptyState></div>
-        ) : err ? <ErrorCard message={err} /> : !r || !f ? <div className="x-skel" style={{ height: 520 }} /> : (
+        ) : err ? <ErrorCard message={err} onRetry={() => { setErr(null); setLegs((l) => (l ? [...l] : l)); }} /> : !r || !f ? <div className="x-skel" style={{ height: 520 }} /> : (
           <>
             <section className="x-card op-rp-ctl" aria-label="Replay controls" data-testid="op-rp-ctl">
               <div className="x-seg x-seg--in x-seg--sm" role="radiogroup" aria-label="Price path">

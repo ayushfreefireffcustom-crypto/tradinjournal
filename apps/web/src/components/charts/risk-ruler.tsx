@@ -7,7 +7,7 @@
 // on this symbol and side), "Copy levels" (clipboard), "Alert at".
 import { useEffect, useState } from 'react';
 import { Bell, Check, Clock, Copy } from '@phosphor-icons/react';
-import { fmtGap, money, px, type RiskInput, type Sizing } from './trade-math';
+import { fmtGap, minSizeHint, money, px, type RiskInput, type Sizing } from './trade-math';
 
 export interface DayRisk { realised: number; open: number; openKnown: boolean; cap: number }
 
@@ -111,7 +111,7 @@ export default function RiskRuler(p: Props) {
             </>
           ) : <p className="tl-hint">Set a stop to size the trade.</p>}
         </div>
-        {p.sizing?.belowMin && <p className="tl-hint neg">That risk is below the smallest size. The minimum would risk more than you asked.</p>}
+        {p.sizing?.belowMin && <p className="tl-hint" data-testid="ruler-min">Below the smallest size. {minSizeHint(p.sizing, { unit: p.unit, lotDecimals: p.lotDecimals, balance: bal, ccy })}</p>}
         {p.basis && <p className="tl-basis">{p.basis}</p>}
         {d && bal ? (
           <>

@@ -100,6 +100,9 @@
 .v6 .x-seg .op-on-buy[aria-checked=true], .v6 .x-seg .op-on-buy[aria-checked=true]:hover { background: var(--g); color: var(--on-g); }
 .v6 .x-seg .op-on-sell[aria-checked=true], .v6 .x-seg .op-on-sell[aria-checked=true]:hover { background: var(--r-solid); color: #fff; }
 .v6 .op-leg-add { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
+.v6 .op-note { display: flex; gap: 8px; align-items: flex-start; justify-content: space-between; margin: 0 0 8px; padding: 8px 10px; border-radius: var(--r-inset); background: var(--s2); color: var(--mut); font-size: var(--t2); line-height: 1.45; }
+.v6 .op-note ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; min-width: 0; overflow-wrap: anywhere; }
+.v6 .op-note .x-btn { flex: none; }
 .v6 .op-sliders { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 8px; }
 .v6 .op-sliders label { display: grid; gap: 6px; font-size: var(--t2); color: var(--mut); }
 .v6 .op-sliders b { color: var(--tx); font-weight: 500; }

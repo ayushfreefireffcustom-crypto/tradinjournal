@@ -15,6 +15,7 @@ import {
   shiftMonth,
   SURPRISE_SERIES,
   surpriseLevel,
+  releaseValue,
   MACRO_ASSETS,
   SCORE_SCALE,
 } from '../macro/index.js';
@@ -223,6 +224,20 @@ describe('surprise grid', () => {
     expect(surpriseLevel(claims, '210K', '225K')).toBe(2);
     expect(surpriseLevel(claims, '230K', '225K')).toBe(-1);
     expect(surpriseLevel(cpi, null, '0.3%')).toBeNull();
+  });
+
+  it('reads bare payrolls and claims as thousands (TradingView sends "165" for 165K)', () => {
+    const nfp = SURPRISE_SERIES.find(s => s.key === 'payrolls')!;
+    const claims = SURPRISE_SERIES.find(s => s.key === 'claims')!;
+    expect(releaseValue(nfp, '165')).toBe(165_000);
+    expect(releaseValue(nfp, '-140')).toBe(-140_000);
+    expect(releaseValue(nfp, '85K')).toBe(85_000);
+    expect(releaseValue(nfp, '165000')).toBe(165_000); // already in units
+    expect(releaseValue(SURPRISE_SERIES.find(s => s.key === 'cpi')!, '0.3')).toBe(0.3);
+    // Real Nov 2026 release: 165K vs 65K forecast, a big beat. Mixed sources still compare.
+    expect(surpriseLevel(nfp, '165', '65')).toBe(2);
+    expect(surpriseLevel(nfp, '55', '85K')).toBe(-1);
+    expect(surpriseLevel(claims, '200', '195')).toBe(-1); // 5K more claims than forecast: cooler
   });
 
   it('builds a 12-month grid with gaps as null and a streak line', () => {

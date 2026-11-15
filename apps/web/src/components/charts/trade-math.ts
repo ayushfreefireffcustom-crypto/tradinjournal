@@ -165,6 +165,9 @@ export interface Sizing {
   rewardMoney: number | null;
   r: number | null;
   belowMin: boolean;
+  /** The smallest tradable size and what it would risk at this stop. */
+  minLot: number;
+  minRiskMoney: number;
 }
 
 /** Decimals of a lot step (0.01 → 2). */
@@ -202,7 +205,20 @@ export function sizePosition(p: {
     rewardMoney: tgt != null ? lots * tgt * p.pointValue : null,
     r: tgt != null ? tgt / dist : null,
     belowMin: lots < p.minLot,
+    minLot: p.minLot,
+    minRiskMoney: p.minLot * dist * p.pointValue,
   };
+}
+
+/**
+ * A neutral note for a risk too small for the smallest size, saying what that
+ * size would risk: "Smallest size 0.01 lot risks $7.30 (13%)."
+ */
+export function minSizeHint(s: Sizing, o: { unit: string; lotDecimals: number; balance: number | null; ccy?: string }): string | null {
+  if (!s.belowMin) return null;
+  const share = o.balance && o.balance > 0 ? (s.minRiskMoney / o.balance) * 100 : null;
+  const pct = share == null ? '' : ` (${share >= 10 ? Math.round(share) : Number(share.toFixed(1))}%)`;
+  return `Smallest size ${s.minLot.toFixed(o.lotDecimals)} ${o.unit} risks ${money(s.minRiskMoney, o.ccy ?? 'USD')}${pct}.`;
 }
 
 // ─── R ────────────────────────────────────────────────────────────────────

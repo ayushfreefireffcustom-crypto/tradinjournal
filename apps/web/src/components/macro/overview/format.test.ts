@@ -4,6 +4,7 @@ import {
   driverReading,
   heat,
   inputDelta,
+  inputLabel,
   inputValue,
   magnetLine,
   monthLong,
@@ -51,6 +52,15 @@ describe('macro overview format', () => {
     expect(inputDelta(input({ format: 'usd_mn', delta: -62_000 }))).toBe('−$62B');
     expect(inputDelta(input({ delta: 0.1 }))).toBe('+0.1');
     expect(inputDelta(input({ delta: null }))).toBe('');
+    // Hikes read as a positive count, so a move toward more hikes is +.
+    expect(inputDelta(input({ format: 'cuts', value: -3.9, delta: -0.1 }))).toBe('+0.1');
+    expect(inputDelta(input({ format: 'cuts', value: 1.9, delta: 0.4 }))).toBe('+0.4');
+  });
+
+  it('labels a cuts row by what it shows', () => {
+    expect(inputLabel(input({ format: 'cuts', value: -3.9, label: 'Cuts priced, 2Y' }))).toBe('Hikes priced, 2Y');
+    expect(inputLabel(input({ format: 'cuts', value: 1.2, label: 'Hikes priced, 2Y' }))).toBe('Cuts priced, 2Y');
+    expect(inputLabel(input({ value: -1, label: 'Core CPI y/y' }))).toBe('Core CPI y/y');
   });
 
   it('colours cells and surprises', () => {

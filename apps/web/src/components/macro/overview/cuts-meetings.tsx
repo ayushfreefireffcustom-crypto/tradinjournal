@@ -8,7 +8,7 @@
 import type { MacroFedWatch } from '@/lib/macro-api';
 import { SecHead } from './parts';
 import { signed } from './format';
-import { cumulativeDelta, cumulativeWord, meetingOutcome, segments } from './cuts-format';
+import { cumulativeDelta, cumulativeWord, deltaShown, meetingOutcome, pathTitle, segments } from './cuts-format';
 import '@/styles/v6/macro-cuts.css';
 
 const day = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
@@ -16,7 +16,7 @@ const day = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day: 'n
 export default function CutsByMeeting({ fw }: { fw: MacroFedWatch }) {
   return (
     <div className="mo-fw" data-testid="macro-cuts-meetings">
-      <SecHead title="Cuts priced by meeting" sub="from Fed funds futures" />
+      <SecHead title={pathTitle(fw.rows)} sub="from Fed funds futures" />
       <table className="mo-fw-t">
         <colgroup><col className="mo-fw-c-m" /><col /><col className="mo-fw-c-o" /><col className="mo-fw-c-p" /></colgroup>
         <thead>
@@ -31,7 +31,8 @@ export default function CutsByMeeting({ fw }: { fw: MacroFedWatch }) {
           {fw.rows.map(r => {
             const o = meetingOutcome(r);
             const s = segments(r);
-            const d = cumulativeDelta(r);
+            const d0 = cumulativeDelta(r);
+            const d = d0 == null ? null : deltaShown(r.cumulativeCuts, d0);
             const cum = cumulativeWord(r.cumulativeCuts);
             return (
               <tr key={r.meeting}>
@@ -50,7 +51,7 @@ export default function CutsByMeeting({ fw }: { fw: MacroFedWatch }) {
                 </td>
                 <td className="mo-fw-r mo-fw-p">
                   <div className="mo-fw-cum m">{cum}</div>
-                  {d != null && <div className={`mo-fw-s m ${d > 0 ? 'pos' : 'neg'}`}>{signed(d, 2)} d/d</div>}
+                  {d != null && <div className={`mo-fw-s m ${d.more === 'cuts' ? 'pos' : 'neg'}`} title={`More ${d.more} priced than the prior session`}>{signed(d.value, 2)} d/d</div>}
                 </td>
               </tr>
             );

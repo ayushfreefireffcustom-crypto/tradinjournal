@@ -18,6 +18,7 @@ import {
   daysLabel, expiryLabel, fmtCompact, fmtNum, fmtUsd, ivPct, loadLegs, optionsApi, saveLegs,
   type Analysis, type ChainData, type LegInput, type TemplateInfo,
 } from '@/lib/options-api';
+import { expiryCodeLabel, reconcileLegs, strikesOf } from '@/lib/options-legs';
 import '@/styles/v6/kit.css';
 import '@/styles/v6/markets.css';
 import '@/styles/v6/options.css';
@@ -52,6 +53,8 @@ export default function OptionsBuilderPage() {
   const [a, setA] = useState<Analysis | null>(null);
   const [aErr, setAErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // Plain notes about saved legs that were moved to a listed contract (or removed).
+  const [legNotes, setLegNotes] = useState<string[]>([]);
   const seq = useRef(0);
   // Which underlying and source the legs on screen belong to (saving uses this, not ctx, so a switch can't write one market's legs under another).
   const [legsFor, setLegsFor] = useState<{ underlying: string; env: 'live' | 'testnet' } | null>(null);
@@ -64,13 +67,27 @@ export default function OptionsBuilderPage() {
     const s = loadLegs();
     setLegs(s && s.underlying === ctx.underlying && s.env === ctx.env ? s.legs : []);
     setLegsFor({ underlying: ctx.underlying, env: ctx.env });
-    setDayOffset(0); setTarget(null); setA(null);
+    setDayOffset(0); setTarget(null); setA(null); setLegNotes([]);
   }, [ctx?.underlying, ctx?.env]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (legsFor) saveLegs({ ...legsFor, legs }); }, [legs, legsFor]);
   useEffect(() => { if (base.data && !tplExpiry) setTplExpiry(base.data.expiries.find((e) => e.days >= 5)?.code ?? base.data.expiry); }, [base.data, tplExpiry]);
 
   const codes = useMemo(() => [...new Set(legs.filter((l) => l.kind !== 'future' && l.expiry).map((l) => l.expiry!))], [legs]);
   const chains = useChains(ctx?.env, ctx?.underlying, codes);
+  // The chain on screen belongs to the legs' market (not a stale one mid-switch).
+  const baseOk = !!base.data && !!legsFor && base.data.underlying === legsFor.underlying && base.data.env === legsFor.env;
+  const listed = useMemo(() => new Set(baseOk ? base.data!.expiries.map((e) => e.code) : []), [baseOk, base.data]);
+
+  // Saved legs can point at an expiry that has passed or a strike no longer
+  // listed: move them to the nearest listed contract once the chains are known.
+  useEffect(() => {
+    if (!baseOk || !legs.length) return;
+    const d = base.data!;
+    const strikes: Record<string, number[]> = { [d.expiry]: strikesOf(d.quotes) };
+    for (const [code, ch] of Object.entries(chains)) if (ch.underlying === d.underlying && ch.env === d.env) strikes[code] = strikesOf(ch.quotes);
+    const r = reconcileLegs(legs, d.expiries, strikes);
+    if (r.changed) { setLegs(r.legs); setLegNotes((n) => [...n, ...r.notes].slice(-4)); }
+  }, [baseOk, base.data, chains, legs]);
   const firstExp = a ? Math.min(...a.legs.filter((l) => l.expiry).map((l) => l.expiry!)) : null;
   const maxDays = firstExp && a ? Math.max(0, Math.floor((firstExp - a.asOf) / 86_400_000)) : 0;
   const at = a && dayOffset > 0 ? a.asOf + dayOffset * 86_400_000 : undefined;
@@ -78,7 +95,8 @@ export default function OptionsBuilderPage() {
   // Re-analyse after edits settle.
   useEffect(() => {
     if (!ctx) return;
-    const ready = legs.length && legs.every((l) => l.kind === 'future' || (l.strike && l.expiry));
+    // Wait for the chain so a saved leg on a passed expiry is moved before it's priced (no flash of an error).
+    const ready = baseOk && legs.length && legs.every((l) => l.kind === 'future' || (l.strike && l.expiry && listed.has(l.expiry)));
     if (!ready) { setA(null); setAErr(null); return; }
     const n = ++seq.current;
     const t = setTimeout(() => {
@@ -90,7 +108,7 @@ export default function OptionsBuilderPage() {
     }, 300);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(legs), ctx?.env, ctx?.underlying, at]);
+  }, [JSON.stringify(legs), ctx?.env, ctx?.underlying, at, baseOk, listed]);
 
   const setLeg = (i: number, patch: Partial<LegInput>) => setLegs((ls) => ls.map((l, k) => (k === i ? { ...l, ...patch } : l)));
   const strikesFor = (code?: string) => (code && chains[code] ? [...new Set(chains[code]!.quotes.map((q) => q.strike))].sort((x, y) => x - y) : []);
@@ -144,7 +162,13 @@ export default function OptionsBuilderPage() {
                 ))}</div>
               </section>
               <section className="x-card" aria-label="Legs" data-testid="op-legs">
-                <div className="x-ch"><h2>Legs</h2><span className="x-sub">{legs.length}/8</span>{legs.length > 0 && <button type="button" className="x-btn x-btn--sm x-btn--ghost x-push" onClick={() => setLegs([])} data-testid="op-clear">Clear</button>}</div>
+                <div className="x-ch"><h2>Legs</h2><span className="x-sub">{legs.length}/8</span>{legs.length > 0 && <button type="button" className="x-btn x-btn--sm x-btn--ghost x-push" onClick={() => { setLegs([]); setLegNotes([]); }} data-testid="op-clear">Clear</button>}</div>
+                {legNotes.length > 0 && (
+                  <div className="op-note" role="status" data-testid="op-leg-notes">
+                    <ul>{legNotes.map((t, k) => <li key={k}>{t}</li>)}</ul>
+                    <button type="button" className="x-btn x-btn--sm x-btn--ghost" onClick={() => setLegNotes([])} aria-label="Dismiss" data-testid="op-leg-notes-x"><IClose size={12} /></button>
+                  </div>
+                )}
                 {!legs.length && <p className="x-muted">Pick a template, add a leg, or press Buy / Sell on a contract in the chain.</p>}
                 {legs.map((l, i) => {
                   const ks = strikesFor(l.expiry);
@@ -160,7 +184,10 @@ export default function OptionsBuilderPage() {
                       </select>
                       {l.kind !== 'future' ? (
                         <>
-                          <select className="x-input" value={l.expiry ?? ''} onChange={(e) => setLeg(i, { expiry: e.target.value, price: undefined })} aria-label="Expiry" data-testid={`op-leg-${i}-expiry`}>{base.data!.expiries.map((e) => <option key={e.code} value={e.code}>{expiryLabel(e.expiry)}</option>)}</select>
+                          <select className="x-input" value={l.expiry ?? ''} onChange={(e) => setLeg(i, { expiry: e.target.value, price: undefined })} aria-label="Expiry" data-testid={`op-leg-${i}-expiry`}>
+                            {l.expiry && !listed.has(l.expiry) && <option value={l.expiry}>{expiryCodeLabel(l.expiry)} (expired)</option>}
+                            {base.data!.expiries.map((e) => <option key={e.code} value={e.code}>{expiryLabel(e.expiry)}</option>)}
+                          </select>
                           <select className="x-input m" value={l.strike ?? ''} onChange={(e) => setLeg(i, { strike: Number(e.target.value), price: undefined })} aria-label="Strike" data-testid={`op-leg-${i}-strike`}>
                             {!ks.includes(l.strike ?? -1) && l.strike != null && <option value={l.strike}>{k0(l.strike)}</option>}
                             {ks.map((k) => <option key={k} value={k}>{k0(k)}</option>)}

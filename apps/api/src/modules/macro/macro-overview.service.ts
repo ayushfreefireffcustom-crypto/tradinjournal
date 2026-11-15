@@ -77,6 +77,35 @@ export function cutsSeries(effr: DatedValue[], yields: DatedValue[]): DatedValue
   return out;
 }
 
+type EventRow = { title: string; eventTime: Date; actual: string | null; forecast: string | null; sources?: unknown };
+
+/**
+ * Releases for the surprise grid: each stored event, plus any differently
+ * titled release folded into it by the calendar's title aliases. The alias
+ * table maps "U6 Unemployment Rate" and "Unemployment Rate" (same time) to one
+ * key, so the headline rate only survives in the row's provider provenance
+ * (`sources.raw`) under a U6 title. Pure; exported for tests.
+ */
+export function surpriseReleases(rows: EventRow[]): Array<{ title: string; eventTime: string; actual: string | null; forecast: string | null }> {
+  const out: Array<{ title: string; eventTime: string; actual: string | null; forecast: string | null }> = [];
+  for (const e of rows) {
+    const eventTime = e.eventTime.toISOString();
+    out.push({ title: e.title, eventTime, actual: e.actual, forecast: e.forecast });
+    const raw = (e.sources as { raw?: unknown } | null | undefined)?.raw;
+    if (!Array.isArray(raw)) continue;
+    const seen = new Set([e.title.trim().toLowerCase()]);
+    for (const r of raw as Array<Record<string, unknown>>) {
+      const title = typeof r.title === 'string' ? r.title.trim() : '';
+      const actual = typeof r.actual === 'string' ? r.actual : null;
+      const forecast = typeof r.forecast === 'string' ? r.forecast : null;
+      if (!title || seen.has(title.toLowerCase()) || actual == null || forecast == null) continue;
+      seen.add(title.toLowerCase());
+      out.push({ title, eventTime, actual, forecast });
+    }
+  }
+  return out;
+}
+
 function tone(delta: number | null, eps: number, upIsGood: boolean): 'pos' | 'neg' | 'flat' {
   if (delta == null || Math.abs(delta) < eps) return 'flat';
   return (delta > 0) === upIsGood ? 'pos' : 'neg';
@@ -130,7 +159,7 @@ export function buildInputs(src: {
     const delta = prev ? round(lastCut.value - prev.value, 1) : null;
     out.push({
       key: 'policy',
-      label: 'Cuts priced, 2Y',
+      label: lastCut.value < 0 ? 'Hikes priced, 2Y' : 'Cuts priced, 2Y',
       sub: '2Y Treasury vs Fed funds · proxy',
       value: lastCut.value,
       format: 'cuts',
@@ -268,7 +297,7 @@ export async function buildMacroOverview(
         OR: SURPRISE_TITLE_HINTS.map(t => ({ title: { contains: t, mode: 'insensitive' as const } })),
       },
       orderBy: { eventTime: 'asc' },
-      select: { title: true, eventTime: true, actual: true, forecast: true },
+      select: { title: true, eventTime: true, actual: true, forecast: true, sources: true },
       take: 2_000,
     }),
   ]);
@@ -316,10 +345,7 @@ export async function buildMacroOverview(
     return { key: k, label: f.label, value: f.value, direction: f.direction, weight: f.weight };
   });
 
-  const surprise = buildSurpriseGrid(
-    eventRows.map(e => ({ title: e.title, eventTime: e.eventTime.toISOString(), actual: e.actual, forecast: e.forecast })),
-    endMonth,
-  );
+  const surprise = buildSurpriseGrid(surpriseReleases(eventRows), endMonth);
 
   // Policy proxy rows: 3M bill and 2Y note vs effective Fed funds.
   const effr = get(daily, 'DFF');

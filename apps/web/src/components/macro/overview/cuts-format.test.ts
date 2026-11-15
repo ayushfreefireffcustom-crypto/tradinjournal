@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cumulativeDelta, cumulativeWord, meetingOutcome, segments } from './cuts-format';
+import { cumulativeDelta, cumulativeWord, deltaShown, meetingOutcome, pathTitle, segments } from './cuts-format';
 
 describe('cuts by meeting format', () => {
   it('names the most likely outcome', () => {
@@ -19,6 +19,17 @@ describe('cuts by meeting format', () => {
     expect(cumulativeDelta({ cumulativeCuts: -1.12, cumulativeCutsYesterday: -1.15 })).toBe(0.03);
     expect(cumulativeDelta({ cumulativeCuts: 0.5, cumulativeCutsYesterday: 0.5 })).toBeNull();
     expect(cumulativeDelta({ cumulativeCuts: 0.5, cumulativeCutsYesterday: null })).toBeNull();
+  });
+  it('shows the day change in the unit of the word (hikes count up)', () => {
+    // 3.6 → 4.6 hikes: cumulativeCuts −3.6 → −4.6, d = −1.0 → "+1.00 d/d", more hikes.
+    expect(deltaShown(-4.6, -1)).toEqual({ value: 1, more: 'hikes' });
+    expect(deltaShown(0.8, 0.2)).toEqual({ value: 0.2, more: 'cuts' });
+    expect(deltaShown(-1.12, 0.03)).toEqual({ value: -0.03, more: 'cuts' });
+  });
+  it('titles the block by what the path prices', () => {
+    expect(pathTitle([{ cumulativeCuts: -1.1 }, { cumulativeCuts: -3.4 }])).toBe('Hikes priced by meeting');
+    expect(pathTitle([{ cumulativeCuts: 0.6 }])).toBe('Cuts priced by meeting');
+    expect(pathTitle([])).toBe('Cuts priced by meeting');
   });
   it('bar segments add up to 100', () => {
     expect(segments({ cutPct: 60, holdPct: 40, hikePct: 0 })).toEqual({ cut: 60, hold: 40, hike: 0 });

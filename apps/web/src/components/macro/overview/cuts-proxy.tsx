@@ -24,7 +24,7 @@ export default function CutsProxy({ cuts }: { cuts: MacroCutsProxy | null }) {
 
   return (
     <div ref={ref}>
-      <SecHead title="Cuts priced" sub="proxy · red tick = prior day" />
+      <SecHead title={(rows.at(-1)?.cuts ?? 0) <= -0.05 ? 'Hikes priced' : 'Cuts priced'} sub="proxy · red tick = prior day" />
       {!cuts || rows.length === 0 ? (
         <Quiet>Needs Fed funds and Treasury yields from the next macro update.</Quiet>
       ) : (
@@ -51,7 +51,7 @@ export default function CutsProxy({ cuts }: { cuts: MacroCutsProxy | null }) {
                       )}
                       <text x={w - rw + 10} y={y + 15} className="mo-t14 mo-tx1" fontWeight={900}>{word}</text>
                       {d != null && Math.abs(d) >= 0.05 && (
-                        <text x={w - 4} y={y + 15} textAnchor="end" className={`mo-t11 ${d > 0 ? 'mo-txu' : 'mo-txd'}`} fontWeight={900}>{signed(d, 1)}</text>
+                        <text x={w - 4} y={y + 15} textAnchor="end" className={`mo-t11 ${d > 0 ? 'mo-txu' : 'mo-txd'}`} fontWeight={900}>{signed(r.cuts < 0 ? -d : d, 1)}</text>
                       )}
                     </g>
                   );

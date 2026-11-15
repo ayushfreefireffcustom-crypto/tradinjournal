@@ -45,7 +45,7 @@ import { useHideMoney } from '@/components/v6/use-hide-money';
 import { useScrollFade } from '@/components/charts/use-scroll-fade';
 import {
   atr, coachFor, eventDayStats, eventKind, eventReaction, eventShort, learnedPointValue, marketKey, money, openExcursion, pickReviewKind,
-  planError, px, rUnit as rUnitOf, sameMarket, signedR, sizePosition, specPointValueUsd, stepDecimals, symbolSpec,
+  planError, px, sameMarket, sizePosition, specPointValueUsd, stepDecimals, symbolSpec,
   type CalEvent, type ChartTrade, type RiskInput,
 } from '@/components/charts/trade-math';
 import { PATTERN_TFS, patternsApi, type PatternsResult } from '@/lib/patterns-api';
@@ -197,7 +197,8 @@ export default function ChartsPage() {
   const balance = usesExchange
     ? { value: exSizing!.equity, ccy: 'USD', label: `${exSizing!.label} equity` }
     : tr.mt5Balance != null && selected ? { value: tr.mt5Balance, ccy: acctCcy, label: `MT5 ${selected.mt5Login} balance` } : null;
-  const unitR = useMemo(() => rUnitOf(tr.trades.filter(t => t.source === (openTrade?.source ?? 'mt5'))), [tr.trades, openTrade?.source]);
+  // No R here: MT5 deals carry no stop at entry, and an "R" from the average loss
+  // isn't the R the rest of the app shows (that needs a real stop). Money only.
 
   // ── Open trade ──
   const plannedStop = openTrade && openTrade.source === 'mt5' ? planStop(tr.notes, openTrade) : null;
@@ -215,7 +216,7 @@ export default function ChartsPage() {
   // ── Event-day review ──
   const review = useMemo(() => (now ? pickReviewKind(allEvents, spec.currencies, now) : null), [allEvents, spec.currencies, now]);
   const reviewScope = symTrades.filter(t => t.status === 'CLOSED').length >= 5 ? symTrades : tr.trades;
-  const dayStats = useMemo(() => (review ? eventDayStats(reviewScope, ev.history, review.kind, unitR) : null), [review, reviewScope, ev.history, unitR]);
+  const dayStats = useMemo(() => (review ? eventDayStats(reviewScope, ev.history, review.kind, null) : null), [review, reviewScope, ev.history]);
 
   // ── Risk ruler ──
   const [plan, setPlan] = useState<Plan>({ symbol: '', side: 'LONG', entry: null, stop: null, target: null });
@@ -450,13 +451,12 @@ export default function ChartsPage() {
           .sort((a, b) => a.closeTime! - b.closeTime!);
         closed.forEach((t, i) => {
           const recent = i >= closed.length - 3;
-          const r = unitR ? ` · ${signedR(t.netPnl! / unitR)}` : '';
           overlays.push({ name: 'tlTrade', points: [{ timestamp: t.openTime!, value: t.entry }, { timestamp: t.closeTime!, value: t.exit! }], extendData: { pal, side: t.side, win: t.netPnl! >= 0 } });
           const up = (t.side === 'LONG') === (t.netPnl! >= 0);
           const hi = Math.max(t.entry, t.exit!), lo = Math.min(t.entry, t.exit!);
           labels.push({
             id: `tr${t.id}`, prio: recent ? 3 : 6, t: Math.round((t.openTime! + t.closeTime!) / 2), v: up ? hi : lo,
-            text: `${m(t.netPnl!)}${r}`, short: m(t.netPnl!), tip: `${t.side === 'LONG' ? 'Long' : 'Short'} ${t.volume} · ${px(t.entry, d)} → ${px(t.exit!, d)} · ${m(t.netPnl!)}${r}${t.note ? ` · “${t.note}”` : ''}`,
+            text: m(t.netPnl!), short: m(t.netPnl!), tip: `${t.side === 'LONG' ? 'Long' : 'Short'} ${t.volume} · ${px(t.entry, d)} → ${px(t.exit!, d)} · ${m(t.netPnl!)}${t.note ? ` · “${t.note}”` : ''}`,
             color: t.netPnl! >= 0 ? pal.gTx : pal.rTx, weight: 800, cands: up ? AROUND : [AROUND[1]!, AROUND[0]!, ...AROUND.slice(2)],
           });
         });
@@ -523,7 +523,7 @@ export default function ChartsPage() {
       }
       return { overlays, labels, tags, obstacles, extent };
     };
-  }, [timeBased, active.tf, moneyHidden, ccy, price, layers, liq.data, ai.data, ev.window, symTrades, unitR, openTrade, openPnl, coach, openStop, openTarget, tr.notes, symbol, planOk, problem, plan, panes.length, rightSpace, sizing, lotDecimals, unit, alertState, alertKey, onRulerDrag]);
+  }, [timeBased, active.tf, moneyHidden, ccy, price, layers, liq.data, ai.data, ev.window, symTrades, openTrade, openPnl, coach, openStop, openTarget, tr.notes, symbol, planOk, problem, plan, panes.length, rightSpace, sizing, lotDecimals, unit, alertState, alertKey, onRulerDrag]);
 
   const layersOnPane = useRef<string | null>(null);
   useEffect(() => {
@@ -723,7 +723,7 @@ export default function ChartsPage() {
             <ReplayPanel symbol={symbol} trades={symTrades} decimals={dec} ccy={openTrade?.source === 'exchange' || usesExchange ? 'USD' : acctCcy} pointValue={symTrades.some(t => t.source === 'mt5') ? mt5Pv : 1} loading={tradesLoading} error={tr.status === 'error' ? tr.error : null} />
           </div>
           <EventDays kind={review?.kind ?? null} stats={dayStats} scope={reviewScope === symTrades ? `${symbol} trades` : 'trades, all symbols'} ccy={acctCcy}
-            loading={ev.status === 'loading' || tradesLoading} unitKnown={unitR != null}
+            loading={ev.status === 'loading' || tradesLoading} unitKnown={false}
             error={ev.status === 'error' ? 'The calendar didn’t load, so event days can’t be matched right now.' : tr.status === 'error' ? `Your trades didn’t load: ${tr.error}` : null} />
         </div>
 

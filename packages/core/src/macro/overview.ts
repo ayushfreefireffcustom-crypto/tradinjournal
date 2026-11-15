@@ -402,16 +402,22 @@ export interface SurpriseSeriesDef {
   /** |surprise| thresholds (in the release's own units) for level 1 and 2. */
   small: number;
   big: number;
+  /**
+   * Counted in thousands when a value has no K/M suffix. TradingView sends
+   * payrolls and claims bare ("165" = 165K) while ForexFactory sends "165K";
+   * without this a 100K payrolls miss read as 100 and never left neutral.
+   */
+  bareThousands?: boolean;
 }
 
 export const SURPRISE_SERIES: readonly SurpriseSeriesDef[] = [
   { key: 'cpi', label: 'CPI m/m', match: /^(cpi m\/m|inflation rate mom)$/i, polarity: 1, small: 0.05, big: 0.15 },
   { key: 'core_cpi', label: 'Core CPI m/m', match: /^(core cpi m\/m|core inflation rate mom)$/i, polarity: 1, small: 0.05, big: 0.15 },
-  { key: 'payrolls', label: 'Payrolls', match: /^(non[- ]?farm (payrolls|employment change))$/i, polarity: 1, small: 25_000, big: 75_000 },
+  { key: 'payrolls', label: 'Payrolls', match: /^(non[- ]?farm (payrolls|employment change))$/i, polarity: 1, small: 25_000, big: 75_000, bareThousands: true },
   { key: 'unemployment', label: 'Unemployment', match: /^unemployment rate$/i, polarity: -1, small: 0.05, big: 0.15 },
   { key: 'retail', label: 'Retail sales', match: /^retail sales (m\/m|mom)$/i, polarity: 1, small: 0.15, big: 0.5 },
   { key: 'ism', label: 'ISM manufacturing', match: /^ism manufacturing pmi$/i, polarity: 1, small: 0.5, big: 1.5 },
-  { key: 'claims', label: 'Jobless claims', match: /^(initial jobless claims|unemployment claims)$/i, polarity: -1, small: 5_000, big: 15_000 },
+  { key: 'claims', label: 'Jobless claims', match: /^(initial jobless claims|unemployment claims)$/i, polarity: -1, small: 5_000, big: 15_000, bareThousands: true },
 ];
 
 /** "245K" → 245000, "0.3%" → 0.3, "-1.2M" → -1200000, "1,234" → 1234. Null if unparseable. */
@@ -426,10 +432,18 @@ export function parseReleaseNumber(raw: string | null | undefined): number | nul
   return n * (mult[m[2]!.toLowerCase()] ?? 1);
 }
 
+/** A release value in the series' own units (bare thousands scaled up where the series needs it). */
+export function releaseValue(def: Pick<SurpriseSeriesDef, 'bareThousands'>, raw: string | null | undefined): number | null {
+  const n = parseReleaseNumber(raw);
+  if (n == null || !def.bareThousands) return n;
+  // Bare and small: thousands. A bare value already in units (e.g. "165000") is left alone.
+  return !/[kmbt]\s*$/i.test(raw!.trim()) && Math.abs(n) < 10_000 ? n * 1_000 : n;
+}
+
 /** −2..+2 "hotter than forecast" level (positive = hotter, hurts risk). Null if not comparable. */
 export function surpriseLevel(def: SurpriseSeriesDef, actual: string | null, forecast: string | null): number | null {
-  const a = parseReleaseNumber(actual);
-  const f = parseReleaseNumber(forecast);
+  const a = releaseValue(def, actual);
+  const f = releaseValue(def, forecast);
   if (a == null || f == null) return null;
   const s = (a - f) * def.polarity;
   const mag = Math.abs(s);

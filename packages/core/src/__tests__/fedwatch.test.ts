@@ -49,18 +49,19 @@ describe('FedWatch maths', () => {
   });
 
   it('recovers a known path of certain moves exactly', () => {
-    const meetings = upcomingMeetings('2026-11-14', 8);
+    // Nine meetings: the ninth (Nov 2027) lets late-month Oct 27 solve back rather than forward.
+    const meetings = upcomingMeetings('2026-11-14', 9);
     // Cut in Dec, hold Jan, cut Mar, hold, hike Jun, holds after.
-    const rates = [3.625, 3.625, 3.375, 3.375, 3.625, 3.625, 3.625, 3.625];
+    const rates = [3.625, 3.625, 3.375, 3.375, 3.625, 3.625, 3.625, 3.625, 3.625];
     const prices = pricesFor(meetings, rates, '2026-11', '2028-01', 3.875);
     const r = fedWatch(meetings, prices)!;
     expect(r.impliedNow).toBeCloseTo(3.875, 6);
     expect(r.meetings.map((m) => m.decision)).toEqual(meetings.map((m) => m.decision));
-    expect(r.meetings.map((m) => Math.round(m.expectedBp) || 0)).toEqual([-25, 0, -25, 0, 25, 0, 0, 0]);
+    expect(r.meetings.map((m) => Math.round(m.expectedBp) || 0)).toEqual([-25, 0, -25, 0, 25, 0, 0, 0, 0]);
     expect(r.meetings[0]).toMatchObject({ cutPct: 100, holdPct: 0, hikePct: 0 });
     expect(r.meetings[1]).toMatchObject({ cutPct: 0, holdPct: 100, hikePct: 0 });
     expect(r.meetings[4]).toMatchObject({ hikePct: 100 });
-    expect(r.meetings.map((m) => Math.round(m.cumulativeCuts) || 0)).toEqual([1, 1, 2, 2, 1, 1, 1, 1]);
+    expect(r.meetings.map((m) => Math.round(m.cumulativeCuts) || 0)).toEqual([1, 1, 2, 2, 1, 1, 1, 1, 1]);
   });
 
   it('prices a partial cut as odds', () => {
@@ -104,6 +105,22 @@ describe('FedWatch maths', () => {
     // Without an EFFR the start is solved back from February (meeting-free).
     const r2 = fedWatch(meetings, prices)!;
     expect(r2.impliedNow).toBeCloseTo(3.625, 4);
+  });
+
+  it('drops a late-month meeting it could only solve forward (noise blows up)', () => {
+    // Sep 15 and Oct 27 2027; Nov 2027 holds a meeting of its own, and no later meeting is given.
+    const meetings = upcomingMeetings('2027-08-01', 2);
+    const prices = pricesFor(meetings, [4.75, 4.75], '2027-08', '2027-11', 4.75);
+    // A 0.5 bp wobble in October's price: a forward solve (4 of 31 days left) would read it as ~+4 bp.
+    prices.set('2027-10', prices.get('2027-10')! - 0.005);
+    const r = fedWatch(meetings, prices)!;
+    expect(r.meetings.map((m) => m.decision)).toEqual(['2027-09-15']);
+    // Given the next meeting too, October solves back from it and stays put.
+    const three = upcomingMeetings('2027-08-01', 3);
+    const p3 = pricesFor(three, [4.75, 4.75, 4.75], '2027-08', '2027-12', 4.75);
+    p3.set('2027-10', p3.get('2027-10')! - 0.005);
+    const r3 = fedWatch(three, p3)!;
+    expect(Math.abs(r3.meetings[1]!.expectedBp)).toBeLessThan(2);
   });
 
   it('ignores junk prices', () => {

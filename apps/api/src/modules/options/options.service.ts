@@ -211,11 +211,18 @@ export async function premiumSeries(env: OptEnv, underlying: string, expiryCode:
 // ── Multi-leg analysis (G6–G8) ──
 export interface LegInput { kind: 'call' | 'put' | 'future'; side: 1 | -1; qty: number; strike?: number; expiry?: string; price?: number; iv?: number }
 
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+/** "131126" → "13 Nov" for messages; never echo the raw code. */
+export const expiryText = (code: string | undefined) => {
+  const m = /^(\d{2})(\d{2})\d{2}$/.exec(code ?? '');
+  return m && MONTHS[Number(m[2]) - 1] ? `${Number(m[1])} ${MONTHS[Number(m[2]) - 1]}` : 'that expiry';
+};
+
 function resolveLegs(c: Chain, underlying: string, input: LegInput[]): Leg[] {
   return input.map((l, i) => {
     if (l.kind === 'future') return { kind: 'future', side: l.side, qty: l.qty, price: l.price ?? c.spot };
     const q = c.quotes.find((x) => x.kind === l.kind && x.strike === l.strike && x.expiryCode === l.expiry);
-    if (!q) throw new ValidationError(`Leg ${i + 1}: no ${underlying} ${l.kind} at ${l.strike} for ${l.expiry}.`);
+    if (!q) throw new ValidationError(`Leg ${i + 1}: no ${underlying} ${l.kind} at ${l.strike} for ${expiryText(l.expiry)}.`);
     const iv = l.iv ?? q.markIv ?? undefined;
     if (iv == null) throw new ValidationError(`Leg ${i + 1}: ${q.symbol} has no IV to value it with.`);
     return { kind: l.kind, side: l.side, qty: l.qty, strike: q.strike, expiry: q.expiry, price: l.price ?? q.mark ?? 0, iv, symbol: q.symbol };
