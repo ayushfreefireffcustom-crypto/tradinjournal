@@ -20,6 +20,9 @@ import '@/styles/v6/tools.css';
 import '@/styles/v6/markets.css';
 import '@/styles/v6/options.css';
 
+/** Green / red, or neutral when it shows as $0.00. */
+const tone = (v: number) => (Math.abs(v) < 0.005 ? '' : v > 0 ? 'pos' : 'neg');
+
 // A full replay takes about a minute at 1×, whatever its length.
 const SPEEDS = [1, 4, 16] as const;
 const QUICK: Array<[string, string]> = [['long_straddle', 'Long straddle'], ['short_strangle', 'Short strangle'], ['iron_condor', 'Iron condor']];
@@ -133,7 +136,7 @@ export default function OptionsReplayPage() {
             <section className="op-strip" aria-label="Now in the replay" data-testid="op-rp-strip">
               <div><span>Time</span><b className="m">{tFmt(f.t)}</b><small className="x-muted">{left > 0.01 ? `${daysLabel(left)} to expiry` : 'at expiry'}</small></div>
               <div><span>Index</span><b className="m">{fmtNum(f.spot, 1)}</b><small className="x-muted">{`${f.spot >= r.spot ? '+' : '−'}${Math.abs((f.spot / r.spot - 1) * 100).toFixed(2)}%`}</small></div>
-              <div><span>P&amp;L</span><b className={`m ${f.pnl >= 0 ? 'pos' : 'neg'}`} data-testid="op-rp-pnl">{fmtUsd(f.pnl)}</b></div>
+              <div><span>P&amp;L</span><b className={`m ${tone(f.pnl)}`} data-testid="op-rp-pnl">{fmtUsd(f.pnl)}</b></div>
               <div><span>Delta · Theta</span><b className="m">{fmtNum(f.greeks.delta, 4)} · {fmtUsd(f.greeks.theta)}/d</b></div>
               <div><span>±1σ so far</span><b className="m">{f.band ? `${k0(f.band.lo)}–${k0(f.band.hi)}` : '—'}</b></div>
             </section>
@@ -169,7 +172,7 @@ export default function OptionsReplayPage() {
                   <thead><tr><th>Leg</th><th className="r">Entry</th><th className="r">Now</th><th className="r">P&amp;L</th></tr></thead>
                   <tbody>{r.legs.map((l, k) => {
                     const pnl = l.side * l.qty * r.contractValue * (f.values[k]! - l.price);
-                    return <tr key={k}><td className="m">{l.side > 0 ? 'Buy' : 'Sell'} {l.qty} {l.symbol ?? `${r.underlying} future`}{l.expiry ? <span className="x-muted"> · {expiryLabel(l.expiry)}</span> : null}</td><td className="r m">{fmtNum(l.price, 1)}</td><td className="r m">{fmtNum(f.values[k]!, 1)}</td><td className={`r m ${pnl >= 0 ? 'pos' : 'neg'}`}>{fmtUsd(pnl)}</td></tr>;
+                    return <tr key={k}><td className="m">{l.side > 0 ? 'Buy' : 'Sell'} {l.qty} {l.symbol ?? `${r.underlying} future`}{l.expiry ? <span className="x-muted"> · {expiryLabel(l.expiry)}</span> : null}</td><td className="r m">{fmtNum(l.price, 1)}</td><td className="r m">{fmtNum(f.values[k]!, 1)}</td><td className={`r m ${tone(pnl)}`}>{fmtUsd(pnl)}</td></tr>;
                   })}</tbody>
                 </table>
               </div>
