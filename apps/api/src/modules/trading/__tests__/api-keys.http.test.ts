@@ -64,8 +64,10 @@ describe.skipIf(!local)('personal API keys and /api/v1', () => {
     expect(k.key.endsWith(k.last4)).toBe(true);
     const list = ((await (await app('GET', '/api/trading/api-keys')).json()) as { data: Array<Record<string, unknown>> }).data;
     expect(list.map((x) => x.name)).toEqual(['Bot']);
-    expect(JSON.stringify(list)).not.toContain(k.key.split('_')[2]);
-    expect(JSON.stringify(await prisma.apiKey.findMany({ where: { userId: me } }))).not.toContain(k.key.split('_')[2]);
+    // The secret is everything after "tl_<prefix>_" (it can itself contain "_").
+    const secret = k.key.slice(`tl_${k.prefix}_`.length);
+    expect(JSON.stringify(list)).not.toContain(secret);
+    expect(JSON.stringify(await prisma.apiKey.findMany({ where: { userId: me } }))).not.toContain(secret);
     // Signed out: no key management.
     expect((await fetch(`${base}/api/trading/api-keys`)).status).toBe(401);
   });
