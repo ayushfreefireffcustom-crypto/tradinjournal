@@ -276,16 +276,44 @@ export async function applyCalendarRepair(prisma: PrismaClient, plan: RepairPlan
     }
     // 2. Fold away (remaining watches cascade — they were duplicates of a moved one).
     if (plan.deletes.length) res.deleted = (await tx.economicEvent.deleteMany({ where: { id: { in: plan.deletes.map(d => d.id) } } })).count;
-    // 3. Park re-keyed rows on a unique temporary key so keys can swap freely.
-    for (const u of plan.updates) {
-      if (u.fromKey !== u.data.dedupKey) await tx.economicEvent.update({ where: { id: u.id }, data: { dedupKey: `repair:${u.id}` } });
+    // 3. Park re-keyed rows on a unique temporary key so keys can swap freely,
+    //    then rewrite every row. Bulk statements: run from far away, thousands
+    //    of single-row updates would outlast the transaction.
+    const rekeyed = plan.updates.filter(u => u.fromKey !== u.data.dedupKey).map(u => u.id);
+    for (const ids of chunks(rekeyed, 1000)) {
+      await tx.$executeRaw`UPDATE "economic_event" SET "dedupKey" = 'repair:' || "id" WHERE "id" = ANY(${ids}::text[])`;
     }
-    for (const u of plan.updates) {
-      await tx.economicEvent.update({ where: { id: u.id }, data: u.data });
-      res.updated += 1;
+    for (const part of chunks(plan.updates, 300)) {
+      const rows = part.map(u => ({
+        id: u.id,
+        dedupKey: u.data.dedupKey, title: u.data.title, country: u.data.country, currency: u.data.currency,
+        category: u.data.category, impact: u.data.impact,
+        // Columns are timestamp without time zone holding UTC.
+        eventTime: u.data.eventTime.toISOString().replace('Z', ''),
+        actualAt: u.data.actualAt ? u.data.actualAt.toISOString().replace('Z', '') : null,
+        actual: u.data.actual, forecast: u.data.forecast, previous: u.data.previous, unit: u.data.unit,
+        sources: u.data.sources,
+      }));
+      res.updated += await tx.$executeRaw`
+        UPDATE "economic_event" AS e SET
+          "dedupKey" = v."dedupKey", "title" = v."title", "country" = v."country", "currency" = v."currency",
+          "category" = v."category", "impact" = v."impact"::"EventImpact", "eventTime" = v."eventTime",
+          "actual" = v."actual", "forecast" = v."forecast", "previous" = v."previous", "unit" = v."unit",
+          "actualAt" = v."actualAt", "sources" = v."sources", "updatedAt" = now()
+        FROM jsonb_to_recordset(${JSON.stringify(rows)}::jsonb) AS v(
+          "id" text, "dedupKey" text, "title" text, "country" text, "currency" text, "category" text, "impact" text,
+          "eventTime" timestamp(3), "actualAt" timestamp(3), "actual" text, "forecast" text, "previous" text,
+          "unit" text, "sources" jsonb)
+        WHERE e."id" = v."id"`;
     }
     // 4. The releases that were hidden inside merged rows.
     if (plan.creates.length) res.created = (await tx.economicEvent.createMany({ data: plan.creates.map(c => c.data), skipDuplicates: true })).count;
-  }, { timeout: 300_000, maxWait: 30_000 });
+  }, { timeout: 900_000, maxWait: 30_000 });
   return res;
+}
+
+function chunks<T>(xs: T[], n: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < xs.length; i += n) out.push(xs.slice(i, i + n));
+  return out;
 }
