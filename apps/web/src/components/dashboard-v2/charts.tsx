@@ -56,6 +56,27 @@ export function EquityChart({ eq, mode, unit, ai, leakNet }: { eq: DashEquity; m
     const x = scale(0, series.length - 1, 0, w - padR), y = scale(lo, hi, h - padB, padT);
     const line = series.map((v, i) => [x(i), y(v)] as [number, number]);
     const dd = `${path(peaks.map((v, i) => [x(i), y(v)]))}${[...line].reverse().map(p => `L${p[0].toFixed(1)},${p[1].toFixed(1)}`).join('')}Z`;
+    // Split the line: steps that end on a deposit/withdrawal are drawn apart (dashed, grey).
+    const isFlow = (i: number) => i > 0 && !!pts[i - 1]!.flow;
+    let tradePath = '';
+    const flowSegs: Array<[number, number, number, number]> = [];
+    line.forEach((p, i) => {
+      if (i === 0) { tradePath += `M${p[0].toFixed(1)},${p[1].toFixed(1)}`; return; }
+      const prev = line[i - 1]!;
+      if (isFlow(i)) { flowSegs.push([prev[0], prev[1], p[0], p[1]]); tradePath += `M${p[0].toFixed(1)},${p[1].toFixed(1)}`; return; }
+      tradePath += `L${p[0].toFixed(1)},${p[1].toFixed(1)}`;
+    });
+    // Label the biggest cash moves (up to 2) beside their step.
+    const flowLabels = pts
+      .map((p, i) => ({ i: i + 1, flow: p.flow ?? 0 }))
+      .filter(f => f.flow && Math.abs(pctMode ? (f.flow / eq.start) * 100 : f.flow) >= (hi - lo) * 0.08)
+      .sort((a, b) => Math.abs(b.flow) - Math.abs(a.flow)).slice(0, 2)
+      .map(f => {
+        const fx = x(f.i), fy0 = y(series[f.i - 1]!), fy1 = y(series[f.i]!);
+        const text = `${f.flow < 0 ? 'Withdrew' : 'Deposited'} ${kmoney(Math.abs(f.flow), { plus: false })}`;
+        const right = fx > (w - padR) / 2;
+        return { x: right ? fx - 8 : fx + 8, y: Math.max(padT + 10, Math.min(h - padB - 6, (fy0 + fy1) / 2 + 4)), text, anchor: (right ? 'end' : 'start') as 'end' | 'start' };
+      });
     const end = series.length - 1;
     const endLabel = pctMode ? spct(series[end]! / 100) : money(pts.at(-1)!.v, { plus: false });
     const labels = timeLabels([pts[0]!.t, ...pts.map(p => p.t)], x, 56);
@@ -68,6 +89,15 @@ export function EquityChart({ eq, mode, unit, ai, leakNet }: { eq: DashEquity; m
       boxes.push(b);
       callouts.push(<Callout key="leak" x={b.x} y={b.y} text={text} maxX={w - padR} />);
     }
+    // Cash-move labels are fixed: drop one that would sit under the leak callout, keep the rest
+    // as obstacles so the dip callout and the end value move out of their way.
+    const flowShown = flowLabels.filter(f => {
+      const fw = f.text.length * 6.4;
+      const b: Box = { x: f.anchor === 'end' ? f.x - fw : f.x, y: f.y - 11, w: fw, h: 14 };
+      if (boxes.some(o => hit(o, b))) return false;
+      boxes.push(b);
+      return true;
+    });
     // End value: above its point unless a callout is there, then under it.
     const ew = endLabel.length * 7.6, ex = x(end) - 8, eyUp = Math.max(14, y(series[end]!) - 9);
     const endBox = (ey: number): Box => ({ x: ex - ew, y: ey - 12, w: ew, h: 15 });
@@ -95,7 +125,10 @@ export function EquityChart({ eq, mode, unit, ai, leakNet }: { eq: DashEquity; m
         ))}
         <line x1={0} x2={w - padR} y1={y(series[0]!)} y2={y(series[0]!)} stroke="var(--mut)" strokeDasharray="2 3" />
         <path d={dd} fill="var(--d2-rfill)" />
-        <path d={path(line)} fill="none" stroke="var(--d2-g)" strokeWidth={1.75} strokeLinejoin="round" />
+        <path d={tradePath} fill="none" stroke="var(--d2-g)" strokeWidth={1.75} strokeLinejoin="round" />
+        {/* Cash in or out is not trading: a grey dashed step, labelled, never a green crash or spike. */}
+        {flowSegs.map((f, i) => <line key={`fs${i}`} x1={f[0]} y1={f[1]} x2={f[2]} y2={f[3]} stroke="var(--mut)" strokeWidth={1.5} strokeDasharray="3 3" data-testid="flow-step" />)}
+        {flowShown.map((f, i) => <text key={`fl${i}`} x={f.x} y={f.y} fontSize={11} fontWeight={700} fill="var(--mut)" textAnchor={f.anchor}>{f.text}</text>)}
         {ai && pts.map((p, i) => (p.leak ? <circle key={i} cx={x(i + 1)} cy={y(series[i + 1]!)} r={3} fill="var(--d2-r)" stroke="var(--d2-card)" strokeWidth={1} data-ai /> : null))}
         {/* Trades whose stop was widened: a red ring (only with recorded stop levels). */}
         {ai && pts.map((p, i) => (p.moved && !p.leak ? <circle key={`m${i}`} cx={x(i + 1)} cy={y(series[i + 1]!)} r={3.5} fill="var(--d2-card)" stroke="var(--d2-r)" strokeWidth={1.5} data-ai data-testid="moved-dot"><title>Stop widened</title></circle> : null))}
@@ -134,7 +167,20 @@ export function DistChart({ dist, ai }: { dist: DashDistribution; ai: boolean })
     const xt = R ? [-2, -1, 0, 1, 2, 3, 4] : ticks(a, b, Math.max(2, Math.floor(w / 80)));
     const meanX = Math.max(1, Math.min(w - 1, x(dist.mean)));
     const meanTxt = `mean ${R ? rfmt(dist.mean) : money(dist.mean)}`;
-    const tailText = dist.tail ? `${dist.tail.trades} past ${R ? '−1.25R' : kmoney(dist.tail.threshold)} · ${kmoney(dist.tail.net)}` : '';
+    const tailText = dist.tail ? `${dist.tail.trades} losses past ${R ? '−1.25R' : kmoney(dist.tail.threshold)} · ${kmoney(dist.tail.net)}` : '';
+    const meanRight = meanX > w - 110;
+    const meanBox: Box = { x: meanRight ? meanX - 4 - meanTxt.length * 6.6 : meanX + 4, y: padT + 27, w: meanTxt.length * 6.6, h: 15 };
+    // The tail callout sits right above the dashed outline it explains (short lead), or in the
+    // top corner over it when that would cover the mean label. Never a line across the chart.
+    let tailBox: (Box & { lead: [number, number] }) | null = null;
+    if (ai && dist.tail && tailBins.length) {
+      const rx0 = x(tailBins[0]!.from), rx1 = x(tailBins.at(-1)!.to), top = y(tallest) - 16;
+      const cw = Math.min(calloutW(tailText), w);
+      const bx = Math.max(0, Math.min((rx0 + rx1) / 2 - cw / 2, w - cw));
+      const above: Box = { x: bx, y: top - 8 - 34, w: cw, h: 34 }, corner: Box = { x: bx, y: 0, w: cw, h: 34 };
+      const b = above.y >= 0 && !hit(above, meanBox) ? above : corner;
+      tailBox = { ...b, lead: [Math.max(rx0, Math.min(rx1, b.x + cw / 2)), top] };
+    }
     body = (
       <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="d2-chart" role="img" aria-label={`Trade results in ${dist.unit}`}>
         {ticks(0, mx * 1.35, 3).filter(t => t > 0).map(t => <line key={t} x1={0} x2={w} y1={y(t)} y2={y(t)} stroke="var(--grid)" />)}
@@ -146,12 +192,12 @@ export function DistChart({ dist, ai }: { dist: DashDistribution; ai: boolean })
         ))}
         <line x1={0} x2={w} y1={y(0)} y2={y(0)} stroke="var(--line-2)" />
         <line x1={meanX} x2={meanX} y1={padT + 28} y2={y(0)} stroke="var(--tx)" strokeWidth={1.25} />
-        <text x={meanX > w - 110 ? meanX - 4 : meanX + 4} y={padT + 38} fontSize={11} fontWeight={800} fill="var(--tx)" textAnchor={meanX > w - 110 ? 'end' : 'start'}>{meanTxt}</text>
+        <text x={meanRight ? meanX - 4 : meanX + 4} y={padT + 38} fontSize={11} fontWeight={800} fill="var(--tx)" textAnchor={meanRight ? 'end' : 'start'}>{meanTxt}</text>
         {xt.filter(v => v >= a && v <= b).map(v => <text key={v} x={Math.min(w - 12, Math.max(10, x(v)))} y={h - 4} fontSize={11} fill="var(--dim)" textAnchor="middle">{fmtX(v)}</text>)}
-        {ai && dist.tail && tailBins.length > 0 && (
+        {tailBox && (
           <g data-ai>
             <rect x={x(tailBins[0]!.from)} y={y(tallest) - 16} width={x(tailBins.at(-1)!.to) - x(tailBins[0]!.from) + 1} height={y(0) - y(tallest) + 20} rx={4} fill="none" stroke="var(--d2-rt)" strokeDasharray="3 3" />
-            <Callout x={w - calloutW(tailText)} y={0} text={tailText} maxX={w} lead={[x(tailBins.at(-1)!.to), y(tallest) - 16]} />
+            <Callout x={tailBox.x} y={tailBox.y} w={tailBox.w} text={tailText} maxX={w} lead={tailBox.lead} />
           </g>
         )}
       </svg>
@@ -209,23 +255,54 @@ export function RollingChart({ roll, ai }: { roll: DashRolling; ai: boolean }) {
   return <div ref={ref} className="d2-cw" style={{ minHeight: h }}>{body}</div>;
 }
 
+/** Round money values for a square-root axis, kept at least minGap px apart. */
+const SQRT_STEPS = [10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10_000, 25_000, 50_000, 100_000, 250_000, 500_000, 1_000_000];
+function sqrtTicks(max: number, px: (v: number) => number, minGap: number): number[] {
+  const out = [0];
+  for (const v of SQRT_STEPS) {
+    if (v > max) break;
+    if (Math.abs(px(v) - px(out.at(-1)!)) >= minGap) out.push(v);
+  }
+  return out;
+}
+
 export function MaeScatter({ mm, ai }: { mm: DashMaeMfe; ai: boolean }) {
   const [ref, w] = useWidth<HTMLDivElement>();
-  const h = w < 400 ? 210 : 230;
-  const padL = 44, padB = 20, padT = 8, padR = 6;
+  const h = w < 400 ? 230 : 250;
+  const padL = 52, padB = 36, padT = 10, padR = 8;
   let body = null;
   if (w > 0) {
-    const xmin = Math.min(-1, ...mm.points.map(p => p.mae)), ymax = Math.max(1, ...mm.points.map(p => p.mfe));
-    const x = scale(xmin * 1.05, 0, padL, w - padR), y = scale(0, ymax * 1.08, h - padB, padT);
+    // Square-root axes: one big trade would otherwise squash every other point into a corner.
+    const sq = (v: number) => Math.sqrt(Math.abs(v));
+    const xmax = Math.max(1, ...mm.points.map(p => -p.mae)), ymax = Math.max(1, ...mm.points.map(p => p.mfe));
+    const X = scale(0, sq(xmax) * 1.04, w - padR, padL), Y = scale(0, sq(ymax) * 1.06, h - padB, padT);
+    const x = (mae: number) => X(sq(mae)), y = (mfe: number) => Y(sq(mfe));
+    const xt = sqrtTicks(xmax, x, 44), yt = sqrtTicks(ymax, y, 22);
     const text = mm.gaveBack ? `${plural(mm.gaveBack.trades, 'loser')} green first · ${kmoney(mm.gaveBack.net)}` : '';
+    const gave = mm.points.filter(p => p.gave);
+    let callout: React.ReactNode = null;
+    if (ai && text) {
+      const cw = Math.min(calloutW(text), w - padL - padR);
+      const g = gave[0];
+      if (g) {
+        // Next to the first such loser (which gets a red ring), above it if there is room, else below.
+        const gx = x(g.mae), gy = y(g.mfe);
+        const bx = Math.max(padL, Math.min(gx - cw / 2, w - padR - cw));
+        const by = gy - 14 - 34 >= padT ? gy - 14 - 34 : Math.min(h - padB - 34, gy + 14);
+        callout = <Callout x={bx} y={by} w={cw} text={text} lead={[gx, gy]} maxX={w - padR} />;
+      } else callout = <Callout x={padL} y={padT} w={cw} text={text} maxX={w - padR} />;
+    }
     body = (
-      <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="d2-chart" role="img" aria-label="MAE against MFE">
-        {ticks(0, ymax * 1.08, 4).map(t => (
-          <g key={t}><line x1={padL} x2={w - padR} y1={y(t)} y2={y(t)} stroke="var(--grid)" /><text x={padL - 6} y={y(t) + 4} fontSize={11} fill="var(--dim)" textAnchor="end">{`$${axisMoney(t)}`}</text></g>
+      <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="d2-chart" role="img" aria-label="Worst point against best point of each trade">
+        {yt.map(t => (
+          <g key={t}><line x1={padL} x2={w - padR} y1={y(t)} y2={y(t)} stroke={t === 0 ? 'var(--line-2)' : 'var(--grid)'} /><text x={padL - 6} y={y(t) + 4} fontSize={11} fill="var(--dim)" textAnchor="end">{`$${axisMoney(t)}`}</text></g>
         ))}
-        {ticks(xmin * 1.05, 0, 3).map(t => <text key={t} x={x(t)} y={h - 4} fontSize={11} fill="var(--dim)" textAnchor={t === 0 ? 'end' : 'middle'}>{t === 0 ? '$0' : `−$${axisMoney(-t)}`}</text>)}
-        {mm.points.map((p, i) => <circle key={i} cx={x(p.mae)} cy={y(p.mfe)} r={2.8} fill={p.win ? 'var(--d2-g)' : 'var(--d2-r)'} fillOpacity={0.7} />)}
-        {ai && text && <Callout x={padL} y={padT} text={text} maxX={w} />}
+        {xt.map(t => <text key={t} x={x(t)} y={h - padB + 15} fontSize={11} fill="var(--dim)" textAnchor={t === 0 ? 'end' : 'middle'}>{t === 0 ? '$0' : `−$${axisMoney(t)}`}</text>)}
+        <text x={(padL + w - padR) / 2} y={h - 3} fontSize={11} fill="var(--mut)" textAnchor="middle">Worst point against you (MAE)</text>
+        <text transform={`translate(11,${(padT + h - padB) / 2}) rotate(-90)`} fontSize={11} fill="var(--mut)" textAnchor="middle">Best point (MFE)</text>
+        {mm.points.map((p, i) => <circle key={i} cx={x(p.mae)} cy={y(p.mfe)} r={3.2} fill={p.win ? 'var(--d2-g)' : 'var(--d2-r)'} fillOpacity={0.8} />)}
+        {ai && gave.map((p, i) => <circle key={`g${i}`} cx={x(p.mae)} cy={y(p.mfe)} r={7} fill="none" stroke="var(--d2-rt)" strokeWidth={1.25} data-ai />)}
+        {callout}
       </svg>
     );
   }

@@ -334,10 +334,11 @@ export function heatmap(T: InsightTrade[]): DashHeatmap {
 export function maeMfe(T: InsightTrade[]): DashMaeMfe | null {
   const ts = T.filter(t => t.mae != null && t.mfe != null);
   if (ts.length < 10 || ts.length < T.length * 0.3) return null;
-  const gave = ts.filter(t => t.net < 0 && Math.abs(t.mfe!) >= Math.abs(t.net));
+  const gaveBack = (t: InsightTrade) => t.net < 0 && Math.abs(t.mfe!) >= Math.abs(t.net);
+  const gave = ts.filter(gaveBack);
   return {
     unit: '$',
-    points: ts.map(t => ({ mae: round(-Math.abs(t.mae!)), mfe: round(Math.abs(t.mfe!)), win: t.net > 0 })),
+    points: ts.map(t => ({ mae: round(-Math.abs(t.mae!)), mfe: round(Math.abs(t.mfe!)), win: t.net > 0, ...(gaveBack(t) ? { gave: true } : {}) })),
     gaveBack: gave.length ? { trades: gave.length, net: round(sum(gave, t => t.net)) } : null,
   };
 }
@@ -498,7 +499,6 @@ function symbolsAgg(T: InsightTrade[]) {
 
 export function symbols(T: InsightTrade[]): DashSymbolRow[] {
   const R = useR(T);
-  const total = sum(T, t => t.net);
   const rows = symbolsAgg(T).map(({ symbol, ts, a }) => {
     const gp = sum(ts.filter(t => t.net > 0), t => t.net), gl = -sum(ts.filter(t => t.net < 0), t => t.net);
     const pf = gl > 0 ? gp / gl : null;
@@ -514,7 +514,11 @@ export function symbols(T: InsightTrade[]): DashSymbolRow[] {
     };
   }).sort((a, b) => b.net - a.net);
   const lead = rows[0];
-  if (rows.length >= 2 && lead && total > 0 && lead.net / total >= 0.5 && !lead.tag) lead.tag = { kind: 'share', pct: round(Math.min(lead.net / total, 9.99), 4) };
+  // Share of the profit made by the symbols that made money (never over 100%,
+  // which net-of-losers would give). Only worth a tag when two or more made money.
+  const winners = rows.filter(r => r.net > 0);
+  const made = sum(winners, r => r.net);
+  if (winners.length >= 2 && lead && lead.net > 0 && lead.net / made >= 0.5 && !lead.tag) lead.tag = { kind: 'share', pct: round(lead.net / made, 4) };
   return rows;
 }
 

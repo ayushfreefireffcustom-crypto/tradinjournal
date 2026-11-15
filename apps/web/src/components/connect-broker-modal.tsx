@@ -106,7 +106,7 @@ export default function ConnectBrokerModal({ onClose, onConnected, initialBroker
             <div className="ac-row2">
               <div className="x-field">
                 <label htmlFor="cb-login">MT5 login</label>
-                <input id="cb-login" type="number" inputMode="numeric" value={mt5Login} onChange={e => setMt5Login(e.target.value)} placeholder="345636702" required data-testid="broker-mt5-login" className="x-input m" />
+                <input id="cb-login" type="number" inputMode="numeric" value={mt5Login} onChange={e => setMt5Login(e.target.value)} placeholder="e.g. 1234567" required data-testid="broker-mt5-login" className="x-input m" />
               </div>
               <div className="x-field">
                 <label htmlFor="cb-pass">Investor password</label>

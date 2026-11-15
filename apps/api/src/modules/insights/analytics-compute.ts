@@ -135,8 +135,13 @@ function overview(T: InsightTrade[], first: Map<string, AnaRuleKey | null> | nul
   const broken = first ? T.filter(t => first.get(t.id) != null) : null;
   const seg = segments(T, R);
   let ai: AiLine | null = null;
-  if (edge && all.net > 0 && bleed) ai = line(`${edge.label} made ${pct0(edge.net / all.net)} of your net; ${bleed.label} gave back`, bleed.net, 'money', all.n);
-  else if (edge && all.net > 0) ai = line(`${edge.label} made`, edge.net / all.net, 'pct', edge.n, 'up', 'of your net');
+  // Share of the profit the winning sessions made (a share of net goes over 100% once a session loses).
+  const made = ses.filter(x => x.a.net > 0).reduce((a, x) => a + x.a.net, 0);
+  const share = edge && made > 0 ? edge.net / made : 0;
+  const madeText = edge ? (share >= 0.995 ? `All your profit came from ${edge.label}` : `${edge.label} made ${pct0(share)} of your profit`) : '';
+  if (edge && all.net > 0 && bleed) ai = line(`${madeText}; ${bleed.label} gave back`, bleed.net, 'money', all.n);
+  else if (edge && all.net > 0 && share < 0.995) ai = line(`${edge.label} made`, share, 'pct', edge.n, 'up', 'of your profit');
+  else if (edge && all.net > 0) ai = line(`All your profit came from ${edge.label}:`, edge.net, 'money', edge.n);
   else if (seg.rows.length) { const w = seg.rows.at(-1)!; if (w.net < 0) ai = line(`${w.symbol} ${SESSION_LABEL[w.session]}:`, w.net, 'money', w.n, 'dn', `on ${nTrades(w.n)}`); }
   return {
     net: { ...all, profitFactor: pf(T) }, edge, bleed, rulesBroken: broken ? agg(broken) : null,

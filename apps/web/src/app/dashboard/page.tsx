@@ -26,7 +26,7 @@ import { DistChart, EquityChart, HourBars, MaeScatter, RollingChart } from '@/co
 import { BeforeYouTrade, BehaviourBars, Heatmap, KpiRibbon, LeaksList, PlanList, RecentTable, SymbolsTable } from '@/components/dashboard-v2/widgets';
 import { AskBox, type AskState } from '@/components/dashboard-v2/ask';
 import { LayoutEditor, useDashLayouts, type EditTarget } from '@/components/dashboard-v2/layout-editor';
-import { BUILTIN_TABS, fillAlone, MAX_TABS, newLayoutId, newLayoutName, packRows, type LayoutTab, type Slot, type WId } from '@/lib/dash-layouts';
+import { BUILTIN_TABS, fillAlone, MAX_TABS, newLayoutId, newLayoutName, packRows, WIDGET_NAME, type LayoutTab, type Slot, type WId } from '@/lib/dash-layouts';
 import '@/components/dashboard-v2/dashboard-v2.css';
 
 const RANGES: { key: RangeKey; api: DashRange; short: string; label: string }[] = [
@@ -281,14 +281,27 @@ export default function DashboardPage() {
                 {data.counts.trades < data.minTrades && (
                   <p className="d2-few" data-testid="few-trades">{plural(data.counts.trades, 'trade')} in this view. Behaviour score, grades and the plan need {data.minTrades}.</p>
                 )}
-                <div className="d2-grid">
-                  {(() => {
-                    const slots = (editing && draftSlots) || shownTab.slots;
-                    const cells = packRows(slots);
-                    const full = fillAlone(cells);
-                    return cells.map((c, i) => <div key={c.id} className={`d2-slot d2-s${c.span}${full.has(c.id) ? ' d2-m12' : ''}`}>{block(c.id, slots[i]!.span)}</div>);
-                  })()}
-                </div>
+                {(() => {
+                  // Widgets that can't show anything yet (too few trades, no price paths) leave the
+                  // grid and become one slim strip, so they never leave half-empty boxes and gaps.
+                  // While editing the layout every widget stays in place.
+                  const all = (editing && draftSlots) || shownTab.slots;
+                  const locked = editing ? [] : all.flatMap(sl => { const l = lockedOf(sl.id, data); return l ? [{ id: sl.id, ...l }] : []; });
+                  const slots = all.filter(sl => !locked.some(l => l.id === sl.id));
+                  const cells = packRows(slots);
+                  const full = fillAlone(cells);
+                  return <>
+                    <div className="d2-grid">
+                      {cells.map((c, i) => <div key={c.id} className={`d2-slot d2-s${c.span}${full.has(c.id) ? ' d2-m12' : ''}`}>{block(c.id, slots[i]!.span)}</div>)}
+                    </div>
+                    {locked.length > 0 && (
+                      <section className="d2-card d2-locked" aria-label="Unlocks with more data" data-testid="locked-strip">
+                        <span className="d2-cap">Unlocks with more data</span>
+                        <ul>{locked.map(l => <li key={l.id}><b>{WIDGET_NAME[l.id]}</b><span>{l.note}</span></li>)}</ul>
+                      </section>
+                    )}
+                  </>;
+                })()}
               </div>
             )}
             <details className="d2-how">
@@ -310,6 +323,21 @@ export default function DashboardPage() {
       {showConnect && <ConnectBrokerModal onClose={() => setShowConnect(false)} onConnected={onConnected} />}
     </AppShell>
   );
+
+  /** Why a widget has nothing to show yet, or null when it has. */
+  function lockedOf(id: WId, d: DashboardV2DTO): { note: string } | null {
+    const T = d.counts.trades;
+    const soFar = `${T} so far`;
+    switch (id) {
+      case 'rolling': return d.rolling ? null : { note: `needs 30 trades · ${soFar}` };
+      case 'behaviour': return d.behaviour ? null : { note: `needs ${d.minTrades} trades · ${soFar}` };
+      case 'plan': return d.plan.length || T >= d.minTrades ? null : { note: `needs ${d.minTrades} trades · ${soFar}` };
+      case 'dist': return d.distribution ? null : { note: `needs 5 trades · ${soFar}` };
+      case 'mae': return d.maeMfe ? null : { note: `needs each trade's price path · ${d.counts.withMae} of ${T}` };
+      case 'leaks': return d.leaks.rows.length || T >= 10 ? null : { note: `needs 10 trades · ${soFar}` };
+      default: return null;
+    }
+  }
 
   // Plain render function (not a component) so widgets keep their state across renders.
   function block(id: WId, s: 3 | 4 | 6 | 8 | 12) {

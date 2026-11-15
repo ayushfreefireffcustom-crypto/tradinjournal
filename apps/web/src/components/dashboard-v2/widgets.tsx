@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { CaretDown, Clock, Hourglass, Lock, Scales, Target } from '@phosphor-icons/react';
 import type { DashBehaviour, DashHeatmap, DashKpis, DashPlanRule, DashRecentTrade, DashSymbolRow, HourCellDTO, LeakDTO } from '@/lib/dashboard-v2-api';
 import { DAY_SHORT, fmtDate, isFlat, kmoney, money, pct, plural, rfmt, SESSION_SHORT, spct, tone, toneColor } from '@/lib/dashboard-v2-format';
-import { clock, dayClock, shortDate } from '@/lib/tradelog-v2-api';
+import { clock, shortDate } from '@/lib/tradelog-v2-api';
 import { AiMark, Empty } from './ui';
 import { MiniLine, Spark } from './charts';
 
@@ -70,10 +70,12 @@ export function Heatmap({ hm, metric, ai }: { hm: DashHeatmap; metric: '$' | 'wi
   const mxNet = Math.max(1, ...hm.cells.map(c => Math.abs(c.net)));
   const cell = (s: string, d: number) => hm.cells.find(c => c.session === s && c.day === d)!;
   const cols = hm.days.length;
-  // Cells drop $ and the + sign (colour already says it) so they fit narrow grids;
-  // 7-day grids drop the minus too (the cell is red, its tooltip and the totals keep the sign).
-  const cellMoney = (v: number) => kmoney(v).replace('$', '').replace('+', '');
-  const cellNet = (v: number) => (cols > 5 ? cellMoney(v).replace('−', '').replace('-', '') : cellMoney(v));
+  // Cells drop the $ (the header says net P&L) but always keep the sign, so a
+  // loss never reads like a win; empty cells stay blank instead of a row of dashes.
+  const cellMoney = (v: number) => kmoney(v).replace('$', '');
+  // Inside a cell cents are noise and don't fit a phone: whole dollars, "<1" under a dollar
+  // (the tooltip keeps the exact figure).
+  const cellNet = (v: number) => (Math.abs(v) >= 1000 ? cellMoney(v) : isFlat(v) ? '0' : `${v < 0 ? '−' : '+'}${Math.abs(v) < 1 ? '<1' : Math.round(Math.abs(v))}`);
   return (
     <div className={`d2-hm${cols > 5 ? ' dense' : ''}`} style={{ gridTemplateColumns: `var(--hm-l) repeat(${cols}, minmax(0, 1fr)) var(--hm-r)` }} role="table" aria-label="Net P&L by session and weekday (UTC)">
       <span />
@@ -93,21 +95,20 @@ export function Heatmap({ hm, metric, ai }: { hm: DashHeatmap; metric: '$' | 'wi
             // A cell that nets to $0.00 (or exactly 50% won) is neither green nor red.
             const flat = metric === '$' ? isFlat(c.net) : wr === 0.5;
             const strong = c.n > 0 && !flat && a > 0.7;
-            const solid = c.n > 0 && !flat && a > 0.88; // white text in light theme only on the deepest cells
             const bg = !c.n ? 'var(--d2-card2)' : flat ? 'var(--d2-chip)' : `rgba(${pos ? '8,196,101' : '254,58,49'},${(0.08 + a * 0.62).toFixed(2)})`;
             return (
-              <div key={`${s}${d}`} className={`d2-hc${isW ? ' worst' : isB ? ' best' : ''}${strong ? ' strong' : ''}${solid ? ' solid' : ''}`} style={{ background: bg }}
+              <div key={`${s}${d}`} className={`d2-hc${isW ? ' worst' : isB ? ' best' : ''}${strong ? ' strong' : ''}`} style={{ background: bg }}
                 title={c.n ? `${SESSION_SHORT[s]} ${DAY_SHORT[d]}: ${money(c.net)} · ${c.wins} of ${c.n} won` : 'No trades'}>
-                <b className="d2-n">{c.n ? (metric === '$' ? cellNet(c.net) : pct(wr)) : '–'}</b>
+                <b className="d2-n">{c.n ? (metric === '$' ? cellNet(c.net) : pct(wr)) : ''}</b>
                 <small>{isW ? <em className="d2-flag" data-ai>Skip</em> : isB ? <em className="d2-flag g" data-ai>Best</em> : c.n ? `${c.n} tr` : ''}</small>
               </div>
             );
           }),
-          <b key={`${s}t`} className={`d2-ht d2-n ${metric === '$' ? tone(st.net) : ''}`}>{st.n ? (metric === '$' ? kmoney(st.net) : pct(st.wins / st.n)) : '–'}</b>,
+          <b key={`${s}t`} className={`d2-ht d2-n ${metric === '$' ? tone(st.net) : ''}`}>{st.n ? (metric === '$' ? kmoney(st.net) : pct(st.wins / st.n)) : ''}</b>,
         ];
       })}
       <span className="d2-hl">Total</span>
-      {hm.dayTotals.map(d => <b key={d.day} className={`d2-ht c d2-n ${metric === '$' ? tone(d.net) : ''}`}>{d.n ? (metric === '$' ? (cols > 5 ? cellMoney(d.net) : kmoney(d.net)) : pct(d.wins / d.n)) : '–'}</b>)}
+      {hm.dayTotals.map(d => <b key={d.day} className={`d2-ht c d2-n ${metric === '$' ? tone(d.net) : ''}`}>{d.n ? (metric === '$' ? cellMoney(d.net) : pct(d.wins / d.n)) : ''}</b>)}
       {(() => { const t = hm.sessions.reduce((a, s) => ({ n: a.n + s.n, wins: a.wins + s.wins, net: a.net + s.net }), { n: 0, wins: 0, net: 0 }); return <b className={`d2-ht d2-n ${metric === '$' ? tone(t.net) : ''}`}>{metric === '$' ? kmoney(t.net) : t.n ? pct(t.wins / t.n) : '–'}</b>; })()}
     </div>
   );
@@ -207,7 +208,7 @@ export function SymbolsTable({ rows, rangeLabel }: { rows: DashSymbolRow[]; rang
                 <span className="d2-sym">
                   <i style={{ background: toneColor(r.net, 'var(--d2-g)', 'var(--d2-r)') }} /><b>{r.symbol}</b>
                   {r.tag?.kind === 'pause' && <span className="d2-aitag dn" data-ai title="TRADElogs AI: net negative with a profit factor under 0.7">Pause</span>}
-                  {r.tag?.kind === 'share' && <span className="d2-aitag up d2-hide-s" data-ai title="TRADElogs AI: share of net P&L">{pct(r.tag.pct ?? 0)} of profit</span>}
+                  {r.tag?.kind === 'share' && <span className="d2-aitag up d2-hide-s" data-ai title="TRADElogs AI: share of the profit made by your winning symbols">{pct(r.tag.pct ?? 0)} of profit</span>}
                 </span>
               </td>
               <td className="d2-n">{r.trades}</td>
@@ -226,8 +227,8 @@ export function SymbolsTable({ rows, rangeLabel }: { rows: DashSymbolRow[]; rang
 
 const GRADE_CLS: Record<string, string> = { A: 'up', B: 'up', C: 'mid', D: 'dn', F: 'dn' };
 /**
- * The latest closed trades. Time = when the trade opened, in your own time
- * zone, exactly as the trade log shows it. The grade column only appears once
+ * The latest closed trades, newest first. The time is when the trade closed
+ * (the order the list is in), with its date, in your own time zone. The grade column only appears once
  * grades exist (they need MIN_TRADES trades); the page says so in the footer.
  */
 export function RecentTable({ rows }: { rows: DashRecentTrade[] }) {
@@ -235,14 +236,14 @@ export function RecentTable({ rows }: { rows: DashRecentTrade[] }) {
   return (
     <div className="d2-tbl">
       <table className="d2-dt">
-        <thead><tr><th>Time</th><th>Symbol</th><th>P&amp;L</th>{graded && <th data-ai>Grade</th>}</tr></thead>
+        <thead><tr><th>Closed</th><th>Symbol</th><th>P&amp;L</th>{graded && <th data-ai>Grade</th>}</tr></thead>
         <tbody>
           {rows.map(t => {
             const open = new Date(t.openTime).getTime();
             const close = new Date(t.closeTime).getTime();
             return (
               <tr key={t.id}>
-                <td><Link href={`/trades/${encodeURIComponent(t.id)}`} className="d2-rl" title={`Opened ${shortDate(open)} ${clock(open)} · closed ${shortDate(close)} ${clock(close)}`}>{dayClock(open)}</Link></td>
+                <td><Link href={`/trades/${encodeURIComponent(t.id)}`} className="d2-rl" title={`Opened ${shortDate(open)} ${clock(open)} · closed ${shortDate(close)} ${clock(close)}`}>{shortDate(close)} {clock(close)}</Link></td>
                 <td><b>{t.symbol}</b> <span className="d2-sd">{t.side === 'LONG' ? 'L' : 'S'}</span></td>
                 <td><b className={`d2-n mny ${tone(t.net)}`}>{money(t.net)}</b></td>
                 {graded && <td data-ai>{t.grade

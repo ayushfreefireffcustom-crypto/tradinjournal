@@ -131,7 +131,7 @@ export interface DashHeatmap {
 
 export interface DashMaeMfe {
   unit: '$' | 'R';
-  points: Array<{ mae: number; mfe: number; win: boolean }>;
+  points: Array<{ mae: number; mfe: number; win: boolean; gave?: boolean }>;
   /** Losers that were in profit by at least their final loss first. */
   gaveBack: { trades: number; net: number } | null;
 }

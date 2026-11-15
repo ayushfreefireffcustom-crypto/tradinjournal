@@ -102,6 +102,7 @@ describe('MAE / MFE', () => {
   it('counts losers that were green by at least their loss first', () => {
     const T = Array.from({ length: 12 }, (_, i) => tr({ open: MON + i * H, net: i < 3 ? -50 : 40, mae: 30, mfe: i < 2 ? 60 : 45 }));
     expect(maeMfe(T)!.gaveBack).toEqual({ trades: 2, net: -100 });
+    expect(maeMfe(T)!.points.filter(p => p.gave)).toHaveLength(2);
   });
 });
 
@@ -143,8 +144,17 @@ describe('plan + symbols', () => {
     expect(w.to).toBeLessThanOrEqual(18);
     expect(w.inside.net).toBe(2000);
     const rows = symbols(T);
-    expect(rows[0]).toMatchObject({ symbol: 'XAUUSD', net: 2000, tag: { kind: 'share' } });
+    // The only symbol that made money gets no "share of profit" tag (it would be 100%+).
+    expect(rows[0]).toMatchObject({ symbol: 'XAUUSD', net: 2000, tag: null });
     expect(rows[1]).toMatchObject({ symbol: 'GBPJPY', net: -360, profitFactor: 0, tag: { kind: 'pause' }, avgUnit: '$', avg: -60 });
+  });
+  it('tags the lead symbol with its share of the profit made, never over 100%', () => {
+    const T: InsightTrade[] = [];
+    for (let i = 0; i < 4; i++) T.push(tr({ open: MON + i * D, net: 300 }));
+    T.push(tr({ open: MON + 5 * D, net: 400, symbol: 'EURUSD' }));
+    for (let i = 0; i < 3; i++) T.push(tr({ open: MON + (6 + i) * D, net: -500, symbol: 'GBPJPY' }));
+    const rows = symbols(T);
+    expect(rows[0]).toMatchObject({ symbol: 'XAUUSD', tag: { kind: 'share', pct: 0.75 } });
   });
 });
 

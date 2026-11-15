@@ -8,7 +8,12 @@ export interface BrokerDef {
   servers: string[];
 }
 
+// Elefin first: TRADElogs is for Elefin clients, so the connect form opens on it.
 export const BROKERS: BrokerDef[] = [
+  {
+    name: 'Elefin',
+    servers: ['Elefin-Trade'],
+  },
   {
     name: 'XM Global',
     servers: [
@@ -31,10 +36,6 @@ export const BROKERS: BrokerDef[] = [
   {
     name: 'Xellion',
     servers: ['Xellion-Live'],
-  },
-  {
-    name: 'Elefin',
-    servers: ['Elefin-Trade'],
   },
 ];
 
