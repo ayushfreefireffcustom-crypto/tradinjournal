@@ -116,7 +116,8 @@ export function CommandOverview({
   const live = !overview.maintenance.enabled;
   const elefinPct = pct(overview.elefinVerified, overview.totalUsers);
   const brokerPct = pct(overview.usersWithBrokers, overview.totalUsers);
-  const activityPct = overview.elefinVerified ? pct(overview.activeTraders, overview.elefinVerified) : 0;
+  // Active traders = users with an MT5 deal in the last 7 days.
+  const activityPct = overview.usersWithBrokers ? Math.min(100, pct(overview.activeTraders, overview.usersWithBrokers)) : 0;
   const syncPct = overview.brokerAccounts ? pct(overview.syncHealthy, overview.brokerAccounts) : 100;
   const maxBroker = overview.brokerBreakdown[0]?.count || 1;
 
@@ -125,7 +126,7 @@ export function CommandOverview({
       <section className={`x-card ad-status ${live ? '' : 'off'}`}>
         <div className="ad-status-t">
           <b><i className={`x-dot ${live ? '' : 'x-dot--r'}`} />{live ? 'All systems live' : 'Maintenance mode is on'}</b>
-          <span><span className="m">{overview.liveUsageSessions}</span> live now · <span className="m">{overview.dau}</span> DAU · <span className="m">{overview.brokerAccounts}</span> brokers · <span className="m">{n(overview.totalTrades7d)}</span> trades in 7 days</span>
+          <span><span className="m">{overview.liveUsageSessions}</span> live now · <span className="m">{overview.dau}</span> DAU · <span className="m">{overview.brokerAccounts}</span> brokers · <span className="m">{n(overview.totalTrades7d)}</span> trades closed in 7 days</span>
         </div>
         <button type="button" onClick={onToggleMaint} disabled={maintBusy} className={`x-btn ${live ? 'x-btn--danger' : 'x-btn--hi'}`}>
           {maintBusy ? 'Updating…' : live ? 'Enable maintenance' : 'Go live'}
@@ -136,13 +137,13 @@ export function CommandOverview({
         <div><span>Daily active users</span><b className="m">{overview.dau}</b><small className="ad-small">WAU <span className="m">{overview.wau}</span> · MAU <span className="m">{overview.mau}</span></small></div>
         <div><span>Avg session today</span><b className="m">{overview.avgSessionMinToday}m</b><small className="ad-small"><span className="m">{overview.avgSessionMin7d}m</span> avg over 7 days</small></div>
         <div><span>Brokers connected</span><b className="m">{overview.brokerAccounts}</b><small className="ad-small"><span className="m">{overview.elefinBrokerAccounts}</span> Elefin</small></div>
-        <div><span>Active traders</span><b className="m pos">{overview.activeTraders}</b><small className="ad-small"><span className="m">{overview.inactiveTraders}</span> inactive</small></div>
+        <div title="Users with a deal in the last 7 days"><span>Active traders</span><b className="m pos">{overview.activeTraders}</b><small className="ad-small"><span className="m">{overview.inactiveTraders}</span> with no deal in 30 days</small></div>
       </div>
 
       <div className="ad-rates">
         <GaugeRing value={elefinPct} label="Elefin verified" sub={`${overview.elefinVerified} of ${overview.totalUsers} users`} tone="g" />
         <GaugeRing value={brokerPct} label="Broker attached" sub={`${overview.usersWithBrokers} users`} tone="n" />
-        <GaugeRing value={activityPct} label="Activity pass" sub="among Elefin-verified" tone={activityPct >= 50 ? 'g' : 'r'} />
+        <GaugeRing value={activityPct} label="Traded this week" sub="of users with a broker" tone={activityPct >= 50 ? 'g' : 'r'} />
         <LiquidBar value={syncPct} label="Sync health" sub={`${overview.syncStale} stale over 24h`} />
       </div>
 

@@ -7,12 +7,22 @@ import { useCallback, useEffect, useState } from 'react';
 import AppShell from '@/components/app-shell';
 import AdminOnly from '@/components/v6/admin/admin-only';
 import { useToast } from '@/components/toast';
+import EmptyState from '@/components/v6/ui/empty-state';
 import ErrorCard from '@/components/v6/ui/error-card';
 import { ApiError } from '@/lib/copy-api';
 import { catLabel, marketApi, pctS, riskLabel, type AdminQueue } from '@/lib/marketplace-api';
 import '@/styles/v6/account.css';
 import '@/styles/v6/admin.css';
+import '@/styles/v6/lux.css';
 import '@/styles/v6/marketplace.css';
+
+// What an empty list means in each view.
+const EMPTY: Record<string, { creators: string; strategies: string }> = {
+  pending: { creators: 'No creator applications waiting', strategies: 'No strategies waiting for review' },
+  published: { creators: 'No creators in this view', strategies: 'No strategies listed yet' },
+  approved: { creators: 'No approved creators yet', strategies: 'No strategies in this view' },
+  all: { creators: 'No creators yet', strategies: 'No strategies yet' },
+};
 
 const VIEWS: Array<[string, string]> = [['pending', 'Waiting for review'], ['published', 'Listed'], ['approved', 'Approved creators'], ['all', 'All']];
 
@@ -41,7 +51,7 @@ export default function AdminMarketplacePage() {
           {err ? <ErrorCard message={err} onRetry={load} /> : !q ? <div className="x-skel" style={{ height: 300 }} /> : (
             <>
               <h2 className="mk-h2">Creators</h2>
-              {!q.creators.length ? <p className="x-muted">None.</p> : q.creators.map((c) => (
+              {!q.creators.length ? <EmptyState compact icon="shield" title={(EMPTY[view] ?? EMPTY.all!).creators} testId="amk-empty-creators">New applications from the creator programme show here.</EmptyState> : q.creators.map((c) => (
                 <article key={c.id} className="x-card mk-subrow" data-testid="amk-creator">
                   <header><div><b>{c.displayName}</b><span className="x-muted">{c.name} · {c.email} · applied {new Date(c.createdAt).toLocaleDateString()}</span></div><span className="x-tag">{c.status}</span></header>
                   <p className="mk-desc">{c.bio}</p>
@@ -56,7 +66,7 @@ export default function AdminMarketplacePage() {
                 </article>
               ))}
               <h2 className="mk-h2">Strategies</h2>
-              {!q.templates.length ? <p className="x-muted">None.</p> : q.templates.map((t) => (
+              {!q.templates.length ? <EmptyState compact icon="chart" title={(EMPTY[view] ?? EMPTY.all!).strategies} testId="amk-empty-strategies">Strategies sent in by creators show here for review.</EmptyState> : q.templates.map((t) => (
                 <article key={t.id} className="x-card mk-subrow" data-testid="amk-template">
                   <header><div><b>{t.name}</b><span className="x-muted">by {t.creator} · {catLabel(t.category)} · {riskLabel(t.risk)} · {t.symbols.join(', ')} {t.interval}</span></div><span className="x-tag">{t.status}</span></header>
                   <p>{t.summary}</p>

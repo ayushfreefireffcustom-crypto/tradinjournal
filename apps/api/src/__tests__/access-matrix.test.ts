@@ -70,7 +70,7 @@ const isAdminRoute = (t: string) => t.startsWith('/api/admin/') || t.startsWith(
 /** A cuid-shaped id that matches nothing. */
 const fakeId = (n: number) => `cm${tag.slice(-6)}${String(n).padStart(4, '0')}zzzzzzzzzzzzz`.slice(0, 25);
 
-type Ids = Record<'strategy' | 'copyStrategy' | 'backtest' | 'deployment' | 'subDeployment' | 'template' | 'subscription' | 'account' | 'connection' | 'follow' | 'hiddenLeader' | 'apiKey' | 'journal' | 'conversation' | 'alert' | 'indicatorAlert' | 'screen' | 'watchlist' | 'traderStrategy' | 'partnerChannel' | 'partnerCode', string>;
+type Ids = Record<'strategy' | 'copyStrategy' | 'backtest' | 'deployment' | 'subDeployment' | 'template' | 'subscription' | 'account' | 'connection' | 'follow' | 'hiddenLeader' | 'apiKey' | 'journal' | 'conversation' | 'alert' | 'indicatorAlert' | 'screen' | 'watchlist' | 'traderStrategy' | 'partnerChannel' | 'partnerCode' | 'session', string>;
 interface Probe { route: string; method: string; path: (x: Ids, mine: Mine) => string; body?: (x: Ids, mine: Mine) => unknown }
 /** The caller's own records, for requests that mix theirs with someone else's. */
 interface Mine { strategy: string; account: string; connection: string; publicTemplate: string; publicLeader: string }
@@ -107,6 +107,7 @@ const PATH_PROBES: Probe[] = [
   { route: 'PATCH /api/follows/:id', method: 'PATCH', path: (x) => `/api/follows/${x.follow}`, body: () => ({ action: 'pause' }) },
   { route: 'POST /api/follows/:id/stop', method: 'POST', path: (x) => `/api/follows/${x.follow}/stop`, body: () => ({ closePositions: true }) },
   { route: 'POST /api/trading/api-keys/:id/revoke', method: 'POST', path: (x) => `/api/trading/api-keys/${x.apiKey}/revoke` },
+  { route: 'POST /api/me/sessions/:id/revoke', method: 'POST', path: (x) => `/api/me/sessions/${x.session}/revoke` },
   { route: 'PATCH /api/journal/:id', method: 'PATCH', path: (x) => `/api/journal/${x.journal}`, body: () => ({ body: 'Taken over' }) },
   { route: 'DELETE /api/journal/:id', method: 'DELETE', path: (x) => `/api/journal/${x.journal}` },
   { route: 'GET /api/ai/conversations/:id', method: 'GET', path: (x) => `/api/ai/conversations/${x.conversation}` },
@@ -359,6 +360,7 @@ describe.skipIf(!local)('access-control matrix', () => {
       strategy: strategy.id, copyStrategy: copyStrategy.id, backtest: backtest.id, deployment: deployment.id, subDeployment: subDeployment.id, template: template.id, subscription: subscription.id,
       account: account.id, connection: aConn.id, follow: follow.id, hiddenLeader: hiddenLeader.id, apiKey: apiKey.id, journal: journal.id, conversation: conversation.id, alert: alert.id,
       indicatorAlert: indicatorAlert.id, screen: screen.id, watchlist: watchlist.id, traderStrategy: traderStrategy.id, partnerChannel: partner.channels[0]!.id, partnerCode: partner.codes.find((c) => !c.isPrimary)!.id,
+      session: (await prisma.session.findFirstOrThrow({ where: { userId: a } })).id,
     };
     Object.keys(A).forEach((k, i) => { (FAKE as Record<string, string>)[k] = fakeId(i); });
 

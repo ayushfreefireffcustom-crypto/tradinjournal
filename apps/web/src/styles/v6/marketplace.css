@@ -43,6 +43,9 @@
 .v6 .mk-reset { background: none; border: 0; color: var(--mut); font: inherit; font-size: var(--t2); text-decoration: underline; cursor: pointer; padding: 0; }
 .v6 .mk-subs { display: grid; gap: 12px; }
 .v6 .mk-subrow { display: grid; gap: 10px; }
+/* Creator card: space between the intro (or review note) and the form. */
+.v6 .mk-creator .ac-st-card > p { margin: 0; line-height: 1.5; }
+.v6 .mk-creator .ac-st-card > p + .ac-form { margin-top: 18px; }
 .v6 .mk-subrow header { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .v6 .mk-subrow header > div { display: grid; gap: 2px; flex: 1; min-width: 180px; }
 .v6 .mk-subrow header b { font-weight: 500; }

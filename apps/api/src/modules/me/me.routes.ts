@@ -11,6 +11,7 @@ import {
 } from './location.controller.js';
 import { confirmDeletion, deletionBlockers, exportData, getProfile, getTour, requestDeletion, updateProfile, updateTour } from './account.service.js';
 import { contextOf, listActivity, type ActivityGroup } from './activity.service.js';
+import { listMySessions, revokeMySession } from './sessions.service.js';
 import { planSummary } from '../../lib/plans.js';
 
 const wrap = (fn: (req: Request, res: Response) => Promise<void>) => (req: Request, res: Response, next: NextFunction) => fn(req, res).catch(next);
@@ -54,6 +55,13 @@ meRouter.post('/delete/confirm', deleteConfirmLimit, validateBody(deleteConfirmS
   res.clearCookie('better-auth.session_token', { path: '/', sameSite: 'none', secure: true });
   res.clearCookie('__Secure-better-auth.session_token', { path: '/', sameSite: 'none', secure: true });
   ok(res, { deleted: true });
+}));
+// Signed-in devices (H4): no "fresh session" needed to see your own devices.
+const sid = (res: Response) => res.locals.session.id as string;
+meRouter.get('/sessions', wrap(async (_req, res) => ok(res, await listMySessions(uid(res), sid(res)))));
+meRouter.post('/sessions/:id/revoke', writeLimit, wrap(async (req, res) => {
+  await revokeMySession(uid(res), sid(res), String(req.params.id), contextOf(req));
+  ok(res, { revoked: true });
 }));
 // Plan and limits (H15).
 meRouter.get('/plan', wrap(async (_req, res) => ok(res, await planSummary(uid(res)))));

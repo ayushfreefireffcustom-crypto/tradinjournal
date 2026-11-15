@@ -5,6 +5,8 @@ import type { EventImpact } from '@tradinjournal/contracts';
 // and is idempotent per user per day. Everything it touches is mocked.
 
 const prisma = {
+  // Traded symbols per user (reminder-match.currenciesByUser).
+  $queryRaw: vi.fn(),
   notificationPreference: { findMany: vi.fn() },
   economicEvent: { findMany: vi.fn() },
   user: { findMany: vi.fn() },
@@ -14,7 +16,7 @@ const prisma = {
 };
 const sendEmail = vi.fn();
 
-vi.mock('@tradinjournal/db', () => ({ prisma }));
+vi.mock('@tradinjournal/db', () => ({ prisma, Prisma: { join: (v: unknown[]) => v, empty: '' } }));
 vi.mock('@tradinjournal/config', () => ({ env: { APP_URL: 'https://app.example.com' } }));
 vi.mock('../../../lib/email/client.js', () => ({ sendEmail }));
 
@@ -45,6 +47,7 @@ function pref(p: Partial<{ userId: string; minImpact: EventImpact; currencies: s
 
 beforeEach(() => {
   vi.clearAllMocks();
+  prisma.$queryRaw.mockResolvedValue([]);
   sendEmail.mockResolvedValue(undefined);
   prisma.notificationDelivery.create.mockResolvedValue({});
   prisma.user.findMany.mockResolvedValue([{ id: 'u1', name: 'Ayush', email: 'a@example.com' }]);
@@ -92,5 +95,14 @@ describe('sendDailyDigests', () => {
     prisma.notificationPreference.findMany.mockResolvedValue([]);
     const out = await sendDailyDigests();
     expect(out).toEqual({ users: 0, sent: 0 });
+  });
+
+  it('leaves out currencies the user does not trade when no list is set', async () => {
+    prisma.notificationPreference.findMany.mockResolvedValue([pref({})]);
+    prisma.economicEvent.findMany.mockResolvedValue([event({ currency: 'RUB' })]);
+    prisma.$queryRaw.mockResolvedValue([{ userId: 'u1', symbol: 'XAUUSD' }]);
+    const out = await sendDailyDigests();
+    expect(sendEmail).not.toHaveBeenCalled();
+    expect(out.sent).toBe(0);
   });
 });

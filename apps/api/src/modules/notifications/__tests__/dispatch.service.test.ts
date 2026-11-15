@@ -6,6 +6,8 @@ import type { EventImpact } from '@tradinjournal/contracts';
 // each case controls the world precisely.
 
 const prisma = {
+  // Traded symbols per user (reminder-match.currenciesByUser).
+  $queryRaw: vi.fn(),
   economicEvent: { findMany: vi.fn() },
   eventWatch: { findMany: vi.fn() },
   notificationPreference: { findMany: vi.fn() },
@@ -17,24 +19,24 @@ const prisma = {
 const sendEmail = vi.fn();
 const sendPush = vi.fn();
 
-vi.mock('@tradinjournal/db', () => ({ prisma }));
+vi.mock('@tradinjournal/db', () => ({ prisma, Prisma: { join: (v: unknown[]) => v, empty: '' } }));
 vi.mock('@tradinjournal/config', () => ({ env: { APP_URL: 'https://app.example.com' } }));
 vi.mock('../../../lib/email/client.js', () => ({ sendEmail }));
 vi.mock('../../../lib/push.js', () => ({ sendPush }));
 
 const { dispatchReminders } = await import('../dispatch.service.js');
 
-function event(p: { id?: string; impact?: EventImpact; currency?: string; category?: string | null; inMinutes?: number }) {
+function event(p: { id?: string; title?: string; impact?: EventImpact; currency?: string; category?: string | null; inMinutes?: number; numbers?: boolean }) {
   return {
     id: p.id ?? 'e1',
-    title: 'Non-Farm Payrolls',
+    title: p.title ?? 'Non-Farm Payrolls',
     currency: p.currency ?? 'USD',
     country: 'US',
     category: p.category ?? null,
     impact: p.impact ?? 'HIGH',
     eventTime: new Date(Date.now() + (p.inMinutes ?? 10) * 60_000),
-    forecast: '160K',
-    previous: '206K',
+    forecast: p.numbers === false ? null : '160K',
+    previous: p.numbers === false ? null : '206K',
   };
 }
 function pref(p: Partial<{ userId: string; inApp: boolean; email: boolean; push: boolean; minImpact: EventImpact; currencies: string[]; categories: string[]; leadMinutes: number }>) {
@@ -47,6 +49,7 @@ function pref(p: Partial<{ userId: string; inApp: boolean; email: boolean; push:
 
 beforeEach(() => {
   vi.clearAllMocks();
+  prisma.$queryRaw.mockResolvedValue([]);
   prisma.eventWatch.findMany.mockResolvedValue([]);
   prisma.notificationPreference.findMany.mockResolvedValue([]);
   prisma.user.findMany.mockResolvedValue([]);
@@ -136,5 +139,45 @@ describe('dispatchReminders', () => {
     prisma.notificationPreference.findMany.mockResolvedValue([pref({})]);
     await dispatchReminders();
     expect(prisma.notification.create).not.toHaveBeenCalled();
+  });
+
+  it('by default only reminds for USD and the currencies the user trades', async () => {
+    prisma.economicEvent.findMany.mockResolvedValue([
+      event({ id: 'usd', currency: 'USD' }),
+      event({ id: 'eur', currency: 'EUR' }),
+      event({ id: 'inr', currency: 'INR' }),
+      event({ id: 'jpy', currency: 'JPY' }),
+    ]);
+    prisma.notificationPreference.findMany.mockResolvedValue([pref({})]); // currencies: [] = mine
+    prisma.$queryRaw.mockResolvedValue([{ userId: 'u1', symbol: 'EURUSD.m' }]);
+    await dispatchReminders();
+    const sent = prisma.notification.create.mock.calls.map(c => (c[0] as { data: { eventId: string } }).data.eventId).sort();
+    expect(sent).toEqual(['eur', 'usd']);
+  });
+
+  it('an explicit currency list still wins over the traded currencies', async () => {
+    prisma.economicEvent.findMany.mockResolvedValue([event({ id: 'inr', currency: 'INR' })]);
+    prisma.notificationPreference.findMany.mockResolvedValue([pref({ currencies: ['INR'] })]);
+    await dispatchReminders();
+    expect(prisma.notification.create).toHaveBeenCalledTimes(1);
+    expect(prisma.$queryRaw).not.toHaveBeenCalled(); // no need to look up traded symbols
+  });
+
+  it('never reminds for a market holiday, even with minimum impact set to Low', async () => {
+    prisma.economicEvent.findMany.mockResolvedValue([
+      event({ id: 'hol', title: 'Proclamation of the Republic Day', currency: 'BRL', impact: 'LOW', numbers: false }),
+      event({ id: 'low', title: 'USDA Wheat Net Export Sales', currency: 'USD', impact: 'LOW' }),
+    ]);
+    prisma.notificationPreference.findMany.mockResolvedValue([pref({ minImpact: 'LOW', currencies: ['BRL', 'USD'] })]);
+    await dispatchReminders();
+    const sent = prisma.notification.create.mock.calls.map(c => (c[0] as { data: { eventId: string } }).data.eventId);
+    expect(sent).toEqual(['low']);
+  });
+
+  it('still reminds for a holiday the user watches', async () => {
+    prisma.economicEvent.findMany.mockResolvedValue([event({ title: 'Labor Day', currency: 'NZD', impact: 'LOW', numbers: false })]);
+    prisma.eventWatch.findMany.mockResolvedValue([{ eventId: 'e1', userId: 'u1' }]);
+    await dispatchReminders();
+    expect(prisma.notification.create).toHaveBeenCalledTimes(1);
   });
 });

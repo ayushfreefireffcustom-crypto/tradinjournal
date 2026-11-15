@@ -249,7 +249,7 @@ export function NotificationsSection() {
           {draft && prefs && (
             <div className="ac-st-grp">
               <h3>What to alert on</h3>
-              <Row title="Minimum impact" desc="Only alert for events at or above">
+              <Row title="Minimum impact" desc="Events at or above this, for USD and the currencies you trade. Holidays are skipped.">
                 <div className="x-seg x-seg--sm" role="group" aria-label="Minimum impact">
                   {IMPACTS.map(i => <button key={i} type="button" aria-pressed={draft.minImpact === i} onClick={() => set('minImpact', i)}>{IMP_LABEL[i]}</button>)}
                 </div>

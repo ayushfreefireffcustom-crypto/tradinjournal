@@ -176,6 +176,33 @@ describe.skipIf(!local)('account over HTTP', () => {
     expect(act.data.items[0]).toMatchObject({ kind: 'sessions_revoked', summary: 'Signed out every other device', device: 'Chrome on macOS' });
   });
 
+  it('lists own devices without a fresh session and signs one out by id', async () => {
+    const phone = await signIn(me.email, PASS, 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1');
+    // Two days old: better-auth's /list-sessions would refuse this as "not fresh".
+    await prisma.session.updateMany({ where: { userId: me.id }, data: { createdAt: new Date(Date.now() - 2 * 86_400_000) } });
+    expect((await call('GET', '/api/me/sessions')).status).toBe(401);
+    const lr = await call('GET', '/api/me/sessions', undefined, cookie);
+    expect(lr.status).toBe(200);
+    const list = (await json<{ data: Array<Record<string, unknown> & { id: string; userAgent: string; current: boolean }> }>(lr)).data;
+    expect(list.length).toBe(2);
+    expect(list.filter((s) => s.current)).toHaveLength(1);
+    expect(list.every((s) => !('token' in s))).toBe(true);
+    const phoneRow = list.find((s) => /iPhone/.test(s.userAgent))!;
+    const mine = list.find((s) => s.current)!;
+    // Not your own current session, and not someone else's.
+    expect((await call('POST', `/api/me/sessions/${mine.id}/revoke`, {}, cookie)).status).toBe(404);
+    const theirs = await prisma.session.create({ data: { userId: other.id, token: `${tag}-other-token`, expiresAt: new Date(Date.now() + 86_400_000) } });
+    expect((await call('POST', `/api/me/sessions/${theirs.id}/revoke`, {}, cookie)).status).toBe(404);
+    expect(await prisma.session.count({ where: { id: theirs.id } })).toBe(1);
+    await prisma.session.delete({ where: { id: theirs.id } });
+    expect((await call('POST', `/api/me/sessions/${phoneRow.id}/revoke`, {}, cookie)).status).toBe(200);
+    expect(await prisma.session.count({ where: { id: phoneRow.id } })).toBe(0);
+    // A signed-out device (cookie still cached) can't sign others out.
+    expect((await call('POST', `/api/me/sessions/${mine.id}/revoke`, {}, phone.cookie)).status).toBe(401);
+    const act = await json<{ data: { items: Array<{ kind: string; summary: string }> } }>(await call('GET', '/api/me/activity?group=security', undefined, cookie));
+    expect(act.data.items[0]).toMatchObject({ kind: 'sessions_revoked', summary: 'Signed out one device' });
+  });
+
   it('merges orders into the activity feed, filters by group and pages', async () => {
     const conn = await prisma.exchangeConnection.create({ data: { userId: me.id, exchange: 'DELTA_INDIA', environment: 'TESTNET', label: 'Acct conn', apiKeyEnc: 'x', apiSecretEnc: 'y', keyLast4: 'abcd', keyFingerprint: `${tag}-fp`, canTrade: true } });
     await prisma.exchangeOrder.create({ data: { userId: me.id, connectionId: conn.id, source: 'MANUAL', clientOrderId: `${tag}-o1`, symbol: 'BTCUSD', side: 'BUY', type: 'MARKET', qty: 2, status: 'FILLED' } });

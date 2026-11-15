@@ -14,6 +14,7 @@ import { logAdminAction } from './admin-audit.service.js';
 import { getMaintenanceMode, setMaintenanceMode } from './settings.service.js';
 import { recheckUserAccess, syncManualGrant } from './access.service.js';
 import { clearBrokerPolicyCache } from '../../lib/broker-policy.js';
+import { positionCountsByBroker, sumCounts, traderActivity } from './trade-activity.js';
 
 function grantToDto(row: {
   id: string;
@@ -78,8 +79,7 @@ export async function getAdminOverview(): Promise<AdminOverviewDto> {
     elefinVerified,
     elefinPending,
     elefinFailed,
-    activeTraders,
-    inactiveTraders,
+    traders,
     brokerAccounts,
     elefinBrokerAccounts,
     usersWithBrokersGroup,
@@ -87,9 +87,7 @@ export async function getAdminOverview(): Promise<AdminOverviewDto> {
     signups30d,
     activeSessionsNow,
     usersActive24hGroup,
-    totalTrades7d,
-    totalTrades30d,
-    openTrades,
+    positionsByBroker,
     journalEntries,
     oauthUsersGroup,
     syncHealthy,
@@ -113,8 +111,9 @@ export async function getAdminOverview(): Promise<AdminOverviewDto> {
     prisma.userAccess.count({ where: { elefinStatus: 'VERIFIED' } }),
     prisma.userAccess.count({ where: { elefinStatus: 'PENDING' } }),
     prisma.userAccess.count({ where: { elefinStatus: 'FAILED' } }),
-    prisma.userAccess.count({ where: { activityStatus: 'ACTIVE' } }),
-    prisma.userAccess.count({ where: { activityStatus: 'INACTIVE' } }),
+    // Real trading, not the access-gate flag (that is computed on the fly and
+    // rarely stored): a deal in 7 days = active, no deal in 30 days = inactive.
+    traderActivity(d7, d30),
     prisma.brokerAccount.count(),
     prisma.brokerAccount.count({
       where: {
@@ -129,9 +128,8 @@ export async function getAdminOverview(): Promise<AdminOverviewDto> {
     prisma.user.count({ where: { createdAt: { gte: d30 } } }),
     prisma.session.count({ where: { expiresAt: { gt: now } } }),
     prisma.session.groupBy({ by: ['userId'], where: { updatedAt: { gte: d24 } } }),
-    prisma.trade.count({ where: { status: 'CLOSED', closeTime: { gte: d7 } } }),
-    prisma.trade.count({ where: { status: 'CLOSED', closeTime: { gte: d30 } } }),
-    prisma.trade.count({ where: { status: 'OPEN' } }),
+    // Trades are rebuilt from deals; the legacy `trade` table is no longer written.
+    positionCountsByBroker(d7, d30),
     prisma.journalEntry.count(),
     prisma.account.groupBy({ by: ['userId'], where: { providerId: 'google' } }),
     prisma.brokerAccount.count({ where: { lastSyncAt: { gte: d24 } } }),
@@ -177,6 +175,9 @@ export async function getAdminOverview(): Promise<AdminOverviewDto> {
   ]);
 
   const usersWithBrokers = usersWithBrokersGroup.length;
+  const activeTraders = traders.active;
+  const inactiveTraders = traders.inactive;
+  const positions = sumCounts(positionsByBroker.values());
   const oauthUsers = oauthUsersGroup.length;
   const emailOnlyUsers = Math.max(0, totalUsers - oauthUsers);
 
@@ -276,9 +277,9 @@ export async function getAdminOverview(): Promise<AdminOverviewDto> {
     signups30d,
     activeSessionsNow,
     usersActive24h: usersActive24hGroup.length,
-    totalTrades7d,
-    totalTrades30d,
-    openTrades,
+    totalTrades7d: positions.closed7d,
+    totalTrades30d: positions.closed30d,
+    openTrades: positions.open,
     journalEntries,
     oauthUsers,
     emailOnlyUsers,
@@ -497,34 +498,13 @@ async function enrichUsers(users: Array<{
   const todayStart = startOfUtcDay(new Date());
   const d7 = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-  const [accessRows, tradeTotals, openTradeCounts, closed7dCounts, usageSessions, featureEvents] =
+  const d30 = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+  const [accessRows, positionsByBroker, usageSessions, featureEvents] =
     await Promise.all([
       prisma.userAccess.findMany({ where: { userId: { in: userIds } } }),
-      brokerIds.length
-        ? prisma.trade.groupBy({
-            by: ['brokerAccountId'],
-            where: { brokerAccountId: { in: brokerIds } },
-            _count: { _all: true },
-          })
-        : Promise.resolve([]),
-      brokerIds.length
-        ? prisma.trade.groupBy({
-            by: ['brokerAccountId'],
-            where: { brokerAccountId: { in: brokerIds }, status: 'OPEN' },
-            _count: { _all: true },
-          })
-        : Promise.resolve([]),
-      brokerIds.length
-        ? prisma.trade.groupBy({
-            by: ['brokerAccountId'],
-            where: {
-              brokerAccountId: { in: brokerIds },
-              status: 'CLOSED',
-              closeTime: { gte: d7 },
-            },
-            _count: { _all: true },
-          })
-        : Promise.resolve([]),
+      // Trades are rebuilt from deals; the legacy `trade` table is no longer written.
+      positionCountsByBroker(d7, d30, brokerIds),
       prisma.usageSession.findMany({
         where: { userId: { in: userIds }, startedAt: { gte: d7 } },
         select: { userId: true, durationSec: true, startedAt: true, lastSeenAt: true },
@@ -541,21 +521,19 @@ async function enrichUsers(users: Array<{
     for (const b of u.brokerAccounts) brokerToUser.set(b.id, u.id);
   }
 
-  function sumForUser(
-    groups: { brokerAccountId: string; _count: { _all: number } }[],
-  ): Map<string, number> {
+  function sumForUser(pick: (c: { total: number; open: number; closed7d: number }) => number): Map<string, number> {
     const out = new Map<string, number>();
-    for (const g of groups) {
-      const uid = brokerToUser.get(g.brokerAccountId);
+    for (const [brokerId, c] of positionsByBroker) {
+      const uid = brokerToUser.get(brokerId);
       if (!uid) continue;
-      out.set(uid, (out.get(uid) ?? 0) + g._count._all);
+      out.set(uid, (out.get(uid) ?? 0) + pick(c));
     }
     return out;
   }
 
-  const totalTradesByUser = sumForUser(tradeTotals);
-  const openTradesByUser = sumForUser(openTradeCounts);
-  const closed7dByUser = sumForUser(closed7dCounts);
+  const totalTradesByUser = sumForUser(c => c.total);
+  const openTradesByUser = sumForUser(c => c.open);
+  const closed7dByUser = sumForUser(c => c.closed7d);
 
   const usageByUser = new Map<string, { sec7d: number; secToday: number; last: Date | null }>();
   for (const s of usageSessions) {

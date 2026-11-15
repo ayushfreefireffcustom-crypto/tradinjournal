@@ -11,8 +11,7 @@ import type { EventImpact } from '@tradinjournal/contracts';
 import { sendEmail } from '../../lib/email/client.js';
 import { dailyDigestEmail } from '../../lib/email/templates.js';
 import { claimDelivery } from '../../lib/notifications/claim.js';
-
-const RANK: Record<EventImpact, number> = { LOW: 0, MEDIUM: 1, HIGH: 2 };
+import { currenciesByUser, matchesPrefs } from './reminder-match.js';
 const HORIZON_MINUTES = 24 * 60;
 const MAX_EVENTS_PER_EMAIL = 20;
 
@@ -39,7 +38,7 @@ export async function sendDailyDigests(): Promise<{ users: number; sent: number 
   const userIds = emailPrefs.map(p => p.userId);
   const startOfDay = new Date(now);
   startOfDay.setUTCHours(0, 0, 0, 0);
-  const [users, watches, triggeredAlerts] = await Promise.all([
+  const [users, watches, triggeredAlerts, myCurrencies] = await Promise.all([
     prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, name: true, email: true } }),
     prisma.eventWatch.findMany({
       where: { eventId: { in: events.map(e => e.id) }, userId: { in: userIds } },
@@ -50,6 +49,7 @@ export async function sendDailyDigests(): Promise<{ users: number; sent: number 
       where: { userId: { in: userIds }, triggeredAt: { gte: startOfDay } },
       select: { userId: true, symbol: true, direction: true, threshold: true },
     }),
+    currenciesByUser(emailPrefs.filter(p => p.currencies.length === 0).map(p => p.userId), now),
   ]);
   const userById = new Map(users.map(u => [u.id, u]));
   const watchedByUser = new Map<string, Set<string>>();
@@ -69,10 +69,7 @@ export async function sendDailyDigests(): Promise<{ users: number; sent: number 
     const watchedIds = watchedByUser.get(p.userId) ?? new Set<string>();
     const relevant = events.filter(e => {
       if (watchedIds.has(e.id)) return true;
-      const impactOk = RANK[e.impact] >= RANK[prefs.minImpact];
-      const curOk = prefs.currencies.length === 0 || prefs.currencies.includes(e.currency);
-      const catOk = prefs.categories.length === 0 || (e.category ? prefs.categories.includes(e.category) : true);
-      return impactOk && curOk && catOk;
+      return matchesPrefs(e, prefs, myCurrencies.get(p.userId) ?? new Set<string>());
     });
     if (relevant.length === 0) continue;
 

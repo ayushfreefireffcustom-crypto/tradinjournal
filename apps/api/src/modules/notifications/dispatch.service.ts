@@ -12,8 +12,7 @@ import { prisma } from '@tradinjournal/db';
 import { deliveryAllowed, type EventImpact } from '@tradinjournal/contracts';
 import { sendPush } from '../../lib/push.js';
 import { claimDelivery } from '../../lib/notifications/claim.js';
-
-const RANK: Record<EventImpact, number> = { LOW: 0, MEDIUM: 1, HIGH: 2 };
+import { currenciesByUser, matchesPrefs } from './reminder-match.js';
 
 /** Widest lead we scan for — pref lead is capped at 1440 (24h). */
 const SCAN_MINUTES = 1440;
@@ -65,6 +64,10 @@ export async function dispatchReminders(): Promise<{ events: number; delivered: 
   ]);
 
   const prefsByUser = new Map<string, Prefs>(prefRows.map(p => [p.userId, p as unknown as Prefs]));
+  // Users who left currencies empty get "my currencies" (traded + USD), not every currency.
+  const autoCurrencyUsers = prefRows.filter(p => p.currencies.length === 0).map(p => p.userId);
+  const myCurrencies = await currenciesByUser(autoCurrencyUsers, now);
+  const NONE = new Set<string>();
   const watchersByEvent = new Map<string, Set<string>>();
   for (const w of watches) (watchersByEvent.get(w.eventId) ?? watchersByEvent.set(w.eventId, new Set()).get(w.eventId)!).add(w.userId);
 
@@ -74,10 +77,7 @@ export async function dispatchReminders(): Promise<{ events: number; delivered: 
     const targets = new Set<string>();
     watchersByEvent.get(event.id)?.forEach(u => targets.add(u));
     for (const [userId, p] of prefsByUser) {
-      const impactOk = RANK[event.impact] >= RANK[p.minImpact];
-      const curOk = p.currencies.length === 0 || p.currencies.includes(event.currency);
-      const catOk = p.categories.length === 0 || (event.category ? p.categories.includes(event.category) : true);
-      if (impactOk && curOk && catOk) targets.add(userId);
+      if (matchesPrefs(event, p, myCurrencies.get(userId) ?? NONE)) targets.add(userId);
     }
     for (const userId of targets) {
       const prefs = prefsByUser.get(userId) ?? DEFAULT_PREFS;

@@ -6,7 +6,8 @@ import { QRCodeSVG } from 'qrcode.react';
 import { useCallback, useEffect, useState } from 'react';
 import { useToast } from '@/components/toast';
 import Modal from '@/components/v6/ui/modal';
-import { accountApi, deviceOf, shownIp, type Profile } from '@/lib/account-api';
+import { accountApi, deviceOf, shownIp, type DeviceSession, type Profile } from '@/lib/account-api';
+import { ApiError } from '@/lib/copy-api';
 import { authClient } from '@/lib/auth-client';
 import '@/styles/v6/account.css';
 import '@/styles/v6/kit.css';
@@ -157,36 +158,60 @@ export function TwoFactorCard({ profile, onChange }: { profile: Profile | null; 
 }
 
 // ── Devices ──
-interface SessionRow { id: string; token: string; userAgent?: string | null; ipAddress?: string | null; createdAt: string | Date; updatedAt: string | Date; expiresAt: string | Date }
 const when = (d: string | Date) => new Date(d).toLocaleString(undefined, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
 export function DevicesCard({ refreshKey = 0 }: { refreshKey?: number }) {
   const toast = useToast();
-  const { data: session } = authClient.useSession();
-  const [rows, setRows] = useState<SessionRow[] | null>(null);
-  const [err, setErr] = useState('');
+  const [rows, setRows] = useState<DeviceSession[] | null>(null);
+  // 'auth' = the saved sign-in is gone or too old: ask the user to sign in again.
+  const [err, setErr] = useState<'' | 'auth' | 'load'>('');
   const [busy, setBusy] = useState<string | null>(null);
   const load = useCallback(async () => {
-    const r = await authClient.listSessions();
-    if (r?.error) { setErr(msgOf(r.error, 'Couldn’t load your devices.')); return; }
-    setRows([...(r.data as SessionRow[])].sort((a, b) => +new Date(b.updatedAt) - +new Date(a.updatedAt)));
+    try {
+      setRows(await accountApi.sessions());
+      setErr('');
+    } catch (e) {
+      setErr(e instanceof ApiError && (e.status === 401 || e.status === 403) ? 'auth' : 'load');
+    }
   }, []);
   // Reload when the current session is re-issued (two-factor or password changes).
   useEffect(() => { void load(); }, [load, refreshKey]);
-  const current = session?.session?.id as string | undefined;
-  async function revoke(row: SessionRow | 'others') {
+  const current = rows?.find((r) => r.current)?.id;
+  async function revoke(row: DeviceSession | 'others') {
     setBusy(row === 'others' ? 'others' : row.id);
-    const r = row === 'others' ? await authClient.revokeOtherSessions() : await authClient.revokeSession({ token: row.token });
+    let failed: string | null = null;
+    if (row === 'others') {
+      const r = await authClient.revokeOtherSessions();
+      if (r?.error) failed = msgOf(r.error, 'Couldn’t sign the other devices out.');
+    } else {
+      try { await accountApi.revokeSession(row.id); } catch (e) {
+        failed = e instanceof ApiError && e.status === 401 ? 'Sign in again to manage devices.' : 'Couldn’t sign that device out.';
+      }
+    }
     setBusy(null);
-    if (r?.error) { toast.error(msgOf(r.error, 'Couldn’t sign that device out.')); return; }
+    if (failed) { toast.error(failed); return; }
     toast.success(row === 'others' ? 'Signed out everywhere else.' : 'Signed that device out.');
     void load();
+  }
+  async function signInAgain() {
+    await authClient.signOut().catch(() => undefined);
+    window.location.href = `/login?next=${encodeURIComponent('/settings/security')}`;
   }
   const others = rows?.filter((r) => r.id !== current) ?? [];
   return (
     <section className="x-card ac-st-card" aria-labelledby="sec-dev" data-testid="sec-devices">
       <div className="x-ch"><h2 id="sec-dev">Signed-in devices</h2>{others.length > 0 && <button className="x-btn x-btn--sm" onClick={() => void revoke('others')} disabled={busy != null} data-testid="sec-dev-others">{busy === 'others' ? 'Signing out…' : 'Sign out everywhere else'}</button>}</div>
-      {err ? <p className="cp-err">{err}</p> : !rows ? <div className="x-skel" style={{ height: 80 }} /> : (
+      {err === 'auth' ? (
+        <div className="x-empty" data-testid="sec-dev-reauth">
+          <p>Sign in again to manage devices.</p>
+          <button type="button" className="x-btn x-btn--sm" onClick={() => void signInAgain()}>Sign in again</button>
+        </div>
+      ) : err ? (
+        <div className="x-empty">
+          <p>Couldn’t load your devices.</p>
+          <button type="button" className="x-btn x-btn--sm" onClick={() => void load()}>Try again</button>
+        </div>
+      ) : !rows ? <div className="x-skel" style={{ height: 80 }} /> : (
         <ul className="ac-devs">
           {rows.map((r) => (
             <li key={r.id} data-testid="sec-dev-row">
