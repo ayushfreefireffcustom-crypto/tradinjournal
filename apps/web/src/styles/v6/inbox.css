@@ -35,3 +35,10 @@
   .v6 .ib-row-acts { grid-column: 2; }
   .v6 .ib-acts { width: 100%; }
 }
+
+/* Phones: the category tabs scroll sideways in one row instead of leaving one tab alone on a second line. */
+@media (max-width: 760px) {
+  .v6 .x-tabs.ib-tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  .v6 .x-tabs.ib-tabs::-webkit-scrollbar { display: none; }
+  .v6 .x-tabs.ib-tabs > * { flex: none; }
+}
