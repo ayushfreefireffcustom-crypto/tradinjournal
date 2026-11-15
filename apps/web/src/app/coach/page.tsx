@@ -17,6 +17,7 @@ import { IPlus } from '@/components/v6/icons';
 import { useDialog } from '@/components/v6/ui/use-dialog';
 import { useAccounts } from '@/lib/use-accounts';
 import { api, type AiChatMessage, type AiConversationSummary, type BrokerAccount } from '@/lib/api';
+import LogoMark from '@/components/logo-mark';
 
 const STARTERS = [
   { web: false, text: 'What’s my biggest leak right now?' },
@@ -341,7 +342,7 @@ export default function CoachPage() {
               </div>
             ) : isEmpty ? (
               <div className="ai-hello" data-testid="coach-empty">
-                <span className="ai-av">TL</span>
+                <span className="ai-av"><LogoMark size={30} title="TRADElogs AI" /></span>
                 <h2>Ask your coach</h2>
                 <p>{accountId
                   ? 'I read your closed trades, stats and journal, and can search the web for market context. Ask about your behaviour or what\u2019s happening out there. No trade signals, just clarity.'
@@ -364,7 +365,7 @@ export default function CoachPage() {
                   const streaming = isLast && sending && !!m.content;
                   return (
                     <div key={i} className="ai-a" data-testid="coach-msg-assistant">
-                      <span className="ai-av" aria-hidden>TL</span>
+                      <span className="ai-av" aria-hidden><LogoMark size={20} title="" /></span>
                       <div className="ai-a-bd">
                         {m.content ? (
                           <>

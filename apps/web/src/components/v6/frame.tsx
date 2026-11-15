@@ -25,6 +25,7 @@ import '@/styles/v6/lux.css';
 import { useMenu } from './ui/use-menu';
 import { useDialog } from './ui/use-dialog';
 import IconButton from './ui/icon-button';
+import LogoMark from '@/components/logo-mark';
 
 type Icon = (p: { size?: number }) => ReactNode;
 export type FrameNavItem = { href: string; label: string; icon: Icon; badge?: string };
@@ -156,7 +157,7 @@ export default function Frame(p: Props) {
       <aside className="f-sb" aria-label="Sidebar" data-testid="sidebar">
         <Link href="/dashboard" className="f-brand" aria-label="TRADElogs dashboard">
           <span className="f-brand-full"><Logo height={24} /></span>
-          <span className="f-brand-mark" aria-hidden>TL</span>
+          <span className="f-brand-mark" aria-hidden><LogoMark size={26} title="" /></span>
         </Link>
         <button className="f-search" onClick={p.onOpenSearch} aria-label="Search pages (⌘K)">
           <ISearch size={15} /><span>Search</span><kbd>⌘K</kbd>
@@ -178,7 +179,7 @@ export default function Frame(p: Props) {
       <div className="f-main">
         <header className="f-top">
           <div className="f-title">
-            <Link href="/dashboard" className="f-mlogo" aria-label="TRADElogs dashboard">TL</Link>
+            <Link href="/dashboard" className="f-mlogo" aria-label="TRADElogs dashboard"><LogoMark size={26} title="" /></Link>
             <div className="x-min0">
               <h1 data-testid="crumb">{p.pageTitle}</h1>
               {p.subtitle && <p>{p.subtitle}</p>}

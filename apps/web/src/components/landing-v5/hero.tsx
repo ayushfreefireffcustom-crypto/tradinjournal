@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 import { SilkCanvas } from './effects';
 import { Ticker } from './nav';
 import { StartButton } from './ui';
+import LogoMark from '@/components/logo-mark';
 
 const BROKERS = ['XM', 'Exness', 'Vantage', 'Elefin', 'Xellion', 'IC Markets', 'Pepperstone', 'FBS'];
 
@@ -65,7 +66,7 @@ export default function Hero() {
           <div className="l5-f-bars"><i style={{ height: '40%' }} className="g" /><i style={{ height: '62%' }} className="g" /><i style={{ height: '34%' }} className="r" /><i style={{ height: '55%' }} className="g" /><i style={{ height: '70%' }} className="r" /><i style={{ height: '84%' }} className="r" /><i style={{ height: '100%' }} className="r" /><i style={{ height: '78%' }} className="r" /></div>
         </div>
         <div className="l5-float l5-f-mail" aria-hidden>
-          <div className="l5-f-row"><i className="tl">TL</i><span><b>Your week in review</b><small>Sat 09:00 · 23 trades</small></span></div>
+          <div className="l5-f-row"><i className="tl"><LogoMark size={18} title="" /></i><span><b>Your week in review</b><small>Sat 09:00 · 23 trades</small></span></div>
           <p>One thing to fix: <b>stop new entries after 15:00 London.</b></p>
         </div>
         <div className="l5-stage-fade" aria-hidden />

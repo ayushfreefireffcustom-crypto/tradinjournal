@@ -15,8 +15,8 @@ html[data-theme=light]:has(.v6.f-page), html[data-theme=light] body:has(.v6.f-pa
 }
 .v6 .f-brand { display: flex; align-items: center; height: 34px; padding: 0 8px; text-decoration: none; --tl-logo-fg: var(--logo-fg); }
 .v6 .f-brand-mark {
-  display: none; width: 36px; height: 36px; border-radius: 11px; background: var(--g); color: var(--on-g);
-  place-items: center; font: 500 var(--t2) var(--mono);
+  display: none; width: 36px; height: 36px; border-radius: 11px; background: #0B0B0C; --tl-logo-fg: #fff;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .1); place-items: center;
 }
 .v6 .f-search {
   height: 36px; border-radius: 11px; border: 0; background: var(--s1); color: var(--dim); box-shadow: var(--shadow);
@@ -161,8 +161,8 @@ html[data-theme=light]:has(.v6.f-page), html[data-theme=light] body:has(.v6.f-pa
   .v6 .f-title h1 { font-size: var(--t4); font-weight: 800; letter-spacing: -.035em; }
   .v6 .f-title p { font-size: var(--t2); }
   .v6 .f-mlogo {
-    display: grid; width: 36px; height: 36px; border-radius: 11px; background: var(--g); color: var(--on-g);
-    place-items: center; font: 500 var(--t1) var(--mono); text-decoration: none; flex: none;
+    display: grid; width: 36px; height: 36px; border-radius: 11px; background: #0B0B0C; --tl-logo-fg: #fff;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .1); place-items: center; text-decoration: none; flex: none;
   }
   .v6 .f-mtools { display: flex; gap: 6px; margin-left: auto; flex: none; }
   .v6 .f-tools { flex-wrap: wrap; gap: 8px; }

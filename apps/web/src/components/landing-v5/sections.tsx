@@ -6,6 +6,7 @@ import { CandleField, OrbCanvas } from './effects';
 import { candles, ENTRY_INDEX, EXIT_INDEX, HEAT_DAYS, heat, heatColor, heatDollars, REPLAY_H, REPLAY_W, tilt, traits } from './data';
 import Logo from '@/components/logo';
 import { PARTNERS_ENABLED } from '@/lib/features';
+import LogoMark from '@/components/logo-mark';
 
 const v = (i: number) => ({ '--i': i } as CSSProperties);
 const Tick = () => <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden><path d="m2.5 6.2 2.2 2.2 4.8-5" stroke="currentColor" strokeWidth="1.7" fill="none" strokeLinecap="round" /></svg>;
@@ -302,7 +303,7 @@ export function Review() {
         </Reveal>
         <Reveal delay={120}>
           <div ref={ref} className="l5-mail" aria-label="Example weekly review email">
-            <div className="l5-mail-h"><div className="l5-mail-av" aria-hidden>TL</div><div><b>Your week in review</b><span>Week 43 · 23 trades · XM Global MT5</span></div><time>Sat 09:00</time></div>
+            <div className="l5-mail-h"><div className="l5-mail-av" aria-hidden><LogoMark size={30} title="" /></div><div><b>Your week in review</b><span>Week 43 · 23 trades · XM Global MT5</span></div><time>Sat 09:00</time></div>
             <div className="l5-mail-b">
               <p>Net <strong className="g">+$1,184</strong> on the week, profit factor <strong>1.9</strong>. Your London longs on XAUUSD carried it — <strong>7 of 8</strong> closed green.</p>
               <p>The leak: after 15:00 you took <strong>6 trades</strong> and lost <strong className="r">−$612</strong>, four of them within 20 minutes of a loss.</p>
