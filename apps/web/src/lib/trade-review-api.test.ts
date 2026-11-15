@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  afterTheExit, barAt, candleWhatIf, coversTrade, draftPrompt, excursion, noteFacts, reviewWindow, twoSentences,
+  afterTheExit, barAt, candleWhatIf, coversTrade, draftPrompt, excursion, noteFacts, reviewWindow, twoSentences, whatIfWord,
   type Bar, type TradeReviewDTO,
 } from './trade-review-api';
 
@@ -120,5 +120,17 @@ describe('draft note', () => {
   it('keeps two sentences of plain text', () => {
     expect(twoSentences('**Shorted** NAS100 after two losses. Out at the stop. Next time wait.')).toBe('Shorted NAS100 after two losses. Out at the stop.');
     expect(twoSentences('- One line only')).toBe('One line only');
+  });
+});
+
+describe('what-if wording', () => {
+  it('more profit on a winner is "more", never "saves"', () => {
+    expect(whatIfWord(4200, 1475)).toBe('more');
+  });
+  it('a smaller loss "saves"; turning a loss into a win is "more"; worse is "less"', () => {
+    expect(whatIfWord(-300, 200)).toBe('saves');
+    expect(whatIfWord(-300, 300)).toBe('saves');
+    expect(whatIfWord(-300, 500)).toBe('more');
+    expect(whatIfWord(4200, -800)).toBe('less');
   });
 });

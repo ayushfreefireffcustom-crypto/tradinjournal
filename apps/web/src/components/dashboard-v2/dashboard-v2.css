@@ -88,6 +88,13 @@ html[data-theme=light] .v6 .d2-card { box-shadow: 0 0 0 1px var(--line), 0 1px 2
 .v6 .d2-note { padding: 8px 16px 0; font-size: 11px; color: var(--mut); }
 .v6 .d2-empty { display: flex; flex-direction: column; gap: 4px; justify-content: center; min-height: 120px; padding: 8px 0; }
 .v6 .d2-empty b { font-size: 14px; font-weight: 800; color: var(--tx); }
+/* A widget with nothing to show yet ("Needs 30 trades") stays short instead of
+   stretching to the tallest card in its row. */
+.v6 .d2-slot:has(> .d2-w-empty) { align-self: start; }
+.v6 .d2-w.d2-w-empty { height: auto; }
+.v6 .d2-w-empty .d2-wb { flex: none; padding-top: 10px; padding-bottom: 10px; }
+.v6 .d2-w-empty .d2-empty { min-height: 0; padding: 0; gap: 2px; }
+.v6 .d2-w-empty .d2-empty span { font-size: 12px; }
 .v6 .d2-empty span { font-size: 13px; color: var(--mut); max-width: 340px; }
 
 /* AI line + label */
@@ -266,8 +273,15 @@ html[data-theme=light] .v6 .d2-hc.strong:not(.solid) small { color: var(--mut); 
   .v6 .d2-ail { padding: 9px 12px; }
   .v6 .d2-ai-l { display: none; }
 }
+@container (min-width: 700px) and (max-width: 1099.98px) {
+  /* 9 tiles on 5 columns: the last one fills the rest of its row. */
+  .v6 .d2-kr > div:last-child:nth-child(5n+4) { grid-column: span 2; }
+  .v6 .d2-kr > div:last-child:nth-child(5n+3) { grid-column: span 3; }
+}
 @container (max-width: 460px) {
   .v6 .d2-kr { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* An odd tile count leaves the last tile alone: it takes the whole row. */
+  .v6 .d2-kr > div:last-child:nth-child(odd) { grid-column: 1 / -1; }
   .v6 .d2-kr > div { border-top: 1px solid var(--line) !important; border-left: 1px solid var(--line) !important; }
   .v6 .d2-kr > div:nth-child(-n+2) { border-top: 0 !important; }
   .v6 .d2-kr > div:nth-child(odd) { border-left: 0 !important; }

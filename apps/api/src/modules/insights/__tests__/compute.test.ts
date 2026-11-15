@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   applyFilters, behaviour, bestHours, computeDashboard, distribution, findLeaks, grade, heatmap, maeMfe, median,
-  rolling, sessionOf, skipGain, symbols, tradeContext, windowFor, type InsightTrade,
+  rolling, sampleCurve, sessionOf, skipGain, symbols, tradeContext, windowFor, type InsightTrade,
 } from '../compute.js';
+import { balanceOpsOf, fundedBefore } from '../funding.js';
 
 const H = 3_600_000, D = 86_400_000;
 // Mon 2 Nov 2026 00:00 UTC
@@ -207,5 +208,92 @@ describe('computeDashboard', () => {
   it('custom window overrides the preset', () => {
     expect(windowFor('90D', 5, 9, now)).toEqual({ from: 5, to: 9 });
     expect(windowFor('ALL', undefined, undefined, now)).toEqual({ from: null, to: null });
+  });
+});
+
+describe('equity curve with deposits and withdrawals', () => {
+  // Deposit $1,000, win $5,556 over 12 trades, withdraw $6,500 in two goes
+  // (one mid-way, one after the last trade): the balance ends at $56.
+  const deposit = { t: MON - 30 * D, amount: 1000 };
+  const T = Array.from({ length: 12 }, (_, i) => tr({ open: MON - 20 * D + i * D + 9 * H, net: i === 5 ? -142 : 518 }));
+  const net = T.reduce((a, t) => a + t.net, 0);
+  const midOut = { t: T[7]!.close + H, amount: -3000 };
+  const endOut = { t: T.at(-1)!.close + D, amount: -3500 };
+  const ops = [deposit, midOut, endOut];
+  const now = MON + 10 * D;
+
+  it('never goes below zero: flows land on their dates and the curve ends on the real balance', () => {
+    expect(net).toBe(5556);
+    const o = computeDashboard(T, { now, window: windowFor('ALL', undefined, undefined, now), filters: {}, startingBalance: 1000 + net - 6500 - net, balanceOps: ops });
+    const eq = o.equity!;
+    expect(eq.basis).toBe('balance');
+    expect(eq.start).toBe(1000);
+    expect(Math.min(eq.start, ...eq.trades.map(p => p.v))).toBeGreaterThanOrEqual(0);
+    // The withdrawal after trade #8 shows on trade #9's point; the last one gets its own point.
+    expect(eq.trades[8]!.flow).toBe(-3000);
+    expect(eq.trades.at(-1)).toMatchObject({ v: 56, pnl: 0, flow: -3500 });
+    expect(o.kpis!.balance).toBe(56);
+    expect(o.kpis!.peakBalance).toBe(1000 + T.slice(0, 8).reduce((a, t) => a + t.net, 0));
+    // Taking money out is not a drawdown: only the one losing trade dips.
+    expect(eq.drawdown!.amount).toBe(142);
+    expect(eq.days.reduce((a, p) => a + (p.flow ?? 0), 0)).toBe(-6500);
+  });
+
+  it('the old single "starting balance" (net of all flows, here −$5,500) would start negative: falls back to P&L from 0', () => {
+    const o = computeDashboard(T, { now, window: windowFor('ALL', undefined, undefined, now), filters: {}, startingBalance: 56 - net });
+    const eq = o.equity!;
+    expect(eq.basis).toBe('pnl');
+    expect(eq.start).toBe(0);
+    expect(eq.trades.at(-1)!.v).toBe(net);
+    expect(eq.trades.every(p => p.flow == null)).toBe(true);
+    expect(eq.drawdown!.pct).toBeNull();
+    expect(o.kpis!.returnPct).toBeNull();
+  });
+
+  it('no deposits known at all: cumulative P&L from 0', () => {
+    const o = computeDashboard(T, { now, window: windowFor('ALL', undefined, undefined, now), filters: {}, startingBalance: 0, balanceOps: [] });
+    expect(o.equity!.basis).toBe('pnl');
+    expect(o.equity!.trades.at(-1)!.v).toBe(net);
+  });
+
+  it('a range starts on the balance at its start, including earlier flows', () => {
+    const from = T[6]!.close - 1;
+    const o = computeDashboard(T, { now, window: { from, to: null }, filters: {}, startingBalance: 0, balanceOps: ops });
+    const before = T.filter(t => t.close < from).reduce((a, t) => a + t.net, 0);
+    expect(o.equity!.basis).toBe('balance');
+    expect(o.equity!.start).toBe(1000 + before);
+    expect(o.equity!.trades.at(-1)!.v).toBe(56);
+  });
+
+  it('sampling a long curve keeps every cash flow', () => {
+    const pts = Array.from({ length: 5000 }, (_, i) => ({ t: i, v: i, pnl: 1, ...(i % 7 === 3 ? { flow: 2 } : {}) }));
+    const s = sampleCurve(pts, 2000);
+    expect(s).toHaveLength(2000);
+    expect(s.reduce((a, p) => a + (p.flow ?? 0), 0)).toBe(pts.reduce((a, p) => a + (p.flow ?? 0), 0));
+  });
+});
+
+describe('funding helpers', () => {
+  it('reads BALANCE deals as dated flows and sums those before a moment', () => {
+    const ops = balanceOpsOf([
+      { type: 'BALANCE', profit: '-200', dealTime: '2026-11-03T00:00:00Z' },
+      { type: 'BUY', profit: '50', dealTime: '2026-11-02T00:00:00Z' },
+      { type: 'BALANCE', profit: '1000', dealTime: '2026-11-01T00:00:00Z' },
+      { type: 'BALANCE', profit: '0', dealTime: '2026-11-04T00:00:00Z' },
+    ]);
+    expect(ops).toEqual([{ t: Date.parse('2026-11-01T00:00:00Z'), amount: 1000 }, { t: Date.parse('2026-11-03T00:00:00Z'), amount: -200 }]);
+    expect(fundedBefore(ops, Date.parse('2026-11-02T00:00:00Z'))).toBe(1000);
+    expect(fundedBefore(ops, Date.parse('2026-11-05T00:00:00Z'))).toBe(800);
+  });
+});
+
+describe('AI line wording', () => {
+  it('one loser that was green first reads in the singular', () => {
+    const t = tr({ open: MON + 9 * H, net: -67, mae: -80, mfe: 90 });
+    const others = Array.from({ length: 10 }, (_, i) => tr({ open: MON + (i + 1) * D + 9 * H, net: 40, mae: -10, mfe: 60 }));
+    const o = computeDashboard([t, ...others], { now: MON + 20 * D, window: { from: null, to: null }, filters: {}, startingBalance: 1000 });
+    expect(o.ai.maeMfe!.text).toBe('1 loser was green first:');
+    const two = computeDashboard([t, tr({ ...t, id: 'x2', open: t.open + H }), ...others], { now: MON + 20 * D, window: { from: null, to: null }, filters: {}, startingBalance: 1000 });
+    expect(two.ai.maeMfe!.text).toBe('2 losers were green first:');
   });
 });

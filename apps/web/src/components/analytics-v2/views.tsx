@@ -6,7 +6,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { CaretDown, ChatCircleText, Check, Funnel } from '@phosphor-icons/react';
 import type { AiLine } from '@/lib/dashboard-v2-api';
-import { fmtAi, kmoney, money, pct, rfmt, tone } from '@/lib/dashboard-v2-format';
+import { fmtAi, isFlat, kmoney, money, pct, plural, rfmt, tone } from '@/lib/dashboard-v2-format';
 import {
   addedBy, fmtHold, navText, VIEW_LABEL, whatIfSteps,
   type AnalyticsV2DTO, type AnalyticsView, type AnaNavItem, type AnaWhatIf,
@@ -282,7 +282,7 @@ export function Symbols({ c, no }: { c: ViewCtx; no: string }) {
                   if (!cell || !cell.n) return <span key={x} role="cell" className="a2-ssc empty">–</span>;
                   const a = Math.min(1, Math.sqrt(Math.abs(cell.net) / mx));
                   return (
-                    <span key={x} role="cell" className={`a2-ssc${a > 0.62 ? ' strong' : ''}`} style={{ background: cell.net >= 0 ? `rgba(8,196,101,${(0.12 + a * 0.8).toFixed(2)})` : `rgba(254,58,49,${(0.12 + a * 0.8).toFixed(2)})` }} title={`${sym} ${SES[x]}: ${money(cell.net)} · ${cell.wins}/${cell.n} won`}>
+                    <span key={x} role="cell" className={`a2-ssc${a > 0.62 ? ' strong' : ''}`} style={{ background: isFlat(cell.net) ? 'var(--d2-chip)' : cell.net >= 0 ? `rgba(8,196,101,${(0.12 + a * 0.8).toFixed(2)})` : `rgba(254,58,49,${(0.12 + a * 0.8).toFixed(2)})` }} title={`${sym} ${SES[x]}: ${money(cell.net)} · ${cell.wins}/${cell.n} won`}>
                       <b className="mny">{kmoney(cell.net).replace('$', '')}</b><small>{cell.n} tr</small>
                     </span>
                   );
@@ -309,7 +309,7 @@ export function Risk({ c, no }: { c: ViewCtx; no: string }) {
   return (
     <Section no={no} id="risk" fig={navText(nav)} figTone={nav ? tone(nav.value) : ''} one={r.ai.header}>
       <Slot span={4}>
-        <Widget id="dist" title={dist?.unit === 'R' ? 'R distribution' : 'P&L distribution'} sub={`· ${T} trades`} span={4}
+        <Widget id="dist" title={dist?.unit === 'R' ? 'R distribution' : 'P&L distribution'} sub={`· ${plural(T, 'trade')}`} span={4}
           onExplain={dist ? () => c.explain('trade result distribution', `unit ${dist.unit}, mean ${dist.unit === 'R' ? rfmt(dist.mean) : money(dist.mean)}${dist.tail ? `, ${dist.tail.trades} trades past ${dist.unit === 'R' ? '−1.25R' : money(dist.tail.threshold)} lost ${money(dist.tail.net)}` : ''}`) : undefined}
           foot={<>{dist && dist.unit === '$' && <RNote withR={r.withR} n={T} />}{ai ? <AiFoot line={r.ai.distribution} /> : null}</>}>
           {dist ? <DistChart dist={dist} ai={ai} /> : <Empty title="Needs 5 trades" note={`${T} so far.`} />}
@@ -326,7 +326,7 @@ export function Risk({ c, no }: { c: ViewCtx; no: string }) {
         <Widget id="mae" title="MAE / MFE" sub="· worst vs best point" span={4}
           onExplain={r.maeMfe ? () => c.explain('MAE/MFE scatter', `${r.maeMfe!.points.length} trades${r.maeMfe!.gaveBack ? `, ${r.maeMfe!.gaveBack.trades} losers were in profit first (${money(r.maeMfe!.gaveBack.net)})` : ''}`) : undefined}
           foot={ai ? <AiFoot line={r.ai.maeMfe} /> : null}>
-          {r.maeMfe ? <MaeScatter mm={r.maeMfe} ai={ai} /> : <Empty title="No MAE / MFE data yet" note={`Needs the price path of each trade. ${r.withMae} of ${T} trades have it.`} />}
+          {r.maeMfe ? <MaeScatter mm={r.maeMfe} ai={ai} /> : <Empty title="No MAE / MFE data yet" note={`Needs the price path of each trade. ${r.withMae} of ${plural(T, 'trade')} ${T === 1 ? 'has' : 'have'} it.`} />}
         </Widget>
       </Slot>
       <Slot span={6}>
@@ -341,7 +341,7 @@ export function Risk({ c, no }: { c: ViewCtx; no: string }) {
         <Widget id="exit" title="Exit efficiency" sub="· winners: kept ÷ best open profit" span={6}
           onExplain={r.exit ? () => c.explain('exit efficiency', `${r.exit!.n} winners kept on average ${pct(r.exit!.avg)} of their best open profit; bins ${r.exit!.bins.map(b => `${pct(b.from)}–${pct(b.to)}: ${b.n}`).join(', ')}`) : undefined}
           foot={ai ? <AiFoot line={r.ai.exit} /> : null}>
-          {r.exit ? <ExitBars exit={r.exit} ai={ai} /> : <Empty title="Needs MAE / MFE data" note={`Exit efficiency compares each winner with its best open profit. ${r.withMae} of ${T} trades have it.`} />}
+          {r.exit ? <ExitBars exit={r.exit} ai={ai} /> : <Empty title="Needs MAE / MFE data" note={`Exit efficiency compares each winner with its best open profit. ${r.withMae} of ${plural(T, 'trade')} ${T === 1 ? 'has' : 'have'} it.`} />}
         </Widget>
       </Slot>
     </Section>
@@ -429,14 +429,14 @@ function FixList({ w, mask, onToggle }: { w: AnaWhatIf; mask: number; onToggle: 
             </label>
             <div className="a2-fixb">
               <div><i className="lt" style={{ width: bar(f.alone) }} /><span>alone <span className="mny">{kmoney(f.alone)}</span></span></div>
-              <div><i className={add >= 0 ? 'up' : 'dn'} style={{ width: bar(add) }} /><b className={`mny ${add >= 0 ? 'up' : 'dn'}`}>{on ? 'counted' : 'on top'} {kmoney(add)}</b></div>
+              <div><i className={add >= 0 ? 'up' : 'dn'} style={{ width: bar(add) }} /><b className={`mny ${tone(add)}`}>{on ? 'counted' : 'on top'} {kmoney(add)}</b></div>
             </div>
           </div>
         );
       })}
       <div className="a2-fix off" role="listitem">
         <label className="a2-fixl"><span className="a2-box" aria-hidden /><span className="a2-fixt">Break-even at +1R<small className="dn">{w.breakEvenNeeds === 'mae' ? 'needs MAE/MFE data' : w.breakEvenNeeds === 'r' ? 'needs R (stop at entry)' : w.breakEven ? '' : 'no loser reached +1R'}</small></span></label>
-        <div className="a2-fixb">{w.breakEven && <div title={`${w.breakEven.trades} losers reached +1R first`}><i className="lt" style={{ width: bar(w.breakEven.gain) }} /><span>alone <span className="mny">{kmoney(w.breakEven.gain)}</span></span></div>}</div>
+        <div className="a2-fixb">{w.breakEven && <div title={`${plural(w.breakEven.trades, 'loser')} reached +1R first`}><i className="lt" style={{ width: bar(w.breakEven.gain) }} /><span>alone <span className="mny">{kmoney(w.breakEven.gain)}</span></span></div>}</div>
       </div>
       <div className="a2-sub">Light bar: rule alone · solid: added in order, overlaps removed</div>
     </div>
@@ -456,7 +456,7 @@ export function WhatIf({ c, no }: { c: ViewCtx; no: string }) {
     ...steps.map(s => ({ key: s.key, label: s.label, sub: `−${s.trades} tr`, value: s.delta, kind: 'step' as const })),
     { key: 'with', label: steps.length ? 'With fixes' : 'Actual', sub: `${d.counts.trades - (w.removed[mask] ?? 0)} tr`, value: total, kind: 'goal' },
   ];
-  const line: AiLine | null = steps.length ? { text: `${w.removed[mask] ?? 0} trades removed`, value: null, fmt: 'text', tone: 'flat', trades: w.removed[mask] ?? 0 } : null;
+  const line: AiLine | null = steps.length ? { text: `${plural(w.removed[mask] ?? 0, 'trade')} removed`, value: null, fmt: 'text', tone: 'flat', trades: w.removed[mask] ?? 0 } : null;
   return (
     <Section no={no} id="whatif" fig={navText(nav)} figTone={nav ? tone(nav.value) : ''} one={w.ai.header}>
       {w.fixes.length ? <>

@@ -3,20 +3,20 @@
 // Summary ribbon for the current filter, and the daily P&L strip for the date
 // window (days in the current view marked, one AI line about the worst days).
 import { useMemo, useState } from 'react';
-import { kmoney, money, pct } from '@/lib/dashboard-v2-format';
+import { kmoney, money, pct, plural, tone } from '@/lib/dashboard-v2-format';
 
 /** Full dollars, or $109.7k once a figure gets too wide for a ribbon cell. */
 const cmoney = (v: number) => (Math.abs(v) >= 100_000 ? kmoney(v) : money(v));
 import { AiMark, useWidth } from '@/components/dashboard-v2/ui';
-import { fmtHold, GRADES, rStr, type Grade, type TlRuleKey, type TlStripDay, type TlSummary } from '@/lib/tradelog-v2-api';
+import { fmtHold, GRADES, money2, rStr, stripBar, type Grade, type TlRuleKey, type TlStripDay, type TlSummary } from '@/lib/tradelog-v2-api';
 
 export function SummaryRibbon({ s, useR, graded }: { s: TlSummary; useR: boolean; graded: boolean }) {
   const cells: Array<{ k: string; cap: string; v: React.ReactNode; sub: React.ReactNode; tone?: string }> = [
     { k: 'trades', cap: 'Trades', v: s.trades.toLocaleString('en-US'), sub: <>{s.wins}W · {s.losses}L{s.open ? ` · ${s.open} open` : ''}</> },
-    { k: 'net', cap: 'Net P&L', v: cmoney(s.net), tone: s.net > 0 ? 'up' : s.net < 0 ? 'dn' : '', sub: <>{money(s.perTrade)} per trade</> },
+    { k: 'net', cap: 'Net P&L', v: cmoney(s.net), tone: tone(s.net), sub: <>{money(s.perTrade)} per trade</> },
     { k: 'win', cap: 'Win rate', v: pct(s.winRate, 1), sub: <>PF {s.profitFactor == null ? '—' : s.profitFactor.toFixed(2)}</> },
     useR && s.avgR != null
-      ? { k: 'avgr', cap: 'Avg R', v: rStr(s.avgR), tone: s.avgR > 0 ? 'up' : s.avgR < 0 ? 'dn' : '', sub: <>W {s.avgWinR != null ? rStr(s.avgWinR) : '—'} · L {s.avgLossR != null ? rStr(s.avgLossR) : '—'}</> }
+      ? { k: 'avgr', cap: 'Avg R', v: rStr(s.avgR), tone: tone(s.avgR), sub: <>W {s.avgWinR != null ? rStr(s.avgWinR) : '—'} · L {s.avgLossR != null ? rStr(s.avgLossR) : '—'}</> }
       : { k: 'avgwin', cap: 'Avg win', v: cmoney(s.avgWin), tone: s.avgWin > 0 ? 'up' : '', sub: <>{s.avgLoss < 0 ? <>avg loss {money(s.avgLoss)}</> : 'no losses'}</> },
     { k: 'hold', cap: 'Avg hold', v: fmtHold(s.avgHoldSecs), sub: <>W {fmtHold(s.avgHoldWinSecs)} · L {fmtHold(s.avgHoldLossSecs)}</> },
     ...(graded && s.ruleBroken ? [{ k: 'rule', cap: 'Rule broken', v: s.ruleBroken.n.toLocaleString('en-US'), tone: s.ruleBroken.n ? 'dn' : '', sub: <>{cmoney(s.ruleBroken.net)}</> }] : []),
@@ -88,36 +88,38 @@ export function DailyStrip({ days, ai, onDay, onRule, filtered }: {
       <header className="tl-strip-h">
         <h3>Daily P&L<span> · {n} {n === 1 ? 'day' : 'days'}{filtered ? ` · ${viewDays} in view` : ''} · click a day to show it</span></h3>
         {ai && (
-          <button type="button" className="tl-strip-ai" onClick={() => onRule(ai.rule)} data-ai title={`Show trades with this rule broken (${ai.trades} trades on those days)`} data-testid="strip-ai">
+          <button type="button" className="tl-strip-ai" onClick={() => onRule(ai.rule)} data-ai title={`Show trades with this rule broken (${plural(ai.trades, 'trade')} on those days)`} data-testid="strip-ai">
             <AiMark /><span>{ai.text}</span>
           </button>
         )}
       </header>
       <div ref={ref} className="tl-strip-c">
         {w > 0 && n > 0 && (
-          <svg width={w} height={H + 18} role="img" aria-label={`Daily P&L for ${n} days`}>
+          <svg width={w} height={H + 18} role="img" aria-label={`Daily P&L for ${plural(n, 'day')}`}>
             {viewRuns.map(([a, b]) => <rect key={a} x={a * bw} y={0} width={(b - a + 1) * bw} height={H} fill="var(--d2-chip)" opacity={0.7} />)}
             <line x1={0} x2={w} y1={mid} y2={mid} stroke="var(--line)" />
             {days.map((d, i) => {
-              const h = Math.max(1.5, (Math.abs(d.net) / max) * (mid - 3));
+              // Every non-zero day gets at least STRIP_MIN_BAR px on its own side of
+              // the line, so one big day can't flatten the rest; a $0.00 day is a grey tick.
+              const bar = stripBar(d.net, max, mid - 3);
               const x = i * bw + (bw > 4 ? bw * 0.12 : 0);
               const ww = Math.max(1, bw > 4 ? bw * 0.76 : bw - 0.2);
               return (
-                <rect key={d.day} x={x} y={d.net >= 0 ? mid - h : mid} width={ww} height={h} rx={bw > 6 ? 1 : 0}
-                  fill={d.net >= 0 ? 'var(--d2-g)' : 'var(--d2-r)'} opacity={filtered && !d.inView ? 0.35 : 1} />
+                <rect key={d.day} x={x} y={bar.dir === 'up' ? mid - bar.h : bar.dir === 'dn' ? mid + 0.5 : mid - bar.h / 2} width={ww} height={bar.h} rx={bw > 6 ? 1 : 0}
+                  fill={bar.dir === 'up' ? 'var(--d2-g)' : bar.dir === 'dn' ? 'var(--d2-r)' : 'var(--mut)'} opacity={filtered && !d.inView ? 0.35 : 1} data-testid="strip-bar" data-dir={bar.dir} />
               );
             })}
             {/* Hit areas: the whole column per day, so thin bars are still clickable. */}
             {days.map((d, i) => (
               <rect key={`h${d.day}`} x={i * bw} y={0} width={Math.max(bw, 1)} height={H} fill="transparent" style={{ cursor: 'pointer' }}
                 onMouseEnter={() => setHover(d)} onMouseLeave={() => setHover(h => (h === d ? null : h))} onClick={() => onDay(d.day)}>
-                <title>{`${d.day}: ${d.net >= 0 ? '+' : '−'}$${Math.abs(d.net).toLocaleString('en-US', { maximumFractionDigits: 2 })} · ${d.n} trade${d.n === 1 ? '' : 's'}`}</title>
+                <title>{`${d.day}: ${money2(d.net)} · ${plural(d.n, 'trade')}`}</title>
               </rect>
             ))}
             {months.map(m => <text key={m.i} x={m.i * bw + 1} y={H + 14} fontSize={11} fill="var(--dim)">{m.label}</text>)}
           </svg>
         )}
-        {hover && <div className="tl-strip-tip" aria-hidden>{hover.day} · <b className={hover.net >= 0 ? 'up' : 'dn'}>{money(hover.net)}</b> · {hover.n} trade{hover.n === 1 ? '' : 's'}</div>}
+        {hover && <div className="tl-strip-tip" aria-hidden>{hover.day} · <b className={tone(hover.net)}>{money2(hover.net)}</b> · {plural(hover.n, 'trade')}</div>}
       </div>
     </section>
   );

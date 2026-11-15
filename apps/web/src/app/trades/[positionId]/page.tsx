@@ -14,9 +14,9 @@ import AppShell, { timeAgo } from '@/components/app-shell';
 import { LoadingScreen } from '@/components/loader';
 import { api, type BrokerAccount, type JournalEntry } from '@/lib/api';
 import { persistSelectedAccountId } from '@/lib/use-accounts';
-import { kmoney, money, pct } from '@/lib/dashboard-v2-format';
+import { kmoney, money, pct, tone } from '@/lib/dashboard-v2-format';
 import {
-  afterTheExit, candleWhatIf, excursion, noteFacts, ReviewError, tradeReviewApi, useReviewBars, type TradeReviewDTO,
+  afterTheExit, candleWhatIf, excursion, noteFacts, ReviewError, tradeReviewApi, useReviewBars, whatIfWord, type TradeReviewDTO,
 } from '@/lib/trade-review-api';
 import { AiFoot, Empty, Widget } from '@/components/dashboard-v2/ui';
 import TradeChart from '@/components/trade-review/trade-chart';
@@ -190,7 +190,7 @@ function TradeReview() {
                 <Widget id="similar" span={6} title="Similar trades" sub={r.similar ? `· ${r.similar.criteria.join(', ')}` : undefined} foot={similarFoot(r)}>
                   {r.similar ? (
                     <>
-                      <p className={`trv-sh1 ${r.similar.net < 0 ? 'dn' : r.similar.net > 0 ? 'up' : ''}`} data-testid="similar-head">{r.similar.wins} of {r.similar.n} won · {money(r.similar.net)}</p>
+                      <p className={`trv-sh1 ${tone(r.similar.net)}`} data-testid="similar-head">{r.similar.wins} of {r.similar.n} won · {money(r.similar.net)}</p>
                       <SimilarBars s={r.similar} me={{ net: t.net, closed: t.status === 'CLOSED' }} href={href} />
                     </>
                   ) : <Empty title="No similar trades yet" note={`Nothing else on ${t.symbol} ${t.side === 'LONG' ? 'longs' : 'shorts'} to compare with. This fills in as you trade it.`} />}
@@ -251,7 +251,7 @@ function chartFoot(r: TradeReviewDTO, after: ReturnType<typeof afterTheExit>, ex
 
 function gradeFoot(r: TradeReviewDTO, ladder: LadderRow[]) {
   const best = ladder.slice(1).filter(x => x.delta > 0.5).sort((a, b) => b.delta - a.delta)[0];
-  if (best) return <AiFoot line={{ text: `${best.key === 'skip' ? 'Skip it' : best.label}: saves`, value: best.delta, fmt: 'money', tone: 'up', trades: 1 }} link="How graded" href="#trv-how" />;
+  if (best) return <AiFoot line={{ text: `${best.key === 'skip' ? 'Skip it' : best.label}:`, value: best.delta, fmt: 'money', tone: 'up', trades: 1, suffix: whatIfWord(ladder[0]!.net, best.delta) === 'saves' ? 'saved' : 'more' }} link="How graded" href="#trv-how" />;
   if (r.grade) return <AiFoot line={{ text: r.grade.flags.length ? `${r.grade.flags.length} flag${r.grade.flags.length === 1 ? '' : 's'} · ${r.grade.basis} trades` : `Rules kept · ${r.grade.basis} trades`, value: null, fmt: 'text', tone: 'flat', trades: r.grade.basis }} link="How graded" href="#trv-how" />;
   return null;
 }
@@ -261,7 +261,7 @@ function similarFoot(r: TradeReviewDTO) {
   if (!s || s.n < 3) return null;
   const flagged = r.grade?.flags.some(f => f.key !== 'past-r') && s.criteria.some(c => /After|Within|Oversized|Losing|Your rule/.test(c));
   if (flagged && s.net < 0) return <AiFoot line={{ text: `Skipping all ${s.n} would have kept`, value: -s.net, fmt: 'money', tone: 'up', trades: s.n }} />;
-  return <AiFoot line={{ text: `${s.n} trades · ${pct(s.wins / s.n)} won · net`, value: s.net, fmt: 'money', tone: s.net > 0 ? 'up' : s.net < 0 ? 'dn' : 'flat', trades: s.n }} />;
+  return <AiFoot line={{ text: `${s.n} trades · ${pct(s.wins / s.n)} won · net`, value: s.net, fmt: 'money', tone: (tone(s.net) || 'flat') as 'up' | 'dn' | 'flat', trades: s.n }} />;
 }
 
 function setupFoot(r: TradeReviewDTO) {
@@ -270,7 +270,7 @@ function setupFoot(r: TradeReviewDTO) {
   const n = s.inHour.n + s.other.n;
   const h = String(Math.floor(s.hour)).padStart(2, '0');
   const what = `${s.symbol} ${s.side === 'LONG' ? 'longs' : 'shorts'}`;
-  const tn = (v: number) => (v > 0 ? 'up' : v < 0 ? 'dn' : 'flat') as 'up' | 'dn' | 'flat';
+  const tn = (v: number) => (tone(v) || 'flat') as 'up' | 'dn' | 'flat';
   if (!s.inHour.n) return <AiFoot line={{ text: `First of your ${what} at ${h}:00 UTC · other hours:`, value: s.other.net, fmt: 'money', tone: tn(s.other.net), trades: n }} />;
   return <AiFoot line={{ text: `${what} at ${h}:00 UTC: ${s.inHour.wins}/${s.inHour.n} won ·`, value: s.inHour.net, fmt: 'money', tone: tn(s.inHour.net), trades: n, suffix: `· ${kmoney(s.inHour.net + s.other.net)} all hours` }} />;
 }

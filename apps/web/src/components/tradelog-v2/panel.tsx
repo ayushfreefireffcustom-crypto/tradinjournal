@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, NotePencil, X } from '@phosphor-icons/react';
 import { fmtPrice } from '@/lib/desk';
+import { tone as toneOf } from '@/lib/dashboard-v2-format';
 import { clock, dayTitle, fmtHold, money2, rStr, tradelogApi, type TlRow, type TradelogTradeDTO } from '@/lib/tradelog-v2-api';
 import { TradeChart } from './trade-chart';
 import { GradeVerdict, SimilarStat } from './verdict';
@@ -37,7 +38,7 @@ export function TradePanel({ accountId, row, tz, minTrades, onClose, mode }: {
 
   const data = d.id === row.id ? d.data : null;
   const r = data?.row ?? row;
-  const tone = r.net > 0 ? 'up' : r.net < 0 ? 'dn' : '';
+  const tone = toneOf(r.net);
   const note = data?.note;
   const exitWord = r.exitReason ? EXIT_WORD[r.exitReason] : '';
   const pctBal = data?.balanceBefore && data.balanceBefore > 0 ? (r.net / data.balanceBefore) * 100 : null;

@@ -7,10 +7,9 @@ import Link from '@/components/v6/ui/link';
 import { Check, X } from '@phosphor-icons/react';
 import { useWidth } from '@/components/dashboard-v2/ui';
 import { heldFor } from '@/components/charts/trade-math';
-import { axisMoney, kmoney, money, pct, scale, ticks } from '@/lib/dashboard-v2-format';
-import type { CandleWhatIf, Excursion, ProcessGrade, ReviewDealDTO, SameSetupDTO, SimilarDTO, TradeReviewDTO, WhatIfDTO } from '@/lib/trade-review-api';
+import { axisMoney, kmoney, money, pct, scale, spct, ticks, tone } from '@/lib/dashboard-v2-format';
+import { whatIfWord, type CandleWhatIf, type Excursion, type ProcessGrade, type ReviewDealDTO, type SameSetupDTO, type SimilarDTO, type TradeReviewDTO, type WhatIfDTO } from '@/lib/trade-review-api';
 
-const tone = (v: number) => (v > 0 ? 'up' : v < 0 ? 'dn' : '');
 export const gradeTone = (g: ProcessGrade) => (g === 'A' || g === 'B' ? 'up' : g === 'C' ? 'mid' : 'dn');
 const hm = (ms: number) => new Date(ms).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 const hh = (h: number) => `${String(h >= 24 ? 24 : Math.floor(h) % 24).padStart(2, '0')}:00`;
@@ -103,6 +102,11 @@ export type LadderRow = (WhatIfDTO | CandleWhatIf) & { candle?: boolean };
 export function WhatIfLadder({ rows }: { rows: LadderRow[] }) {
   if (rows.length < 2) return null;
   const max = Math.max(1, ...rows.map(r => Math.abs(r.net)));
+  const actual = rows[0]!.net;
+  const diff = (delta: number) => {
+    const w = whatIfWord(actual, delta);
+    return w === 'saves' ? `saves ${money(delta, { plus: false })}` : w === 'more' ? `${money(delta)} more` : `${money(-delta, { plus: false })} less`;
+  };
   return (
     <div className="trv-ladder" data-testid="what-if">
       <div className="d2-cap">What I would have done</div>
@@ -112,7 +116,7 @@ export function WhatIfLadder({ rows }: { rows: LadderRow[] }) {
           <span className="trv-lb">{Math.abs(r.net) < 0.005 ? <em className="z" /> : <i className={r.net < 0 ? 'dn' : 'up'} style={{ width: `${Math.max(2, (Math.abs(r.net) / max) * 100)}%` }} />}</span>
           <span className="trv-lv">
             <b className={`d2-n ${tone(r.net)}`}>{money(r.net)}</b>
-            {i > 0 && Math.abs(r.delta) >= 0.5 && <small className={r.delta > 0 ? 'up' : 'dn'}>{r.delta > 0 ? `saves ${money(r.delta, { plus: false })}` : `costs ${money(-r.delta, { plus: false })}`}</small>}
+            {i > 0 && Math.abs(r.delta) >= 0.5 && <small className={r.delta > 0 ? 'up' : 'dn'}>{diff(r.delta)}</small>}
           </span>
         </div>
       ))}
@@ -230,7 +234,7 @@ export function Executions({ r, price }: { r: TradeReviewDTO; price: (v: number)
         <div><dt>Commission</dt><dd className="d2-n">{money(t.commission, { dec: 2 })}</dd></div>
         <div><dt>Swap</dt><dd className="d2-n">{money(t.swap, { dec: 2 })}</dd></div>
         <div className="net"><dt>Net</dt><dd className={`d2-n ${tone(t.net)}`}>{t.status === 'CLOSED' ? money(t.net, { dec: 2 }) : '—'}</dd></div>
-        {r.balanceAtOpen != null && t.status === 'CLOSED' && <div><dt>Of balance</dt><dd className={`d2-n ${tone(t.net)}`}>{`${t.net < 0 ? '−' : '+'}${Math.abs((t.net / r.balanceAtOpen) * 100).toFixed(2)}%`}</dd></div>}
+        {r.balanceAtOpen != null && t.status === 'CLOSED' && <div><dt>Of balance</dt><dd className={`d2-n ${tone(t.net)}`}>{spct(t.net / r.balanceAtOpen, 2)}</dd></div>}
       </dl>
       {deals.length === 0 ? <p className="trv-muted">No fills on file for this position.</p> : (
         <>

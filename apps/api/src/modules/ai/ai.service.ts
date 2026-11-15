@@ -60,7 +60,7 @@ export function fallbackReply(context: TraderContext): string {
   }
   return (
     "The AI coach isn't available right now, but here's what your data already shows:\n\n" +
-    context.insights.map(i => `• ${i}`).join('\n')
+    context.insights.map(i => `- ${i}`).join('\n')
   );
 }
 

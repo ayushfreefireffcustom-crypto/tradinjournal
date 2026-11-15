@@ -2,27 +2,41 @@
 import type { AiLine } from './dashboard-v2-api';
 
 const MINUS = '−';
-const sign = (v: number, plus: boolean) => (v < 0 ? MINUS : plus && v > 0 ? '+' : '');
+/** Below this a value shows as zero everywhere (0.00 at two decimals). */
+export const ZERO_EPS = 0.005;
+/** True when the value shows as 0 at two decimals: no sign and no colour. */
+export const isFlat = (v: number | null | undefined) => v == null || !Number.isFinite(v) || Math.abs(v) < ZERO_EPS;
+const sign = (v: number, plus: boolean) => (isFlat(v) ? '' : v < 0 ? MINUS : plus && v > 0 ? '+' : '');
+/** Under 50¢ but not zero: whole dollars would read "$0", so show cents. */
+const cents = (a: number) => a >= ZERO_EPS && a < 0.5;
+/** No sign when the text shows zero. */
+const zeroText = (s: string) => Number(s.replace(/[^0-9.]/g, '')) === 0;
 
-/** +$9,308 · −$2,601 · $34,308 (plus = false). */
+/** +$9,308 · −$2,601 · $34,308 (plus = false) · −$0.08 (never "$0" for a non-zero value). */
 export function money(v: number, { plus = true, dec = 0 }: { plus?: boolean; dec?: number } = {}): string {
   const a = Math.abs(v);
-  const r = Number(a.toFixed(dec));
-  return `${r === 0 ? '' : sign(v, plus)}$${r.toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec })}`;
+  const d = dec < 2 && cents(a) ? 2 : dec;
+  const r = Number(a.toFixed(d));
+  return `${r === 0 ? '' : sign(v, plus)}$${r.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d })}`;
 }
-/** +$4.7k · −$570 · +$13.2k · +$1.2M */
+/** +$4.7k · −$570 · +$13.2k · +$1.2M · −$0.08 */
 export function kmoney(v: number, { plus = true }: { plus?: boolean } = {}): string {
   const a = Math.abs(v);
-  const s = a >= 999_500 ? `${(a / 1e6).toFixed(1)}M` : a >= 1000 ? `${(a / 1000).toFixed(1)}k` : `${Math.round(a)}`;
-  return `${Math.round(a) === 0 ? '' : sign(v, plus)}$${s}`;
+  const s = a >= 999_500 ? `${(a / 1e6).toFixed(1)}M` : a >= 1000 ? `${(a / 1000).toFixed(1)}k` : cents(a) ? a.toFixed(2) : `${Math.round(a)}`;
+  return `${zeroText(s) ? '' : sign(v, plus)}$${s}`;
 }
+/** "1 trade", "3 trades", "1 loss", "2 losses" (many defaults to one + "s"). */
+export const plural = (n: number, one: string, many = `${one}s`) => `${n.toLocaleString('en-US')} ${n === 1 ? one : many}`;
 /** 0.372 → 37.2% */
 export const pct = (v: number, d = 0) => `${(v * 100).toFixed(d)}%`;
-/** Signed percent from a fraction: −8.1% */
-export const spct = (v: number, d = 1) => `${sign(v, true)}${Math.abs(v * 100).toFixed(d)}%`;
-/** +0.29R */
-export const rfmt = (v: number, d = 2) => `${sign(v, true)}${Math.abs(v).toFixed(d)}R`;
-export const tone = (v: number | null | undefined) => (v == null || v === 0 ? '' : v > 0 ? 'up' : 'dn');
+/** Signed percent from a fraction: −8.1% (no sign when it shows as 0.0%). */
+export const spct = (v: number, d = 1) => { const s = Math.abs(v * 100).toFixed(d); return `${zeroText(s) ? '' : sign(v, true)}${s}%`; };
+/** +0.29R (no sign when it shows as 0.00R). */
+export const rfmt = (v: number, d = 2) => { const s = Math.abs(v).toFixed(d); return `${zeroText(s) ? '' : sign(v, true)}${s}R`; };
+/** Green / red class for a money or R value; a value that shows as 0 stays neutral. */
+export const tone = (v: number | null | undefined) => (isFlat(v) ? '' : v! > 0 ? 'up' : 'dn');
+/** The same rule for SVG colours: up, down, or `flat` when the value shows as 0. */
+export const toneColor = (v: number, up: string, dn: string, flat = 'var(--mut)') => (isFlat(v) ? flat : v > 0 ? up : dn);
 
 export function fmtAi(l: AiLine): string {
   if (l.value == null) return '';

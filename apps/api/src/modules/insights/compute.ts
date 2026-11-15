@@ -28,6 +28,7 @@ import type {
   HourCellDTO, LeakDTO, ProcessGrade,
   TradingRules,
 } from '@tradinjournal/contracts';
+import { fundedBefore, opsOrStart, type BalanceOp } from './funding.js';
 import { hasRules, USER_RULE_PREFIX, userRuleHits, type UserRuleHit, type UserRules } from './rules.js';
 
 export interface InsightTrade {
@@ -51,8 +52,11 @@ export interface ComputeOptions {
   now: number;
   window: { from: number | null; to: number | null };
   filters: DashFilters;
-  /** Account starting balance (deposits before the first trade). */
+  /** Net of every balance operation (deposits − withdrawals). Used as one
+   *  opening deposit only when balanceOps is absent. */
   startingBalance: number;
+  /** Deposits and withdrawals with their times (MT5 BALANCE deals), oldest first. */
+  balanceOps?: BalanceOp[] | null;
   /** The trader's own rules (rules.ts); null/absent = none, nothing changes. */
   rules?: TradingRules | null;
 }
@@ -113,9 +117,12 @@ export function fmtMoney(v: number): string {
   return `${v < 0 ? '−' : v > 0 ? '+' : ''}$${a.toLocaleString('en-US')}`;
 }
 export const pct0 = (v: number) => `${Math.round(v * 100)}%`;
+/** "1 trade", "3 trades", "1 loss", "2 losses". */
+export const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 const line = (text: string, value: number | null, fmt: AiLine['fmt'], trades: number, tone?: AiLine['tone'], suffix?: string): AiLine => ({
   text, value: value == null ? null : round(value), fmt, trades,
-  tone: tone ?? (value == null ? 'flat' : value > 0 ? 'up' : value < 0 ? 'dn' : 'flat'),
+  // A value that shows as $0.00 / 0.00R is flat, not a loss.
+  tone: tone ?? (value == null || Math.abs(value) < 0.005 ? 'flat' : value > 0 ? 'up' : 'dn'),
   ...(suffix ? { suffix } : {}),
 });
 
@@ -157,7 +164,7 @@ export function tradeContext(all: InsightTrade[], user?: UserRules | null): Map<
       oversized: m != null && m > 0 && t.volume > OVERSIZE * m,
     });
   }
-  if (user && hasRules(user.rules)) for (const [id, hits] of userRuleHits(all, user.rules, user.startingBalance)) { const c = out.get(id); if (c) c.userRules = hits; }
+  if (user && hasRules(user.rules)) for (const [id, hits] of userRuleHits(all, user.rules, user.startingBalance, user.balanceOps)) { const c = out.get(id); if (c) c.userRules = hits; }
   return out;
 }
 
@@ -175,32 +182,86 @@ export function applyFilters(ts: InsightTrade[], f: DashFilters): InsightTrade[]
 
 // ─── blocks ──────────────────────────────────────────────────────────────────
 
-interface Curve { pts: EquityPointDTO[]; dd: DashEquity['drawdown'] }
-function curve(T: InsightTrade[], start: number): Curve {
-  let bal = start, peak = start, peakT = T[0]?.close ?? 0, peakI = -1;
-  let best: DashEquity['drawdown'] = null;
-  const pts: EquityPointDTO[] = [];
-  T.forEach((t, i) => {
-    bal += t.net;
-    pts.push({ t: t.close, v: round(bal), pnl: round(t.net) });
-    if (bal > peak) { peak = bal; peakT = t.close; peakI = i; }
-    else if (peak > 0) {
-      const pct = (peak - bal) / peak;
-      if (pct > 0 && (!best || pct > best.pct)) best = { pct: round(pct, 4), amount: round(peak - bal), peakT, troughT: t.close, trades: i - peakI };
-    }
-  });
-  return { pts, dd: best };
+interface Curve { pts: EquityPointDTO[]; dd: DashEquity['drawdown']; basis: DashEquity['basis']; start: number }
+/**
+ * Balance after each trade in T. Deposits and withdrawals (ops) land on the
+ * first point at or after them (`flow`); ops after the last trade, up to the
+ * end of the window, end the curve on one more point with no trade, so it
+ * finishes on the real balance. Cash flows never count as drawdown: the
+ * running peak moves with them.
+ *
+ * When the flows aren't known, or the curve would go below zero (deposits
+ * missing from the history), it is plotted as cumulative P&L from 0 instead
+ * (basis 'pnl'), never as a fake negative balance.
+ */
+function curve(T: InsightTrade[], start: number, ops: BalanceOp[], from: number, to: number): Curve {
+  const later = ops.filter(o => o.t >= from && o.t <= to);
+  // On the P&L basis there is no balance to take a percentage of.
+  const build = (s: number, flows: BalanceOp[], withPct: boolean) => {
+    let bal = s, peak = s, peakT = T[0]?.close ?? 0, peakI = -1, k = 0;
+    let best: DashEquity['drawdown'] = null;
+    const pts: EquityPointDTO[] = [];
+    const note = (t: number, i: number) => {
+      if (bal > peak) { peak = bal; peakT = t; peakI = i; }
+      else if (peak > bal) {
+        const pct = withPct && peak > 0 ? (peak - bal) / peak : null;
+        const amount = peak - bal;
+        const cur = best as DashEquity['drawdown'];
+        const deeper = !cur || (pct != null && cur.pct != null ? pct > cur.pct : amount > cur.amount);
+        if (deeper) best = { pct: pct == null ? null : round(pct, 4), amount: round(amount), peakT, troughT: t, trades: i - peakI };
+      }
+    };
+    T.forEach((t, i) => {
+      let flow = 0;
+      while (k < flows.length && flows[k]!.t <= t.close) flow += flows[k++]!.amount;
+      bal += flow + t.net;
+      peak += flow;
+      pts.push({ t: t.close, v: round(bal), pnl: round(t.net), ...(flow ? { flow: round(flow) } : {}) });
+      note(t.close, i);
+    });
+    let flow = 0, lastT = 0;
+    while (k < flows.length) { flow += flows[k]!.amount; lastT = flows[k++]!.t; }
+    if (flow) { bal += flow; pts.push({ t: lastT, v: round(bal), pnl: 0, flow: round(flow) }); }
+    return { pts, dd: best as DashEquity['drawdown'], low: pts.reduce((m, p) => Math.min(m, p.v), s) };
+  };
+  if (ops.length) {
+    const b = build(start, later, true);
+    if (b.low >= 0) return { pts: b.pts, dd: b.dd, basis: 'balance', start };
+  }
+  const p = build(0, [], false);
+  return { pts: p.pts, dd: p.dd, basis: 'pnl', start: 0 };
 }
 
-function dailyPoints(T: InsightTrade[], start: number): EquityPointDTO[] {
+/** Curve points merged per UTC day (last balance of the day, summed P&L and cash flow). */
+function dailyPoints(pts: EquityPointDTO[]): EquityPointDTO[] {
   const out: EquityPointDTO[] = [];
-  let bal = start;
-  for (const t of T) {
-    bal += t.net;
-    const k = dayKey(t.close), last = out.at(-1);
-    if (last && dayKey(last.t) === k) { last.v = round(bal); last.pnl = round(last.pnl + t.net); last.t = t.close; }
-    else out.push({ t: t.close, v: round(bal), pnl: round(t.net) });
+  for (const p of pts) {
+    const last = out.at(-1);
+    if (last && dayKey(last.t) === dayKey(p.t)) {
+      last.v = p.v; last.pnl = round(last.pnl + p.pnl); last.t = p.t;
+      const flow = round((last.flow ?? 0) + (p.flow ?? 0));
+      if (flow) last.flow = flow; else delete last.flow;
+    } else {
+      const { leak: _l, moved: _m, ...q } = p;
+      out.push({ ...q });
+    }
   }
+  return out;
+}
+
+/** Like sample(), but a dropped point's cash flow moves onto the next kept point. */
+export function sampleCurve(pts: EquityPointDTO[], max: number): EquityPointDTO[] {
+  if (pts.length <= max) return pts;
+  const keep = new Set(sample(pts.map((_, i) => i), max));
+  const out: EquityPointDTO[] = [];
+  let carry = 0;
+  pts.forEach((p, i) => {
+    carry += p.flow ?? 0;
+    if (!keep.has(i)) return;
+    const { flow: _f, ...q } = p;
+    out.push(carry ? { ...q, flow: round(carry) } : q);
+    carry = 0;
+  });
   return out;
 }
 
@@ -467,13 +528,19 @@ export function hours(T: InsightTrade[]): HourCellDTO[] {
   return [...m.values()];
 }
 
-function kpis(T: InsightTrade[], all: InsightTrade[], start: number, startingBalance: number, c: Curve): DashKpis {
+function kpis(T: InsightTrade[], all: InsightTrade[], start: number, ops: BalanceOp[], c: Curve): DashKpis {
   const a = agg(T);
   const wins = T.filter(t => t.net > 0), losses = T.filter(t => t.net < 0);
   const gp = sum(wins, t => t.net), gl = -sum(losses, t => t.net);
-  // Account balance and its peak: whole history, not the view.
-  let bal = startingBalance, peak = startingBalance;
-  for (const t of [...all].sort((x, y) => x.close - y.close)) { bal += t.net; peak = Math.max(peak, bal); }
+  // Account balance and its peak: whole history, not the view, with every
+  // deposit and withdrawal at its own time.
+  let bal = 0, peak = -Infinity, k = 0;
+  for (const t of [...all].sort((x, y) => x.close - y.close)) {
+    while (k < ops.length && ops[k]!.t <= t.close) { bal += ops[k++]!.amount; peak = Math.max(peak, bal); }
+    bal += t.net; peak = Math.max(peak, bal);
+  }
+  while (k < ops.length) { bal += ops[k++]!.amount; peak = Math.max(peak, bal); }
+  if (peak === -Infinity) peak = bal;
   const byDay = new Map<string, number>();
   for (const t of T) byDay.set(dayKey(t.close), (byDay.get(dayKey(t.close)) ?? 0) + t.net);
   const last = [...byDay].sort((x, y) => (x[0] < y[0] ? -1 : 1)).slice(-30);
@@ -481,7 +548,7 @@ function kpis(T: InsightTrade[], all: InsightTrade[], start: number, startingBal
   for (let i = 19; i < T.length; i++) roll.push(round(T.slice(i - 19, i + 1).filter(t => t.net > 0).length / 20, 3));
   const rs = T.filter(t => t.r != null);
   return {
-    netPnl: a.net, startBalance: round(start), returnPct: start > 0 ? round(a.net / start, 4) : null,
+    netPnl: a.net, startBalance: round(start), returnPct: c.basis === 'balance' && start > 0 ? round(a.net / start, 4) : null,
     balance: round(bal), peakBalance: round(peak),
     last30: { net: round(sum(last, d => d[1])), days: last.length, green: last.filter(d => d[1] > 0).length },
     winRate: a.n ? round(a.wins / a.n, 4) : 0,
@@ -491,7 +558,7 @@ function kpis(T: InsightTrade[], all: InsightTrade[], start: number, startingBal
     expectancyR: useR(T) ? round(sum(rs, t => t.r!) / rs.length) : null,
     avgWin: wins.length ? round(gp / wins.length) : 0, avgLoss: losses.length ? round(-gl / losses.length) : 0,
     maxDrawdown: c.dd ? { pct: c.dd.pct, amount: c.dd.amount, at: new Date(c.dd.troughT).toISOString() } : null,
-    equitySpark: sample([start, ...c.pts.map(p => p.v)], 40),
+    equitySpark: sample([c.start, ...c.pts.map(p => p.v)], 40),
   };
 }
 
@@ -499,10 +566,15 @@ function kpis(T: InsightTrade[], all: InsightTrade[], start: number, startingBal
 
 export function computeDashboard(allTrades: InsightTrade[], o: ComputeOptions): DashboardV2DTO {
   const all = [...allTrades].sort((a, b) => a.close - b.close);
-  const ctx = tradeContext(all, o.rules ? { rules: o.rules, startingBalance: o.startingBalance } : null);
+  const ctx = tradeContext(all, o.rules ? { rules: o.rules, startingBalance: o.startingBalance, balanceOps: o.balanceOps } : null);
   const win = inWindow(all, o.window);
   const T = applyFilters(win, o.filters);
-  const startBal = o.startingBalance + sum(all.filter(t => o.window.from != null && t.close < o.window.from), t => t.net);
+  const ops = opsOrStart(o.balanceOps, o.startingBalance);
+  // Balance carried into the view: cash in before it plus every trade closed
+  // before it. "All time" starts on the first trade, so the first deposit is
+  // the start rather than a jump.
+  const anchor = o.window.from ?? (T[0]?.close ?? 0);
+  const startBal = fundedBefore(ops, anchor) + sum(all.filter(t => o.window.from != null && t.close < o.window.from), t => t.net);
 
   const symCount = new Map<string, number>();
   for (const t of win) symCount.set(t.symbol, (symCount.get(t.symbol) ?? 0) + 1);
@@ -520,13 +592,14 @@ export function computeDashboard(allTrades: InsightTrade[], o: ComputeOptions): 
   };
   if (!T.length) return base;
 
-  const c = curve(T, startBal);
+  const c = curve(T, startBal, ops, anchor, o.window.to ?? o.now);
   const leakRows = findLeaks(T, ctx);
   const top = leakRows[0];
-  if (top) { const ids = new Set(top.ids); c.pts.forEach((p, i) => { if (ids.has(T[i]!.id)) p.leak = 1; }); }
-  c.pts.forEach((p, i) => { if (T[i]!.stopMove === 'widened') p.moved = 1; });
+  // c.pts[i] is T[i]; a trailing cash-flow point (if any) has no trade.
+  if (top) { const ids = new Set(top.ids); T.forEach((t, i) => { if (ids.has(t.id)) c.pts[i]!.leak = 1; }); }
+  T.forEach((t, i) => { if (t.stopMove === 'widened') c.pts[i]!.moved = 1; });
   const leakDays = new Set(top ? T.filter(t => top.ids.includes(t.id)).map(t => dayKey(t.close)) : []);
-  const days = dailyPoints(T, startBal).map(p => (leakDays.has(dayKey(p.t)) ? { ...p, leak: 1 as const } : p));
+  const days = dailyPoints(c.pts).map(p => (leakDays.has(dayKey(p.t)) ? { ...p, leak: 1 as const } : p));
   const hm = heatmap(T);
   const mm = maeMfe(T);
   const dist = distribution(T);
@@ -547,8 +620,8 @@ export function computeDashboard(allTrades: InsightTrade[], o: ComputeOptions): 
 
   return {
     ...base,
-    kpis: kpis(T, all, startBal, o.startingBalance, c),
-    equity: { start: round(startBal), trades: sample(c.pts, 2000), days, drawdown: c.dd, dotLabel: top?.label ?? null },
+    kpis: kpis(T, all, startBal, ops, c),
+    equity: { start: round(c.start), basis: c.basis, trades: sampleCurve(c.pts, 2000), days, drawdown: c.dd, dotLabel: top?.label ?? null },
     leaks: {
       rows: leakRows.map(({ ids: _ids, ...l }) => l),
       ai: fix && fix.gain > 0 ? line(fixPartner ? `Skip #1 + #${fixPartner + 1}:` : 'Skip #1:', fix.gain, 'money', fix.trades, 'up') : null,
@@ -558,7 +631,7 @@ export function computeDashboard(allTrades: InsightTrade[], o: ComputeOptions): 
     ai: {
       equity: top ? line(`${top.label}:`, top.net, 'money', top.trades, 'dn', `on ${top.trades} trades`) : null,
       heatmap: worstCell ? line(`${SESSION_LABEL[worstCell.session]} ${DAY_SHORT[worstCell.day]}: ${worstCell.wins}/${worstCell.n} won ·`, worstCell.net, 'money', worstCell.n) : null,
-      maeMfe: mm?.gaveBack ? line(`${mm.gaveBack.trades} losers were green first:`, mm.gaveBack.net, 'money', mm.gaveBack.trades) : null,
+      maeMfe: mm?.gaveBack ? line(`${plural(mm.gaveBack.trades, 'loser')} ${mm.gaveBack.trades === 1 ? 'was' : 'were'} green first:`, mm.gaveBack.net, 'money', mm.gaveBack.trades) : null,
       distribution: dist?.tail
         ? dist.unit === 'R'
           ? line('Keep the −1R stop:', dist.tail.excess, 'money', dist.tail.trades, 'up')

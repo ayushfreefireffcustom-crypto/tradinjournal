@@ -14,7 +14,7 @@ import { useAccounts } from '@/lib/use-accounts';
 import { authClient } from '@/lib/auth-client';
 import { rangeText } from '@/lib/date-presets';
 import { dashV2, type DashParams, type DashRange, type DashSession } from '@/lib/dashboard-v2-api';
-import { firstParagraph, SESSION_SHORT } from '@/lib/dashboard-v2-format';
+import { firstParagraph, plural, SESSION_SHORT } from '@/lib/dashboard-v2-format';
 import { anaV2, viewFromSearch, type AnalyticsV2DTO, type AnalyticsView } from '@/lib/analytics-v2-api';
 import AppShell, { timeAgo } from '@/components/app-shell';
 import ConnectBrokerModal from '@/components/connect-broker-modal';
@@ -232,7 +232,7 @@ export default function AnalyticsPage() {
             {data.counts.trades === 0 || !ctx ? (
               <section className="d2-card d2-connect" data-testid="analytics-no-trades">
                 <h2>No closed trades in this view</h2>
-                <p>{data.counts.inWindow ? `${data.counts.inWindow} trades in ${rangeLabel.toLowerCase()}, none match the filters.` : `Nothing closed in ${rangeLabel.toLowerCase()}. ${data.counts.allClosed} trades in total.`}</p>
+                <p>{data.counts.inWindow ? `${plural(data.counts.inWindow, 'trade')} in ${rangeLabel.toLowerCase()}, none match the filters.` : `Nothing closed in ${rangeLabel.toLowerCase()}. ${plural(data.counts.allClosed, 'trade')} in total.`}</p>
                 <div className="d2-row">
                   {hasFilters && <button type="button" className="x-btn" onClick={() => setFilters({})}>Clear filters</button>}
                   {span !== 'ALL' && <button type="button" className="x-btn" onClick={() => setSpan('ALL')}>Show all time</button>}
@@ -243,7 +243,7 @@ export default function AnalyticsPage() {
                 <ViewNav view={view} nav={data.nav} ai={ai} onPick={pickView} />
                 <div ref={mainRef} className={`a2-main${loading ? ' d2-stale' : ''}`} aria-busy={loading} data-testid={`analytics-view-${view}`}>
                   {data.counts.trades < data.minTrades && (
-                    <p className="d2-few" data-testid="few-trades">{data.counts.trades} trades in this view. The rules, behaviour score and some charts need {data.minTrades}.</p>
+                    <p className="d2-few" data-testid="few-trades">{plural(data.counts.trades, 'trade')} in this view. The rules, behaviour score and some charts need {data.minTrades}.</p>
                   )}
                   {view === 'overview'
                     ? <><Hero c={ctx} />{SECTIONS.map(({ id, C }) => <C key={id} c={ctx} no={sectionNo(id)} />)}</>

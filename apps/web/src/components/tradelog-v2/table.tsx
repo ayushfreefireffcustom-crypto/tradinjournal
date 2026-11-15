@@ -6,7 +6,7 @@
 import { memo, useLayoutEffect, useRef, useState } from 'react';
 import { ArrowDown, ArrowUp } from '@phosphor-icons/react';
 import { tagTone } from '@/lib/desk';
-import { money } from '@/lib/dashboard-v2-format';
+import { money, tone } from '@/lib/dashboard-v2-format';
 import { clock, dayTitle, fmtHold, money2, rStr, shortDate, type TlDay, type TlRow, type TlSort } from '@/lib/tradelog-v2-api';
 import { MiniPath } from './mini-path';
 import { GradeBox } from './verdict';
@@ -22,8 +22,6 @@ export function groupRows(rows: TlRow[], grouped: boolean): Group[] {
   }
   return out;
 }
-
-const tone = (v: number | null) => (v == null || v === 0 ? '' : v > 0 ? 'up' : 'dn');
 
 function Chips({ r, max = 2 }: { r: TlRow; max?: number }) {
   const items = [

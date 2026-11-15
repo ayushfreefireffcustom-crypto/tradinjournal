@@ -6,7 +6,8 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { CaretDown, Clock, Hourglass, Lock, Scales, Target } from '@phosphor-icons/react';
 import type { DashBehaviour, DashHeatmap, DashKpis, DashPlanRule, DashRecentTrade, DashSymbolRow, HourCellDTO, LeakDTO } from '@/lib/dashboard-v2-api';
-import { DAY_SHORT, fmtDate, kmoney, money, pct, rfmt, SESSION_SHORT, spct, tone } from '@/lib/dashboard-v2-format';
+import { DAY_SHORT, fmtDate, isFlat, kmoney, money, pct, plural, rfmt, SESSION_SHORT, spct, tone, toneColor } from '@/lib/dashboard-v2-format';
+import { clock, dayClock, shortDate } from '@/lib/tradelog-v2-api';
 import { AiMark, Empty } from './ui';
 import { MiniLine, Spark } from './charts';
 
@@ -16,10 +17,10 @@ const kpiMoney = (v: number, plus = true) => (Math.abs(v) >= 100_000 ? kmoney(v,
 export function KpiRibbon({ k, trades, behaviour, minTrades, ai }: { k: DashKpis; trades: number; behaviour: DashBehaviour | null; minTrades: number; ai: boolean }) {
   const payoff = k.avgLoss < 0 && k.avgWin > 0 ? k.avgWin / -k.avgLoss : null;
   const cells: Array<{ id: string; label: string; value: React.ReactNode; small: React.ReactNode }> = [
-    { id: 'net', label: 'Net P&L', value: <b className={`d2-n mny ${tone(k.netPnl)}`}>{kpiMoney(k.netPnl)}</b>, small: <><span title="Return on the balance at the start of the range">{k.returnPct != null ? spct(k.returnPct) : `${trades} trades`}</span><MiniLine vals={k.equitySpark} w={48} /></> },
+    { id: 'net', label: 'Net P&L', value: <b className={`d2-n mny ${tone(k.netPnl)}`}>{kpiMoney(k.netPnl)}</b>, small: <><span title="Return on the balance at the start of the range">{k.returnPct != null ? spct(k.returnPct) : plural(trades, 'trade')}</span><MiniLine vals={k.equitySpark} w={48} /></> },
     { id: 'balance', label: 'Balance', value: <b className="d2-n mny">{kpiMoney(k.balance, false)}</b>, small: <span>peak <span className="mny">{kpiMoney(k.peakBalance, false)}</span></span> },
     { id: 'last30', label: `${Math.min(30, k.last30.days)} session${k.last30.days === 1 ? '' : 's'}`, value: <b className={`d2-n mny ${tone(k.last30.net)}`}>{kpiMoney(k.last30.net)}</b>, small: <span title={`The last ${k.last30.days} days with a closed trade`}>{k.last30.green} of {k.last30.days} green</span> },
-    { id: 'winrate', label: 'Win rate', value: <b className="d2-n">{pct(k.winRate, 1)}</b>, small: k.rollingWinRate.length > 1 ? <><span title="Win rate over the last 20 trades, along the range">roll 20</span><MiniLine vals={k.rollingWinRate} w={48} /></> : <span>{trades} trades</span> },
+    { id: 'winrate', label: 'Win rate', value: <b className="d2-n">{pct(k.winRate, 1)}</b>, small: k.rollingWinRate.length > 1 ? <><span title="Win rate over the last 20 trades, along the range">roll 20</span><MiniLine vals={k.rollingWinRate} w={48} /></> : <span>{plural(trades, 'trade')}</span> },
     { id: 'pf', label: 'Profit factor', value: <b className="d2-n">{k.profitFactor == null ? '–' : k.profitFactor.toFixed(2)}</b>, small: <span className="mny">{k.profitFactor == null ? 'no losing trades' : `${money(k.grossProfit, { plus: false })} / ${money(k.grossLoss, { plus: false })}`}</span> },
     {
       id: 'exp', label: 'Expectancy',
@@ -27,7 +28,10 @@ export function KpiRibbon({ k, trades, behaviour, minTrades, ai }: { k: DashKpis
       small: k.expectancyR != null ? <span className="mny">{money(k.expectancy)} per trade</span> : <span title="In $: R needs a stop at entry">per trade</span>,
     },
     { id: 'avg', label: 'Avg win/loss', value: <b className="d2-n">{payoff == null ? '–' : `${payoff.toFixed(2)}×`}</b>, small: <span className="mny">{money(k.avgWin)} / {money(k.avgLoss)}</span> },
-    { id: 'dd', label: 'Drawdown', value: <b className={`d2-n ${k.maxDrawdown ? 'dn' : ''}`}>{k.maxDrawdown ? spct(-k.maxDrawdown.pct) : '0.0%'}</b>, small: <span>{k.maxDrawdown ? <><span className="mny">{money(-k.maxDrawdown.amount)}</span> · {fmtDate(new Date(k.maxDrawdown.at).getTime())}</> : 'no drawdown'}</span> },
+    { id: 'dd', label: 'Drawdown', value: k.maxDrawdown?.pct != null || !k.maxDrawdown
+      ? <b className={`d2-n ${k.maxDrawdown ? 'dn' : ''}`}>{k.maxDrawdown ? spct(-k.maxDrawdown.pct!) : '0.0%'}</b>
+      : <b className="d2-n dn mny">{kpiMoney(-k.maxDrawdown.amount)}</b>,
+      small: <span>{k.maxDrawdown ? <>{k.maxDrawdown.pct != null && <><span className="mny">{money(-k.maxDrawdown.amount)}</span> · </>}{fmtDate(new Date(k.maxDrawdown.at).getTime())}</> : 'no drawdown'}</span> },
     {
       id: 'behaviour', label: 'Behaviour',
       value: behaviour ? <b className="d2-n">{behaviour.score}<small>/100</small></b> : <b className="d2-n d2-dim">–</b>,
@@ -86,9 +90,11 @@ export function Heatmap({ hm, metric, ai }: { hm: DashHeatmap; metric: '$' | 'wi
             const wr = c.n ? c.wins / c.n : 0;
             const a = metric === '$' ? Math.min(1, Math.abs(c.net) / mxNet) : Math.min(1, Math.abs(wr - 0.5) * 2);
             const pos = metric === '$' ? c.net >= 0 : wr >= 0.5;
-            const strong = c.n > 0 && a > 0.7;
-            const solid = c.n > 0 && a > 0.88; // white text in light theme only on the deepest cells
-            const bg = c.n ? `rgba(${pos ? '8,196,101' : '254,58,49'},${(0.08 + a * 0.62).toFixed(2)})` : 'var(--d2-card2)';
+            // A cell that nets to $0.00 (or exactly 50% won) is neither green nor red.
+            const flat = metric === '$' ? isFlat(c.net) : wr === 0.5;
+            const strong = c.n > 0 && !flat && a > 0.7;
+            const solid = c.n > 0 && !flat && a > 0.88; // white text in light theme only on the deepest cells
+            const bg = !c.n ? 'var(--d2-card2)' : flat ? 'var(--d2-chip)' : `rgba(${pos ? '8,196,101' : '254,58,49'},${(0.08 + a * 0.62).toFixed(2)})`;
             return (
               <div key={`${s}${d}`} className={`d2-hc${isW ? ' worst' : isB ? ' best' : ''}${strong ? ' strong' : ''}${solid ? ' solid' : ''}`} style={{ background: bg }}
                 title={c.n ? `${SESSION_SHORT[s]} ${DAY_SHORT[d]}: ${money(c.net)} · ${c.wins} of ${c.n} won` : 'No trades'}>
@@ -199,7 +205,7 @@ export function SymbolsTable({ rows, rangeLabel }: { rows: DashSymbolRow[]; rang
             <tr key={r.symbol}>
               <td>
                 <span className="d2-sym">
-                  <i style={{ background: r.net >= 0 ? 'var(--d2-g)' : 'var(--d2-r)' }} /><b>{r.symbol}</b>
+                  <i style={{ background: toneColor(r.net, 'var(--d2-g)', 'var(--d2-r)') }} /><b>{r.symbol}</b>
                   {r.tag?.kind === 'pause' && <span className="d2-aitag dn" data-ai title="TRADElogs AI: net negative with a profit factor under 0.7">Pause</span>}
                   {r.tag?.kind === 'share' && <span className="d2-aitag up d2-hide-s" data-ai title="TRADElogs AI: share of net P&L">{pct(r.tag.pct ?? 0)} of profit</span>}
                 </span>
@@ -219,22 +225,29 @@ export function SymbolsTable({ rows, rangeLabel }: { rows: DashSymbolRow[]; rang
 }
 
 const GRADE_CLS: Record<string, string> = { A: 'up', B: 'up', C: 'mid', D: 'dn', F: 'dn' };
+/**
+ * The latest closed trades. Time = when the trade opened, in your own time
+ * zone, exactly as the trade log shows it. The grade column only appears once
+ * grades exist (they need MIN_TRADES trades); the page says so in the footer.
+ */
 export function RecentTable({ rows }: { rows: DashRecentTrade[] }) {
+  const graded = rows.some(t => t.grade);
   return (
     <div className="d2-tbl">
       <table className="d2-dt">
-        <thead><tr><th>Time</th><th>Symbol</th><th>P&amp;L</th><th data-ai>Grade</th></tr></thead>
+        <thead><tr><th>Time</th><th>Symbol</th><th>P&amp;L</th>{graded && <th data-ai>Grade</th>}</tr></thead>
         <tbody>
           {rows.map(t => {
-            const d = new Date(t.closeTime);
+            const open = new Date(t.openTime).getTime();
+            const close = new Date(t.closeTime).getTime();
             return (
               <tr key={t.id}>
-                <td><Link href={`/trades/${encodeURIComponent(t.id)}`} className="d2-rl">{DAY_SHORT[d.getUTCDay()]} {d.toISOString().slice(11, 16)}</Link></td>
+                <td><Link href={`/trades/${encodeURIComponent(t.id)}`} className="d2-rl" title={`Opened ${shortDate(open)} ${clock(open)} · closed ${shortDate(close)} ${clock(close)}`}>{dayClock(open)}</Link></td>
                 <td><b>{t.symbol}</b> <span className="d2-sd">{t.side === 'LONG' ? 'L' : 'S'}</span></td>
                 <td><b className={`d2-n mny ${tone(t.net)}`}>{money(t.net)}</b></td>
-                <td data-ai>{t.grade
+                {graded && <td data-ai>{t.grade
                   ? <span className={`d2-gd ${GRADE_CLS[t.grade]}`} title={t.reasons.length ? t.reasons.join(' · ') : 'No process flags'}>{t.grade}</span>
-                  : <span className="d2-dim" title="Grades need 20 trades">–</span>}</td>
+                  : <span className="d2-dim" title="Not graded">–</span>}</td>}
               </tr>
             );
           })}

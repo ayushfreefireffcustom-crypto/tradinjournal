@@ -19,6 +19,7 @@ import {
 } from './compute.js';
 import { flagsFor, preEntryFlags, similarTrades as reviewSimilar } from './trade-review.js';
 import { isUserRuleReason, USER_RULE_PREFIX, type UserRules } from './rules.js';
+import { fundedBefore, opsOrStart, type BalanceOp } from './funding.js';
 
 /** One position as the service hands it over (closed or still open). */
 export interface TlTrade {
@@ -172,6 +173,8 @@ export interface TlBase {
   graded: boolean;
   allClosed: number;
   startingBalance: number;
+  /** Deposits and withdrawals with their times; absent = startingBalance up front. */
+  balanceOps?: BalanceOp[] | null;
   tz: string;
   /** The trader's own rules (rules.ts), for the side panel's reasons. */
   user?: UserRules | null;
@@ -191,7 +194,7 @@ export function journalByTrade(entries: Array<{ id: string; tradeId: string | nu
   return out;
 }
 
-export function buildBase(trades: TlTrade[], journal: Map<string, TlJournal>, opts: { tz?: string | null; startingBalance: number; grades?: Map<string, Graded> | null; user?: UserRules | null }): TlBase {
+export function buildBase(trades: TlTrade[], journal: Map<string, TlJournal>, opts: { tz?: string | null; startingBalance: number; balanceOps?: BalanceOp[] | null; grades?: Map<string, Graded> | null; user?: UserRules | null }): TlBase {
   const tz = safeTz(opts.tz);
   const closed = trades.filter(t => t.status === 'CLOSED' && t.close != null);
   const grades = opts.grades !== undefined ? opts.grades : gradeAll(closed, opts.user);
@@ -214,7 +217,7 @@ export function buildBase(trades: TlTrade[], journal: Map<string, TlJournal>, op
     });
     hay.push([t.symbol, t.id, ...(j?.tags ?? []), j?.emotion ?? '', j?.body ?? ''].join('\n').toLowerCase());
   }
-  return { rows, hay, journal, graded: !!grades, allClosed: closed.length, startingBalance: opts.startingBalance, tz, user: opts.user ?? null };
+  return { rows, hay, journal, graded: !!grades, allClosed: closed.length, startingBalance: opts.startingBalance, balanceOps: opts.balanceOps ?? null, tz, user: opts.user ?? null };
 }
 
 // ─── filters ─────────────────────────────────────────────────────────────────
@@ -431,7 +434,8 @@ export function tradeDetail(base: TlBase, id: string): TradelogTradeDTO | null {
   let reasons: TlReason[] = [];
   let similar: TlSimilar | null = null;
   if (row.status === 'CLOSED') {
-    balanceBefore = round(base.startingBalance + sum(closedRows.filter(r => r.closeTime! < row.closeTime!), r => r.net));
+    // Cash in before this trade closed, plus every trade closed before it.
+    balanceBefore = round(fundedBefore(opsOrStart(base.balanceOps, base.startingBalance), row.closeTime!) + sum(closedRows.filter(r => r.closeTime! < row.closeTime!), r => r.net));
     const closed = closedRows.map(rowInsight);
     const me = closed.find(t => t.id === id)!;
     const ctx = tradeContext(closed, base.user);

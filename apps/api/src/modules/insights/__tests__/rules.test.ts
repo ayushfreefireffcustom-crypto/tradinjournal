@@ -67,6 +67,15 @@ describe('userRuleHits', () => {
     expect(h.has(e.id)).toBe(false);
     expect(h.has(a.id)).toBe(false);
   });
+  it('max risk %: the balance counts deposits and withdrawals at their own times', () => {
+    // $1,000 in, then $900 out before b: b risked 30 of a $200 balance (15%), not of $1,100.
+    const a = tr(MON + 8 * H, 100);
+    const b = tr(MON + 10 * H, -30, { r: -1 });
+    const ops = [{ t: MON, amount: 1000 }, { t: MON + 9 * H, amount: -900 }];
+    expect(userRuleHits([a, b], R({ maxRiskPct: 5 }), 100, ops).get(b.id)![0]).toMatchObject({ label: 'Risked 15.0%' });
+    // Without the flows the legacy single starting balance is used.
+    expect(userRuleHits([a, b], R({ maxRiskPct: 5 }), 1000).has(b.id)).toBe(false);
+  });
   it('stop after N losses: losing trades closed earlier that UTC day', () => {
     const a = tr(MON + 8 * H, -10), b = tr(MON + 9 * H, 20), c = tr(MON + 10 * H, -10);
     const d = tr(MON + 11 * H, 5); // 2 losses before

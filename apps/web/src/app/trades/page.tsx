@@ -23,6 +23,7 @@ import { rangeText } from '@/lib/date-presets';
 import { isCustom, spanBounds, type RangeKey, type Span } from '@/lib/stats';
 import { useAccounts } from '@/lib/use-accounts';
 import type { DashRange } from '@/lib/dashboard-v2-api';
+import { plural } from '@/lib/dashboard-v2-format';
 import {
   BUILTIN_FILTERS, cleanFilters, CSV_HEADERS, csvRow, loadViews, localDayKey, sameFilters, storeViews, tradelogApi, viewerTz,
   type BuiltinView, type SavedView, type TlDay, type TlFilters, type TlParams, type TlRow, type TlRuleKey, type TlSort, type TradelogDTO,
@@ -360,7 +361,7 @@ function TradeLogPage() {
                 {data.counts.matching === 0 ? (
                   <section className="d2-card d2-connect" data-testid="no-match">
                     <h2>No trades match</h2>
-                    <p>{data.counts.inWindow ? `${data.counts.inWindow} trades in ${rangeLabel.toLowerCase()}, none match these filters.` : `Nothing closed in ${rangeLabel.toLowerCase()}. ${data.counts.all} positions in total.`}</p>
+                    <p>{data.counts.inWindow ? `${plural(data.counts.inWindow, 'trade')} in ${rangeLabel.toLowerCase()}, none match these filters.` : `Nothing closed in ${rangeLabel.toLowerCase()}. ${plural(data.counts.all, 'position')} in total.`}</p>
                     <div className="d2-row">
                       {filtersOn && <button type="button" className="x-btn" onClick={clearAll}>Clear filters</button>}
                       {span !== 'ALL' && <button type="button" className="x-btn" onClick={() => setSpan('ALL')}>Show all time</button>}

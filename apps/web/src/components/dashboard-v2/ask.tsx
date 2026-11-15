@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, ChatCircleText, X } from '@phosphor-icons/react';
 import type { DashboardAskDTO } from '@/lib/dashboard-v2-api';
-import { fmtAi } from '@/lib/dashboard-v2-format';
+import { fmtAi, plural } from '@/lib/dashboard-v2-format';
 import { AskBars } from './charts';
 import { AiMark } from './ui';
 
@@ -59,7 +59,7 @@ export function AskBox({ state, onAsk, onClose, placement }: { state: AskState; 
         <div className="d2-pop" role="dialog" aria-label="Answer" data-testid="ask-answer">
           <div className="d2-pq">
             <AiMark />
-            <span className="d2-dim">{state.status === 'chart' ? `${state.a.used} trades` : state.status === 'text' ? 'AI coach' : ''}</span>
+            <span className="d2-dim">{state.status === 'chart' ? plural(state.a.used, 'trade') : state.status === 'text' ? 'AI coach' : ''}</span>
             <button type="button" className="d2-x" onClick={onClose} aria-label="Close answer"><X size={14} /></button>
           </div>
           {state.status === 'loading' && <div className="d2-pa d2-loading" aria-busy>Reading your trades…</div>}
@@ -71,13 +71,13 @@ export function AskBox({ state, onAsk, onClose, placement }: { state: AskState; 
               <div className="d2-pa">{state.a.title.text} {state.a.title.value != null && state.a.title.fmt !== 'text' && <span className={`d2-n mny ${state.a.title.tone === 'dn' ? 'dn' : state.a.title.tone === 'up' ? 'up' : ''}`}>{fmtAi(state.a.title)}</span>}{state.a.title.suffix ? ` ${state.a.title.suffix}` : ''}</div>
               {state.a.bars.length > 0 && <AskBars bars={state.a.bars} />}
               {state.a.followups.length > 0 && <div className="d2-sg">{state.a.followups.map(f => <button key={f} type="button" onClick={() => onAsk(f)}>{f}</button>)}</div>}
-              <div className="d2-pf"><span>{state.a.note ?? ''}</span><span className="d2-used">{state.a.used} trades used</span></div>
+              <div className="d2-pf"><span>{state.a.note ?? ''}</span><span className="d2-used">{plural(state.a.used, 'trade')} used</span></div>
             </>
           )}
           {state.status === 'text' && (
             <>
               <p className="d2-pt">{state.text || '…'}</p>
-              <div className="d2-pf"><span>{state.done ? 'Answered by the AI coach' : 'Writing…'}</span><Link href="/coach" className="d2-used">{state.used} trades used<ArrowRight size={11} /></Link></div>
+              <div className="d2-pf"><span>{state.done ? 'Answered by the AI coach' : 'Writing…'}</span><Link href="/coach" className="d2-used">{plural(state.used, 'trade')} used<ArrowRight size={11} /></Link></div>
             </>
           )}
         </div>

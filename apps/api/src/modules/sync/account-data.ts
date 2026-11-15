@@ -16,6 +16,7 @@ import { AppError, BrokerAuthError, BrokerConnectionError, NotFoundError } from 
 import { executionSelect, executionToDeal } from './sync.mapping.js';
 import { requestSyncWithin, syncQueue } from './sync.queue.js';
 import { computeStats, reconstructTrades } from '../trades/trades.service.js';
+import { balanceOpsOf } from '../insights/funding.js';
 import { assertAccountUsable } from '../../lib/broker-policy.js';
 
 export type ReadMode = 'interactive' | 'background' | 'readonly';
@@ -92,7 +93,7 @@ export async function loadAccountData(userId: string, accountId: string, mode: R
     deals: [...snap.deals],
     balance: snap.balance,
     trades: () => [...(snap.trades ??= reconstructTrades(snap.deals))],
-    stats: () => structuredClone(snap.stats ??= computeStats(snap.trades ??= reconstructTrades(snap.deals), snap.balance)),
+    stats: () => structuredClone(snap.stats ??= computeStats(snap.trades ??= reconstructTrades(snap.deals), snap.balance, balanceOpsOf(snap.deals))),
   };
 }
 

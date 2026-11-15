@@ -12,6 +12,7 @@ import { answerAsk } from './ask.js';
 import { loadTradeExtras } from '../trade-data/trade-data.service.js';
 import { rulesKey } from './rules.js';
 import { rulesFor } from '../prefs/prefs.service.js';
+import { balanceOpsOf } from './funding.js';
 
 const TTL_S = 60;
 
@@ -36,19 +37,19 @@ export async function loadInsightTrades(userId: string, accountId: string) {
         stopMove: x?.move ?? null,
       };
     });
-  return { account: data.account, startingBalance: data.stats().startingBalance, trades };
+  return { account: data.account, startingBalance: data.stats().startingBalance, balanceOps: balanceOpsOf(data.deals), trades };
 }
 
 const filtersOf = (q: DashboardV2Query) => ({ symbol: q.symbol, session: q.session, side: q.side, tag: q.tag });
 
 export async function dashboardV2(userId: string, q: DashboardV2Query, now = Date.now()): Promise<DashboardV2DTO> {
   // Ownership is checked inside loadAccountData; the cache key is only used after it.
-  const [{ account, startingBalance, trades }, rules] = await Promise.all([loadInsightTrades(userId, q.accountId), rulesFor(userId)]);
+  const [{ account, startingBalance, balanceOps, trades }, rules] = await Promise.all([loadInsightTrades(userId, q.accountId), rulesFor(userId)]);
   const hash = createHash('sha1').update(JSON.stringify([q.range, q.from, q.to, q.symbol, q.session, q.side, q.tag, rulesKey(rules)])).digest('hex').slice(0, 16);
-  const key = `insights:dash:v1:${account.id}:${account.dataVersion}:${hash}`;
+  const key = `insights:dash:v2:${account.id}:${account.dataVersion}:${hash}`;
   const hit = await cacheGet<DashboardV2DTO>(key);
   if (hit) return hit;
-  const out = computeDashboard(trades, { now, window: windowFor(q.range, q.from, q.to, now), filters: filtersOf(q), startingBalance, rules });
+  const out = computeDashboard(trades, { now, window: windowFor(q.range, q.from, q.to, now), filters: filtersOf(q), startingBalance, balanceOps, rules });
   await cacheSet(key, out, TTL_S);
   return out;
 }

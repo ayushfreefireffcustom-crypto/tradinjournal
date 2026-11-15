@@ -12,6 +12,7 @@
 //     Trades without R are not checked (never flagged).
 import type { RuleKey, RulesPreviewDTO, TradingRules } from '@tradinjournal/contracts';
 import type { InsightTrade } from './compute.js';
+import { fundedBefore, opsOrStart, type BalanceOp } from './funding.js';
 
 export type RulePart = 'discipline' | 'risk' | 'timing';
 export interface UserRuleHit {
@@ -25,7 +26,7 @@ export interface UserRuleHit {
   /** One line of evidence. */
   detail: string;
 }
-export interface UserRules { rules: TradingRules; startingBalance: number }
+export interface UserRules { rules: TradingRules; startingBalance: number; balanceOps?: BalanceOp[] | null }
 
 /** Prefix of a grade reason that came from one of the trader's own rules. */
 export const USER_RULE_PREFIX = 'Your rule: ';
@@ -85,7 +86,7 @@ export function inHours(minute: number, from: string, to: string): boolean {
 }
 
 /** Each trade's breaks of the trader's rules (trades with none are absent). */
-export function userRuleHits(all: InsightTrade[], r: TradingRules, startingBalance: number): Map<string, UserRuleHit[]> {
+export function userRuleHits(all: InsightTrade[], r: TradingRules, startingBalance: number, balanceOps?: BalanceOp[] | null): Map<string, UserRuleHit[]> {
   const out = new Map<string, UserRuleHit[]>();
   const keys = activeRules(r);
   if (!keys.length || !all.length) return out;
@@ -101,7 +102,8 @@ export function userRuleHits(all: InsightTrade[], r: TradingRules, startingBalan
   byClose.reduce((s, t, i) => (cum[i] = s + t.net), 0);
   /** Index of the first trade closed at or after ms. */
   const idxAt = (ms: number) => { let lo = 0, hi = byClose.length; while (lo < hi) { const m = (lo + hi) >> 1; if (byClose[m]!.close < ms) lo = m + 1; else hi = m; } return lo; };
-  const balanceBefore = (ms: number) => { const i = idxAt(ms); return startingBalance + (i > 0 ? cum[i - 1]! : 0); };
+  const ops = opsOrStart(balanceOps, startingBalance);
+  const balanceBefore = (ms: number) => { const i = idxAt(ms); return fundedBefore(ops, ms) + (i > 0 ? cum[i - 1]! : 0); };
 
   // Trade number within its UTC day, by open.
   const nth = new Map<string, number>();
@@ -175,11 +177,11 @@ export function userRuleHits(all: InsightTrade[], r: TradingRules, startingBalan
  * (by close) and what those trades netted. Rules are checked against the
  * whole history (a day's earlier trades count even before the window).
  */
-export function rulesPreview(all: InsightTrade[], r: TradingRules, startingBalance: number, now: number, days: number): RulesPreviewDTO {
+export function rulesPreview(all: InsightTrade[], r: TradingRules, startingBalance: number, now: number, days: number, balanceOps?: BalanceOp[] | null): RulesPreviewDTO {
   const from = now - days * DAY;
   const T = all.filter(t => t.close >= from && t.close <= now);
   const ids = new Set(T.map(t => t.id));
-  const hits = userRuleHits(all, r, startingBalance);
+  const hits = userRuleHits(all, r, startingBalance, balanceOps);
   const out: RulesPreviewDTO = { days, trades: T.length, rules: {}, any: { n: 0, net: 0 } };
   for (const key of activeRules(r)) {
     const broke = T.filter(t => hits.get(t.id)?.some(h => h.key === key));

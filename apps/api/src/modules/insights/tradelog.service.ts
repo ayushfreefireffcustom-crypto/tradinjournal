@@ -19,11 +19,12 @@ import {
 } from './tradelog.js';
 import { rulesKey, type UserRules } from './rules.js';
 import { rulesFor } from '../prefs/prefs.service.js';
+import { balanceOpsOf, type BalanceOp } from './funding.js';
 import { loadTradeExtras, positionLevels } from '../trade-data/trade-data.service.js';
 
 const CLOSING = new Set(['OUT', 'OUT_BY', 'INOUT']);
 
-interface Core { trades: TlTrade[]; grades: Map<string, Graded> | null; startingBalance: number; user: UserRules | null; at: number }
+interface Core { trades: TlTrade[]; grades: Map<string, Graded> | null; startingBalance: number; balanceOps: BalanceOp[]; user: UserRules | null; at: number }
 const MAX_CORES = 100;
 const CORE_TTL_MS = 5 * 60_000;
 const cores = new Map<string, Core>();
@@ -51,8 +52,9 @@ async function loadCore(userId: string, accountId: string): Promise<{ core: Core
     };
   });
   const startingBalance = data.stats().startingBalance;
-  const user = rules ? { rules, startingBalance } : null;
-  const core: Core = { trades, grades: gradeAll(trades.filter(t => t.status === 'CLOSED'), user), startingBalance, user, at: Date.now() };
+  const balanceOps = balanceOpsOf(data.deals);
+  const user = rules ? { rules, startingBalance, balanceOps } : null;
+  const core: Core = { trades, grades: gradeAll(trades.filter(t => t.status === 'CLOSED'), user), startingBalance, balanceOps, user, at: Date.now() };
   cores.delete(key);
   cores.set(key, core);
   if (cores.size > MAX_CORES) cores.delete(cores.keys().next().value!);
@@ -62,7 +64,7 @@ async function loadCore(userId: string, accountId: string): Promise<{ core: Core
 async function loadBase(userId: string, accountId: string, tz: string | undefined): Promise<TlBase> {
   const { core, accountId: acc } = await loadCore(userId, accountId);
   const journal = journalByTrade(await listJournalEntries(userId, acc));
-  return buildBase(core.trades, journal, { tz, startingBalance: core.startingBalance, grades: core.grades, user: core.user });
+  return buildBase(core.trades, journal, { tz, startingBalance: core.startingBalance, balanceOps: core.balanceOps, grades: core.grades, user: core.user });
 }
 
 export async function tradelog(userId: string, q: TradelogQuery, now = Date.now()): Promise<TradelogDTO> {

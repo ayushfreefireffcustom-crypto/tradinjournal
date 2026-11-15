@@ -6,6 +6,7 @@
 // blocks scroll inside themselves. Links open safely in a new tab.
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { bulletsToMarkdown } from '@/lib/coach-format';
 import '@/styles/v6/ai.css';
 
 export default function MarkdownMessage({ content }: { content: string }) {
@@ -21,7 +22,7 @@ export default function MarkdownMessage({ content }: { content: string }) {
           table: ({ children }) => <div className="ai-md-tbl"><table>{children}</table></div>,
         }}
       >
-        {content}
+        {bulletsToMarkdown(content)}
       </ReactMarkdown>
     </div>
   );

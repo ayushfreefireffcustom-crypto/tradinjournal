@@ -4,6 +4,7 @@
 import { useEffect } from 'react';
 import { X } from '@phosphor-icons/react';
 import { fmtPrice } from '@/lib/desk';
+import { tone } from '@/lib/dashboard-v2-format';
 import { clock, dayTitle, fmtHold, money2, rStr, type TlRow } from '@/lib/tradelog-v2-api';
 import { MiniPath } from './mini-path';
 import { GradeBox } from './verdict';
@@ -35,8 +36,8 @@ export function ComparePanel({ accountId, rows, onClose, onOpen, mode }: { accou
             {line('Lots', r => r.volume)}
             {line('Entry', r => fmtPrice(r.entry, r.exit))}
             {line('Exit', r => (r.exit != null ? fmtPrice(r.exit, r.entry) : '—'))}
-            {rows.some(r => r.r != null) && line('R', r => (r.r != null ? <b className={r.r > 0 ? 'up' : r.r < 0 ? 'dn' : ''}>{rStr(r.r)}</b> : '—'))}
-            {line('P&L', r => <b className={r.net > 0 ? 'up' : r.net < 0 ? 'dn' : ''}>{money2(r.net)}</b>)}
+            {rows.some(r => r.r != null) && line('R', r => (r.r != null ? <b className={tone(r.r)}>{rStr(r.r)}</b> : '—'))}
+            {line('P&L', r => <b className={tone(r.net)}>{money2(r.net)}</b>)}
             {line('Grade', r => <GradeBox grade={r.grade} />)}
             {line('Rules', r => (r.flags.length ? r.flags.map(f => f.short).join(', ') : r.grade ? 'Kept' : '—'))}
             {line('Tags', r => [...(r.emotion ? [r.emotion] : []), ...r.tags].join(', ') || '—')}

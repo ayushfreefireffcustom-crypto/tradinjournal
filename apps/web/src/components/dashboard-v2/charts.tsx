@@ -4,7 +4,7 @@
 // resize; AI marks (callouts, outlines, leak dots) render only when `ai` is on.
 import { useId } from 'react';
 import type { AskBarDTO, DashDistribution, DashEquity, DashMaeMfe, DashRolling, HourCellDTO } from '@/lib/dashboard-v2-api';
-import { axisMoney, fmtDate, kmoney, money, path, rfmt, scale, spct, ticks } from '@/lib/dashboard-v2-format';
+import { axisMoney, fmtDate, kmoney, money, path, plural, rfmt, scale, spct, ticks } from '@/lib/dashboard-v2-format';
 import { Callout, calloutW, useWidth } from './ui';
 
 type Box = { x: number; y: number; w: number; h: number };
@@ -33,16 +33,23 @@ function timeLabels(ts: number[], x: (i: number) => number, minGap: number) {
 export function EquityChart({ eq, mode, unit, ai, leakNet }: { eq: DashEquity; mode: 'trades' | 'days'; unit: '$' | '%'; ai: boolean; leakNet: number | null }) {
   const [ref, w] = useWidth<HTMLDivElement>();
   const pts = mode === 'trades' ? eq.trades : eq.days;
-  const pctMode = unit === '%' && eq.start > 0;
+  const pctMode = unit === '%' && eq.basis === 'balance' && eq.start > 0;
   const val = (v: number) => (pctMode ? ((v - eq.start) / eq.start) * 100 : v);
   const h = w < 520 ? 210 : 250;
   const padR = 46, padT = 12, padB = 22;
   let body = null;
   if (w > 0 && pts.length) {
     const series = [val(eq.start), ...pts.map(p => val(p.v))];
+    // Running peak for the drawdown shading. Deposits and withdrawals move the
+    // peak with them, so taking money out never shows as a drawdown.
     const peaks: number[] = [];
     let pk = -Infinity;
-    for (const v of series) { pk = Math.max(pk, v); peaks.push(pk); }
+    series.forEach((v, i) => {
+      const flow = i ? pts[i - 1]!.flow ?? 0 : 0;
+      if (flow && pk > -Infinity) pk += pctMode ? (flow / eq.start) * 100 : flow;
+      pk = Math.max(pk, v);
+      peaks.push(pk);
+    });
     const mn = Math.min(...series), mx = Math.max(...series);
     const pad = (mx - mn || Math.abs(mx) || 1) * 0.08;
     const lo = mn - pad, hi = mx + pad;
@@ -70,7 +77,7 @@ export function EquityChart({ eq, mode, unit, ai, leakNet }: { eq: DashEquity; m
     if (ai && eq.drawdown) {
       const ti = Math.max(1, pts.findIndex(p => p.t >= eq.drawdown!.troughT) + 1);
       const tx = x(ti), ty = y(series[ti] ?? series[end]!);
-      const text = `${spct(-eq.drawdown.pct)} dip · ${eq.drawdown.trades} trade${eq.drawdown.trades === 1 ? '' : 's'}`;
+      const text = `${eq.drawdown.pct != null ? spct(-eq.drawdown.pct) : money(-eq.drawdown.amount)} dip · ${eq.drawdown.trades} trade${eq.drawdown.trades === 1 ? '' : 's'}`;
       const cw = calloutW(text);
       const bx = Math.max(0, Math.min(tx - cw / 2, w - padR - cw));
       const below = { x: bx, y: ty + 18, w: cw, h: 34 }, above = { x: bx, y: ty - 18 - 34, w: cw, h: 34 };
@@ -79,7 +86,7 @@ export function EquityChart({ eq, mode, unit, ai, leakNet }: { eq: DashEquity; m
       if (b) callouts.push(<Callout key="dd" x={b.x} y={b.y} text={text} lead={[tx, ty]} maxX={w - padR} />);
     }
     body = (
-      <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="d2-chart" role="img" aria-label="Equity and drawdown">
+      <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="d2-chart" role="img" aria-label={eq.basis === 'pnl' ? 'Cumulative P&L' : 'Equity and drawdown'}>
         {ticks(lo, hi, 4).map(t => (
           <g key={t}>
             <line x1={0} x2={w - padR} y1={y(t)} y2={y(t)} stroke="var(--grid)" />
@@ -92,6 +99,12 @@ export function EquityChart({ eq, mode, unit, ai, leakNet }: { eq: DashEquity; m
         {ai && pts.map((p, i) => (p.leak ? <circle key={i} cx={x(i + 1)} cy={y(series[i + 1]!)} r={3} fill="var(--d2-r)" stroke="var(--d2-card)" strokeWidth={1} data-ai /> : null))}
         {/* Trades whose stop was widened: a red ring (only with recorded stop levels). */}
         {ai && pts.map((p, i) => (p.moved && !p.leak ? <circle key={`m${i}`} cx={x(i + 1)} cy={y(series[i + 1]!)} r={3.5} fill="var(--d2-card)" stroke="var(--d2-r)" strokeWidth={1.5} data-ai data-testid="moved-dot"><title>Stop widened</title></circle> : null))}
+        {/* Deposits and withdrawals: a small hollow square where the cash moved. */}
+        {pts.map((p, i) => (p.flow ? (
+          <rect key={`f${i}`} x={x(i + 1) - 3.5} y={y(series[i + 1]!) - 3.5} width={7} height={7} rx={1.5} fill="var(--d2-card)" stroke="var(--mut)" strokeWidth={1.25} data-testid="flow-mark">
+            <title>{`${p.flow > 0 ? 'Deposit' : 'Withdrawal'} ${money(p.flow)} · ${fmtDate(p.t)}`}</title>
+          </rect>
+        ) : null))}
         <circle cx={x(end)} cy={y(series[end]!)} r={3.5} fill="var(--d2-g)" />
         <text x={ex} y={endY} fontSize={13} fontWeight={900} fill="var(--tx)" textAnchor="end">{endLabel}</text>
         {labels.map((l, i) => <text key={i} x={Math.max(0, l.x)} y={h - 5} fontSize={11} fill="var(--dim)" textAnchor={i ? 'middle' : 'start'}>{l.label}</text>)}
@@ -204,7 +217,7 @@ export function MaeScatter({ mm, ai }: { mm: DashMaeMfe; ai: boolean }) {
   if (w > 0) {
     const xmin = Math.min(-1, ...mm.points.map(p => p.mae)), ymax = Math.max(1, ...mm.points.map(p => p.mfe));
     const x = scale(xmin * 1.05, 0, padL, w - padR), y = scale(0, ymax * 1.08, h - padB, padT);
-    const text = mm.gaveBack ? `${mm.gaveBack.trades} losers green first · ${kmoney(mm.gaveBack.net)}` : '';
+    const text = mm.gaveBack ? `${plural(mm.gaveBack.trades, 'loser')} green first · ${kmoney(mm.gaveBack.net)}` : '';
     body = (
       <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="d2-chart" role="img" aria-label="MAE against MFE">
         {ticks(0, ymax * 1.08, 4).map(t => (

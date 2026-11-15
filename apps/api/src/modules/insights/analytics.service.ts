@@ -12,6 +12,7 @@ import { computeAnalytics, type AnalyticsTrade } from './analytics-compute.js';
 import { loadTradeExtras } from '../trade-data/trade-data.service.js';
 import { rulesKey } from './rules.js';
 import { rulesFor } from '../prefs/prefs.service.js';
+import { balanceOpsOf } from './funding.js';
 
 const TTL_S = 60;
 async function loadAnalyticsTrades(userId: string, accountId: string, data: Awaited<ReturnType<typeof loadAccountData>>) {
@@ -37,19 +38,19 @@ async function loadAnalyticsTrades(userId: string, accountId: string, data: Awai
         tags: tags.get(t.positionId) ?? [], emotion: emotion.get(t.positionId) ?? null, stopMove: x?.move ?? null,
       };
     });
-  return { startingBalance: data.stats().startingBalance, trades };
+  return { startingBalance: data.stats().startingBalance, balanceOps: balanceOpsOf(data.deals), trades };
 }
 
 export async function analyticsV2(userId: string, q: AnalyticsV2Query, now = Date.now()): Promise<AnalyticsV2DTO> {
   // Ownership is checked inside loadAccountData (throws for someone else's account); the cache key is only used after it.
   const [data, rules] = await Promise.all([loadAccountData(userId, q.accountId), rulesFor(userId)]);
   const hash = createHash('sha1').update(JSON.stringify([q.range, q.from, q.to, q.symbol, q.session, q.side, q.tag, rulesKey(rules)])).digest('hex').slice(0, 16);
-  const key = `insights:ana:v1:${data.account.id}:${data.account.dataVersion}:${hash}`;
+  const key = `insights:ana:v2:${data.account.id}:${data.account.dataVersion}:${hash}`;
   const hit = await cacheGet<AnalyticsV2DTO>(key);
   if (hit) return hit;
-  const { startingBalance, trades } = await loadAnalyticsTrades(userId, q.accountId, data);
+  const { startingBalance, balanceOps, trades } = await loadAnalyticsTrades(userId, q.accountId, data);
   const out = computeAnalytics(trades, {
-    now, window: windowFor(q.range, q.from, q.to, now), startingBalance, rules,
+    now, window: windowFor(q.range, q.from, q.to, now), startingBalance, balanceOps, rules,
     filters: { symbol: q.symbol, session: q.session, side: q.side, tag: q.tag },
   });
   await cacheSet(key, out, TTL_S);

@@ -22,7 +22,7 @@ import type {
 } from '@tradinjournal/contracts';
 import {
   agg, applyFilters, baseline, behaviour as dashBehaviour, bestHours, checks, DAY, distribution, findLeaks, fmtMoney,
-  grade, hourOf, inWindow, maeMfe, median, MIN_TRADES, OVERSIZE, rolling, sample, SESSION_LABEL, sessionOf,
+  grade, hourOf, inWindow, maeMfe, median, MIN_TRADES, OVERSIZE, plural, rolling, sample, SESSION_LABEL, sessionOf,
   symbols as dashSymbols, tradeContext, useR, weekdayOf, dayKey, type Baseline, type ComputeOptions, type InsightTrade,
   type TradeContext,
 } from './compute.js';
@@ -331,7 +331,7 @@ function risk(T: InsightTrade[], R: boolean, dist: DashDistribution | null, mm: 
       hold: hold?.ratio != null && hold.ratio !== 1
         ? line(`Losers held ${hold.ratio > 1 ? `${hold.ratio.toFixed(1)}× longer` : `${(1 / hold.ratio).toFixed(1)}× shorter`}`, null, 'text', hold.points.length)
         : null,
-      maeMfe: mm?.gaveBack ? line(`${mm.gaveBack.trades} losers green first:`, mm.gaveBack.net, 'money', mm.gaveBack.trades) : null,
+      maeMfe: mm?.gaveBack ? line(`${plural(mm.gaveBack.trades, 'loser')} green first:`, mm.gaveBack.net, 'money', mm.gaveBack.trades) : null,
       rolling: r20 ? line('Now', r20.now, r20.unit === 'R' ? 'r' : 'money', 20, undefined, high != null ? `· high ${fmtV(high)}` : undefined) : null,
       exit: exit ? line('Winners keep', exit.avg, 'pct', exit.n, 'flat', 'of the move') : null,
     },
@@ -443,7 +443,7 @@ function whatIf(T: InsightTrade[], ctx: Map<string, TradeContext>, R: boolean, m
     base, fixes, gains, removed, defaultMask, breakEven, breakEvenNeeds: needs,
     ai: {
       header: fixes.length ? line(`${chosen === 2 ? 'Two rules' : 'One rule'}:`, base + gains[defaultMask]!, 'money', T.length) : null,
-      steps: fixes.length ? line(`${removed[defaultMask]} trades removed`, null, 'text', removed[defaultMask]!) : null,
+      steps: fixes.length ? line(`${plural(removed[defaultMask]!, 'trade')} removed`, null, 'text', removed[defaultMask]!) : null,
       rules: fixes.length > chosen ? line(`Adding the other ${fixes.length - chosen}:`, extra, 'money', T.length) : null,
     },
   };
@@ -458,7 +458,7 @@ const nav = (view: AnaNavItem['view'], value: number | null, fmt: AnaNavItem['fm
 
 export function computeAnalytics(allTrades: AnalyticsTrade[], o: ComputeOptions): AnalyticsV2DTO {
   const all = [...allTrades].sort((a, b) => a.close - b.close);
-  const ctx = tradeContext(all, o.rules ? { rules: o.rules, startingBalance: o.startingBalance } : null);
+  const ctx = tradeContext(all, o.rules ? { rules: o.rules, startingBalance: o.startingBalance, balanceOps: o.balanceOps } : null);
   const usual = usualSize(all);
   const win = inWindow(all, o.window);
   const T = applyFilters(win, o.filters) as AnalyticsTrade[];

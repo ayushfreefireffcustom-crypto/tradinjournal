@@ -380,3 +380,41 @@ describe('computeStats', () => {
     expect(s.avgDurationSecs).toBe(((1 * 3600) + (2 * 3600)) / 2);
   });
 });
+
+// ─── 9. Dated deposits / withdrawals ─────────────────────────────────────────
+
+describe('computeStats with dated balance operations', () => {
+  // Deposit $1k, win $5.5k, withdraw $6.4k: the old single "starting balance"
+  // (1000 − 6400 = −5400) put the curve below zero before the first trade.
+  const trades = reconstructTrades([
+    deal({ positionId: '90', type: 'BUY', entry: 'IN', volume: '1.0', price: '1.1000', dealTime: '2024-06-01T09:00:00.000Z' }),
+    deal({ positionId: '90', type: 'SELL', entry: 'OUT', volume: '1.0', price: '1.2000', profit: '5500', dealTime: '2024-06-02T09:00:00.000Z' }),
+    deal({ positionId: '91', type: 'BUY', entry: 'IN', volume: '1.0', price: '1.1000', dealTime: '2024-06-05T09:00:00.000Z' }),
+    deal({ positionId: '91', type: 'SELL', entry: 'OUT', volume: '1.0', price: '1.0950', profit: '-50', dealTime: '2024-06-06T09:00:00.000Z' }),
+  ]);
+  const ops = [
+    { t: Date.parse('2024-05-30T00:00:00.000Z'), amount: 1000 },
+    { t: Date.parse('2024-06-03T00:00:00.000Z'), amount: -6400 },
+  ];
+
+  it('never starts below zero and ends on the real balance', () => {
+    const s = computeStats(trades, 1000 - 6400, ops);
+    expect(s.startingBalance).toBe(1000);
+    expect(s.equityCurve.map(p => p.equity)).toEqual([1000, 6500, 50]);
+    expect(Math.min(...s.equityCurve.map(p => p.equity))).toBeGreaterThanOrEqual(0);
+    expect(s.currentEquity).toBe(50);
+  });
+
+  it('does not count a withdrawal as a drawdown', () => {
+    const s = computeStats(trades, 1000 - 6400, ops);
+    // Only the −$50 trade is a drawdown: peak 100 after the withdrawal → 50.
+    expect(s.maxDrawdownPct).toBeCloseTo(0.5, 6);
+  });
+
+  it('applies a withdrawal after the last close to the final balance', () => {
+    const late = [...ops, { t: Date.parse('2024-06-10T00:00:00.000Z'), amount: -20 }];
+    const s = computeStats(trades, 1000 - 6420, late);
+    expect(s.currentEquity).toBe(30);
+    expect(s.equityCurve.at(-1)!.equity).toBe(30);
+  });
+});

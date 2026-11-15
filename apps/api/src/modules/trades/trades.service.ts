@@ -1,3 +1,4 @@
+import { opsOrStart, type BalanceOp } from '../insights/funding.js';
 import type { Deal, Trade, AccountStats, EquityPoint, SymbolStat, DayStat, DirectionStat } from '@tradinjournal/types';
 import { loadAccountData, type ReadMode } from '../sync/account-data.js';
 
@@ -75,7 +76,13 @@ export function reconstructTrades(deals: Deal[]): Trade[] {
 
 // ─── Stats computation ────────────────────────────────────────────────────────
 
-export function computeStats(trades: Trade[], startingBalance: number): AccountStats {
+/**
+ * `ops` are the account's dated deposits / withdrawals (MT5 BALANCE deals). With
+ * them the equity curve applies each one on its own date, so money withdrawn
+ * later never shows as a negative start; without them `startingBalance` is
+ * treated as deposited before the first trade (the old behaviour).
+ */
+export function computeStats(trades: Trade[], startingBalance: number, ops?: BalanceOp[]): AccountStats {
   const closed = trades.filter(t => t.status === 'CLOSED');
   const wins   = closed.filter(t => t.netPnl > 0);
   const losses = closed.filter(t => t.netPnl <= 0);
@@ -100,20 +107,30 @@ export function computeStats(trades: Trade[], startingBalance: number): AccountS
   const sorted = [...closed].sort((a, b) =>
     new Date(a.closeTime!).getTime() - new Date(b.closeTime!).getTime()
   );
-  const equityCurve: EquityPoint[] = [{ time: '', equity: startingBalance }];
-  let equity = startingBalance;
+  // Cash flows in date order. A withdrawal moves the balance and the peak by
+  // the same amount, so it is never counted as a drawdown.
+  const flows = opsOrStart(ops ?? null, startingBalance);
+  const firstMs = sorted.length ? new Date(sorted[0]!.closeTime!).getTime() : Infinity;
+  let fi = 0;
+  let start = 0;
+  while (fi < flows.length && flows[fi]!.t < firstMs) start += flows[fi++]!.amount;
+  const equityCurve: EquityPoint[] = [{ time: '', equity: start }];
+  let equity = start;
+  let peak = start;
+  let maxDrawdownPct = 0;
   for (const t of sorted) {
+    const ms = new Date(t.closeTime!).getTime();
+    while (fi < flows.length && flows[fi]!.t <= ms) { const a = flows[fi++]!.amount; equity += a; peak += a; }
     equity += t.netPnl;
     equityCurve.push({ time: t.closeTime!, equity });
-  }
-
-  // Max drawdown
-  let peak = startingBalance;
-  let maxDrawdownPct = 0;
-  for (const p of equityCurve) {
-    if (p.equity > peak) peak = p.equity;
-    const dd = peak > 0 ? (peak - p.equity) / peak : 0;
+    if (equity > peak) peak = equity;
+    const dd = peak > 0 ? (peak - equity) / peak : 0;
     if (dd > maxDrawdownPct) maxDrawdownPct = dd;
+  }
+  // Flows after the last close still belong to the balance.
+  while (fi < flows.length) equity += flows[fi++]!.amount;
+  if (equityCurve.length > 1 && equity !== equityCurve[equityCurve.length - 1]!.equity) {
+    equityCurve.push({ time: new Date(flows[flows.length - 1]!.t).toISOString(), equity });
   }
 
   // By symbol
@@ -166,7 +183,7 @@ export function computeStats(trades: Trade[], startingBalance: number): AccountS
     netPnl, totalTrades: closed.length, openTrades: trades.filter(t => t.status === 'OPEN').length,
     totalWins: wins.length, totalLosses: losses.length, winRate, profitFactor,
     avgWin, avgLoss, bestTrade, worstTrade, maxDrawdownPct, grossProfit, grossLoss,
-    avgDurationSecs, startingBalance, currentEquity: equity,
+    avgDurationSecs, startingBalance: start, currentEquity: equity,
     equityCurve, bySymbol, byDay,
     byDirection: { long, short },
     maxWinStreak,

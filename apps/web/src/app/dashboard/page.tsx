@@ -14,7 +14,7 @@ import { useAccounts } from '@/lib/use-accounts';
 import { authClient } from '@/lib/auth-client';
 import { rangeText } from '@/lib/date-presets';
 import { dashV2, type DashboardV2DTO, type DashParams, type DashRange, type DashSession } from '@/lib/dashboard-v2-api';
-import { firstParagraph, money, nextSession, pct, SESSION_SHORT } from '@/lib/dashboard-v2-format';
+import { firstParagraph, money, nextSession, pct, plural, SESSION_SHORT } from '@/lib/dashboard-v2-format';
 import AppShell, { timeAgo } from '@/components/app-shell';
 import ConnectBrokerModal from '@/components/connect-broker-modal';
 import { useToast } from '@/components/toast';
@@ -269,7 +269,7 @@ export default function DashboardPage() {
             {data.counts.trades === 0 || !data.kpis ? (
               <section className="d2-card d2-connect" data-testid="dashboard-no-trades">
                 <h2>No closed trades in this view</h2>
-                <p>{data.counts.inWindow ? `${data.counts.inWindow} trades in ${rangeLabel.toLowerCase()}, none match the filters.` : `Nothing closed in ${rangeLabel.toLowerCase()}. ${data.counts.allClosed} trades in total.`}</p>
+                <p>{data.counts.inWindow ? `${plural(data.counts.inWindow, 'trade')} in ${rangeLabel.toLowerCase()}, none match the filters.` : `Nothing closed in ${rangeLabel.toLowerCase()}. ${plural(data.counts.allClosed, 'trade')} in total.`}</p>
                 <div className="d2-row">
                   {hasFilters && <button type="button" className="x-btn" onClick={() => setFilters({})}>Clear filters</button>}
                   {span !== 'ALL' && <button type="button" className="x-btn" onClick={() => setSpan('ALL')}>Show all time</button>}
@@ -279,7 +279,7 @@ export default function DashboardPage() {
               <div className={`d2-body${loading ? ' d2-stale' : ''}`} aria-busy={loading}>
                 <KpiRibbon k={data.kpis} trades={data.counts.trades} behaviour={data.behaviour} minTrades={data.minTrades} ai={ai} />
                 {data.counts.trades < data.minTrades && (
-                  <p className="d2-few" data-testid="few-trades">{data.counts.trades} trades in this view. Behaviour score, grades and the plan need {data.minTrades}.</p>
+                  <p className="d2-few" data-testid="few-trades">{plural(data.counts.trades, 'trade')} in this view. Behaviour score, grades and the plan need {data.minTrades}.</p>
                 )}
                 <div className="d2-grid">
                   {(() => {
@@ -319,12 +319,13 @@ export default function DashboardPage() {
       case 'equity': {
         const leak = d.leaks.rows[0] ?? null;
         return (
-          <Widget id="equity" span={s} title="Equity & drawdown" sub={ai && d.equity?.dotLabel ? <span data-ai>· red dot = {d.equity.dotLabel.toLowerCase()}</span> : null}
+          <Widget id="equity" span={s} title={d.equity?.basis === 'pnl' ? 'Cumulative P&L' : 'Equity & drawdown'}
+            sub={ai && d.equity?.dotLabel ? <span data-ai>· red dot = {d.equity.dotLabel.toLowerCase()}</span> : d.equity?.basis === 'pnl' ? <span title="Deposits and withdrawals aren't in this account's history, so this is profit and loss from 0, not the balance">· from $0</span> : null}
             tools={<>
               <Toggle label="Points" value={eqMode} onChange={setEqMode} options={[{ v: 'trades', label: 'Trades' }, { v: 'days', label: 'Days' }]} />
-              <span className="d2-unit"><Toggle label="Unit" value={eqUnit} onChange={setEqUnit} options={[{ v: '$', label: '$' }, { v: '%', label: '%', disabled: !(d.equity && d.equity.start > 0) }]} /></span>
+              <span className="d2-unit"><Toggle label="Unit" value={eqUnit} onChange={setEqUnit} options={[{ v: '$', label: '$' }, { v: '%', label: '%', disabled: !(d.equity && d.equity.basis === 'balance' && d.equity.start > 0) }]} /></span>
             </>}
-            onExplain={d.equity ? () => explain('equity curve', `start ${money(d.equity!.start, { plus: false })}, now ${money(d.kpis!.balance, { plus: false })}, net ${money(d.kpis!.netPnl)}, deepest dip ${d.equity!.drawdown ? `${pct(d.equity!.drawdown.pct, 1)} over ${d.equity!.drawdown.trades} trades` : 'none'}${leak ? `, worst leak ${leak.label} ${money(leak.net)} on ${leak.trades} trades` : ''}`) : undefined}
+            onExplain={d.equity ? () => explain(d.equity!.basis === 'pnl' ? 'cumulative P&L curve' : 'equity curve', `${d.equity!.basis === 'pnl' ? 'cumulative P&L from $0 (deposits and withdrawals not known)' : `start ${money(d.equity!.start, { plus: false })}, now ${money(d.kpis!.balance, { plus: false })}, deposits and withdrawals shown at their dates`}, net ${money(d.kpis!.netPnl)}, deepest dip ${d.equity!.drawdown ? `${d.equity!.drawdown.pct != null ? pct(d.equity!.drawdown.pct, 1) : money(-d.equity!.drawdown.amount)} over ${plural(d.equity!.drawdown.trades, 'trade')}` : 'none'}${leak ? `, worst leak ${leak.label} ${money(leak.net)} on ${leak.trades} trades` : ''}`) : undefined}
             foot={ai ? <AiFoot line={d.ai.equity} /> : null}>
             {d.equity ? <EquityChart eq={d.equity} mode={eqMode} unit={eqUnit} ai={ai} leakNet={leak?.net ?? null} /> : <Empty title="No equity yet" />}
           </Widget>
@@ -352,13 +353,13 @@ export default function DashboardPage() {
           <Widget id="mae" span={s} title="MAE / MFE" sub="· worst vs best point"
             onExplain={d.maeMfe ? () => explain('MAE/MFE scatter', `${d.maeMfe!.points.length} trades${d.maeMfe!.gaveBack ? `, ${d.maeMfe!.gaveBack.trades} losers were in profit first (${money(d.maeMfe!.gaveBack.net)})` : ''}`) : undefined}
             foot={ai ? <AiFoot line={d.ai.maeMfe} /> : null}>
-            {d.maeMfe ? <MaeScatter mm={d.maeMfe} ai={ai} /> : <Empty title="No MAE / MFE data yet" note={`Needs the price path of each trade. ${d.counts.withMae} of ${T} trades have it.`} />}
+            {d.maeMfe ? <MaeScatter mm={d.maeMfe} ai={ai} /> : <Empty title="No MAE / MFE data yet" note={`Needs the price path of each trade. ${d.counts.withMae} of ${plural(T, 'trade')} ${T === 1 ? 'has' : 'have'} it.`} />}
           </Widget>
         );
       case 'dist': {
         const dist = d.distribution;
         return (
-          <Widget id="dist" span={s} title={dist?.unit === 'R' ? 'R-multiple distribution' : 'P&L distribution'} sub={`· ${T} trades`}
+          <Widget id="dist" span={s} title={dist?.unit === 'R' ? 'R-multiple distribution' : 'P&L distribution'} sub={`· ${plural(T, 'trade')}`} className={dist ? '' : 'd2-w-empty'}
             onExplain={dist ? () => explain('trade result distribution', `unit ${dist.unit}, mean ${dist.unit === 'R' ? `${dist.mean}R` : money(dist.mean)}${dist.tail ? `, ${dist.tail.trades} trades past ${dist.unit === 'R' ? '−1.25R' : money(dist.tail.threshold)} lost ${money(dist.tail.net)}` : ''}`) : undefined}
             foot={<>
               {dist && dist.unit === '$' && <div className="d2-note" data-testid="r-note">In $: R needs a stop at entry ({d.counts.withR} of {T} have one).</div>}
@@ -370,7 +371,7 @@ export default function DashboardPage() {
       }
       case 'rolling':
         return (
-          <Widget id="rolling" span={s} title="Rolling expectancy" sub={d.rolling ? `· ${d.rolling.window} trades` : ''}
+          <Widget id="rolling" span={s} title="Rolling expectancy" sub={d.rolling ? `· ${d.rolling.window} trades` : ''} className={d.rolling ? '' : 'd2-w-empty'}
             onExplain={d.rolling ? () => explain('rolling expectancy', `${d.rolling!.window}-trade average now ${d.rolling!.now} ${d.rolling!.unit}, low ${d.rolling!.low.v} ${d.rolling!.unit}`) : undefined}
             foot={ai ? <AiFoot line={d.ai.rolling} /> : null}>
             {d.rolling ? <RollingChart roll={d.rolling} ai={ai} /> : <Empty title="Needs 30 trades" note={`${T} so far.`} />}
@@ -378,7 +379,7 @@ export default function DashboardPage() {
         );
       case 'behaviour':
         return (
-          <Widget id="behaviour" span={s} title="Behaviour" sub="· score /100"
+          <Widget id="behaviour" span={s} title="Behaviour" sub="· score /100" className={d.behaviour ? '' : 'd2-w-empty'}
             onExplain={d.behaviour ? () => explain('behaviour score', `score ${d.behaviour!.score}, last 30 ${d.behaviour!.last30}; ${d.behaviour!.parts.map(p => `${p.label} ${p.score} (last 30: ${p.last30})`).join(', ')}`) : undefined}
             foot={ai ? <AiFoot line={d.ai.behaviour} /> : null}>
             {d.behaviour ? <BehaviourBars b={d.behaviour} /> : <Empty title={`Needs ${d.minTrades} trades`} note={`${T} so far. The score uses your own history as the baseline.`} />}
@@ -399,7 +400,7 @@ export default function DashboardPage() {
                   {symbol ? <>
                     {picker}
                     {cells.length ? <>
-                      <div className="d2-hsum">All hours: <b>{pct(all.wins / all.n)} won</b> · {all.n} trades</div>
+                      <div className="d2-hsum">All hours: <b>{pct(all.wins / all.n)} won</b> · {plural(all.n, 'trade')}</div>
                       <HourBars cells={cells} nowH={now.h} nowFrac={now.m / 60} ai={ai} />
                     </> : <Empty title="No trades on this side" />}
                   </> : <Empty title="No symbols" />}
@@ -410,7 +411,7 @@ export default function DashboardPage() {
         );
       case 'plan':
         return (
-          <Widget id="plan" span={s} title={`Plan · ${nextSession(Date.now())}`} foot={ai ? <AiFoot line={d.ai.plan} /> : null}
+          <Widget id="plan" span={s} title={`Plan · ${nextSession(Date.now())}`} className={d.plan.length ? '' : 'd2-w-empty'} foot={ai ? <AiFoot line={d.ai.plan} /> : null}
             onExplain={d.plan.length ? () => explain('next-session plan', d.plan.map(r => `${r.text}: ${r.fmt === 'money' ? money(r.value) : `${pct(r.value)} won`}`).join('; ')) : undefined}>
             {d.plan.length ? <PlanList rules={d.plan} /> : <Empty title={T < d.minTrades ? `Needs ${d.minTrades} trades` : 'No rules stand out yet'} note={T < d.minTrades ? `${T} so far.` : 'Nothing in your history is clearly worth a rule.'} />}
           </Widget>
@@ -425,8 +426,10 @@ export default function DashboardPage() {
         );
       case 'recent':
         return (
-          <Widget id="recent" span={s} title="Recent trades" sub={ai ? <span data-ai>· AI grade</span> : null} flush tools={<Link href="/trades" className="d2-wl">Trade log</Link>}
-            foot={ai ? <AiFoot line={d.recent.some(r => r.grade) ? { text: 'Graded on process, not result', value: null, fmt: 'text', tone: 'flat', trades: d.recent.length } : null} /> : null}>
+          <Widget id="recent" span={s} title="Recent trades" sub={ai && d.recent.some(r => r.grade) ? <span data-ai>· AI grade</span> : null} flush tools={<Link href="/trades" className="d2-wl">Trade log</Link>}
+            foot={ai && d.recent.length ? <AiFoot line={d.recent.some(r => r.grade)
+              ? { text: 'Graded on process, not result', value: null, fmt: 'text', tone: 'flat', trades: d.recent.length }
+              : { text: `Grades start at ${d.minTrades} trades`, value: null, fmt: 'text', tone: 'flat', trades: d.counts.trades }} /> : null}>
             <RecentTable rows={d.recent} />
           </Widget>
         );

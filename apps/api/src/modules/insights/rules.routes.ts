@@ -13,6 +13,6 @@ export const rulesRouter: IRouter = Router();
 rulesRouter.post('/rules-preview', validateBody(rulesPreviewSchema), wrap(async (req, res) => {
   const b = req.body as RulesPreviewInput;
   // Ownership is checked inside loadAccountData.
-  const { startingBalance, trades } = await loadInsightTrades(res.locals.user.id as string, b.accountId);
-  ok(res, rulesPreview(trades, b.rules, startingBalance, Date.now(), b.days));
+  const { startingBalance, balanceOps, trades } = await loadInsightTrades(res.locals.user.id as string, b.accountId);
+  ok(res, rulesPreview(trades, b.rules, startingBalance, Date.now(), b.days, balanceOps));
 }));

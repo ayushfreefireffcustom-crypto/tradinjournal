@@ -186,6 +186,17 @@ export function afterTheExit(t: ReviewTradeDTO, bars: Bar[], until: number, pv: 
 export interface CandleWhatIf { key: 'usual-hold' | 'exit-1r' | 'be-after-1r'; label: string; net: number; delta: number; note: string }
 
 /**
+ * How an alternative compares with what you did (delta = its net − your net).
+ * Better than a loss "saves" money; better than a win (or a smaller loss turned
+ * into a win) is "more"; worse is "less". "Held 27m" that would have made
+ * $1,475 more on a winner is "+$1,475 more", never "saves".
+ */
+export function whatIfWord(actualNet: number, delta: number): 'saves' | 'more' | 'less' {
+  if (delta < 0) return 'less';
+  return actualNet < 0 && actualNet + delta <= 0 ? 'saves' : 'more';
+}
+
+/**
  * Rows that need the price path. Each one is only returned when it can be
  * computed honestly from the bars:
  *   • usual hold — exit at the close of the bar where your median hold on this

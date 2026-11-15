@@ -11,7 +11,7 @@ import type { Candle } from '@/lib/market-api';
 import { useTradeCandles } from '@/lib/use-trade-candles';
 import { fmtPrice } from '@/lib/desk';
 import { useWidth } from '@/components/dashboard-v2/ui';
-import { ticks } from '@/lib/dashboard-v2-format';
+import { ticks, toneColor } from '@/lib/dashboard-v2-format';
 import { shortDate } from '@/lib/tradelog-v2-api';
 
 export interface TradeChartTrade {
@@ -79,7 +79,7 @@ function ChartSvg({ trade, candles, w, h }: { trade: TradeChartTrade; candles: C
   const xt = [0.12, 0.38, 0.64, 0.9].map(f => t0 + f * (t1 - t0));
   const multiDay = t1 - t0 > 86_400_000 * 1.5;
   const xo = x(trade.openTime), xc = trade.closeTime != null ? x(trade.closeTime) : pw;
-  const tone = trade.net > 0 ? 'var(--d2-g)' : trade.net < 0 ? 'var(--d2-r)' : 'var(--mut)';
+  const tone = toneColor(trade.net, 'var(--d2-g)', 'var(--d2-r)');
   const label = (v: number, text: string, color: string) => {
     const yy = Math.max(TOP + 6, Math.min(TOP + ph - 2, y(v)));
     return <text x={pw + 6} y={yy + 4} fontSize={11} fontWeight={800} fill={color}>{text}</text>;

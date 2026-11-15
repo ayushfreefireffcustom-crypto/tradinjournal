@@ -29,7 +29,7 @@ export async function tradeReview(userId: string, q: TradeReviewQuery, now = Dat
   const cash = data.deals.filter(d => d.type === 'BALANCE').map(d => ({ t: new Date(d.dealTime).getTime(), amount: parseFloat(d.profit) || 0 }));
   const out = computeTradeReview({
     now, positions, positionId: q.positionId, cash,
-    user: rules ? { rules, startingBalance: data.stats().startingBalance } : null,
+    user: rules ? { rules, startingBalance: data.stats().startingBalance, balanceOps: cash.filter(o => o.amount).sort((a, b) => a.t - b.t) } : null,
     storedR: null, extras,
     levels: await positionLevels(data.account.id, target, levels.get(target.positionId) ?? []),
     pointValue: pv.get(target.positionId) ? { value: Math.round(pv.get(target.positionId)!.value * 1e6) / 1e6, source: pv.get(target.positionId)!.source } : null,

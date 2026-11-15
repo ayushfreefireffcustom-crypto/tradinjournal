@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
-  BUILTIN_FILTERS, cleanFilters, CSV_HEADERS, csvRow, dayTitle, fmtHold, gradeTone, loadViews, money2, pathGeom, qs, rStr,
-  sameFilters, shortDate, storeViews, type TlPath, type TlRow,
+  BUILTIN_FILTERS, clock, cleanFilters, CSV_HEADERS, csvRow, dayClock, dayTitle, fmtHold, gradeTone, loadViews, money2, pathGeom, qs, rStr,
+  sameFilters, shortDate, storeViews, STRIP_MIN_BAR, stripBar, type TlPath, type TlRow,
 } from './tradelog-v2-api';
 
 const row = (p: Partial<TlRow> = {}): TlRow => ({
@@ -89,5 +89,32 @@ describe('mini path geometry', () => {
   it('handles a flat path', () => {
     const g = pathGeom({ ...p, points: [100, 100], lo: 100, hi: 100, exit: 100, sl: null }, 100, 26);
     expect(Number.isFinite(g.end[1])).toBe(true);
+  });
+});
+
+describe('zero and tiny values', () => {
+  it('money2 / rStr drop the sign when the value shows as 0', () => {
+    expect(money2(-0.08)).toBe('−$0.08');
+    expect(money2(-0.001)).toBe('$0.00');
+    expect(rStr(-0.001)).toBe('0.00R');
+  });
+});
+
+describe('daily strip bars', () => {
+  it('a small day keeps a visible bar on its own side next to a huge one', () => {
+    const max = 5200;
+    expect(stripBar(5200, max, 25)).toEqual({ h: 25, dir: 'up' });
+    expect(stripBar(40, max, 25)).toEqual({ h: STRIP_MIN_BAR, dir: 'up' });
+    expect(stripBar(-12, max, 25)).toEqual({ h: STRIP_MIN_BAR, dir: 'dn' });
+    expect(stripBar(-2600, max, 25)).toEqual({ h: 12.5, dir: 'dn' });
+    expect(stripBar(-0.001, max, 25).dir).toBe('flat');
+  });
+});
+
+describe('recent trades time', () => {
+  it('weekday and clock in the viewer zone, like the trade log', () => {
+    const ms = Date.UTC(2026, 9, 6, 8, 36);
+    const d = new Date(ms);
+    expect(dayClock(ms)).toBe(`${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getDay()]} ${clock(ms)}`);
   });
 });

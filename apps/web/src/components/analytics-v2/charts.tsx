@@ -9,7 +9,7 @@ import {
   calendarWeeks, fmtHold, heat, monthLabel, multDomain, pageCols,
   type AnaBehaviour, type AnaExit, type AnaHold, type AnaMonth, type AnaPerformance, type AnaSegment, type AnaSymbolSeries, type AnaTime,
 } from '@/lib/analytics-v2-api';
-import { axisMoney, DAY_SHORT, kmoney, money, path, pct, rfmt, scale, ticks } from '@/lib/dashboard-v2-format';
+import { axisMoney, DAY_SHORT, isFlat, kmoney, money, path, pct, plural, rfmt, scale, ticks, toneColor } from '@/lib/dashboard-v2-format';
 import { Callout, calloutW, useWidth } from '@/components/dashboard-v2/ui';
 
 type Box = { x: number; y: number; w: number; h: number };
@@ -26,7 +26,8 @@ export function fit(s: string, px: number, size = 13, bold = false): string {
 }
 const wkLabel = (d?: string) => { if (!d) return ''; const t = new Date(`${d}T00:00:00Z`); return `${MONTHS[t.getUTCMonth()]} ${t.getUTCDate()}${t.getUTCFullYear() !== new Date().getUTCFullYear() ? ` ’${String(t.getUTCFullYear()).slice(2)}` : ''}`; };
 const short = (v: number) => kmoney(v).replace('$', '');
-const fill = (v: number, a: number) => (v >= 0 ? `rgba(8,196,101,${(0.14 + a * 0.8).toFixed(2)})` : `rgba(254,58,49,${(0.14 + a * 0.8).toFixed(2)})`);
+/** Cell colour: green / red by sign, neutral when the value shows as 0. */
+const fill = (v: number, a: number) => (isFlat(v) ? 'var(--d2-chip)' : v >= 0 ? `rgba(8,196,101,${(0.14 + a * 0.8).toFixed(2)})` : `rgba(254,58,49,${(0.14 + a * 0.8).toFixed(2)})`);
 const axisV = (v: number, unit: '$' | 'R') => (unit === 'R' ? `${v > 0 ? '+' : v < 0 ? '−' : ''}${+Math.abs(v).toFixed(2)}R` : `${v < 0 ? '−' : ''}$${axisMoney(Math.abs(v))}`);
 const fmtU = (v: number, unit: '$' | 'R') => (unit === 'R' ? rfmt(v) : money(v));
 
@@ -55,7 +56,7 @@ export function SegBars({ rows }: { rows: AnaSegment[] }) {
           const symTxt = fit(r.symbol, lab - textW(` ${ses}`, narrow ? 11 : 13) - 4, 13, true);
           return (
             <g key={`${r.symbol}|${r.session}`}>
-              <title>{`${r.symbol} ${ses}: ${money(r.net)} · ${r.n} trades · ${pct(r.wins / r.n)} won`}</title>
+              <title>{`${r.symbol} ${ses}: ${money(r.net)} · ${plural(r.n, 'trade')} · ${pct(r.wins / r.n)} won`}</title>
               <text x={0} y={y + 14} fontSize={13} fontWeight={600} fill="var(--tx)">{symTxt} <tspan fill="var(--mut)" fontWeight={500} fontSize={narrow ? 11 : 13}>{ses}</tspan></text>
               <rect x={up ? x0 : x0 - bw} y={y + 5} width={bw} height={13} rx={2} fill={up ? 'var(--d2-g)' : 'var(--d2-r)'} />
               {!narrow && <text x={up ? x0 + bw + 6 : x0 + 6} y={y + 15} fontSize={11} fill="var(--dim)">{r.n} · {pct(r.wins / r.n)}</text>}
@@ -123,7 +124,7 @@ export function Quadrant({ rows, winRate, unit, ai }: { rows: AnaSegment[]; winR
         <text x={padL + 4} y={h - padB - 6} fontSize={11} fontWeight={700} fill="var(--d2-rt)">BLEED</text>
         {[...rows].sort((a, b) => b.n - a.n).map(r => (
           <circle key={`${r.symbol}|${r.session}`} cx={cxOf(r)} cy={cyOf(r)} r={rr(r.n)} fill={r.net >= 0 ? 'var(--d2-g)' : 'var(--d2-r)'} fillOpacity={0.3} stroke={r.net >= 0 ? 'var(--d2-g)' : 'var(--d2-r)'} strokeWidth={1.25}>
-            <title>{`${r.symbol} ${SES[r.session]}: ${pct(r.wins / r.n)} won · avg ${fmtU(r.avg, unit)} · ${r.n} trades · ${money(r.net)}`}</title>
+            <title>{`${r.symbol} ${SES[r.session]}: ${pct(r.wins / r.n)} won · avg ${fmtU(r.avg, unit)} · ${plural(r.n, 'trade')} · ${money(r.net)}`}</title>
           </circle>
         ))}
         {callouts}
@@ -152,8 +153,8 @@ export function Calendar({ perf, unit, ai, back, onBack }: { perf: AnaPerformanc
   const val = (c: { net: number; r: number | null }) => (unit === 'R' ? c.r ?? 0 : c.net);
   const mx = Math.max(1e-9, ...perf.days.map(d => Math.abs(val(d))));
   const weekVal = (c: (typeof cal.cols)[number]) => (unit === 'R' ? c.days.reduce((a, d) => a + (d.cell?.r ?? 0), 0) : c.total?.net ?? 0);
-  const fmtCell = (v: number) => (unit === 'R' ? `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v).toFixed(1)}` : short(v));
-  const fmtWeek = (v: number) => (unit === 'R' ? rfmt(v, 1) : kmoney(v));
+  const fmtCell = (v: number) => (unit === 'R' ? rfmt(v, Math.abs(v) < 0.05 ? 2 : 1).slice(0, -1) : short(v));
+  const fmtWeek = (v: number) => (unit === 'R' ? rfmt(v, Math.abs(v) < 0.05 ? 2 : 1) : kmoney(v));
   let body = null;
   if (w > 0 && n) {
     let lastM = -1;
@@ -182,7 +183,7 @@ export function Calendar({ perf, unit, ai, back, onBack }: { perf: AnaPerformanc
                   </g>
                 );
               })}
-              {!narrow && c.total && <text x={cx + cw / 2} y={padT + gridH + 12} fontSize={11} fontWeight={700} fill={wv >= 0 ? 'var(--d2-gt)' : 'var(--d2-rt)'} textAnchor="middle" className="mny">{cw >= 40 ? fmtWeek(wv) : ''}</text>}
+              {!narrow && c.total && <text x={cx + cw / 2} y={padT + gridH + 12} fontSize={11} fontWeight={700} fill={toneColor(wv, 'var(--d2-gt)', 'var(--d2-rt)')} textAnchor="middle" className="mny">{cw >= 40 ? fmtWeek(wv) : ''}</text>}
             </g>
           );
         })}
@@ -235,7 +236,7 @@ export function MonthBars({ months, ai }: { months: AnaMonth[]; ai: boolean }) {
           const valY = up ? top - 7 : y(m.net) + 15;
           return (
             <g key={m.key}>
-              <title>{`${m.key}: ${money(m.net)} · ${m.n} trades · ${pct(m.wins / m.n)} won`}</title>
+              <title>{`${m.key}: ${money(m.net)} · ${plural(m.n, 'trade')} · ${pct(m.wins / m.n)} won`}</title>
               <rect x={cx - bw / 2} y={top} width={bw} height={hgt} rx={2} fill={up ? 'var(--d2-g)' : 'var(--d2-r)'} fillOpacity={ai && least === m ? 0.45 : 1} />
               {gap >= 40 && <text x={cx} y={Math.min(valY, h - padB - 2)} fontSize={gap >= 60 ? 13 : 11} fontWeight={800} fill="var(--tx)" textAnchor="middle" className="mny">{kmoney(m.net)}</text>}
               <text x={cx} y={h - 20} fontSize={11} fontWeight={600} fill="var(--tx)" textAnchor="middle">{monthLabel(m.key, multiYear)}</text>
@@ -293,7 +294,7 @@ export function HourHeat({ time, metric, ai }: { time: AnaTime; metric: '$' | 'w
                 const a = metric === '$' ? heat(c.net, mx) : Math.min(1, Math.abs(v));
                 return <rect key={hr} x={x(hr)} y={y} width={cw} height={ch} rx={2} fill={metric === 'win' && v === 0 ? 'var(--d2-chip)' : fill(v, a)}><title>{`${DAY_SHORT[d]} ${String(hr).padStart(2, '0')}:00 UTC: ${money(c.net)} · ${c.wins}/${c.n} won`}</title></rect>;
               })}
-              {!narrow && tot && tot.n > 0 && <text x={w} y={y + ch / 2 + 4} fontSize={11} fontWeight={800} fill={metric === '$' ? (tot.net >= 0 ? 'var(--d2-gt)' : 'var(--d2-rt)') : 'var(--tx)'} textAnchor="end" className={metric === '$' ? 'mny' : ''}>{metric === '$' ? kmoney(tot.net) : pct(tot.wins / tot.n)}</text>}
+              {!narrow && tot && tot.n > 0 && <text x={w} y={y + ch / 2 + 4} fontSize={11} fontWeight={800} fill={metric === '$' ? toneColor(tot.net, 'var(--d2-gt)', 'var(--d2-rt)') : 'var(--tx)'} textAnchor="end" className={metric === '$' ? 'mny' : ''}>{metric === '$' ? kmoney(tot.net) : pct(tot.wins / tot.n)}</text>}
             </g>
           );
         })}
@@ -411,7 +412,7 @@ export function HoldScatter({ hold, ai }: { hold: AnaHold; ai: boolean }) {
     const cy = (v: number) => y(Math.max(lo - pad, Math.min(hi + pad, v)));
     const xt = HOLD_TICKS.filter(t => lx(t) >= x0 - 0.02 && lx(t) <= x1 + 0.02).filter((t, i, a) => i === 0 || x(lx(t)) - x(lx(a[i - 1]!)) >= 46);
     const ll = hold.longLosers;
-    const text = ll ? `${ll.n} losers held ${fmtHold(ll.thresholdMs)}+ · ${kmoney(ll.net)}` : '';
+    const text = ll ? `${plural(ll.n, 'loser')} held ${fmtHold(ll.thresholdMs)}+ · ${kmoney(ll.net)}` : '';
     const rx = ll ? Math.max(padL, x(lx(ll.thresholdMs))) : 0;
     body = (
       <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="d2-chart" role="img" aria-label="Time in trade against result">
@@ -585,7 +586,7 @@ export function LossBars({ rows, avg }: { rows: AnaBehaviour['byLosses']; avg: n
           const cx = gap * i + gap / 2, wr = r.n ? r.wins / r.n : 0, low = r.n >= 3 && wr < avg - 0.1;
           return (
             <g key={r.key}>
-              <title>{`${r.key} lost earlier that day: ${r.n} trades · ${r.n ? pct(wr) : '–'} won · ${money(r.net)}`}</title>
+              <title>{`${r.key} lost earlier that day: ${plural(r.n, 'trade')} · ${r.n ? pct(wr) : '–'} won · ${money(r.net)}`}</title>
               {r.n > 0 && <rect x={cx - bw / 2} y={y(wr)} width={bw} height={Math.max(1.5, y(0) - y(wr))} rx={2} fill={low ? 'var(--d2-r)' : 'var(--series-other)'} />}
               <text x={cx} y={(r.n ? y(wr) : y(0)) - 6} fontSize={13} fontWeight={800} fill={low ? 'var(--d2-rt)' : 'var(--tx)'} textAnchor="middle">{r.n ? pct(wr) : '–'}</text>
               <text x={cx} y={h - 21} fontSize={11} fontWeight={700} fill="var(--tx)" textAnchor="middle">{r.key} lost</text>

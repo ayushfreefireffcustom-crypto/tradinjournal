@@ -3,6 +3,7 @@
 // Mock mode (NEXT_PUBLIC_USE_MOCKS) is served by app/data/insights/** (lib/mock-insights.ts).
 import type { AiLine, DashRange, DashSession } from './dashboard-v2-api';
 import type { PositionLevelsDTO, StopMove } from './trade-data-api';
+import { isFlat } from './dashboard-v2-format';
 
 const USE_MOCKS = process.env.NEXT_PUBLIC_USE_MOCKS === 'true';
 const PREFIX = USE_MOCKS ? '/data' : '/api';
@@ -177,9 +178,9 @@ export function fmtHold(secs: number | null | undefined): string {
 /** +$697.60 · −$12.00 */
 export function money2(v: number, plus = true): string {
   const a = Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  return `${v < 0 ? MINUS : plus && v > 0 ? '+' : ''}$${a}`;
+  return `${isFlat(v) ? '' : v < 0 ? MINUS : plus && v > 0 ? '+' : ''}$${a}`;
 }
-export const rStr = (v: number) => `${v < 0 ? MINUS : v > 0 ? '+' : ''}${Math.abs(v).toFixed(2)}R`;
+export const rStr = (v: number) => `${isFlat(v) ? '' : v < 0 ? MINUS : v > 0 ? '+' : ''}${Math.abs(v).toFixed(2)}R`;
 /** Day key "2026-11-13" → "Fri 13 Nov" (the key is already the viewer's day). */
 export function dayTitle(day: string, today?: string): string {
   if (day === 'open') return 'Open positions';
@@ -194,6 +195,20 @@ export const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', '
 export const shortDate = (ms: number) => { const d = new Date(ms); return `${d.getDate()} ${MONTHS[d.getMonth()]}`; };
 /** Local wall-clock time of an epoch ms. */
 export const clock = (ms: number) => { const d = new Date(ms); return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
+/** Smallest bar (px) a day with a non-zero result gets in the daily strip. */
+export const STRIP_MIN_BAR = 4;
+/**
+ * Daily strip bar: height in px (linear in |net| up to `room`) and side.
+ * A non-zero day never shrinks below STRIP_MIN_BAR, so a +$5.2k day doesn't
+ * flatten a −$40 day into the baseline; a day that shows as $0.00 is 'flat'.
+ */
+export function stripBar(net: number, max: number, room: number): { h: number; dir: 'up' | 'dn' | 'flat' } {
+  if (isFlat(net)) return { h: 1.5, dir: 'flat' };
+  const h = Math.min(room, Math.max(STRIP_MIN_BAR, (Math.abs(net) / Math.max(max, 1e-9)) * room));
+  return { h, dir: net > 0 ? 'up' : 'dn' };
+}
+/** "Tue 14:06": weekday and wall-clock time in the viewer's zone (what the trade log shows). */
+export const dayClock = (ms: number) => `${WEEKDAYS[new Date(ms).getDay()]} ${clock(ms)}`;
 export const localDayKey = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
 /** Grade tone for the grade box. */

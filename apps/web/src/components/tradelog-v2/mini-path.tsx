@@ -6,6 +6,7 @@
 // per ~30 rows, and stay cached for the session (a closed trade never changes).
 import { useEffect, useRef, useState } from 'react';
 import { pathGeom, tradelogApi, type TlPath, type TlRow } from '@/lib/tradelog-v2-api';
+import { toneColor } from '@/lib/dashboard-v2-format';
 
 type Entry = TlPath | null;
 const cache = new Map<string, Entry>();
@@ -83,7 +84,7 @@ export function MiniPath({ accountId, row, w: w0 = 100, h = 26, fluid = false, c
     return () => ro.disconnect();
   }, [fluid, ref]);
   const w = fluid && mw > 20 ? mw : w0;
-  const tone = row.net > 0 ? 'var(--d2-g)' : 'var(--d2-r)';
+  const tone = toneColor(row.net, 'var(--d2-g)', 'var(--d2-r)');
   let body: React.ReactNode;
   if (p === undefined) body = <line x1={4} x2={w - 4} y1={h / 2} y2={h / 2} stroke="var(--line-2)" strokeDasharray="2 3" />;
   else if (!p) body = <text x={w / 2} y={h / 2 + 4} textAnchor="middle" fontSize={11} fill="var(--dim)">—</text>;

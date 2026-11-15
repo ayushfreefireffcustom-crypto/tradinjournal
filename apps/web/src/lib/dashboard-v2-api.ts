@@ -76,7 +76,7 @@ export interface DashKpis {
   expectancyR: number | null;
   avgWin: number;
   avgLoss: number;
-  maxDrawdown: { pct: number; amount: number; at: string } | null;
+  maxDrawdown: { pct: number | null; amount: number; at: string } | null;
   equitySpark: number[];
 }
 
@@ -91,14 +91,20 @@ export interface EquityPointDTO {
   leak?: 1;
   /** The stop was widened after entry (only with recorded stop levels). */
   moved?: 1;
+  /** Deposits (+) / withdrawals (−) since the previous point, already in v. */
+  flow?: number;
 }
 
 export interface DashEquity {
+  /** 'balance' = account balance with deposits and withdrawals at their times;
+   *  'pnl' = cumulative P&L from 0 (cash flows unknown or incomplete). */
+  basis: 'balance' | 'pnl';
   start: number;
   trades: EquityPointDTO[];
   days: EquityPointDTO[];
   /** Deepest peak-to-trough fall of the curve. */
-  drawdown: { pct: number; amount: number; peakT: number; troughT: number; trades: number } | null;
+  /** pct is null on the 'pnl' basis (no balance to divide by). */
+  drawdown: { pct: number | null; amount: number; peakT: number; troughT: number; trades: number } | null;
   /** The leak whose trades are dotted on the curve. */
   dotLabel: string | null;
 }

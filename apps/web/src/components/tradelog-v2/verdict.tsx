@@ -5,7 +5,7 @@
 // counts rule flags before/at entry, not the result (see insights/compute.ts).
 import type { Grade, TlReason, TlSimilar } from '@/lib/tradelog-v2-api';
 import { gradeTone } from '@/lib/tradelog-v2-api';
-import { kmoney } from '@/lib/dashboard-v2-format';
+import { kmoney, tone } from '@/lib/dashboard-v2-format';
 
 export function GradeBox({ grade, size = 'sm', title }: { grade: Grade | null; size?: 'sm' | 'lg'; title?: string }) {
   if (!grade) return <span className="tl-gd none" title={title ?? 'Grades need 20 closed trades'}>–</span>;
@@ -34,7 +34,7 @@ export function SimilarStat({ similar, onShow }: { similar: TlSimilar | null; on
       <div className="tl-sim-h">
         <b>{similar.n} similar trade{similar.n === 1 ? '' : 's'}</b>
         <span className="tl-sim-dots" aria-hidden>{shown.map((v, i) => <i key={i} className={v > 0 ? 'w' : 'l'} />)}</span>
-        <b className={`tl-sim-r ${similar.net > 0 ? 'up' : similar.net < 0 ? 'dn' : ''}`}>{similar.wins} won · {kmoney(similar.net)}</b>
+        <b className={`tl-sim-r ${tone(similar.net)}`}>{similar.wins} won · {kmoney(similar.net)}</b>
       </div>
       <small>{similar.criteria.join(' · ')}{shown.length < similar.n ? ` · dots: last ${shown.length}` : ''}{onShow && <> · <button type="button" className="tl-link" onClick={onShow}>Show</button></>}</small>
     </div>
