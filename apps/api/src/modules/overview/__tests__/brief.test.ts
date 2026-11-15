@@ -9,7 +9,7 @@ const overview = {
   fearGreed: { value: 34, label: 'Fear', history: Array.from({ length: 30 }, (_, i) => ({ time: i, value: 20 + i })) },
   altSeason: { index: 40, label: 'neither', counted: 49, btc90: 5, window: 90 },
   macro: [{ symbol: 'US500', name: 'S&P 500', group: 'Indices', price: 6000, change1d: 0.4, spark: [100, 100, 100, 100, 100, 102] }],
-  week: { btc7d: 3.2, eth7d: -1.4, gainers: [{ base: 'FET', change7d: 22 }], losers: [{ base: 'PEPE', change7d: -15 }] },
+  week: { btc7d: 3.2, eth7d: -1.4, gainers: [{ base: 'FET', change7d: 22 }], losers: [{ base: 'PEPE', change7d: -15 }], up: 31, down: 19, tracked: 50 },
 } as unknown as Overview;
 const deps = (over: Partial<BriefDeps> = {}): BriefDeps => ({
   overview: async () => overview,

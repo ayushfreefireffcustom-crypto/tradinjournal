@@ -55,7 +55,9 @@ export function factsFor(o: Overview, d: Derivatives | null) {
   return {
     btc7d: o.week.btc7d, eth7d: o.week.eth7d,
     top50Gainers7d: o.week.gainers, top50Losers7d: o.week.losers,
-    breadth24h: { up: o.breadth.up, down: o.breadth.down, medianChange: o.breadth.medianChange },
+    // Weekly breadth only: the brief is cached for the day, so a 24h figure would soon contradict
+    // the live breadth card right under it.
+    breadth7d: { up: o.week.up, down: o.week.down, tracked: o.week.tracked },
     // One coin isn't a sector trend.
     sectors7d: o.sectors.filter((s) => s.change7d != null && s.count >= 2 && s.sector !== 'Other').map((s) => ({ sector: s.sector, coins: s.count, change7d: s.change7d, vsBtc7d: s.vsBtc7d })),
     fearGreed: o.fearGreed ? { now: o.fearGreed.value, label: o.fearGreed.label, weekAgo: o.fearGreed.history.at(-8)?.value ?? null } : null,
@@ -81,7 +83,7 @@ export function ruleBrief(f: ReturnType<typeof factsFor>): Omit<MarketBrief, 'we
   ].filter((x): x is string => !!x);
   return {
     headline: `Bitcoin ${dir(f.btc7d)}${by(f.btc7d)} this week`,
-    summary: `Bitcoin ${dir(f.btc7d)}${by(f.btc7d)} over the past seven days while Ether ${dir(f.eth7d)}${by(f.eth7d)}. In the last 24 hours ${f.breadth24h.up} of the top 100 pairs rose and ${f.breadth24h.down} fell.`,
+    summary: `Bitcoin ${dir(f.btc7d)}${by(f.btc7d)} over the past seven days while Ether ${dir(f.eth7d)}${by(f.eth7d)}. Over the week ${f.breadth7d.up} of the top ${f.breadth7d.tracked} coins rose and ${f.breadth7d.down} fell.`,
     bullets,
     watch: 'Watch whether the leading sectors keep their edge over Bitcoin, and where funding goes as positions build or unwind.',
   };
@@ -92,7 +94,7 @@ const okStr = (v: unknown, max: number) => typeof v === 'string' && v.trim().len
 export async function weeklyMarketBrief(deps = defaultBriefDeps): Promise<MarketBrief> {
   const now = deps.now();
   const day = new Date(now).toISOString().slice(0, 10);
-  const key = `brief:market:${day}`;
+  const key = `brief:market:v2:${day}`;
   if (deps.cache) { const hit = await cacheGet<MarketBrief>(key); if (hit) return hit; }
   const [o, d] = await Promise.all([deps.overview(), deps.derivatives().catch(() => null)]);
   const facts = factsFor(o, d);

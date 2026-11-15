@@ -146,6 +146,9 @@ html[data-theme=light]:has(.v6.f-page), html[data-theme=light] body:has(.v6.f-pa
   .v6 .f-tools { flex-wrap: wrap; flex: 0 1 auto; min-width: 0; max-width: 100%; }
   .v6 .f-sync span { display: none; }
   .v6 .f-sync { width: 38px; padding: 0; }
+  /* Tablets: the unused "Custom" date button is just its calendar icon, so the bell stays on the row. */
+  .v6 .f-tools .x-dr-b:not(.is-on) span { display: none; }
+  .v6 .f-tools .x-dr-b:not(.is-on) { width: 38px; padding: 0; justify-content: center; }
 }
 
 /* phones */

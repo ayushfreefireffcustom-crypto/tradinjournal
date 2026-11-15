@@ -71,7 +71,9 @@ export default function BrokersPage() {
           if (cancelled) return;
           setFigures(prev => ({
             ...prev,
-            [acc.id]: { balance: s.startingBalance + s.netPnl, equity: s.currentEquity, pnl: s.netPnl },
+            // currentEquity is the balance after every closed trade AND every deposit/withdrawal;
+            // "start + net" would ignore money taken out.
+            [acc.id]: { balance: s.currentEquity, equity: s.currentEquity, pnl: s.netPnl },
           }));
         })
         .catch(() => { if (!cancelled) setFigures(prev => ({ ...prev, [acc.id]: null })); });

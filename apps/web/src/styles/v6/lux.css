@@ -88,7 +88,9 @@ html[data-theme=light] .v6 .lux {
 .v6 .lux .lx-kpi { position: relative; display: grid; align-content: start; gap: 6px; min-width: 0; padding: 20px 22px; border-radius: var(--r-card);
   border: 1px solid var(--lx-edge); background: linear-gradient(180deg, var(--lx-top), transparent 120px), var(--s1); box-shadow: var(--shadow); overflow: hidden; }
 .v6 .lux .lx-kpi-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: var(--t2); color: var(--mut); min-height: 22px; }
-.v6 .lux .lx-kpi-v { font: 800 var(--t5)/1.05 var(--sans); letter-spacing: -.035em; font-feature-settings: "tnum"; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* The number shrinks with its card (never above --t5) instead of being cut off with an ellipsis. */
+.v6 .lux .lx-kpi { container-type: inline-size; }
+.v6 .lux .lx-kpi-v { font: 800 min(var(--t5), 17cqi)/1.05 var(--sans); letter-spacing: -.035em; font-feature-settings: "tnum"; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .v6 .lux .lx-kpi-v small { font: 600 var(--t3)/1 var(--sans); letter-spacing: 0; color: var(--mut); margin-left: 4px; }
 .v6 .lux .lx-kpi-s { font-size: var(--t2); color: var(--mut); line-height: 1.4; }
 .v6 .lux .lx-kpi-viz { margin-top: 8px; height: 34px; }
@@ -126,7 +128,7 @@ html[data-theme=light] .v6 .lux {
   .v6 .lux .lx-kpi-h { flex-direction: column; align-items: flex-start; gap: 4px; }
   .v6 .lux .lx-kpi-h > :last-child:not(:first-child) { font-size: var(--t1); }
   .v6 .lux .lx-kpi { padding: 16px; }
-  .v6 .lux .lx-kpi-v { font-size: var(--t4); }
+  .v6 .lux .lx-kpi-v { font-size: min(var(--t4), 17cqi); }
   .v6 .lux .lx-kpi-viz { height: 26px; }
   .v6 .lux .lx-meter i { width: 40px; }
 }

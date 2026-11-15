@@ -514,9 +514,12 @@ export default function ChartsPage() {
         });
         const long = plan.side === 'LONG';
         const inZone = (id: string, v: number, text: string, color: string, below: boolean, weight = 700): LabelSpec => ({ id, prio: 2, t: ts, x: 'ruler', v, text, color, weight, bg: 'transparent', tip: `Risk ruler · ${text}`, cands: below ? [{ dx: 0, dy: 11, align: 'left' }, { dx: 0, dy: -10, align: 'left' }] : [{ dx: 0, dy: -10, align: 'left' }, { dx: 0, dy: 11, align: 'left' }] });
-        if (sizing?.rewardMoney != null) labels.push(inZone('rr-reward', plan.target, `${m(sizing.rewardMoney)}${sizing.r != null ? ` · ${sizing.r.toFixed(1)}R` : ''}`, pal.gTx, long));
+        // Below the smallest size the dollar figures are $0: show the R only, never "$0".
+        const sized = !!sizing && !sizing.belowMin;
+        if (sizing?.rewardMoney != null) labels.push(inZone('rr-reward', plan.target, sized ? `${m(sizing.rewardMoney)}${sizing.r != null ? ` · ${sizing.r.toFixed(1)}R` : ''}` : sizing.r != null ? `${sizing.r.toFixed(1)}R` : '', pal.gTx, long));
         if (lots) labels.push(inZone('rr-lots', plan.entry, lots, pal.tx, false, 800));
-        if (sizing) labels.push(inZone('rr-risk', plan.stop, m(-sizing.riskMoney, false), pal.rTx, !long));
+        if (sizing && sized) labels.push(inZone('rr-risk', plan.stop, m(-sizing.riskMoney, false), pal.rTx, !long));
+        else if (sizing) labels.push(inZone('rr-risk', plan.stop, '−1R', pal.rTx, !long));
         tags.push({ id: 'rTP', prio: 3, v: plan.target, text: `TP ${px(plan.target, d)}`, kind: 'up' });
         tags.push({ id: 'rSL', prio: 3, v: plan.stop, text: `SL ${px(plan.stop, d)}`, kind: 'down' });
         tags.push({ id: 'rE', prio: 3, v: plan.entry, text: `E ${px(plan.entry, d)}`, kind: 'muted' });

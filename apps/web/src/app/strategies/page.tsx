@@ -51,7 +51,8 @@ export default function StrategiesPage() {
     const tested = all.filter(r => r.lastBacktest);
     const best = tested.reduce<StrategyRow | null>((m, r) => (!m || r.lastBacktest!.metrics.totalReturnPct > m.lastBacktest!.metrics.totalReturnPct ? r : m), null);
     const worst = tested.reduce<StrategyRow | null>((m, r) => (!m || r.lastBacktest!.metrics.totalReturnPct < m.lastBacktest!.metrics.totalReturnPct ? r : m), null);
-    return { total: all.length, live: all.filter(r => r.status === 'live').length, paper: all.filter(r => r.status === 'paper').length, ai: all.filter(r => r.source === 'ai').length, best, worst };
+    // With one backtest, best and worst are the same run: show it once, as the best.
+    return { total: all.length, live: all.filter(r => r.status === 'live').length, paper: all.filter(r => r.status === 'paper').length, ai: all.filter(r => r.source === 'ai').length, best, worst: tested.length > 1 ? worst : null, tested: tested.length };
   }, [list.data]);
 
   async function createBlank() {
@@ -77,7 +78,7 @@ export default function StrategiesPage() {
             sub={pnl.any ? <>Closed P&amp;L <span className={`m ${tone(pnl.closed)}`}>{usd(pnl.closed)}</span> · open <span className={`m ${tone(pnl.open)}`}>{usd(pnl.open)}</span></> : <>No runs yet</>}
             viz={stats.live + stats.paper > 0 ? <Split g={stats.live} n={stats.paper} r={0} /> : undefined} />
           <Kpi label="Best backtest" value={stats.best ? <span className={`m ${tone(stats.best.lastBacktest!.metrics.totalReturnPct)}`}>{pct(stats.best.lastBacktest!.metrics.totalReturnPct)}</span> : <span className="x-muted">—</span>} sub={stats.best ? stats.best.name : 'No runs yet'} />
-          <Kpi label="Worst backtest" value={stats.worst ? <span className={`m ${tone(stats.worst.lastBacktest!.metrics.totalReturnPct)}`}>{pct(stats.worst.lastBacktest!.metrics.totalReturnPct)}</span> : <span className="x-muted">—</span>} sub={stats.worst ? stats.worst.name : 'No runs yet'} />
+          <Kpi label="Worst backtest" value={stats.worst ? <span className={`m ${tone(stats.worst.lastBacktest!.metrics.totalReturnPct)}`}>{pct(stats.worst.lastBacktest!.metrics.totalReturnPct)}</span> : <span className="x-muted">—</span>} sub={stats.worst ? stats.worst.name : stats.tested === 1 ? 'Needs a second backtest' : 'No runs yet'} />
         </section>}
         <div className="st-bar">
           <div className="x-seg x-seg--in x-seg--sm" role="radiogroup" aria-label="Filter">{FILTERS.map(([f, l]) => <button key={f} type="button" role="radio" aria-checked={filter === f} onClick={() => setFilter(f)} data-testid={`st-f-${f}`}>{l}</button>)}</div>

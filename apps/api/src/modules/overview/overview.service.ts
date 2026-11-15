@@ -77,7 +77,7 @@ export interface Overview {
   altSeason: ReturnType<typeof altcoinSeason> & { btc90: number | null; window: number };
   macro: Array<{ symbol: string; name: string; group: string; price: number | null; change1d: number | null; spark: number[] }>;
   /** Week view for the market brief: majors and the top 50's biggest 7-day movers. */
-  week: { btc7d: number | null; eth7d: number | null; gainers: Array<{ base: string; change7d: number }>; losers: Array<{ base: string; change7d: number }> };
+  week: { btc7d: number | null; eth7d: number | null; gainers: Array<{ base: string; change7d: number }>; losers: Array<{ base: string; change7d: number }>; up: number; down: number; tracked: number };
 }
 
 const avg = (xs: Array<number | null>) => { const v = xs.filter((x): x is number => x != null); return v.length ? v.reduce((s, x) => s + x, 0) / v.length : null; };
@@ -136,7 +136,7 @@ export async function marketOverview(deps = defaultOverviewDeps): Promise<Overvi
     fearGreed: fg,
     altSeason: { ...season, btc90, window: 90 },
     macro,
-    week: { btc7d: btc7, eth7d: ret('ETHUSDT', 7), gainers: week7.slice(0, 5), losers: week7.slice(-5).reverse() },
+    week: { btc7d: btc7, eth7d: ret('ETHUSDT', 7), gainers: week7.slice(0, 5), losers: week7.slice(-5).reverse(), up: week7.filter((x) => x.change7d > 0).length, down: week7.filter((x) => x.change7d < 0).length, tracked: week7.length },
   };
   if (deps.cache) await cacheSet(key, out, 120);
   return out;

@@ -40,7 +40,7 @@ export default function DateRangePicker({ value, onChange, maxDays, note }: {
 
   return (
     <div className="x-dr" ref={box}>
-      <button type="button" className={`x-btn x-dr-b ${value ? 'is-on' : ''}`} aria-expanded={open} aria-controls={id} onClick={() => setOpen((o) => !o)} data-testid="range-custom">
+      <button type="button" className={`x-btn x-dr-b ${value ? 'is-on' : ''}`} aria-expanded={open} aria-controls={id} onClick={() => setOpen((o) => !o)} aria-label={value ? `Dates: ${rangeText(value)}` : 'Custom dates'} title={value ? undefined : 'Custom dates'} data-testid="range-custom">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden><rect x="3.5" y="5" width="17" height="15" rx="3" /><path d="M3.5 10h17M8 3v4M16 3v4" /></svg>
         <span>{value ? rangeText(value) : 'Custom'}</span>
       </button>

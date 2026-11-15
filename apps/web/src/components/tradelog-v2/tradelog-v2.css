@@ -156,6 +156,17 @@
 .v6 .tl-foot b { color: var(--tx); font-weight: 900; }
 
 /* narrower lists drop columns, least important first */
+/* Wide screens: give the columns room instead of packing them left of one huge Tags column. */
+@container (min-width: 1000px) {
+  .v6 .tl-tbl th, .v6 .tl-tbl td { padding: 0 18px; }
+  .v6 .tl-tbl .c-sel { padding: 0 0 0 16px; }
+  .v6 .tl-tbl .c-time { width: 96px; }
+  .v6 .tl-tbl .c-sym { width: 150px; }
+  .v6 .tl-tbl .c-path { width: 150px; }
+  .v6 .tl-tbl .c-lots { width: 90px; }
+  .v6 .tl-tbl .c-r, .v6 .tl-tbl .c-pl { width: 140px; }
+  .v6 .tl-tbl .c-hold { width: 110px; }
+}
 @container (max-width: 760px) { .v6 .tl-tbl .c-lots { display: none; } }
 @container (max-width: 680px) { .v6 .tl-tbl .c-tags, .v6 .tl-tbl .tl-dh-r { display: none; } }
 @container (max-width: 560px) { .v6 .tl-tbl .c-hold { display: none; } .v6 .tl-tbl .c-path { width: 84px; } }
