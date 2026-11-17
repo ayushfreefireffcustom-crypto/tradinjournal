@@ -61,6 +61,7 @@ export async function probe(client: ElefinClient, now = new Date()): Promise<Ele
   try {
     const page = await client.page(ELEFIN_PATHS.clients, { per_page: ELEFIN_LIMITS.probePerPage, page: 1 });
     out.clientsRead = 'ok';
+    out.key = { ...me.key, canReadClients: true };
     out.clients = page.meta.total;
     out.fields = fieldNames(page.rows[0]);
     const absent = page.rows.length ? DOCUMENTED_FIELDS.filter(f => !out.fields.includes(f)) : [];

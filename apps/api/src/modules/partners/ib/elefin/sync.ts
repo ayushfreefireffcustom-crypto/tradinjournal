@@ -131,7 +131,8 @@ export async function syncElefin(brokerId: string, opts: { actor?: Actor; force?
     // 5. Save. Only aggregates and per-client tuples; never a name or an email.
     const done = new Date(clock());
     const patch: Partial<ElefinConfig> = {
-      key: me.key, lastSuccessAt: done.toISOString(), authFailures: 0, pausedAt: null, snapshot,
+      // Reaching here means the list answered, whatever the abilities say.
+      key: { ...me.key, canReadClients: true }, lastSuccessAt: done.toISOString(), authFailures: 0, pausedAt: null, snapshot,
       ...(book ? { roster: { syncStartedAt: started.toISOString(), fullAt, clients: keep ? entries : null } } : {}),
       ...(lookups ? { lastLookupAt: done.toISOString() } : {}),
     };

@@ -203,6 +203,17 @@ describe('syncElefin: the book', () => {
     expect(cfg()).toMatchObject({ pausedAt: null, authFailures: 0 });
   });
 
+  it('a key whose /me lists no abilities still syncs (the live Elefin answer)', async () => {
+    const k = fake.keyOf(token);
+    k.hideAbilities = true;
+    try {
+      resetBudgets();
+      const r = await sync.syncElefin('pb1', { deps, force: true, full: true });
+      expect(r).toMatchObject({ ok: true, error: null });
+      expect(cfg().key).toMatchObject({ abilities: [], canReadClients: true });
+    } finally { k.hideAbilities = false; }
+  });
+
   it('a key that lost clients.read counts as refused', async () => {
     const k = fake.keyOf(token);
     k.abilities = [];

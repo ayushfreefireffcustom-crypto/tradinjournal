@@ -23,6 +23,8 @@ export interface FakeKey {
   expiresAt: string | null;
   active: boolean;
   rateLimitPerMinute: number;
+  /** Live Elefin (17 Nov 2026) answers /me with `abilities: []` for a key that can read clients. */
+  hideAbilities?: boolean;
 }
 
 export interface FakeClient {
@@ -69,7 +71,7 @@ export class FakeElefin {
     const secret = k.secret ?? `fxcrm_sk_${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}`;
     this.keys.set(key, {
       name: k.name ?? 'Test integration', abilities: k.abilities ?? ['clients.read'], partnerId: k.partnerId === undefined ? 1 : k.partnerId,
-      expiresAt: k.expiresAt ?? null, active: k.active ?? true, rateLimitPerMinute: k.rateLimitPerMinute ?? 60, key, secret,
+      expiresAt: k.expiresAt ?? null, active: k.active ?? true, rateLimitPerMinute: k.rateLimitPerMinute ?? 60, hideAbilities: k.hideAbilities ?? false, key, secret,
     });
     return `${key}.${secret}`;
   }
@@ -177,7 +179,7 @@ export class FakeElefin {
 
     if (path === '/me') {
       ok({
-        key: { name: k.name, abilities: k.abilities, rate_limit_per_minute: k.rateLimitPerMinute, expires_at: k.expiresAt },
+        key: { name: k.name, abilities: k.hideAbilities ? [] : k.abilities, rate_limit_per_minute: k.rateLimitPerMinute, expires_at: k.expiresAt },
         scope: { type: 'partner', partner: { id: k.partnerId, name: this.partners.get(k.partnerId) } },
         totals: { clients: this.book(k).length },
         data_availability: { trades_from: this.tradesFrom },

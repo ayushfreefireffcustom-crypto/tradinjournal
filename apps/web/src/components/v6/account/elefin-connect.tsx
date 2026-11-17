@@ -130,7 +130,7 @@ function ProbeRows({ p }: { p: ElefinProbe }) {
   const exp = daysUntil(k?.expiresAt ?? null);
   const rows: { l: string; v: ReactNode; s: 'ok' | 'bad' | 'off' }[] = [
     { l: 'Partner', v: k ? `${k.partnerName ?? 'Partner'}${k.partnerId != null ? ` · #${k.partnerId}` : ''}` : '—', s: k ? 'ok' : 'off' },
-    { l: 'Reads clients', v: k?.canReadClients ? 'clients.read' : 'Missing', s: k?.canReadClients ? 'ok' : 'bad' },
+    { l: 'Reads clients', v: k?.canReadClients ? 'Yes' : 'Missing', s: k?.canReadClients ? 'ok' : 'bad' },
     { l: 'Clients', v: p.clientsRead === 'ok' ? n(p.clients) : '—', s: p.clientsRead === 'ok' ? 'ok' : 'off' },
     { l: 'Key expires', v: k?.expiresAt ? day(k.expiresAt) : 'Never', s: exp != null && exp < 14 ? 'bad' : 'ok' },
   ];

@@ -178,6 +178,11 @@ describe('probe', () => {
     expect(fake.log.map(l => l.path)).toEqual(['/me', '/clients']);
   });
 
+  it('a key whose /me lists no abilities but can read clients is OK (the live Elefin answer)', async () => {
+    const r = await run(fake.addKey({ hideAbilities: true }));
+    expect(r).toMatchObject({ ok: true, outcome: 'ok', clientsRead: 'ok', key: { abilities: [], canReadClients: true } });
+  });
+
   it('reads the abilities however Elefin spells them', () => {
     for (const a of [['clients.read'], ['clients:read'], ['read:clients'], ['clients.*'], ['*'], ['clients'], ['Clients.List']]) expect(abilitiesCoverClients(a)).toBe(true);
     for (const a of [[], ['trades.read'], ['clientsread'], ['me']]) expect(abilitiesCoverClients(a)).toBe(false);
