@@ -28,7 +28,7 @@ export const CLIENTS_READ = 'clients.read';
  * Elefin's own answer to it decides.
  */
 export function abilitiesCoverClients(abilities: readonly string[]): boolean {
-  return abilities.some(a => a === '*' || /^(read[:._\/-])?clients?([:._\/-](read|list|index|view|show|all|\*))?$/i.test(a.trim()));
+  return abilities.some(a => a === '*' || /^(read[:._/-])?clients?([:._/-](read|list|index|view|show|all|\*))?$/i.test(a.trim()));
 }
 
 export const ELEFIN_LIMITS = {
