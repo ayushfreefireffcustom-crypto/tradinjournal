@@ -109,7 +109,7 @@ export function BrokerHealthRow({ b, right }: { b: PartnerBroker; right?: ReactN
 export function AttentionCard({ a, links }: { a: { notFound: number; inReview: number; unsupported: number; syncErrors: number }; links?: { brokers: string; clients: string } }) {
   const items = [
     { n: a.syncErrors, l: a.syncErrors === 1 ? 'broker list failed to sync' : 'broker lists failed to sync', href: links?.brokers, I: ShieldWarning },
-    { n: a.notFound, l: a.notFound === 1 ? 'client account isn’t in your lists' : 'client accounts aren’t in your lists', href: links?.clients, I: WarningCircle },
+    { n: a.notFound, l: a.notFound === 1 ? 'client isn’t verified by your broker' : 'clients aren’t verified by your broker', href: links?.clients, I: WarningCircle },
     { n: a.unsupported, l: a.unsupported === 1 ? 'client trades at a broker you haven’t connected' : 'clients trade at a broker you haven’t connected', href: links?.brokers, I: Question },
     { n: a.inReview, l: a.inReview === 1 ? 'account is waiting for an admin check' : 'accounts are waiting for an admin check', href: links?.clients, I: MagnifyingGlass },
   ].filter(x => x.n > 0);

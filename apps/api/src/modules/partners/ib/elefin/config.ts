@@ -74,8 +74,18 @@ export const ELEFIN_LIMITS = {
 /** The configured default base URL (ELEFIN_PARTNER_API_URL), without a trailing slash. */
 export const defaultBaseUrl = (): string => (env.ELEFIN_PARTNER_API_URL || ELEFIN_DEFAULT_URL).replace(/\/+$/, '');
 
-export const outboundIps = (): string[] =>
-  (env.ELEFIN_OUTBOUND_IPS ?? '').split(/[\s,]+/).map(s => s.trim()).filter(Boolean);
+/**
+ * The fixed addresses our API calls Elefin from (Railway static egress IPs of
+ * Tradinjournal-API, `railway outbound-network static-ip`). Every partner key needs them on
+ * its IP allow-list. ELEFIN_OUTBOUND_IPS overrides them; they're the default so partners
+ * always see what to ask for, even when the variable isn't set.
+ */
+export const ELEFIN_STATIC_IPS = ['152.55.180.240', '162.220.234.242', '152.55.180.242'] as const;
+
+export const outboundIps = (): string[] => {
+  const set = (env.ELEFIN_OUTBOUND_IPS ?? '').split(/[\s,]+/).map(s => s.trim()).filter(Boolean);
+  return set.length ? set : [...ELEFIN_STATIC_IPS];
+};
 
 /**
  * May the server call this base URL with a partner's key? The configured default,

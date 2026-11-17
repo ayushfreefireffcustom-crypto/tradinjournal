@@ -34,6 +34,8 @@ function writeCache(status: AccessStatusDto): void {
 function isSkipPath(pathname: string): boolean {
   // Journal › Notes (the old /notebook) stays open without the trading gate.
   if (pathname === '/journal' && typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('view') === 'notes') return true;
+  // /access itself is a referred trader's partner page: open before they're let in.
+  if (pathname === '/access') return true;
   return SKIP_PATHS.some(p => pathname.startsWith(p));
 }
 

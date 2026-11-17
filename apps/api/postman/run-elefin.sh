@@ -8,7 +8,8 @@
 #   and the API started against TEST_DB_URL with PARTNER_PROGRAM_ENABLED=true,
 #   ADMIN_EMAILS=admin@partners.test, IN_PROCESS_SCHEDULER=false, RESEND_API_KEY= (empty),
 #   CREDENTIAL_ENCRYPTION_KEY=<64 hex>, ELEFIN_PARTNER_API_URL=http://127.0.0.1:8997/api/v1,
-#   ELEFIN_OUTBOUND_IPS="152.55.180.240,162.220.234.242,152.55.180.242".
+#   and, as live runs: PLATFORM_ACCESS_ENABLED=true, ELEFIN_VERIFY_MODE=broker, no ELEFIN_OUTBOUND_IPS
+#   (our three static IPs are the default).
 #   ./run-elefin.sh            (extra args are passed to `postman collection run`)
 set -euo pipefail
 cd "$(dirname "$0")"

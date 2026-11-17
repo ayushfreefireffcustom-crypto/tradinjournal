@@ -7,6 +7,7 @@ import AuthShell, { AuthError, AuthOk, AuthSubmit } from '@/components/v6/auth/a
 import { LoadingScreen } from '@/components/loader';
 import { authClient } from '@/lib/auth-client';
 import { resetUserCaches } from '@/lib/session-caches';
+import { ibApi } from '@/lib/ib-api';
 
 const OTP_LEN = 6;
 const RESEND_COOLDOWN = 30; // seconds
@@ -49,7 +50,9 @@ function VerifyInner() {
       const res = await authClient.emailOtp.verifyEmail({ email, otp: fullCode });
       if (res?.error) throw new Error(res.error.message ?? 'Invalid or expired code');
       resetUserCaches();
-      router.replace('/dashboard');
+      // Came through a partner: their page first, where Elefin's answer shows up.
+      const viaPartner = await ibApi.access().then(a => !!a.partner, () => false);
+      router.replace(viaPartner ? '/access' : '/dashboard');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Verification failed');
       setDigits(Array(OTP_LEN).fill(''));

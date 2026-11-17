@@ -2081,6 +2081,351 @@
               ]
             }
           }
+        },
+        {
+          "name": "asha: let in (Elefin confirmed her, no MT5 needed)",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"full access, Elefin verified\", () => { pm.expect(d.status).to.eql('FULL_ACCESS'); pm.expect(d.elefinStatus).to.eql('VERIFIED'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{ashaCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/access/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "access",
+                "status"
+              ]
+            }
+          }
+        },
+        {
+          "name": "asha: the journal opens",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{ashaCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/journal",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "journal"
+              ]
+            }
+          }
+        },
+        {
+          "name": "eve: let in (came by link, confirmed)",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"full access, Elefin verified\", () => { pm.expect(d.status).to.eql('FULL_ACCESS'); pm.expect(d.elefinStatus).to.eql('VERIFIED'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{eveCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/access/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "access",
+                "status"
+              ]
+            }
+          }
+        },
+        {
+          "name": "ben: kept out (not Shash’s client at Elefin)",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"Elefin required\", () => { pm.expect(d.status).to.eql('ELEFIN_REQUIRED'); pm.expect(d.elefinStatus).to.eql('PENDING'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{benCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/access/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "access",
+                "status"
+              ]
+            }
+          }
+        },
+        {
+          "name": "ben: the journal is locked",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 403', () => pm.response.to.have.status(403));",
+                  "pm.test('error code ACCESS_ELEFIN_REQUIRED', () => pm.expect(pm.response.json().error.code).to.eql('ACCESS_ELEFIN_REQUIRED'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{benCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/journal",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "journal"
+              ]
+            }
+          }
+        },
+        {
+          "name": "chen: kept out (suspended at Elefin)",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"Elefin required\", () => { pm.expect(d.status).to.eql('ELEFIN_REQUIRED'); pm.expect(d.elefinStatus).to.eql('PENDING'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{chenCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/access/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "access",
+                "status"
+              ]
+            }
+          }
+        },
+        {
+          "name": "dev: kept out (no partner, no Elefin account yet)",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"Elefin required\", () => { pm.expect(d.status).to.eql('ELEFIN_REQUIRED'); pm.expect(d.elefinStatus).to.eql('PENDING'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{devCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/access/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "access",
+                "status"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The partner portal stays open to Shash (no trading account)",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{shashCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/clients",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "clients"
+              ]
+            }
+          }
         }
       ]
     },
@@ -2240,6 +2585,91 @@
                   "language": "json"
                 }
               }
+            }
+          }
+        },
+        {
+          "name": "dev: let in (confirmed after the late code)",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"full access, Elefin verified\", () => { pm.expect(d.status).to.eql('FULL_ACCESS'); pm.expect(d.elefinStatus).to.eql('VERIFIED'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{devCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/access/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "access",
+                "status"
+              ]
+            }
+          }
+        },
+        {
+          "name": "dev: the journal opens",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{devCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/journal",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "journal"
+              ]
             }
           }
         }
@@ -2773,6 +3203,50 @@
           }
         },
         {
+          "name": "asha: kept out (suspended now)",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"Elefin required\", () => { pm.expect(d.status).to.eql('ELEFIN_REQUIRED'); pm.expect(d.elefinStatus).to.eql('PENDING'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{ashaCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/access/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "access",
+                "status"
+              ]
+            }
+          }
+        },
+        {
           "name": "Elefin: re-activates Asha",
           "protocolProfileBehavior": {
             "disableCookies": true,
@@ -2904,6 +3378,50 @@
               "path": [
                 "api",
                 "partner-access"
+              ]
+            }
+          }
+        },
+        {
+          "name": "asha: let in (active again)",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"full access, Elefin verified\", () => { pm.expect(d.status).to.eql('FULL_ACCESS'); pm.expect(d.elefinStatus).to.eql('VERIFIED'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{ashaCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/access/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "access",
+                "status"
               ]
             }
           }
@@ -3183,6 +3701,50 @@
               "path": [
                 "api",
                 "partner-access"
+              ]
+            }
+          }
+        },
+        {
+          "name": "asha: let in (key off, she keeps access)",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"full access, Elefin verified\", () => { pm.expect(d.status).to.eql('FULL_ACCESS'); pm.expect(d.elefinStatus).to.eql('VERIFIED'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{ashaCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/access/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "access",
+                "status"
               ]
             }
           }
@@ -3570,6 +4132,91 @@
               "path": [
                 "api",
                 "partner-access"
+              ]
+            }
+          }
+        },
+        {
+          "name": "asha: let in (after disconnect)",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"full access, Elefin verified\", () => { pm.expect(d.status).to.eql('FULL_ACCESS'); pm.expect(d.elefinStatus).to.eql('VERIFIED'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{ashaCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/access/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "access",
+                "status"
+              ]
+            }
+          }
+        },
+        {
+          "name": "asha: the journal opens",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{ashaCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/journal",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "journal"
               ]
             }
           }

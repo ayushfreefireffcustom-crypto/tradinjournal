@@ -39,6 +39,14 @@ export default function AccessPage() {
     try { setD(await ibApi.access()); setError(''); } catch (e) { setError(msg(e, 'Could not load your access.')); }
   }, []);
   useEffect(() => { void load(); }, [load]);
+  // Just signed up through a partner: Elefin's answer arrives a few seconds later.
+  const waiting = !!d?.partner && !d.elefin && !d.accounts.some(a => a.status === 'VERIFIED');
+  useEffect(() => {
+    if (!waiting) return;
+    const t = setInterval(() => void load(), 4000);
+    const stop = setTimeout(() => clearInterval(t), 60_000);
+    return () => { clearInterval(t); clearTimeout(stop); };
+  }, [waiting, load]);
   useEffect(() => { partnerApi.me().then(setMe).catch(() => setMe(null)); }, []);
   useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(''), 3000); return () => clearTimeout(t); }, [toast]);
 

@@ -27,20 +27,34 @@ const brokerMode = () => env.ELEFIN_VERIFY_MODE === 'broker';
 const elefinCheck = (): 'broker' | 'api' => (brokerMode() ? 'broker' : 'api');
 
 /**
- * Broker mode: the user's Elefin status follows their connected accounts — VERIFIED while
- * they have an MT5 account on an Elefin server, PENDING otherwise. Manual grants are left alone.
+ * Elefin itself confirmed this trader as a partner's active client (the partner's Elefin
+ * key, looked up by their confirmed email), or an admin verified them for Elefin. A
+ * suspended or unknown client doesn't count.
+ */
+async function elefinConfirmedClient(userId: string): Promise<boolean> {
+  const row = await prisma.clientVerification.findFirst({
+    where: { userId, broker: 'elefin', brokerAccountId: null, externalAccountId: null, status: 'VERIFIED' },
+    select: { id: true },
+  });
+  return !!row;
+}
+
+/**
+ * Broker mode: the user's Elefin status follows the evidence — VERIFIED while they have an
+ * MT5 account on an Elefin server or Elefin confirmed them through their partner's key,
+ * PENDING otherwise. Manual grants are left alone.
  */
 async function syncElefinFromAccounts(row: UserAccess): Promise<UserAccess> {
   if (row.source === 'MANUAL_GRANT') return row;
   const accounts = await prisma.brokerAccount.findMany({ where: { userId: row.userId }, select: { server: true } });
-  const has = accounts.some(a => isElefinServer(a.server));
+  const has = accounts.some(a => isElefinServer(a.server)) || (await elefinConfirmedClient(row.userId));
   const want = has ? 'VERIFIED' : 'PENDING';
   if (row.elefinStatus === want) return row;
   return prisma.userAccess.update({
     where: { userId: row.userId },
     data: has
       ? { elefinStatus: 'VERIFIED', source: 'ELEFIN_VERIFIED', elefinVerifiedAt: new Date(), lastDeniedReason: null }
-      : { elefinStatus: 'PENDING', source: null, lastDeniedReason: 'No MT5 account on an Elefin server connected' },
+      : { elefinStatus: 'PENDING', source: null, lastDeniedReason: 'No Elefin MT5 account connected and no partner’s Elefin confirmation' },
   });
 }
 

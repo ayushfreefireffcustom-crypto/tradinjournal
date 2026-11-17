@@ -30,13 +30,16 @@ function toDto(b: BrokerRow, counts?: { clientAccounts: number; verified: number
 }
 
 export async function listBrokers(partnerId: string): Promise<PartnerBrokerDto[]> {
-  const [rows, counts] = await Promise.all([
+  const [rows, counts, people] = await Promise.all([
     prisma.partnerBroker.findMany({ where: { partnerId }, orderBy: { createdAt: 'asc' } }),
     // Accounts only: a trader-level Elefin lookup row isn't an account.
     prisma.clientVerification.groupBy({ by: ['broker', 'status'], where: { partnerId, OR: [{ brokerAccountId: { not: null } }, { externalAccountId: { not: null } }] }, _count: { _all: true } }),
+    // Traders Elefin answered about through the partner's key (one row per trader).
+    prisma.clientVerification.groupBy({ by: ['broker', 'status'], where: { partnerId, brokerAccountId: null, externalAccountId: null }, _count: { _all: true } }),
   ]);
   return rows.map(b => {
-    const mine = counts.filter(c => c.broker === b.broker);
+    // An Elefin partner-API connection verifies traders by email, not accounts.
+    const mine = (b.broker === 'elefin' && b.method === 'API' ? people : counts).filter(c => c.broker === b.broker);
     return toDto(b, {
       clientAccounts: mine.reduce((n, c) => n + c._count._all, 0),
       verified: mine.filter(c => c.status === 'VERIFIED').reduce((n, c) => n + c._count._all, 0),

@@ -65,7 +65,7 @@ export default function PartnerOverviewPage() {
           {o && (
             <div className={`x-page ${loading ? 'ac-refreshing' : ''}`}>
               {/* Step 1 of partner setup: leads the page until Elefin is connected. */}
-              <ElefinHomeSlot setup={{ clicks: o.ib?.funnel.clicks ?? o.funnel.clicks, livePackages: o.ib?.packages.live ?? 0 }} />
+              <ElefinHomeSlot setup={{ clicks: o.ib?.funnel.clicks ?? o.funnel.clicks, livePackages: o.ib?.packages.live ?? 0 }} onChanged={() => void load(range)} />
               {o.ib ? <IbFunnelCard f={o.ib.funnel} rule={o.partner.activeRule} sub={rangeLabel(range)} /> : <Funnel f={o.funnel} rule={o.partner.activeRule} />}
               {o.ib && (
                 <div className="ib-grid3">

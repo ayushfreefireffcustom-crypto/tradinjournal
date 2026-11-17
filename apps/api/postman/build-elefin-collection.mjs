@@ -8,7 +8,8 @@
 //   → Elefin is asked about each one by email: verified / not a client / suspended
 //   → the partner, the trader and the admin all see the same answer
 //   → a package unlocks; Elefin suspends and re-activates a client; the key is switched
-//     off (sync pauses) and replaced; Elefin's IP allow-list changes; disconnect.
+//     off (sync pauses) and replaced; Elefin's IP allow-list changes; disconnect
+//   → all along, with the Elefin-only platform lock on (as live): who gets in and who doesn't.
 //
 // Every request disables Postman's cookie jar; session cookies are sent explicitly.
 import { writeFileSync } from 'fs';
@@ -69,6 +70,14 @@ const confirm = key => req(`${key} confirms their email`, 'POST', '{{altUrl}}/ap
   tests: [status(200), `const c = ${setCookieOf('better-auth.session_token')};`, t('signed in by confirming', 'pm.expect(c).to.match(/^better-auth\\.session_token=/);'), `pm.collectionVariables.set('${cookieVar(key)}', c);`],
 });
 const access = (as, label, tests, pre = []) => req(label, 'GET', `${B}/partner-access`, { as, pre, tests: [status(200), json, ...tests] });
+// The platform lock (PLATFORM_ACCESS_ENABLED, Elefin clients only), as live runs it.
+const gate = (as, open, why) => req(`${as}: ${open ? 'let in' : 'kept out'} (${why})`, 'GET', `${B}/access/status`, { as, tests: [status(200), json,
+  open
+    ? t('full access, Elefin verified', "pm.expect(d.status).to.eql('FULL_ACCESS'); pm.expect(d.elefinStatus).to.eql('VERIFIED');")
+    : t('Elefin required', "pm.expect(d.status).to.eql('ELEFIN_REQUIRED'); pm.expect(d.elefinStatus).to.eql('PENDING');")] });
+const app = (as, open) => req(`${as}: the journal ${open ? 'opens' : 'is locked'}`, 'GET', `${B}/journal`, { as, tests: open
+  ? [status(200)]
+  : [status(403), code('ACCESS_ELEFIN_REQUIRED')] });
 
 const folders = [
   { name: '00 Sign in admin and partner', item: [signin('admin'), signin('shash')] },
@@ -144,12 +153,19 @@ const folders = [
       t('held', "pm.expect(d.elefin.status).to.eql('NOT_FOUND'); pm.expect(d.elefin.held).to.eql(true); pm.expect(d.elefin.reason).to.include('suspended');")]),
     access('dev', 'Dev (no link, no code) has no partner and no check', [t('nothing', 'pm.expect(d.partner).to.eql(null); pm.expect(d.canJoin).to.eql(true); pm.expect(d.elefin).to.eql(null);')]),
     req('Elefin was asked exactly four times', 'GET', '{{fakeUrl}}/__stats', { tests: [status(200), 'const s = pm.response.json();', t('4 lookups, all 200', "pm.expect(s.byPath['/clients/lookup 200']).to.eql(4);")] }),
+    gate('asha', true, 'Elefin confirmed her, no MT5 needed'), app('asha', true),
+    gate('eve', true, 'came by link, confirmed'),
+    gate('ben', false, 'not Shash’s client at Elefin'), app('ben', false),
+    gate('chen', false, 'suspended at Elefin'),
+    gate('dev', false, 'no partner, no Elefin account yet'),
+    req('The partner portal stays open to Shash (no trading account)', 'GET', `${B}/partner/clients`, { as: 'shash', tests: [status(200)] }),
   ] },
 
   { name: '06 Late code', item: [
     req('Dev types Shash’s code after signing up', 'POST', `${B}/partner-access/join`, { as: 'dev', body: { code: '{{shashCode}}' }, tests: [status(200), json, t('linked', "pm.expect(d.partner.name).to.eql('Shashwat Verma');")] }),
     access('dev', 'Dev is checked with Elefin too', [t('verified', "pm.expect(d.elefin.status).to.eql('VERIFIED');")], settle(2500)),
     req('A second code is refused', 'POST', `${B}/partner-access/join`, { as: 'dev', body: { code: '{{shashCode}}' }, tests: [status(409)] }),
+    gate('dev', true, 'confirmed after the late code'), app('dev', true),
   ] },
 
   { name: '07 Partner and admin see it', item: [
@@ -179,9 +195,11 @@ const folders = [
     ctl('suspends Asha', 'status', { email: '{{ashaEmail}}', status: 'suspended' }),
     req('Sync', 'POST', `${B}/admin/partners/{{shashPid}}/elefin/sync`, { as: 'admin', tests: [status(200), json, t('ok, one less verified', 'pm.expect(d.result.ok).to.eql(true); pm.expect(d.connection.verification.verified).to.eql(2); pm.expect(d.connection.verification.held).to.eql(2);')] }),
     access('asha', 'Asha is on hold', [t('held', "pm.expect(d.elefin.held).to.eql(true); pm.expect(d.elefin.reason).to.include('suspended');")]),
+    gate('asha', false, 'suspended now'),
     ctl('re-activates Asha', 'status', { email: '{{ashaEmail}}', status: 'active' }),
     req('Sync again', 'POST', `${B}/admin/partners/{{shashPid}}/elefin/sync`, { as: 'admin', tests: [status(200), json, t('back to 3 verified', 'pm.expect(d.connection.verification.verified).to.eql(3);')] }),
     access('asha', 'Asha is verified again', [t('verified', "pm.expect(d.elefin.status).to.eql('VERIFIED'); pm.expect(d.elefin.held).to.eql(false);")]),
+    gate('asha', true, 'active again'),
   ] },
 
   { name: '10 Elefin switches the key off', item: [
@@ -191,6 +209,7 @@ const folders = [
       t('paused, partner asked for the key again', "pm.expect(d.connection.state).to.eql('PAUSED'); pm.expect(d.connection.lastError).to.include('Add your key again');")] }),
     req('Partner can’t “Sync now” a paused key', 'POST', `${B}/partner/brokers/elefin/sync`, { as: 'shash', tests: [status(409)] }),
     access('asha', 'Traders keep what they had', [t('still verified', "pm.expect(d.elefin.status).to.eql('VERIFIED');")]),
+    gate('asha', true, 'key off, she keeps access'),
     ctl('issues the key again', 'key-active', { key: '{{goodKeyId}}', active: true }),
     req('Shash adds the key again', 'POST', `${B}/partner/brokers/elefin/connect`, { as: 'shash', body: { key: '{{goodKey}}' }, tests: [status(200), json,
       t('working again', "pm.expect(d.probe.ok).to.eql(true); pm.expect(d.connection.state).to.eql('OK'); pm.expect(d.connection.pausedAt).to.eql(null);"), noSecret] }),
@@ -208,6 +227,7 @@ const folders = [
   { name: '12 Disconnect', item: [
     req('Shash disconnects', 'DELETE', `${B}/partner/brokers/elefin`, { as: 'shash', tests: [status(200), json, t('not connected, nothing cached', "pm.expect(d.state).to.eql('NOT_CONNECTED'); pm.expect(d.keyHint).to.eql(null); pm.expect(d.roster).to.eql(null);")] }),
     access('asha', 'Verified traders stay verified', [t('still verified', "pm.expect(d.elefin.status).to.eql('VERIFIED');")]),
+    gate('asha', true, 'after disconnect'), app('asha', true),
     req('Sync now → 409 (nothing connected)', 'POST', `${B}/partner/brokers/elefin/sync`, { as: 'shash', tests: [status(409)] }),
   ] },
 ];

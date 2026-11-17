@@ -7,7 +7,7 @@
 // card shows only what Elefin's API gives: the partner's book (clients, funded, deposits,
 // lots, quiet, new) and referred traders verified by their sign-up email.
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { ArrowsClockwise, Check, Key, Minus, X } from '@phosphor-icons/react';
+import { ArrowsClockwise, Check, Copy, Key, Minus, X } from '@phosphor-icons/react';
 import Modal from '@/components/v6/ui/modal';
 import { useConfirm } from '@/components/confirm-dialog';
 import { timeAgo } from '@/components/app-shell';
@@ -121,6 +121,84 @@ export function ElefinPrompt({ c, setup, onConnect, onLater, paused }: {
   );
 }
 
+// ── What to ask Elefin for ───────────────────────────────────────────────────
+
+/** Elefin makes partner keys by hand, locked to an IP allow-list. */
+export function elefinRequest(ips: readonly string[]): string {
+  return [
+    'Hi, please create a Partner API key for TRADElogs on my partner account.',
+    '',
+    'Permission: clients.read',
+    `IP allow-list: ${ips.join(', ')}`,
+    '',
+    'Thanks!',
+  ].join('\n');
+}
+
+/** The clipboard API, else the old select-and-copy (blocked clipboard permission, iframes). */
+async function copyText(text: string): Promise<boolean> {
+  try { await navigator.clipboard.writeText(text); return true; } catch { /* fall back */ }
+  const ta = document.createElement('textarea');
+  ta.value = text; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0';
+  document.body.appendChild(ta); ta.select();
+  try { return document.execCommand('copy'); } catch { return false; } finally { ta.remove(); }
+}
+
+type CopyState = { id: string; ok: boolean } | null;
+
+function useCopy(): [CopyState, (id: string, text: string) => void] {
+  const [state, setState] = useState<CopyState>(null);
+  useEffect(() => { if (!state) return; const t = setTimeout(() => setState(null), state.ok ? 1600 : 4000); return () => clearTimeout(t); }, [state]);
+  const copy = useCallback((id: string, text: string) => { void copyText(text).then(ok => setState({ id, ok })); }, []);
+  return [state, copy];
+}
+
+function CopyBtn({ id, text, state, copy, label = 'Copy' }: { id: string; text: string; state: CopyState; copy: (id: string, text: string) => void; label?: string }) {
+  const s = state?.id === id ? (state.ok ? 'done' : 'fail') : '';
+  return (
+    <button type="button" className={`ef-copy ${s ? `is-${s}` : ''}`} onClick={() => copy(id, text)} data-testid={`elefin-copy-${id}`} aria-label={s === 'done' ? 'Copied' : `${label}${id.startsWith('ip') ? ` ${text}` : ''}`}>
+      {s === 'done' ? <Check size={13} weight="bold" aria-hidden /> : <Copy size={13} weight="bold" aria-hidden />}{s === 'done' ? 'Copied' : s === 'fail' ? 'Select and copy' : label}
+    </button>
+  );
+}
+
+/** Before pasting: the key Elefin has to make, with our IPs on its allow-list. */
+export function KeyRequirements({ ips }: { ips: readonly string[] }) {
+  const [state, copy] = useCopy();
+  // Couldn't copy the message: show it (and keep it) so it can be selected by hand.
+  const [showMsg, setShowMsg] = useState(false);
+  useEffect(() => { if (state?.id === 'request' && !state.ok) setShowMsg(true); }, [state]);
+  return (
+    <section className="ef-req" aria-labelledby="ef-req-h" data-testid="elefin-requirements">
+      <div className="ef-req-top">
+        <div>
+          <b id="ef-req-h" className="ef-req-h">Before you paste</b>
+          <p className="ef-req-sub">Elefin makes the key for you. Ask for exactly this:</p>
+        </div>
+        <CopyBtn id="request" text={elefinRequest(ips)} state={state} copy={copy} label="Copy message" />
+      </div>
+      {showMsg && <pre className="ef-req-msg" data-testid="elefin-request-text">{elefinRequest(ips)}</pre>}
+      <dl className="ef-req-list">
+        <div className="ef-req-row">
+          <dt>Permission</dt>
+          <dd><span className="axchip ok">clients.read</span></dd>
+        </div>
+        <div className="ef-req-row ef-req-row--ips">
+          <dt>IP allow-list<small>{ips.length} addresses</small></dt>
+          <dd>
+            <ul className="ef-iplist" data-testid="elefin-ips">
+              {ips.map((ip, i) => (
+                <li key={ip}><span className="axnum">{ip}</span><CopyBtn id={`ip${i}`} text={ip} state={state} copy={copy} /></li>
+              ))}
+            </ul>
+          </dd>
+        </div>
+      </dl>
+      <p className="ef-req-warn">Missing even one address and Elefin refuses the key.</p>
+    </section>
+  );
+}
+
 // ── Paste, test, save ────────────────────────────────────────────────────────
 
 type Phase = 'idle' | 'testing' | 'saving' | 'done';
@@ -206,17 +284,9 @@ export function ElefinConnectModal({ c, onClose, onConnected, replacing }: {
         <button type="button" className="x-btn x-btn--hi" disabled={!valid || busy || wait > 0 || (probe != null && !probe.ok && probe.outcome !== 'rate_limited' && probe.outcome !== 'unreachable')} onClick={() => void save()} data-testid="elefin-save">{phase === 'saving' ? 'Connecting…' : 'Save and sync'}</button>
       </>}>
       <div className="ef-modal">
-        <div className="ef-how">
-          <b className="ef-how-h">Where to get your key</b>
-          <ol className="ib-steps ef-steps">
-            <li>Ask your Elefin contact for a <b>Partner API key</b> for TRADElogs. Keys aren&rsquo;t self-service.</li>
-            <li>It needs one permission: <b>clients.read</b>.</li>
-            <li>IP access: {ips.length ? <>allow <span className="axnum ef-ips">{ips.join(', ')}</span></> : <b>Any</b>}.</li>
-            <li>Copy it whole, as <span className="axnum">key.secret</span>. Elefin shows it once.</li>
-          </ol>
-        </div>
+        <KeyRequirements ips={ips} />
         <div className="x-field">
-          <label htmlFor="ef-key">Elefin key</label>
+          <label htmlFor="ef-key">Paste the key <span className="x-dim">· all of it, as key.secret</span></label>
           <div className="ef-keyrow">
             <input id="ef-key" className="x-input ef-keyin" type={show ? 'text' : 'password'} autoComplete="off" spellCheck={false} autoCapitalize="off"
               value={key} onChange={e => edit(e.target.value)} placeholder="key.secret" data-testid="elefin-key" aria-describedby="ef-key-help" />
@@ -416,7 +486,7 @@ export function ElefinSection({ onChanged }: { onChanged?: () => void }) {
 }
 
 /** Partner home: leads with the prompt until Elefin is connected (or when it's paused). */
-export function ElefinHomeSlot({ setup }: { setup: { clicks: number; livePackages: number } }) {
+export function ElefinHomeSlot({ setup, onChanged }: { setup: { clicks: number; livePackages: number }; onChanged?: () => void }) {
   const { c, setC } = useElefin();
   const [open, setOpen] = useState(false);
   const [hidden, setHidden] = useState(true);
@@ -435,7 +505,7 @@ export function ElefinHomeSlot({ setup }: { setup: { clicks: number; livePackage
           <Key size={14} weight="bold" aria-hidden /><span>Elefin isn&rsquo;t connected, so traders aren&rsquo;t verified automatically.</span>
           <button type="button" className="x-link" onClick={() => setOpen(true)}>Connect</button>
         </p>
-        {open && <ElefinConnectModal c={c} onClose={() => setOpen(false)} onConnected={(conn, s) => { setC(conn); setOpen(false); setToast(syncToast(s, true)); }} />}
+        {open && <ElefinConnectModal c={c} onClose={() => setOpen(false)} onConnected={(conn, s) => { setC(conn); setOpen(false); setToast(syncToast(s, true)); onChanged?.(); }} />}
       </>
     );
   }
@@ -444,7 +514,7 @@ export function ElefinHomeSlot({ setup }: { setup: { clicks: number; livePackage
       <ElefinPrompt c={c} setup={setup} paused={paused} onConnect={() => setOpen(true)}
         onLater={() => { try { localStorage.setItem(DISMISS_KEY, String(Date.now())); } catch { /* private mode */ } setHidden(true); }} />
       {open && <ElefinConnectModal c={c} replacing={paused} onClose={() => setOpen(false)}
-        onConnected={(conn, s) => { setC(conn); setOpen(false); setToast(syncToast(s, true)); }} />}
+        onConnected={(conn, s) => { setC(conn); setOpen(false); setToast(syncToast(s, true)); onChanged?.(); }} />}
       {toast && <div className="ac-toast" role="status">{toast}</div>}
     </>
   );

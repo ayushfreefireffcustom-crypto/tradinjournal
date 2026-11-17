@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from '@/components/v6/ui/link';
 import { authClient } from '@/lib/auth-client';
 import { accessApi } from '@/lib/access-api';
 import { invalidateAccessCache, primeAccessCache } from '@/lib/use-platform-access';
@@ -144,6 +145,7 @@ function ElefinBrokerCheck({ onSignOut }: { onSignOut: () => void }) {
           Connect Elefin MT5 account
         </button>
         <p className="x-help">No Elefin account yet? Open one with Elefin first, then come back and connect it.</p>
+        <p className="x-help">Joined through a partner? <Link href="/access" data-testid="elefin-to-partner">See what Elefin says on your partner page</Link>.</p>
       </div>
       {connecting && <ConnectBrokerModal initialBroker="Elefin" onClose={() => setConnecting(false)} onConnected={a => void onConnected(a)} />}
     </StatusCard>

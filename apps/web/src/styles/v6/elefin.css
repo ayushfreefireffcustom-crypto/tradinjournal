@@ -38,11 +38,31 @@
 
 /* ── Dialog ── */
 .v6 .ef-modal { display: grid; gap: 16px; min-width: 0; }
-.v6 .ef-how { display: grid; gap: 8px; padding: 14px 16px; border-radius: var(--r-inset); background: var(--s2); }
-.v6 .ef-how-h { font-size: var(--t2); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--mut); }
-.v6 .ef-steps { font-size: var(--t3); line-height: 1.5; }
-.v6 .ef-steps b { color: var(--tx); font-weight: 600; }
-.v6 .ef-ips { color: var(--tx); overflow-wrap: anywhere; }
+.v6 .ef-req { display: grid; gap: 12px; padding: 14px 16px; border-radius: var(--r-inset); background: var(--s2); min-width: 0; }
+.v6 .ef-req-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.v6 .ef-req-h { font-size: var(--t2); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--mut); }
+.v6 .ef-req-sub { margin: 2px 0 0; font-size: var(--t3); color: var(--tx); }
+.v6 .ef-req-list { margin: 0; display: grid; border-top: 1px solid var(--line); }
+.v6 .ef-req-row { display: grid; grid-template-columns: 128px minmax(0, 1fr); gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.v6 .ef-req-row--ips { align-items: start; }
+.v6 .ef-req-row dt { font-size: var(--t2); color: var(--mut); display: grid; gap: 1px; }
+.v6 .ef-req-row dt small { font-size: var(--t1, 11px); color: var(--dim); }
+.v6 .ef-req-row dd { margin: 0; min-width: 0; }
+.v6 .ef-iplist { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.v6 .ef-iplist li { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 7px 8px 7px 12px; border-radius: 8px; background: var(--s1); border: 1px solid var(--line); min-width: 0; }
+.v6 .ef-iplist .axnum { font-size: var(--t3); font-weight: 600; color: var(--tx); letter-spacing: .01em; overflow-wrap: anywhere; }
+.v6 .ef-copy { display: inline-flex; align-items: center; gap: 5px; flex: none; padding: 4px 9px; border-radius: 999px; border: 1px solid var(--line); background: var(--s1); color: var(--tx); font: inherit; font-size: var(--t2); font-weight: 600; cursor: pointer; white-space: nowrap; }
+.v6 .ef-copy:hover { border-color: var(--mut); }
+.v6 .ef-copy:focus-visible { outline: 2px solid var(--tx); outline-offset: 2px; }
+.v6 .ef-copy.is-done { color: var(--g-tx); border-color: currentColor; }
+.v6 .ef-copy.is-fail { color: var(--mut); }
+.v6 .ef-req-msg { margin: 0; padding: 10px 12px; border-radius: 8px; background: var(--s1); border: 1px solid var(--line); font: inherit; font-size: var(--t2); white-space: pre-wrap; user-select: all; }
+.v6 .ef-iplist .axnum { user-select: all; }
+.v6 .ef-req-warn { margin: 0; font-size: var(--t2); color: var(--mut); }
+@media (max-width: 560px) {
+  .v6 .ef-req-top { flex-direction: column; }
+  .v6 .ef-req-row { grid-template-columns: 1fr; gap: 6px; }
+}
 .v6 .ef-keyrow { display: flex; gap: 8px; align-items: center; min-width: 0; }
 .v6 .ef-keyin { flex: 1; min-width: 0; font-variant-numeric: tabular-nums; letter-spacing: .02em; }
 .v6 .ef-res { display: grid; gap: 10px; padding: 14px 16px; border-radius: var(--r-inset); background: var(--s2); border: 1px solid var(--line); min-width: 0; }

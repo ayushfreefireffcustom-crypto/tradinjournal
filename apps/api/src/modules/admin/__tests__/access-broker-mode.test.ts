@@ -1,4 +1,5 @@
-// Broker mode: only users with an MT5 account on an Elefin server get in.
+// Broker mode: only Elefin clients get in: an MT5 account on an Elefin server, or Elefin's
+// own confirmation through a partner's key.
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 const env = {
@@ -18,6 +19,8 @@ type Row = { userId: string; source: string | null; elefinStatus: string; activi
 const rows = new Map<string, Row>();
 let accounts: { userId: string; broker: string; server: string }[] = [];
 let grants: { email: string }[] = [];
+/** Trader-level Elefin answers (a partner's key looked up their email). */
+let confirmations: { userId: string; status: string }[] = [];
 const provider = { verifyUnderUs: vi.fn() };
 
 vi.mock('@tradinjournal/db', () => ({
@@ -37,6 +40,7 @@ vi.mock('@tradinjournal/db', () => ({
       }),
       updateMany: vi.fn(async () => ({ count: 0 })),
     },
+    clientVerification: { findFirst: vi.fn(async ({ where }: { where: { userId: string; status: string } }) => confirmations.find(c => c.userId === where.userId && c.status === where.status) ?? null) },
     brokerAccount: { findMany: vi.fn(async ({ where }: { where: { userId: string } }) => accounts.filter(a => a.userId === where.userId)) },
     user: { findUnique: vi.fn(async () => ({ createdAt: new Date('2020-01-01'), email: 'x@test.com' })) },
     partner: { findUnique: vi.fn(async () => null) },
@@ -60,7 +64,7 @@ describe('isElefinServer', () => {
 
 describe('access in broker mode', () => {
   beforeEach(() => {
-    rows.clear(); accounts = []; grants = []; provider.verifyUnderUs.mockReset();
+    rows.clear(); accounts = []; grants = []; confirmations = []; provider.verifyUnderUs.mockReset();
     env.ACCESS_REQUIRE_ACTIVITY = false;
   });
 
@@ -105,6 +109,22 @@ describe('access in broker mode', () => {
     const s = await svc.verifyElefin('u4', 'u4@test.com', { mt5Login: 123 });
     expect(s.status).toBe('ELEFIN_REQUIRED');
     expect(provider.verifyUnderUs).not.toHaveBeenCalled();
+  });
+
+  it('lets in a referred trader Elefin confirmed through their partner’s key, with no MT5 yet', async () => {
+    confirmations = [{ userId: 'u7', status: 'VERIFIED' }];
+    const s = await svc.getAccessStatus('u7', 'u7@test.com');
+    expect(s.status).toBe('FULL_ACCESS');
+    expect(s.elefinStatus).toBe('VERIFIED');
+  });
+
+  it('a held or unknown Elefin answer doesn’t count, and losing the confirmation locks again', async () => {
+    confirmations = [{ userId: 'u8', status: 'NOT_FOUND' }];
+    expect((await svc.getAccessStatus('u8', 'u8@test.com')).status).toBe('ELEFIN_REQUIRED');
+    confirmations = [{ userId: 'u8', status: 'VERIFIED' }];
+    expect((await svc.getAccessStatus('u8', 'u8@test.com')).status).toBe('FULL_ACCESS');
+    confirmations = [{ userId: 'u8', status: 'NOT_FOUND' }];
+    expect((await svc.getAccessStatus('u8', 'u8@test.com')).status).toBe('ELEFIN_REQUIRED');
   });
 
   it('applies the activity rule only when switched on', async () => {
