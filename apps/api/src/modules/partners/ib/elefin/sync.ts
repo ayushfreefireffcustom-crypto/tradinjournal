@@ -74,6 +74,7 @@ export async function syncElefin(brokerId: string, opts: { actor?: Actor; force?
   const clock = opts.deps?.now ?? Date.now;
   const started = new Date(clock());
   const actor = opts.actor ?? null;
+  let abilities: string[] | null = null;
   try {
     const { ibApiHosts } = await getProgramSettings();
     if (!baseUrlAllowed(cfg.baseUrl, ibApiHosts)) throw new ElefinError('bad_response', 'The Elefin API address is no longer approved.');
@@ -81,7 +82,8 @@ export async function syncElefin(brokerId: string, opts: { actor?: Actor; force?
 
     // 1. The key.
     const me = await readMe(client);
-    if (!me.key.canReadClients) throw new ElefinError('forbidden', 'The key can no longer read your clients (Elefin removed clients.read).', 403);
+    abilities = me.key.abilities;
+    // The abilities list is only a hint; reading the list below is what proves access.
 
     // 2. The book. A book too big to keep per client is re-read in full once a day.
     const r = cfg.roster;
@@ -149,13 +151,13 @@ export async function syncElefin(brokerId: string, opts: { actor?: Actor; force?
     if (book?.skippedRows) logger.warn('[elefin] client rows not in the documented shape were skipped', { brokerId: b.id, rows: book.skippedRows });
     return { ok: true, full: !!book?.full, clients, changed: book?.changed.size ?? 0, lookups, verified, unverified, error: null };
   } catch (err) {
-    return await recordFailure(b.id, b.partnerId, cfg, err, actor);
+    return await recordFailure(b.id, b.partnerId, cfg, err, actor, abilities);
   } finally {
     inflight.delete(brokerId);
   }
 }
 
-async function recordFailure(id: string, partnerId: string, cfg: ElefinConfig, err: unknown, actor: Actor): Promise<ElefinSyncResultDto> {
+async function recordFailure(id: string, partnerId: string, cfg: ElefinConfig, err: unknown, actor: Actor, abilities: string[] | null = null): Promise<ElefinSyncResultDto> {
   const e = err instanceof ElefinError ? err : null;
   if (!e) logger.warn('[elefin] sync failed', { id, err });
   const now = new Date();
@@ -177,7 +179,7 @@ async function recordFailure(id: string, partnerId: string, cfg: ElefinConfig, e
   try {
     const prev = await prisma.partnerBroker.findUnique({ where: { id }, select: { status: true } });
     await patchConfig(id, patch, { status: 'ERROR', lastError: msg.slice(0, 300), lastSyncAt: now });
-    await prisma.brokerEvent.create({ data: { partnerBrokerId: id, kind: 'elefin_sync', payload: { kind: e?.kind ?? 'error', status: e?.status ?? null }, status: 'error', error: msg.slice(0, 300) } });
+    await prisma.brokerEvent.create({ data: { partnerBrokerId: id, kind: 'elefin_sync', payload: { kind: e?.kind ?? 'error', status: e?.status ?? null, path: e?.path ?? null, abilities: abilities?.slice(0, 40) ?? null }, status: 'error', error: msg.slice(0, 300) } });
     if (paused && !cfg.pausedAt) await logEvent({ kind: 'ib.elefin_paused', partnerId, actor, message: 'Elefin sync paused: the key was refused 3 times in a row' });
     else if (prev?.status !== 'ERROR') await logEvent({ kind: 'ib.sync_failed', partnerId, actor, message: `Elefin API sync failed: ${msg}` });
   } catch (dbErr) {

@@ -2,7 +2,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { redactText } from '@tradinjournal/logger';
 import { ElefinClient, ElefinError, parseRetryAfter, resetElefinBudgets } from '../client.js';
-import { baseUrlAllowed } from '../config.js';
+import { abilitiesCoverClients, baseUrlAllowed } from '../config.js';
 import { probe } from '../probe.js';
 import { DOCUMENTED_FIELDS } from '../schema.js';
 import { FakeElefin } from './fake-elefin.js';
@@ -170,11 +170,17 @@ describe('probe', () => {
     for (const c of fake.clients) { expect(out).not.toContain(c.name); expect(out).not.toContain(c.email); }
   });
 
-  it('no clients.read → missing_permission, after /me only', async () => {
+  it('no clients.read → still tries the list, and Elefin’s refusal decides', async () => {
     const r = await run(fake.addKey({ abilities: [] }));
     expect(r).toMatchObject({ ok: false, outcome: 'missing_permission', clientsRead: 'forbidden', key: { canReadClients: false } });
     expect(r.missing[0]).toMatch(/clients\.read/);
-    expect(fake.log.map(l => l.path)).toEqual(['/me']);
+    expect(r.message).toMatch(/Elefin says/);
+    expect(fake.log.map(l => l.path)).toEqual(['/me', '/clients']);
+  });
+
+  it('reads the abilities however Elefin spells them', () => {
+    for (const a of [['clients.read'], ['clients:read'], ['read:clients'], ['clients.*'], ['*'], ['clients'], ['Clients.List']]) expect(abilitiesCoverClients(a)).toBe(true);
+    for (const a of [[], ['trades.read'], ['clientsread'], ['me']]) expect(abilitiesCoverClients(a)).toBe(false);
   });
 
   it('wrong, switched-off or expired key → invalid_key', async () => {

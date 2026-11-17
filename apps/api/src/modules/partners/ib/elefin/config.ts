@@ -21,6 +21,16 @@ export const ELEFIN_PATHS = {
 /** The ability every client endpoint needs. */
 export const CLIENTS_READ = 'clients.read';
 
+/**
+ * Whether a key's abilities look like they cover reading clients. Elefin's docs say
+ * "clients.read", but a live key can spell it differently ("clients:read", "read:clients",
+ * "clients.*", "*"). This is only a hint: the client list itself is always tried, and
+ * Elefin's own answer to it decides.
+ */
+export function abilitiesCoverClients(abilities: readonly string[]): boolean {
+  return abilities.some(a => a === '*' || /^(read[:._\/-])?clients?([:._\/-](read|list|index|view|show|all|\*))?$/i.test(a.trim()));
+}
+
 export const ELEFIN_LIMITS = {
   /** Elefin's maximum page size; one page of 200 beats 200 single reads. */
   perPage: 200,

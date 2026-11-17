@@ -2,7 +2,7 @@
 // how far back trades go), then one /clients row to confirm reading works. Reports counts
 // and field names only — never the key, never a client's name or any other value.
 import type { ElefinKeyInfoDto, ElefinProbeDto } from '@tradinjournal/contracts';
-import { CLIENTS_READ, ELEFIN_LIMITS, ELEFIN_PATHS } from './config.js';
+import { abilitiesCoverClients, CLIENTS_READ, ELEFIN_LIMITS, ELEFIN_PATHS } from './config.js';
 import { ElefinClient, ElefinError } from './client.js';
 import { DOCUMENTED_FIELDS, fieldNames, meData, type ElefinMe } from './schema.js';
 
@@ -14,7 +14,7 @@ export function keyInfo(me: ElefinMe): ElefinKeyInfoDto {
     partnerId: me.scope.partner?.id ?? null,
     partnerName: me.scope.partner?.name?.trim().slice(0, 120) || null,
     keyName: me.key.name?.trim().slice(0, 80) || null,
-    abilities, canReadClients: abilities.includes(CLIENTS_READ),
+    abilities, canReadClients: abilitiesCoverClients(abilities),
     rateLimitPerMinute: me.key.rate_limit_per_minute ?? null,
     expiresAt: me.key.expires_at ? new Date(me.key.expires_at).toISOString() : null,
     tradesFrom: me.data_availability?.trades_from ? new Date(me.data_availability.trades_from).toISOString() : null,
@@ -56,10 +56,7 @@ export async function probe(client: ElefinClient, now = new Date()): Promise<Ele
   if (exp != null && exp <= now.getTime()) {
     return { ...out, outcome: 'invalid_key', message: 'This key has expired. Ask Elefin for a new one.' };
   }
-  if (!me.key.canReadClients) {
-    out.missing.push(`the “${CLIENTS_READ}” permission on this key`);
-    return { ...out, outcome: 'missing_permission', clientsRead: 'forbidden', message: 'The key works but can’t read your clients. Ask Elefin to add the clients.read permission.' };
-  }
+  // The abilities list is only a hint (Elefin may spell them differently): try the list anyway.
 
   try {
     const page = await client.page(ELEFIN_PATHS.clients, { per_page: ELEFIN_LIMITS.probePerPage, page: 1 });
@@ -72,7 +69,8 @@ export async function probe(client: ElefinClient, now = new Date()): Promise<Ele
     if (!(e instanceof ElefinError)) throw e;
     if (e.kind === 'forbidden') {
       out.missing.push(`the “${CLIENTS_READ}” permission on this key`);
-      return { ...out, clientsRead: 'forbidden', outcome: 'missing_permission', message: 'The key works but can’t read your clients. Ask Elefin to add the clients.read permission.' };
+      const said = e.message.match(/Elefin says: .*$/)?.[0] ?? '';
+      return { ...out, clientsRead: 'forbidden', outcome: 'missing_permission', message: `The key works but can’t read your clients. Ask Elefin to add the clients.read permission.${said ? ` ${said}` : ''}` };
     }
     return { ...out, clientsRead: 'error', ...failureOf(e) };
   }
