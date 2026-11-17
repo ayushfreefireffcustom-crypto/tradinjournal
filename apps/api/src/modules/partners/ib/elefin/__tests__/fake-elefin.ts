@@ -25,6 +25,8 @@ export interface FakeKey {
   rateLimitPerMinute: number;
   /** Live Elefin (17 Nov 2026) answers /me with `abilities: []` for a key that can read clients. */
   hideAbilities?: boolean;
+  /** Elefin's per-key IP allow-list; any other caller gets 403 "Requests from <ip> are not allowed…". */
+  allowedIps?: string[];
 }
 
 export interface FakeClient {
@@ -71,7 +73,7 @@ export class FakeElefin {
     const secret = k.secret ?? `fxcrm_sk_${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}`;
     this.keys.set(key, {
       name: k.name ?? 'Test integration', abilities: k.abilities ?? ['clients.read'], partnerId: k.partnerId === undefined ? 1 : k.partnerId,
-      expiresAt: k.expiresAt ?? null, active: k.active ?? true, rateLimitPerMinute: k.rateLimitPerMinute ?? 60, hideAbilities: k.hideAbilities ?? false, key, secret,
+      expiresAt: k.expiresAt ?? null, active: k.active ?? true, rateLimitPerMinute: k.rateLimitPerMinute ?? 60, hideAbilities: k.hideAbilities ?? false, allowedIps: k.allowedIps, key, secret,
     });
     return `${key}.${secret}`;
   }
@@ -117,9 +119,9 @@ export class FakeElefin {
     c.updatedAt = at.toISOString();
   }
 
-  async start(): Promise<string> {
+  async start(port = 0): Promise<string> {
     this.server = createServer((req, res) => this.handle(req, res));
-    await new Promise<void>(r => this.server!.listen(0, '127.0.0.1', () => r()));
+    await new Promise<void>(r => this.server!.listen(port, '127.0.0.1', () => r()));
     this.base = `http://127.0.0.1:${(this.server.address() as AddressInfo).port}/api/v1`;
     return this.base;
   }
@@ -172,6 +174,8 @@ export class FakeElefin {
       fail(429, 'Too Many Attempts.');
       return;
     }
+    const ip = (req.socket.remoteAddress ?? '').replace(/^::ffff:/, '');
+    if (k.allowedIps?.length && !k.allowedIps.includes(ip)) { fail(403, `Requests from ${ip} are not allowed for this API key.`); return; }
     win.push(now); this.hits.set(k.key, win);
     headers['X-RateLimit-Remaining'] = String(k.rateLimitPerMinute - win.length);
     if (k.partnerId == null || !this.partners.has(k.partnerId)) { fail(403, 'The partner this key belongs to no longer exists.'); return; }

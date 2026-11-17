@@ -133,6 +133,17 @@ async function packageContext(userId: string) {
   return { rule, ref, verifs, ents, evaluate };
 }
 
+/** The trader-level Elefin email check (no account attached) for the current partner. */
+function elefinCheck(verifs: { broker: string | null; brokerAccountId: string | null; externalAccountId: string | null; partnerId: string | null; status: string; signal: string | null; reason: string | null; checkedAt: Date | null }[], partnerId: string | null): ClientAccessDto['elefin'] {
+  const v = partnerId ? verifs.find(x => x.broker === 'elefin' && !x.brokerAccountId && !x.externalAccountId && x.partnerId === partnerId) : undefined;
+  if (!v) return null;
+  return {
+    status: v.status as NonNullable<ClientAccessDto['elefin']>['status'],
+    held: v.signal === 'elefin-suspended' || v.signal === 'elefin-inactive',
+    reason: v.reason, checkedAt: v.checkedAt?.toISOString() ?? null,
+  };
+}
+
 export async function clientAccess(userId: string, email: string): Promise<ClientAccessDto> {
   const [{ rule, ref, verifs, ents, evaluate }, accounts, perks, products] = await Promise.all([
     packageContext(userId), accountsOf(userId), perksFor(userId, email), clientProducts(userId),
@@ -212,6 +223,7 @@ export async function clientAccess(userId: string, email: string): Promise<Clien
     lockedPerks: perks.locked,
     myPerks: perks.mine,
     products,
+    elefin: elefinCheck(verifs, ref?.partnerId ?? null),
   };
 }
 

@@ -8,7 +8,7 @@ const USE_MOCKS = process.env.NEXT_PUBLIC_USE_MOCKS === 'true';
 const API = USE_MOCKS ? '' : process.env.NEXT_PUBLIC_API_URL || '';
 const P = USE_MOCKS ? '/data' : '/api';
 
-export type ElefinProbeOutcome = 'ok' | 'invalid_key' | 'missing_permission' | 'rate_limited' | 'unreachable' | 'bad_response' | 'host_not_allowed';
+export type ElefinProbeOutcome = 'ok' | 'invalid_key' | 'missing_permission' | 'rate_limited' | 'unreachable' | 'bad_response' | 'host_not_allowed' | 'ip_blocked';
 export type ElefinState = 'NOT_CONNECTED' | 'SYNCING' | 'OK' | 'ERROR' | 'PAUSED';
 
 export interface ElefinKeyInfo {

@@ -2,7 +2,7 @@
 // how far back trades go), then one /clients row to confirm reading works. Reports counts
 // and field names only — never the key, never a client's name or any other value.
 import type { ElefinKeyInfoDto, ElefinProbeDto } from '@tradinjournal/contracts';
-import { abilitiesCoverClients, CLIENTS_READ, ELEFIN_LIMITS, ELEFIN_PATHS } from './config.js';
+import { abilitiesCoverClients, CLIENTS_READ, ELEFIN_LIMITS, ELEFIN_PATHS, outboundIps } from './config.js';
 import { ElefinClient, ElefinError } from './client.js';
 import { DOCUMENTED_FIELDS, fieldNames, meData, type ElefinMe } from './schema.js';
 
@@ -32,7 +32,16 @@ export async function readMe(client: ElefinClient): Promise<{ key: ElefinKeyInfo
   return { key: keyInfo(me.data), clients: me.data.totals?.clients ?? null };
 }
 
-export function failureOf(e: ElefinError): Pick<ElefinProbeDto, 'outcome' | 'message' | 'retryAfter'> {
+export function failureOf(e: ElefinError): Pick<ElefinProbeDto, 'outcome' | 'message' | 'retryAfter'> & { missing?: string[] } {
+  if (e.kind === 'ip_blocked') {
+    const ips = outboundIps();
+    // The box under the message lists the IPs; the full sentence (with them) is for sync errors.
+    return {
+      outcome: 'ip_blocked', retryAfter: null,
+      message: 'Elefin is blocking our server: this key only accepts requests from the IP addresses on its allow-list.',
+      missing: [ips.length ? `IP allow-list: ${ips.join(', ')}` : 'TRADElogs’ server IP addresses on the key’s allow-list'],
+    };
+  }
   if (e.kind === 'auth') return { outcome: 'invalid_key', retryAfter: null, message: 'Elefin didn’t accept this key. Check it was pasted whole (key.secret); if it worked before, it was switched off, expired or regenerated.' };
   if (e.kind === 'rate_limited') return { outcome: 'rate_limited', retryAfter: e.retryAfter, message: `Elefin asked us to slow down. Try again in ${e.retryAfter ?? 60} seconds.` };
   if (e.kind === 'network' || e.kind === 'server') return { outcome: 'unreachable', retryAfter: null, message: `${e.message} Try again in a few minutes.` };
@@ -47,7 +56,8 @@ export async function probe(client: ElefinClient, now = new Date()): Promise<Ele
   let me: Awaited<ReturnType<typeof readMe>>;
   try { me = await readMe(client); } catch (e) {
     if (!(e instanceof ElefinError)) throw e;
-    return { ...out, ...failureOf(e) };
+    const f = failureOf(e);
+    return { ...out, ...f, missing: f.missing ?? [] };
   }
   out.key = me.key;
   out.clients = me.clients;
@@ -73,7 +83,8 @@ export async function probe(client: ElefinClient, now = new Date()): Promise<Ele
       const said = e.message.match(/Elefin says: .*$/)?.[0] ?? '';
       return { ...out, clientsRead: 'forbidden', outcome: 'missing_permission', message: `The key works but can’t read your clients. Ask Elefin to add the clients.read permission.${said ? ` ${said}` : ''}` };
     }
-    return { ...out, clientsRead: 'error', ...failureOf(e) };
+    const f = failureOf(e);
+    return { ...out, clientsRead: 'error', ...f, missing: f.missing ?? [] };
   }
 
   if (exp != null && exp - now.getTime() < 14 * DAY_MS) {

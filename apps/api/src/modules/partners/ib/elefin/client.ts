@@ -4,10 +4,10 @@
 // sync and the UI turn into plain words; the key never appears in an error.
 import { createHash } from 'crypto';
 import { registerSecret, redactText } from '@tradinjournal/logger';
-import { ELEFIN_LIMITS } from './config.js';
+import { ELEFIN_LIMITS, outboundIps } from './config.js';
 import { envelope, listData, type ElefinMeta } from './schema.js';
 
-export type ElefinErrorKind = 'auth' | 'forbidden' | 'not_found' | 'rate_limited' | 'network' | 'server' | 'bad_response';
+export type ElefinErrorKind = 'auth' | 'forbidden' | 'ip_blocked' | 'not_found' | 'rate_limited' | 'network' | 'server' | 'bad_response';
 
 export class ElefinError extends Error {
   constructor(
@@ -146,7 +146,11 @@ export class ElefinClient {
       }
       const text = await res.text().catch(() => '');
       if (res.status === 401) throw new ElefinError('auth', 'Elefin didn’t accept the key. It may be mistyped, switched off or expired.', 401, null, where);
-      if (res.status === 403) throw new ElefinError('forbidden', `The key isn’t allowed to read this.${serverMessage(text)}`, 403, null, where);
+      if (res.status === 403) {
+        const blocked = ipBlockedBy(text);
+        if (blocked) throw new ElefinError('ip_blocked', ipBlockedMessage(blocked), 403, null, where);
+        throw new ElefinError('forbidden', `The key isn’t allowed to read this.${serverMessage(text)}`, 403, null, where);
+      }
       if (res.status === 404) throw new ElefinError('not_found', 'Not found (or not in your book).', 404, null, where);
       if (!res.ok) throw new ElefinError('bad_response', `Elefin answered ${res.status}.`, res.status, null, where);
       let body: unknown;
@@ -185,4 +189,23 @@ function serverMessage(text: string): string {
     const m = (JSON.parse(text) as { message?: unknown }).message;
     return typeof m === 'string' && m.trim() ? ` Elefin says: “${redactText(m.trim()).slice(0, 160)}”` : '';
   } catch { return ''; }
+}
+
+/**
+ * Elefin locks each key to an IP allow-list and refuses other callers with a 403
+ * "Requests from <ip> are not allowed for this API key." Returns the address Elefin saw
+ * ('' when it didn't say), or null for any other 403.
+ */
+export function ipBlockedBy(text: string): string | null {
+  let m: unknown;
+  try { m = (JSON.parse(text) as { message?: unknown }).message; } catch { return null; }
+  if (typeof m !== 'string' || !/not allowed/i.test(m) || !/request|\bip\b|address/i.test(m)) return null;
+  return m.match(/\b(\d{1,3}(?:\.\d{1,3}){3}|[0-9a-f]{0,4}(?::[0-9a-f]{0,4}){2,7})\b/i)?.[1] ?? '';
+}
+
+export function ipBlockedMessage(seen: string): string {
+  const ips = outboundIps();
+  const ask = ips.length ? ` Ask Elefin to add ${ips.length === 1 ? 'this IP address' : `these ${ips.length} IP addresses`} to the key’s allow-list: ${ips.join(', ')}.` : ' Ask Elefin to allow TRADElogs’ server addresses on the key.';
+  const from = seen && ips.length && !ips.includes(seen) ? ` (Elefin saw ${seen}, which isn’t one of ours: the request didn’t come from our server.)` : '';
+  return `Elefin is blocking our server: this key only accepts requests from IP addresses on its allow-list.${ask}${from}`;
 }

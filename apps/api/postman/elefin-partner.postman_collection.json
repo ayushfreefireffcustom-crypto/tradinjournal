@@ -1,0 +1,3624 @@
+{
+  "info": {
+    "name": "TRADElogs — Elefin partner onboarding and referrals",
+    "description": "A partner’s Elefin onboarding and the referral flow end to end, against a fake Elefin. Run with run-elefin.sh.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "password",
+      "value": "Str0ng-Passw0rd!"
+    },
+    {
+      "key": "internalToken",
+      "value": "partner-test-internal-token"
+    },
+    {
+      "key": "adminName",
+      "value": "Ada Admin"
+    },
+    {
+      "key": "adminEmail",
+      "value": "admin@partners.test"
+    },
+    {
+      "key": "shashName",
+      "value": "Shashwat Verma"
+    },
+    {
+      "key": "shashEmail",
+      "value": "shash@elefin-e2e.test"
+    },
+    {
+      "key": "ashaName",
+      "value": "Asha Rao"
+    },
+    {
+      "key": "ashaEmail",
+      "value": "asha@elefin-e2e.test"
+    },
+    {
+      "key": "benName",
+      "value": "Ben Mathew"
+    },
+    {
+      "key": "benEmail",
+      "value": "ben@elefin-e2e.test"
+    },
+    {
+      "key": "chenName",
+      "value": "Chen Li"
+    },
+    {
+      "key": "chenEmail",
+      "value": "chen@elefin-e2e.test"
+    },
+    {
+      "key": "devName",
+      "value": "Dev Patel"
+    },
+    {
+      "key": "devEmail",
+      "value": "dev@elefin-e2e.test"
+    },
+    {
+      "key": "eveName",
+      "value": "Eve Fernandes"
+    },
+    {
+      "key": "eveEmail",
+      "value": "eve@elefin-e2e.test"
+    }
+  ],
+  "item": [
+    {
+      "name": "00 Sign in admin and partner",
+      "item": [
+        {
+          "name": "Sign in admin",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const c = (pm.response.headers.all().filter(h => h.key.toLowerCase() === 'set-cookie').map(h => h.value).find(v => v.startsWith('better-auth.session_token=')) || '').split(';')[0];",
+                  "pm.test(\"session cookie issued\", () => { pm.expect(c).to.match(/^better-auth\\.session_token=/); });",
+                  "pm.collectionVariables.set('adminCookie', c);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{appUrl}}"
+              }
+            ],
+            "url": {
+              "raw": "{{altUrl}}/api/auth/sign-in/email",
+              "host": [
+                "{{altUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "sign-in",
+                "email"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Sign in shash",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const c = (pm.response.headers.all().filter(h => h.key.toLowerCase() === 'set-cookie').map(h => h.value).find(v => v.startsWith('better-auth.session_token=')) || '').split(';')[0];",
+                  "pm.test(\"session cookie issued\", () => { pm.expect(c).to.match(/^better-auth\\.session_token=/); });",
+                  "pm.collectionVariables.set('shashCookie', c);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{appUrl}}"
+              }
+            ],
+            "url": {
+              "raw": "{{altUrl}}/api/auth/sign-in/email",
+              "host": [
+                "{{altUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "sign-in",
+                "email"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{shashEmail}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "01 Bootstrap",
+      "item": [
+        {
+          "name": "Sign up admin",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{appUrl}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/sign-up/email",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "sign-up",
+                "email"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{password}}\",\n  \"name\": \"{{adminName}}\",\n  \"country\": \"IN\",\n  \"city\": \"Pune\",\n  \"postalCode\": \"411001\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Sign up shash",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{appUrl}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/sign-up/email",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "sign-up",
+                "email"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{shashEmail}}\",\n  \"password\": \"{{password}}\",\n  \"name\": \"{{shashName}}\",\n  \"country\": \"IN\",\n  \"city\": \"Pune\",\n  \"postalCode\": \"411001\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 Partner joins",
+      "item": [
+        {
+          "name": "Sign in admin",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const c = (pm.response.headers.all().filter(h => h.key.toLowerCase() === 'set-cookie').map(h => h.value).find(v => v.startsWith('better-auth.session_token=')) || '').split(';')[0];",
+                  "pm.test(\"session cookie issued\", () => { pm.expect(c).to.match(/^better-auth\\.session_token=/); });",
+                  "pm.collectionVariables.set('adminCookie', c);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{appUrl}}"
+              }
+            ],
+            "url": {
+              "raw": "{{altUrl}}/api/auth/sign-in/email",
+              "host": [
+                "{{altUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "sign-in",
+                "email"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Sign in shash",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const c = (pm.response.headers.all().filter(h => h.key.toLowerCase() === 'set-cookie').map(h => h.value).find(v => v.startsWith('better-auth.session_token=')) || '').split(';')[0];",
+                  "pm.test(\"session cookie issued\", () => { pm.expect(c).to.match(/^better-auth\\.session_token=/); });",
+                  "pm.collectionVariables.set('shashCookie', c);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{appUrl}}"
+              }
+            ],
+            "url": {
+              "raw": "{{altUrl}}/api/auth/sign-in/email",
+              "host": [
+                "{{altUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "sign-in",
+                "email"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{shashEmail}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Not a partner yet: no Elefin page",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"refused\", () => { pm.expect([403, 404]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{shashCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/brokers/elefin",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "brokers",
+                "elefin"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Shash applies (Elefin IB)",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', () => pm.response.to.have.status(201));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"pending with a code\", () => { pm.expect(d.status).to.eql('PENDING'); pm.expect(d.code).to.match(/^[A-Z0-9_-]{3,20}$/); });",
+                  "pm.collectionVariables.set('shashCode', d.code); pm.collectionVariables.set('shashPid', d.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{shashCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/apply",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "apply"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"audience\": \"Telegram · 12k\",\n  \"brokers\": [\n    \"elefin\"\n  ],\n  \"socials\": [\n    {\n      \"platform\": \"Telegram\",\n      \"url\": \"https://t.me/shashtrades\"\n    }\n  ],\n  \"audienceSize\": \"12,000\",\n  \"pitch\": \"Elefin IB, partner #23.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Pending: can’t connect Elefin yet → 403",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 403', () => pm.response.to.have.status(403));",
+                  "pm.test('error code PARTNER_PENDING', () => pm.expect(pm.response.json().error.code).to.eql('PARTNER_PENDING'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{shashCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/brokers/elefin/test",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "brokers",
+                "elefin",
+                "test"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"key\": \"{{goodKey}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Admin approves",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"active\", () => { pm.expect(d.status).to.eql('ACTIVE'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/partners/{{shashPid}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "partners",
+                "{{shashPid}}",
+                "status"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"approve\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Shash’s link and code",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"primary code is the one from the application\", () => { pm.expect(d.codes.find(c => c.isPrimary).code).to.eql(pm.variables.get('shashCode')); });",
+                  "pm.test(\"nothing clicked yet\", () => { pm.expect(d.totals).to.eql({ clicks: 0, converted: 0, signups: 0 }); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{shashCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/links",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "links"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 Connect Elefin",
+      "item": [
+        {
+          "name": "Not connected; the IPs to allow are listed",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"not connected\", () => { pm.expect(d.state).to.eql('NOT_CONNECTED'); pm.expect(d.keyHint).to.eql(null); });",
+                  "pm.test(\"our three server IPs\", () => { pm.expect(d.outboundIps).to.eql(['152.55.180.240', '162.220.234.242', '152.55.180.242']); });",
+                  "pm.test(\"pointed at Elefin (the fake here)\", () => { pm.expect(d.defaultBaseUrl).to.eql(pm.variables.get('fakeUrl') + '/api/v1'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{shashCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/brokers/elefin",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "brokers",
+                "elefin"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Half a key → 422 before calling Elefin",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 422', () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{shashCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/brokers/elefin/test",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "brokers",
+                "elefin",
+                "test"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"key\": \"just-the-key-part\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Some other API address → 422",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 422', () => pm.response.to.have.status(422));",
+                  "pm.test('error code ELEFIN_HOST', () => pm.expect(pm.response.json().error.code).to.eql('ELEFIN_HOST'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{shashCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/brokers/elefin/test",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "brokers",
+                "elefin",
+                "test"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"key\": \"{{goodKey}}\",\n  \"baseUrl\": \"https://evil.example.com/api/v1\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "A key Elefin doesn’t know → invalid_key",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"invalid\", () => { pm.expect(d.ok).to.eql(false); pm.expect(d.outcome).to.eql('invalid_key'); pm.expect(d.message).to.include('key.secret'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{shashCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/brokers/elefin/test",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "brokers",
+                "elefin",
+                "test"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"key\": \"fxcrm_pk_unknown01.fxcrm_sk_nothingtoseehere0000\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "A key not allowed from our IPs → ip_blocked, says which IPs to allow",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"ip_blocked\", () => { pm.expect(d.ok).to.eql(false); pm.expect(d.outcome).to.eql('ip_blocked'); pm.expect(d.key).to.eql(null); });",
+                  "pm.test(\"says the allow-list is the problem\", () => { pm.expect(d.message).to.include('allow-list'); });",
+                  "pm.test(\"lists all three IPs to ask for\", () => { pm.expect(d.missing).to.eql(['IP allow-list: 152.55.180.240, 162.220.234.242, 152.55.180.242']); });",
+                  "pm.test(\"the key’s secret is never sent back\", () => { pm.expect(pm.response.text()).to.not.include(pm.variables.get('goodSecret')); pm.expect(pm.response.text()).to.not.include(pm.variables.get('lockedSecret')); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{shashCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/brokers/elefin/test",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "brokers",
+                "elefin",
+                "test"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"key\": \"{{lockedKey}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Saving that key saves nothing",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"probe failed, still not connected\", () => { pm.expect(d.probe.outcome).to.eql('ip_blocked'); pm.expect(d.connection.state).to.eql('NOT_CONNECTED'); pm.expect(d.sync).to.eql(null); });",
+                  "pm.test(\"the key’s secret is never sent back\", () => { pm.expect(pm.response.text()).to.not.include(pm.variables.get('goodSecret')); pm.expect(pm.response.text()).to.not.include(pm.variables.get('lockedSecret')); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{shashCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/brokers/elefin/connect",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "brokers",
+                "elefin",
+                "connect"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"key\": \"{{lockedKey}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "The real key: connect and first sync",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"Elefin says whose key it is\", () => { pm.expect(d.probe.ok).to.eql(true); pm.expect(d.probe.key.partnerName).to.eql('shashwat verma'); pm.expect(d.probe.key.partnerId).to.eql(23); pm.expect(d.probe.key.keyName).to.eql('Shash IB'); });",
+                  "pm.test(\"/me lists no abilities (like live Elefin) but it reads clients\", () => { pm.expect(d.probe.key.abilities).to.eql([]); pm.expect(d.probe.key.canReadClients).to.eql(true); });",
+                  "pm.test(\"first sync read the whole book\", () => { pm.expect(d.sync.ok).to.eql(true); pm.expect(d.connection.state).to.eql('OK'); pm.expect(d.connection.roster.total).to.eql(pm.variables.get('bookSize') * 1); });",
+                  "pm.test(\"only the last 4 characters are shown\", () => { pm.expect(d.connection.keyHint).to.eql('••••' + pm.variables.get('goodSecret').slice(-4)); });",
+                  "pm.test(\"the key’s secret is never sent back\", () => { pm.expect(pm.response.text()).to.not.include(pm.variables.get('goodSecret')); pm.expect(pm.response.text()).to.not.include(pm.variables.get('lockedSecret')); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{shashCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/brokers/elefin/connect",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "brokers",
+                "elefin",
+                "connect"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"key\": \"{{goodKey}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Status after connecting",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"connected, synced, nobody referred yet\", () => { pm.expect(d.state).to.eql('OK'); pm.expect(d.lastSuccessAt).to.be.a('string'); pm.expect(d.verification.referred).to.eql(0); pm.expect(d.events[0].status).to.eql('ok'); });",
+                  "pm.test(\"funded and lots from Elefin\", () => { pm.expect(d.roster.funded).to.be.above(0); pm.expect(d.roster.lots).to.be.above(0); });",
+                  "pm.test(\"the key’s secret is never sent back\", () => { pm.expect(pm.response.text()).to.not.include(pm.variables.get('goodSecret')); pm.expect(pm.response.text()).to.not.include(pm.variables.get('lockedSecret')); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{shashCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/brokers/elefin",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "brokers",
+                "elefin"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin sees the connection",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "const r = d.find(x => x.partnerId === pm.variables.get('shashPid'));",
+                  "pm.test(\"connected with the book size\", () => { pm.expect(r.state).to.eql('OK'); pm.expect(r.elefinPartner).to.eql('shashwat verma'); pm.expect(r.clients).to.eql(pm.variables.get('bookSize') * 1); });",
+                  "pm.test(\"the key’s secret is never sent back\", () => { pm.expect(pm.response.text()).to.not.include(pm.variables.get('goodSecret')); pm.expect(pm.response.text()).to.not.include(pm.variables.get('lockedSecret')); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/partner-program/elefin",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "partner-program",
+                "elefin"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 Referral signups",
+      "item": [
+        {
+          "name": "Eve clicks Shash’s link",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 302', () => pm.response.to.have.status(302));",
+                  "const c = (pm.response.headers.all().filter(h => h.key.toLowerCase() === 'set-cookie').map(h => h.value).find(v => v.startsWith('tl_ref=')) || '').split(';')[0];",
+                  "pm.test(\"referral cookie set\", () => { pm.expect(c).to.match(/^tl_ref=/); });",
+                  "pm.collectionVariables.set('eveRef', c);",
+                  "pm.test(\"lands on signup\", () => { pm.expect(pm.response.headers.get('Location')).to.include('/signup'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "User-Agent",
+                "value": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/r/{{shashCode}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "r",
+                "{{shashCode}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Sign up eve",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{eveRef}}"
+              },
+              {
+                "key": "Origin",
+                "value": "{{appUrl}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/sign-up/email",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "sign-up",
+                "email"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{eveEmail}}\",\n  \"password\": \"{{password}}\",\n  \"name\": \"{{eveName}}\",\n  \"country\": \"IN\",\n  \"city\": \"Pune\",\n  \"postalCode\": \"411001\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Sign up asha",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{appUrl}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/sign-up/email",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "sign-up",
+                "email"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{ashaEmail}}\",\n  \"password\": \"{{password}}\",\n  \"name\": \"{{ashaName}}\",\n  \"country\": \"IN\",\n  \"city\": \"Pune\",\n  \"postalCode\": \"411001\",\n  \"referralCode\": \"{{shashCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Sign up ben",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{appUrl}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/sign-up/email",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "sign-up",
+                "email"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{benEmail}}\",\n  \"password\": \"{{password}}\",\n  \"name\": \"{{benName}}\",\n  \"country\": \"IN\",\n  \"city\": \"Pune\",\n  \"postalCode\": \"411001\",\n  \"referralCode\": \"{{shashCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Sign up chen",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{appUrl}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/sign-up/email",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "sign-up",
+                "email"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{chenEmail}}\",\n  \"password\": \"{{password}}\",\n  \"name\": \"{{chenName}}\",\n  \"country\": \"IN\",\n  \"city\": \"Pune\",\n  \"postalCode\": \"411001\",\n  \"referralCode\": \"{{shashCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Sign up dev",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{appUrl}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/sign-up/email",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "sign-up",
+                "email"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{devEmail}}\",\n  \"password\": \"{{password}}\",\n  \"name\": \"{{devName}}\",\n  \"country\": \"IN\",\n  \"city\": \"Pune\",\n  \"postalCode\": \"411001\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Unconfirmed emails: Elefin isn’t asked yet",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"4 referred, all waiting\", () => { pm.expect(d.verification).to.include({ referred: 4, verified: 0, held: 0, notFound: 0, waiting: 4 }); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{shashCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/brokers/elefin",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "brokers",
+                "elefin"
+              ]
+            }
+          }
+        },
+        {
+          "name": "No lookups have reached Elefin",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const s = pm.response.json();",
+                  "pm.test(\"no /clients/lookup\", () => { pm.expect(Object.keys(s.byPath).filter(k => k.startsWith('/clients/lookup'))).to.eql([]); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{fakeUrl}}/__stats",
+              "host": [
+                "{{fakeUrl}}"
+              ],
+              "path": [
+                "__stats"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 Traders confirm their email",
+      "item": [
+        {
+          "name": "asha confirms their email",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const c = (pm.response.headers.all().filter(h => h.key.toLowerCase() === 'set-cookie').map(h => h.value).find(v => v.startsWith('better-auth.session_token=')) || '').split(';')[0];",
+                  "pm.test(\"signed in by confirming\", () => { pm.expect(c).to.match(/^better-auth\\.session_token=/); });",
+                  "pm.collectionVariables.set('ashaCookie', c);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{appUrl}}"
+              }
+            ],
+            "url": {
+              "raw": "{{altUrl}}/api/auth/email-otp/verify-email",
+              "host": [
+                "{{altUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "email-otp",
+                "verify-email"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{ashaEmail}}\",\n  \"otp\": \"{{ashaOtp}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "ben confirms their email",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const c = (pm.response.headers.all().filter(h => h.key.toLowerCase() === 'set-cookie').map(h => h.value).find(v => v.startsWith('better-auth.session_token=')) || '').split(';')[0];",
+                  "pm.test(\"signed in by confirming\", () => { pm.expect(c).to.match(/^better-auth\\.session_token=/); });",
+                  "pm.collectionVariables.set('benCookie', c);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{appUrl}}"
+              }
+            ],
+            "url": {
+              "raw": "{{altUrl}}/api/auth/email-otp/verify-email",
+              "host": [
+                "{{altUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "email-otp",
+                "verify-email"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{benEmail}}\",\n  \"otp\": \"{{benOtp}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "chen confirms their email",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const c = (pm.response.headers.all().filter(h => h.key.toLowerCase() === 'set-cookie').map(h => h.value).find(v => v.startsWith('better-auth.session_token=')) || '').split(';')[0];",
+                  "pm.test(\"signed in by confirming\", () => { pm.expect(c).to.match(/^better-auth\\.session_token=/); });",
+                  "pm.collectionVariables.set('chenCookie', c);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{appUrl}}"
+              }
+            ],
+            "url": {
+              "raw": "{{altUrl}}/api/auth/email-otp/verify-email",
+              "host": [
+                "{{altUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "email-otp",
+                "verify-email"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{chenEmail}}\",\n  \"otp\": \"{{chenOtp}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "dev confirms their email",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const c = (pm.response.headers.all().filter(h => h.key.toLowerCase() === 'set-cookie').map(h => h.value).find(v => v.startsWith('better-auth.session_token=')) || '').split(';')[0];",
+                  "pm.test(\"signed in by confirming\", () => { pm.expect(c).to.match(/^better-auth\\.session_token=/); });",
+                  "pm.collectionVariables.set('devCookie', c);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{appUrl}}"
+              }
+            ],
+            "url": {
+              "raw": "{{altUrl}}/api/auth/email-otp/verify-email",
+              "host": [
+                "{{altUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "email-otp",
+                "verify-email"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{devEmail}}\",\n  \"otp\": \"{{devOtp}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "eve confirms their email",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const c = (pm.response.headers.all().filter(h => h.key.toLowerCase() === 'set-cookie').map(h => h.value).find(v => v.startsWith('better-auth.session_token=')) || '').split(';')[0];",
+                  "pm.test(\"signed in by confirming\", () => { pm.expect(c).to.match(/^better-auth\\.session_token=/); });",
+                  "pm.collectionVariables.set('eveCookie', c);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{appUrl}}"
+              }
+            ],
+            "url": {
+              "raw": "{{altUrl}}/api/auth/email-otp/verify-email",
+              "host": [
+                "{{altUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "email-otp",
+                "verify-email"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{eveEmail}}\",\n  \"otp\": \"{{eveOtp}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Asha (Elefin client, active) is verified by Elefin",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "setTimeout(() => {}, 3000);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"verified\", () => { pm.expect(d.elefin.status).to.eql('VERIFIED'); pm.expect(d.elefin.held).to.eql(false); pm.expect(d.elefin.reason).to.eql(null); });",
+                  "pm.test(\"linked to Shash\", () => { pm.expect(d.partner.name).to.eql('Shashwat Verma'); pm.expect(d.canJoin).to.eql(false); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{ashaCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner-access",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner-access"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Eve (came by link, active) is verified",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"verified\", () => { pm.expect(d.elefin.status).to.eql('VERIFIED'); pm.expect(d.partner.name).to.eql('Shashwat Verma'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{eveCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner-access",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner-access"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Ben (another IB’s client at Elefin) is not found, and told why",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"not found\", () => { pm.expect(d.elefin.status).to.eql('NOT_FOUND'); pm.expect(d.elefin.held).to.eql(false); });",
+                  "pm.test(\"reason names the partner\", () => { pm.expect(d.elefin.reason).to.include('doesn’t list your email under Shashwat');  });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{benCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner-access",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner-access"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Chen (Shash’s client, suspended at Elefin) is held",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"held\", () => { pm.expect(d.elefin.status).to.eql('NOT_FOUND'); pm.expect(d.elefin.held).to.eql(true); pm.expect(d.elefin.reason).to.include('suspended'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{chenCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner-access",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner-access"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Dev (no link, no code) has no partner and no check",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"nothing\", () => { pm.expect(d.partner).to.eql(null); pm.expect(d.canJoin).to.eql(true); pm.expect(d.elefin).to.eql(null); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{devCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner-access",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner-access"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Elefin was asked exactly four times",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const s = pm.response.json();",
+                  "pm.test(\"4 lookups, all 200\", () => { pm.expect(s.byPath['/clients/lookup 200']).to.eql(4); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{fakeUrl}}/__stats",
+              "host": [
+                "{{fakeUrl}}"
+              ],
+              "path": [
+                "__stats"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 Late code",
+      "item": [
+        {
+          "name": "Dev types Shash’s code after signing up",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"linked\", () => { pm.expect(d.partner.name).to.eql('Shashwat Verma'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{devCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner-access/join",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner-access",
+                "join"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"{{shashCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Dev is checked with Elefin too",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "setTimeout(() => {}, 2500);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"verified\", () => { pm.expect(d.elefin.status).to.eql('VERIFIED'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{devCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner-access",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner-access"
+              ]
+            }
+          }
+        },
+        {
+          "name": "A second code is refused",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{devCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner-access/join",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner-access",
+                "join"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"{{shashCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "07 Partner and admin see it",
+      "item": [
+        {
+          "name": "Elefin page: who’s verified",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"5 referred: 3 verified, 1 held, 1 not found\", () => { pm.expect(d.verification).to.include({ referred: 5, verified: 3, held: 1, notFound: 1, waiting: 0 }); });",
+                  "pm.test(\"2 of the verified have deposited\", () => { pm.expect(d.verification.verifiedFunded).to.eql(2); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{shashCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/brokers/elefin",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "brokers",
+                "elefin"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Client list",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "const rows = d.clients ?? d.items ?? d.rows ?? d; const by = n => rows.find(r => r.name.startsWith(n));",
+                  "pm.test(\"all five, with how they came\", () => { pm.expect(rows.length).to.eql(5); pm.expect(by('Eve').via).to.eql('link'); pm.expect(by('Asha').via).to.eql('code'); pm.expect(by('Dev').via).to.eql('late'); });",
+                  "pm.test(\"verified through Elefin\", () => { for (const n of ['Asha', 'Eve', 'Dev']) pm.expect(by(n).ib.verifiedBrokers, n).to.include('elefin'); for (const n of ['Ben', 'Chen']) pm.expect(by(n).ib.verifiedBrokers, n).to.not.include('elefin'); });",
+                  "pm.test(\"verified before connecting MT5; the others wait for an account\", () => { pm.expect(by('Asha').ib.verification).to.eql('VERIFIED'); pm.expect(by('Ben').ib.verification).to.eql('NO_ACCOUNT'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{shashCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/clients",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "clients"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Link stats",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"1 click, converted\", () => { pm.expect(d.totals.clicks).to.eql(1); pm.expect(d.totals.converted).to.eql(1); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{shashCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/links",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "links"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin list",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "const r = d.find(x => x.partnerId === pm.variables.get('shashPid'));",
+                  "pm.test(\"5 referred, 3 verified\", () => { pm.expect(r.referred).to.eql(5); pm.expect(r.verified).to.eql(3); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/partner-program/elefin",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "partner-program",
+                "elefin"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin partner view",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"same numbers\", () => { pm.expect(d.verification).to.include({ referred: 5, verified: 3, held: 1, notFound: 1 }); });",
+                  "pm.test(\"the key’s secret is never sent back\", () => { pm.expect(pm.response.text()).to.not.include(pm.variables.get('goodSecret')); pm.expect(pm.response.text()).to.not.include(pm.variables.get('lockedSecret')); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/partners/{{shashPid}}/elefin",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "partners",
+                "{{shashPid}}",
+                "elefin"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "08 A package unlocks for verified clients",
+      "item": [
+        {
+          "name": "Shash publishes a package for verified Elefin clients",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', () => pm.response.to.have.status(201));",
+                  "const d = pm.response.json().data;",
+                  "pm.collectionVariables.set('pkgId', d.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{shashCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/packages",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "packages"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Elefin VIP\",\n  \"description\": \"SignalX for Elefin clients\",\n  \"perks\": [\n    \"signalx\"\n  ],\n  \"brokers\": [\n    \"elefin\"\n  ],\n  \"requireActive\": false,\n  \"status\": \"LIVE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Asha has it",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "setTimeout(() => {}, 1500);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"active\", () => { const p = d.packages.find(x => x.name === 'Elefin VIP'); pm.expect(p.status).to.eql('ACTIVE'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{ashaCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner-access",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner-access"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Ben doesn’t, and sees why",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"locked with a reason\", () => { const p = d.packages.find(x => x.name === 'Elefin VIP'); pm.expect(p.status).to.eql('LOCKED'); pm.expect(p.reasons.length).to.be.above(0); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{benCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner-access",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner-access"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "09 Elefin changes a client",
+      "item": [
+        {
+          "name": "Elefin: suspends Asha",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{fakeUrl}}/__control/status",
+              "host": [
+                "{{fakeUrl}}"
+              ],
+              "path": [
+                "__control",
+                "status"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{ashaEmail}}\",\n  \"status\": \"suspended\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Sync",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"ok, one less verified\", () => { pm.expect(d.result.ok).to.eql(true); pm.expect(d.connection.verification.verified).to.eql(2); pm.expect(d.connection.verification.held).to.eql(2); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/partners/{{shashPid}}/elefin/sync",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "partners",
+                "{{shashPid}}",
+                "elefin",
+                "sync"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Asha is on hold",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"held\", () => { pm.expect(d.elefin.held).to.eql(true); pm.expect(d.elefin.reason).to.include('suspended'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{ashaCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner-access",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner-access"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Elefin: re-activates Asha",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{fakeUrl}}/__control/status",
+              "host": [
+                "{{fakeUrl}}"
+              ],
+              "path": [
+                "__control",
+                "status"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{ashaEmail}}\",\n  \"status\": \"active\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Sync again",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"back to 3 verified\", () => { pm.expect(d.connection.verification.verified).to.eql(3); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/partners/{{shashPid}}/elefin/sync",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "partners",
+                "{{shashPid}}",
+                "elefin",
+                "sync"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Asha is verified again",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"verified\", () => { pm.expect(d.elefin.status).to.eql('VERIFIED'); pm.expect(d.elefin.held).to.eql(false); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{ashaCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner-access",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner-access"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "10 Elefin switches the key off",
+      "item": [
+        {
+          "name": "Elefin: switches the key off",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{fakeUrl}}/__control/key-active",
+              "host": [
+                "{{fakeUrl}}"
+              ],
+              "path": [
+                "__control",
+                "key-active"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"key\": \"{{goodKeyId}}\",\n  \"active\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Sync fails (1)",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"error, not paused yet\", () => { pm.expect(d.result.ok).to.eql(false); pm.expect(d.connection.state).to.eql('ERROR'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/partners/{{shashPid}}/elefin/sync",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "partners",
+                "{{shashPid}}",
+                "elefin",
+                "sync"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Sync fails (2)",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"error, not paused yet\", () => { pm.expect(d.result.ok).to.eql(false); pm.expect(d.connection.state).to.eql('ERROR'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/partners/{{shashPid}}/elefin/sync",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "partners",
+                "{{shashPid}}",
+                "elefin",
+                "sync"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Third failure pauses syncing",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"paused, partner asked for the key again\", () => { pm.expect(d.connection.state).to.eql('PAUSED'); pm.expect(d.connection.lastError).to.include('Add your key again'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/partners/{{shashPid}}/elefin/sync",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "partners",
+                "{{shashPid}}",
+                "elefin",
+                "sync"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Partner can’t “Sync now” a paused key",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{shashCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/brokers/elefin/sync",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "brokers",
+                "elefin",
+                "sync"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Traders keep what they had",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"still verified\", () => { pm.expect(d.elefin.status).to.eql('VERIFIED'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{ashaCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner-access",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner-access"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Elefin: issues the key again",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{fakeUrl}}/__control/key-active",
+              "host": [
+                "{{fakeUrl}}"
+              ],
+              "path": [
+                "__control",
+                "key-active"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"key\": \"{{goodKeyId}}\",\n  \"active\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Shash adds the key again",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"working again\", () => { pm.expect(d.probe.ok).to.eql(true); pm.expect(d.connection.state).to.eql('OK'); pm.expect(d.connection.pausedAt).to.eql(null); });",
+                  "pm.test(\"the key’s secret is never sent back\", () => { pm.expect(pm.response.text()).to.not.include(pm.variables.get('goodSecret')); pm.expect(pm.response.text()).to.not.include(pm.variables.get('lockedSecret')); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{shashCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/brokers/elefin/connect",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "brokers",
+                "elefin",
+                "connect"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"key\": \"{{goodKey}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "11 Elefin’s IP allow-list changes",
+      "item": [
+        {
+          "name": "Elefin: locks the key to other IPs",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{fakeUrl}}/__control/key-ips",
+              "host": [
+                "{{fakeUrl}}"
+              ],
+              "path": [
+                "__control",
+                "key-ips"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"key\": \"{{goodKeyId}}\",\n  \"allowedIps\": [\n    \"152.55.180.240\",\n    \"162.220.234.242\",\n    \"152.55.180.242\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Sync is refused; the partner is told which IPs to allow",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"error naming the IPs\", () => { pm.expect(d.result.ok).to.eql(false); pm.expect(d.connection.state).to.eql('ERROR'); pm.expect(d.connection.lastError).to.include('allow-list'); for (const ip of ['152.55.180.240', '162.220.234.242', '152.55.180.242']) pm.expect(d.connection.lastError).to.include(ip); });",
+                  "pm.test(\"and that the call didn’t come from one of them\", () => { pm.expect(d.connection.lastError).to.include('Elefin saw 127.0.0.1'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/partners/{{shashPid}}/elefin/sync",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "partners",
+                "{{shashPid}}",
+                "elefin",
+                "sync"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Elefin: allows us again",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{fakeUrl}}/__control/key-ips",
+              "host": [
+                "{{fakeUrl}}"
+              ],
+              "path": [
+                "__control",
+                "key-ips"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"key\": \"{{goodKeyId}}\",\n  \"allowedIps\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Next sync works",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"ok\", () => { pm.expect(d.result.ok).to.eql(true); pm.expect(d.connection.state).to.eql('OK'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{adminCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/partners/{{shashPid}}/elefin/sync",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "partners",
+                "{{shashPid}}",
+                "elefin",
+                "sync"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "12 Disconnect",
+      "item": [
+        {
+          "name": "Shash disconnects",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"not connected, nothing cached\", () => { pm.expect(d.state).to.eql('NOT_CONNECTED'); pm.expect(d.keyHint).to.eql(null); pm.expect(d.roster).to.eql(null); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{shashCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/brokers/elefin",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "brokers",
+                "elefin"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Verified traders stay verified",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"still verified\", () => { pm.expect(d.elefin.status).to.eql('VERIFIED'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{ashaCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner-access",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner-access"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Sync now → 409 (nothing connected)",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{shashCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/brokers/elefin/sync",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "brokers",
+                "elefin",
+                "sync"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -121,7 +121,7 @@ export async function syncElefin(brokerId: string, opts: { actor?: Actor; force?
           if (ch === 'verified') verified++; else if (ch === 'unverified') unverified++;
         } catch (err) {
           if (!(err instanceof ElefinError)) throw err;
-          if (err.kind === 'auth' || err.kind === 'forbidden') throw err;
+          if (err.kind === 'auth' || err.kind === 'forbidden' || err.kind === 'ip_blocked') throw err;
           if (err.kind === 'rate_limited') { rateLimited = true; break; }
           lookupFailed++; // one bad answer doesn't stop the rest; this trader is asked again next run
         }
@@ -165,12 +165,12 @@ async function recordFailure(id: string, partnerId: string, cfg: ElefinConfig, e
   let msg: string;
   let patch: Partial<ElefinConfig> = {};
   let paused = false;
-  if (e && (e.kind === 'auth' || e.kind === 'forbidden')) {
+  if (e && (e.kind === 'auth' || e.kind === 'forbidden' || e.kind === 'ip_blocked')) {
     const failures = cfg.authFailures + 1;
     paused = failures >= ELEFIN_LIMITS.authFailuresToPause;
     patch = { authFailures: failures, pausedAt: paused ? now.toISOString() : cfg.pausedAt };
     msg = paused
-      ? 'Elefin stopped accepting your key, so syncing is paused. Add your key again to resume.'
+      ? e.kind === 'ip_blocked' ? `${e.message} Syncing is paused; once Elefin has updated the allow-list, add your key again.` : 'Elefin stopped accepting your key, so syncing is paused. Add your key again to resume.'
       : e.kind === 'auth' ? 'Elefin didn’t accept your key. We’ll retry; after 3 failures syncing pauses.' : `${e.message} We’ll retry; after 3 failures syncing pauses.`;
   } else if (e?.kind === 'rate_limited') {
     msg = 'Elefin asked us to slow down. We’ll try again on the next sync.';

@@ -67,6 +67,8 @@ export interface ClientAccess {
   activity: { active: boolean; trades: number; lots: number; rule: { minTrades: number; windowDays: number; minLots: number }; checkedAt: string | null };
   packages: AccessPackage[]; consent: { share: boolean; at: string | null }; lockedPerks: string[]; myPerks: string[];
   products: ClientProduct[];
+  /** The partner's Elefin key checked this trader's email: null until it has. */
+  elefin: { status: string; held: boolean; reason: string | null; checkedAt: string | null } | null;
 }
 export interface ProgramSettings {
   activeMinTrades: number; activeWindowDays: number; activeMinLots: number; graceDays: number; partnerGraceDays: number; lockedPerks: string[];

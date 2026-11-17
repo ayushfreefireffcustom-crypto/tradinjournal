@@ -1,7 +1,8 @@
 // The Elefin client and probe against a local fake of the published Partner API.
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { redactText } from '@tradinjournal/logger';
-import { ElefinClient, ElefinError, parseRetryAfter, resetElefinBudgets } from '../client.js';
+import { env } from '@tradinjournal/config';
+import { ElefinClient, ElefinError, ipBlockedBy, parseRetryAfter, resetElefinBudgets } from '../client.js';
 import { abilitiesCoverClients, baseUrlAllowed } from '../config.js';
 import { probe } from '../probe.js';
 import { DOCUMENTED_FIELDS } from '../schema.js';
@@ -181,6 +182,32 @@ describe('probe', () => {
   it('a key whose /me lists no abilities but can read clients is OK (the live Elefin answer)', async () => {
     const r = await run(fake.addKey({ hideAbilities: true }));
     expect(r).toMatchObject({ ok: true, outcome: 'ok', clientsRead: 'ok', key: { abilities: [], canReadClients: true } });
+  });
+
+  it('a key locked to other IPs → ip_blocked, naming the addresses to allow', async () => {
+    const was = env.ELEFIN_OUTBOUND_IPS;
+    (env as { ELEFIN_OUTBOUND_IPS?: string }).ELEFIN_OUTBOUND_IPS = '152.55.180.240, 162.220.234.242';
+    try {
+      const r = await run(fake.addKey({ allowedIps: ['152.55.180.240', '162.220.234.242'] }));
+      expect(r).toMatchObject({ ok: false, outcome: 'ip_blocked', key: null, clientsRead: 'skipped' });
+      expect(r.message).toBe('Elefin is blocking our server: this key only accepts requests from the IP addresses on its allow-list.');
+      expect(r.missing).toEqual(['IP allow-list: 152.55.180.240, 162.220.234.242']);
+      expect(fake.log.map(l => `${l.path}:${l.status}`)).toEqual(['/me:403']);
+      // The error itself (what a failed sync shows) names the IPs and the address Elefin saw.
+      const e = await new ElefinClient({ baseUrl: base, token: fake.addKey({ allowedIps: ['152.55.180.240'] }), sleep }).get('/me').catch(x => x) as ElefinError;
+      expect(e.kind).toBe('ip_blocked');
+      expect(e.message).toContain('152.55.180.240, 162.220.234.242');
+      expect(e.message).toMatch(/Elefin saw 127\.0\.0\.1, which isn’t one of ours/);
+      // Our own address on the list: works.
+      expect(await run(fake.addKey({ allowedIps: ['127.0.0.1'] }))).toMatchObject({ ok: true });
+    } finally { (env as { ELEFIN_OUTBOUND_IPS?: string }).ELEFIN_OUTBOUND_IPS = was; }
+  });
+
+  it('tells an IP refusal apart from other 403s', () => {
+    expect(ipBlockedBy(JSON.stringify({ success: false, message: 'Requests from 117.250.161.222 are not allowed for this API key.' }))).toBe('117.250.161.222');
+    expect(ipBlockedBy(JSON.stringify({ message: 'Your IP address is not allowed.' }))).toBe('');
+    expect(ipBlockedBy(JSON.stringify({ message: "This API key does not have the 'clients.read' permission." }))).toBeNull();
+    expect(ipBlockedBy('not json')).toBeNull();
   });
 
   it('reads the abilities however Elefin spells them', () => {

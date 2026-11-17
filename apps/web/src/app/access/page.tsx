@@ -95,13 +95,23 @@ function path(d: ClientAccess): { rows: PathRow[]; next: string | null; action?:
   const rows: PathRow[] = [
     { key: 'partner', title: 'Link your partner', note: d.partner ? `${d.partner.name}` : 'Their link or their code', value: d.partner ? d.partner.code : '—', done: !!d.partner },
     { key: 'account', title: 'Connect your MT5 account', note: acct ? `${acct.broker}${d.accounts.length > 1 ? ` + ${d.accounts.length - 1} more` : ''}` : 'The one you opened through your partner', value: acct ? acct.label.split(' · ')[0] : '—', done: d.accounts.length > 0 },
-    { key: 'check', title: 'Broker check', note: verified ? `Found on ${d.partner ? first(d.partner.name) + '’s' : 'the'} client list` : d.partner && acct ? 'Not on their list yet' : 'We match your account to their list', value: verified ? 'Verified' : d.partner && acct ? 'Waiting' : '—', done: !!verified },
+    { key: 'check', title: 'Broker check', ...brokerCheck(d, !!verified, !!acct) },
     ...(d.partner ? [{ key: 'active', title: 'Trade', note: `${rule.minTrades}+ closed trade${rule.minTrades === 1 ? '' : 's'} in ${rule.windowDays} days`, value: `${d.activity.trades} / ${rule.minTrades}`, done: d.activity.active, bar: rule.minTrades ? d.activity.trades / rule.minTrades : 1 }] : []),
     { key: 'unlock', title: 'Unlock their tools', note: d.partner ? (d.packages.length ? `${d.packages.length} package${d.packages.length === 1 ? '' : 's'} on offer` : 'Nothing on offer yet') : 'Packages, guides and strategies', value: d.partner ? `${unlocked} / ${d.packages.length}` : '—', done: unlocked > 0 },
   ];
   const next = rows.find(r => !r.done);
   const action = next?.key === 'account' ? <Link href="/brokers" className="x-btn x-btn--sm">Connect MT5</Link> : undefined;
   return { rows, next: next ? next.title.toLowerCase() : null, action };
+}
+
+/** The broker-check step: a verified account, or Elefin's answer about the trader's email. */
+function brokerCheck(d: ClientAccess, verified: boolean, acct: boolean): { note: string; value: string; done: boolean } {
+  const who = d.partner ? `${first(d.partner.name)}’s` : 'the';
+  const e = d.elefin;
+  if (verified) return { note: `Found on ${who} client list`, value: 'Verified', done: true };
+  if (e?.status === 'VERIFIED') return { note: `Elefin confirmed you’re ${who} client`, value: 'Verified', done: true };
+  if (e?.reason) return { note: e.reason, value: e.held ? 'On hold' : 'Not found', done: false };
+  return { note: d.partner && acct ? 'Not on their list yet' : 'We match your account to their list', value: d.partner && acct ? 'Waiting' : '—', done: false };
 }
 
 /** No partner yet. Typing fills the link in the little browser and checks the code live. */
@@ -267,7 +277,7 @@ function WhatTheySee({ d, name, place, onChange }: { d: ClientAccess; name: stri
         <ul className="ax-never"><li>Email</li><li>Balance</li><li>Equity</li><li>Individual trades</li><li>MT5 password</li></ul>
       </div>
       <div data-testid={d.partner ? 'access-consent' : undefined}>
-        <PartnerRowPreview partner={partner} name={name} place={place} verified={d.accounts.some(a => a.status === 'VERIFIED')} trades={d.activity.trades} shared={!!d.partner && d.consent.share} />
+        <PartnerRowPreview partner={partner} name={name} place={place} verified={d.accounts.some(a => a.status === 'VERIFIED') || d.elefin?.status === 'VERIFIED'} trades={d.activity.trades} shared={!!d.partner && d.consent.share} />
         <Caption live>Your real row{d.partner ? ', updates as you switch' : ''}</Caption>
       </div>
     </section>

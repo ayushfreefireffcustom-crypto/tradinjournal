@@ -70,8 +70,10 @@ export function useAccounts(initialIdOverride?: string | null) {
   // on /brokers (the only place they can fix that) until they connect one. The
   // partner portal and admin pages work without a broker — many partners don't trade —
   // and settings and notifications must stay reachable for exchange-only copy traders.
+  // /access too: a referred trader sees their partner and Elefin's email check before
+  // connecting MT5 (the page itself asks them to connect).
   useEffect(() => {
-    const brokerFree = pathname === '/brokers' || pathname === '/settings' || pathname === '/notifications' || pathname.startsWith('/partner') || pathname.startsWith('/admin');
+    const brokerFree = pathname === '/brokers' || pathname === '/settings' || pathname === '/notifications' || pathname === '/access' || pathname.startsWith('/partner') || pathname.startsWith('/admin');
     if (loaded && !loading && accounts.length === 0 && !brokerFree) {
       router.replace('/brokers');
     }

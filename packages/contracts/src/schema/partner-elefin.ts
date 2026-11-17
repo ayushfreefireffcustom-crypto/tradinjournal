@@ -24,7 +24,7 @@ export const elefinTestSchema = z.object({
 });
 export type ElefinTestInput = z.infer<typeof elefinTestSchema>;
 
-export type ElefinProbeOutcome = 'ok' | 'invalid_key' | 'missing_permission' | 'rate_limited' | 'unreachable' | 'bad_response' | 'host_not_allowed';
+export type ElefinProbeOutcome = 'ok' | 'invalid_key' | 'missing_permission' | 'rate_limited' | 'unreachable' | 'bad_response' | 'host_not_allowed' | 'ip_blocked';
 /** ok: the client list answered · forbidden: the key lacks clients.read · error / skipped. */
 export type ElefinReadState = 'ok' | 'forbidden' | 'error' | 'skipped';
 

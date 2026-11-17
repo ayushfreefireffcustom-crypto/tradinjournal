@@ -273,6 +273,8 @@ export interface ClientAccessDto {
   myPerks: string[];
   /** Partner tools the client can open now. */
   products: ClientProductDto[];
+  /** The partner's Elefin key checked this trader's email: null until it has. */
+  elefin: { status: 'VERIFIED' | 'NOT_FOUND' | 'MANUAL_REVIEW' | 'REJECTED' | 'PENDING'; held: boolean; reason: string | null; checkedAt: string | null } | null;
 }
 
 export interface ProgramPartnerRowDto {
