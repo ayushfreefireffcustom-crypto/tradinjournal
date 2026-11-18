@@ -42,7 +42,7 @@ export default function AuthShell({ variant, top, children, testId, wide }: { va
           </div>
           {/* The product, so the page shows what you're signing in to. Demo data. */}
           <figure className="au-shot" aria-hidden>
-            <img src="/landing/dashboard-v5.jpg" alt="" width={2160} height={1350} decoding="async" />
+            <img src="/landing/dashboard-v6.jpg" alt="" width={2160} height={1350} decoding="async" />
             <figcaption className="au-float"><span className="au-float-k">One thing to fix</span><b>No new entries after 15:00</b></figcaption>
           </figure>
           <div className="au-trust">{c.foot}</div>
