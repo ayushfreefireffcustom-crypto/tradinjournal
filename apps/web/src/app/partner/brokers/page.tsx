@@ -113,10 +113,10 @@ export default function PartnerBrokersPage() {
           <section className="x-card" data-testid="ib-how">
             <div className="x-ch"><h2>How verification works</h2></div>
             <ol className="ib-steps">
-              <li>Your client signs up with your link or code, then connects their MT5 account.</li>
-              <li>We look for that account number in the list for its broker. A match verifies them.</li>
-              <li>An email match alone isn&rsquo;t proof, so those go to our team for a manual check.</li>
-              <li>Clients who aren&rsquo;t found see why, and can retry or ask for a review. Lists re-check every client when they change.</li>
+              <li>Your client signs up with your link or code and confirms their email.</li>
+              <li>Elefin, connected with your key: we ask Elefin whether that email is your client. Elefin&rsquo;s yes verifies them, even before they connect MT5.</li>
+              <li>Brokers you upload lists for: we look for their MT5 account number in your list. An email match alone isn&rsquo;t proof there, so those go to our team for a manual check.</li>
+              <li>Clients who aren&rsquo;t found see why, and can retry or ask for a review. We ask again on our own as your lists and Elefin change.</li>
             </ol>
           </section>
         </>}

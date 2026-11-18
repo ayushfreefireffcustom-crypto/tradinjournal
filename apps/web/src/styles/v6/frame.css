@@ -12,6 +12,9 @@ html[data-theme=light]:has(.v6.f-page), html[data-theme=light] body:has(.v6.f-pa
 .v6 .f-sb {
   position: sticky; top: 0; height: 100dvh; display: flex; flex-direction: column; gap: 14px;
   padding: 20px 14px 14px; border-right: 1px solid var(--line); min-width: 0;
+  /* Sticky makes the sidebar its own layer; without this the page painted over the account
+     menu where it spills past a narrow rail. Below dialogs (60) and sheets (70). */
+  z-index: 45;
 }
 .v6 .f-brand { display: flex; align-items: center; height: 34px; padding: 0 8px; text-decoration: none; --tl-logo-fg: var(--logo-fg); }
 .v6 .f-brand-mark {
