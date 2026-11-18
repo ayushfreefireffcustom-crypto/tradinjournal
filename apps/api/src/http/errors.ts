@@ -112,7 +112,7 @@ export class AccessElefinRequiredError extends AppError {
 
 export class AccessInactiveError extends AppError {
   constructor(
-    message = 'Active trading required — connect your Elefin account and complete at least 2 trades in the past 7 days.',
+    message = 'Active trading required — connect your Elefin account and close at least 1 trade in the last 30 days.',
     public readonly tradeCount7d?: number,
   ) {
     super(403, 'ACCESS_INACTIVE', message);

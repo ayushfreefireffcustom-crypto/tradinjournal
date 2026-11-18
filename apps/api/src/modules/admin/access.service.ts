@@ -17,6 +17,13 @@ import { isElefinServer } from '../../lib/broker-policy.js';
 export { isElefinServer };
 
 const ACTIVITY_CACHE_MS = 15 * 60 * 1000;
+const INACTIVE_CACHE_MS = 60 * 1000;
+
+/** "Need 1 closed trade on Elefin in the last 30 days" (from the live settings). */
+function activityRuleText(): string {
+  const n = env.ACCESS_MIN_TRADES_7D;
+  return `Need ${n} closed trade${n === 1 ? '' : 's'} on Elefin in the last ${env.ACCESS_ACTIVITY_WINDOW_DAYS} days`;
+}
 
 function normEmail(email: string): string {
   return email.trim().toLowerCase();
@@ -148,21 +155,19 @@ export async function getAccessStatus(userId: string, email: string): Promise<Ac
   if (brokerMode()) row = await syncElefinFromAccounts(row);
   const grant = await getActiveGrant(email);
 
-  // First-time / new signups: Elefin-verified users are admitted without trade
-  // activity until ACCESS_ACTIVITY_WINDOW_DAYS after signup date.
-  // Grace is computed in-memory only — never persist ACTIVE here or the gate
-  // stays unlocked forever after the window ends.
+  // Trade activity, when the rule is on, is worked out here (cached), so this status,
+  // the web gate and the API middleware all agree. A saved INACTIVE from earlier must
+  // not lock out someone who has traded since, and a saved ACTIVE must not outlive the
+  // window. New signups are let in for ACCESS_ACTIVITY_WINDOW_DAYS (checkActivity).
   let activityStatus = row.activityStatus;
-  // Activity isn't part of the rule: an Elefin account alone gives access.
-  if (!env.ACCESS_REQUIRE_ACTIVITY && row.elefinStatus === 'VERIFIED') activityStatus = 'ACTIVE';
-  if (
-    !grant &&
-    !adminUser &&
-    row.elefinStatus === 'VERIFIED' &&
-    activityStatus !== 'ACTIVE' &&
-    (await isWithinSignupGrace(userId))
-  ) {
-    activityStatus = 'ACTIVE';
+  let tradeCount7d = row.tradeCount7d;
+  if (row.elefinStatus === 'VERIFIED') {
+    if (!env.ACCESS_REQUIRE_ACTIVITY || grant || adminUser) activityStatus = 'ACTIVE';
+    else {
+      const a = await checkActivity(userId, email);
+      activityStatus = a.active ? 'ACTIVE' : 'INACTIVE';
+      tradeCount7d = a.tradeCount7d;
+    }
   }
 
   const status = resolvePlatformStatus({
@@ -178,7 +183,7 @@ export async function getAccessStatus(userId: string, email: string): Promise<Ac
     source: row.source,
     elefinStatus: row.elefinStatus,
     activityStatus,
-    tradeCount7d: row.tradeCount7d,
+    tradeCount7d,
     minTradesRequired: env.ACCESS_MIN_TRADES_7D,
     activityWindowDays: env.ACCESS_ACTIVITY_WINDOW_DAYS,
     isAdmin: adminUser,
@@ -250,13 +255,48 @@ export async function verifyElefin(userId: string, email: string, input: VerifyE
   return getAccessStatus(userId, email);
 }
 
+/**
+ * When Elefin last saw this trader close a trade, from their partner's synced Elefin book
+ * (only for traders Elefin confirmed as that partner's client). Covers trading at Elefin
+ * on an account they haven't connected here. Null when unknown.
+ */
+async function elefinLastTradeMs(userId: string): Promise<number | null> {
+  const [row] = await prisma.$queryRaw<{ last: bigint | number | null }[]>`
+    SELECT MAX((pb."apiConfig" #>> ARRAY['roster', 'clients', substr(cv."ibAccountId", ${ELEFIN_REF_PREFIX.length + 1}), '2'])::bigint) AS last
+    FROM "client_verification" cv
+    JOIN "partner_broker" pb ON pb."partnerId" = cv."partnerId" AND pb.broker = 'elefin'
+    WHERE cv."userId" = ${userId} AND cv.broker = 'elefin' AND cv.status = 'VERIFIED'
+      AND cv."brokerAccountId" IS NULL AND cv."externalAccountId" IS NULL
+      AND cv."ibAccountId" LIKE ${`${ELEFIN_REF_PREFIX}%`}`;
+  const last = row?.last == null ? null : Number(row.last);
+  return last && Number.isFinite(last) ? last * 1000 : null;
+}
+/** Same as clientRef in partners/ib/elefin/verify.ts; kept here so access checks don't load the partner module. */
+const ELEFIN_REF_PREFIX = 'elefin-client:';
+
+/**
+ * Closed trades in the activity window on the user's Elefin MT5 accounts. When none are
+ * connected or none closed, Elefin's own last-trade date (partner-confirmed traders)
+ * counts as one, so trading at Elefin keeps access even before MT5 is connected here.
+ */
 async function countElefinTrades7d(userId: string): Promise<number> {
+  const windowMs = env.ACCESS_ACTIVITY_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+  const cutoff = Date.now() - windowMs;
+  const mt5 = await countMt5Closed(userId, cutoff);
+  if (mt5 > 0) return mt5;
+  try {
+    const last = await elefinLastTradeMs(userId);
+    return last != null && last >= cutoff ? 1 : 0;
+  } catch (err) {
+    logger.warn('[access] Elefin last-trade lookup failed', { err });
+    return 0;
+  }
+}
+
+async function countMt5Closed(userId: string, cutoff: number): Promise<number> {
   const accounts = await findAccountsByUser(userId);
   const elefinAccounts = accounts.filter(a => isElefinServer(a.server));
   if (!elefinAccounts.length) return 0;
-
-  const windowMs = env.ACCESS_ACTIVITY_WINDOW_DAYS * 24 * 60 * 60 * 1000;
-  const cutoff = Date.now() - windowMs;
   let count = 0;
 
   for (const account of elefinAccounts) {
@@ -308,10 +348,13 @@ export async function checkActivity(userId: string, email: string, force = false
 
   const row = await ensureUserAccess(userId);
   const now = Date.now();
+  // A pass is remembered for 15 minutes; a lock only for a minute, so someone who just
+  // traded gets back in quickly. UNKNOWN (never counted) always counts now.
+  const ttl = row.activityStatus === 'ACTIVE' ? ACTIVITY_CACHE_MS : row.activityStatus === 'INACTIVE' ? INACTIVE_CACHE_MS : 0;
   const cached =
     !force &&
     row.activityCheckedAt &&
-    now - row.activityCheckedAt.getTime() < ACTIVITY_CACHE_MS;
+    now - row.activityCheckedAt.getTime() < ttl;
 
   const tradeCount = cached ? row.tradeCount7d : await countElefinTrades7d(userId);
   const active = tradeCount >= env.ACCESS_MIN_TRADES_7D;
@@ -326,7 +369,7 @@ export async function checkActivity(userId: string, email: string, force = false
         activityCheckedAt: new Date(),
         lastDeniedReason: active
           ? null
-          : `Need ${env.ACCESS_MIN_TRADES_7D}+ closed trades on Elefin in the last ${env.ACCESS_ACTIVITY_WINDOW_DAYS} days`,
+          : activityRuleText(),
       },
     });
   }
@@ -366,30 +409,11 @@ export async function assertPlatformAccess(
     throw new AccessElefinRequiredError();
   }
 
-  // Admins / manual grants are FULL_ACCESS without activity.
-  // Elefin-verified users may look FULL_ACCESS during grace (in-memory) or from a
-  // stale ACTIVE row written by older builds — always re-check activity once past grace.
-  const privileged = status.isAdmin || status.source === 'MANUAL_GRANT';
-  if (!env.ACCESS_REQUIRE_ACTIVITY) return;
-  if (opts?.requireActivity !== false && !privileged && status.elefinStatus === 'VERIFIED') {
-    if (!(await isWithinSignupGrace(userId))) {
-      const activity = await checkActivity(userId, email);
-      if (!activity.active) {
-        const { AccessInactiveError } = await import('../../http/errors.js');
-        throw new AccessInactiveError(undefined, activity.tradeCount7d);
-      }
-    }
-    return;
-  }
-
-  if (status.status === 'FULL_ACCESS') return;
-  if (status.status === 'INACTIVE' && opts?.requireActivity === false) return;
-  if (status.status === 'INACTIVE') {
-    const activity = await checkActivity(userId, email);
-    if (!activity.active) {
-      const { AccessInactiveError } = await import('../../http/errors.js');
-      throw new AccessInactiveError(undefined, activity.tradeCount7d);
-    }
+  // getAccessStatus already counted trade activity (admins, grants and new signups pass).
+  // Routes that let an inactive user fix it (their broker accounts) skip only this part.
+  if (status.status === 'INACTIVE' && opts?.requireActivity !== false) {
+    const { AccessInactiveError } = await import('../../http/errors.js');
+    throw new AccessInactiveError(`${activityRuleText()}. Trade on Elefin, then recheck.`, status.tradeCount7d);
   }
 }
 

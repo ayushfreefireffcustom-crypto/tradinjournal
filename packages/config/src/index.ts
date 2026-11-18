@@ -233,8 +233,8 @@ const envSchema = z.object({
   ELEFIN_SYNC_MINUTES: z.coerce.number().int().min(5).max(1440).default(20),
   /** Requests per minute we allow ourselves per key (Elefin allows 60). */
   ELEFIN_REQ_PER_MIN: z.coerce.number().int().min(1).max(600).default(50),
-  ACCESS_MIN_TRADES_7D: z.coerce.number().int().positive().default(2),
-  ACCESS_ACTIVITY_WINDOW_DAYS: z.coerce.number().int().positive().default(7),
+  ACCESS_MIN_TRADES_7D: z.coerce.number().int().positive().default(1),
+  ACCESS_ACTIVITY_WINDOW_DAYS: z.coerce.number().int().positive().default(30),
   // When true, Elefin users also need ACCESS_MIN_TRADES_7D closed trades in the window
   // (after a signup grace). Off by default: an Elefin account alone is enough.
   ACCESS_REQUIRE_ACTIVITY: z

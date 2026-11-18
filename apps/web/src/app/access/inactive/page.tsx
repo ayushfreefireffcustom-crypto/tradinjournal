@@ -11,6 +11,8 @@ import StatusCard, { SC_ICONS } from '@/components/v6/auth/status-card';
 import { AuthError, AuthSubmit } from '@/components/v6/auth/auth-shell';
 import { mockStay } from '@/lib/use-redirect-if-authed';
 
+const trades = (n: number) => `${n} closed trade${n === 1 ? '' : 's'}`;
+
 export default function InactiveAccessPage() {
   const router = useRouter();
   const { data: session, isPending } = authClient.useSession();
@@ -49,7 +51,7 @@ export default function InactiveAccessPage() {
       primeAccessCache(s);
       setStatus(s);
       setError(
-        `Need ${s.minTradesRequired} closed Elefin trades in the last ${s.activityWindowDays} days. You have ${result.tradeCount7d}.`,
+        `Need ${trades(s.minTradesRequired)} on Elefin in the last ${s.activityWindowDays} days. You have ${result.tradeCount7d}.`,
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Activity check failed');
@@ -62,14 +64,14 @@ export default function InactiveAccessPage() {
     return <LoadingScreen />;
   }
 
-  const minTrades = status?.minTradesRequired ?? 2;
-  const windowDays = status?.activityWindowDays ?? 7;
+  const minTrades = status?.minTradesRequired ?? 1;
+  const windowDays = status?.activityWindowDays ?? 30;
   const tradeCount = status?.tradeCount7d ?? 0;
 
   return (
     <StatusCard testId="access-inactive-page" icon={SC_ICONS.warn} kicker="Activity required"
       title="Keep trading to keep access"
-      body={<>Full access needs at least <b>{minTrades}</b> closed trades on your Elefin account in the last <b>{windowDays}</b> days. Trade, then recheck; it updates instantly.</>}
+      body={<>Full access needs at least <b>{trades(minTrades)}</b> on Elefin in the last <b>{windowDays} days</b>. Trade, then recheck; it updates straight away.</>}
       onSignOut={() => void authClient.signOut().then(() => router.replace('/login'))}>
       <div className="x-strip" style={{ ['--n' as string]: 2 }}>
         <div><span>Your trades</span><b className="m">{status ? tradeCount : '—'}</b><small>last {windowDays} days</small></div>
