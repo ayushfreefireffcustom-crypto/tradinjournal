@@ -49,4 +49,12 @@ describe('requirePlatformAccess in broker mode', () => {
     expect(await call('u9', '/api/trades')).toBe(denied);
     expect(assertPlatformAccess).toHaveBeenCalledTimes(1);
   });
+
+  it('notifications skip only the trade rule, never the Elefin check; look-alike paths get no exemption', async () => {
+    assertPlatformAccess.mockResolvedValue(undefined);
+    await call('u10', '/api/notifications');
+    expect(assertPlatformAccess).toHaveBeenLastCalledWith('u10', 'u10@x.test', { requireActivity: false });
+    await call('u11', '/api/trades/accounts');
+    expect(assertPlatformAccess).toHaveBeenLastCalledWith('u11', 'u11@x.test', { requireActivity: true });
+  });
 });

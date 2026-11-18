@@ -69,17 +69,16 @@ export async function requirePlatformAccess(
       return;
     }
 
-    // Elefin required everywhere; activity required except accounts/sync so
-    // inactive users can still connect brokers and earn the trade threshold.
+    // Elefin required everywhere; trade activity required except on the user's broker
+    // accounts (so an inactive user can connect or fix them) and their notifications.
+    // Matched on the exact mount, never a substring of the path.
     const mount = req.baseUrl || '';
-    const full = `${mount}${req.path || ''}`;
-    const allowWithoutActivity =
-      mount.includes('/accounts') ||
-      full.includes('/api/accounts');
+    const accountsRoute = mount === '/api/accounts';
+    const allowWithoutActivity = accountsRoute || mount === '/api/notifications';
 
     // Broker mode: connecting an Elefin MT5 account IS the check, so a locked-out user
     // must still reach their accounts (list, connect, remove) to get in.
-    if (allowWithoutActivity && env.ELEFIN_VERIFY_MODE === 'broker') {
+    if (accountsRoute && env.ELEFIN_VERIFY_MODE === 'broker') {
       next();
       return;
     }
