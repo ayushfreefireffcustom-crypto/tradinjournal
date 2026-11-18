@@ -30,8 +30,27 @@ function normEmail(email: string): string {
 }
 
 
-const brokerMode = () => env.ELEFIN_VERIFY_MODE === 'broker';
-const elefinCheck = (): 'broker' | 'api' => (brokerMode() ? 'broker' : 'api');
+/**
+ * What counts as proof of being an Elefin client:
+ *   broker  — an MT5 account on an Elefin server, or a partner's Elefin confirmation;
+ *   partner — a partner's confirmation only (Elefin's lookup with the partner's key, the
+ *             partner's client list, or a manual review). An Elefin account alone isn't enough.
+ * Partner mode without the partner programme would lock everyone out (no partner can
+ * confirm anyone), so it falls back to broker rules and says so in the log once.
+ */
+let warnedNoProgramme = false;
+function evidenceMode(): 'broker' | 'partner' | null {
+  const m = env.ELEFIN_VERIFY_MODE;
+  if (m === 'partner') {
+    if (env.PARTNER_PROGRAM_ENABLED) return 'partner';
+    if (!warnedNoProgramme) { warnedNoProgramme = true; logger.error('[access] ELEFIN_VERIFY_MODE=partner needs PARTNER_PROGRAM_ENABLED=true; using broker rules until it is on'); }
+    return 'broker';
+  }
+  return m === 'broker' ? 'broker' : null;
+}
+/** Broker and partner modes: no Elefin API call of our own; the evidence decides. */
+const brokerMode = () => evidenceMode() !== null;
+const elefinCheck = (): 'broker' | 'partner' | 'api' => evidenceMode() ?? 'api';
 
 /**
  * Elefin itself confirmed this trader as a partner's active client (the partner's Elefin
@@ -49,21 +68,65 @@ async function elefinConfirmedClient(userId: string): Promise<boolean> {
 }
 
 /**
+ * Partner mode: confirmed as an Elefin client of their own partner (the one they're linked
+ * to), by any route: Elefin's email lookup with the partner's key, their Elefin MT5 or
+ * other account found on the partner's client list, or a manual review. Only while that
+ * partner is active. A held answer (suspended or inactive at Elefin) is stored as
+ * NOT_FOUND, so it doesn't count.
+ */
+async function partnerConfirmedClient(userId: string): Promise<boolean> {
+  const ref = await prisma.referral.findUnique({ where: { userId }, select: { partnerId: true } });
+  if (!ref) return false;
+  const row = await prisma.clientVerification.findFirst({
+    where: { userId, partnerId: ref.partnerId, broker: 'elefin', status: 'VERIFIED', partner: { status: 'ACTIVE' } },
+    select: { id: true },
+  });
+  return !!row;
+}
+
+/**
+ * An active partner (an admin-approved Elefin IB) isn't anyone's client. They keep the
+ * broker-mode rule for their own journal: an MT5 account on an Elefin server.
+ */
+async function activePartner(userId: string): Promise<boolean> {
+  const p = await prisma.partner.findUnique({ where: { userId }, select: { status: true } });
+  return p?.status === 'ACTIVE';
+}
+
+const hasElefinMt5 = async (userId: string) =>
+  (await prisma.brokerAccount.findMany({ where: { userId }, select: { server: true } })).some(a => isElefinServer(a.server));
+
+/** Is there proof right now, under the current mode? */
+async function elefinEvidence(userId: string): Promise<boolean> {
+  if (evidenceMode() === 'partner') {
+    if (await partnerConfirmedClient(userId)) return true;
+    return (await activePartner(userId)) && (await hasElefinMt5(userId));
+  }
+  return (await hasElefinMt5(userId)) || (await elefinConfirmedClient(userId));
+}
+
+const NO_EVIDENCE = {
+  broker: 'No Elefin MT5 account connected and no partner’s Elefin confirmation',
+  partner: 'Not confirmed as an Elefin client of a TRADElogs partner',
+};
+
+/**
  * Broker mode: the user's Elefin status follows the evidence — VERIFIED while they have an
  * MT5 account on an Elefin server or Elefin confirmed them through their partner's key,
  * PENDING otherwise. Manual grants are left alone.
  */
 async function syncElefinFromAccounts(row: UserAccess): Promise<UserAccess> {
   if (row.source === 'MANUAL_GRANT') return row;
-  const accounts = await prisma.brokerAccount.findMany({ where: { userId: row.userId }, select: { server: true } });
-  const has = accounts.some(a => isElefinServer(a.server)) || (await elefinConfirmedClient(row.userId));
+  const has = await elefinEvidence(row.userId);
   const want = has ? 'VERIFIED' : 'PENDING';
-  if (row.elefinStatus === want) return row;
+  const reason = NO_EVIDENCE[evidenceMode() ?? 'broker'];
+  // Switching modes changes the reason someone is locked out: keep what admins see current.
+  if (row.elefinStatus === want && (has || row.lastDeniedReason === reason)) return row;
   return prisma.userAccess.update({
     where: { userId: row.userId },
     data: has
-      ? { elefinStatus: 'VERIFIED', source: 'ELEFIN_VERIFIED', elefinVerifiedAt: new Date(), lastDeniedReason: null }
-      : { elefinStatus: 'PENDING', source: null, lastDeniedReason: 'No Elefin MT5 account connected and no partner’s Elefin confirmation' },
+      ? { elefinStatus: 'VERIFIED', source: 'ELEFIN_VERIFIED', elefinVerifiedAt: row.elefinStatus === 'VERIFIED' ? undefined : new Date(), lastDeniedReason: null }
+      : { elefinStatus: 'PENDING', source: null, lastDeniedReason: reason },
   });
 }
 
@@ -203,6 +266,16 @@ export async function verifyElefin(userId: string, email: string, input: VerifyE
   }
 
   // Broker mode has nothing to call: connecting an Elefin MT5 account is the check.
+  // Partner mode: ask Elefin again through the trader's partner (at most once every
+  // 10 minutes per trader; it does nothing if the partner has no working Elefin key).
+  if (evidenceMode() === 'partner') {
+    try {
+      const { lookupTrader } = await import('../partners/ib/elefin/verify.js');
+      await lookupTrader(userId);
+    } catch (err) {
+      logger.warn('[access] partner Elefin recheck failed', { userId, err });
+    }
+  }
   if (brokerMode()) return getAccessStatus(userId, email);
 
   const verifyEmail = input.email?.trim().toLowerCase() ?? email;

@@ -315,3 +315,25 @@ html[data-theme=light]:has(.v6.au-root), html[data-theme=light] body:has(.v6.au-
   .v6.au-auth .au-t { font-size: var(--t5); }
 }
 html[data-theme=light] .v6.au-auth .au-col { background: none; }
+
+/* Partner check (components/v6/auth/partner-check.tsx): three numbered steps with their real state. */
+.v6 .pc-steps { list-style: none; margin: 22px 0 0; padding: 0; display: grid; gap: 8px; text-align: left; }
+.v6 .pc-step { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border-radius: var(--r-field); background: var(--s2); }
+.v6 .pc-i { width: 24px; height: 24px; border-radius: 50%; flex: none; display: grid; place-items: center; font: 700 var(--t1)/1 var(--sans); color: var(--mut); box-shadow: inset 0 0 0 1.5px var(--line-2); margin-top: 1px; }
+.v6 .pc-step.done .pc-i { background: var(--g); color: var(--on-g); box-shadow: none; }
+.v6 .pc-step.now .pc-i { color: var(--tx); box-shadow: inset 0 0 0 1.5px var(--tx); }
+.v6 .pc-step.bad .pc-i { background: var(--r-solid); color: #fff; box-shadow: none; }
+.v6 .pc-step.todo { background: none; box-shadow: inset 0 0 0 1px var(--line); }
+.v6 .pc-t { min-width: 0; display: grid; gap: 2px; }
+.v6 .pc-t b { font-size: var(--t3); font-weight: 600; color: var(--tx); }
+.v6 .pc-t span { font-size: var(--t2); color: var(--mut); line-height: 1.45; overflow-wrap: anywhere; }
+.v6 .pc-t span b { font-size: inherit; }
+.v6 .pc-step.bad .pc-t span { color: var(--tx); }
+.v6 .pc-a { margin-top: 8px; }
+.v6 .pc-note { margin: 14px 0 0; font-size: var(--t2); color: var(--mut); }
+.v6 .pc-join { display: grid; gap: 8px; margin-top: 16px; text-align: left; }
+.v6 .pc-join-l { font-size: var(--t2); color: var(--mut); }
+.v6 .pc-join-r { display: flex; gap: 8px; }
+.v6 .pc-join-r .x-input { flex: 1; min-width: 0; font-feature-settings: "tnum"; letter-spacing: .04em; }
+.v6 .pc-join-h { font-size: var(--t1); color: var(--dim); }
+.v6 .pc-sk { height: 180px; margin-top: 22px; border-radius: var(--r-field); background: var(--s2); }

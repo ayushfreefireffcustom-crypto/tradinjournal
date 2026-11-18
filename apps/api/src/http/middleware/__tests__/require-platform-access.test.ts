@@ -58,3 +58,15 @@ describe('requirePlatformAccess in broker mode', () => {
     expect(assertPlatformAccess).toHaveBeenLastCalledWith('u11', 'u11@x.test', { requireActivity: true });
   });
 });
+
+describe('requirePlatformAccess in partner mode', () => {
+  beforeEach(() => { assertPlatformAccess.mockReset(); clearAccessPassCache(); env.ELEFIN_VERIFY_MODE = 'partner'; });
+
+  it('a trader waiting for their partner can still reach their accounts, nothing else', async () => {
+    const denied = Object.assign(new Error('elefin'), { statusCode: 403 });
+    assertPlatformAccess.mockRejectedValue(denied);
+    expect(await call('p9', '/api/accounts')).toBeUndefined();
+    expect(await call('p9', '/api/journal')).toBe(denied);
+    expect(await call('p9', '/api/insights')).toBe(denied);
+  });
+});

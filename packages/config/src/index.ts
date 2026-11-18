@@ -217,11 +217,14 @@ const envSchema = z.object({
     .default('false')
     .transform(v => v.toLowerCase() === 'true' || v === '1'),
   // How a user proves they're an Elefin client:
-  //   broker — they connected an MT5 account on an Elefin server (the bridge logged in with
-  //            their password, so they own it). No Elefin API needed. Default.
-  //   live   — Elefin's partner API confirms the account is under our referral.
-  //   stub   — tests / local dev only.
-  ELEFIN_VERIFY_MODE: z.enum(['broker', 'stub', 'live']).default('broker'),
+  //   broker  — they connected an MT5 account on an Elefin server (the bridge logged in with
+  //             their password, so they own it). No Elefin API needed. Default.
+  //   partner — they're confirmed as an Elefin client of a TRADElogs partner: Elefin's
+  //             lookup through the partner's key, the partner's client list, or a manual
+  //             review. An Elefin account alone isn't enough. Needs PARTNER_PROGRAM_ENABLED.
+  //   live    — Elefin's partner API confirms the account is under our referral.
+  //   stub    — tests / local dev only.
+  ELEFIN_VERIFY_MODE: z.enum(['broker', 'partner', 'stub', 'live']).default('broker'),
   ELEFIN_API_URL: z.string().url().optional(),
   ELEFIN_API_KEY: z.string().optional(),
   // Elefin Partner API (read-only, one key per partner, pasted by the partner in the

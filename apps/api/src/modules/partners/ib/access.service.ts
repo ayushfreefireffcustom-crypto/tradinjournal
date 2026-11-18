@@ -1,6 +1,7 @@
 // Partner-package access: who holds what, why something is locked, consent, and the
 // "join a partner later" path. Entitlements are recomputed after every relevant event
 // and on a schedule (scheduler.ts › partner-stats).
+import { elefinConfigOf, isElefinConnected } from './elefin/store.js';
 import { prisma } from '@tradinjournal/db';
 import type { AccessPackageDto, ClientAccessDto, EntitlementStatusDto } from '@tradinjournal/contracts';
 import { env } from '@tradinjournal/config';
@@ -148,7 +149,9 @@ export async function clientAccess(userId: string, email: string): Promise<Clien
   const [{ rule, ref, verifs, ents, evaluate }, accounts, perks, products] = await Promise.all([
     packageContext(userId), accountsOf(userId), perksFor(userId, email), clientProducts(userId),
   ]);
-  const extra = ref ? await prisma.partnerBroker.findMany({ where: { partnerId: ref.partnerId }, select: { serverMatch: true } }) : [];
+  const extra = ref ? await prisma.partnerBroker.findMany({ where: { partnerId: ref.partnerId }, select: { serverMatch: true, broker: true, method: true, apiKey: true, apiConfig: true } }) : [];
+  const elefinLink = extra.find(b => b.broker === 'elefin');
+  const partnerElefin = ref ? (isElefinConnected(elefinLink) && !elefinConfigOf(elefinLink)?.pausedAt) : null;
 
   const accountDtos = accounts.map(a => {
     const v = verifs.find(x => (a.kind === 'mt5' ? x.brokerAccountId : x.externalAccountId) === a.id);
@@ -224,6 +227,7 @@ export async function clientAccess(userId: string, email: string): Promise<Clien
     myPerks: perks.mine,
     products,
     elefin: elefinCheck(verifs, ref?.partnerId ?? null),
+    partnerElefin,
   };
 }
 

@@ -58,7 +58,9 @@ export default function BrokersPage() {
   const atLimit = accounts.length >= MAX_ACCOUNTS;
   // With the Elefin-only gate on, say so here too: a new user can land on this page or on
   // /access/elefin, and both must tell them the same thing.
-  const elefinOnly = usePlatformAccess().status?.status === 'ELEFIN_REQUIRED';
+  const gate = usePlatformAccess().status;
+  const elefinOnly = gate?.status === 'ELEFIN_REQUIRED';
+  const partnerOnly = elefinOnly && gate?.elefinCheck === 'partner';
 
   // Fetch balance/equity/P&L for each connected account (parallel, tolerant of
   // per-account failures → that card simply shows em-dashes).
@@ -205,7 +207,7 @@ export default function BrokersPage() {
                   <button onClick={() => setShowConnect(true)} data-testid="brokers-add-card" className="ac-br-new">
                     <span className="ac-br-new-ic"><IPlus size={18} /></span>
                     <b>{elefinOnly ? 'Connect your Elefin account' : accounts.length === 0 ? 'Connect your first broker' : 'Add another broker'}</b>
-                    <small>{elefinOnly ? 'TRADElogs is for Elefin clients. Use your Elefin MT5 login and its investor (read-only) password.' : 'Investor (read-only) credentials. Trades sync within a minute.'}</small>
+                    <small>{partnerOnly ? 'TRADElogs is for Elefin clients of our partners. Connect your Elefin MT5 account so your partner can confirm you.' : elefinOnly ? 'TRADElogs is for Elefin clients. Use your Elefin MT5 login and its investor (read-only) password.' : 'Investor (read-only) credentials. Trades sync within a minute.'}</small>
                   </button>
                 )}
               </div>

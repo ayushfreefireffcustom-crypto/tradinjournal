@@ -12,6 +12,8 @@ import { AuthError, AuthSubmit } from '@/components/v6/auth/auth-shell';
 import { mockStay } from '@/lib/use-redirect-if-authed';
 import ConnectBrokerModal from '@/components/connect-broker-modal';
 import { api, type BrokerAccount } from '@/lib/api';
+import { type AccessStatusDto } from '@/lib/access-api';
+import PartnerCheck from '@/components/v6/auth/partner-check';
 
 /** Elefin MT5 servers start with "Elefin" (e.g. Elefin-Trade). Same rule as the API. */
 const isElefin = (server: string) => /^elefin/i.test(server.trim());
@@ -22,7 +24,8 @@ export default function ElefinAccessPage() {
   const [mt5Login, setMt5Login] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [check, setCheck] = useState<'broker' | 'api' | null>(null);
+  const [check, setCheck] = useState<'broker' | 'partner' | 'api' | null>(null);
+  const [status, setStatus] = useState<AccessStatusDto | null>(null);
 
   useEffect(() => {
     if (!isPending && !session?.session) router.replace('/login');
@@ -39,6 +42,7 @@ export default function ElefinAccessPage() {
           const s = await accessApi.status();
           if (!alive) return;
           setCheck(s.elefinCheck ?? 'api');
+          setStatus(s);
           if (mockStay()) return;
           if (s.status === 'FULL_ACCESS') router.replace('/dashboard');
           if (s.status === 'INACTIVE') router.replace('/access/inactive');
@@ -86,6 +90,7 @@ export default function ElefinAccessPage() {
 
   const signOut = () => void authClient.signOut().then(() => router.replace('/login'));
   if (check === 'broker') return <ElefinBrokerCheck onSignOut={signOut} />;
+  if (check === 'partner') return <PartnerCheck status={status} onSignOut={signOut} />;
 
   return (
     <StatusCard testId="access-elefin-page" icon={SC_ICONS.shield} kicker="Access required"

@@ -77,8 +77,9 @@ export async function requirePlatformAccess(
     const allowWithoutActivity = accountsRoute || mount === '/api/notifications';
 
     // Broker mode: connecting an Elefin MT5 account IS the check, so a locked-out user
-    // must still reach their accounts (list, connect, remove) to get in.
-    if (accountsRoute && env.ELEFIN_VERIFY_MODE === 'broker') {
+    // must still reach their accounts (list, connect, remove) to get in. Partner mode too:
+    // a partner confirms the MT5 account they find on their client list.
+    if (accountsRoute && (env.ELEFIN_VERIFY_MODE === 'broker' || env.ELEFIN_VERIFY_MODE === 'partner')) {
       next();
       return;
     }

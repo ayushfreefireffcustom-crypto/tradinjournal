@@ -4266,6 +4266,590 @@
           }
         }
       ]
+    },
+    {
+      "name": "13 An Elefin account alone",
+      "item": [
+        {
+          "name": "Sign in shash",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const c = (pm.response.headers.all().filter(h => h.key.toLowerCase() === 'set-cookie').map(h => h.value).find(v => v.startsWith('better-auth.session_token=')) || '').split(';')[0];",
+                  "pm.test(\"session cookie issued\", () => { pm.expect(c).to.match(/^better-auth\\.session_token=/); });",
+                  "pm.collectionVariables.set('shashCookie', c);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{appUrl}}"
+              }
+            ],
+            "url": {
+              "raw": "{{altUrl}}/api/auth/sign-in/email",
+              "host": [
+                "{{altUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "sign-in",
+                "email"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{shashEmail}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Sign in ben",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const c = (pm.response.headers.all().filter(h => h.key.toLowerCase() === 'set-cookie').map(h => h.value).find(v => v.startsWith('better-auth.session_token=')) || '').split(';')[0];",
+                  "pm.test(\"session cookie issued\", () => { pm.expect(c).to.match(/^better-auth\\.session_token=/); });",
+                  "pm.collectionVariables.set('benCookie', c);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{appUrl}}"
+              }
+            ],
+            "url": {
+              "raw": "{{altUrl}}/api/auth/sign-in/email",
+              "host": [
+                "{{altUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "sign-in",
+                "email"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{benEmail}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Sign in asha",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const c = (pm.response.headers.all().filter(h => h.key.toLowerCase() === 'set-cookie').map(h => h.value).find(v => v.startsWith('better-auth.session_token=')) || '').split(';')[0];",
+                  "pm.test(\"session cookie issued\", () => { pm.expect(c).to.match(/^better-auth\\.session_token=/); });",
+                  "pm.collectionVariables.set('ashaCookie', c);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{appUrl}}"
+              }
+            ],
+            "url": {
+              "raw": "{{altUrl}}/api/auth/sign-in/email",
+              "host": [
+                "{{altUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "sign-in",
+                "email"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{ashaEmail}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Sign in chen",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const c = (pm.response.headers.all().filter(h => h.key.toLowerCase() === 'set-cookie').map(h => h.value).find(v => v.startsWith('better-auth.session_token=')) || '').split(';')[0];",
+                  "pm.test(\"session cookie issued\", () => { pm.expect(c).to.match(/^better-auth\\.session_token=/); });",
+                  "pm.collectionVariables.set('chenCookie', c);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{appUrl}}"
+              }
+            ],
+            "url": {
+              "raw": "{{altUrl}}/api/auth/sign-in/email",
+              "host": [
+                "{{altUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "sign-in",
+                "email"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{chenEmail}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Ben: Elefin MT5, but not Shash’s client",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "const partner = pm.variables.get('verifyMode') === 'partner';",
+                  "pm.test(\"partner mode keeps him out; broker mode lets him in\", () => { pm.expect(d.status).to.eql(partner ? 'ELEFIN_REQUIRED' : 'FULL_ACCESS'); pm.expect(d.elefinCheck).to.eql(partner ? 'partner' : 'broker'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{benCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/access/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "access",
+                "status"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Ben: the journal",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const partner = pm.variables.get('verifyMode') === 'partner';",
+                  "pm.test(\"locked in partner mode, open in broker mode\", () => { pm.expect(pm.response.code).to.eql(partner ? 403 : 200); if (partner) pm.expect(pm.response.json().error.code).to.eql('ACCESS_ELEFIN_REQUIRED'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{benCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/journal",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "journal"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Ben can still reach his accounts (to connect the one his partner can find)",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{benCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Ben: “Check again” asks Elefin through his partner and still says no",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "const partner = pm.variables.get('verifyMode') === 'partner';",
+                  "pm.test(\"same answer as the status\", () => { pm.expect(d.status).to.eql(partner ? 'ELEFIN_REQUIRED' : 'FULL_ACCESS'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{benCookie}}"
+              },
+              {
+                "key": "Origin",
+                "value": "{{appUrl}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/access/verify-elefin",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "access",
+                "verify-elefin"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{benEmail}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Shash, an active partner with an Elefin MT5 account, keeps his journal",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"in\", () => { pm.expect(d.status).to.eql('FULL_ACCESS'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{shashCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/access/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "access",
+                "status"
+              ]
+            }
+          }
+        },
+        {
+          "name": "asha: let in (confirmed by Elefin through Shash, no MT5 needed)",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"full access, Elefin verified\", () => { pm.expect(d.status).to.eql('FULL_ACCESS'); pm.expect(d.elefinStatus).to.eql('VERIFIED'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{ashaCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/access/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "access",
+                "status"
+              ]
+            }
+          }
+        },
+        {
+          "name": "asha: the journal opens",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{ashaCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/journal",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "journal"
+              ]
+            }
+          }
+        },
+        {
+          "name": "chen: kept out (held at Elefin)",
+          "protocolProfileBehavior": {
+            "disableCookies": true,
+            "followRedirects": false
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"Elefin required\", () => { pm.expect(d.status).to.eql('ELEFIN_REQUIRED'); pm.expect(d.elefinStatus).to.eql('PENDING'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{chenCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/access/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "access",
+                "status"
+              ]
+            }
+          }
+        }
+      ]
     }
   ]
 }

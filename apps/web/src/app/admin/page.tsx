@@ -235,6 +235,8 @@ export default function AdminPage() {
                     <span>Elefin verification</span>
                     <b>{sentence(overview.elefinVerifyMode)}</b>
                     {overview.elefinVerifyMode === 'stub' && <small className="ad-small neg">Stub mode. Switch to live once the Elefin API is ready.</small>}
+                    {overview.elefinVerifyMode === 'partner' && <small className="ad-small">Only traders a partner confirmed as their Elefin client (and active partners) get in.</small>}
+                    {overview.elefinVerifyMode === 'broker' && <small className="ad-small">An Elefin MT5 account, or a partner’s Elefin confirmation, gets a trader in.</small>}
                   </div>
                   <div><span>Pending Elefin</span><b className="m">{pendingElefin}</b><small className="ad-small">waiting for verification</small></div>
                   <div><span>Inactive queue</span><b className={`m ${inactiveCount ? 'neg' : ''}`}>{inactiveCount}</b><small className="ad-small">below the activity rule</small></div>

@@ -29,8 +29,11 @@ export const accessStatusDtoSchema = z.object({
   isAdmin: z.boolean(),
   /** The caller's partner record status, or null when they aren't a partner. */
   partnerStatus: partnerStatusSchema.nullable(),
-  /** How Elefin is checked: 'broker' = connect an MT5 account on an Elefin server; 'api' = Elefin's partner API. */
-  elefinCheck: z.enum(['broker', 'api']),
+  /**
+   * How Elefin is checked: 'broker' = connect an MT5 account on an Elefin server;
+   * 'partner' = be confirmed as an Elefin client of a TRADElogs partner; 'api' = Elefin's partner API.
+   */
+  elefinCheck: z.enum(['broker', 'partner', 'api']),
   maintenance: z.object({
     enabled: z.boolean(),
     message: z.string().nullable(),

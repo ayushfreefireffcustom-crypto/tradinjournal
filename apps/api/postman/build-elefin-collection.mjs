@@ -230,6 +230,25 @@ const folders = [
     gate('asha', true, 'after disconnect'), app('asha', true),
     req('Sync now → 409 (nothing connected)', 'POST', `${B}/partner/brokers/elefin/sync`, { as: 'shash', tests: [status(409)] }),
   ] },
+
+  // Run after the runner gives Ben (another IB's client) and Shash (the partner) an MT5
+  // account on an Elefin server. verifyMode says which rule the API runs under.
+  { name: '13 An Elefin account alone', item: [
+    signin('shash'), signin('ben'), signin('asha'), signin('chen'),
+    req('Ben: Elefin MT5, but not Shash’s client', 'GET', `${B}/access/status`, { as: 'ben', tests: [status(200), json,
+      "const partner = pm.variables.get('verifyMode') === 'partner';",
+      t('partner mode keeps him out; broker mode lets him in', "pm.expect(d.status).to.eql(partner ? 'ELEFIN_REQUIRED' : 'FULL_ACCESS'); pm.expect(d.elefinCheck).to.eql(partner ? 'partner' : 'broker');")] }),
+    req('Ben: the journal', 'GET', `${B}/journal`, { as: 'ben', tests: [
+      "const partner = pm.variables.get('verifyMode') === 'partner';",
+      t('locked in partner mode, open in broker mode', "pm.expect(pm.response.code).to.eql(partner ? 403 : 200); if (partner) pm.expect(pm.response.json().error.code).to.eql('ACCESS_ELEFIN_REQUIRED');")] }),
+    req('Ben can still reach his accounts (to connect the one his partner can find)', 'GET', `${B}/accounts`, { as: 'ben', tests: [status(200)] }),
+    req('Ben: “Check again” asks Elefin through his partner and still says no', 'POST', `${B}/access/verify-elefin`, { as: 'ben', origin: true, body: { email: '{{benEmail}}' }, tests: [status(200), json,
+      "const partner = pm.variables.get('verifyMode') === 'partner';",
+      t('same answer as the status', "pm.expect(d.status).to.eql(partner ? 'ELEFIN_REQUIRED' : 'FULL_ACCESS');")] }),
+    req('Shash, an active partner with an Elefin MT5 account, keeps his journal', 'GET', `${B}/access/status`, { as: 'shash', tests: [status(200), json, t('in', "pm.expect(d.status).to.eql('FULL_ACCESS');")] }),
+    gate('asha', true, 'confirmed by Elefin through Shash, no MT5 needed'), app('asha', true),
+    gate('chen', false, 'held at Elefin'),
+  ] },
 ];
 
 const variables = {

@@ -69,6 +69,8 @@ export interface ClientAccess {
   products: ClientProduct[];
   /** The partner's Elefin key checked this trader's email: null until it has. */
   elefin: { status: string; held: boolean; reason: string | null; checkedAt: string | null } | null;
+  /** The partner has a working Elefin key (null without a partner). */
+  partnerElefin?: boolean | null;
 }
 export interface ProgramSettings {
   activeMinTrades: number; activeWindowDays: number; activeMinLots: number; graceDays: number; partnerGraceDays: number; lockedPerks: string[];

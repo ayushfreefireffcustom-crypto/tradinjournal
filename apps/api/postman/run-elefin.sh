@@ -9,7 +9,8 @@
 #   ADMIN_EMAILS=admin@partners.test, IN_PROCESS_SCHEDULER=false, RESEND_API_KEY= (empty),
 #   CREDENTIAL_ENCRYPTION_KEY=<64 hex>, ELEFIN_PARTNER_API_URL=http://127.0.0.1:8997/api/v1,
 #   and, as live runs: PLATFORM_ACCESS_ENABLED=true, ELEFIN_VERIFY_MODE=broker, no ELEFIN_OUTBOUND_IPS
-#   (our three static IPs are the default).
+#   (our three static IPs are the default). For partner-only access start the API with
+#   ELEFIN_VERIFY_MODE=partner and run VERIFY_MODE=partner ./run-elefin.sh.
 #   ./run-elefin.sh            (extra args are passed to `postman collection run`)
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -94,6 +95,14 @@ echo "  ✓ encrypted (enc:v1), secret not in the config"
 echo "▸ C · traders confirm, lookups, late code, what everyone sees, package, Elefin changes, key off, IPs, disconnect"
 run "00 Sign in admin and partner" "05 Traders confirm their email" "06 Late code" "07 Partner and admin see it" "08 A package unlocks for verified clients" \
   "09 Elefin changes a client" "10 Elefin switches the key off" "11 Elefin’s IP allow-list changes" "12 Disconnect"
+
+echo "▸ D · an Elefin MT5 account alone (mode: ${VERIFY_MODE:-broker})"
+for who in ben:9001 shash:9002; do
+  U=$(q "SELECT id FROM \"user\" WHERE email = '${who%%:*}@elefin-e2e.test'")
+  sql "INSERT INTO broker_account (id, \"userId\", broker, \"mt5Login\", server, \"marginMode\", \"updatedAt\") VALUES ('e2e-acct-${who%%:*}', '$U', 'Elefin', ${who##*:}, 'Elefin-Trade', 'HEDGING', now()) ON CONFLICT DO NOTHING;"
+done
+VARS+=(--env-var "verifyMode=${VERIFY_MODE:-broker}")
+run "13 An Elefin account alone"
 
 echo "▸ After disconnecting, the key is gone from the database"
 LEFT=$(q "SELECT COUNT(*) FROM partner_broker WHERE broker = 'elefin' AND \"apiKey\" IS NOT NULL")

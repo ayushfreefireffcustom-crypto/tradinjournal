@@ -275,6 +275,8 @@ export interface ClientAccessDto {
   products: ClientProductDto[];
   /** The partner's Elefin key checked this trader's email: null until it has. */
   elefin: { status: 'VERIFIED' | 'NOT_FOUND' | 'MANUAL_REVIEW' | 'REJECTED' | 'PENDING'; held: boolean; reason: string | null; checkedAt: string | null } | null;
+  /** The partner has a working Elefin key (null without a partner), so Elefin can be asked about this trader. */
+  partnerElefin: boolean | null;
 }
 
 export interface ProgramPartnerRowDto {
