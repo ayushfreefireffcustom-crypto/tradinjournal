@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { ArrowRight, CheckIcon, Reveal, StartButton, Wordmark, useCountUp, useInViewOnce } from './ui';
+import { CandleField, OrbCanvas } from './effects';
 import { candles, ENTRY_INDEX, EXIT_INDEX, HEAT_DAYS, heat, heatColor, heatDollars, REPLAY_H, REPLAY_W, tilt, traits } from './data';
 import Logo from '@/components/logo';
 import { PARTNERS_ENABLED } from '@/lib/features';
@@ -47,7 +48,13 @@ const METRICS: [string, string?, boolean?][] = [
 ];
 
 function Spot({ children, className = '', delay = 0 }: { children: ReactNode; className?: string; delay?: number }) {
-  return <Reveal as="article" delay={delay} className={`l5-card ${className}`}>{children}</Reveal>;
+  return (
+    <Reveal as="article" delay={delay} className={`l5-card ${className}`}
+      onPointerMove={(e: React.PointerEvent<HTMLElement>) => { const r = e.currentTarget.getBoundingClientRect(); e.currentTarget.style.setProperty('--mx', `${e.clientX - r.left}px`); e.currentTarget.style.setProperty('--my', `${e.clientY - r.top}px`); }}>
+      <span className="l5-spot" aria-hidden />
+      {children}
+    </Reveal>
+  );
 }
 
 export function Core() {
@@ -64,19 +71,19 @@ export function Core() {
           lead="No CSVs, no spreadsheets, no copy-paste. TRADElogs keeps itself up to date, and its AI turns raw fills into the next decision." />
         <div className="l5-bento">
           <Spot className="c7">
-            <div className="l5-k"><span>Import</span></div>
+            <div className="l5-k"><span>Import</span><b>A</b></div>
             <h3>Every fill, journaled the moment it closes.</h3>
             <p>Fees, swaps and partial closes — reconstructed into clean positions.</p>
             <div className="l5-stream" aria-hidden><div className="l5-stream-in">{rows}{rows}</div></div>
           </Spot>
           <Spot className="c5" delay={70}>
-            <div className="l5-k"><span>Measure</span></div>
+            <div className="l5-k"><span>Measure</span><b>B</b></div>
             <h3>40+ metrics on every trade.</h3>
             <p>The numbers serious traders actually check.</p>
             <div className="l5-metrics">{METRICS.map(([l, n, on]) => <span key={l} className={on ? 'on' : ''}>{l}{n && <b>{n}</b>}</span>)}</div>
           </Spot>
           <Spot className="c4">
-            <div className="l5-k"><span>Connect</span></div>
+            <div className="l5-k"><span>Connect</span><b>C</b></div>
             <h3>Set up in 90 seconds.</h3>
             <div className="l5-timer">
               <svg viewBox="0 0 96 96" width="96" height="96" aria-hidden><circle cx="48" cy="48" r="42" fill="none" stroke="#1E1E1E" strokeWidth="3" /><circle cx="48" cy="48" r="42" fill="none" stroke="url(#l5gt)" strokeWidth="3" strokeLinecap="round" strokeDasharray="263.9" strokeDashoffset="66" transform="rotate(-90 48 48)" /><defs><linearGradient id="l5gt"><stop stopColor="#7DF2B6" /><stop offset="1" stopColor="#08C465" /></linearGradient></defs></svg>
@@ -85,7 +92,7 @@ export function Core() {
             <div className="l5-chips"><span><Tick />Login</span><span><Tick />Investor password</span><span><Tick />Server</span></div>
           </Spot>
           <Spot className="c8" delay={70}>
-            <div className="l5-k"><span>Explain</span></div>
+            <div className="l5-k"><span>Explain</span><b>D</b></div>
             <div className="l5-explain">
               <div>
                 <p className="l5-quote">“Tuesdays bleed. <span>Size down</span> after 15:00 — your edge lives in the London open.”</p>
@@ -246,6 +253,7 @@ const AI_FEATURES: { b: string; s: string; k: string; icon: ReactNode }[] = [
 export function Ai() {
   return (
     <section className="l5-ai" id="ai" aria-labelledby="ai-title">
+      <OrbCanvas className="l5-orb" />
       <div className="l5-wrap l5-two">
         <Reveal>
           <p className="l5-eyebrow">TRADElogs AI</p>
@@ -317,51 +325,35 @@ export function Review() {
 }
 
 /* ══ SECURITY ════════════════════════════════════════════════════════════ */
-/** Read-only, drawn: your MT5 terminal as TRADElogs sees it. The chart is there to read; the
- *  Buy and Sell buttons are locked, because the investor password can look but never trade. */
 function Vault() {
-  const candles: [number, number, number, number, boolean][] = [
-    [128, 236, 300, 270, true], [160, 226, 262, 296, false], [192, 214, 250, 286, true], [224, 228, 246, 272, true], [256, 206, 236, 280, false],
-    [288, 196, 226, 262, true], [320, 186, 206, 250, true], [352, 200, 222, 258, false], [384, 176, 200, 240, true], [416, 166, 184, 226, true], [448, 160, 176, 214, true],
-  ];
-  const lock = (x: number, y: number) => (
-    <g transform={`translate(${x} ${y})`}>
-      <path d="M-7 -2v-6a7 7 0 0 1 14 0v6" fill="none" stroke="#8A8A8A" strokeWidth="2.6" strokeLinecap="round" />
-      <rect x="-11" y="-3" width="22" height="17" rx="4" fill="#2A2A2A" stroke="#6E6E6E" />
-      <circle cx="0" cy="4.5" r="2.4" fill="#8A8A8A" />
-    </g>
-  );
+  const ticks = Array.from({ length: 72 }, (_, i) => {
+    // Rounded: Node and the browser can disagree in the last float digit (hydration).
+    const a = (i / 72) * Math.PI * 2, major = i % 6 === 0, r2 = major ? 228 : 216, q = (n: number) => Math.round(n * 100) / 100;
+    return <line key={i} x1={q(300 + Math.cos(a) * 208)} y1={q(300 + Math.sin(a) * 208)} x2={q(300 + Math.cos(a) * r2)} y2={q(300 + Math.sin(a) * r2)} stroke={`rgba(242,242,242,${major ? 0.6 : 0.25})`} strokeWidth={major ? 1.6 : 1} />;
+  });
+  const tags: [string, number, number][] = [['INVESTOR LOGIN', 300, 96], ['AES-256-GCM', 508, 300], ['NO TRADING', 300, 512], ['NO WITHDRAWALS', 92, 300]];
   return (
-    <svg viewBox="0 0 600 600" role="img" aria-label="Your MetaTrader 5 terminal as TRADElogs sees it: the chart can be read, the Buy and Sell buttons are locked">
-      <ellipse cx="300" cy="520" rx="230" ry="12" fill="#000" opacity=".55" />
-      <rect x="84" y="104" width="432" height="392" rx="26" fill="#161616" stroke="#3A3A3A" />
-      {/* header: who is looking, and with what */}
-      <rect x="110" y="128" width="72" height="12" rx="6" fill="#EDEDED" opacity=".85" />
-      <rect x="370" y="122" width="122" height="26" rx="13" fill="rgba(8,196,101,.13)" />
-      <g transform="translate(388 135)" fill="none" stroke="#08C465" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M-9 0s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6Z" /><circle cx="0" cy="0" r="2.6" />
+    <svg viewBox="0 0 600 600" role="img" aria-label="A vault dial: investor login, AES-256-GCM encryption, no trading, no withdrawals">
+      <defs>
+        <radialGradient id="l5vg" cx=".5" cy=".45" r=".6"><stop stopColor="#08C465" stopOpacity=".42" /><stop offset="1" stopColor="#08C465" stopOpacity="0" /></radialGradient>
+        <linearGradient id="l5vm" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#F2F2F2" /><stop offset=".5" stopColor="#7A7A7A" /><stop offset="1" stopColor="#2A2A2A" /></linearGradient>
+        <linearGradient id="l5vl" x1="0" y1="0" x2="0" y2="1"><stop stopColor="#3BF09A" /><stop offset="1" stopColor="#047A3D" /></linearGradient>
+      </defs>
+      <rect width="600" height="600" fill="url(#l5vg)" />
+      {Array.from({ length: 9 }, (_, i) => <circle key={i} cx="300" cy="300" r={60 + i * 30} fill="none" stroke={`rgba(125,242,182,${(0.22 - i * 0.02).toFixed(2)})`} strokeDasharray={i % 2 ? '2 6' : undefined} />)}
+      {ticks}
+      <circle cx="300" cy="300" r="150" fill="#0A0A0A" stroke="url(#l5vm)" strokeWidth="3" />
+      <circle cx="300" cy="300" r="132" fill="none" stroke="rgba(255,255,255,.06)" strokeWidth="18" />
+      <g className="l5-lock">
+        <path d="M265 290 v-28 a35 35 0 0 1 70 0 v28" fill="none" stroke="url(#l5vm)" strokeWidth="12" strokeLinecap="round" />
+        <rect x="246" y="286" width="108" height="86" rx="20" fill="url(#l5vl)" />
+        <rect x="246" y="286" width="108" height="86" rx="20" fill="none" stroke="rgba(255,255,255,.35)" />
+        <circle cx="300" cy="322" r="9" fill="#fff" /><rect x="296" y="326" width="8" height="22" rx="4" fill="#fff" />
       </g>
-      <text x="402" y="139.5" fontFamily="var(--font-inter), Inter, sans-serif" fontSize="12.5" fontWeight="600" fill="#08C465">Read-only</text>
-      <path d="M110 164h380" stroke="#262626" />
-      {/* the chart: readable */}
-      {[200, 240, 280].map(y => <path key={y} d={`M110 ${y}h380`} stroke="#202020" />)}
-      {candles.map(([x, hi, o, lo, up], i) => (
-        <g key={i}>
-          <path d={`M${x} ${hi - 10}V${lo + 10}`} stroke="#5C5C5C" strokeWidth="1.6" strokeLinecap="round" />
-          <rect x={x - 7} y={up ? o : hi} width="14" height={Math.max(8, Math.abs((up ? lo : o) - (up ? o : hi)))} rx="2.5" fill={up ? '#08C465' : '#FE3A31'} />
-        </g>
-      ))}
-      <path d="M110 330h380" stroke="#262626" />
-      {/* the order buttons: locked */}
-      {([['Sell', 110], ['Buy', 306]] as const).map(([t, x]) => (
-        <g key={t}>
-          <rect x={x} y="354" width="184" height="52" rx="14" fill="#1C1C1C" stroke="#333" strokeDasharray="5 5" />
-          <text x={x + 56} y="386" fontFamily="var(--font-inter), Inter, sans-serif" fontSize="17" fontWeight="600" fill="#6E6E6E">{t}</text>
-          {lock(x + 140, 378)}
-        </g>
-      ))}
-      <rect x="110" y="426" width="380" height="44" rx="12" fill="#1A1A1A" />
-      <text x="128" y="453" fontFamily="var(--font-inter), Inter, sans-serif" fontSize="13.5" fill="#9A9A9A">Withdraw · not available with the investor password</text>
+      {tags.map(([t, x, y]) => { const w = t.length * 8.4 + 26; return (
+        <g key={t} transform={`translate(${x - w / 2},${y - 15})`}><rect width={w} height="30" rx="15" fill="rgba(10,10,10,.92)" stroke="rgba(125,242,182,.35)" />
+          <text x={w / 2} y="19.5" textAnchor="middle" fontFamily="var(--font-inter), Inter, sans-serif" fontSize="12" fontWeight="600" letterSpacing="1.4" fill="#7DF2B6">{t}</text></g>
+      ); })}
     </svg>
   );
 }
@@ -477,8 +469,9 @@ export function Faq() {
 export function Cta() {
   return (
     <section className="l5-cta" aria-labelledby="cta-title">
+      <CandleField className="l5-field" />
       <div className="l5-wrap">
-        <Reveal><h2 id="cta-title">Start journaling<br />in <span className="l5-s">90 seconds.</span></h2></Reveal>
+        <Reveal><h2 id="cta-title">Start journaling<br />in <span className="l5-s l5-shine">90 seconds.</span></h2></Reveal>
         <Reveal delay={100}>
           <p>Free while you&rsquo;re getting started. Read-only by design. Works with any MetaTrader&nbsp;5 broker.</p>
           <div className="l5-ctas l5-ctas--c">

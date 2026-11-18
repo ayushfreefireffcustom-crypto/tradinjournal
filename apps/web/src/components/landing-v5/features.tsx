@@ -147,24 +147,24 @@ export function Markets() {
           lead="Screener, alerts, ratings, chart patterns, macro and news, in the same app as your journal. The plan and the review finally live together." />
         <div className="l5-bento">
           <Scene className="c7">{() => <>
-            <div className="l5-k"><span>Screener</span></div>
+            <div className="l5-k"><span>Screener</span><b>A</b></div>
             <h3>Scan the market by the numbers you trust.</h3>
             <p>Price, volume, funding, open interest and 36 indicators. Save the screens you run every morning.</p>
             <Screener />
           </>}</Scene>
           <Scene className="c5" delay={70}>{() => <>
-            <div className="l5-k"><span>Alerts</span></div>
+            <div className="l5-k"><span>Alerts</span><b>B</b></div>
             <h3>Alerts in plain English.</h3>
             <p>“RSI on ETH 1H fell below 30.” Sent to Telegram, push, email or your inbox.</p>
             <Alerts />
           </>}</Scene>
           <Scene className="c4">{run => <>
-            <div className="l5-k"><span>Ratings</span></div>
+            <div className="l5-k"><span>Ratings</span><b>C</b></div>
             <h3>Technical ratings at a glance.</h3>
             <Ratings run={run} />
           </>}</Scene>
           <Scene className="c8" delay={70}>{() => <>
-            <div className="l5-k"><span>Charts</span></div>
+            <div className="l5-k"><span>Charts</span><b>D</b></div>
             <div className="l5-chartrow">
               <div>
                 <h3>Patterns found, drawn and explained.</h3>
@@ -175,7 +175,7 @@ export function Markets() {
             </div>
           </>}</Scene>
           <Scene className="c5">{run => <>
-            <div className="l5-k"><span>Calendar &amp; news</span></div>
+            <div className="l5-k"><span>Calendar &amp; news</span><b>E</b></div>
             <h3>Know what moves today.</h3>
             <ul className="l5-evs" aria-hidden>
               <li className="hi"><span className="l5-num">14:30</span><div><b>US CPI</b><small>High impact · forecast 2.9%</small></div><Countdown run={run} /></li>
@@ -184,7 +184,7 @@ export function Markets() {
             </ul>
           </>}</Scene>
           <Scene className="c7" delay={70}>{() => <>
-            <div className="l5-k"><span>Derivatives · macro</span></div>
+            <div className="l5-k"><span>Derivatives · macro</span><b>F</b></div>
             <h3>Funding, open interest and the big picture.</h3>
             <div className="l5-fund" aria-hidden>
               {FUND.map(([s, f, oi], i) => (

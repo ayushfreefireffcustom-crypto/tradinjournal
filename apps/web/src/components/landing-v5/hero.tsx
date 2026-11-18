@@ -1,8 +1,10 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { SilkCanvas } from './effects';
 import { Ticker } from './nav';
 import { StartButton } from './ui';
+import LogoMark from '@/components/logo-mark';
 
 const BROKERS = ['XM', 'Exness', 'Vantage', 'Elefin', 'Xellion', 'IC Markets', 'Pepperstone', 'FBS'];
 
@@ -27,12 +29,14 @@ export default function Hero() {
 
   return (
     <section className="l5-hero" id="top" aria-labelledby="hero-title">
-      <div className="l5-hero-light" aria-hidden />
+      <SilkCanvas className="l5-silk" />
+      <div className="l5-hero-grid" aria-hidden />
+      <div className="l5-hero-vig" aria-hidden />
       <Ticker />
 
       <div className="l5-wrap l5-hero-c">
         <span className="l5-pill"><b>MT5</b>Read-only sync with every MetaTrader 5 broker</span>
-        <h1 id="hero-title">The <span className="l5-nw">AI-powered</span><br />trading <span className="l5-s">journal.</span></h1>
+        <h1 id="hero-title">The <span className="l5-nw">AI-powered</span><br />trading <span className="l5-s l5-shine">journal.</span></h1>
         <p className="l5-hero-sub">Connect MetaTrader&nbsp;5 with a read-only login. Every trade is journaled and graded on process, your leaks are ranked in dollars, and an AI coach that knows your trades tells you what to fix.</p>
         <div className="l5-hero-ctas">
           <StartButton testId="hero-start">Start journaling free</StartButton>
@@ -49,11 +53,21 @@ export default function Hero() {
         <div className="l5-stage-in">
           <div className="l5-frame">
             <picture>
-              <source media="(max-width: 640px)" srcSet="/landing/dashboard-v6-mobile.jpg" width={780} height={1688} />
-              <img src="/landing/dashboard-v6.jpg" width={2160} height={1350} fetchPriority="high" decoding="async"
-                alt="TRADElogs dashboard: a Next up card to review yesterday's trades that broke a rule, net P&L, win rate, profit factor, max drawdown, the equity curve with revenge trades marked, and leaks ranked by dollars lost" />
+              <source media="(max-width: 640px)" srcSet="/landing/dashboard-v5-mobile.jpg" width={780} height={1688} />
+              <img src="/landing/dashboard-v5.jpg" width={2160} height={1350} fetchPriority="high" decoding="async"
+                alt="TRADElogs dashboard: net P&L with equity curve, win rate, profit factor, expectancy, max drawdown and this week's review" />
             </picture>
           </div>
+        </div>
+        <div className="l5-float l5-f-ins" aria-hidden>
+          <small>Insight</small>
+          <div className="l5-f-row"><i className="r"><svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M8 2 1.5 13.5h13L8 2Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" /><path d="M8 6.5v3m0 2v.2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg></i>
+            <span>Losers held <b>3.4× longer</b> than winners.</span></div>
+          <div className="l5-f-bars"><i style={{ height: '40%' }} className="g" /><i style={{ height: '62%' }} className="g" /><i style={{ height: '34%' }} className="r" /><i style={{ height: '55%' }} className="g" /><i style={{ height: '70%' }} className="r" /><i style={{ height: '84%' }} className="r" /><i style={{ height: '100%' }} className="r" /><i style={{ height: '78%' }} className="r" /></div>
+        </div>
+        <div className="l5-float l5-f-mail" aria-hidden>
+          <div className="l5-f-row"><i className="tl"><LogoMark size={18} title="" /></i><span><b>Your week in review</b><small>Sat 09:00 · 23 trades</small></span></div>
+          <p>One thing to fix: <b>stop new entries after 15:00 London.</b></p>
         </div>
         <div className="l5-stage-fade" aria-hidden />
       </div>
