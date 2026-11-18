@@ -60,7 +60,8 @@ export function KpiRibbon({ k, trades, behaviour, minTrades, ai }: { k: DashKpis
     },
     {
       id: 'pf', label: 'Profit factor',
-      value: <b className="d2-n">{k.profitFactor == null ? '–' : k.profitFactor.toFixed(2)}</b>,
+      // Above 1 the account made more than it lost: green; below 1, red.
+      value: <b className={`d2-n ${k.profitFactor == null ? '' : k.profitFactor > 1 ? 'up' : k.profitFactor < 1 ? 'dn' : ''}`}>{k.profitFactor == null ? '–' : k.profitFactor.toFixed(2)}</b>,
       sub: k.profitFactor == null ? <span>no losing trades</span> : <span><span className="mny up">{money(gp, { plus: false })}</span> won / <span className="mny dn">{money(gl, { plus: false })}</span> lost</span>,
       viz: gp + gl > 0 ? <span className="d2-split" aria-hidden><i style={{ width: `${(100 * gp) / (gp + gl)}%` }} /></span> : <span className="d2-trend" aria-hidden />,
     },
@@ -69,7 +70,7 @@ export function KpiRibbon({ k, trades, behaviour, minTrades, ai }: { k: DashKpis
       value: k.maxDrawdown?.pct != null || !k.maxDrawdown
         ? <b className={`d2-n ${k.maxDrawdown ? 'dn' : ''}`}>{k.maxDrawdown ? spct(-k.maxDrawdown.pct!) : '0.0%'}</b>
         : <b className="d2-n dn mny">{kpiMoney(-k.maxDrawdown.amount)}</b>,
-      sub: <span>{k.maxDrawdown ? <>{k.maxDrawdown.pct != null && <><span className="mny">{money(-k.maxDrawdown.amount)}</span> · </>}{fmtDate(new Date(k.maxDrawdown.at).getTime())}</> : 'no drawdown'}</span>,
+      sub: <span>{k.maxDrawdown ? <>{k.maxDrawdown.pct != null && <><span className="mny dn">{money(-k.maxDrawdown.amount)}</span> · </>}{fmtDate(new Date(k.maxDrawdown.at).getTime())}</> : 'no drawdown'}</span>,
       viz: <span className="d2-viz" title="How far below its peak the balance sat"><Trend vals={dd} color={k.maxDrawdown ? 'var(--d2-r)' : 'var(--mut)'} /></span>,
     },
   ];
@@ -78,13 +79,13 @@ export function KpiRibbon({ k, trades, behaviour, minTrades, ai }: { k: DashKpis
     {
       id: 'exp', label: 'Expectancy',
       value: k.expectancyR != null ? <span className={tone(k.expectancyR)}>{rfmt(k.expectancyR)}</span> : <span className={`mny ${tone(k.expectancy)}`}>{money(k.expectancy)}</span>,
-      small: k.expectancyR != null ? <><span className="mny">{money(k.expectancy)}</span> a trade</> : <span title="In $: R needs a stop at entry">a trade</span>,
+      small: k.expectancyR != null ? <><span className={`mny ${tone(k.expectancy)}`}>{money(k.expectancy)}</span> a trade</> : <span title="In $: R needs a stop at entry">a trade</span>,
     },
-    { id: 'avg', label: 'Avg win / loss', value: <span>{payoff == null ? '–' : `${payoff.toFixed(2)}×`}</span>, small: <span className="mny">{money(k.avgWin, { plus: false })} / {money(Math.abs(k.avgLoss), { plus: false })}</span> },
+    { id: 'avg', label: 'Avg win / loss', value: <span>{payoff == null ? '–' : `${payoff.toFixed(2)}×`}</span>, small: <span className="mny"><span className="up">{money(k.avgWin, { plus: false })}</span> / <span className="dn">{money(Math.abs(k.avgLoss), { plus: false })}</span></span> },
     {
       id: 'last30', label: `Last ${Math.min(30, k.last30.days)} session${k.last30.days === 1 ? '' : 's'}`,
       value: <span className={`mny ${tone(k.last30.net)}`}>{kpiMoney(k.last30.net)}</span>,
-      small: <span title={`The last ${k.last30.days} days with a closed trade`}>{k.last30.green} green · {k.last30.days - k.last30.green} red</span>,
+      small: <span title={`The last ${k.last30.days} days with a closed trade`}><span className="up">{k.last30.green} green</span> · <span className="dn">{k.last30.days - k.last30.green} red</span></span>,
     },
     {
       id: 'behaviour', label: 'Behaviour',
@@ -319,7 +320,7 @@ export function SymbolsTable({ rows, rangeLabel }: { rows: DashSymbolRow[]; rang
               </td>
               <td className="d2-n">{r.trades}</td>
               <td className="d2-n">{pct(r.winRate)}</td>
-              <td className="d2-n d2-hide-s">{r.profitFactor == null ? '–' : r.profitFactor.toFixed(2)}</td>
+              <td className={`d2-n d2-hide-s ${r.profitFactor == null ? '' : r.profitFactor > 1 ? 'up' : r.profitFactor < 1 ? 'dn' : ''}`}>{r.profitFactor == null ? '–' : r.profitFactor.toFixed(2)}</td>
               <td className={`d2-n d2-hide-s ${tone(r.avg)}`}><span className={unit === '$' ? 'mny' : ''}>{unit === 'R' ? rfmt(r.avg) : money(r.avg)}</span></td>
               <td className="d2-hide-m"><Spark vals={r.spark} /></td>
               <td><b className={`d2-n mny ${tone(r.net)}`}>{money(r.net)}</b></td>

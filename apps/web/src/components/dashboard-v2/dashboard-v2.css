@@ -619,3 +619,25 @@ html[data-theme=light] .v6 .d2-step.done .d2-step-i { color: #fff; }
   .v6 .d2-refresh { flex-wrap: wrap; }
   .v6 .d2-refresh .x-btn { margin-left: 42px; }
 }
+
+/* States, centred: the drawing sits in a disc, the words and buttons under it. */
+.v6 .d2-state-hd, .v6 .d2-state--slim { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 22px; padding: 40px 24px 36px; }
+.v6 .d2-state-hd .d2-state-t { align-items: center; gap: 10px; max-width: 520px; }
+.v6 .d2-state-hd .d2-state-t p { margin-left: auto; margin-right: auto; }
+.v6 .d2-state-hd .d2-row, .v6 .d2-state-hd .d2-fchips { justify-content: center; }
+.v6 .d2-disc {
+  width: 220px; height: 220px; border-radius: 50%; flex: none; display: grid; place-items: center; overflow: hidden;
+  background: radial-gradient(circle at 50% 30%, var(--tile), var(--tray) 78%);
+  box-shadow: inset 0 0 0 1px var(--line), inset 0 1px 0 rgba(255, 255, 255, .05), 0 0 0 8px rgba(255, 255, 255, .018), 0 0 0 9px var(--line);
+}
+html[data-theme=light] .v6 .d2-disc { box-shadow: inset 0 0 0 1px var(--line), 0 0 0 8px rgba(0, 0, 0, .02), 0 0 0 9px var(--line); }
+html[data-theme=light] .v6 .d2-disc { background: radial-gradient(circle at 50% 30%, #fff, #F1F1F3 78%); }
+.v6 .d2-disc .d2-art { width: 92%; height: auto; }
+.v6 .d2-disc--sm { width: 168px; height: 168px; }
+@container (max-width: 699.98px) {
+  .v6 .d2-state-hd, .v6 .d2-state--slim { padding: 30px 18px 26px; gap: 18px; }
+  .v6 .d2-disc { width: 168px; height: 168px; }
+  .v6 .d2-disc--sm { width: 140px; height: 140px; }
+  .v6 .d2-state-hd .d2-state-t .d2-row { width: auto; }
+  .v6 .d2-state-hd .d2-state-t .d2-row .x-btn:first-child { flex: none; }
+}

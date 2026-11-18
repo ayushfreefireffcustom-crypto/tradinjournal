@@ -9,7 +9,7 @@ import { ArrowRight, ChatCircleText, X } from '@phosphor-icons/react';
 import type { DashboardAskDTO } from '@/lib/dashboard-v2-api';
 import { fmtAi, plural } from '@/lib/dashboard-v2-format';
 import { AskBars } from './charts';
-import { AiMark } from './ui';
+import { AiMark, Toned } from './ui';
 
 export type AskState =
   | { status: 'idle' }
@@ -71,7 +71,7 @@ export function AskBox({ state, onAsk, onClose, placement }: { state: AskState; 
               <div className="d2-pa">{state.a.title.text} {state.a.title.value != null && state.a.title.fmt !== 'text' && <span className={`d2-n mny ${state.a.title.tone === 'dn' ? 'dn' : state.a.title.tone === 'up' ? 'up' : ''}`}>{fmtAi(state.a.title)}</span>}{state.a.title.suffix ? ` ${state.a.title.suffix}` : ''}</div>
               {state.a.bars.length > 0 && <AskBars bars={state.a.bars} />}
               {state.a.followups.length > 0 && <div className="d2-sg">{state.a.followups.map(f => <button key={f} type="button" onClick={() => onAsk(f)}>{f}</button>)}</div>}
-              <div className="d2-pf"><span>{state.a.note ?? ''}</span><span className="d2-used">{plural(state.a.used, 'trade')} used</span></div>
+              <div className="d2-pf"><span>{state.a.note ? <Toned text={state.a.note} /> : null}</span><span className="d2-used">{plural(state.a.used, 'trade')} used</span></div>
             </>
           )}
           {state.status === 'text' && (

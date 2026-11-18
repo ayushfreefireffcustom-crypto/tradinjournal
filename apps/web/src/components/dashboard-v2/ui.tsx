@@ -113,3 +113,8 @@ export function Callout({ x, y, text, w, lead, tone = 'dn', maxX }: { x: number;
 }
 /** Width a callout will take, so charts can place it. */
 export const calloutW = (text: string) => Math.round(Math.max(96, text.length * 7.05 + 30));
+
+/** Plain text with its signed amounts coloured: "+$3,151" green, "−$645" red. */
+export function Toned({ text }: { text: string }) {
+  return <>{text.split(/([−+-]\$?\d[\d,.]*(?:[kKmM]|R|%)?)/).map((p, i) => (i % 2 ? <span key={i} className={`d2-n ${p.startsWith('+') ? 'up' : 'dn'}`}>{p}</span> : p))}</>;
+}

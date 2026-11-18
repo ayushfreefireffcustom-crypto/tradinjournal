@@ -62,7 +62,7 @@ export function WaitingState({ broker, login, ok, syncedAt, checkedAt, checking,
   return (
     <section className="d2-tray d2-state" data-testid="dashboard-waiting">
       <div className="d2-card d2-state-hd">
-        <div className="d2-state-art"><ConnectArt waiting /></div>
+        <div className="d2-disc" aria-hidden><ConnectArt waiting tight /></div>
         <div className="d2-state-t">
           <h2>Waiting for your first closed trade</h2>
           <p>Open positions don&rsquo;t count yet. The moment one closes, every number on this page fills in from it, usually within a few minutes.</p>
@@ -108,7 +108,7 @@ export function LoadError({ kind, message, retryIn, busy, fails, onRetry }: { ki
   return (
     <section className="d2-tray d2-state" role="alert" data-testid="dashboard-error">
       <div className="d2-card d2-state-hd">
-        <div className="d2-state-art d2-state-art--err">{kind === 'offline' ? <OfflineArt /> : kind === 'auth' ? <SessionArt /> : <ErrorArt />}</div>
+        <div className="d2-disc" aria-hidden>{kind === 'offline' ? <OfflineArt tight /> : kind === 'auth' ? <SessionArt tight /> : <ErrorArt tight />}</div>
         <div className="d2-state-t">
           <h2>{c.title}</h2>
           <p>{c.body}</p>
@@ -159,7 +159,7 @@ export function NoTradesState({ inWindow, all, rangeLabel, chips, onClear, onAll
 }) {
   return (
     <section className="d2-card d2-state-hd d2-state--slim" data-testid="dashboard-no-trades">
-      <div className="d2-state-art d2-state-art--sm"><EmptyViewArt /></div>
+      <div className="d2-disc d2-disc--sm" aria-hidden><EmptyViewArt tight /></div>
       <div className="d2-state-t">
         <h2>No closed trades in this view</h2>
         <p>{inWindow

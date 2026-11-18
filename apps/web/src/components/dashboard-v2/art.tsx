@@ -34,9 +34,9 @@ export function ReviewArt({ flagged = 2 }: { flagged?: number }) {
  * Your MT5 terminal cabled into the journal. `waiting`: connected, but the journal's rows are
  * still empty and the terminal holds an open position (dashed line) that hasn't closed yet.
  */
-export function ConnectArt({ waiting = false }: { waiting?: boolean }) {
+export function ConnectArt({ waiting = false, tight = false }: { waiting?: boolean; tight?: boolean }) {
   return (
-    <svg viewBox="0 0 320 172" className="d2-art" aria-hidden>
+    <svg viewBox={tight ? '13 20 296 160' : '0 0 320 172'} className="d2-art" aria-hidden>
       <ellipse cx="160" cy="158" rx="132" ry="7" fill="var(--art-shadow)" />
       {/* terminal */}
       <rect x="22" y="34" width="132" height="104" rx="14" fill="var(--art-paper)" stroke="var(--art-edge)" />
@@ -74,9 +74,9 @@ export function ConnectArt({ waiting = false }: { waiting?: boolean }) {
 }
 
 /** The chart lost its line where the connection dropped; the cable is pulled out beside it. */
-export function ErrorArt() {
+export function ErrorArt({ tight = false }: { tight?: boolean }) {
   return (
-    <svg viewBox="0 0 320 210" className="d2-art" aria-hidden>
+    <svg viewBox={tight ? '26 38 296 160' : '0 0 320 210'} className="d2-art" aria-hidden>
       <ellipse cx="156" cy="178" rx="116" ry="7" fill="var(--art-shadow)" />
       <rect x="40" y="54" width="180" height="118" rx="16" fill="var(--art-paper)" stroke="var(--art-edge)" />
       <rect x="56" y="70" width="44" height="7" rx="3.5" fill="var(--art-ink)" />
@@ -95,11 +95,11 @@ export function ErrorArt() {
 }
 
 /** A timeline of your trades with the selected window drawn over a stretch that has none. */
-export function EmptyViewArt() {
+export function EmptyViewArt({ tight = false }: { tight?: boolean }) {
   const left = [[18, 70, 'g'], [30, 58, 'r'], [42, 64, 'g'], [54, 50, 'g']] as const;
   const right = [[164, 54, 'r'], [176, 62, 'g'], [188, 46, 'g']] as const;
   return (
-    <svg viewBox="0 0 206 120" className="d2-art" aria-hidden>
+    <svg viewBox={tight ? '-2 -4 210 146' : '0 0 206 120'} className="d2-art" aria-hidden>
       <ellipse cx="103" cy="110" rx="86" ry="5" fill="var(--art-shadow)" />
       <path d="M8 92h190" stroke="var(--art-line)" strokeWidth="1.5" strokeLinecap="round" />
       {[...left, ...right].map(([x, y, c], i) => (
@@ -116,9 +116,9 @@ export function EmptyViewArt() {
 }
 
 /** Your screen with a flat, waiting line, and the signal beside it with its outer bars gone. */
-export function OfflineArt() {
+export function OfflineArt({ tight = false }: { tight?: boolean }) {
   return (
-    <svg viewBox="0 0 320 210" className="d2-art" aria-hidden>
+    <svg viewBox={tight ? '16 38 296 160' : '0 0 320 210'} className="d2-art" aria-hidden>
       <ellipse cx="160" cy="178" rx="116" ry="7" fill="var(--art-shadow)" />
       <rect x="40" y="54" width="170" height="118" rx="16" fill="var(--art-paper)" stroke="var(--art-edge)" />
       <rect x="56" y="70" width="44" height="7" rx="3.5" fill="var(--art-ink)" />
@@ -136,9 +136,9 @@ export function OfflineArt() {
 }
 
 /** Your dashboard behind a lock: the data's there, it needs you to sign in again. */
-export function SessionArt() {
+export function SessionArt({ tight = false }: { tight?: boolean }) {
   return (
-    <svg viewBox="0 0 320 210" className="d2-art" aria-hidden>
+    <svg viewBox={tight ? '12 36 296 160' : '0 0 320 210'} className="d2-art" aria-hidden>
       <ellipse cx="160" cy="178" rx="116" ry="7" fill="var(--art-shadow)" />
       <rect x="56" y="48" width="208" height="124" rx="16" fill="var(--art-paper-2)" stroke="var(--art-edge-2)" />
       <rect x="72" y="64" width="44" height="7" rx="3.5" fill="var(--art-line)" />
