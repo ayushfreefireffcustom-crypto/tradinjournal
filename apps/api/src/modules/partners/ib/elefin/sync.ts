@@ -136,7 +136,7 @@ export async function syncElefin(brokerId: string, opts: { actor?: Actor; force?
       ...(book ? { roster: { syncStartedAt: started.toISOString(), fullAt, clients: keep ? entries : null } } : {}),
       ...(lookups ? { lastLookupAt: done.toISOString() } : {}),
     };
-    await patchConfig(b.id, patch, { status: 'OK', lastSyncAt: done, lastError: null, accountCount: snapshot?.total ?? me.clients ?? 0 });
+    if (!(await patchConfig(b.id, patch, { status: 'OK', lastSyncAt: done, lastError: null, accountCount: snapshot?.total ?? me.clients ?? 0 }, cfg.connectedAt))) return none('not_connected');
     const clients = snapshot?.total ?? me.clients ?? null;
     await prisma.brokerEvent.create({
       data: {
@@ -179,7 +179,7 @@ async function recordFailure(id: string, partnerId: string, cfg: ElefinConfig, e
   }
   try {
     const prev = await prisma.partnerBroker.findUnique({ where: { id }, select: { status: true } });
-    await patchConfig(id, patch, { status: 'ERROR', lastError: msg.slice(0, 300), lastSyncAt: now });
+    if (!(await patchConfig(id, patch, { status: 'ERROR', lastError: msg.slice(0, 300), lastSyncAt: now }, cfg.connectedAt))) return none('not_connected');
     await prisma.brokerEvent.create({ data: { partnerBrokerId: id, kind: 'elefin_sync', payload: { kind: e?.kind ?? 'error', status: e?.status ?? null, path: e?.path ?? null, abilities: abilities?.slice(0, 40) ?? null }, status: 'error', error: msg.slice(0, 300) } });
     if (paused && !cfg.pausedAt) await logEvent({ kind: 'ib.elefin_paused', partnerId, actor, message: 'Elefin sync paused: the key was refused 3 times in a row' });
     else if (prev?.status !== 'ERROR') await logEvent({ kind: 'ib.sync_failed', partnerId, actor, message: `Elefin API sync failed: ${msg}` });

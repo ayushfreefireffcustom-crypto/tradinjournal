@@ -194,7 +194,11 @@ export async function verifyAccount(
   const key = keyOf(account);
   const prev = await prisma.clientVerification.findUnique({ where: key as { brokerAccountId: string } });
   const brokerEmail = opts.brokerEmail ?? prev?.brokerEmail ?? null;
-  const emailToCheck = (brokerEmail ?? opts.userEmail ?? '').toLowerCase() || null;
+  // Only the trader's own confirmed sign-up email is matched against the partner's list.
+  // A typed email is kept for the admin to see, never matched: otherwise anyone could test
+  // whether an address is on a partner's list and queue a hit for approval.
+  const owner = await prisma.user.findUnique({ where: { id: account.userId }, select: { email: true, emailVerified: true } });
+  const emailToCheck = owner?.emailVerified && owner.email ? owner.email.trim().toLowerCase() : null;
   // Elefin's email lookup for this trader (elefin/verify.ts): one row with no account attached.
   const elefinRow = brokerKey === 'elefin'
     ? await prisma.clientVerification.findFirst({ where: { userId: account.userId, partnerId: ref.partnerId, broker: 'elefin', brokerAccountId: null, externalAccountId: null }, select: { status: true, signal: true }, orderBy: { createdAt: 'asc' } })

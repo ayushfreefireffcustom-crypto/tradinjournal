@@ -12,14 +12,17 @@ const DAY_MS = 86_400_000;
 const scope = (partnerId?: string) => (partnerId ? Prisma.sql`AND r."partnerId" = ${partnerId}` : Prisma.empty);
 
 export async function tradingSummary(partnerId?: string): Promise<TradingSummaryDto> {
+  // A partner's P&L figures count only clients who chose to share their P&L with them:
+  // a total over everyone would give away a single client's result. Admins see all.
+  const shared = partnerId ? Prisma.sql`AND r."statsConsentAt" IS NOT NULL` : Prisma.empty;
   const [row] = await prisma.$queryRaw<TradingSummaryDto[]>`
     SELECT COUNT(*)::int AS connected,
            COUNT(*) FILTER (WHERE r."trades30d" > 0)::int AS trading,
            COALESCE(SUM(r."trades30d"), 0)::int AS "trades30d",
            COALESCE(SUM(r."lots30d"), 0)::float AS "lots30d",
-           COALESCE(SUM(r."pnl30d"), 0)::float AS "pnl30d",
-           COUNT(*) FILTER (WHERE r."trades30d" > 0 AND r."pnl30d" > 0)::int AS profitable,
-           COUNT(*) FILTER (WHERE r."trades30d" > 0 AND r."pnl30d" < 0)::int AS losing
+           COALESCE(SUM(r."pnl30d") FILTER (WHERE TRUE ${shared}), 0)::float AS "pnl30d",
+           COUNT(*) FILTER (WHERE r."trades30d" > 0 AND r."pnl30d" > 0 ${shared})::int AS profitable,
+           COUNT(*) FILTER (WHERE r."trades30d" > 0 AND r."pnl30d" < 0 ${shared})::int AS losing
     FROM "referral" r WHERE r."connectedAt" IS NOT NULL ${scope(partnerId)}`;
   return { ...row!, lots30d: Math.round(row!.lots30d * 100) / 100, pnl30d: Math.round(row!.pnl30d * 100) / 100 };
 }

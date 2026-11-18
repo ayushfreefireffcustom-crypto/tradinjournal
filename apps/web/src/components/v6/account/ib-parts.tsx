@@ -83,7 +83,7 @@ export function TradingCard({ t, title = 'Client trading, last 30 days', note }:
         </div>
         <div className="ib-split-r"><b className="m neg">{n(t.losing)}</b> losing</div>
       </div>
-      <p className="ib-note">{note ?? 'Totals across every connected client. Per-client P&L shows only for clients who chose to share it with you.'}</p>
+      <p className="ib-note">{note ?? 'Trades and volume cover every connected client. P&L counts only clients who chose to share it with you.'}</p>
     </section>
   );
 }

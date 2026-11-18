@@ -77,9 +77,17 @@ export function newConfig(baseUrl: string, token: string, key: ElefinKeyInfoDto 
  * Merges top-level keys into the stored config in one statement, so a "Sync now" stamp
  * and a sync finishing at the same moment don't overwrite each other.
  */
-export async function patchConfig(brokerId: string, patch: Partial<ElefinConfig>, extra: Prisma.PartnerBrokerUpdateInput = {}): Promise<void> {
-  await prisma.$executeRaw`UPDATE "partner_broker" SET "apiConfig" = COALESCE("apiConfig", '{}'::jsonb) || ${JSON.stringify(patch)}::jsonb WHERE id = ${brokerId}`;
-  if (Object.keys(extra).length) await prisma.partnerBroker.update({ where: { id: brokerId }, data: extra });
+export async function patchConfig(
+  brokerId: string, patch: Partial<ElefinConfig>, extra: Prisma.PartnerBrokerUpdateInput = {}, sameConnection?: string,
+): Promise<boolean> {
+  // Only into a live Elefin connection, and (for a sync) the one the run started on: a run
+  // that finishes after a disconnect, or after the key was replaced, must not bring the
+  // old book or failure count back.
+  const guard = sameConnection ? Prisma.sql`AND "apiConfig"->>'connectedAt' = ${sameConnection}` : Prisma.empty;
+  const n = await prisma.$executeRaw`UPDATE "partner_broker" SET "apiConfig" = "apiConfig" || ${JSON.stringify(patch)}::jsonb
+    WHERE id = ${brokerId} AND "apiKey" IS NOT NULL AND "apiConfig"->>'provider' = 'elefin' ${guard}`;
+  if (n > 0 && Object.keys(extra).length) await prisma.partnerBroker.update({ where: { id: brokerId }, data: extra });
+  return n > 0;
 }
 
 // ── Roster tuples ────────────────────────────────────────────────────────────

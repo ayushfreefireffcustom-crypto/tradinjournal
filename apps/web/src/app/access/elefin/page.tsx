@@ -30,13 +30,27 @@ export default function ElefinAccessPage() {
 
   useEffect(() => {
     if (!session?.session) return;
-    accessApi.status().then(s => {
-      setCheck(s.elefinCheck ?? 'api');
-      if (mockStay()) return;
-      if (s.status === 'FULL_ACCESS') router.replace('/dashboard');
-      if (s.status === 'INACTIVE') router.replace('/access/inactive');
-      if (s.status === 'MAINTENANCE' && !s.isAdmin) router.replace('/maintenance');
-    }).catch(() => {});
+    let alive = true;
+    // A failed status call (a blip, or the API restarting) must not leave an endless
+    // spinner: retry a few times, then show the broker check, which is how access works.
+    void (async () => {
+      for (let attempt = 0; attempt < 4 && alive; attempt++) {
+        try {
+          const s = await accessApi.status();
+          if (!alive) return;
+          setCheck(s.elefinCheck ?? 'api');
+          if (mockStay()) return;
+          if (s.status === 'FULL_ACCESS') router.replace('/dashboard');
+          if (s.status === 'INACTIVE') router.replace('/access/inactive');
+          if (s.status === 'MAINTENANCE' && !s.isAdmin) router.replace('/maintenance');
+          return;
+        } catch {
+          await new Promise(r => setTimeout(r, 800 * 2 ** attempt));
+        }
+      }
+      if (alive) setCheck('broker');
+    })();
+    return () => { alive = false; };
   }, [session, router]);
 
   async function submit(e: FormEvent) {

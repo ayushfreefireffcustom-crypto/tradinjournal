@@ -78,8 +78,14 @@ export function createApp(): Express {
     next();
   });
 
+  // Morgan's "tiny" line, but with secrets kept out of the logs: a broker postback's
+  // token lives in its path, and query strings can carry tokens too.
+  morgan.token('safe-url', (req: Request) => {
+    const url = req.originalUrl || req.url || '';
+    return url.replace(/(\/api\/ib\/postback\/)[^/?#]+/, '$1[redacted]').replace(/\?.*$/, (q) => (q.length > 1 ? '?[query]' : q));
+  });
   app.use(
-    morgan('tiny', {
+    morgan(':method :safe-url :status :res[content-length] - :response-time ms', {
       stream: { write: (message: string) => logger.info(message.trim()) },
     }),
   );

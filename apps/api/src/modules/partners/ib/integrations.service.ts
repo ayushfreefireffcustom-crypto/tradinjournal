@@ -150,8 +150,22 @@ function hostAllowed(url: string, hosts: string[]): boolean {
   return hosts.some(a => h === a || h.endsWith(`.${a}`));
 }
 
+/**
+ * A path on the broker's approved API host. Joined as a URL (not as strings) and checked
+ * again, so a path like ".evil.com/x" or "@evil.com/x" can't send our request elsewhere.
+ */
+function apiUrl(base: string, path: string, hosts: string[]): string {
+  if (!path.startsWith('/') || path.startsWith('//')) throw new Error('API paths must start with a single "/".');
+  // Relative to the base (keeps a base path like /v1), never to another host.
+  const u = new URL(path.slice(1), `${base.replace(/\/+$/, '')}/`);
+  if (!hostAllowed(u.href, hosts) || u.origin !== new URL(base).origin) throw new Error('The API address is no longer on the approved list.');
+  return u.href;
+}
+
 export async function saveApiConfig(partnerId: string, id: string, config: IbApiConfig, secret: string | undefined, actor: Actor = null) {
   const b = await ownBroker(partnerId, id);
+  // Elefin is connected with its own key flow; this generic adapter must not replace it.
+  if (b.broker === 'elefin') throw new AppError(422, 'IB_API_ELEFIN', 'Connect Elefin with your Elefin partner key instead.');
   const { ibApiHosts } = await getProgramSettings();
   if (!hostAllowed(config.baseUrl, ibApiHosts)) {
     throw new AppError(422, 'IB_API_HOST', ibApiHosts.length
@@ -190,7 +204,7 @@ export async function syncApi(id: string, actor: Actor = null): Promise<{ ok: bo
     const base = cfg.baseUrl.replace(/\/+$/, '');
     const headers: Record<string, string> = { Accept: 'application/json' };
     if (cfg.auth === 'jwt-login') {
-      const tok = await apiFetch(`${base}${cfg.authPath ?? '/api/auth/'}`, {
+      const tok = await apiFetch(apiUrl(base, cfg.authPath ?? '/api/auth/', ibApiHosts), {
         method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ login: cfg.username, password: secret }),
       }) as Record<string, unknown>;
       const token = (tok.token ?? tok.access ?? tok.access_token) as string | undefined;
@@ -202,7 +216,7 @@ export async function syncApi(id: string, actor: Actor = null): Promise<{ ok: bo
 
     const rows: IbRow[] = [];
     const activity = new Map<string, { lots?: number; deposit?: number }>();
-    let url: string | null = `${base}${cfg.clientsPath.startsWith('/') ? '' : '/'}${cfg.clientsPath}`;
+    let url: string | null = apiUrl(base, cfg.clientsPath.startsWith('/') ? cfg.clientsPath : `/${cfg.clientsPath}`, ibApiHosts);
     for (let page = 0; url && page < 50; page++) {
       const body = await apiFetch(url, { headers }) as Record<string, unknown>;
       const list = dig(body, cfg.listKey);

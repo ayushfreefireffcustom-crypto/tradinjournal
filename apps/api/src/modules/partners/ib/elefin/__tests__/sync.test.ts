@@ -27,6 +27,7 @@ function match(r: Record<string, unknown>, where: Record<string, unknown> = {}):
 }
 
 vi.mock('@tradinjournal/db', () => ({
+  Prisma: { sql: (_s: TemplateStringsArray, ...v: unknown[]) => ({ v }), empty: { v: [] } },
   prisma: {
     partnerBroker: {
       findUnique: async ({ where }: { where: { id?: string; partnerId_broker?: { partnerId: string } } }) => {
@@ -36,8 +37,12 @@ vi.mock('@tradinjournal/db', () => ({
       findMany: async ({ where }: { where: Record<string, unknown> }) => db.brokers.filter(b => match(b, where)),
       update: async ({ where, data }: { where: { id: string }; data: Record<string, unknown> }) => Object.assign(db.brokers.find(b => b.id === where.id)!, data),
     },
-    $executeRaw: async (_s: TemplateStringsArray, json: string, id: string) => {
+    // patchConfig: only into a live Elefin connection, and the same one when a run says so.
+    $executeRaw: async (_s: TemplateStringsArray, json: string, id: string, guard?: { v?: unknown[] }) => {
       const b = db.brokers.find(x => x.id === id)!;
+      const cfg = b.apiConfig as { provider?: string; connectedAt?: string } | null;
+      if (!b.apiKey || cfg?.provider !== 'elefin') return 0;
+      if (guard?.v?.length && cfg.connectedAt !== guard.v[0]) return 0;
       b.apiConfig = { ...(b.apiConfig as object), ...JSON.parse(json) };
       return 1;
     },

@@ -40,7 +40,9 @@ const elefinCheck = (): 'broker' | 'api' => (brokerMode() ? 'broker' : 'api');
  */
 async function elefinConfirmedClient(userId: string): Promise<boolean> {
   const row = await prisma.clientVerification.findFirst({
-    where: { userId, broker: 'elefin', brokerAccountId: null, externalAccountId: null, status: 'VERIFIED' },
+    // Only while that partner is in the programme: a removed partner's confirmations are
+    // never re-checked, so they can't keep someone in on their own.
+    where: { userId, broker: 'elefin', brokerAccountId: null, externalAccountId: null, status: 'VERIFIED', partner: { status: 'ACTIVE' } },
     select: { id: true },
   });
   return !!row;
@@ -262,9 +264,11 @@ export async function verifyElefin(userId: string, email: string, input: VerifyE
  */
 async function elefinLastTradeMs(userId: string): Promise<number | null> {
   const [row] = await prisma.$queryRaw<{ last: bigint | number | null }[]>`
-    SELECT MAX((pb."apiConfig" #>> ARRAY['roster', 'clients', substr(cv."ibAccountId", ${ELEFIN_REF_PREFIX.length + 1}), '2'])::bigint) AS last
+    SELECT MAX((pb."apiConfig" #>> ARRAY['roster', 'clients', substr(cv."ibAccountId", ${ELEFIN_REF_PREFIX.length + 1}::int), '2'])::bigint) AS last
     FROM "client_verification" cv
     JOIN "partner_broker" pb ON pb."partnerId" = cv."partnerId" AND pb.broker = 'elefin'
+      AND pb."apiKey" IS NOT NULL AND pb."apiConfig"->>'provider' = 'elefin'
+    JOIN "partner" p ON p.id = cv."partnerId" AND p.status = 'ACTIVE'
     WHERE cv."userId" = ${userId} AND cv.broker = 'elefin' AND cv.status = 'VERIFIED'
       AND cv."brokerAccountId" IS NULL AND cv."externalAccountId" IS NULL
       AND cv."ibAccountId" LIKE ${`${ELEFIN_REF_PREFIX}%`}`;
@@ -325,6 +329,13 @@ export async function checkActivity(userId: string, email: string, force = false
       minTradesRequired: env.ACCESS_MIN_TRADES_7D,
       activityWindowDays: env.ACCESS_ACTIVITY_WINDOW_DAYS,
     };
+  }
+
+  // Trading only counts once they're in through Elefin; until then there's nothing to count,
+  // and the reason they were refused (no Elefin account) must stay what admins see.
+  const access = await prisma.userAccess.findUnique({ where: { userId }, select: { elefinStatus: true } });
+  if (access?.elefinStatus !== 'VERIFIED') {
+    return { active: false, tradeCount7d: 0, minTradesRequired: env.ACCESS_MIN_TRADES_7D, activityWindowDays: env.ACCESS_ACTIVITY_WINDOW_DAYS };
   }
 
   // Grace from signup date: don't require trades until the activity window

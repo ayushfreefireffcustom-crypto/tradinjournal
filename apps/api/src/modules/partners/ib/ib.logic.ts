@@ -167,7 +167,7 @@ export function decideVerification(i: VerifyInput): VerifyOutcome {
     return {
       status: 'MANUAL_REVIEW', method: null, ibAccountId: null, signal,
       reason: i.emailListed
-        ? `Your email is on ${i.partnerName}’s list but this account number isn’t. Our team will check it.`
+        ? 'Our team is checking this account with the broker.'
         : 'Our team is reviewing this account.',
     };
   }

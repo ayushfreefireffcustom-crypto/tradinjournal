@@ -45,6 +45,7 @@ vi.mock('@tradinjournal/db', () => ({
         return next;
       }),
       updateMany: vi.fn(async () => ({ count: 0 })),
+      findUnique: vi.fn(async ({ where }: { where: { userId: string } }) => rows.get(where.userId) ?? null),
     },
     clientVerification: { findFirst: vi.fn(async ({ where }: { where: { userId: string; status: string } }) => confirmations.find(c => c.userId === where.userId && c.status === where.status) ?? null) },
     brokerAccount: { findMany: vi.fn(async ({ where }: { where: { userId: string } }) => accounts.filter(a => a.userId === where.userId)) },
@@ -216,5 +217,12 @@ describe('trade activity rule (1 trade in 30 days)', () => {
 
   it('still needs Elefin first: no Elefin account is ELEFIN_REQUIRED, not INACTIVE', async () => {
     expect((await svc.getAccessStatus('t7', 't7@test.com')).status).toBe('ELEFIN_REQUIRED');
+  });
+
+  it('a recheck by someone without Elefin keeps the Elefin reason, not the trade one', async () => {
+    await svc.getAccessStatus('t8', 't8@test.com');
+    const before = rows.get('t8')?.activityStatus;
+    expect((await svc.checkActivity('t8', 't8@test.com', true)).active).toBe(false);
+    expect(rows.get('t8')?.activityStatus).toBe(before);
   });
 });
