@@ -39,6 +39,8 @@ interface Props {
   crumbParent?: string;
   /** Right-aligned top-bar actions (range selector, primary CTA…). */
   actions?: ReactNode;
+  /** 'page': the page draws its own heading (h1), so the top bar shows a compact crumb. */
+  heading?: 'bar' | 'page';
   /** @deprecated the legacy scope is always v5 now. */
   theme?: 'v5' | 'v3';
   /** @deprecated every page uses the v6 frame. */
@@ -89,7 +91,7 @@ export function timeAgo(iso?: string | null): string {
 }
 
 export default function AppShell({
-  children, accounts: pageAccounts, selectedAccount, onSelectAccount, onConnectClick, pageTitle, pageSubtitle, actions,
+  children, accounts: pageAccounts, selectedAccount, onSelectAccount, onConnectClick, pageTitle, pageSubtitle, actions, heading = 'bar',
   onSync, syncing, syncedAt,
 }: Props) {
   // Pages that don't pass accounts still show the real account pill, not "Connect MT5".
@@ -161,7 +163,7 @@ export default function AppShell({
       <UsageTracker />
       <LocationGate />
       <Frame
-        activeHref={current?.href} pageTitle={pageTitle ?? current?.label ?? ''} subtitle={pageSubtitle} user={user}
+        activeHref={current?.href} pageTitle={pageTitle ?? current?.label ?? ''} subtitle={pageSubtitle} heading={heading} user={user}
         isAdmin={isAdmin} isPartner={isPartner} partnerTodo={partnerTodo}
         accounts={accounts} selected={sel} onSelectAccount={onSelectAccount ?? (pageAccounts === undefined ? shellAccounts.select : undefined)} onConnectClick={onConnectClick}
         onSync={onSync} syncing={syncing} syncedLabel={syncedAt ? `Synced ${timeAgo(syncedAt)}` : sel?.lastSyncAt ? `Synced ${timeAgo(sel.lastSyncAt)}` : null}

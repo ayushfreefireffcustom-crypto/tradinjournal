@@ -89,6 +89,8 @@ interface Props {
   activeHref?: string;
   pageTitle: string;
   subtitle?: ReactNode;
+  /** 'page': the page has its own h1; the bar shows a compact crumb (icon + name). */
+  heading?: 'bar' | 'page';
   user: { name?: string | null; email?: string | null } | undefined;
   isAdmin: boolean;
   isPartner: boolean;
@@ -151,6 +153,26 @@ export default function Frame(p: Props) {
   const isOn = (href: string) => p.activeHref === href || (href === '/admin/partners' && !!p.activeHref?.startsWith('/admin/partners'));
   const all = [...groups.flatMap(g => g.items), ...account];
   const tabs = TABS.map(h => all.find(i => i.href === h)!);
+  const crumb = p.heading === 'page';
+  const CurIcon = all.find(i => i.href === p.activeHref)?.icon;
+  // Page actions, the account pill and Sync. In the top bar on tablets and up; on phones a
+  // row under the compact bar, so the bar itself can stay pinned and small.
+  const tools = (
+    <div className={`f-tools${phone ? ' f-ptools' : ''}`}>
+      {p.actions}
+      <AccountPill {...p} />
+      {p.onSync && p.selected && (
+        <button className="x-btn f-sync" onClick={p.onSync} disabled={p.syncing} aria-busy={p.syncing} data-testid="header-sync-now" title={p.syncedLabel ?? undefined}>
+          <ISync size={15} className={p.syncing ? 'x-spin' : undefined} /><span>{p.syncing ? 'Syncing' : 'Sync'}</span>
+        </button>
+      )}
+      {moneyBtn('f-ib f-dtool', 'hide-money-toggle')}
+      <IconButton className="f-ib f-dtool" onClick={toggleTheme} label={theme === 'light' ? 'Switch to dark theme' : 'Switch to light theme'} data-testid="theme-toggle">
+        {theme === 'light' ? <ISunIcon /> : <IMoonIcon />}
+      </IconButton>
+      {!phone && <span className="f-bell f-dtool"><NotificationBell /></span>}
+    </div>
+  );
 
   return (
     <div className="v6 f-page" data-testid="app-shell">
@@ -177,13 +199,20 @@ export default function Frame(p: Props) {
       </aside>
 
       <div className="f-main">
-        <header className="f-top">
+        <header className={`f-top${crumb ? ' f-top--crumb' : ''}`}>
           <div className="f-title">
             <Link href="/dashboard" className="f-mlogo" aria-label="TRADElogs dashboard"><LogoMark size={26} title="" /></Link>
-            <div className="x-min0">
-              <h1 data-testid="crumb">{p.pageTitle}</h1>
-              {p.subtitle && <p>{p.subtitle}</p>}
-            </div>
+            {crumb ? (
+              <div className="f-crumb x-min0">
+                {CurIcon && <span className="f-crumb-ic" aria-hidden><CurIcon size={16} /></span>}
+                <span className="f-crumb-t" data-testid="crumb">{p.pageTitle}</span>
+              </div>
+            ) : (
+              <div className="x-min0">
+                <h1 data-testid="crumb">{p.pageTitle}</h1>
+                {p.subtitle && <p>{p.subtitle}</p>}
+              </div>
+            )}
             <div className="f-mtools">
               {moneyBtn('f-ib')}
               <IconButton className="f-ib" onClick={toggleTheme} label={theme === 'light' ? 'Switch to dark theme' : 'Switch to light theme'}>
@@ -192,21 +221,9 @@ export default function Frame(p: Props) {
               {phone && <span className="f-bell"><NotificationBell /></span>}
             </div>
           </div>
-          <div className="f-tools">
-            {p.actions}
-            <AccountPill {...p} />
-            {p.onSync && p.selected && (
-              <button className="x-btn f-sync" onClick={p.onSync} disabled={p.syncing} aria-busy={p.syncing} data-testid="header-sync-now" title={p.syncedLabel ?? undefined}>
-                <ISync size={15} className={p.syncing ? 'x-spin' : undefined} /><span>{p.syncing ? 'Syncing' : 'Sync'}</span>
-              </button>
-            )}
-            {moneyBtn('f-ib f-dtool', 'hide-money-toggle')}
-            <IconButton className="f-ib f-dtool" onClick={toggleTheme} label={theme === 'light' ? 'Switch to dark theme' : 'Switch to light theme'} data-testid="theme-toggle">
-              {theme === 'light' ? <ISunIcon /> : <IMoonIcon />}
-            </IconButton>
-            {!phone && <span className="f-bell f-dtool"><NotificationBell /></span>}
-          </div>
+          {!phone && tools}
         </header>
+        {phone && tools}
 
         <main className={`f-content${isLux(p.activeHref) ? ' lux' : ''}`}>{p.children}</main>
       </div>

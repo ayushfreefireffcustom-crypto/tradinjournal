@@ -7,7 +7,7 @@
 // all of it. "Ask your journal" answers chart-first and falls back to the coach.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { CaretDown, Funnel, PencilSimple, Plus } from '@phosphor-icons/react';
+import { CaretDown, CaretRight, Funnel, PencilSimple, Plus } from '@phosphor-icons/react';
 import { api, type BrokerAccount } from '@/lib/api';
 import { isCustom, spanBounds, type RangeKey, type Span } from '@/lib/stats';
 import { useAccounts } from '@/lib/use-accounts';
@@ -23,7 +23,10 @@ import StrategiesCard from '@/components/v6/strategy/strategies-card';
 import DateRangePicker from '@/components/v6/ui/date-range';
 import { AiFoot, Empty, Toggle, Widget } from '@/components/dashboard-v2/ui';
 import { DistChart, EquityChart, HourBars, MaeScatter, RollingChart } from '@/components/dashboard-v2/charts';
-import { BeforeYouTrade, BehaviourBars, Heatmap, KpiRibbon, LeaksList, PlanList, RecentTable, SymbolsTable } from '@/components/dashboard-v2/widgets';
+import { BeforeYouTrade, BehaviourBars, Heatmap, KeepLine, KpiRibbon, LeaksList, PlanList, RecentTable, SymbolsTable } from '@/components/dashboard-v2/widgets';
+import NextUpCard from '@/components/dashboard-v2/next-up';
+import { ConnectArt, ErrorArt } from '@/components/dashboard-v2/art';
+import { hide as hideNext, isHidden as nextHidden, pickNextUp, tomorrow } from '@/lib/dashboard-next';
 import { AskBox, type AskState } from '@/components/dashboard-v2/ask';
 import { LayoutEditor, useDashLayouts, type EditTarget } from '@/components/dashboard-v2/layout-editor';
 import { BUILTIN_TABS, fillAlone, MAX_TABS, newLayoutId, newLayoutName, packRows, WIDGET_NAME, type LayoutTab, type Slot, type WId } from '@/lib/dash-layouts';
@@ -63,9 +66,9 @@ export default function DashboardPage() {
   const [heatMetric, setHeatMetric] = useState<'$' | 'win'>('$');
   const [ask, setAsk] = useState<AskState>({ status: 'idle' });
   const [, tick] = useState(0);
-  // Where the ask box lives: top bar on very wide screens, the toolbar on laptops, the top of the page on phones and tablets.
-  const wide = useMedia('(min-width: 1600px)');
-  const mid = useMedia('(min-width: 1100px)');
+  // Where the ask box lives: the top bar on laptops and up, the layout toolbar on tablets, the page on phones.
+  const wide = useMedia('(min-width: 1181px)');
+  const mid = useMedia('(min-width: 761px)');
   const req = useRef(0);
   const askReq = useRef<AbortController | null>(null);
 
@@ -192,46 +195,97 @@ export default function DashboardPage() {
   const rangeLabel = isCustom(span) ? rangeText(span) : RANGES.find(o => o.key === span)!.label;
   const rangeShort = isCustom(span) ? 'Range' : RANGES.find(o => o.key === span)!.short;
   const first = (session?.user?.name ?? '').trim().split(/\s+/)[0] || 'trader';
-  const subtitle = selected
-    ? <><i className="d2-live" aria-hidden />{selected.broker} <span className="m">·{selected.mt5Login.slice(-4)}</span> · {syncedAt ? `synced ${timeAgo(syncedAt)}` : loading ? 'loading…' : 'not synced yet'}</>
-    : `Welcome, ${first}`;
+  const hour = new Date().getHours();
+  const greeting = hour >= 5 && hour < 12 ? 'Good morning' : hour >= 12 && hour < 17 ? 'Good afternoon' : 'Good evening';
+  const accountOk = !!selected && /CONNECT|ACTIVE|OK/i.test(selected.status);
+  const hasTrades = !!data && data.counts.allClosed > 0;
   const askBox = (placement: 'top' | 'bar' | 'page') => <AskBox state={ask} onAsk={onAsk} onClose={closeAsk} placement={placement} />;
   const hasFilters = !!(filters.symbol || filters.session || filters.side || filters.tag);
 
+  // ── Next up: one suggestion, only on the plain view (no filters, a preset range) ──
+  const [, bumpNext] = useState(0);
+  const next = useMemo(() => (data ? pickNextUp(data, Date.now()) : null), [data]);
+  const showNext = !!next && hasTrades && !hasFilters && !isCustom(span) && !editing && !nextHidden(next.sig);
+  const laterNext = () => { if (!next) return; hideNext(next.sig, tomorrow()); bumpNext(n => n + 1); toast.success('Hidden until tomorrow'); };
+  const startNext = () => { if (next) hideNext(next.sig, Date.now() + 30 * 86_400_000); };
+  const askNext = () => {
+    if (!next || next.kind !== 'leak') return;
+    explain('biggest leak', `${next.label}: ${next.trades} trades (${next.sub}) netted ${money(next.net)}. How do I cut it? Give me one concrete rule`);
+  };
+
   return (
     <AppShell legacy={false} accounts={accounts} selectedAccount={selected} onSelectAccount={select} onConnectClick={() => setShowConnect(true)}
-      pageTitle="Dashboard" pageSubtitle={subtitle} onSync={selected ? sync : undefined} syncing={syncing} syncedAt={syncedAt}
-      actions={selected ? (
-        <>
-          {wide && data && data.counts.allClosed > 0 && askBox('top')}
-          <div className="x-seg" role="group" aria-label="Date range" data-testid="range-selector">
-            {RANGES.map(r => <button key={r.key} aria-pressed={span === r.key} onClick={() => setSpan(r.key)} title={r.label} data-testid={`range-${r.key}`}>{r.short}</button>)}
-          </div>
-          <DateRangePicker value={isCustom(span) ? span : null} onChange={setSpan} note="Days in your time zone" />
-        </>
-      ) : null}>
+      heading="page" pageTitle="Dashboard" onSync={selected ? sync : undefined} syncing={syncing} syncedAt={syncedAt}
+      actions={selected && wide && hasTrades ? askBox('top') : null}>
       <div className={`d2${ai ? '' : ' ai-off'}`} data-testid="dashboard-page">
-        {error && (
+        <header className="d2-hello" data-testid="dash-hello">
+          <div className="d2-hello-t">
+            <h1>{selected || !accountsLoading ? `${greeting}, ${first}` : greeting}</h1>
+            <p>
+              {selected ? (
+                <>
+                  <span className="d2-hs"><i className={`d2-live${accountOk ? '' : ' bad'}`} aria-hidden /><span className="d2-hb">{selected.broker} <span className="d2-n">·{selected.mt5Login.slice(-4)}</span> · </span>
+                  {!accountOk ? 'needs attention in Brokers' : syncedAt ? `synced ${timeAgo(syncedAt)}` : loading ? 'loading…' : 'not synced yet'}</span>
+                  {data?.kpis && data.counts.trades > 0 && <span className="d2-hn"> · <span className="d2-n">{data.counts.trades.toLocaleString('en-US')}</span> {data.counts.trades === 1 ? 'trade' : 'trades'} · {rangeLabel}</span>}
+                </>
+              ) : accountsLoading ? <span>Loading your accounts…</span> : <span>Connect an account and this page fills in from your own trades.</span>}
+            </p>
+          </div>
+          {selected && (
+            <div className="d2-hello-r">
+              <div className="x-seg" role="group" aria-label="Date range" data-testid="range-selector">
+                {RANGES.map(r => <button key={r.key} aria-pressed={span === r.key} onClick={() => setSpan(r.key)} title={r.label} data-testid={`range-${r.key}`}>{r.short}</button>)}
+              </div>
+              <DateRangePicker value={isCustom(span) ? span : null} onChange={setSpan} note="Days in your time zone" />
+            </div>
+          )}
+        </header>
+
+        {error && !data && selected ? (
+          <section className="d2-card d2-connect d2-fail" role="alert" data-testid="dashboard-error">
+            <div className="d2-connect-art"><ErrorArt /></div>
+            <div className="d2-connect-t">
+              <h2>Couldn&rsquo;t load your dashboard</h2>
+              <p>Your trades are safe; the numbers just didn&rsquo;t reach this page. This is usually a blip, so try again in a moment.</p>
+              <small className="d2-dim">{error}</small>
+              <div className="d2-row">
+                <button type="button" className="x-btn x-btn--hi" onClick={() => params && load(params)} disabled={loading}>{loading ? 'Trying…' : 'Try again'}</button>
+                <Link href="/trades" className="x-btn">Open the trade log</Link>
+              </div>
+            </div>
+          </section>
+        ) : error && (
           <div className="d2-banner" role="alert" data-testid="dashboard-error">
-            <span>{error}</span>
-            <button type="button" className="x-btn x-btn--sm" onClick={() => params && load(params)}>Retry</button>
+            <span><b>Couldn&rsquo;t load your dashboard.</b> {error}</span>
+            <button type="button" className="x-btn x-btn--sm" onClick={() => params && load(params)}>Try again</button>
           </div>
         )}
 
         {!selected && !accountsLoading ? (
           <section className="d2-card d2-connect" data-testid="dashboard-empty">
-            <h2>Connect your MT5 account</h2>
-            <p>Use your investor (read-only) password. TRADElogs can read your trades but can never place or close one.</p>
-            <ul><li>History imports in about a minute</li><li>New trades sync on their own</li><li>Every chart here fills in from your real trades</li></ul>
-            <button className="x-btn x-btn--hi x-btn--lg" onClick={() => setShowConnect(true)} data-testid="dashboard-connect"><IPlus size={15} />Connect MT5</button>
+            <div className="d2-connect-art"><ConnectArt /></div>
+            <div className="d2-connect-t">
+              <h2>Connect your MT5 account</h2>
+              <p>Use your investor (read-only) password. TRADElogs can read your trades but can never place or close one.</p>
+              <ul><li>History imports in about a minute</li><li>New trades sync on their own</li><li>Every chart here fills in from your real trades</li></ul>
+              <button className="x-btn x-btn--hi x-btn--lg" onClick={() => setShowConnect(true)} data-testid="dashboard-connect"><IPlus size={15} />Connect MT5</button>
+            </div>
           </section>
         ) : !data ? (error ? null : <Skeleton />) : data.counts.allClosed === 0 ? (
           <section className="d2-card d2-connect" data-testid="dashboard-waiting">
-            <h2>Waiting for your first closed trade</h2>
-            <p>{selected?.broker} is connected. As soon as a position closes it shows up here, usually within a few minutes.</p>
+            <div className="d2-connect-art"><ConnectArt waiting /></div>
+            <div className="d2-connect-t">
+              <h2>Waiting for your first closed trade</h2>
+              <p>{selected?.broker} is connected. As soon as a position closes it shows up here, usually within a few minutes.</p>
+              <div className="d2-row">
+                <button type="button" className="x-btn" onClick={sync} disabled={syncing}>{syncing ? 'Checking…' : 'Check now'}</button>
+                <Link href="/brokers" className="x-btn x-btn--ghost">Manage brokers</Link>
+              </div>
+            </div>
           </section>
         ) : (
           <>
+            {showNext && next && <NextUpCard n={next} onLater={laterNext} onStart={startNext} onAsk={askNext} />}
             {!mid && askBox('page')}
             <div className="d2-bar" data-testid="dash-toolbar">
               <div className="d2-lay-w">
@@ -361,9 +415,9 @@ export default function DashboardPage() {
       }
       case 'leaks':
         return (
-          <Widget id="leaks" span={s} title="Leaks" sub="· ranked by $ lost"
+          <Widget id="leaks" span={s} title="Leaks" sub="· ranked by $ lost" className="d2-w--tray"
             onExplain={d.leaks.rows.length ? () => explain('leaks', d.leaks.rows.map(r => `${r.label} ${money(r.net)} on ${r.trades} trades (${r.wins} won)`).join('; ')) : undefined}
-            foot={ai ? <AiFoot line={d.leaks.ai} /> : null}>
+            foot={ai ? <KeepLine line={d.leaks.ai} /> : null}>
             <LeaksList rows={d.leaks.rows} trades={T} />
           </Widget>
         );
@@ -454,7 +508,8 @@ export default function DashboardPage() {
         );
       case 'recent':
         return (
-          <Widget id="recent" span={s} title="Recent trades" sub={ai && d.recent.some(r => r.grade) ? <span data-ai>· AI grade</span> : null} flush tools={<Link href="/trades" className="d2-wl">Trade log</Link>}
+          <Widget id="recent" span={s} title="Recent trades" sub={ai && d.recent.some(r => r.grade) ? <span data-ai>· graded by AI</span> : null} className="d2-w--tray"
+            tools={<Link href="/trades" className="d2-wl">View all<CaretRight size={12} /></Link>}
             foot={ai && d.recent.length ? <AiFoot line={d.recent.some(r => r.grade)
               ? { text: 'Graded on process, not result', value: null, fmt: 'text', tone: 'flat', trades: d.recent.length }
               : { text: `Grades start at ${d.minTrades} trades`, value: null, fmt: 'text', tone: 'flat', trades: d.counts.trades }} /> : null}>
@@ -482,14 +537,16 @@ function FilterSel({ label, value, all, options, onChange, icon, disabled }: { l
 function Skeleton() {
   return (
     <div className="d2-skel" aria-busy aria-label="Loading dashboard" data-testid="dashboard-loading">
-      <div className="d2-card d2-sk" style={{ height: 40 }} />
-      <div className="d2-card d2-sk" style={{ height: 88 }} />
+      <div className="d2-sk" style={{ height: 38, width: 'min(560px, 100%)', borderRadius: 999 }} />
+      <div className="d2-tray d2-sk-tray">
+        <div className="d2-kt">{[0, 1, 2, 3].map(i => <div key={i} className="d2-tile d2-sk" style={{ height: 136 }} />)}</div>
+        <div className="d2-sk" style={{ height: 52, borderRadius: 16, marginTop: 10 }} />
+      </div>
       <div className="d2-grid">
-        <div className="d2-card d2-sk d2-s8" style={{ height: 320 }} />
-        <div className="d2-card d2-sk d2-s4" style={{ height: 320 }} />
-        <div className="d2-card d2-sk d2-s4" style={{ height: 300 }} />
-        <div className="d2-card d2-sk d2-s4" style={{ height: 300 }} />
-        <div className="d2-card d2-sk d2-s4" style={{ height: 300 }} />
+        <div className="d2-card d2-sk d2-s8" style={{ height: 360 }} />
+        <div className="d2-card d2-sk d2-s4" style={{ height: 360 }} />
+        <div className="d2-card d2-sk d2-s6" style={{ height: 300 }} />
+        <div className="d2-card d2-sk d2-s6" style={{ height: 300 }} />
       </div>
     </div>
   );

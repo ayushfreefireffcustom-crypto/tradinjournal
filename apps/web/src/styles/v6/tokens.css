@@ -47,6 +47,24 @@
   --pop-shadow: 0 18px 40px -12px rgba(0, 0, 0, .7), 0 0 0 1px rgba(255, 255, 255, .06);
   --logo-fg: #FFFFFF;
 
+  /* Depth (polish v1): the frame floats as sheets; a tray holds tiles; cards get a lit top edge. */
+  --sheet: rgba(19, 19, 19, .86);
+  --float: 0 0 0 1px rgba(255, 255, 255, .06), 0 16px 48px rgba(0, 0, 0, .45), 0 32px 64px -16px rgba(0, 0, 0, .7);
+  --edge: inset 0 1px 0 rgba(255, 255, 255, .055);
+  --card-shadow: inset 0 1px 0 rgba(255, 255, 255, .055), 0 0 0 1px var(--line);
+  --tray: #0F0F0F;
+  --tray-shadow: inset 0 0 0 1px rgba(255, 255, 255, .05), inset 0 10px 24px -18px rgba(0, 0, 0, .9);
+  --tile: #161616;
+  --tile-shadow: inset 0 1px 0 rgba(255, 255, 255, .06), 0 0 0 1px rgba(255, 255, 255, .055), 0 10px 20px -16px #000;
+  --tile-hover: inset 0 1px 0 rgba(255, 255, 255, .08), 0 0 0 1px rgba(255, 255, 255, .09), 0 16px 28px -18px #000;
+  --raised: linear-gradient(180deg, #202020, #191919);
+  --raised-shadow: inset 0 1px 0 rgba(255, 255, 255, .07), 0 0 0 1px rgba(255, 255, 255, .06), 0 4px 10px -4px rgba(0, 0, 0, .8);
+  --glyph: linear-gradient(180deg, #2A2A2A, #151515);
+  --glyph-shadow: inset 0 1px 0 rgba(255, 255, 255, .16), inset 0 -2px 0 rgba(0, 0, 0, .55), 0 0 0 1px rgba(0, 0, 0, .9), 0 10px 22px -10px #000;
+  --field: rgba(255, 255, 255, .035);
+  --r-sheet: 24px;
+  --r-tile: 16px;
+
   --r-dlg: 24px;    /* dialogs and sheets */
   --r-card: 20px;
   --r-inset: 14px;
@@ -97,6 +115,20 @@ html[data-theme=light] .v6 {
   --pop: #FFFFFF;
   --pop-shadow: 0 18px 40px -14px rgba(0, 0, 0, .2), 0 0 0 1px rgba(0, 0, 0, .06);
   --logo-fg: #111113;
+  --sheet: rgba(255, 255, 255, .9);
+  --float: 0 0 0 1px rgba(0, 0, 0, .06), 0 12px 32px -14px rgba(0, 0, 0, .16);
+  --edge: inset 0 1px 0 rgba(255, 255, 255, .9);
+  --card-shadow: 0 0 0 1px rgba(0, 0, 0, .06), 0 1px 2px rgba(0, 0, 0, .04);
+  --tray: #E9E9EC;
+  --tray-shadow: inset 0 0 0 1px rgba(0, 0, 0, .035), inset 0 1px 2px rgba(0, 0, 0, .04);
+  --tile: #FFFFFF;
+  --tile-shadow: 0 0 0 1px rgba(0, 0, 0, .06), 0 1px 2px rgba(0, 0, 0, .05);
+  --tile-hover: 0 0 0 1px rgba(0, 0, 0, .1), 0 8px 18px -10px rgba(0, 0, 0, .2);
+  --raised: #F1F1F3;
+  --raised-shadow: inset 0 0 0 1px rgba(0, 0, 0, .06);
+  --glyph: linear-gradient(180deg, #FFFFFF, #F0F0F3);
+  --glyph-shadow: 0 0 0 1px rgba(0, 0, 0, .08), inset 0 -2px 0 rgba(0, 0, 0, .04), 0 6px 14px -8px rgba(0, 0, 0, .3);
+  --field: #F6F6F8;
   --series-1: #2A78D6; --series-2: #EB6834; --series-3: #1BAF7A;
   --series-4: #EDA100; --series-5: #E87BA4; --series-6: #6250D6; --series-other: #C4C4CA;
   color-scheme: light;

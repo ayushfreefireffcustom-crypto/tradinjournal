@@ -10,7 +10,8 @@ describe('dashboard layouts', () => {
       expect(packRows(t.slots).map(c => c.span)).toEqual(t.slots.map(x => x.span));
     }
     // Same as the page's old fillAlone on the old [id, span] lists.
-    expect([...fillAlone(packRows(BUILTIN_TABS[0]!.slots))]).toEqual(['recent']);
+    // Overview (polish v1): on tablets Leaks sits alone after the full-width equity curve, so it fills the row.
+    expect([...fillAlone(packRows(BUILTIN_TABS[0]!.slots))]).toEqual(['leaks']);
     expect([...fillAlone(packRows(BUILTIN_TABS[1]!.slots))]).toEqual([]);
     expect([...fillAlone(packRows(BUILTIN_TABS[2]!.slots))]).toEqual(['recent']);
   });

@@ -4,63 +4,169 @@
 // you trade, plan, symbols and recent trades.
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { CaretDown, Clock, Hourglass, Lock, Scales, Target } from '@phosphor-icons/react';
-import type { DashBehaviour, DashHeatmap, DashKpis, DashPlanRule, DashRecentTrade, DashSymbolRow, HourCellDTO, LeakDTO } from '@/lib/dashboard-v2-api';
-import { DAY_SHORT, fmtDate, isFlat, kmoney, money, pct, plural, rfmt, SESSION_SHORT, spct, tone, toneColor } from '@/lib/dashboard-v2-format';
+import { ArrowsVertical, CalendarBlank, CaretDown, CaretRight, Clock, CurrencyCircleDollar, GlobeHemisphereWest, Hourglass, Lightning, Lock, Moon, Scales, ShieldCheck, Target, TrendDown, type Icon } from '@phosphor-icons/react';
+import type { AiLine, DashBehaviour, DashHeatmap, DashKpis, DashPlanRule, DashRecentTrade, DashSymbolRow, HourCellDTO, LeakDTO } from '@/lib/dashboard-v2-api';
+import { DAY_SHORT, fmtAi, fmtDate, isFlat, kmoney, money, pct, plural, rfmt, SESSION_SHORT, spct, tone, toneColor } from '@/lib/dashboard-v2-format';
 import { clock, shortDate } from '@/lib/tradelog-v2-api';
-import { AiMark, Empty } from './ui';
-import { MiniLine, Spark } from './charts';
+import { Empty } from './ui';
+import { Spark } from './charts';
 
 /** Money for the KPI ribbon: compact above $100k so the cell never overflows. */
 const kpiMoney = (v: number, plus = true) => (Math.abs(v) >= 100_000 ? kmoney(v, { plus }) : money(v, { plus }));
 
+/** A sparkline that fills its box (the KPI tiles). */
+function Trend({ vals, color }: { vals: number[]; color: string }) {
+  if (vals.length < 2) return <span className="d2-trend" aria-hidden />;
+  const mn = Math.min(...vals), mx = Math.max(...vals), W = 120, H = 26;
+  const d = vals.map((v, i) => `${i ? 'L' : 'M'}${((i / (vals.length - 1)) * W).toFixed(1)} ${(H - 2 - ((v - mn) / (mx - mn || 1)) * (H - 4)).toFixed(1)}`).join(' ');
+  return (
+    <svg className="d2-trend" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" aria-hidden>
+      <path d={d} fill="none" stroke={color} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+    </svg>
+  );
+}
+/** How far below its running peak the curve sat at each point (0 or less). */
+const underwater = (vals: number[]) => { let peak = -Infinity; return vals.map(v => { peak = Math.max(peak, v); return v - peak; }); };
+
+function Ring({ score }: { score: number }) {
+  const c = 2 * Math.PI * 8, f = Math.max(0, Math.min(100, score)) / 100;
+  return (
+    <svg className="d2-ring" viewBox="0 0 20 20" aria-hidden>
+      <circle cx="10" cy="10" r="8" fill="none" stroke="var(--track)" strokeWidth="2.5" />
+      <circle cx="10" cy="10" r="8" fill="none" stroke={score >= 60 ? 'var(--d2-g)' : score >= 40 ? 'var(--mut)' : 'var(--d2-r)'} strokeWidth="2.5" strokeLinecap="round" strokeDasharray={`${(c * f).toFixed(1)} ${c.toFixed(1)}`} transform="rotate(-90 10 10)" />
+    </svg>
+  );
+}
+
+/** Key numbers: four tiles with a trend each, and a strip of five supporting figures. */
 export function KpiRibbon({ k, trades, behaviour, minTrades, ai }: { k: DashKpis; trades: number; behaviour: DashBehaviour | null; minTrades: number; ai: boolean }) {
   const payoff = k.avgLoss < 0 && k.avgWin > 0 ? k.avgWin / -k.avgLoss : null;
-  const cells: Array<{ id: string; label: string; value: React.ReactNode; small: React.ReactNode }> = [
-    { id: 'net', label: 'Net P&L', value: <b className={`d2-n mny ${tone(k.netPnl)}`}>{kpiMoney(k.netPnl)}</b>, small: <><span title="Return on the balance at the start of the range">{k.returnPct != null ? spct(k.returnPct) : plural(trades, 'trade')}</span><MiniLine vals={k.equitySpark} w={48} /></> },
-    { id: 'balance', label: 'Balance', value: <b className="d2-n mny">{kpiMoney(k.balance, false)}</b>, small: <span>peak <span className="mny">{kpiMoney(k.peakBalance, false)}</span></span> },
-    { id: 'last30', label: `${Math.min(30, k.last30.days)} session${k.last30.days === 1 ? '' : 's'}`, value: <b className={`d2-n mny ${tone(k.last30.net)}`}>{kpiMoney(k.last30.net)}</b>, small: <span title={`The last ${k.last30.days} days with a closed trade`}>{k.last30.green} of {k.last30.days} green</span> },
-    { id: 'winrate', label: 'Win rate', value: <b className="d2-n">{pct(k.winRate, 1)}</b>, small: k.rollingWinRate.length > 1 ? <><span title="Win rate over the last 20 trades, along the range">roll 20</span><MiniLine vals={k.rollingWinRate} w={48} /></> : <span>{plural(trades, 'trade')}</span> },
-    { id: 'pf', label: 'Profit factor', value: <b className="d2-n">{k.profitFactor == null ? '–' : k.profitFactor.toFixed(2)}</b>, small: <span className="mny">{k.profitFactor == null ? 'no losing trades' : `${money(k.grossProfit, { plus: false })} / ${money(k.grossLoss, { plus: false })}`}</span> },
+  const wins = Math.round(k.winRate * trades);
+  const gp = Math.abs(k.grossProfit), gl = Math.abs(k.grossLoss);
+  const dd = underwater(k.equitySpark);
+  const tiles: Array<{ id: string; label: string; chip?: React.ReactNode; value: React.ReactNode; sub: React.ReactNode; viz: React.ReactNode }> = [
+    {
+      id: 'net', label: 'Net P&L',
+      chip: k.returnPct != null ? <span className={`d2-chip ${tone(k.returnPct)}`} title="Return on the balance at the start of the range">{spct(k.returnPct)}</span> : undefined,
+      value: <b className={`d2-n mny ${tone(k.netPnl)}`}>{kpiMoney(k.netPnl)}</b>,
+      sub: <span>{plural(trades, 'trade')}</span>,
+      viz: <Trend vals={k.equitySpark} color={k.netPnl < 0 ? 'var(--d2-r)' : 'var(--d2-g)'} />,
+    },
+    {
+      id: 'winrate', label: 'Win rate',
+      value: <b className="d2-n">{pct(k.winRate, 1)}</b>,
+      sub: <span><span className="d2-n">{wins}</span> of <span className="d2-n">{trades}</span> won</span>,
+      viz: k.rollingWinRate.length > 1 ? <span className="d2-viz" title="Win rate over the last 20 trades, along the range"><Trend vals={k.rollingWinRate} color="var(--mut)" /></span> : <span className="d2-trend" aria-hidden />,
+    },
+    {
+      id: 'pf', label: 'Profit factor',
+      value: <b className="d2-n">{k.profitFactor == null ? '–' : k.profitFactor.toFixed(2)}</b>,
+      sub: k.profitFactor == null ? <span>no losing trades</span> : <span><span className="mny up">{money(gp, { plus: false })}</span> won / <span className="mny dn">{money(gl, { plus: false })}</span> lost</span>,
+      viz: gp + gl > 0 ? <span className="d2-split" aria-hidden><i style={{ width: `${(100 * gp) / (gp + gl)}%` }} /></span> : <span className="d2-trend" aria-hidden />,
+    },
+    {
+      id: 'dd', label: 'Max drawdown',
+      value: k.maxDrawdown?.pct != null || !k.maxDrawdown
+        ? <b className={`d2-n ${k.maxDrawdown ? 'dn' : ''}`}>{k.maxDrawdown ? spct(-k.maxDrawdown.pct!) : '0.0%'}</b>
+        : <b className="d2-n dn mny">{kpiMoney(-k.maxDrawdown.amount)}</b>,
+      sub: <span>{k.maxDrawdown ? <>{k.maxDrawdown.pct != null && <><span className="mny">{money(-k.maxDrawdown.amount)}</span> · </>}{fmtDate(new Date(k.maxDrawdown.at).getTime())}</> : 'no drawdown'}</span>,
+      viz: <span className="d2-viz" title="How far below its peak the balance sat"><Trend vals={dd} color={k.maxDrawdown ? 'var(--d2-r)' : 'var(--mut)'} /></span>,
+    },
+  ];
+  const strip: Array<{ id: string; label: string; value: React.ReactNode; small: React.ReactNode }> = [
+    { id: 'balance', label: 'Balance', value: <span className="mny">{kpiMoney(k.balance, false)}</span>, small: <>peak <span className="mny">{kpiMoney(k.peakBalance, false)}</span></> },
     {
       id: 'exp', label: 'Expectancy',
-      value: k.expectancyR != null ? <b className={`d2-n ${tone(k.expectancyR)}`}>{rfmt(k.expectancyR)}</b> : <b className={`d2-n mny ${tone(k.expectancy)}`}>{money(k.expectancy)}</b>,
-      small: k.expectancyR != null ? <span className="mny">{money(k.expectancy)} per trade</span> : <span title="In $: R needs a stop at entry">per trade</span>,
+      value: k.expectancyR != null ? <span className={tone(k.expectancyR)}>{rfmt(k.expectancyR)}</span> : <span className={`mny ${tone(k.expectancy)}`}>{money(k.expectancy)}</span>,
+      small: k.expectancyR != null ? <><span className="mny">{money(k.expectancy)}</span> a trade</> : <span title="In $: R needs a stop at entry">a trade</span>,
     },
-    { id: 'avg', label: 'Avg win/loss', value: <b className="d2-n">{payoff == null ? '–' : `${payoff.toFixed(2)}×`}</b>, small: <span className="mny">{money(k.avgWin)} / {money(k.avgLoss)}</span> },
-    { id: 'dd', label: 'Drawdown', value: k.maxDrawdown?.pct != null || !k.maxDrawdown
-      ? <b className={`d2-n ${k.maxDrawdown ? 'dn' : ''}`}>{k.maxDrawdown ? spct(-k.maxDrawdown.pct!) : '0.0%'}</b>
-      : <b className="d2-n dn mny">{kpiMoney(-k.maxDrawdown.amount)}</b>,
-      small: <span>{k.maxDrawdown ? <>{k.maxDrawdown.pct != null && <><span className="mny">{money(-k.maxDrawdown.amount)}</span> · </>}{fmtDate(new Date(k.maxDrawdown.at).getTime())}</> : 'no drawdown'}</span> },
+    { id: 'avg', label: 'Avg win / loss', value: <span>{payoff == null ? '–' : `${payoff.toFixed(2)}×`}</span>, small: <span className="mny">{money(k.avgWin, { plus: false })} / {money(Math.abs(k.avgLoss), { plus: false })}</span> },
+    {
+      id: 'last30', label: `Last ${Math.min(30, k.last30.days)} session${k.last30.days === 1 ? '' : 's'}`,
+      value: <span className={`mny ${tone(k.last30.net)}`}>{kpiMoney(k.last30.net)}</span>,
+      small: <span title={`The last ${k.last30.days} days with a closed trade`}>{k.last30.green} green · {k.last30.days - k.last30.green} red</span>,
+    },
     {
       id: 'behaviour', label: 'Behaviour',
-      value: behaviour ? <b className="d2-n">{behaviour.score}<small>/100</small></b> : <b className="d2-n d2-dim">–</b>,
+      value: behaviour ? <><Ring score={behaviour.score} />{behaviour.score}</> : <span className="d2-dim">–</span>,
       small: behaviour
-        ? <><span className={behaviour.last30 < behaviour.score ? 'dn' : behaviour.last30 > behaviour.score ? 'up' : ''}>{behaviour.last30} last 30</span>{ai && <AiMark short />}</>
+        ? <><span>/100</span> <span className={behaviour.last30 < behaviour.score ? 'dn' : behaviour.last30 > behaviour.score ? 'up' : ''} data-ai>{behaviour.last30} last 30</span></>
         : <span>needs {minTrades} trades</span>,
     },
   ];
+  void ai;
   return (
-    <section className="d2-card d2-kr" aria-label="Key numbers" data-testid="kpi-ribbon">
-      {cells.map(c => <div key={c.id} data-testid={`kpi-${c.id}`}><span className="d2-cap">{c.label}</span>{c.value}<small>{c.small}</small></div>)}
+    <section className="d2-tray d2-kpis" aria-label="Key numbers" data-testid="kpi-ribbon">
+      <div className="d2-kt">
+        {tiles.map(t => (
+          <div key={t.id} className="d2-tile d2-k" data-testid={`kpi-${t.id}`}>
+            <div className="d2-k-l">{t.label}{t.chip}</div>
+            <div className="d2-k-v">{t.value}</div>
+            <div className="d2-k-s">{t.sub}</div>
+            <div className="d2-k-z">{t.viz}</div>
+          </div>
+        ))}
+      </div>
+      <div className="d2-ks">
+        {strip.map(c => (
+          <div key={c.id} data-testid={`kpi-${c.id}`}>
+            <span className="d2-cap">{c.label}</span>
+            <b className="d2-n">{c.value}<small>{c.small}</small></b>
+          </div>
+        ))}
+      </div>
     </section>
   );
 }
 
+const LEAK_ICON: Array<[RegExp, Icon]> = [
+  [/^late$/, Moon], [/^after-losses$/, TrendDown], [/^revenge$/, Lightning], [/^oversized$/, Scales], [/^moved-stop$/, ArrowsVertical],
+  [/^sym:/, CurrencyCircleDollar], [/^ses:/, GlobeHemisphereWest], [/^day:/, CalendarBlank],
+];
+const leakIcon = (key: string): Icon => LEAK_ICON.find(([re]) => re.test(key))?.[1] ?? TrendDown;
+
 export function LeaksList({ rows, trades }: { rows: LeakDTO[]; trades: number }) {
+  const [all, setAll] = useState(false);
   if (!rows.length) return trades < 10
     ? <Empty title="Needs 10 trades" note={`${trades} so far. Leaks are groups of 3+ trades.`} />
     : <Empty title="No leaks found" note="Every group we check is net positive." />;
   const mx = Math.max(...rows.map(r => -r.net));
+  const shown = all ? rows : rows.slice(0, 3);
   return (
-    <div className="d2-leaks" role="list">
-      {rows.map((r, i) => (
-        <div key={r.key} role="listitem" className="d2-leak">
-          <div className="d2-leak-l"><b>{r.label}</b><small>{r.sub}</small></div>
-          <div className="d2-leak-b"><i style={{ width: `${Math.max(3, (100 * -r.net) / mx)}%`, opacity: 1 - i * 0.13 }} /></div>
-          <b className="d2-n dn mny">{kmoney(r.net)}</b>
-        </div>
-      ))}
+    <>
+      <div className="d2-leaks" role="list">
+        {shown.map((r, i) => {
+          const I = leakIcon(r.key);
+          return (
+            <div key={r.key} role="listitem" className="d2-tile d2-leak">
+              <span className="d2-glyph sm" aria-hidden><I size={20} /></span>
+              <div className="d2-leak-l">
+                <b>{r.label}</b><small>{r.sub}</small>
+                <div className="d2-leak-b" aria-hidden><i style={{ width: `${Math.max(3, (100 * -r.net) / mx)}%`, opacity: 1 - i * 0.12 }} /></div>
+              </div>
+              <b className="d2-n dn mny">{kmoney(r.net)}</b>
+            </div>
+          );
+        })}
+      </div>
+      {rows.length > 3 && (
+        <button type="button" className="d2-more" onClick={() => setAll(v => !v)} aria-expanded={all}>
+          {all ? 'Show top 3' : `Show all ${rows.length}`}<CaretRight size={12} style={{ transform: all ? 'rotate(-90deg)' : 'rotate(90deg)' }} />
+        </button>
+      )}
+    </>
+  );
+}
+
+/** The leaks widget's footer: what skipping them would have kept, as one green line. */
+export function KeepLine({ line }: { line: AiLine | null }) {
+  if (!line) return null;
+  const v = fmtAi(line);
+  return (
+    <div className="d2-keep" data-ai>
+      <ShieldCheck size={18} weight="regular" aria-hidden />
+      <span>{line.text.replace(/:\s*$/, '')}{line.suffix ? <span className="d2-dim"> {line.suffix}</span> : null}</span>
+      {v && <b className={`d2-n mny ${line.tone === 'dn' ? 'dn' : 'up'}`}>{v}</b>}
     </div>
   );
 }
@@ -226,34 +332,48 @@ export function SymbolsTable({ rows, rangeLabel }: { rows: DashSymbolRow[]; rang
 }
 
 const GRADE_CLS: Record<string, string> = { A: 'up', B: 'up', C: 'mid', D: 'dn', F: 'dn' };
+const DAY = 86_400_000;
+/** "today", "yesterday", "Tue", or "12 Nov" (your time zone). */
+function dayWord(ms: number, now: number): string {
+  const d0 = new Date(now); d0.setHours(0, 0, 0, 0);
+  const diff = Math.floor((d0.getTime() - ms) / DAY) + 1;
+  if (ms >= d0.getTime()) return 'today';
+  if (diff <= 1) return 'yesterday';
+  if (diff < 6) return new Date(ms).toLocaleDateString('en-GB', { weekday: 'short' });
+  return shortDate(ms);
+}
+const held = (ms: number) => (ms < 3_600_000 ? `${Math.max(1, Math.round(ms / 60_000))}m` : ms < 2 * DAY ? `${Math.round(ms / 3_600_000)}h` : `${Math.round(ms / DAY)}d`);
+
 /**
- * The latest closed trades, newest first. The time is when the trade closed
- * (the order the list is in), with its date, in your own time zone. The grade column only appears once
- * grades exist (they need MIN_TRADES trades); the page says so in the footer.
+ * The latest closed trades, newest first, as tiles: symbol, side, when it closed (your time
+ * zone) and how long it was held, R, P&L and the process grade. Grades only appear once
+ * they exist (they need MIN_TRADES trades); the page says so in the footer.
  */
 export function RecentTable({ rows }: { rows: DashRecentTrade[] }) {
   const graded = rows.some(t => t.grade);
+  const hasR = rows.some(t => t.r != null);
+  const now = Date.now();
   return (
-    <div className="d2-tbl">
-      <table className="d2-dt">
-        <thead><tr><th>Closed</th><th>Symbol</th><th>P&amp;L</th>{graded && <th data-ai>Grade</th>}</tr></thead>
-        <tbody>
-          {rows.map(t => {
-            const open = new Date(t.openTime).getTime();
-            const close = new Date(t.closeTime).getTime();
-            return (
-              <tr key={t.id}>
-                <td><Link href={`/trades/${encodeURIComponent(t.id)}`} className="d2-rl" title={`Opened ${shortDate(open)} ${clock(open)} · closed ${shortDate(close)} ${clock(close)}`}>{shortDate(close)} {clock(close)}</Link></td>
-                <td><b>{t.symbol}</b> <span className="d2-sd">{t.side === 'LONG' ? 'L' : 'S'}</span></td>
-                <td><b className={`d2-n mny ${tone(t.net)}`}>{money(t.net)}</b></td>
-                {graded && <td data-ai>{t.grade
-                  ? <span className={`d2-gd ${GRADE_CLS[t.grade]}`} title={t.reasons.length ? t.reasons.join(' · ') : 'No process flags'}>{t.grade}</span>
-                  : <span className="d2-dim" title="Not graded">–</span>}</td>}
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+    <div className={`d2-trs${hasR ? ' has-r' : ''}${graded ? ' has-g' : ''}`} role="list">
+      {rows.map(t => {
+        const open = new Date(t.openTime).getTime();
+        const close = new Date(t.closeTime).getTime();
+        return (
+          <Link key={t.id} role="listitem" href={`/trades/${encodeURIComponent(t.id)}`} className="d2-tile d2-tr"
+            title={`Opened ${shortDate(open)} ${clock(open)} · closed ${shortDate(close)} ${clock(close)}`}>
+            <span className="d2-symb" aria-hidden>{t.symbol.replace(/[^A-Za-z0-9]/g, '').slice(0, 3).toUpperCase()}</span>
+            <span className="d2-tr-l">
+              <b>{t.symbol} <span className={`d2-side ${t.side === 'LONG' ? 'up' : 'dn'}`}>{t.side === 'LONG' ? 'Long' : 'Short'}</span></b>
+              <small><span className="d2-n">{clock(close)}</span> · {dayWord(close, now)} · held {held(Math.max(0, close - open))}</small>
+            </span>
+            {hasR && <span className={`d2-n d2-tr-r ${t.r == null ? 'd2-dim' : tone(t.r)}`}>{t.r == null ? '–' : rfmt(t.r)}</span>}
+            <b className={`d2-n mny d2-tr-p ${tone(t.net)}`}>{money(t.net, { dec: 2 })}</b>
+            {graded && (t.grade
+              ? <span className={`d2-gd ${GRADE_CLS[t.grade]}`} data-ai title={t.reasons.length ? t.reasons.map(r => r.replace(/^Your rule: /, '')).join(' · ') : 'No process flags'}>{t.grade}</span>
+              : <span className="d2-gd d2-dim" data-ai title="Not graded">–</span>)}
+          </Link>
+        );
+      })}
     </div>
   );
 }

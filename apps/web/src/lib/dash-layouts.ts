@@ -23,7 +23,7 @@ export const MAX_NAME = 24;
 
 const s = (id: WId, span: Span): Slot => ({ id, span });
 export const BUILTIN_TABS: LayoutTab[] = [
-  { id: 'overview', name: 'Overview', builtin: true, slots: [s('equity', 8), s('leaks', 4), s('heatmap', 4), s('mae', 4), s('dist', 4), s('rolling', 3), s('behaviour', 3), s('before', 3), s('plan', 3), s('symbols', 8), s('recent', 4)] },
+  { id: 'overview', name: 'Overview', builtin: true, slots: [s('equity', 8), s('leaks', 4), s('heatmap', 6), s('recent', 6), s('mae', 6), s('dist', 6), s('rolling', 3), s('behaviour', 3), s('before', 3), s('plan', 3), s('symbols', 12)] },
   { id: 'risk', name: 'Risk', builtin: true, slots: [s('equity', 8), s('leaks', 4), s('dist', 4), s('rolling', 4), s('behaviour', 4), s('symbols', 12)] },
   { id: 'execution', name: 'Execution', builtin: true, slots: [s('heatmap', 6), s('mae', 6), s('before', 4), s('plan', 4), s('recent', 4), s('symbols', 12)] },
 ];
