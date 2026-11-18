@@ -25,7 +25,8 @@ import { AiFoot, Empty, Toggle, Widget } from '@/components/dashboard-v2/ui';
 import { DistChart, EquityChart, HourBars, MaeScatter, RollingChart } from '@/components/dashboard-v2/charts';
 import { BeforeYouTrade, BehaviourBars, Heatmap, KeepLine, KpiRibbon, LeaksList, PlanList, RecentTable, SymbolsTable } from '@/components/dashboard-v2/widgets';
 import NextUpCard from '@/components/dashboard-v2/next-up';
-import { ConnectArt, ErrorArt } from '@/components/dashboard-v2/art';
+import { ConnectArt } from '@/components/dashboard-v2/art';
+import { errorKind, LoadError, NoTradesState, RefreshBanner, useAutoRetry, WaitingState, type LoadErrorKind } from '@/components/dashboard-v2/states';
 import { hide as hideNext, isHidden as nextHidden, pickNextUp, tomorrow } from '@/lib/dashboard-next';
 import { AskBox, type AskState } from '@/components/dashboard-v2/ask';
 import { LayoutEditor, useDashLayouts, type EditTarget } from '@/components/dashboard-v2/layout-editor';
@@ -41,6 +42,8 @@ const RANGES: { key: RangeKey; api: DashRange; short: string; label: string }[] 
 ];
 interface Filters { symbol?: string; session?: DashSession; side?: 'LONG' | 'SHORT'; tag?: string }
 const AI_KEY = 'tl-dash-ai-notes';
+/** The last numbers per view (account, range, filters) for this visit; never written to disk. */
+const VIEW_CACHE = new Map<string, { d: DashboardV2DTO; at: number }>();
 
 function useMedia(q: string): boolean {
   const [m, setM] = useState(false);
@@ -58,6 +61,9 @@ export default function DashboardPage() {
   const [data, setData] = useState<DashboardV2DTO | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [errKind, setErrKind] = useState<LoadErrorKind | null>(null);
+  const [fails, setFails] = useState(0);
+  const [okAt, setOkAt] = useState<number | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [syncedAt, setSyncedAt] = useState<string | null>(null);
   const [showConnect, setShowConnect] = useState(false);
@@ -115,22 +121,42 @@ export default function DashboardPage() {
     return base;
   }, [selected, span, filters]);
 
+  // Each view is kept for this visit, so coming back (or a failed refresh) shows the last
+  // numbers straight away instead of a blank page; the fresh copy replaces them when it lands.
   const load = useCallback(async (p: DashParams) => {
     const id = ++req.current;
-    setLoading(true); setError('');
+    const key = JSON.stringify(p);
+    const kept = VIEW_CACHE.get(key);
+    if (kept) { setData(kept.d); setOkAt(kept.at); }
+    setLoading(true);
     try {
       const d = await dashV2.get(p);
-      if (id === req.current) setData(d);
+      if (id !== req.current) return;
+      VIEW_CACHE.set(key, { d, at: Date.now() });
+      setData(d); setOkAt(Date.now()); setError(''); setErrKind(null); setFails(0);
     } catch (err) {
-      if (id === req.current) setError(err instanceof Error ? err.message : 'Failed to load the dashboard');
+      if (id !== req.current || (err as Error)?.name === 'AbortError') return;
+      setError(err instanceof Error ? err.message : 'Failed to load the dashboard');
+      setErrKind(errorKind(err));
+      setFails(n => n + 1);
     } finally { if (id === req.current) setLoading(false); }
   }, []);
+  const retry = useCallback(() => { if (params) void load(params); }, [params, load]);
+  const retryIn = useAutoRetry(fails, errKind, retry);
+  // New account: forget filters that belonged to the old one, and any open answer. (Runs before the
+  // load below, so a kept copy of the new view isn't wiped straight after it's shown.)
+  useEffect(() => { setFilters(f => (Object.keys(f).length ? {} : f)); setAsk({ status: 'idle' }); setData(null); setError(''); setErrKind(null); setFails(0); setSyncedAt(selected?.lastSyncAt ?? null); }, [selected?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (params) void load(params);
     else if (!accountsLoading) setLoading(false);
   }, [params, accountsLoading, load]);
-  // New account: forget filters that belonged to the old one, and any open answer.
-  useEffect(() => { setFilters({}); setAsk({ status: 'idle' }); setData(null); setSyncedAt(selected?.lastSyncAt ?? null); }, [selected?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Connected but no closed trade yet: look again every minute, so the page fills in by itself.
+  const waiting = !!data && data.counts.allClosed === 0;
+  useEffect(() => {
+    if (!waiting || !params) return;
+    const id = setInterval(() => { if (document.visibilityState === 'visible') void load(params); }, 60_000);
+    return () => clearInterval(id);
+  }, [waiting, params, load]);
 
   const sync = useCallback(async () => {
     if (!selected || !params) return;
@@ -241,25 +267,7 @@ export default function DashboardPage() {
           )}
         </header>
 
-        {error && !data && selected ? (
-          <section className="d2-card d2-connect d2-fail" role="alert" data-testid="dashboard-error">
-            <div className="d2-connect-art"><ErrorArt /></div>
-            <div className="d2-connect-t">
-              <h2>Couldn&rsquo;t load your dashboard</h2>
-              <p>Your trades are safe; the numbers just didn&rsquo;t reach this page. This is usually a blip, so try again in a moment.</p>
-              <small className="d2-dim">{error}</small>
-              <div className="d2-row">
-                <button type="button" className="x-btn x-btn--hi" onClick={() => params && load(params)} disabled={loading}>{loading ? 'Trying…' : 'Try again'}</button>
-                <Link href="/trades" className="x-btn">Open the trade log</Link>
-              </div>
-            </div>
-          </section>
-        ) : error && (
-          <div className="d2-banner" role="alert" data-testid="dashboard-error">
-            <span><b>Couldn&rsquo;t load your dashboard.</b> {error}</span>
-            <button type="button" className="x-btn x-btn--sm" onClick={() => params && load(params)}>Try again</button>
-          </div>
-        )}
+        {error && data && errKind && <RefreshBanner kind={errKind} at={okAt} retryIn={retryIn} busy={loading} onRetry={retry} />}
 
         {!selected && !accountsLoading ? (
           <section className="d2-card d2-connect" data-testid="dashboard-empty">
@@ -271,18 +279,11 @@ export default function DashboardPage() {
               <button className="x-btn x-btn--hi x-btn--lg" onClick={() => setShowConnect(true)} data-testid="dashboard-connect"><IPlus size={15} />Connect MT5</button>
             </div>
           </section>
-        ) : !data ? (error ? null : <Skeleton />) : data.counts.allClosed === 0 ? (
-          <section className="d2-card d2-connect" data-testid="dashboard-waiting">
-            <div className="d2-connect-art"><ConnectArt waiting /></div>
-            <div className="d2-connect-t">
-              <h2>Waiting for your first closed trade</h2>
-              <p>{selected?.broker} is connected. As soon as a position closes it shows up here, usually within a few minutes.</p>
-              <div className="d2-row">
-                <button type="button" className="x-btn" onClick={sync} disabled={syncing}>{syncing ? 'Checking…' : 'Check now'}</button>
-                <Link href="/brokers" className="x-btn x-btn--ghost">Manage brokers</Link>
-              </div>
-            </div>
-          </section>
+        ) : !data ? (error && errKind
+          ? <LoadError kind={errKind} message={error} retryIn={retryIn} busy={loading} fails={fails} onRetry={retry} />
+          : <Skeleton />) : data.counts.allClosed === 0 ? (
+          <WaitingState broker={selected?.broker ?? ''} login={selected?.mt5Login ?? ''} ok={accountOk} syncedAt={syncedAt}
+            checkedAt={okAt} checking={syncing || loading} onCheck={sync} />
         ) : (
           <>
             {showNext && next && <NextUpCard n={next} onLater={laterNext} onStart={startNext} onAsk={askNext} />}
@@ -321,14 +322,14 @@ export default function DashboardPage() {
                 note={layNote || (lay.where === 'device' ? 'Saved on this device until settings storage is ready' : '')} />
             )}
             {data.counts.trades === 0 || !data.kpis ? (
-              <section className="d2-card d2-connect" data-testid="dashboard-no-trades">
-                <h2>No closed trades in this view</h2>
-                <p>{data.counts.inWindow ? `${plural(data.counts.inWindow, 'trade')} in ${rangeLabel.toLowerCase()}, none match the filters.` : `Nothing closed in ${rangeLabel.toLowerCase()}. ${plural(data.counts.allClosed, 'trade')} in total.`}</p>
-                <div className="d2-row">
-                  {hasFilters && <button type="button" className="x-btn" onClick={() => setFilters({})}>Clear filters</button>}
-                  {span !== 'ALL' && <button type="button" className="x-btn" onClick={() => setSpan('ALL')}>Show all time</button>}
-                </div>
-              </section>
+              <NoTradesState inWindow={data.counts.inWindow} all={data.counts.allClosed} rangeLabel={rangeLabel}
+                chips={[
+                  ...(filters.symbol ? [{ key: 'symbol', label: filters.symbol, onRemove: () => setFilters(f => ({ ...f, symbol: undefined })) }] : []),
+                  ...(filters.session ? [{ key: 'session', label: `${SESSION_SHORT[filters.session]} session`, onRemove: () => setFilters(f => ({ ...f, session: undefined })) }] : []),
+                  ...(filters.side ? [{ key: 'side', label: filters.side === 'LONG' ? 'Longs' : 'Shorts', onRemove: () => setFilters(f => ({ ...f, side: undefined })) }] : []),
+                  ...(filters.tag ? [{ key: 'tag', label: `Tag: ${filters.tag}`, onRemove: () => setFilters(f => ({ ...f, tag: undefined })) }] : []),
+                ]}
+                onClear={hasFilters ? () => setFilters({}) : undefined} onAllTime={span !== 'ALL' ? () => setSpan('ALL') : undefined} />
             ) : (
               <div className={`d2-body${loading ? ' d2-stale' : ''}`} aria-busy={loading}>
                 <KpiRibbon k={data.kpis} trades={data.counts.trades} behaviour={data.behaviour} minTrades={data.minTrades} ai={ai} />

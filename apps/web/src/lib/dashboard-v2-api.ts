@@ -5,16 +5,27 @@ const USE_MOCKS = process.env.NEXT_PUBLIC_USE_MOCKS === 'true';
 const PREFIX = USE_MOCKS ? '/data' : '/api';
 const API = USE_MOCKS ? '' : (process.env.NEXT_PUBLIC_API_URL || '');
 
+/** An API error with the HTTP status (0 = no answer at all). */
+export type DashError = Error & { code?: string; status?: number };
+
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API}${PREFIX}${path}`, {
-    ...(USE_MOCKS ? {} : { credentials: 'include' as const }),
-    headers: { 'Content-Type': 'application/json', ...init?.headers },
-    ...init,
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${API}${PREFIX}${path}`, {
+      ...(USE_MOCKS ? {} : { credentials: 'include' as const }),
+      headers: { 'Content-Type': 'application/json', ...init?.headers },
+      ...init,
+    });
+  } catch (e) {
+    // fetch only rejects when the request never got an answer (offline, DNS, blocked).
+    if ((e as Error)?.name === 'AbortError') throw e;
+    throw Object.assign(new Error('No connection to TRADElogs'), { status: 0 }) as DashError;
+  }
   const json = await res.json().catch(() => null);
   if (!res.ok) {
-    const err = new Error(json?.error?.message ?? `Request failed: ${res.status}`) as Error & { code?: string };
+    const err = new Error(json?.error?.message ?? `Request failed: ${res.status}`) as DashError;
     err.code = json?.error?.code;
+    err.status = res.status;
     throw err;
   }
   return json.data as T;
