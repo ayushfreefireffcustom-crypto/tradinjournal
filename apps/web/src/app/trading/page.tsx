@@ -17,6 +17,7 @@ import { IPlus } from '@/components/v6/icons';
 import { ApiError, exchangesApi, price, signedUsd, toneOf, tradingApi, usd, venueName, type CloseManyResult, type Protection, type SetProtectionResult, type DeskClosedTrade, type DeskOrder, type DeskOrderFilters, type DeskOrderStatus, type DeskPendingOrder, type DeskPosition } from '@/lib/copy-api';
 import '@/styles/v6/kit.css';
 import '@/styles/v6/trading.css';
+import EmptyState from '@/components/v6/ui/empty-state';
 
 type Tab = 'open' | 'pending' | 'closed' | 'rejected' | 'log';
 type Detail = { title: string; rows: Array<[string, string | null]> };
@@ -132,7 +133,7 @@ export default function TradingPage() {
 }
 
 function Empty({ title, body, testId }: { title: string; body: React.ReactNode; testId: string }) {
-  return <div className="x-card x-empty" data-testid={testId}><b>{title}</b><p>{body}</p></div>;
+  return <div className="x-card"><EmptyState icon="signal" testId={testId} title={title}>{body}</EmptyState></div>;
 }
 
 function OpenTable({ rows, onClose, onDetail, onBulk, onProtect }: { rows: DeskPosition[]; onClose: (p: DeskPosition) => void; onDetail: (d: Detail) => void; onBulk: (rows: DeskPosition[], all: boolean) => void; onProtect: (p: DeskPosition) => void }) {

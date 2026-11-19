@@ -6,7 +6,7 @@ import AppShell from '@/components/app-shell';
 import ConnectBrokerModal from '@/components/connect-broker-modal';
 import { pipMove, pipSize } from '@/components/replay/trade-chart';
 import { useTradeCandles } from '@/lib/use-trade-candles';
-import { ICheck, IClose, IPlus, ISearch, IReplay, IArrowLeft, IArrowRight } from '@/components/v6/icons';
+import { ICheck, IClose, IPlus, ISearch, IArrowLeft, IArrowRight } from '@/components/v6/icons';
 import { SideChip } from '@/components/v6/desk';
 import { ReplayChart } from '@/components/v6/journal/replay-chart';
 import { EmotionChips, TagEditor } from '@/components/v6/journal/chips';
@@ -17,6 +17,7 @@ import { useAccounts } from '@/lib/use-accounts';
 import NotesView from '@/components/v6/journal/notes-view';
 import JournalViewSwitch from '@/components/v6/journal/view-switch';
 import '@/styles/v6/journal.css';
+import EmptyState from '@/components/v6/ui/empty-state';
 
 const EMOTIONS = ['Disciplined', 'Confident', 'Patient', 'FOMO', 'Revenge', 'Hesitant'];
 type FilterKey = 'all' | 'wins' | 'losses' | 'journaled';
@@ -218,13 +219,13 @@ function ChartReplay() {
             <div className="jn-detail"><div className="x-skel" style={{ height: 600 }} /><div className="x-skel" style={{ height: 300 }} /></div>
           </div>
         ) : trades.length === 0 ? (
-          <section className="x-card x-empty" data-testid="replay-empty">
-            <span className="x-ic"><IReplay size={22} /></span>
-            <b>{selected ? 'No closed positions yet' : 'Replay every trade'}</b>
-            <p>{selected
-              ? (error ? `Your ${selected.broker} positions will show here once the connection is back.` : `Closed positions on ${selected.broker} appear here after the next sync, redrawn with your entry and exit.`)
-              : 'Connect your MT5 account and each closed position is redrawn with your entry and exit, ready for notes.'}</p>
-            {!selected && <button className="x-btn x-btn--hi" onClick={() => setShowConnect(true)}><IPlus size={15} />Connect MT5</button>}
+          <section className="x-card">
+            <EmptyState icon={selected ? 'signal' : 'plug'} testId="replay-empty" title={selected ? 'No closed positions yet' : 'Replay every trade'}
+              actions={!selected ? <button className="x-btn x-btn--hi" onClick={() => setShowConnect(true)}><IPlus size={15} />Connect MT5</button> : undefined}>
+              {selected
+                ? (error ? `Your ${selected.broker} positions will show here once the connection is back.` : `Closed positions on ${selected.broker} appear here after the next sync, redrawn with your entry and exit.`)
+                : 'Connect your MT5 account and each closed position is redrawn with your entry and exit, ready for notes.'}
+            </EmptyState>
           </section>
         ) : (
           <div className="jn-replay" data-view={view}>

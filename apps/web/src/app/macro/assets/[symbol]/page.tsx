@@ -12,6 +12,7 @@ import { biasTone, formatSignedPct } from '@/lib/macro-format';
 import { BiasTag, IChevronL, ScoreTrack, useDocTheme } from '@/components/v6/macro/ui';
 import MacroCompliance from '@/components/v6/macro/compliance';
 import WatchStar from '@/components/v6/ui/watch-star';
+import EmptyState from '@/components/v6/ui/empty-state';
 
 const NAMES: Record<string, string> = {
   BTC: 'Bitcoin',
@@ -127,10 +128,8 @@ export default function MacroAssetPage() {
         <div className="mc mc-asset" data-testid="macro-asset-page">
           {error && <div className="x-banner x-banner--err" role="alert"><span>{error}</span></div>}
           {!bias && !error && (
-            <div className="x-card x-empty">
-              <b>Unknown asset “{symbol}”</b>
-              <p>Open an asset from the macro bias grid.</p>
-              <Link href="/macro" className="x-btn x-btn--hi">Back to macro</Link>
+            <div className="x-card">
+              <EmptyState icon="search" title={<>Unknown asset “{symbol}”</>} actions={<Link href="/macro" className="x-btn x-btn--hi">Back to macro</Link>}>Open an asset from the macro bias grid.</EmptyState>
             </div>
           )}
 

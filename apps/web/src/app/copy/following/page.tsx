@@ -11,10 +11,11 @@ import StopDialog from '@/components/v6/copy/stop-dialog';
 import { FollowStatusTag, Monogram, useCopyStream } from '@/components/v6/copy/parts';
 import { ago, useLoad, usePoll } from '@/components/v6/ui/data';
 import ErrorCard from '@/components/v6/ui/error-card';
-import { IMirror, IPause, IPlay } from '@/components/v6/icons';
+import { IPause, IPlay } from '@/components/v6/icons';
 import { followsApi, signedUsd, sizingLabel, toneOf, venueName, type Follow } from '@/lib/copy-api';
 import '@/styles/v6/kit.css';
 import '@/styles/v6/copy.css';
+import EmptyState from '@/components/v6/ui/empty-state';
 
 export default function FollowingPage() {
   const toast = useToast();
@@ -56,11 +57,10 @@ export default function FollowingPage() {
         {follows.error ? <ErrorCard message={follows.error} onRetry={follows.reload} /> : follows.loading && !follows.data ? (
           <div className="cp-grid">{[0, 1].map(i => <div key={i} className="x-skel cp-skel-card" />)}</div>
         ) : list.length === 0 ? (
-          <div className="x-card x-empty" data-testid="following-empty">
-            <span className="x-ic"><IMirror size={22} /></span>
-            <b>{showStopped ? 'No copies yet' : 'You’re not copying anyone'}</b>
-            <p>Pick a leader, choose your size, and their new trades are copied to your exchange account.</p>
-            <Link href="/copy" className="x-btn x-btn--hi">Browse leaders</Link>
+          <div className="x-card">
+            <EmptyState icon="compare" testId="following-empty" title={showStopped ? 'No copies yet' : 'You’re not copying anyone'} actions={<Link href="/copy" className="x-btn x-btn--hi">Browse leaders</Link>}>
+              Pick a leader, choose your size, and their new trades are copied to your exchange account.
+            </EmptyState>
           </div>
         ) : (
           <section className="cp-grid" aria-label="Copies" data-testid="following-list">

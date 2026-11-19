@@ -15,6 +15,7 @@ import { tone, usd } from '@/lib/strategies-api';
 import '@/styles/v6/kit.css';
 import '@/styles/v6/markets.css';
 import '@/styles/v6/marketplace.css';
+import EmptyState from '@/components/v6/ui/empty-state';
 
 const STATUS: Record<Subscription['status'], [string, string]> = { active: ['Running', 'x-tag--g'], paused: ['Paused', ''], cancelled: ['Cancelled', ''], ended: ['Stopped', ''], attention: ['Needs attention', 'x-tag--r'] };
 
@@ -81,7 +82,7 @@ export default function SubscriptionsPage() {
     <AppShell legacy={false} pageTitle="Subscriptions" pageSubtitle="Marketplace strategies you run" actions={<Link className="x-btn" href="/marketplace">Marketplace</Link>}>
       <div className="x-page mk-page" data-testid="mk-subs-page">
         {list.error ? <ErrorCard message={list.error} onRetry={list.reload} /> : !list.data ? <div className="x-skel" style={{ height: 300 }} /> : !rows.length ? (
-          <div className="x-card x-empty" data-testid="mk-subs-empty"><b>You’re not running any marketplace strategies</b><p>Pick one in the <Link className="x-link" href="/marketplace">marketplace</Link> and run it on paper first.</p></div>
+          <div className="x-card"><EmptyState icon="play" testId="mk-subs-empty" title="You’re not running any marketplace strategies" actions={<Link className="x-btn x-btn--hi" href="/marketplace">Browse the marketplace</Link>}>Pick one and run it on paper first.</EmptyState></div>
         ) : (
           <>
             {live.length > 0 ? <div className="mk-subs">{live.map(row)}</div> : <p className="x-muted">Nothing running right now.</p>}

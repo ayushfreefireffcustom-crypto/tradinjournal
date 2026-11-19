@@ -12,11 +12,12 @@ import { useLoad } from '@/components/v6/ui/data';
 import ErrorCard from '@/components/v6/ui/error-card';
 import Modal from '@/components/v6/ui/modal';
 import Sparkline from '@/components/v6/ui/sparkline';
-import { IArrowRight, ILeader, ISearch } from '@/components/v6/icons';
+import { IArrowRight, ISearch } from '@/components/v6/icons';
 import { TRADING_ENABLED } from '@/lib/features';
 import { leadersApi, followsApi, pct, RANGE_LABEL, signedUsd, toneOf, usd, venueName, type LeaderCard, type LeaderDetail, type LeaderRange, type LeaderSort } from '@/lib/copy-api';
 import '@/styles/v6/kit.css';
 import '@/styles/v6/copy.css';
+import EmptyState from '@/components/v6/ui/empty-state';
 
 const SORTS: Array<{ id: LeaderSort; label: string }> = [
   { id: 'roi', label: 'Return' },
@@ -84,11 +85,11 @@ export default function LeadersPage() {
         {leaders.error ? <ErrorCard message={leaders.error} onRetry={leaders.reload} /> : leaders.loading && !leaders.data ? (
           <div className="cp-lb">{[0, 1, 2, 3].map(i => <div key={i} className="x-skel cp-skel-leader" />)}</div>
         ) : list.length === 0 ? (
-          <div className="x-card x-empty" data-testid="leaders-empty">
-            <span className="x-ic"><ILeader size={22} /></span>
-            <b>{query ? `No leaders match “${query}”` : 'No leaders yet'}</b>
-            <p>{query ? 'Try another name.' : 'Leaders appear here once we verify their exchange account. Trade well? Apply to be one of the first.'}</p>
-            {!query && <Link href="/copy/lead" className="x-btn x-btn--hi">Become a leader</Link>}
+          <div className="x-card">
+            <EmptyState icon={query ? 'search' : 'compare'} testId="leaders-empty" title={query ? `No leaders match “${query}”` : 'No leaders yet'}
+              actions={!query ? <Link href="/copy/lead" className="x-btn x-btn--hi">Become a leader</Link> : undefined}>
+              {query ? 'Try another name.' : 'Leaders appear here once we verify their exchange account. Trade well? Apply to be one of the first.'}
+            </EmptyState>
           </div>
         ) : (
           <>

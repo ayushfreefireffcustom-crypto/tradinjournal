@@ -28,7 +28,8 @@ const COPY: Record<Kind, { title: string; body: string }> = {
 const tries = new Map<string, number[]>();
 const WAITS = [5, 15, 30];
 
-export default function ErrorCard({ message, onRetry, title, compact }: { message: string; onRetry?: () => void; title?: string; compact?: boolean }) {
+/** `bare`: inside an existing card, so no card of its own. */
+export default function ErrorCard({ message, onRetry, title, compact, bare }: { message: string; onRetry?: () => void; title?: string; compact?: boolean; bare?: boolean }) {
   const kind = kindOf(message);
   const c = COPY[kind];
   const [left, setLeft] = useState<number | null>(null);
@@ -61,7 +62,7 @@ export default function ErrorCard({ message, onRetry, title, compact }: { messag
   const status = kind === 'offline' ? 'Waiting for your connection' : left != null ? `Trying again in ${left} s` : null;
   const next = typeof window !== 'undefined' ? window.location.pathname + window.location.search : '/dashboard';
   return (
-    <div className={`x-card st-state${compact ? ' st-state--sm' : ''}`} role="alert" data-testid="error-card">
+    <div className={`${bare ? '' : 'x-card '}st-state${compact ? ' st-state--sm' : ''}`} role="alert" data-testid="error-card">
       <SceneDisc size={compact ? 'sm' : undefined}>{kind === 'offline' ? <OfflineArt tight /> : kind === 'auth' ? <SessionArt tight /> : <ErrorArt tight />}</SceneDisc>
       <b className="st-t">{title ?? c.title}</b>
       <p>{c.body}</p>
@@ -72,7 +73,7 @@ export default function ErrorCard({ message, onRetry, title, compact }: { messag
           : onRetry && <button type="button" className="x-btn x-btn--hi" onClick={() => { setLeft(null); onRetry(); }}><ArrowClockwise size={15} aria-hidden />Try again now</button>}
         <Link className="x-btn x-btn--ghost" href="/help">Get help</Link>
       </div>
-      {kind === 'other' && <small className="st-code">{message}</small>}
+      {kind === 'other' && !/unexpected token|<!doctype|json/i.test(message) && <small className="st-code">{message}</small>}
     </div>
   );
 }

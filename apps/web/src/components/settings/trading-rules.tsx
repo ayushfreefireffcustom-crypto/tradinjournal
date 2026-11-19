@@ -14,6 +14,7 @@ import {
   sameRules, useTradingPrefs, validHours, type RuleKey, type RulesPreviewDTO, type TradingRules,
 } from '@/lib/trading-prefs';
 import './trading-rules.css';
+import ErrorCard from '@/components/v6/ui/error-card';
 
 type NumKey = Exclude<RuleKey, 'tradingHours'>;
 interface Draft {
@@ -112,7 +113,7 @@ export default function TradingRulesSection({ accountId }: { accountId: string |
       {state.status === 'loading' || (prefs && !draft) ? (
         <div className="ac-st-sk" data-testid="trading-rules-loading" aria-busy="true">{[0, 1, 2, 3].map(i => <i key={i} className="x-skel x-skel--in" />)}</div>
       ) : state.status === 'error' ? (
-        <div className="x-banner x-banner--err" role="alert" data-testid="trading-rules-error"><span>{state.error}</span></div>
+        <div data-testid="trading-rules-error"><ErrorCard bare compact title="Couldn’t load your rules" message={state.error} /></div>
       ) : draft && parsed && (
         <>
           <div className="ac-st-grp">

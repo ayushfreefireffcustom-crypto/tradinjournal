@@ -10,6 +10,8 @@ import { useToast } from '@/components/toast';
 import { api, NOTIFICATION_GROUPS, NOTIFICATION_GROUP_LABELS, type Inbox, type InboxItem, type InboxStatus, type NotificationGroup } from '@/lib/api';
 import { getSoundOn, setSoundOn } from '@/lib/notification-sound';
 import '@/styles/v6/inbox.css';
+import ErrorCard from '@/components/v6/ui/error-card';
+import EmptyState from '@/components/v6/ui/empty-state';
 
 const STATUSES: Array<{ id: InboxStatus; label: string }> = [
   { id: 'unread', label: 'Unread' },
@@ -125,14 +127,13 @@ export default function NotificationsPage() {
           </div>
 
           {error ? (
-            <div className="x-empty"><b>Couldn&rsquo;t load notifications</b><p>{error}</p><button className="x-btn" onClick={() => void load()}>Try again</button></div>
+            <ErrorCard bare title="Couldn’t load notifications" message={error} onRetry={() => void load()} />
           ) : !data ? (
             <div className="ib-sk">{[0, 1, 2, 3].map(i => <i key={i} className="x-skel x-skel--in" />)}</div>
           ) : data.items.length === 0 ? (
-            <div className="x-empty" data-testid="inbox-empty">
-              <b>{status === 'archived' ? 'Nothing archived' : status === 'unread' ? 'You’re all caught up' : totalAll === 0 ? 'No notifications yet' : 'Nothing here yet'}</b>
-              <p>{group ? NOTIFICATION_GROUP_LABELS[group].hint : 'Trade fills, risk alerts, AI signals, news and system messages show up here.'}</p>
-            </div>
+            <EmptyState icon="bell" art={status === 'unread' ? 'shield' : 'bell'} testId="inbox-empty" title={status === 'archived' ? 'Nothing archived' : status === 'unread' ? 'You’re all caught up' : totalAll === 0 ? 'No notifications yet' : 'Nothing here yet'}>
+              {group ? NOTIFICATION_GROUP_LABELS[group].hint : 'Trade fills, risk alerts, AI signals, news and system messages show up here.'}
+            </EmptyState>
           ) : (
             <ul className="ib-list" data-testid="inbox-list">
               {data.items.map(n => (
