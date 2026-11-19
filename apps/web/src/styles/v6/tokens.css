@@ -64,6 +64,11 @@
   --field: rgba(255, 255, 255, .035);
   --r-sheet: 24px;
   --r-tile: 16px;
+  /* Still drawings (empty, error and offline states): paper, edges, ink; green/red marks. */
+  --d2-g: #08C465; --d2-r: #FE3A31;
+  --art-paper: #212121; --art-paper-2: #1C1C1C; --art-paper-3: #191919;
+  --art-edge: #4A4A4A; --art-edge-2: #343434; --art-edge-3: #2E2E2E;
+  --art-ink: rgba(237, 237, 237, .85); --art-line: #3A3A3A; --art-wick: #5C5C5C; --art-shadow: rgba(0, 0, 0, .45);
 
   --r-dlg: 24px;    /* dialogs and sheets */
   --r-card: 20px;
@@ -129,6 +134,9 @@ html[data-theme=light] .v6 {
   --glyph: linear-gradient(180deg, #FFFFFF, #F0F0F3);
   --glyph-shadow: 0 0 0 1px rgba(0, 0, 0, .08), inset 0 -2px 0 rgba(0, 0, 0, .04), 0 6px 14px -8px rgba(0, 0, 0, .3);
   --field: #F6F6F8;
+  --art-paper: #FFFFFF; --art-paper-2: #F7F7F9; --art-paper-3: #F1F1F4;
+  --art-edge: rgba(0, 0, 0, .16); --art-edge-2: rgba(0, 0, 0, .1); --art-edge-3: rgba(0, 0, 0, .08);
+  --art-ink: #2A2A2E; --art-line: #E2E2E7; --art-wick: #B4B4BB; --art-shadow: rgba(0, 0, 0, .07);
   --series-1: #2A78D6; --series-2: #EB6834; --series-3: #1BAF7A;
   --series-4: #EDA100; --series-5: #E87BA4; --series-6: #6250D6; --series-other: #C4C4CA;
   color-scheme: light;

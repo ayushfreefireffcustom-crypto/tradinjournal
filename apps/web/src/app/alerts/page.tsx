@@ -3,7 +3,8 @@
 // Indicator alerts (E4): rules like "RSI(14) crosses below 30 on BTCUSDT 1h",
 // checked at every bar close, with recent firings. Price-level alerts stay on
 // the Charts page.
-import { ChartBar, Lightning, Plus, TrendUp, Waveform, type Icon } from '@phosphor-icons/react';
+import { ArrowCounterClockwise, Pause, Play as PlayIcon, Plus, Trash } from '@phosphor-icons/react';
+import { PatternArt, Proximity, dayLabel } from '@/components/v6/alerts/alert-bits';
 import EmptyState from '@/components/v6/ui/empty-state';
 import Link from '@/components/v6/ui/link';
 import { useEffect, useMemo, useState } from 'react';
@@ -18,7 +19,7 @@ import OperandPicker from '@/components/v6/indicators/operand-picker';
 import {
   IA_OPERATORS, IA_TIMEFRAMES, OPERATOR_LABEL, comparable, indicatorAlertsApi,
   type CatalogueItem, type IaOperator, type IaTimeframe, type IndicatorAlert, type IndicatorOperand, type Operand, type Preview, type RuleBody,
-  type WatchRule,
+  type Firing, type WatchRule,
 } from '@/lib/indicator-alerts-api';
 import { Kpi, Pair } from '@/components/v6/ui/lux';
 import '@/styles/v6/kit.css';
@@ -33,6 +34,11 @@ const COOLDOWNS: Array<{ sec: number; label: string }> = [
 const cooldownLabel = (s: number) => COOLDOWNS.find(c => c.sec === s)?.label ?? `${Math.round(s / 60)} min`;
 const EVERY: Record<number, string> = { 900: '15 minutes', 3600: 'hour', 14_400: '4 hours', 86_400: 'day' };
 const repeatLabel = (r: IndicatorAlert) => (!r.recurring ? 'Once, then stops' : r.cooldownSec === 0 ? 'Repeats on every qualifying bar' : `Repeats, at most once every ${EVERY[r.cooldownSec] ?? cooldownLabel(r.cooldownSec)}`);
+const groupByDay = (rows: Firing[]): Array<[string, Firing[]]> => {
+  const out: Array<[string, Firing[]]> = [];
+  for (const f of rows) { const k = dayLabel(f.firedAt); const g = out.find(x => x[0] === k); if (g) g[1].push(f); else out.push([k, [f]]); }
+  return out;
+};
 const ind = (id: string, output = 'value', params?: Record<string, number>): IndicatorOperand => ({ kind: 'indicator', id, output, ...(params ? { params } : {}) });
 
 const PRESETS: Array<{ name: string; tf?: IaTimeframe; left: IndicatorOperand; operator: IaOperator; right: Operand }> = [
@@ -87,49 +93,60 @@ export default function AlertsPage() {
             Get told the moment an indicator condition is met. It&rsquo;s checked at every bar close and reaches your inbox, push and Telegram.
           </EmptyState></div>
         ) : (
-          <section className="x-card" aria-label="Your alerts">
-            <div className="x-ch"><h2>Your alerts</h2><span className="x-sub">{count} of {MAX_RULES}</span></div>
-            <div className="x-tblwrap">
-              <table className="x-tbl trd-tbl ia-tbl" data-testid="ia-table">
-                <thead><tr><th>Market</th><th>Condition</th><th>At last close</th><th>Last alert</th><th>Status</th><th /></tr></thead>
-                <tbody>
-                  {rules.data.map(r => (
-                    <tr key={r.id} className={r.status === 'active' ? '' : 'ak-off'} data-testid={`ia-row-${r.id}`}>
-                      <td><span className="ia-mkt"><Link className="sc-pair" href={`/charts?symbol=${encodeURIComponent(r.symbol)}&tf=${r.timeframe}`}><Pair base={r.symbol} quote={null} /></Link><span className="x-tag x-tag--m">{r.timeframe}</span></span></td>
-                      <td>{r.rule && <b className="ia-rulename">{r.rule.name}</b>}<span data-testid="ia-desc">{r.description}</span>{r.note && <div className="x-muted ia-note">{r.note}</div>}<div className="x-muted ia-note">{repeatLabel(r)}</div>
-                        <details className="ia-why" data-testid="ia-why"><summary>What it means</summary><p>{r.explanation.what}</p><p><b>Why it matters.</b> {r.explanation.why}</p><p><b>Where it misleads.</b> {r.explanation.caution}</p></details></td>
-                      <td>{r.lastBarTime ? <span className="m">{fmt(r.lastLeft)}{r.right.kind === 'indicator' && <> vs {fmt(r.lastRight)}</>}</span> : <span className="x-muted">Waiting for a bar close</span>}</td>
-                      <td>{r.lastFiredAt ? ago(r.lastFiredAt) : <span className="x-muted">Never</span>}</td>
-                      <td><span className={`st-status ia-st--${r.status}`} data-testid="ia-status">{r.status === 'active' ? 'Active' : r.status === 'paused' ? 'Paused' : 'Triggered'}</span></td>
-                      <td className="trd-acts">
-                        {r.status === 'active'
-                          ? <button className="x-btn x-btn--sm" disabled={busyId === r.id} onClick={() => void setStatus(r, 'paused')} data-testid="ia-pause">Pause</button>
-                          : <button className="x-btn x-btn--sm" disabled={busyId === r.id} onClick={() => void setStatus(r, 'active')} data-testid="ia-resume">{r.status === 'triggered' ? 'Re-arm' : 'Resume'}</button>}
-                        <button className="x-btn x-btn--sm x-btn--ghost cp-del" onClick={() => setDeleting(r)} data-testid="ia-delete">Delete</button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          <section className="ia-tray" aria-label="Your alerts">
+            <div className="ia-tray-h"><h2>Your alerts</h2><span className="x-sub">{count} of {MAX_RULES}</span></div>
+            <ul className="ia-list" data-testid="ia-table">
+              {rules.data.map(r => (
+                <li key={r.id} className={`ia-row${r.status === 'active' ? '' : ' is-off'}`} data-testid={`ia-row-${r.id}`}>
+                  <div className="ia-row-mkt">
+                    <Link className="sc-pair" href={`/charts?symbol=${encodeURIComponent(r.symbol)}&tf=${r.timeframe}`}><Pair base={r.symbol} quote={null} /></Link>
+                    <span className="x-tag x-tag--m">{r.timeframe}</span>
+                  </div>
+                  <div className="ia-row-c">
+                    <b>{r.rule?.name ?? r.description}</b>
+                    {r.rule && <span data-testid="ia-desc">{r.description}</span>}
+                    {!r.rule && <span className="sr-only" data-testid="ia-desc">{r.description}</span>}
+                    <small>{repeatLabel(r)}{r.note && <> · <i className="ia-row-note">{r.note}</i></>}</small>
+                  </div>
+                  <div className="ia-row-v"><Proximity alert={r} catalogue={cat.data} /></div>
+                  <div className="ia-row-l"><small>Last alert</small><span title={r.lastFiredAt ? new Date(r.lastFiredAt).toLocaleString() : undefined}>{r.lastFiredAt ? ago(r.lastFiredAt) : 'Never'}</span>{r.fireCount > 1 && <small>{r.fireCount} times</small>}</div>
+                  <div className="ia-row-s"><span className={`st-status ia-st--${r.status}`} data-testid="ia-status">{r.status === 'active' ? 'Active' : r.status === 'paused' ? 'Paused' : 'Triggered'}</span></div>
+                  <div className="ia-row-a">
+                    {r.status === 'active'
+                      ? <button className="x-btn x-btn--sm" disabled={busyId === r.id} onClick={() => void setStatus(r, 'paused')} data-testid="ia-pause"><Pause size={13} weight="bold" aria-hidden />Pause</button>
+                      : <button className="x-btn x-btn--sm" disabled={busyId === r.id} onClick={() => void setStatus(r, 'active')} data-testid="ia-resume">{r.status === 'triggered' ? <ArrowCounterClockwise size={13} weight="bold" aria-hidden /> : <PlayIcon size={13} weight="bold" aria-hidden />}{r.status === 'triggered' ? 'Re-arm' : 'Resume'}</button>}
+                    <button className="x-btn x-btn--sm x-btn--ghost x-btn--icon cp-del" onClick={() => setDeleting(r)} data-testid="ia-delete" aria-label={`Delete ${r.symbol} ${r.timeframe} alert`} title="Delete"><Trash size={15} aria-hidden /></button>
+                  </div>
+                  <details className="ia-why" data-testid="ia-why"><summary>What it means</summary><div><p>{r.explanation.what}</p><p><b>Why it matters.</b> {r.explanation.why}</p><p><b>Where it misleads.</b> {r.explanation.caution}</p></div></details>
+                </li>
+              ))}
+            </ul>
           </section>
         )}
 
         <WatchRules onCreated={(a) => { rules.setData((rs) => [a, ...(rs ?? [])]); toast.success(`Watching ${a.rule?.name ?? 'it'} on ${a.symbol}`); }} />
-        <section className="x-card" aria-label="Recent alerts">
-          <div className="x-ch"><h2>Recent alerts</h2><span className="x-sub">Last 30</span></div>
-          {firings.error ? <p className="cp-err">{firings.error}</p> : !firings.data ? <div className="x-skel cp-skel-table" /> : !firings.data.length ? (
+        <section className="ia-tray" aria-label="Recent alerts">
+          <div className="ia-tray-h"><h2>Recent alerts</h2><span className="x-sub">Last 30</span></div>
+          {firings.error ? <ErrorCard compact message={firings.error} onRetry={firings.reload} /> : !firings.data ? <div className="x-skel cp-skel-table" /> : !firings.data.length ? (
             <EmptyState compact icon="bell" testId="ia-firings-empty" title="Nothing has fired yet">Alerts are checked when each bar closes, so a 1h alert can take up to an hour to fire.</EmptyState>
           ) : (
-            <ul className="ia-firings" data-testid="ia-firings">
-              {firings.data.map(f => (
-                <li key={f.id}>
-                  <span className="ia-when" title={new Date(f.firedAt).toLocaleString()}>{ago(f.firedAt)}</span>
-                  <Link className="x-link" href={`/charts?symbol=${encodeURIComponent(f.symbol)}&tf=${f.timeframe}`}><b>{f.symbol}</b> {f.timeframe}</Link>
-                  <span>{f.description}</span>
-                </li>
+            <div className="ia-firings" data-testid="ia-firings">
+              {groupByDay(firings.data).map(([day, rows]) => (
+                <div key={day} className="ia-fday">
+                  <h3>{day}</h3>
+                  <ul>
+                    {rows.map(f => (
+                      <li key={f.id} className="ia-fire">
+                        <span className="ia-when" title={new Date(f.firedAt).toLocaleString()}>{new Date(f.firedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</span>
+                        <Link className="ia-fire-m" href={`/charts?symbol=${encodeURIComponent(f.symbol)}&tf=${f.timeframe}`}><Pair base={f.symbol} quote={null} /><span className="x-tag x-tag--m">{f.timeframe}</span></Link>
+                        <span className="ia-fire-d">{f.description}</span>
+                        <span className="ia-fire-v m">{fmt(f.leftValue)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               ))}
-            </ul>
+            </div>
           )}
         </section>
       </div>
@@ -291,7 +308,6 @@ function RuleBuilder({ catalogue, onClose, onCreated }: { catalogue: CatalogueIt
 }
 
 // ── Watch rules (H12): well-known conditions, explained, one click to watch ──
-const CAT_ICON: Record<WatchRule['category'], Icon> = { trend: TrendUp, momentum: Lightning, volatility: Waveform, volume: ChartBar };
 const CATS: Array<['all' | WatchRule['category'], string]> = [['all', 'All'], ['trend', 'Trend'], ['momentum', 'Momentum'], ['volatility', 'Volatility'], ['volume', 'Volume']];
 function WatchRules({ onCreated }: { onCreated: (a: IndicatorAlert) => void }) {
   const toast = useToast();
@@ -311,15 +327,17 @@ function WatchRules({ onCreated }: { onCreated: (a: IndicatorAlert) => void }) {
   if (!list.data?.length) return null;
   const shown = list.data.filter((r) => cat === 'all' || r.category === cat);
   return (
-    <section className="x-card" aria-label="Watch rules" data-testid="ia-watch" id="ia-watch">
-      <div className="x-ch"><h2>Watch rules</h2><span className="x-sub">Pick a signal and a market</span></div>
-      <div className="x-seg x-seg--in x-seg--sm ia-watch-cats" role="radiogroup" aria-label="Kind">{CATS.map(([c, l]) => <button key={c} type="button" role="radio" aria-checked={cat === c} onClick={() => setCat(c)} data-testid={`ia-wcat-${c}`}>{l}</button>)}</div>
+    <section className="ia-tray" aria-label="Ready-made rules" data-testid="ia-watch" id="ia-watch">
+      <div className="ia-tray-h ia-tray-h--wrap"><h2>Ready-made rules</h2><span className="x-sub">Pick a signal, then a market</span>
+        <div className="x-seg x-seg--in x-seg--sm ia-watch-cats" role="radiogroup" aria-label="Kind">{CATS.map(([c, l]) => <button key={c} type="button" role="radio" aria-checked={cat === c} onClick={() => setCat(c)} data-testid={`ia-wcat-${c}`}>{l}</button>)}</div>
+      </div>
       <div className="ia-watch-grid">
         {shown.map((r) => (
           <article key={r.id} className="ia-wr" data-testid={`ia-wr-${r.id}`}>
-            <div className="ia-wr-h"><span className={`lx-ic ${r.bias === 'bullish' ? 'lx-ic--g' : ''}`} aria-hidden>{(() => { const I = CAT_ICON[r.category]; return <I size={16} weight="duotone" />; })()}</span><b>{r.name}</b><span className={`x-tag ${r.bias === 'bullish' ? 'x-tag--g' : r.bias === 'bearish' ? 'x-tag--r' : ''}`}>{r.bias === 'neutral' ? 'Either way' : r.bias === 'bullish' ? 'Bullish' : 'Bearish'}</span></div>
+            <div className="ia-wr-art"><PatternArt rule={r} /></div>
+            <div className="ia-wr-h"><b>{r.name}</b><span className={`x-tag ${r.bias === 'bullish' ? 'x-tag--g' : r.bias === 'bearish' ? 'x-tag--r' : ''}`}>{r.bias === 'neutral' ? 'Either way' : r.bias === 'bullish' ? 'Bullish' : 'Bearish'}</span></div>
             <p title={`${r.explain.why} ${r.explain.caution}`}>{r.explain.what}</p>
-            <button type="button" className="x-btn x-btn--sm" onClick={() => { setPick(r); setTf(r.timeframe); }} data-testid={`ia-wr-watch-${r.id}`}><Plus size={13} weight="bold" aria-hidden />Watch</button>
+            <div className="ia-wr-f"><span className="x-tag x-tag--m">{r.timeframe}</span><button type="button" className="x-btn x-btn--sm" onClick={() => { setPick(r); setTf(r.timeframe); }} data-testid={`ia-wr-watch-${r.id}`}><Plus size={13} weight="bold" aria-hidden />Watch</button></div>
           </article>
         ))}
       </div>

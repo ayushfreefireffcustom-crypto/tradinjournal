@@ -145,14 +145,11 @@ html[data-theme=light] .v6 .lux {
 /* Not scoped to .lux: the news feed and calendar rail also render elsewhere. */
 .v6 .lx-empty { position: relative; display: grid; place-items: center; min-height: 300px; padding: 40px 24px; overflow: hidden; border-radius: inherit; text-align: center; isolation: isolate; }
 .v6 .x-card.lx-empty { border-radius: var(--r-card); }
-.v6 .lx-ghost { position: absolute; inset: 0; width: 100%; height: 100%; z-index: -1; fill: var(--tx); opacity: .035;
-  -webkit-mask-image: radial-gradient(ellipse 62% 75% at 50% 50%, transparent 40%, #000 90%); mask-image: radial-gradient(ellipse 62% 75% at 50% 50%, transparent 40%, #000 90%); }
-.v6 .lx-ghost .lx-ghost-o { fill: none; stroke: var(--tx); stroke-width: 1.5; }
-.v6 .lx-ghost .lx-ghost-l { fill: none; stroke: var(--tx); stroke-width: 3; }
 .v6 .lx-empty-in { display: grid; justify-items: center; gap: 10px; max-width: 540px; }
+.v6 .lx-empty-in > .st-disc { margin-bottom: 14px; }
 .v6 .lx-empty-p { max-width: 440px; }
 .v6 .lx-empty-ic { position: relative; display: grid; place-items: center; width: 56px; height: 56px; margin-bottom: 6px; border-radius: 18px; color: var(--g-tx);
-  background: linear-gradient(180deg, color-mix(in srgb, var(--g) 16%, var(--s2)), var(--s2)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--g) 30%, transparent), 0 0 0 6px color-mix(in srgb, var(--g) 6%, transparent), 0 12px 32px -12px color-mix(in srgb, var(--g) 45%, transparent); }
+  background: linear-gradient(180deg, color-mix(in srgb, var(--g) 16%, var(--s2)), var(--s2)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--g) 30%, transparent); }
 .v6 .lx-empty-t { font-size: var(--t4); font-weight: 800; letter-spacing: -.03em; line-height: 1.15; color: var(--tx); }
 .v6 .lx-empty-p { margin: 0; font-size: var(--t3); line-height: 1.55; color: var(--mut); }
 .v6 .lx-empty-hints { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 4px; }
@@ -186,3 +183,31 @@ html[data-theme=light] .v6 .lux {
 /* Options charts: the day-range switch sits centred beside the expiry tabs, not stretched to them. */
 .v6 .lux .op-page .x-seg { align-self: center; }
 .v6 .lux .op-tbl th, .v6 .lux .op-tbl td { padding-left: 8px; padding-right: 8px; }
+
+/* ── still drawings in a disc (components/v6/ui/scene-art.tsx; dashboard art) ─ */
+.v6 .st-art, .v6 .d2-art { width: 100%; height: 100%; display: block; overflow: visible; }
+.v6 .st-disc {
+  width: 188px; height: 188px; border-radius: 50%; flex: none; display: grid; place-items: center; overflow: hidden;
+  background: radial-gradient(circle at 50% 30%, var(--tile), var(--tray) 78%);
+  box-shadow: inset 0 0 0 1px var(--line), inset 0 1px 0 rgba(255, 255, 255, .05), 0 0 0 8px rgba(255, 255, 255, .018), 0 0 0 9px var(--line);
+}
+html[data-theme=light] .v6 .st-disc { background: radial-gradient(circle at 50% 30%, #fff, #F1F1F3 78%); box-shadow: inset 0 0 0 1px var(--line), 0 0 0 8px rgba(0, 0, 0, .02), 0 0 0 9px var(--line); }
+.v6 .st-disc .st-art { width: 84%; height: auto; }
+.v6 .st-disc .d2-art { width: 92%; height: auto; }
+.v6 .st-disc--sm { width: 128px; height: 128px; }
+@media (max-width: 760px) { .v6 .st-disc { width: 152px; height: 152px; } .v6 .st-disc--sm { width: 112px; height: 112px; } }
+
+/* ── centred problem state (components/v6/ui/error-card.tsx) ───────────────── */
+.v6 .st-state { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px; padding: 40px 24px 36px; }
+.v6 .st-state > .st-disc { margin-bottom: 14px; }
+.v6 .st-state h2, .v6 .st-state b.st-t { margin: 0; font-size: var(--t4); font-weight: 800; letter-spacing: -.03em; line-height: 1.15; color: var(--tx); }
+.v6 .st-state p { margin: 0; max-width: 460px; font-size: var(--t3); line-height: 1.55; color: var(--mut); }
+.v6 .st-state .st-live { display: inline-flex; align-items: center; gap: 8px; font-size: var(--t2); color: var(--dim); }
+.v6 .st-state .st-live i { width: 6px; height: 6px; border-radius: 50%; background: var(--dim); }
+.v6 .st-state .st-live i.on { background: var(--g); }
+.v6 .st-state .st-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 8px; }
+.v6 .st-state .st-code { font-size: 11px; color: var(--dim); font-family: var(--mono, ui-monospace, monospace); max-width: 440px; overflow-wrap: anywhere; }
+.v6 .st-state--sm { padding: 26px 16px 24px; gap: 8px; }
+.v6 .st-state--sm h2, .v6 .st-state--sm b.st-t { font-size: var(--t3); font-weight: 700; letter-spacing: -.01em; }
+.v6 .st-state--sm p { font-size: var(--t2); }
+@media (max-width: 760px) { .v6 .st-state { padding: 30px 16px 26px; } .v6 .st-state h2, .v6 .st-state b.st-t { font-size: var(--t3); font-weight: 700; } }

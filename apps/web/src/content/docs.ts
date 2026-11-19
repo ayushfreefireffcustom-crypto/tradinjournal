@@ -108,7 +108,7 @@ The **Screener** filters up to 200 of the most-traded crypto markets by price, v
     related: ['charts-alerts'],
     body: { en: `An **indicator alert** watches one condition on one market, such as "RSI(14) crosses above 30 on BTCUSDT 4h". It's checked when each bar closes, never on a bar that's still forming.
 
-**Watch rules** are ready-made, well-known conditions (golden cross, MACD crosses, Bollinger breaks, volume surges and more). Each says what it is, why traders watch it and where it misleads. Press **Watch**, pick a market and bar size, and it becomes an alert.
+**Ready-made rules** are well-known conditions (golden cross, MACD crosses, Bollinger breaks, volume surges and more). Each says what it is, why traders watch it and where it misleads. Press **Watch**, pick a market and bar size, and it becomes an alert.
 
 **When an alert fires** you get a notification in the app (and by push or Telegram if you turned those on) that includes the values and, for watch rules, why it matters. A cooldown stops one rule from repeating too often.
 
