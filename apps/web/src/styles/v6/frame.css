@@ -84,6 +84,17 @@ html[data-theme=light] .v6 .f-me:hover { filter: none; background: var(--s3); }
   border-radius: 18px; background: var(--sheet); box-shadow: var(--float), var(--edge);
   -webkit-backdrop-filter: blur(22px) saturate(1.2); backdrop-filter: blur(22px) saturate(1.2);
 }
+/* The pinned bar sits 12px below the window edge: cover that strip so the page doesn't show through above it. */
+.v6 .f-top::before {
+  content: ""; position: absolute; left: -12px; right: -12px; top: -13px; height: 13px; pointer-events: none;
+  /* the page's own backdrop, fixed to the window, so the strip is seamless */
+  background:
+    radial-gradient(closest-side, rgba(255, 255, 255, .06), rgba(255, 255, 255, 0)) calc(50% + 140px) -260px / 1200px 520px no-repeat fixed,
+    #070707;
+}
+html[data-theme=light] .v6 .f-top::before {
+  background: radial-gradient(closest-side, rgba(255, 255, 255, .9), rgba(255, 255, 255, 0)) calc(50% + 140px) -260px / 1200px 520px no-repeat fixed, var(--bg);
+}
 .v6 .f-top--crumb { min-height: 58px; padding-left: 12px; }
 .v6 .f-crumb { display: flex; align-items: center; gap: 10px; }
 /* Crumb bars: the tools take the rest of the row (a search-style field can then sit by the crumb, the rest on the right). */

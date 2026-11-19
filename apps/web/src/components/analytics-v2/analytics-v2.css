@@ -171,3 +171,24 @@ html[data-theme=light] .v6 .a2-nav { box-shadow: 0 0 0 1px var(--line), 0 1px 2p
 @container a2fix (max-width: 439.98px) {
   .v6 .a2-fix { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* Widgets with nothing to show yet: one slim list per section instead of empty cards. */
+.v6 .a2-locks { border-radius: var(--r-card); background: var(--tray); box-shadow: var(--tray-shadow); padding: 12px 12px 6px; }
+.v6 .a2-locks > .d2-cap { display: block; padding: 0 4px 8px; }
+.v6 .a2-locks ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.v6 .a2-lock { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 14px; padding: 12px 14px; margin-bottom: 6px; border-radius: var(--r-tile); background: var(--tile); box-shadow: var(--tile-shadow); min-width: 0; }
+.v6 .a2-lock-t { min-width: 0; display: grid; gap: 2px; }
+.v6 .a2-lock-t b { font-size: 14px; font-weight: 600; }
+.v6 .a2-lock-t span { font-size: 13px; color: var(--mut); line-height: 1.4; }
+.v6 .a2-lock-p { display: flex; align-items: center; gap: 10px; flex: none; }
+.v6 .a2-lock-bar { width: 96px; height: 6px; border-radius: 3px; background: var(--field); box-shadow: inset 0 0 0 1px var(--line); overflow: hidden; display: block; }
+.v6 .a2-lock-bar i { display: block; height: 100%; border-radius: 3px; background: var(--g); }
+.v6 .a2-lock-p small { font-size: 13px; font-weight: 600; color: var(--tx); min-width: 44px; text-align: right; }
+.v6 .a2-lock-a { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border-radius: var(--r-pill); font-size: 13px; font-weight: 600; color: var(--tx); text-decoration: none; background: var(--field); box-shadow: inset 0 0 0 1px var(--line-2); white-space: nowrap; }
+.v6 .a2-lock-a:hover { background: var(--s3); }
+@media (max-width: 1100px) { .v6 .a2-locks ul { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 520px) {
+  .v6 .a2-lock { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .v6 .a2-lock-bar { flex: 1; width: auto; }
+  .v6 .a2-lock-p { width: 100%; }
+}

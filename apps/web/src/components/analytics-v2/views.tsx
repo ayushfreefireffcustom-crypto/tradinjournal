@@ -3,8 +3,9 @@
 // Analytics v2 views: the Overview hero and the six focused sections. Every
 // number comes from GET /api/insights/analytics; each chart has an Explain
 // button (goes to the AI coach) and at most one AI line in its footer.
-import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { CaretDown, ChatCircleText, Check, Funnel } from '@phosphor-icons/react';
+import { Children, Fragment, isValidElement, useEffect, useRef, useState, type ReactElement, type ReactNode } from 'react';
+import Link from 'next/link';
+import { ArrowRight, CaretDown, ChatCircleText, Check, Funnel } from '@phosphor-icons/react';
 import type { AiLine } from '@/lib/dashboard-v2-api';
 import { fmtAi, isFlat, kmoney, money, pct, plural, rfmt, tone } from '@/lib/dashboard-v2-format';
 import {
@@ -47,11 +48,78 @@ function RNote({ withR, n }: { withR: number; n: number }) {
   return <div className="d2-note" data-testid="r-note">In $: R needs a stop at entry ({withR} of {n} have one).</div>;
 }
 
-function Slot({ span, children }: { span: 4 | 6 | 8 | 12; children: ReactNode }) {
+/** Why a widget can't show anything yet, and how close it is. */
+interface Lock {
+  title: string;
+  note: string;
+  /** Progress toward the threshold, when it's a count. */
+  have?: number;
+  need?: number;
+  /** Where to go to unlock it (e.g. the Journal for tags). */
+  href?: string;
+  cta?: string;
+}
+type Span = 4 | 6 | 8 | 12;
+
+/**
+ * A widget slot. `locked` = nothing to show yet: the section lists it in one slim
+ * "unlocks with more data" strip instead of an empty card.
+ */
+function Slot({ span, children }: { span: Span; locked?: Lock | null; children: ReactNode }) {
   return <div className={`a2-slot a2-s${span}`}>{children}</div>;
 }
 
+/** Slots in order; a fragment's slots count as the section's own. */
+function slotsOf(children: ReactNode): ReactElement<{ span: Span; locked?: Lock | null; children: ReactNode }>[] {
+  return Children.toArray(children).flatMap(c => {
+    if (!isValidElement(c)) return [];
+    if (c.type === Fragment) return slotsOf((c.props as { children?: ReactNode }).children);
+    return [c as ReactElement<{ span: Span; locked?: Lock | null; children: ReactNode }>];
+  });
+}
+
+/** Packs the open widgets into rows of 12; the last in a row takes what's left, so no row has a hole. */
+function packSpans(spans: Span[]): Span[] {
+  const out: Span[] = [];
+  let row: number[] = [], used = 0;
+  const close = () => { if (row.length) out[row[row.length - 1]!] = (out[row[row.length - 1]!]! + (12 - used)) as Span; row = []; used = 0; };
+  spans.forEach((sp, i) => {
+    if (used + sp > 12) close();
+    out[i] = sp; row.push(i); used += sp;
+  });
+  close();
+  return out;
+}
+
+function LockStrip({ locks }: { locks: Lock[] }) {
+  return (
+    <section className="a2-locks" aria-label="Unlocks with more data" data-testid="a2-locks">
+      <span className="d2-cap">Unlocks with more data</span>
+      <ul>
+        {locks.map(l => {
+          const p = l.need ? Math.min(1, (l.have ?? 0) / l.need) : null;
+          return (
+            <li key={l.title} className="a2-lock">
+              <div className="a2-lock-t"><b>{l.title}</b><span>{l.note}</span></div>
+              {p != null ? (
+                <div className="a2-lock-p" title={`${l.have ?? 0} of ${l.need}`}>
+                  <span className="a2-lock-bar" role="meter" aria-valuemin={0} aria-valuemax={l.need} aria-valuenow={l.have ?? 0} aria-label={`${l.title}: ${l.have ?? 0} of ${l.need}`}><i style={{ width: `${Math.max(p * 100, 3)}%` }} /></span>
+                  <small className="d2-n">{l.have ?? 0} / {l.need}</small>
+                </div>
+              ) : l.href ? <Link href={l.href} className="a2-lock-a">{l.cta ?? 'Open'}<ArrowRight size={12} /></Link> : <span />}
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
 function Section({ no, id, fig, figTone, one, children }: { no: string; id: AnalyticsView; fig: string; figTone: string; one: AiLine | null; children: ReactNode }) {
+  const slots = slotsOf(children);
+  const open = slots.filter(s => !s.props.locked);
+  const locks = slots.flatMap(s => (s.props.locked ? [s.props.locked] : []));
+  const spans = packSpans(open.map(s => s.props.span));
   return (
     <section className="a2-sec" id={`a2-${id}`} data-testid={`view-${id}`} aria-label={VIEW_LABEL[id]}>
       <header className="a2-sh">
@@ -60,7 +128,8 @@ function Section({ no, id, fig, figTone, one, children }: { no: string; id: Anal
         {fig && <span className={`a2-fig d2-n ${figTone}`}>{fig}</span>}
         <AiInline line={one} />
       </header>
-      <div className="a2-grid">{children}</div>
+      {open.length > 0 && <div className="a2-grid">{open.map((s, i) => <Slot key={s.key ?? i} span={spans[i]!}>{s.props.children}</Slot>)}</div>}
+      {locks.length > 0 && <LockStrip locks={locks} />}
     </section>
   );
 }
@@ -306,30 +375,33 @@ export function Risk({ c, no }: { c: ViewCtx; no: string }) {
   const roll = win === '50' && r.rolling50 ? r.rolling50 : r.rolling20;
   const nav = d.nav.find(n => n.view === 'risk');
   const dist = r.distribution;
+  // MAE / MFE need 10 trades with a price path, and at least 30% of all trades to have one.
+  const maeNeed = Math.max(10, Math.ceil(T * 0.3));
+  const maeLock = (title: string, what: string): Lock => ({ title, note: `${what}. Counts trades with a stored price path`, have: r.withMae, need: maeNeed });
   return (
     <Section no={no} id="risk" fig={navText(nav)} figTone={nav ? tone(nav.value) : ''} one={r.ai.header}>
-      <Slot span={4}>
+      <Slot span={4} locked={dist ? null : { title: 'P&L distribution', note: 'How your trade results spread out', have: T, need: 5 }}>
         <Widget id="dist" title={dist?.unit === 'R' ? 'R distribution' : 'P&L distribution'} sub={`· ${plural(T, 'trade')}`} span={4}
           onExplain={dist ? () => c.explain('trade result distribution', `unit ${dist.unit}, mean ${dist.unit === 'R' ? rfmt(dist.mean) : money(dist.mean)}${dist.tail ? `, ${dist.tail.trades} trades past ${dist.unit === 'R' ? '−1.25R' : money(dist.tail.threshold)} lost ${money(dist.tail.net)}` : ''}`) : undefined}
           foot={<>{dist && dist.unit === '$' && <RNote withR={r.withR} n={T} />}{ai ? <AiFoot line={r.ai.distribution} /> : null}</>}>
           {dist ? <DistChart dist={dist} ai={ai} /> : <Empty title="Needs 5 trades" note={`${T} so far.`} />}
         </Widget>
       </Slot>
-      <Slot span={4}>
+      <Slot span={4} locked={r.hold ? null : { title: 'Time in trade vs result', note: 'Whether you hold losers longer than winners', have: T, need: 10 }}>
         <Widget id="hold" title="Time in trade vs result" sub={r.hold ? `· ${r.hold.unit}` : ''} span={4}
           onExplain={r.hold ? () => c.explain('time in trade against result', `${r.hold!.points.length} trades${r.hold!.ratio != null ? `, losers held ${r.hold!.ratio}× as long as winners (median)` : ''}${r.hold!.longLosers ? `, ${r.hold!.longLosers.n} losers held over ${fmtHold(r.hold!.longLosers.thresholdMs)} lost ${money(r.hold!.longLosers.net)}` : ''}`) : undefined}
           foot={<>{r.hold?.unit === '$' && <RNote withR={r.withR} n={T} />}{ai ? <AiFoot line={r.ai.hold} /> : null}</>}>
           {r.hold ? <HoldScatter hold={r.hold} ai={ai} /> : <Empty title="Needs 10 trades" note={`${T} so far.`} />}
         </Widget>
       </Slot>
-      <Slot span={4}>
+      <Slot span={4} locked={r.maeMfe ? null : maeLock('MAE / MFE', 'Your worst and best point in each trade')}>
         <Widget id="mae" title="MAE / MFE" sub="· worst vs best point" span={4}
           onExplain={r.maeMfe ? () => c.explain('MAE/MFE scatter', `${r.maeMfe!.points.length} trades${r.maeMfe!.gaveBack ? `, ${r.maeMfe!.gaveBack.trades} losers were in profit first (${money(r.maeMfe!.gaveBack.net)})` : ''}`) : undefined}
           foot={ai ? <AiFoot line={r.ai.maeMfe} /> : null}>
           {r.maeMfe ? <MaeScatter mm={r.maeMfe} ai={ai} /> : <Empty title="No MAE / MFE data yet" note={`Needs the price path of each trade. ${r.withMae} of ${plural(T, 'trade')} ${T === 1 ? 'has' : 'have'} it.`} />}
         </Widget>
       </Slot>
-      <Slot span={6}>
+      <Slot span={6} locked={roll ? null : { title: 'Rolling expectancy', note: 'Your edge over the last 20 trades, along the way', have: T, need: 30 }}>
         <Widget id="rolling" title="Rolling expectancy" sub={roll ? `· ${roll.window} trades` : ''} span={6}
           tools={r.rolling20 ? <Toggle label="Window" value={win} onChange={setWin} options={[{ v: '20', label: '20' }, { v: '50', label: '50', disabled: !r.rolling50, title: r.rolling50 ? undefined : 'Needs 60 trades' }]} /> : null}
           onExplain={roll ? () => c.explain('rolling expectancy', `${roll.window}-trade average now ${roll.now} ${roll.unit}, low ${roll.low.v} ${roll.unit}`) : undefined}
@@ -337,7 +409,7 @@ export function Risk({ c, no }: { c: ViewCtx; no: string }) {
           {roll ? <RollingChart roll={roll} ai={ai} /> : <Empty title="Needs 30 trades" note={`${T} so far.`} />}
         </Widget>
       </Slot>
-      <Slot span={6}>
+      <Slot span={6} locked={r.exit ? null : r.maeMfe ? { title: 'Exit efficiency', note: 'Needs 5 winners with a price path: how much of each winner’s best move you kept' } : maeLock('Exit efficiency', 'How much of each winner’s best move you kept')}>
         <Widget id="exit" title="Exit efficiency" sub="· winners: kept ÷ best open profit" span={6}
           onExplain={r.exit ? () => c.explain('exit efficiency', `${r.exit!.n} winners kept on average ${pct(r.exit!.avg)} of their best open profit; bins ${r.exit!.bins.map(b => `${pct(b.from)}–${pct(b.to)}: ${b.n}`).join(', ')}`) : undefined}
           foot={ai ? <AiFoot line={r.ai.exit} /> : null}>
@@ -366,41 +438,41 @@ export function Behaviour({ c, no }: { c: ViewCtx; no: string }) {
   const fmtU = (v: number) => (unit === 'R' ? rfmt(v) : money(v));
   return (
     <Section no={no} id="behaviour" fig={navText(nav)} figTone={nav ? tone(nav.value) : ''} one={b.ai.header}>
-      <Slot span={8}>
+      <Slot span={8} locked={wf ? null : { title: 'P&L by rule', note: 'What breaking each rule cost. The losing-hour rule needs your own history', have: T, need: d.minTrades }}>
         <Widget id="rules" title="P&L by rule" sub="· each trade once, first rule broken" span={8}
           onExplain={wf ? () => c.explain('P&L by rule waterfall', `rules kept ${money(wf.kept.net)} on ${wf.kept.n} trades; ${wf.rules.map(r => `${r.label} ${money(r.net)} on ${r.n} trades (${pct(r.wins / r.n)} won)`).join('; ')}; net ${money(wf.total.net)}`) : undefined}
           foot={ai ? <AiFoot line={b.ai.waterfall} /> : null}>
           {wf ? <Waterfall cols={cols} label="Net P&L by the first rule each trade broke" /> : <Empty title={`Needs ${d.minTrades} trades`} note={`${T} so far. The losing-hour rule needs your own history as the baseline.`} />}
         </Widget>
       </Slot>
-      <Slot span={4}>
+      <Slot span={4} locked={b.score && b.strips ? null : { title: 'Behaviour score', note: 'Discipline, risk and timing, trade by trade', have: T, need: d.minTrades }}>
         <Widget id="score" title="Behaviour score" sub="· bar = trade" span={4}
           onExplain={b.score ? () => c.explain('behaviour score', `score ${b.score!.score}, last 30 ${b.score!.last30}; ${b.score!.parts.map(p => `${p.label} ${p.score} (last 30: ${p.last30})`).join(', ')}`) : undefined}
           foot={ai ? <AiFoot line={b.ai.score} /> : null}>
           {b.score && b.strips ? <ScoreStrips b={b.strips} parts={b.score.parts} ai={ai} /> : <Empty title={`Needs ${d.minTrades} trades`} note={`${T} so far.`} />}
         </Widget>
       </Slot>
-      <Slot span={6}>
+      <Slot span={6} locked={b.byLosses.length ? null : { title: 'Win rate by losses that day', note: 'Whether you trade worse after a loss', have: T, need: 10 }}>
         <Widget id="losses" title="Win rate by losses that day" sub="· losing trades in a row earlier that UTC day" span={6}
           onExplain={b.byLosses.length ? () => c.explain('win rate by losses earlier that day', b.byLosses.map(x => `${x.key} lost: ${x.n} trades, ${x.n ? pct(x.wins / x.n) : '–'} won, ${money(x.net)}${x.size != null ? `, ${x.size}× usual size` : ''}`).join('; ')) : undefined}
           foot={ai ? <AiFoot line={b.ai.losses} /> : null}>
           {b.byLosses.length ? <LossBars rows={b.byLosses} avg={avgWr} /> : <Empty title="Needs 10 trades" note={`${T} so far.`} />}
         </Widget>
       </Slot>
-      <Slot span={6}>
+      <Slot span={6} locked={b.bySize ? null : { title: `Avg ${unit === 'R' ? 'R' : 'result'} by size`, note: 'Needs two size groups with 3+ trades each (on symbols with 3+ trades)' }}>
         <Widget id="size" title={`Avg ${unit === 'R' ? 'R' : 'result'} by size`} sub="· volume ÷ your usual size on that symbol" span={6}
           onExplain={b.bySize ? () => c.explain('average result by position size', b.bySize!.rows.map(x => `${x.label}: ${x.n} trades, ${pct(x.wins / x.n)} won, avg ${fmtU(x.avg)}`).join('; ')) : undefined}
           foot={<>{b.bySize?.unit === '$' && <RNote withR={d.counts.withR} n={T} />}{ai ? <AiFoot line={b.ai.size} /> : null}</>}>
           {b.bySize ? <HBars label="Average result by size" unit={unit} rows={b.bySize.rows.map(x => ({ key: x.key, label: x.label, sub: `${trades(x.n)} · ${pct(x.wins / x.n)} won`, value: x.avg }))} /> : <Empty title="Sizes look the same" note="Needs at least two size groups with 3+ trades (symbols with 3+ trades)." />}
         </Widget>
       </Slot>
-      <Slot span={6}>
+      <Slot span={6} locked={b.tags.length ? null : { title: 'Setup edge', note: 'Tag your setups in the Journal to see which ones carry your edge', href: '/journal', cta: 'Tag trades' }}>
         <Widget id="tags" title="Setup edge" sub="· net P&L by journal tag" span={6}
           onExplain={b.tags.length ? () => c.explain('net P&L by setup tag', b.tags.map(x => `${x.label} ${money(x.net)} on ${x.n} trades`).join('; ')) : undefined}>
           {b.tags.length ? <HBars compact label="Net by tag" rows={b.tags.map(x => ({ key: x.label, label: x.label, sub: `${trades(x.n)} · ${pct(x.wins / x.n)} won`, value: x.net }))} /> : <Empty title="No tagged trades" note="Tag your setups in the Journal to see which ones carry your edge." />}
         </Widget>
       </Slot>
-      <Slot span={6}>
+      <Slot span={6} locked={b.emotions.length ? null : { title: 'Psychology edge', note: 'Log how you felt on a trade in the Journal to see which states pay', href: '/journal', cta: 'Open Journal' }}>
         <Widget id="emotions" title="Psychology edge" sub="· net P&L by emotion" span={6}
           onExplain={b.emotions.length ? () => c.explain('net P&L by emotion', b.emotions.map(x => `${x.label} ${money(x.net)} on ${x.n} trades`).join('; ')) : undefined}>
           {b.emotions.length ? <HBars compact label="Net by emotion" rows={b.emotions.map(x => ({ key: x.label, label: x.label, sub: `${trades(x.n)} · ${pct(x.wins / x.n)} won`, value: x.net }))} /> : <Empty title="No emotions logged" note="Log how you felt on a trade in Journal › Trade review to see which states pay." />}
@@ -475,7 +547,7 @@ export function WhatIf({ c, no }: { c: ViewCtx; no: string }) {
           </Widget>
         </Slot>
       </> : (
-        <Slot span={12}>
+        <Slot span={12} locked={d.counts.trades < 10 ? { title: 'Net with fixes added', note: 'What skipping your leaks would have kept', have: d.counts.trades, need: 10 } : null}>
           <Widget id="fixes" title="Net with fixes added" span={12}>
             <Empty title={d.counts.trades < 10 ? 'Needs 10 trades' : 'Nothing to fix'} note={d.counts.trades < 10 ? `${d.counts.trades} so far.` : 'No group of 3+ trades you could have skipped before entry lost money.'} />
           </Widget>
