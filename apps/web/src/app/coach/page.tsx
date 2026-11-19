@@ -4,7 +4,9 @@
 // real-time web search for external/current questions. Streams the reply
 // token-by-token over SSE, shows a "searching/thinking" state, renders markdown,
 // cites web sources, and keeps every conversation in a switchable thread list.
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { ArrowDown, ChartLineUp, Globe } from '@phosphor-icons/react';
+import { SceneDisc } from '@/components/v6/ui/scene-art';
 import { ContextChips, ToolsMenu, type ChipId, type ToolResult } from '@/components/coach/coach-tools';
 import Link from '@/components/v6/ui/link';
 import AppShell from '@/components/app-shell';
@@ -18,6 +20,11 @@ import { useDialog } from '@/components/v6/ui/use-dialog';
 import { useAccounts } from '@/lib/use-accounts';
 import { api, type AiChatMessage, type AiConversationSummary, type BrokerAccount } from '@/lib/api';
 import LogoMark from '@/components/logo-mark';
+
+// A reply that sends nothing (no token, no status) for this long is treated as stalled.
+const STALL_MS = 60_000;
+// Tokens are drawn at most this often; the markdown of a long reply is re-parsed on each draw.
+const DRAW_MS = 50;
 
 const STARTERS = [
   { web: false, text: 'What’s my biggest leak right now?' },
@@ -49,10 +56,36 @@ export default function CoachPage() {
   // Live stream controller, so Stop can cut the current reply short.
   const abortRef = useRef<AbortController | null>(null);
   const accountId = selected?.id ?? null;
+  // Bumped on every thread or account switch; a reply that lands after a switch is dropped.
+  const viewRef = useRef(0);
+  // Streaming: tokens collect here and are drawn at most every DRAW_MS.
+  const pendingRef = useRef('');
+  const drawRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastBeatRef = useRef(0);
+  const stalledRef = useRef(false);
 
-  // Auto-scroll to the newest message / token.
-  useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+  // Follow the reply only while the reader is at the bottom; scrolling up to read stops it,
+  // and a "Latest" button brings them back.
+  const stickRef = useRef(true);
+  const [awayFromEnd, setAwayFromEnd] = useState(false);
+  const onStreamScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const near = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+    stickRef.current = near;
+    setAwayFromEnd(a => (a === !near ? a : !near));
+  }, []);
+  const toEnd = useCallback((smooth = false) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    stickRef.current = true;
+    setAwayFromEnd(false);
+    el.scrollTo({ top: el.scrollHeight, behavior: smooth ? 'smooth' : 'auto' });
+  }, []);
+  useLayoutEffect(() => {
+    // The welcome screen starts at the top; a conversation follows its newest line.
+    if (!messages.length) scrollRef.current?.scrollTo({ top: 0 });
+    else if (stickRef.current) scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
   }, [messages, phase]);
 
   // Grow the composer with its content (capped by CSS max-height).
@@ -68,12 +101,20 @@ export default function CoachPage() {
   useLayoutEffect(() => {
     const el = rootRef.current;
     if (!el) return;
-    const fit = () => el.style.setProperty('--ai-top', `${Math.round(el.getBoundingClientRect().top + window.scrollY)}px`);
-    fit();
+    // Only write when the value changes, and on the next frame: writing inside the observer
+    // callback resizes what it observes, which loops ("ResizeObserver loop" warnings, jank).
+    let last = '', raf = 0;
+    const measure = () => {
+      raf = 0;
+      const v = `${Math.round(el.getBoundingClientRect().top + window.scrollY)}px`;
+      if (v !== last) { last = v; el.style.setProperty('--ai-top', v); }
+    };
+    const fit = () => { if (!raf) raf = requestAnimationFrame(measure); };
+    measure();
     const ro = new ResizeObserver(fit);
     if (el.parentElement) ro.observe(el.parentElement.parentElement ?? el.parentElement);
     window.addEventListener('resize', fit);
-    return () => { ro.disconnect(); window.removeEventListener('resize', fit); };
+    return () => { ro.disconnect(); window.removeEventListener('resize', fit); if (raf) cancelAnimationFrame(raf); };
   }, []);
 
   // The history drawer on phones: Esc closes it, Tab stays inside, focus returns to the toggle.
@@ -81,7 +122,7 @@ export default function CoachPage() {
   const drawerRef = useDialog({ open: sidebarOpen, onClose: closeDrawer });
 
   // Never leave a stream running after the page goes away.
-  useEffect(() => () => abortRef.current?.abort(), []);
+  useEffect(() => () => { abortRef.current?.abort(); if (drawRef.current) clearTimeout(drawRef.current); }, []);
 
   const loadThreads = useCallback(async (): Promise<AiConversationSummary[]> => {
     if (!accountId) return [];
@@ -99,6 +140,7 @@ export default function CoachPage() {
   useEffect(() => {
     if (!accountId) return;
     let alive = true;
+    const view = ++viewRef.current;
     setListLoading(true);
     setThreadLoading(true);
     setMessages([]);
@@ -114,7 +156,7 @@ export default function CoachPage() {
         const latest = mine[0];
         if (latest) {
           const detail = await api.ai.conversation(latest.id);
-          if (!alive) return;
+          if (!alive || view !== viewRef.current) return;
           setConversationId(detail.id);
           setMessages(detail.messages.map(m => ({ role: m.role, content: m.content, sources: m.sources })));
         }
@@ -143,20 +185,43 @@ export default function CoachPage() {
       setMessages([...history, { role: 'assistant', content: '' }]);
       setSending(true);
       setPhase('thinking');
+      toEnd(true);
 
+      const view = viewRef.current;
       const controller = new AbortController();
       abortRef.current = controller;
+      stalledRef.current = false;
+      lastBeatRef.current = Date.now();
+      pendingRef.current = '';
 
-      const appendToAssistant = (chunk: string) => {
-        // First token means the answer is streaming — clear the working state.
-        setPhase(null);
+      // Draw what has arrived so far onto the last (assistant) bubble.
+      const draw = () => {
+        drawRef.current = null;
+        const chunk = pendingRef.current;
+        if (!chunk || view !== viewRef.current) return;
+        pendingRef.current = '';
         setMessages(prev => {
-          const next = [...prev];
-          const last = next[next.length - 1];
-          if (last && last.role === 'assistant') next[next.length - 1] = { ...last, content: last.content + chunk };
+          const last = prev[prev.length - 1];
+          if (!last || last.role !== 'assistant') return prev;
+          const next = prev.slice();
+          next[next.length - 1] = { ...last, content: last.content + chunk };
           return next;
         });
       };
+      let first = true;
+      const appendToAssistant = (chunk: string) => {
+        lastBeatRef.current = Date.now();
+        // First token means the answer is streaming — clear the working state.
+        if (first) { first = false; setPhase(null); }
+        pendingRef.current += chunk;
+        if (!drawRef.current) drawRef.current = setTimeout(draw, DRAW_MS);
+      };
+      const flush = () => { if (drawRef.current) { clearTimeout(drawRef.current); drawRef.current = null; } draw(); };
+
+      // Watchdog: a reply that goes quiet for STALL_MS is stopped, with a retry offered.
+      const watch = setInterval(() => {
+        if (Date.now() - lastBeatRef.current > STALL_MS) { stalledRef.current = true; controller.abort(); }
+      }, 5000);
 
       try {
         const result = await api.ai.chat(
@@ -164,10 +229,14 @@ export default function CoachPage() {
           appendToAssistant,
           {
             onError: msg => setError(msg),
-            onStatus: () => setPhase('searching'),
+            onStatus: () => { lastBeatRef.current = Date.now(); setPhase('searching'); },
             signal: controller.signal,
           },
         );
+        flush();
+        // Switched thread or account while this was streaming: leave the new view alone.
+        if (view !== viewRef.current) return;
+        if (stalledRef.current) setError('The coach stopped responding. Try again.');
 
         if (result.conversationId) setConversationId(result.conversationId);
         // Attach any web citations to the assistant message we just streamed.
@@ -196,6 +265,8 @@ export default function CoachPage() {
           if (newest) setConversationId(newest.id);
         }
       } catch (err) {
+        flush();
+        if (view !== viewRef.current) return;
         const e = err as Error & { code?: string };
         setError(e.message || 'The coach could not respond. Please try again.');
         // Drop the empty assistant bubble on hard failure.
@@ -206,12 +277,13 @@ export default function CoachPage() {
           return next;
         });
       } finally {
-        abortRef.current = null;
+        clearInterval(watch);
+        if (abortRef.current === controller) abortRef.current = null;
         setSending(false);
         setPhase(null);
       }
     },
-    [accountId, sending, conversationId, loadThreads, chips],
+    [accountId, sending, conversationId, loadThreads, chips, toEnd],
   );
 
   // A tool's result joins the conversation and is saved with it.
@@ -260,16 +332,19 @@ export default function CoachPage() {
     async (id: string) => {
       setSidebarOpen(false);
       if (sending || id === conversationId) return;
+      const view = ++viewRef.current;
       setThreadLoading(true);
       setError('');
       try {
         const detail = await api.ai.conversation(id);
+        if (view !== viewRef.current) return;
         setConversationId(detail.id);
         setMessages(detail.messages.map(m => ({ role: m.role, content: m.content, sources: m.sources })));
+        stickRef.current = true;
       } catch {
-        setError('Could not open that conversation.');
+        if (view === viewRef.current) setError('Could not open that conversation.');
       } finally {
-        setThreadLoading(false);
+        if (view === viewRef.current) setThreadLoading(false);
       }
     },
     [sending, conversationId],
@@ -278,6 +353,8 @@ export default function CoachPage() {
   const newChat = useCallback(() => {
     setSidebarOpen(false);
     if (sending) return;
+    viewRef.current++;
+    setThreadLoading(false);
     setConversationId(undefined);
     setMessages([]);
     setInput('');
@@ -290,6 +367,7 @@ export default function CoachPage() {
       // Optimistic: the row disappears immediately, and we resync if the API says no.
       setConversations(prev => prev.filter(c => c.id !== id));
       if (id === conversationId) {
+        viewRef.current++;
         setConversationId(undefined);
         setMessages([]);
       }
@@ -334,7 +412,7 @@ export default function CoachPage() {
             <button onClick={newChat} disabled={sending} className="x-btn x-btn--sm x-btn--icon ai-chat-new" aria-label="New chat"><IPlus size={15} /></button>
           </div>
 
-          <div ref={scrollRef} className="ai-stream" data-testid="coach-messages" aria-live="polite" aria-busy={sending || threadLoading}>
+          <div ref={scrollRef} onScroll={onStreamScroll} className="ai-stream" data-testid="coach-messages" aria-live="polite" aria-busy={sending || threadLoading}>
             {threadLoading ? (
               <div className="ai-msgs" aria-hidden>
                 <i className="x-skel x-skel--in ai-sk-u" />
@@ -342,16 +420,17 @@ export default function CoachPage() {
               </div>
             ) : isEmpty ? (
               <div className="ai-hello" data-testid="coach-empty">
-                <span className="ai-av"><LogoMark size={30} title="TRADElogs AI" /></span>
-                <h2>Ask your coach</h2>
+                <SceneDisc kind={accountId ? 'chat' : 'plug'} size="sm" />
+                <h2>{accountId ? 'Ask your coach' : 'Connect a broker to start'}</h2>
                 <p>{accountId
-                  ? 'I read your closed trades, stats and journal, and can search the web for market context. Ask about your behaviour or what\u2019s happening out there. No trade signals, just clarity.'
-                  : 'Connect a broker account first. The coach answers from your own closed trades, so it needs some to read.'}</p>
+                  ? 'I read your closed trades, stats and journal, and can search the web for market context. No trade signals, just clarity.'
+                  : 'The coach answers from your own closed trades, so it needs a connected account to read.'}</p>
                 {accountId ? (
                   <div className="ai-starters">
                     {STARTERS.map(({ web, text }) => (
-                      <button key={text} className="x-tag" onClick={() => send(text)} disabled={sending} data-testid="coach-starter">
-                        <i>{web ? 'Web' : 'Your data'}</i>{text}
+                      <button key={text} type="button" className="ai-starter" onClick={() => send(text)} disabled={sending} data-testid="coach-starter">
+                        <span className="ai-starter-i" aria-hidden>{web ? <Globe size={16} /> : <ChartLineUp size={16} />}</span>
+                        <span><b>{text}</b><small>{web ? 'Searches the web' : 'From your trades'}</small></span>
                       </button>
                     ))}
                   </div>
@@ -361,26 +440,14 @@ export default function CoachPage() {
               <div className="ai-msgs">
                 {messages.map((m, i) => {
                   const isLast = i === messages.length - 1;
-                  if (m.role === 'user') return <div key={i} className="ai-u" data-testid="coach-msg-user">{m.content}</div>;
-                  const streaming = isLast && sending && !!m.content;
-                  return (
-                    <div key={i} className="ai-a" data-testid="coach-msg-assistant">
-                      <span className="ai-av" aria-hidden><LogoMark size={20} title="" /></span>
-                      <div className="ai-a-bd">
-                        {m.content ? (
-                          <>
-                            <div className={streaming ? 'ai-caret-wrap' : undefined}><MarkdownMessage content={m.content} /></div>
-                            {m.sources && m.sources.length > 0 && <SourcesFooter sources={m.sources} />}
-                          </>
-                        ) : <Thinking phase={isLast && phase ? phase : 'thinking'} />}
-                        {m.content && (!isLast || !sending) && <MessageActions content={m.content} onRegenerate={isLast ? regenerate : undefined} />}
-                      </div>
-                    </div>
-                  );
+                  return <MessageRow key={i} m={m} streaming={isLast && sending} phase={isLast ? phase : null} onRegenerate={isLast && !sending ? regenerate : undefined} />;
                 })}
               </div>
             )}
           </div>
+          {awayFromEnd && !isEmpty && !threadLoading && (
+            <button type="button" className="x-btn x-btn--sm ai-latest" onClick={() => toEnd(true)} data-testid="coach-latest"><ArrowDown size={13} weight="bold" aria-hidden />{sending ? 'Follow the reply' : 'Latest'}</button>
+          )}
 
           {error && (
             <div className="x-banner x-banner--err ai-err" data-testid="coach-error" role="alert">
@@ -399,8 +466,8 @@ export default function CoachPage() {
             <div className="ai-comp">
               <textarea ref={inputRef} value={input} onChange={e => setInput(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); send(input); } }}
-                rows={1} placeholder={accountId ? 'Ask about your trading, or anything market-related…' : 'Connect a broker to start'}
-                disabled={sending || !accountId} data-testid="coach-input" aria-label="Message" />
+                rows={1} placeholder={!accountId ? 'Connect a broker to start' : sending ? 'Type your next question…' : 'Ask about your trading, or anything market-related…'}
+                disabled={!accountId} data-testid="coach-input" aria-label="Message" />
               {sending ? (
                 <button type="button" onClick={stop} data-testid="coach-stop" className="x-btn ai-stop" aria-label="Stop generating"><i /></button>
               ) : (
@@ -414,3 +481,22 @@ export default function CoachPage() {
     </AppShell>
   );
 }
+
+/** One message. Memoised, so while a reply streams only the last row re-renders. */
+const MessageRow = memo(function MessageRow({ m, streaming, phase, onRegenerate }: { m: AiChatMessage; streaming: boolean; phase: Phase; onRegenerate?: () => void }) {
+  if (m.role === 'user') return <div className="ai-u" data-testid="coach-msg-user">{m.content}</div>;
+  return (
+    <div className="ai-a" data-testid="coach-msg-assistant">
+      <span className="ai-av" aria-hidden><LogoMark size={20} title="" /></span>
+      <div className="ai-a-bd">
+        {m.content ? (
+          <>
+            <div className={streaming ? 'ai-caret-wrap' : undefined}><MarkdownMessage content={m.content} /></div>
+            {m.sources && m.sources.length > 0 && <SourcesFooter sources={m.sources} />}
+          </>
+        ) : <Thinking phase={phase ?? 'thinking'} />}
+        {m.content && !streaming && <MessageActions content={m.content} onRegenerate={onRegenerate} />}
+      </div>
+    </div>
+  );
+});

@@ -37,3 +37,21 @@ export function bulletsToMarkdown(text: string): string {
   }
   return out.join('\n');
 }
+
+export type MoneyPart = { text: string; tone?: 'up' | 'dn' };
+// A signed dollar amount ("-$446.93", "+$1,200") or a signed R multiple ("−1.5R"), not part of a word or a range.
+const SIGNED = /(?<![\w$.,])([+\-−–]\s?\$\d[\d,]*(?:\.\d+)?|[+\-−–]\d+(?:\.\d+)?R\b)/g;
+
+/** Splits text so profits can be shown green and losses red. Pure; unit-tested. */
+export function splitMoney(text: string): MoneyPart[] {
+  const out: MoneyPart[] = [];
+  let at = 0;
+  for (const m of text.matchAll(SIGNED)) {
+    const i = m.index ?? 0;
+    if (i > at) out.push({ text: text.slice(at, i) });
+    out.push({ text: m[0], tone: m[0].startsWith('+') ? 'up' : 'dn' });
+    at = i + m[0].length;
+  }
+  if (at < text.length) out.push({ text: text.slice(at) });
+  return out.length ? out : [{ text }];
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bulletsToMarkdown } from './coach-format';
+import { bulletsToMarkdown, splitMoney } from './coach-format';
 
 describe('coach replies: "•" bullets become a markdown list', () => {
   it('stored fallback reply: bullets on their own lines, single newlines', () => {
@@ -21,5 +21,15 @@ describe('coach replies: "•" bullets become a markdown list', () => {
     expect(bulletsToMarkdown(table)).toBe(table);
     const code = '```\n• x • y • z\n```';
     expect(bulletsToMarkdown(code)).toBe(code);
+  });
+});
+
+describe('splitMoney', () => {
+  it('tones signed dollar amounts and R multiples', () => {
+    expect(splitMoney('held into the loss: −$446.93.')).toEqual([{ text: 'held into the loss: ' }, { text: '−$446.93', tone: 'dn' }, { text: '.' }]);
+    expect(splitMoney('a +$1,200 day and a -1.5R trade')).toEqual([{ text: 'a ' }, { text: '+$1,200', tone: 'up' }, { text: ' day and a ' }, { text: '-1.5R', tone: 'dn' }, { text: ' trade' }]);
+  });
+  it('leaves ranges, unsigned amounts and words alone', () => {
+    expect(splitMoney('between 12-14 trades, $300 risk, re-entry')).toEqual([{ text: 'between 12-14 trades, $300 risk, re-entry' }]);
   });
 });
