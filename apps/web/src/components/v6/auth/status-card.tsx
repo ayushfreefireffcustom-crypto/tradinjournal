@@ -21,8 +21,8 @@ export const SC_ICONS = {
   lock: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V8a4 4 0 018 0v3" /></svg>,
 };
 
-export default function StatusCard({ icon, tone = 'n', kicker, title, body, children, onSignOut, testId }: {
-  icon: ReactNode; tone?: Tone; kicker: string; title: ReactNode; body?: ReactNode; children?: ReactNode;
+export default function StatusCard({ icon, art, tone = 'n', kicker, title, body, children, onSignOut, testId }: {
+  icon: ReactNode; /** A still drawing in a circle, centred, shown instead of the icon. */ art?: ReactNode; tone?: Tone; kicker: string; title: ReactNode; body?: ReactNode; children?: ReactNode;
   onSignOut?: () => void; testId?: string;
 }) {
   return (
@@ -32,8 +32,8 @@ export default function StatusCard({ icon, tone = 'n', kicker, title, body, chil
         {onSignOut && <button type="button" onClick={onSignOut} className="x-btn x-btn--sm">Sign out</button>}
       </header>
       <main className="au-center">
-        <section className="x-card au-stcard">
-          <span className={`au-sticon ${tone}`}>{icon}</span>
+        <section className={`x-card au-stcard${art ? ' has-art' : ''}`}>
+          {art ? <div className="au-art" aria-hidden>{art}</div> : <span className={`au-sticon ${tone}`}>{icon}</span>}
           <p className={`au-stk ${tone}`}>{kicker}</p>
           <h1 className="au-t">{title}</h1>
           {body && <div className="au-stbody">{body}</div>}

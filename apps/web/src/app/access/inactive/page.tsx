@@ -8,6 +8,7 @@ import { accessApi, type AccessStatusDto } from '@/lib/access-api';
 import { invalidateAccessCache, primeAccessCache } from '@/lib/use-platform-access';
 import { LoadingScreen } from '@/components/loader';
 import StatusCard, { SC_ICONS } from '@/components/v6/auth/status-card';
+import { ActivityArt } from '@/components/v6/auth/access-art';
 import { AuthError, AuthSubmit } from '@/components/v6/auth/auth-shell';
 import { mockStay } from '@/lib/use-redirect-if-authed';
 
@@ -69,7 +70,7 @@ export default function InactiveAccessPage() {
   const tradeCount = status?.tradeCount7d ?? 0;
 
   return (
-    <StatusCard testId="access-inactive-page" icon={SC_ICONS.warn} kicker="Activity required"
+    <StatusCard testId="access-inactive-page" icon={SC_ICONS.warn} art={<ActivityArt days={status?.activityWindowDays ?? 30} />} kicker="Activity required"
       title="Keep trading to keep access"
       body={<>Full access needs at least <b>{trades(minTrades)}</b> on Elefin in the last <b>{windowDays} days</b>. Trade, then recheck; it updates straight away.</>}
       onSignOut={() => void authClient.signOut().then(() => router.replace('/login'))}>
