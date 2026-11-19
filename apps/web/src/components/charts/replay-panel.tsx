@@ -7,6 +7,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { ClockCounterClockwise, Pause, Play, SkipBack, SkipForward } from '@phosphor-icons/react';
 import { marketApi, type Candle, type MarketTimeframe } from '@/lib/market-api';
 import { afterExit, money, px, verdict, type ChartTrade } from './trade-math';
+import EmptyState from '@/components/v6/ui/empty-state';
 
 const AFTER_MS = 6 * 3_600_000;
 const TFS: Array<[MarketTimeframe, number]> = [['1m', 60e3], ['5m', 300e3], ['15m', 900e3], ['30m', 1800e3], ['1h', 3600e3], ['4h', 14400e3], ['1d', 86400e3]];
@@ -170,7 +171,7 @@ export default function ReplayPanel({ symbol, trades, ccy, pointValue, loading, 
       <div className="tl-wb">
         {loading && !rows.length ? <div className="x-skel" style={{ height: 220 }} />
           : error && !rows.length ? <p className="tl-empty"><span>Your trades didn&rsquo;t load: {error}</span></p>
-          : !rows.length ? <p className="tl-empty" data-testid="replay-empty"><b>Nothing to replay yet.</b><span>Once you&rsquo;ve traded {symbol}, replay any trade here and see what price did after you got out.</span></p>
+          : !rows.length ? <EmptyState compact drawn icon="signal" testId="replay-empty" title="Nothing to replay yet">Once you&rsquo;ve traded {symbol}, replay any trade here and see what price did after you got out.</EmptyState>
             : (
               <div className="tl-rp-grid">
                 <div className="tl-rp-main">

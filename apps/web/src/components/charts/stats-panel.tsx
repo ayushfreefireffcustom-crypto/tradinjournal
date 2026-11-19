@@ -5,6 +5,7 @@
 import { useEffect, useState } from 'react';
 import { useLoad } from '@/components/v6/ui/data';
 import { fmtPct, fmtUsd, hubApi, toneOf } from '@/lib/hub-api';
+import ErrorCard from '@/components/v6/ui/error-card';
 
 function Countdown({ at }: { at: number }) {
   const [now, setNow] = useState(() => Date.now());
@@ -20,7 +21,7 @@ export default function StatsPanel({ symbol }: { symbol: string }) {
   return (
     <section className="x-card mk-st" aria-label="Symbol stats" data-testid="stats-panel">
       <div className="mk-pt-hd"><b>Stats</b><span className="x-muted">{symbol}</span></div>
-      {st.error ? <p className="x-muted mk-pt-msg">{st.error}</p> : !s ? <div className="x-skel" style={{ height: 160 }} /> : (
+      {st.error ? <ErrorCard bare compact title={`Couldn’t load ${symbol} stats`} message={st.error} onRetry={st.reload} /> : !s ? <div className="x-skel" style={{ height: 160 }} /> : (
         <>
           <div className="mk-st-ret" data-testid="stats-returns">
             {([['7D', s.returns.d7], ['30D', s.returns.d30], ['90D', s.returns.d90], ['YTD', s.returns.ytd]] as const).map(([k, v]) => (

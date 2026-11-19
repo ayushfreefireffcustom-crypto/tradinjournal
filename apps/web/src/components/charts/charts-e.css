@@ -233,8 +233,12 @@ button.tl-float-chip:hover { border-color: var(--dim); }
 .v6 .tl-btn:disabled, .v6 .tl-btn2:disabled { opacity: .45; cursor: default; }
 
 /* ── bottom: replay + event days ── */
-.v6 .tl-g { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; align-items: start; }
-.v6 .tl-s2 { grid-column: span 2; min-width: 0; scroll-margin-top: 16px; }
+.v6 .tl-g { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; align-items: stretch; }
+.v6 .tl-s2 { grid-column: span 2; min-width: 0; scroll-margin-top: 16px; display: flex; flex-direction: column; }
+.v6 .tl-s2 > .tl-card { flex: 1; }
+/* Cards in a row share one height; an empty one centres its message in the space. */
+.v6 .tl-g .tl-w > .tl-wb { flex: 1; display: flex; flex-direction: column; }
+.v6 .tl-g .tl-wb > .lx-empty { flex: 1; }
 .v6 .tl-rp-grid { display: grid; grid-template-columns: minmax(0, 1fr) 220px; gap: 14px; }
 .v6 .tl-rp-main { min-width: 0; border-radius: 8px; overflow: hidden; background: var(--bg); }
 .v6 .tl-rp-main > .tl-one { padding: 0 10px 10px; margin: 0; }
@@ -310,7 +314,10 @@ button.tl-float-chip:hover { border-color: var(--dim); }
 
 /* the older side panels, kept under the chart */
 .v6 .tl-more .x-card { border-radius: 12px; border: 1px solid var(--line); }
-.v6 .tl-more { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 12px; align-items: start; }
+.v6 .tl-more { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 12px; align-items: stretch; }
+.v6 .tl-more > .x-card { display: flex; flex-direction: column; min-width: 0; }
+.v6 .tl-more .mk-side-bd { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.v6 .tl-more .mk-side-bd > .lx-empty { flex: 1; }
 
 /* ── responsive ── */
 @media (max-width: 1180px) {
@@ -367,3 +374,4 @@ button.tl-float-chip:hover { border-color: var(--dim); }
 @media (max-height: 500px) and (orientation: landscape) {
   .v6 .tl-page { --ch: max(280px, calc(100dvh - 90px)); }
 }
+.v6 .tl-more .mk-st > .st-state { flex: 1; justify-content: center; }

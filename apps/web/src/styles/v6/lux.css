@@ -195,6 +195,9 @@ html[data-theme=light] .v6 .st-disc { background: radial-gradient(circle at 50% 
 .v6 .st-disc .st-art { width: 84%; height: auto; }
 .v6 .st-disc .d2-art { width: 92%; height: auto; }
 .v6 .st-disc--sm { width: 128px; height: 128px; }
+.v6 .st-disc--xs { width: 96px; height: 96px; box-shadow: inset 0 0 0 1px var(--line), 0 0 0 6px rgba(255, 255, 255, .018), 0 0 0 7px var(--line); }
+html[data-theme=light] .v6 .st-disc--xs { box-shadow: inset 0 0 0 1px var(--line), 0 0 0 6px rgba(0, 0, 0, .02), 0 0 0 7px var(--line); }
+.v6 .lx-empty-in > .st-disc--xs { margin-bottom: 8px; }
 @media (max-width: 760px) { .v6 .st-disc { width: 152px; height: 152px; } .v6 .st-disc--sm { width: 112px; height: 112px; } }
 
 /* ── centred problem state (components/v6/ui/error-card.tsx) ───────────────── */

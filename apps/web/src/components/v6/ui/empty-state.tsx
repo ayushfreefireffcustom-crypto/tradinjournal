@@ -24,7 +24,7 @@ const SCENE: Record<EmptyIcon, SceneKind> = {
   report: 'report', news: 'news', calendar: 'calendar', star: 'star', chart: 'signal', plug: 'plug', lock: 'lock', note: 'note', shield: 'shield',
 };
 
-export default function EmptyState({ icon, art, title, children, actions, hints, compact, tone, testId, className }: {
+export default function EmptyState({ icon, art, title, children, actions, hints, compact, tone, testId, className, drawn }: {
   icon: EmptyIcon; title: ReactNode; children?: ReactNode; actions?: ReactNode;
   /** @deprecated kept for callers; the drawing replaced the faint preview. */
   ghost?: EmptyGhost;
@@ -33,11 +33,14 @@ export default function EmptyState({ icon, art, title, children, actions, hints,
   /** Short examples or steps, shown as chips under the text. */
   hints?: ReactNode[];
   compact?: boolean; tone?: 'warn'; testId?: string; className?: string;
+  /** Compact, but with a small drawing instead of the icon tile (panels with room to spare). */
+  drawn?: boolean;
 }) {
   return (
     <div className={`lx-empty ${compact ? 'lx-empty--compact' : ''} ${tone === 'warn' ? 'lx-empty--warn' : ''} ${className ?? ''}`} data-testid={testId}>
       <div className="lx-empty-in">
-        {compact
+        {compact && drawn ? <SceneDisc kind={art ?? SCENE[icon]} size="xs" />
+          : compact
           ? <span className="lx-empty-ic" aria-hidden>{(() => { const I = ICONS[icon]; return <I size={20} weight="duotone" />; })()}</span>
           : <SceneDisc kind={art ?? SCENE[icon]} />}
         <b className="lx-empty-t">{title}</b>

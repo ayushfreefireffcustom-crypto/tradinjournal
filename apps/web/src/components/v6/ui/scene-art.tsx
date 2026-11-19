@@ -226,6 +226,6 @@ export function SceneArt({ kind }: { kind: SceneKind }) {
 }
 
 /** The drawing in its round disc, as used at the top of a centred state. */
-export function SceneDisc({ kind, children, size }: { kind?: SceneKind; children?: ReactNode; size?: 'sm' }) {
-  return <div className={`st-disc${size === 'sm' ? ' st-disc--sm' : ''}`} aria-hidden>{children ?? (kind && <SceneArt kind={kind} />)}</div>;
+export function SceneDisc({ kind, children, size }: { kind?: SceneKind; children?: ReactNode; size?: 'sm' | 'xs' }) {
+  return <div className={`st-disc${size ? ` st-disc--${size}` : ''}`} aria-hidden>{children ?? (kind && <SceneArt kind={kind} />)}</div>;
 }
