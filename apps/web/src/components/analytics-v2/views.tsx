@@ -313,6 +313,12 @@ export function Time({ c, no }: { c: ViewCtx; no: string }) {
           <div className="a2-sub">Asia 22–07 · London 07–13 · New York 13–22 UTC</div>
         </Widget>
       </Slot>
+      <Slot span={12}>
+        <Widget id="weekday" title="By weekday" sub="· net P&L, UTC close" span={12}
+          onExplain={() => c.explain('P&L by weekday', t.dayTotals.filter(x => x.n).map(x => `${DAY_SHORT[x.day]} ${money(x.net)} on ${x.n} trades (${pct(x.wins / x.n)} won)`).join('; '))}>
+          <HBars label="Net by weekday" rows={t.dayTotals.filter(x => x.n).sort((a, b) => ((a.day + 6) % 7) - ((b.day + 6) % 7)).map(x => ({ key: String(x.day), label: DAY_SHORT[x.day]!, sub: `${trades(x.n)} · ${pct(x.wins / x.n)} won`, value: x.net, tip: `${DAY_SHORT[x.day]}: ${money(x.net)}` }))} />
+        </Widget>
+      </Slot>
     </Section>
   );
 }
@@ -358,6 +364,29 @@ export function Symbols({ c, no }: { c: ViewCtx; no: string }) {
                 })}
               </div>
             ))}
+          </div>
+        </Widget>
+      </Slot>
+      <Slot span={12}>
+        <Widget id="instruments" title="Instrument analytics" sub={`· ${plural(s.series.length, 'symbol')}`} span={12} flush
+          onExplain={() => c.explain('instrument table', s.series.map(x => `${x.symbol} ${money(x.net)} on ${x.n} trades, ${pct(x.wins / x.n)} won, PF ${x.profitFactor ?? '–'}`).join('; '))}>
+          <div className="a2-itw">
+            <table className="a2-it" data-testid="instrument-table">
+              <thead><tr><th>Symbol</th><th>Trades</th><th>Won</th><th>Win rate</th><th>Profit factor</th><th>Net P&amp;L</th><th>Avg per trade</th></tr></thead>
+              <tbody>
+                {[...s.series].sort((a, b) => b.net - a.net).map(x => (
+                  <tr key={x.symbol}>
+                    <th scope="row">{x.symbol}</th>
+                    <td className="d2-n">{x.n}</td>
+                    <td className="d2-n">{x.wins}</td>
+                    <td><span className="a2-wr"><i style={{ width: `${Math.round((x.wins / x.n) * 100)}%` }} className={x.wins / x.n >= 0.5 ? 'up' : 'dn'} /><b className="d2-n">{pct(x.wins / x.n)}</b></span></td>
+                    <td className={`d2-n ${x.profitFactor == null ? '' : x.profitFactor >= 1 ? 'up' : 'dn'}`}>{x.profitFactor == null ? '–' : x.profitFactor.toFixed(2)}</td>
+                    <td className={`d2-n mny ${tone(x.net)}`}>{money(x.net, { dec: 2 })}</td>
+                    <td className={`d2-n mny ${tone(x.net / x.n)}`}>{money(x.net / x.n, { dec: 2 })}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </Widget>
       </Slot>

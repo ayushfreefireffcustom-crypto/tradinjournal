@@ -23,6 +23,7 @@ import { IPlus } from '@/components/v6/icons';
 import DateRangePicker from '@/components/v6/ui/date-range';
 import { AskBox, type AskState } from '@/components/dashboard-v2/ask';
 import { FilterSel, Hero, SECTIONS, ViewNav, type ViewCtx } from '@/components/analytics-v2/views';
+import { Summary } from '@/components/analytics-v2/summary';
 import '@/components/dashboard-v2/dashboard-v2.css';
 import '@/components/analytics-v2/analytics-v2.css';
 
@@ -246,7 +247,7 @@ export default function AnalyticsPage() {
                     <p className="d2-few" data-testid="few-trades">{plural(data.counts.trades, 'trade')} in this view. The rules, behaviour score and some charts need {data.minTrades}.</p>
                   )}
                   {view === 'overview'
-                    ? <><Hero c={ctx} />{SECTIONS.map(({ id, C }) => <C key={id} c={ctx} no={sectionNo(id)} />)}</>
+                    ? <><Summary c={ctx} /><Hero c={ctx} />{SECTIONS.map(({ id, C }) => <C key={id} c={ctx} no={sectionNo(id)} />)}</>
                     : SECTIONS.filter(s => s.id === view).map(({ id, C }) => <C key={id} c={ctx} no={sectionNo(id)} />)}
                 </div>
               </div>

@@ -69,6 +69,14 @@ export interface AnaStats {
   medianHoldMs: number;
   long: AnaAgg;
   short: AnaAgg;
+  /** Sum of winning trades, $. */
+  grossProfit: number;
+  /** Sum of losing trades, $ (negative). */
+  grossLoss: number;
+  /** Trades that lost money (breakevens are neither). */
+  losses: number;
+  /** Largest fall from a running peak of closed-trade P&L, $ (0 or negative). */
+  maxDrawdown: number;
 }
 export interface AnaPerformance {
   days: AnaDay[];

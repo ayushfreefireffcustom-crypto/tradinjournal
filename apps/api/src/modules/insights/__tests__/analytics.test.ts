@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
+import { maxDrawdown,
   combinations, computeAnalytics, exitEfficiency, firstRuleBroken, fixLabel, holdView, lateCut, niceDuration,
   ruleWaterfall, segments, streaks, usualSize, weekStart, type AnalyticsTrade,
 } from '../analytics-compute.js';
@@ -217,5 +217,20 @@ describe('computeAnalytics', () => {
       expect(s.pts.at(-1)!.v).toBeCloseTo(s.net, 6);
     }
     expect(out.symbols!.grid.cells.length).toBe(out.symbols!.grid.symbols.length * 3);
+  });
+});
+
+describe('maxDrawdown', () => {
+  it('is the largest fall from a running peak, in close order', () => {
+    const T = [{ net: 100, close: 1 }, { net: -40, close: 2 }, { net: 30, close: 3 }, { net: -120, close: 4 }, { net: 200, close: 5 }];
+    expect(maxDrawdown(T)).toBe(-130);
+    expect(maxDrawdown([...T].reverse())).toBe(-130);
+  });
+  it('is 0 when equity never falls', () => {
+    expect(maxDrawdown([{ net: 10, close: 1 }, { net: 5, close: 2 }])).toBe(0);
+    expect(maxDrawdown([])).toBe(0);
+  });
+  it('counts a fall from the start as drawdown', () => {
+    expect(maxDrawdown([{ net: -50, close: 1 }, { net: 20, close: 2 }])).toBe(-50);
   });
 });

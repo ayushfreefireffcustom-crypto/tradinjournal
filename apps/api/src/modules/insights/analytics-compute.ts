@@ -160,6 +160,13 @@ export function streaks(T: InsightTrade[]): { win: number; loss: number } {
   return { win: bw, loss: bl };
 }
 
+/** Largest fall from a running peak of closed-trade P&L, in $ (0 or negative). Trades in close order. */
+export function maxDrawdown(T: Array<{ net: number; close: number }>): number {
+  let eq = 0, peak = 0, dd = 0;
+  for (const t of [...T].sort((a, b) => a.close - b.close)) { eq += t.net; if (eq > peak) peak = eq; if (eq - peak < dd) dd = eq - peak; }
+  return round(dd);
+}
+
 function performance(T: InsightTrade[], R: boolean): AnaPerformance {
   const days: AnaDay[] = [...groupBy(T, t => dayKey(t.close))].map(([d, ts]) => ({
     d, ...agg(ts), r: R ? round(sum(ts.filter(t => t.r != null), t => t.r!), 3) : null,
@@ -180,6 +187,8 @@ function performance(T: InsightTrade[], R: boolean): AnaPerformance {
     best: round(Math.max(...T.map(t => t.net))), worst: round(Math.min(...T.map(t => t.net))),
     maxWinStreak: st.win, maxLossStreak: st.loss, medianHoldMs: Math.round(median(T.map(t => Math.max(0, t.close - t.open)))),
     long: side('LONG'), short: side('SHORT'),
+    grossProfit: round(sum(wins, t => t.net)), grossLoss: round(sum(losses, t => t.net)), losses: losses.length,
+    maxDrawdown: maxDrawdown(T),
   };
   const perTrade = months.filter(m => m.n >= 3).sort((a, b) => a.net / a.n - b.net / b.n)[0];
   const monthName = (k: string) => MONTHS[Number(k.slice(5, 7)) - 1]!;

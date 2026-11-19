@@ -63,6 +63,8 @@ export interface AnaStats {
   winRate: number; profitFactor: number | null; expectancy: number; expectancyR: number | null;
   avgWin: number; avgLoss: number; best: number; worst: number; maxWinStreak: number; maxLossStreak: number;
   medianHoldMs: number; long: AnaAgg; short: AnaAgg;
+  /** Added Nov 2026; optional so an older API still renders. */
+  grossProfit?: number; grossLoss?: number; losses?: number; maxDrawdown?: number;
 }
 export interface AnaPerformance {
   days: AnaDay[]; weeks: AnaWeek[]; worstWeek: string | null; greenWeeks: number; rUnit: boolean; months: AnaMonth[]; stats: AnaStats;
