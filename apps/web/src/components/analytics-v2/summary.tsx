@@ -54,6 +54,7 @@ function MiniBars({ vals, color, down = false }: { vals: number[]; color: string
   return (
     <svg viewBox={`0 0 ${w} ${h}`} className="a2s-mini" aria-hidden preserveAspectRatio="none">
       {vals.map((v, i) => {
+        if (!v) return null;
         const hh = Math.max(2, (Math.abs(v) / mx) * (h - 4));
         const x = w - (n - i) * (w / n) + (w / n - bw) / 2;
         return <rect key={i} x={x} y={down ? 2 : h - 2 - hh} width={bw} height={hh} rx={1.5} fill={color} fillOpacity={0.85} />;
