@@ -130,6 +130,16 @@ async function syncElefinFromAccounts(row: UserAccess): Promise<UserAccess> {
   });
 }
 
+/**
+ * Temporary (ACCESS_REFERRAL_OPEN): joined through an active partner's code or link, so
+ * they're let straight in like a manual grant. Turning the flag off restores the normal rules.
+ */
+async function referralPass(userId: string): Promise<boolean> {
+  if (!env.ACCESS_REFERRAL_OPEN || !env.PARTNER_PROGRAM_ENABLED) return false;
+  const ref = await prisma.referral.findUnique({ where: { userId }, select: { partner: { select: { status: true } } } });
+  return ref?.partner.status === 'ACTIVE';
+}
+
 async function getActiveGrant(email: string) {
   return prisma.accessGrant.findFirst({
     where: { email: normEmail(email), revokedAt: null },
@@ -218,7 +228,7 @@ export async function getAccessStatus(userId: string, email: string): Promise<Ac
   await syncManualGrant(userId, email);
   let row = await ensureUserAccess(userId);
   if (brokerMode()) row = await syncElefinFromAccounts(row);
-  const grant = await getActiveGrant(email);
+  const grant = !!(await getActiveGrant(email)) || (await referralPass(userId));
 
   // Trade activity, when the rule is on, is worked out here (cached), so this status,
   // the web gate and the API middleware all agree. A saved INACTIVE from earlier must
@@ -238,7 +248,7 @@ export async function getAccessStatus(userId: string, email: string): Promise<Ac
   const status = resolvePlatformStatus({
     isAdminUser: adminUser,
     maintenance: maintenance.enabled,
-    hasGrant: !!grant,
+    hasGrant: grant,
     elefinStatus: row.elefinStatus,
     activityStatus,
   });
@@ -395,7 +405,7 @@ async function countMt5Closed(userId: string, cutoff: number): Promise<number> {
 
 export async function checkActivity(userId: string, email: string, force = false): Promise<ActivityCheckResult> {
   const grant = await getActiveGrant(email);
-  if (grant || isAdmin(email)) {
+  if (grant || isAdmin(email) || (await referralPass(userId))) {
     return {
       active: true,
       tradeCount7d: env.ACCESS_MIN_TRADES_7D,

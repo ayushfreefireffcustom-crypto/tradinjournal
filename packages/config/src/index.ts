@@ -244,6 +244,12 @@ const envSchema = z.object({
     .string()
     .default('false')
     .transform(v => v.toLowerCase() === 'true' || v === '1'),
+  // Temporary: anyone who joined through an active partner's code or link (at signup or
+  // later) gets full access, without the Elefin or activity checks. Off by default.
+  ACCESS_REFERRAL_OPEN: z
+    .string()
+    .default('false')
+    .transform(v => v.toLowerCase() === 'true' || v === '1'),
 
   // ── Trade sync (MT5 deals stored in Postgres) ─────────────────────────────
   /** A user-facing read older than this triggers a background refresh. */

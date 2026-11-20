@@ -9,6 +9,7 @@ const env = {
   ACCESS_MIN_TRADES_7D: 1,
   ACCESS_ACTIVITY_WINDOW_DAYS: 30,
   PARTNER_PROGRAM_ENABLED: true,
+  ACCESS_REFERRAL_OPEN: false,
   ADMIN_EMAILS_LIST: ['admin@test.com'],
   MACRO_ADMIN_EMAILS_LIST: [],
 };
@@ -51,7 +52,7 @@ vi.mock('@tradinjournal/db', () => ({
       updateMany: vi.fn(async () => ({ count: 0 })),
       findUnique: vi.fn(async ({ where }: { where: { userId: string } }) => rows.get(where.userId) ?? null),
     },
-    referral: { findUnique: vi.fn(async ({ where }: { where: { userId: string } }) => (referrals[where.userId] ? { partnerId: referrals[where.userId] } : null)) },
+    referral: { findUnique: vi.fn(async ({ where }: { where: { userId: string } }) => (referrals[where.userId] ? { partnerId: referrals[where.userId], partner: { status: partnerStatus[referrals[where.userId]!] } } : null)) },
     clientVerification: {
       findFirst: vi.fn(async ({ where }: { where: { userId: string; partnerId?: string; broker: string; status: string; brokerAccountId?: null; externalAccountId?: null; partner?: { status: string } } }) =>
         verifs.find(v => v.userId === where.userId && v.broker === where.broker && v.status === where.status
@@ -79,7 +80,7 @@ const status = async (u: string, e = `${u}@test.com`) => (await svc.getAccessSta
 describe('access in partner mode', () => {
   beforeEach(() => {
     rows.clear(); accounts = []; grants = []; referrals = {}; partnerStatus = { p1: 'ACTIVE', p2: 'ACTIVE', pz: 'PAUSED' }; partnerOf = {}; verifs = [];
-    env.ELEFIN_VERIFY_MODE = 'partner'; env.PARTNER_PROGRAM_ENABLED = true; env.ACCESS_REQUIRE_ACTIVITY = false;
+    env.ELEFIN_VERIFY_MODE = 'partner'; env.PARTNER_PROGRAM_ENABLED = true; env.ACCESS_REQUIRE_ACTIVITY = false; env.ACCESS_REFERRAL_OPEN = false;
     closedDaysAgo = {}; createdDaysAgo = 2000; lookupTrader.mockClear(); logger.error.mockClear();
   });
 
@@ -192,5 +193,19 @@ describe('access in partner mode', () => {
     env.ELEFIN_VERIFY_MODE = 'partner';
     expect(await status('s1')).toBe('ELEFIN_REQUIRED');
     expect(rows.get('s1')?.lastDeniedReason).toBe('Not confirmed as an Elefin client of a TRADElogs partner');
+  });
+
+  it('referral-open switch: anyone who joined through an active partner gets in, skipping activity', async () => {
+    referrals = { r1: 'p1', r2: 'pz' };
+    expect(await status('r1')).toBe('ELEFIN_REQUIRED');
+    env.ACCESS_REFERRAL_OPEN = true; env.ACCESS_REQUIRE_ACTIVITY = true;
+    expect(await status('r1')).toBe('FULL_ACCESS');
+    await expect(svc.assertPlatformAccess('r1', 'r1@test.com')).resolves.toBeUndefined();
+    // A paused partner's referral and someone with no partner still go through the normal rules.
+    expect(await status('r2')).toBe('ELEFIN_REQUIRED');
+    expect(await status('r3')).toBe('ELEFIN_REQUIRED');
+    // Turning it off restores the normal rules.
+    env.ACCESS_REFERRAL_OPEN = false;
+    expect(await status('r1')).toBe('ELEFIN_REQUIRED');
   });
 });
